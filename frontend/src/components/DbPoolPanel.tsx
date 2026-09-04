@@ -10,7 +10,6 @@ import {
   closeDbConnection,
   runDbHealthCheck,
   type DbPoolStats,
-  type DbConnectionInfo,
 } from '../api/client';
 
 export default function DbPoolPanel() {

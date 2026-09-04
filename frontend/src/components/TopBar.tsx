@@ -55,7 +55,8 @@ export default function TopBar({
         </svg>
       </button>
 
-      <span className="text-[13px] font-semibold text-[#F5F5F7]">EvoLoop</span>
+      <span className="text-[13px] font-semibold text-[#F5F5F7]">靈境·Linkin</span>
+      <span className="hidden text-[11px] text-[#636366] sm:inline">— Evoloop 運行時</span>
       <span className="text-[12px] text-[#636366]">· {viewLabel}</span>
 
       <div className="ml-auto flex items-center gap-0.5">

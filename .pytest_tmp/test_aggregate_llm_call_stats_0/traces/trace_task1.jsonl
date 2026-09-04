@@ -1,4 +1,0 @@
-{"event": "llm_call", "model": "deepseek-v4-flash", "phase": "generate", "duration_ms": 1200, "cost": 0.001}
-{"event": "llm_call", "model": "deepseek-v4-flash", "phase": "evaluate", "duration_ms": 800}
-{"event": "llm_call", "model": "qwen-turbo", "phase": "reflect", "duration_ms": 600}
-{"event": "phase_change", "phase": "evaluate"}

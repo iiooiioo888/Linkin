@@ -275,8 +275,10 @@ def seed_knowledge() -> tuple[int, str]:
 
     chroma_note = "chroma skipped"
     try:
+        from backend.memory.chroma_compat import apply_chromadb_sql_txt_compat
         import chromadb
 
+        apply_chromadb_sql_txt_compat()
         persist = DATA / "chroma"
         persist.mkdir(parents=True, exist_ok=True)
         client = chromadb.PersistentClient(path=str(persist))

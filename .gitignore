@@ -68,6 +68,23 @@ target/
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+.pytest_tmp/
+
+# Local pip wheel cache / extracted vendor trees
+.pip_wheels/
+
+# Local Chroma probe / antivirus workaround dumps
+.chroma_probe/
+
+# OPC runtime audit logs (not product assets)
+opc_service/audit_logs/*.jsonl
+
+# Runtime routing telemetry (not seed assets)
+backend/data/routing_feedback.json
+
+# Local Chroma persist dirs (JSON 種子仍提交)
+backend/data/linkin/chroma/
+backend/data/chroma/
 
 # Compression
 *.zip

@@ -743,14 +743,9 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent }: Agent
   }, [appliedDefaultLayout, data?.monitor_prefs?.default_layout, focusAgentId]);
 
   const agents = data?.agents?.length ? data.agents : AGENT_FALLBACK_ROSTER;
-  const summary = data?.summary;
   const selected = agents.find((a) => a.id === selectedId) ?? agents[0] ?? null;
   const liveCount = useMemo(() => agents.filter(isLiveAgent).length, [agents]);
   const alertCount = useMemo(() => agents.filter(isAlertAgent).length, [agents]);
-  const enabledCount = useMemo(
-    () => agents.filter((a) => a.enabled !== false).length,
-    [agents],
-  );
 
   const pickRosterFilter = (key: 'all' | 'live' | 'alert') => {
     setFilter(key);

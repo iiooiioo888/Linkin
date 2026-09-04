@@ -1375,13 +1375,15 @@ class TestCompanyGraphIntegration:
         state = {"query": "你好"}
         assert route_by_complexity(state) == "generate_initial_answer"
 
-    def test_run_company_with_mock(self):
+    def test_run_company_with_mock(self, monkeypatch):
         """run_company 節點（模擬 LLM 呼叫）。
 
         成功時應回傳 current_answer（供 evaluate_answer 評估），
         而非直接設定 final_answer。
         """
         from backend.core.company_nodes import run_company
+
+        monkeypatch.setenv("EVOL_MERGE_REVIEW_SYNTH", "false")
 
         state = {
             "query": "建立一個 API 文件",
@@ -1450,9 +1452,11 @@ class TestCompanyGraphIntegration:
         state = {"company_result": {"success": False}}
         assert should_evaluate_company(state) == "archive_state"
 
-    def test_company_mode_passes_on_high_score(self):
+    def test_company_mode_passes_on_high_score(self, monkeypatch):
         """公司模式產出經評估分數達標時，直接輸出不迭代。"""
         from backend.core.graph import build_graph
+
+        monkeypatch.setenv("EVOL_MERGE_REVIEW_SYNTH", "false")
 
         company_responses = [
             "高品質公司產出",     # Developer 執行

@@ -16,7 +16,7 @@ export type MonitorTabItem = { key: MonitorTab; icon: string; label: string };
 export type ConsoleNavItem = { key: ConsoleNavKey; icon: string; label: string; hint?: string };
 
 export type MonitorNavGroup = {
-  id: 'execute' | 'observe' | 'system';
+  id: 'execute' | 'observe' | 'system' | 'linkin';
   label: string;
   items: ConsoleNavItem[];
 };
@@ -46,6 +46,14 @@ export const MONITOR_SYSTEM_TABS: MonitorTabItem[] = [
   { key: 'ops', icon: '⚙', label: '運維' },
 ];
 
+export const MONITOR_LINKIN_TABS: MonitorTabItem[] = [
+  { key: 'world', icon: '✧', label: '世界觀' },
+  { key: 'npcs', icon: '☺', label: 'NPC' },
+  { key: 'quests', icon: '⚑', label: '任務' },
+  { key: 'building', icon: '⌂', label: '建築' },
+  { key: 'items', icon: '◆', label: '道具' },
+];
+
 export const MONITOR_NAV_GROUPS: MonitorNavGroup[] = [
   {
     id: 'execute',
@@ -53,7 +61,7 @@ export const MONITOR_NAV_GROUPS: MonitorNavGroup[] = [
     items: [
       { key: 'live', icon: '◎', label: '即時', hint: '總覽看板' },
       { key: 'tasks', icon: '▣', label: '任務', hint: '佇列與進度' },
-      { key: 'agents', icon: '◈', label: '角色', hint: '85 位名冊' },
+      { key: 'agents', icon: '◈', label: '角色', hint: '內建＋靈境角色' },
       { key: 'pipeline', icon: '⬡', label: '管線', hint: '階段圖' },
       TRACES_NAV_ITEM,
     ],
@@ -75,6 +83,17 @@ export const MONITOR_NAV_GROUPS: MonitorNavGroup[] = [
       { key: 'ops', icon: '⚙', label: '運維', hint: 'LLM / Hub / 連線池' },
     ],
   },
+  {
+    id: 'linkin',
+    label: '靈境',
+    items: [
+      { key: 'world', icon: '✧', label: '世界觀', hint: '憲法與陣營' },
+      { key: 'npcs', icon: '☺', label: 'NPC', hint: '角色卡與對話' },
+      { key: 'quests', icon: '⚑', label: '任務', hint: '主線／支線／日常' },
+      { key: 'building', icon: '⌂', label: '建築', hint: '風格與方塊上限' },
+      { key: 'items', icon: '◆', label: '道具', hint: '稀有度平衡' },
+    ],
+  },
 ];
 
 /** 實驗室獨立活動，不進控制台側欄。 */
@@ -85,6 +104,7 @@ export const MONITOR_TABS: MonitorTabItem[] = [
   ...MONITOR_WORK_TABS,
   ...MONITOR_OBSERVE_TABS,
   ...MONITOR_SYSTEM_TABS,
+  ...MONITOR_LINKIN_TABS,
   LAB_TAB,
 ];
 

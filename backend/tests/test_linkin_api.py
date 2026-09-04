@@ -1,0 +1,288 @@
+"""靈境 API / 工具鐵律 / RAG 降級測試。"""
+
+from __future__ import annotations
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from backend.core.evaluation import DimensionResult, EvaluationResult
+from backend.linkin.api import register_linkin
+from backend.linkin.constitution import reset_cache as reset_constitution_cache
+from backend.linkin.knowledge import QualityGateError, get_store, reset_store
+from backend.linkin.tools import (
+    TOOL_ADMIN_EXECUTE,
+    TOOL_BUILDER_GENERATE,
+    ToolValidationError,
+    invoke_tool,
+)
+
+
+NPC_CARD = {
+    "name": "司契·白绫",
+    "faction": "织庭盟",
+    "occupation": "典章司仪",
+    "personality": "严谨、温和、把契约视为对世界的承诺",
+    "backstory": (
+        "白绫自幼在织庭都契约广场抄录织梦者残章。她相信每一座建筑都是记忆的锚点，"
+        "也曾在裂隙港目睹即兴改建撕裂金线纹样，从此坚持任何改建必须留下可追溯的契约副本。"
+        "她的职责是核对灵丝契约是否与世界观宪法一致，并拒绝空洞的角色卡。"
+    ),
+    "location": "织庭都",
+    "speech_style": "文言夹白",
+}
+
+
+def _pass_eval(_query: str, _answer: str) -> EvaluationResult:
+    result = EvaluationResult(source="test")
+    for dim in ("accuracy", "completeness", "clarity", "relevance"):
+        setattr(result, dim, DimensionResult(9.5, "ok"))
+    result.overall = 9.5
+    return result
+
+
+def _fail_eval(_query: str, _answer: str) -> EvaluationResult:
+    result = EvaluationResult(source="test")
+    for dim in ("accuracy", "completeness", "clarity", "relevance"):
+        setattr(result, dim, DimensionResult(3.0, "low"))
+    result.overall = 3.0
+    return result
+
+
+@pytest.fixture()
+def linkin_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVOL_LINKIN_DATA_DIR", str(tmp_path / "linkin"))
+    monkeypatch.setenv("EVOL_LINKIN_CONSTITUTION_PATH", str(tmp_path / "linkin_constitution.json"))
+    monkeypatch.setenv("EVOL_LINKIN_CHROMA_DIR", str(tmp_path / "chroma"))
+    monkeypatch.setenv("EVOL_LINKIN_FORCE_JSON", "1")
+    reset_store()
+    reset_constitution_cache()
+    yield tmp_path
+    reset_store()
+    reset_constitution_cache()
+
+
+@pytest.fixture()
+def client(linkin_env, monkeypatch):
+    monkeypatch.setattr("backend.linkin.knowledge.evaluate_for_write", _pass_eval)
+    app = FastAPI()
+    register_linkin(app)
+    with TestClient(app) as c:
+        yield c
+
+
+def test_constitution_crud(client: TestClient):
+    got = client.get("/linkin/constitution")
+    assert got.status_code == 200
+    body = got.json()
+    assert body["world_name"] == "灵境·Linkin"
+    assert len(body["factions"]) == 3
+    assert body["magic"]["name"] == "灵丝术"
+    assert "[待Phase" not in body["magic"]["name"]
+
+    patched = client.put("/linkin/constitution", json={"tagline": "测试更新"})
+    assert patched.status_code == 200
+    assert patched.json()["tagline"] == "测试更新"
+    assert client.get("/linkin/constitution").json()["tagline"] == "测试更新"
+
+
+def test_npc_crud_and_dialogue(client: TestClient):
+    created = client.post("/linkin/npcs", json=NPC_CARD)
+    assert created.status_code == 200, created.text
+    npc_id = created.json()["npc"]["id"]
+    listed = client.get("/linkin/npcs")
+    assert listed.json()["count"] == 1
+
+    updated = client.put(f"/linkin/npcs/{npc_id}", json={"occupation": "契约长老"})
+    assert updated.status_code == 200
+    assert updated.json()["npc"]["occupation"] == "契约长老"
+
+    talk = client.post(
+        f"/linkin/npcs/{npc_id}/dialogue",
+        json={"playerMessage": "织庭都还欢迎旅人吗？"},
+    )
+    assert talk.status_code == 200
+    assert "reply" in talk.json()
+    assert "rag" in talk.json()
+
+    deleted = client.delete(f"/linkin/npcs/{npc_id}")
+    assert deleted.status_code == 200
+    assert client.get("/linkin/npcs").json()["count"] == 0
+
+
+def test_builder_block_limit_rejected(client: TestClient):
+    resp = client.post(
+        "/linkin/buildings/generate",
+        json={
+            "prompt": "一座巨大的蒸汽圣殿",
+            "style": "精灵古典",
+            "location": "精灵森林",
+            "region": "精灵森林",
+            "block_count": 5001,
+        },
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "block_limit"
+
+
+def test_builder_style_mismatch_rejected(client: TestClient):
+    resp = client.post(
+        "/linkin/buildings/generate",
+        json={
+            "prompt": "黄铜烟囱塔",
+            "style": "蒸汽帆索",
+            "location": "精灵森林",
+            "region": "精灵森林",
+            "block_count": 120,
+        },
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "style_mismatch"
+
+
+def test_command_chain_rejected(client: TestClient):
+    resp = client.post(
+        "/linkin/buildings/generate",
+        json={
+            "prompt": "先建塔 && 再灌岩浆",
+            "style": "精灵古典",
+            "location": "精灵森林",
+            "region": "精灵森林",
+            "block_count": 80,
+        },
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "command_chain"
+
+    with pytest.raises(ToolValidationError) as exc:
+        invoke_tool(
+            TOOL_BUILDER_GENERATE,
+            {"prompt": "ok", "style": "精灵古典", "location": "精灵森林"},
+            extra_tools=[TOOL_ADMIN_EXECUTE],
+        )
+    assert exc.value.code == "multi_tool"
+
+
+def test_sensitive_admin_requires_confirmation():
+    with pytest.raises(ToolValidationError) as exc:
+        invoke_tool(TOOL_ADMIN_EXECUTE, {"command": "kick Steve"})
+    assert exc.value.code == "needs_confirmation"
+
+    ok = invoke_tool(TOOL_ADMIN_EXECUTE, {"command": "kick Steve", "confirmed": True})
+    assert ok["ok"] is True
+    assert ok["params"]["sensitive"] is True
+
+
+def test_admin_api_confirmation(client: TestClient):
+    denied = client.post("/linkin/admin/execute", json={"command": "ban Steve"})
+    assert denied.status_code == 409
+    allowed = client.post("/linkin/admin/execute", json={"command": "ban Steve", "confirmed": True})
+    assert allowed.status_code == 200
+    assert allowed.json()["executed"] is True
+
+
+def test_quest_and_item_and_overview(client: TestClient):
+    quest = client.post(
+        "/linkin/quests/generate",
+        json={"playerId": "p1", "questType": "支线", "difficulty": "普通", "region": "织庭都"},
+    )
+    assert quest.status_code == 200
+    assert client.get("/linkin/quests").json()["count"] == 1
+
+    building = client.post(
+        "/linkin/buildings/generate",
+        json={
+            "prompt": "月光庭园一座小桥",
+            "style": "精灵古典",
+            "location": "精灵森林",
+            "region": "精灵森林",
+            "block_count": 400,
+        },
+    )
+    assert building.status_code == 200
+
+    item = client.post(
+        "/linkin/items",
+        json={"name": "灵丝短杖", "type": "武器", "rarity": "uncommon", "attributes": {"power": 12}},
+    )
+    assert item.status_code == 200
+
+    overview = client.get("/linkin/overview")
+    assert overview.status_code == 200
+    body = overview.json()
+    assert body["world_name"] == "灵境·Linkin"
+    assert body["compliance"]["factions_defined"] is True
+    assert body["compliance"]["magic_defined"] is True
+    assert body["quest_count"] == 1
+    assert body["item_count"] == 1
+
+
+def test_quality_gate_rejects_low_score(linkin_env, monkeypatch):
+    monkeypatch.setattr("backend.linkin.knowledge.evaluate_for_write", _fail_eval)
+    store = get_store()
+    with pytest.raises(QualityGateError):
+        store.upsert("linkin_npcs", "太短", {"name": "x"}, skip_quality=False)
+
+
+def test_rag_fallback_json(linkin_env, monkeypatch):
+    monkeypatch.setattr("backend.linkin.knowledge.evaluate_for_write", _pass_eval)
+    store = get_store()
+    status = store.backend_status()
+    assert status["chroma"] is False
+    assert status["fallback"] == "json"
+    stored = store.upsert(
+        "linkin_worldview",
+        "织庭都是织庭盟的都城，白石圣殿与契约广场构成典章之心。",
+        {"kind": "region", "region": "织庭都"},
+        record_id="world-loom",
+        skip_quality=True,
+    )
+    assert stored["backend"] == "json"
+    hits = store.search("linkin_worldview", "织庭都 契约广场")
+    assert hits
+    assert hits[0]["backend"] == "json"
+    assert hits[0]["similarity"] >= 0.75
+
+
+def _collect_paths(app) -> set[str]:
+    paths: set[str] = set()
+    stack: list = list(getattr(app, "routes", []) or [])
+    while stack:
+        route = stack.pop()
+        path = getattr(route, "path", None)
+        if path:
+            paths.add(path)
+        nested = getattr(route, "routes", None)
+        if nested:
+            stack.extend(nested)
+        original = getattr(route, "original_router", None)
+        if original is not None:
+            stack.extend(getattr(original, "routes", []) or [])
+    return paths
+
+
+def test_existing_chat_and_monitor_routes_untouched():
+    from backend.main import app
+
+    paths = _collect_paths(app)
+    assert "/chat" in paths
+    assert "/linkin/overview" in paths
+    assert "/linkin/constitution" in paths
+    assert "/linkin/npcs" in paths
+
+
+def test_seed_linkin_roles(linkin_env):
+    from backend.company.role_catalog import get_snapshot
+    from backend.linkin.roles import seed_linkin_roles
+
+    roles = seed_linkin_roles()
+    assert len(roles) == 16
+    director = get_snapshot("custom_linkin_build_director")
+    assert director is not None
+    assert director["level"] == 1
+    prompt = director["system_prompt"]
+    assert "灵境意志" in prompt or "灵境·Linkin" in prompt
+    executor = get_snapshot("custom_linkin_build_executor")
+    assert executor is not None
+    assert executor["level"] == 2
+    assert "執行者" in executor["name"] or "执行者" in executor["name"] or "建築" in executor["name"]

@@ -50,6 +50,7 @@ from backend.services.task_broadcaster import task_broadcaster
 from backend.services.task_manager import task_manager
 from backend.services import lab_tools
 from backend.hub.api import register_hub
+from backend.linkin.api import register_linkin
 
 # ═══════════════════════════════════════════════════════════════
 # 全局公司預算狀態（由 orchestrator 更新，API 讀取）
@@ -96,8 +97,8 @@ async def _lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="EvoLoop Backend",
-    description="EvoLoop AI 助手 — 反思闭环 + 多代理人公司运行时",
+    title="靈境·Linkin — Evoloop 運行時",
+    description="靈境·Linkin 世界觀控制面 + EvoLoop 反思闭环 / 多代理人公司运行时",
     version="0.1.0",
     lifespan=_lifespan,
 )
@@ -134,6 +135,7 @@ app.add_middleware(
 
 # AI Hub 旁路面：/api/v1/*（Nginx 剝除 /api 時另掛 /v1/*）
 register_hub(app)
+register_linkin(app)
 
 
 class ChatRequest(BaseModel):

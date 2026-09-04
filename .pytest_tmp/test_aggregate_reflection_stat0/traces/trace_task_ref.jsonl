@@ -1,7 +1,0 @@
-{"event": "evaluation", "iteration": 0, "score": 6.2, "ts": "2026-08-31T10:00:00Z"}
-{"event": "llm_call", "phase": "reflect", "duration_ms": 900, "iteration": 0}
-{"event": "llm_call", "phase": "improve", "duration_ms": 1100, "iteration": 0}
-{"event": "improvement", "iteration": 0}
-{"event": "evaluation", "iteration": 1, "score": 8.1, "ts": "2026-08-31T10:01:00Z"}
-{"event": "llm_call", "phase": "evaluate", "duration_ms": 500, "iteration": 1}
-{"event": "phase_change", "phase": "early_stop"}

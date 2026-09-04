@@ -1,0 +1,140 @@
+[
+  {
+    "id": "ffbee7b0-eb8d-4114-b5da-b73506cbad83",
+    "text": "建筑方案：精灵古典 @ 120, 64, -300 / 精灵森林\n在林冠间搭建一座月光庭园小桥",
+    "metadata": {
+      "kind": "building",
+      "building_id": "bld-0c17666a09",
+      "style": "精灵古典",
+      "id": "ffbee7b0-eb8d-4114-b5da-b73506cbad83",
+      "created_at": "2026-09-04T06:17:01.370820+00:00",
+      "updated_at": "2026-09-04T06:17:01.370820+00:00"
+    }
+  },
+  {
+    "id": "world-foundation",
+    "text": "世界名称：灵境·Linkin\n起源：由「织梦者」（AI）以灵丝编织而成的幻想大陆。灵境不是对现实的映射，而是可被创造、被守护、被改写的梦境世界。\n核心冲突：三大阵营围绕「谁有权改写灵境」产生张力：织庭盟维护织梦者法则与契约秩序，自由舟主张玩家意志可即兴改写世界，宁渊庭守护灵脉与自然平衡、反对过度改建。所有主线与支线故事必须源自这组张力，不得引入现实政治或无根世仇。\n造物主：织梦者\n核心意志：灵境意志（Will of Linkin）",
+    "metadata": {
+      "kind": "foundation",
+      "collection_hint": "worldview",
+      "id": "world-foundation",
+      "created_at": "2026-09-04T06:17:02.395014+00:00",
+      "updated_at": "2026-09-04T06:17:02.395014+00:00"
+    }
+  },
+  {
+    "id": "world-magic",
+    "text": "魔法体系：灵丝术（Aetherthread）\n来源：灵丝源自织梦者留下的世界经纬。施术即是轻轻拉动梦的纤维，而非征服自然。\n原则：所有魔法必须可被「灵丝」解释：塑形改变物质排列，言灵约束叙事与契约，共鸣影响情感与关系，赋形将灵丝固定为道具。禁止无源神迹、现实宗教仪式、以及伤害性的写实暴力描写。\n学派：塑形（建筑／地形）、言灵（叙事／契约）、共鸣（NPC／情感）、赋形（道具／附魔）\n限制：灵丝不可作用于现实世界或玩家个人身份信息；灵丝消耗与区域和谐度相关：过度改建会降低和谐，使塑形失败率上升；禁止以魔法实现 Minecraft EULA 不允许的内容；禁止以魔法描写色情、仇恨、现实政治或写实血腥",
+    "metadata": {
+      "kind": "magic",
+      "collection_hint": "worldview",
+      "id": "world-magic",
+      "created_at": "2026-09-04T06:17:04.752249+00:00",
+      "updated_at": "2026-09-04T06:17:04.752249+00:00"
+    }
+  },
+  {
+    "id": "faction-loom_order",
+    "text": "阵营：织庭盟（Order of the Loom）\n倾向：秩序／传承\n都城：织庭都\n信条：世界应按织梦者留下的典章运转。契约即法律，建筑即记忆。\n美学：白石、金线纹样、对称圣殿、契约广场\n张力：视自由舟的即兴改建为亵渎，视宁渊庭的「不作为」为怠惰。",
+    "metadata": {
+      "kind": "faction",
+      "faction_id": "loom_order",
+      "region": "织庭都",
+      "id": "faction-loom_order",
+      "created_at": "2026-09-04T06:17:05.402572+00:00",
+      "updated_at": "2026-09-04T06:17:05.402572+00:00"
+    }
+  },
+  {
+    "id": "faction-free_arks",
+    "text": "阵营：自由舟（Free Arks）\n倾向：变革／探索\n都城：裂隙港\n信条：灵境应随旅人的梦而生长。贸易、工坊与航路是改写世界的正当方式。\n美学：蒸汽、帆索、铆接黄铜、港口市集\n张力：视织庭盟为僵化枷锁，视宁渊庭为阻碍开拓的迷雾。",
+    "metadata": {
+      "kind": "faction",
+      "faction_id": "free_arks",
+      "region": "裂隙港",
+      "id": "faction-free_arks",
+      "created_at": "2026-09-04T06:17:06.432785+00:00",
+      "updated_at": "2026-09-04T06:17:06.432785+00:00"
+    }
+  },
+  {
+    "id": "faction-stilldeep",
+    "text": "阵营：宁渊庭（Court of Stilldeep）\n倾向：平衡／守护\n都城：宁渊谷\n信条：灵脉不可竭，梦亦不可滥。改建必须留下休养生息的空隙。\n美学：水雾、苔石、木构隐所、灵泉\n张力：视织庭盟的宏伟工程为对灵脉的透支，视自由舟的扩张为伤口。",
+    "metadata": {
+      "kind": "faction",
+      "faction_id": "stilldeep",
+      "region": "宁渊谷",
+      "id": "faction-stilldeep",
+      "created_at": "2026-09-04T06:17:07.337755+00:00",
+      "updated_at": "2026-09-04T06:17:07.337755+00:00"
+    }
+  },
+  {
+    "id": "region-loom_city",
+    "text": "区域：织庭都\n文化：典章与契约\n允许建筑风格：织梦典章、白石圣殿、契约广场、金线回廊",
+    "metadata": {
+      "kind": "region",
+      "region": "织庭都",
+      "faction_id": "loom_order",
+      "id": "region-loom_city",
+      "created_at": "2026-09-04T06:17:08.762362+00:00",
+      "updated_at": "2026-09-04T06:17:08.762362+00:00"
+    }
+  },
+  {
+    "id": "region-spirit_forest",
+    "text": "区域：精灵森林\n文化：林冠共生，亲近宁渊但保持中立聚落\n允许建筑风格：精灵古典、林冠木石、月光庭园、树桥聚落",
+    "metadata": {
+      "kind": "region",
+      "region": "精灵森林",
+      "faction_id": "stilldeep",
+      "id": "region-spirit_forest",
+      "created_at": "2026-09-04T06:17:09.741047+00:00",
+      "updated_at": "2026-09-04T06:17:09.741047+00:00"
+    }
+  },
+  {
+    "id": "region-rift_harbor",
+    "text": "区域：裂隙港\n文化：贸易与即兴工坊\n允许建筑风格：蒸汽帆索、自由贸易港、裂隙工坊、黄铜市集",
+    "metadata": {
+      "kind": "region",
+      "region": "裂隙港",
+      "faction_id": "free_arks",
+      "id": "region-rift_harbor",
+      "created_at": "2026-09-04T06:17:10.961150+00:00",
+      "updated_at": "2026-09-04T06:17:10.961150+00:00"
+    }
+  },
+  {
+    "id": "region-still_valley",
+    "text": "区域：宁渊谷\n文化：隐修与灵脉守护\n允许建筑风格：水雾苔石、隐士木屋、灵脉神殿、雾中庭园",
+    "metadata": {
+      "kind": "region",
+      "region": "宁渊谷",
+      "faction_id": "stilldeep",
+      "id": "region-still_valley",
+      "created_at": "2026-09-04T06:17:11.861187+00:00",
+      "updated_at": "2026-09-04T06:17:11.861187+00:00"
+    }
+  },
+  {
+    "id": "world-boundaries",
+    "text": "内容边界：\n- 禁止生成任何违反 Minecraft EULA 的内容\n- 禁止生成任何涉及现实政治、宗教、色情、暴力的内容\n- 禁止仇恨言论与歧视内容\n- 所有 NPC 必须拥有符合世界观的背景故事，不可为空\n- 玩家个人信息不写入 AI 记忆库",
+    "metadata": {
+      "kind": "boundary",
+      "id": "world-boundaries",
+      "created_at": "2026-09-04T06:17:12.848217+00:00",
+      "updated_at": "2026-09-04T06:17:12.848217+00:00"
+    }
+  },
+  {
+    "id": "world-consistency",
+    "text": "一致性约束：\n- 建筑风格必须与所在区域的文化设定一致\n- NPC 的对话和行为必须符合其角色卡设定\n- 道具的属性必须符合其稀有度和世界观逻辑\n- 历史事件不可矛盾 — 所有重大事件需记录在 RAG 知识库中",
+    "metadata": {
+      "kind": "consistency",
+      "id": "world-consistency",
+      "created_at": "2026-09-04T06:17:13.799688+00:00",
+      "updated_at": "2026-09-04T06:17:13.799688+00:00"
+    }
+  }
+]

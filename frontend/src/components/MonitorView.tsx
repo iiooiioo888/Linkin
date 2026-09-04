@@ -21,6 +21,11 @@ const UserFeedbackPanel = lazy(() => import('./UserFeedbackPanel'));
 const LabPanel = lazy(() => import('./LabPanel'));
 const OpsPanel = lazy(() => import('./OpsPanel'));
 const MemoryPanel = lazy(() => import('./MemoryPanel'));
+const WorldConstitutionPanel = lazy(() => import('./linkin/WorldConstitutionPanel'));
+const NpcManagerPanel = lazy(() => import('./linkin/NpcManagerPanel'));
+const QuestPanel = lazy(() => import('./linkin/QuestPanel'));
+const BuildPanel = lazy(() => import('./linkin/BuildPanel'));
+const ItemPanel = lazy(() => import('./linkin/ItemPanel'));
 
 interface MonitorViewProps {
   onOpenTask: (task: TaskProgress) => void;
@@ -132,6 +137,11 @@ export default function MonitorView({
             <MemoryPanel />
           </div>
         )}
+        {tab === 'world' && <WorldConstitutionPanel />}
+        {tab === 'npcs' && <NpcManagerPanel />}
+        {tab === 'quests' && <QuestPanel />}
+        {tab === 'building' && <BuildPanel />}
+        {tab === 'items' && <ItemPanel />}
         {tab === 'dbpool' && <OpsPanel />}
       </Suspense>
     </div>

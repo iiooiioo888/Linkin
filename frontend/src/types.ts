@@ -872,6 +872,8 @@ export interface OptimizationMonitorData {
     cache_fresh: boolean;
     reading_count: number;
     entry_count?: number;
+    max_size?: number;
+    hit_rate?: number;
   };
   system_stats?: {
     tasks_total: number;

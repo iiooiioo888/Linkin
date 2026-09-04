@@ -32,7 +32,12 @@ export type MonitorTab =
   | 'lab'
   | 'ops'
   | 'memory'
-  | 'dbpool';
+  | 'dbpool'
+  | 'world'
+  | 'npcs'
+  | 'quests'
+  | 'building'
+  | 'items';
 
 export interface AppShellProps {
   /** 当前活跃视图 */

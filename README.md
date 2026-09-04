@@ -1,8 +1,10 @@
 <div align="center">
 
-# 🔄 EvoLoop
+# 靈境·Linkin
 
-**自我反思 × 多代理人公司 × 工業閉環**
+**EvoLoop 運行時 × 世界觀 × 監控中心**
+
+本倉庫基於 [EvoLoop](https://github.com/iiooiioo888/Evoloop)（MIT）衍生，保留其自我反思閉環、多代理人公司與工業 OPC 能力，並整合靈境世界觀與監控中心。
 
 生成 → 評估 → 反思 → 優化，永不停止進化的 AI 系統
 
@@ -12,14 +14,15 @@
 [![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)](https://react.dev/)
 [![Tests](https://img.shields.io/badge/Tests-251%20passed-success?logo=pytest&logoColor=white)](backend/tests/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-[![GitHub Pages](https://img.shields.io/badge/Demo-GitHub%20Pages-222?logo=githubpages&logoColor=white)](https://iiooiioo888.github.io/Evoloop/)
 
-**倉庫：** [https://github.com/iiooiioo888/Evoloop](https://github.com/iiooiioo888/Evoloop)
+**倉庫：** [https://github.com/iiooiioo888/Linkin](https://github.com/iiooiioo888/Linkin)
 
-**線上預覽：** [https://iiooiioo888.github.io/Evoloop/](https://iiooiioo888.github.io/Evoloop/)  
+**上游基礎：** [https://github.com/iiooiioo888/Evoloop](https://github.com/iiooiioo888/Evoloop)（MIT License，署名保留）
+
+**線上預覽（EvoLoop 靜態 Demo）：** [https://iiooiioo888.github.io/Evoloop/](https://iiooiioo888.github.io/Evoloop/)  
 （靜態 UI；聊天、寫入與模型刷新需本地或 Docker 啟動完整服務）
 
-> **單一主線** · 分支僅 `master` · 最近文件更新：2026-09-03
+> **單一主線** · 分支僅 `master` · 最近文件更新：2026-09-04
 
 </div>
 
@@ -85,7 +88,8 @@ graph LR
 
 | 主題 | 你會得到什麼 |
 |------|-------------|
-| **監控中心擴充** | 9 個子分頁；80 席角色工作台；完整角色設定表單；自定義角色新增／複製／刪除；監控偏好（輪詢、分組、篩選） |
+| **靈境·Linkin** | 世界觀憲法、NPC／任務／建築／道具、監控中心「靈境」分頁；種子：`python -m backend.scripts.seed_linkin_world` |
+| **監控中心擴充** | 含靈境分頁；80 席角色工作台；完整角色設定表單；自定義角色新增／複製／刪除；監控偏好（輪詢、分組、篩選） |
 | **角色總覽操作** | 依 L0–L4 分組；左側層級錨點跳轉；活躍／告警為篩選而非第二套計數；卡片右上角為該角色合計成本 |
 | **示範資料** | `python -m backend.scripts.seed_demo_content` 寫入 60 任務、60 推理軌跡、60 知識庫條目（Chroma 失敗則降級 JSON） |
 | **通用模型優化** | 只存 DeepSeek → 全系統只能用 DeepSeek；OpenRouter／Ollama／vLLM → 爬取 `/models` 寫入配置；定時檢查 + 手動刷新 + 健康快照 |
@@ -157,9 +161,10 @@ Synthesizer 整合 → 外部反思回圈
 ## 📁 專案結構
 
 ```
-evoloop/
+linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 ├── backend/                     # FastAPI + LangGraph
-│   ├── main.py                  #   /chat /tasks /monitor/* /config /cloud /docker
+│   ├── main.py                  #   /chat /tasks /monitor/* /linkin/* /config /cloud /docker
+│   ├── linkin/                  #   靈境憲法 / NPC / 任務 / 建築 / 道具
 │   ├── core/
 │   │   ├── graph.py             #     統一模式圖 + 複雜度路由
 │   │   ├── nodes.py             #     生成 / 多維評估 / 分層反思 / 改進
@@ -181,15 +186,20 @@ evoloop/
 │   │   ├── docker_manager.py    #     容器狀態／啟停
 │   │   └── ...
 │   ├── data/
+│   │   ├── linkin/              #     世界觀種子 JSON
+│   │   ├── linkin_constitution.json
 │   │   ├── role_catalog.json    #     角色目錄資料
 │   │   ├── memory_store.json    #     JSON 記憶降級檔
 │   │   ├── company_runs/        #     公司任務事件（含示範種子）
 │   │   └── traces/              #     推理軌跡
-│   ├── scripts/seed_demo_content.py  # 60 任務／推理／知識庫
+│   ├── scripts/
+│   │   ├── seed_demo_content.py #     60 任務／推理／知識庫
+│   │   └── seed_linkin_world.py #     靈境世界觀／NPC／角色種子
 │   └── tests/                   #   單元測試
 ├── opc_service/                 # OPC UA 工業微服務 + 安全護欄
 ├── frontend/                    # React + Vite + TypeScript（單一 UI）
 │   └── src/
+│       ├── api/linkin.ts        #   靈境 REST 客戶端
 │       ├── lib/monitorTabs.ts   #   監控分頁單一資料源
 │       ├── lib/agentUi.ts       #   角色狀態／跳轉事件 / 成本格式
 │       └── components/
@@ -198,8 +208,9 @@ evoloop/
 │           ├── RoleSettingsPanel.tsx
 │           ├── LlmOpsPanel.tsx
 │           ├── HubPanel.tsx      #   Hub 操作台（內嵌於監控，非獨立產品線）
+│           ├── linkin/          #   憲法／NPC／任務／建築／道具面板
 │           └── ...
-├── docs/                        # 知識庫
+├── docs/                        # 知識庫（含 docs/linkin/）
 ├── .github/workflows/
 │   ├── test.yml                 #   master CI
 │   └── deploy-pages.yml         #   GitHub Pages
@@ -402,8 +413,9 @@ EVOL_LLM_OPS_INTERVAL_SEC=300
 ### 1️⃣ 安裝
 
 ```powershell
-git clone https://github.com/iiooiioo888/Evoloop.git
-cd Evoloop
+git clone https://github.com/iiooiioo888/Linkin.git
+cd Linkin
+# 上游基礎：https://github.com/iiooiioo888/Evoloop（MIT）
 
 python -m venv .venv
 .venv\Scripts\Activate.ps1

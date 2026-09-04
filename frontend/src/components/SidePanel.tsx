@@ -604,6 +604,7 @@ function MonitorSidebar({
     execute: true,
     observe: activeGroup === 'observe',
     system: activeGroup === 'system',
+    linkin: true,
   }));
 
   useEffect(() => {
