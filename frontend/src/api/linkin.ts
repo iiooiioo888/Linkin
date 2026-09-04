@@ -89,6 +89,14 @@ export type Item = {
   description?: string;
 };
 
+export type WorldEvent = {
+  id: string;
+  text: string;
+  kind?: string;
+  title?: string;
+  updated_at?: string;
+};
+
 export type Overview = {
   world_name: string;
   will?: string;
@@ -97,6 +105,7 @@ export type Overview = {
   event_count: number;
   item_count: number;
   building_count: number;
+  player_records?: number;
   factions: string[];
   magic?: string;
   compliance: {
@@ -127,6 +136,8 @@ export const npcDialogue = (id: string, playerMessage: string) =>
 export const generateQuest = (body: { playerId: string; questType: string; difficulty: string; region?: string }) =>
   request<{ quest: Quest }>('/linkin/quests/generate', { method: 'POST', body: JSON.stringify(body) });
 export const fetchQuests = () => request<{ quests: Quest[]; count: number }>('/linkin/quests');
+export const deleteQuest = (id: string) =>
+  request<{ deleted: boolean }>(`/linkin/quests/${id}`, { method: 'DELETE' });
 
 export const generateBuilding = (body: {
   prompt: string;
@@ -136,9 +147,15 @@ export const generateBuilding = (body: {
   block_count: number;
 }) => request<{ building: Building }>('/linkin/buildings/generate', { method: 'POST', body: JSON.stringify(body) });
 export const fetchBuildings = () => request<{ buildings: Building[]; count: number }>('/linkin/buildings');
+export const deleteBuilding = (id: string) =>
+  request<{ deleted: boolean }>(`/linkin/buildings/${id}`, { method: 'DELETE' });
 
 export const fetchItems = () => request<{ items: Item[]; count: number }>('/linkin/items');
 export const createItem = (body: Omit<Item, 'id'>) =>
   request<{ item: Item }>('/linkin/items', { method: 'POST', body: JSON.stringify(body) });
+export const deleteItem = (id: string) =>
+  request<{ deleted: boolean }>(`/linkin/items/${id}`, { method: 'DELETE' });
+
+export const fetchEvents = () => request<{ events: WorldEvent[]; count: number }>('/linkin/events');
 
 export const fetchOverview = () => request<Overview>('/linkin/overview');

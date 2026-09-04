@@ -2,9 +2,9 @@
  * BuildPanel — 建築生成（風格、坐標、5000 方塊上限）與方案列表。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchBuildings, generateBuilding, type Building } from '../../api/linkin';
+import { deleteBuilding, fetchBuildings, fetchConstitution, generateBuilding, type Building } from '../../api/linkin';
 
-const REGION_STYLES: Record<string, string[]> = {
+const FALLBACK_REGION_STYLES: Record<string, string[]> = {
   织庭都: ['织梦典章', '白石圣殿', '契约广场', '金线回廊'],
   精灵森林: ['精灵古典', '林冠木石', '月光庭园', '树桥聚落'],
   裂隙港: ['蒸汽帆索', '自由贸易港', '裂隙工坊', '黄铜市集'],
@@ -12,6 +12,7 @@ const REGION_STYLES: Record<string, string[]> = {
 };
 
 export default function BuildPanel() {
+  const [regionStyles, setRegionStyles] = useState<Record<string, string[]>>(FALLBACK_REGION_STYLES);
   const [prompt, setPrompt] = useState('在林冠间搭建一座月光庭园小桥');
   const [region, setRegion] = useState('精灵森林');
   const [style, setStyle] = useState('精灵古典');
@@ -22,13 +23,25 @@ export default function BuildPanel() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const styles = useMemo(() => REGION_STYLES[region] ?? Object.values(REGION_STYLES).flat(), [region]);
+  const styles = useMemo(() => regionStyles[region] ?? Object.values(regionStyles).flat(), [region, regionStyles]);
   const overLimit = blockCount > 5000;
 
   const load = useCallback(async () => {
     try {
-      const data = await fetchBuildings();
+      const [data, constitution] = await Promise.all([fetchBuildings(), fetchConstitution().catch(() => null)]);
       setBuildings(data.buildings);
+      if (constitution?.regions?.length) {
+        const mapped: Record<string, string[]> = {};
+        for (const row of constitution.regions) {
+          const name = String(row['name'] || '').trim();
+          const allowedRaw = row['allowed_styles'];
+          const allowed = Array.isArray(allowedRaw)
+            ? allowedRaw.map((s) => String(s))
+            : [];
+          if (name && allowed.length) mapped[name] = allowed;
+        }
+        if (Object.keys(mapped).length) setRegionStyles(mapped);
+      }
     } catch (err) {
       setError((err as Error).message);
     }
@@ -58,6 +71,20 @@ export default function BuildPanel() {
     }
   };
 
+  const onDelete = async (id: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteBuilding(id);
+      if (result?.id === id) setResult(null);
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
       <div className="mb-4 flex items-center justify-between">
@@ -78,7 +105,7 @@ export default function BuildPanel() {
         <div className="grid gap-2">
           <label className="text-[10px] text-[#8a8f98]">區域
             <select value={region} onChange={(e) => setRegion(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-[12px]">
-              {Object.keys(REGION_STYLES).map((item) => (
+              {Object.keys(regionStyles).map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}
             </select>
@@ -124,6 +151,14 @@ export default function BuildPanel() {
             </div>
             <p className="mt-1 text-[12px] leading-relaxed text-[#AEAEB2]">{item.prompt}</p>
             {item.note && <p className="mt-1 text-[11px] text-[#8a8f98]">{item.note}</p>}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void onDelete(item.id)}
+              className="mt-2 text-[10px] text-red-400 disabled:opacity-40"
+            >
+              刪除
+            </button>
           </article>
         ))}
       </div>

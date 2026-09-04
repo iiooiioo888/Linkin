@@ -27,10 +27,14 @@ Base URL 與主應用相同：`http://localhost:8000`
 |------|------|------|
 | POST | `/linkin/quests/generate` | 先檢索世界觀再生成；有 LLM 則結構化標題／描述 |
 | GET | `/linkin/quests` | 任務列表 |
+| DELETE | `/linkin/quests/{id}` | 刪除任務 |
 | POST | `/linkin/buildings/generate` | 風格須匹配區域；單次 ≤ 5000 方塊 |
 | GET | `/linkin/buildings` | 已規劃建築方案 |
+| DELETE | `/linkin/buildings/{id}` | 刪除建築方案 |
 | POST | `/linkin/items` | 稀有度區間校驗；名稱重複回 409 |
 | GET | `/linkin/items` | 道具列表 |
+| DELETE | `/linkin/items/{id}` | 刪除道具 |
+| GET | `/linkin/events` | 歷史事件（RAG 事件庫） |
 
 ## 管理與總覽
 

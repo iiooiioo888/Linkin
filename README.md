@@ -683,6 +683,7 @@ Pages 僅靜態前端預覽。聊天、寫入 OPC、刷新模型目錄等需連�
 | Phase 14 | 模型池鎖定 + OpenRouter 爬取 + LLM 運維 | ✅ |
 | Phase 15 | 合拼單一版本 + GitHub Pages | ✅ |
 | Phase 16 | 角色總覽操作（層級跳轉／篩選／成本列）+ 示範種子 | ✅ |
+| Phase 17 | 靈境·Linkin（憲法／RAG／監控分頁／統一管線注入） | ✅ |
 
 ---
 

@@ -276,6 +276,48 @@ def test_existing_chat_and_monitor_routes_untouched():
     assert "/linkin/constitution" in paths
     assert "/linkin/npcs" in paths
     assert "/linkin/buildings" in paths
+    assert "/linkin/events" in paths
+    assert "/linkin/quests/{quest_id}" in paths or any(p.endswith("/quests/{quest_id}") for p in paths)
+
+
+def test_entity_delete_and_events(client: TestClient):
+    quest = client.post(
+        "/linkin/quests/generate",
+        json={"playerId": "p1", "questType": "日常", "difficulty": "简单", "region": "宁渊谷"},
+    )
+    assert quest.status_code == 200
+    quest_id = quest.json()["quest"]["id"]
+    events = client.get("/linkin/events")
+    assert events.status_code == 200
+    assert events.json()["count"] >= 1
+
+    deleted = client.delete(f"/linkin/quests/{quest_id}")
+    assert deleted.status_code == 200
+    assert client.get("/linkin/quests").json()["count"] == 0
+
+    building = client.post(
+        "/linkin/buildings/generate",
+        json={
+            "prompt": "雾中庭园一座隐所",
+            "style": "隐士木屋",
+            "location": "宁渊谷",
+            "region": "宁渊谷",
+            "block_count": 40,
+        },
+    )
+    assert building.status_code == 200
+    bld_id = building.json()["building"]["id"]
+    assert client.delete(f"/linkin/buildings/{bld_id}").status_code == 200
+
+    item = client.post(
+        "/linkin/items",
+        json={"name": "苔石护符", "type": "防具", "rarity": "common", "attributes": {"power": 4}},
+    )
+    assert item.status_code == 200
+    item_id = item.json()["item"]["id"]
+    assert client.delete(f"/linkin/items/{item_id}").status_code == 200
+    missing = client.delete("/linkin/items/no-such-item")
+    assert missing.status_code == 404
 
 
 def test_seed_linkin_roles(linkin_env):

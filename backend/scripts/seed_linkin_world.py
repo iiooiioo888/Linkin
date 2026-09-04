@@ -16,7 +16,16 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from backend.linkin.constitution import load_constitution, worldview_seed_documents  # noqa: E402
-from backend.linkin.knowledge import COL_EVENTS, COL_NPCS, COL_WORLDVIEW, get_store, reset_store  # noqa: E402
+from backend.linkin.knowledge import (  # noqa: E402
+    COL_EVENTS,
+    COL_NPCS,
+    COL_WORLDVIEW,
+    get_store,
+    list_entities,
+    reset_store,
+    save_entities,
+    upsert_entity,
+)
 from backend.linkin.roles import seed_linkin_roles  # noqa: E402
 from backend.linkin.tools import format_npc_text  # noqa: E402
 
@@ -102,16 +111,37 @@ def seed_npcs() -> int:
     return len(SEED_NPCS)
 
 
+SEED_ITEM = {
+    "id": "item-aether-shard",
+    "name": "灵丝碎片",
+    "type": "消耗品",
+    "rarity": "uncommon",
+    "attributes": {"power": 10},
+    "description": "织梦者残章剥落的纤维，可短暂稳定区域和谐度。",
+}
+
+
+def seed_catalog() -> tuple[int, int]:
+    """示範道具；任務列表由生成 API 寫入，此處保證 JSON 檔存在。"""
+    upsert_entity("items", dict(SEED_ITEM))
+    if not list_entities("quests"):
+        save_entities("quests", [])
+    return 1, len(list_entities("quests"))
+
+
 def main() -> None:
     reset_store()
     const = load_constitution()
     n_world, backend = seed_worldview()
     n_npc = seed_npcs()
+    n_item, n_quest = seed_catalog()
     roles = seed_linkin_roles()
     world = const.get("world_name") or "Linkin"
     print(f"constitution: {world} factions={len(const.get('factions') or [])}")
     print(f"worldview docs: {n_world} ({backend})")
     print(f"npcs: {n_npc}")
+    print(f"items: {n_item}")
+    print(f"quests: {n_quest}")
     print(f"roles: {len(roles)}")
     status = get_store().backend_status()
     if not status.get("chroma"):

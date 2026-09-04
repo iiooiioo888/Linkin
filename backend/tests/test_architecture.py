@@ -33,6 +33,7 @@ FORBIDDEN_VENDOR_SDKS: set[str] = {
 NODE_MODULE_FILES: list[str] = [
     "backend/core/nodes.py",
     "backend/core/company_nodes.py",
+    "backend/linkin/pipeline.py",
 ]
 
 # ── evoloop_graph 定义所在文件 ──

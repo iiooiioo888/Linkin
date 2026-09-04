@@ -18,6 +18,7 @@ from backend.linkin.knowledge import (
     COL_PLAYERS,
     COL_WORLDVIEW,
     QualityGateError,
+    delete_entity,
     get_store,
     list_entities,
     upsert_entity,
@@ -86,6 +87,12 @@ def _extract_json_object(text: str) -> dict[str, Any] | None:
         except json.JSONDecodeError:
             return None
         return parsed if isinstance(parsed, dict) else None
+
+
+def _delete_entity_or_404(collection: str, rec_id: str) -> dict[str, Any]:
+    if not delete_entity(collection, rec_id):
+        raise HTTPException(status_code=404, detail=f"{collection} 不存在")
+    return {"deleted": True, "id": rec_id}
 
 
 def _tool_http(exc: ToolValidationError) -> HTTPException:
@@ -327,6 +334,11 @@ def list_quests() -> dict[str, Any]:
     return {"quests": items, "count": len(items)}
 
 
+@linkin_router.delete("/quests/{quest_id}")
+def remove_quest(quest_id: str) -> dict[str, Any]:
+    return _delete_entity_or_404("quests", quest_id)
+
+
 @linkin_router.post("/buildings/generate")
 def generate_building(body: dict[str, Any]) -> dict[str, Any]:
     try:
@@ -360,10 +372,20 @@ def list_buildings() -> dict[str, Any]:
     return {"buildings": items, "count": len(items)}
 
 
+@linkin_router.delete("/buildings/{building_id}")
+def remove_building(building_id: str) -> dict[str, Any]:
+    return _delete_entity_or_404("buildings", building_id)
+
+
 @linkin_router.get("/items")
 def list_items() -> dict[str, Any]:
     items = list_entities("items")
     return {"items": items, "count": len(items)}
+
+
+@linkin_router.delete("/items/{item_id}")
+def remove_item(item_id: str) -> dict[str, Any]:
+    return _delete_entity_or_404("items", item_id)
 
 
 @linkin_router.post("/items")
@@ -408,6 +430,23 @@ def admin_execute(body: dict[str, Any]) -> dict[str, Any]:
         skip_quality=True,
     )
     return {"executed": True, "command": params["command"], "sensitive": params["sensitive"]}
+
+
+@linkin_router.get("/events")
+def list_events() -> dict[str, Any]:
+    items = []
+    for rec in get_store().list(COL_EVENTS):
+        meta = dict(rec.get("metadata") or {})
+        items.append(
+            {
+                "id": rec.get("id") or meta.get("id"),
+                "text": rec.get("text") or "",
+                "kind": meta.get("kind") or "",
+                "title": meta.get("title") or "",
+                "updated_at": meta.get("updated_at"),
+            }
+        )
+    return {"events": items, "count": len(items)}
 
 
 @linkin_router.get("/overview")

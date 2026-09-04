@@ -2,11 +2,12 @@
  * WorldConstitutionPanel — 世界觀憲法檢視／編輯。
  */
 import { useCallback, useEffect, useState } from 'react';
-import { fetchConstitution, fetchOverview, saveConstitution, type Constitution, type Overview } from '../../api/linkin';
+import { fetchConstitution, fetchEvents, fetchOverview, saveConstitution, type Constitution, type Overview, type WorldEvent } from '../../api/linkin';
 
 export default function WorldConstitutionPanel() {
   const [data, setData] = useState<Constitution | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [events, setEvents] = useState<WorldEvent[]>([]);
   const [jsonText, setJsonText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -15,9 +16,14 @@ export default function WorldConstitutionPanel() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [constitution, ov] = await Promise.all([fetchConstitution(), fetchOverview()]);
+      const [constitution, ov, ev] = await Promise.all([
+        fetchConstitution(),
+        fetchOverview(),
+        fetchEvents().catch(() => ({ events: [] as WorldEvent[] })),
+      ]);
       setData(constitution);
       setOverview(ov);
+      setEvents(ev.events);
       setJsonText(JSON.stringify(constitution, null, 2));
     } catch (err) {
       setError((err as Error).message);
@@ -75,7 +81,7 @@ export default function WorldConstitutionPanel() {
         {[
           { label: 'NPC', value: String(overview?.npc_count ?? '—') },
           { label: '任務', value: String(overview?.quest_count ?? '—') },
-          { label: '事件', value: String(overview?.event_count ?? '—') },
+          { label: '事件', value: String(overview?.event_count ?? events.length ?? '—') },
           { label: 'RAG', value: overview?.compliance.rag.chroma ? 'Chroma' : 'JSON 降級' },
         ].map((card) => (
           <div key={card.label} className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2">
@@ -108,6 +114,20 @@ export default function WorldConstitutionPanel() {
           </ul>
         </section>
       </div>
+
+      {events.length > 0 && (
+        <section className="mb-4 rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
+          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">歷史事件</h3>
+          <ul className="space-y-2">
+            {events.map((event) => (
+              <li key={event.id} className="rounded-lg border border-white/[0.06] px-2.5 py-2">
+                <p className="text-[13px] font-medium">{event.title || event.kind || event.id}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-[#AEAEB2]">{event.text}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <label className="mb-1 text-[11px] text-[#8a8f98]">憲法 JSON</label>
       <textarea

@@ -2,7 +2,7 @@
  * ItemPanel — 道具庫表格與新增表單。
  */
 import { useCallback, useEffect, useState } from 'react';
-import { createItem, fetchItems, type Item } from '../../api/linkin';
+import { createItem, deleteItem, fetchItems, type Item } from '../../api/linkin';
 
 export default function ItemPanel() {
   const [items, setItems] = useState<Item[]>([]);
@@ -40,6 +40,19 @@ export default function ItemPanel() {
       });
       setName('');
       setDescription('');
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onDelete = async (id: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteItem(id);
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -100,12 +113,13 @@ export default function ItemPanel() {
               <th className="px-3 py-2 font-medium">類型</th>
               <th className="px-3 py-2 font-medium">稀有度</th>
               <th className="px-3 py-2 font-medium">屬性</th>
+              <th className="px-3 py-2 font-medium"></th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-3 py-8 text-center text-[#636366]">尚無道具</td>
+                <td colSpan={5} className="px-3 py-8 text-center text-[#636366]">尚無道具</td>
               </tr>
             )}
             {items.map((item) => (
@@ -114,6 +128,16 @@ export default function ItemPanel() {
                 <td className="px-3 py-2 text-[#AEAEB2]">{item.type}</td>
                 <td className="px-3 py-2 text-[#AEAEB2]">{item.rarity}</td>
                 <td className="px-3 py-2 text-[#8a8f98]">{JSON.stringify(item.attributes)}</td>
+                <td className="px-3 py-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onDelete(item.id)}
+                    className="text-[10px] text-red-400 disabled:opacity-40"
+                  >
+                    刪除
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

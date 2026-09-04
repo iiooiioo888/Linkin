@@ -100,19 +100,43 @@ def retrieve_memories(state: EvoLoopState) -> dict:
         return payload
 
 
+def _format_injected_context(state: EvoLoopState) -> str:
+    """OPC／靈境上下文摘要，注入生成 prompt。"""
+    parts: list[str] = []
+    opc = state.get("opc_context") or {}
+    if isinstance(opc, dict) and opc.get("summary"):
+        parts.append(str(opc["summary"]))
+    linkin = state.get("linkin_context") or {}
+    if isinstance(linkin, dict) and linkin.get("summary"):
+        parts.append(str(linkin["summary"]))
+    if not parts:
+        return ""
+    return "\n".join(parts) + "\n"
+
+
+def _generate_system_prompt(state: EvoLoopState) -> str:
+    system = templates.GENERATE_INITIAL_ANSWER_SYSTEM
+    linkin = state.get("linkin_context") or {}
+    if isinstance(linkin, dict) and linkin.get("active") and linkin.get("system_overlay"):
+        return f"{linkin['system_overlay']}\n{system}"
+    return system
+
+
 def generate_initial_answer(state: EvoLoopState) -> dict:
     """節點 1：生成初始回答。"""
+    extra = _format_injected_context(state)
+    memory = _format_memories(state.get("retrieved_memories", []))
     prompt = templates.GENERATE_INITIAL_ANSWER.format(
         query=truncate(state["query"], 2000),
         history_context=truncate(_format_history(state.get("history", [])), 2000),
-        memory_context=truncate(_format_memories(state.get("retrieved_memories", [])), 2000),
+        memory_context=truncate(extra + memory, 2000),
     )
     model = resolve_stage_model(
         "generate",
         query=state.get("query"),
         complexity=state.get("task_complexity"),
     )
-    answer = call_llm(prompt, system=templates.GENERATE_INITIAL_ANSWER_SYSTEM, model=model)
+    answer = call_llm(prompt, system=_generate_system_prompt(state), model=model)
     log_node(state, "generate_initial_answer", model=model)
     return {"initial_answer": answer, "current_answer": answer, "iteration": 0}
 

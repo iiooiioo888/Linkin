@@ -17,9 +17,13 @@
                 ├── tools.py            工具鐵律
                 ├── knowledge.py        RAG 四庫（Chroma → JSON 降級）
                 └── roles.py            16 席子角色（繼承頂層提示詞）
+
+統一圖：
+  retrieve_memories → enhance_with_opc_context → enhance_with_linkin_context
+    → route_by_complexity → generate | run_company → 評估／反思
 ```
 
-複雜靈境任務仍走公司運行時：Manager 分解 → 建築／敘事／NPC／道具總監 → 執行者 → 審查員（四維 ≥80）→ 記錄員寫入 RAG。
+複雜靈境任務仍走公司運行時：命中世界觀關鍵詞時由 `enhance_with_linkin_context` 注入憲法／RAG；建造／NPC／任務／道具類查詢再轉入公司運行時（預設模板從 `quick_task` 升為 `story_studio`）。審查仍要求四維 ≥80，記錄員寫入 RAG。
 
 ## 五層控制
 
@@ -42,8 +46,10 @@
 | 公司協調器與 80 席角色 | `backend/company/` | 既有；靈境加 16 席 custom |
 | AI Hub | `backend/hub/` | 既有 |
 | 監控／雲／Docker | `backend/services/` | 既有 |
-| 靈境憲法／API／工具 | `backend/linkin/` | 已落地 |
+| 靈境憲法／API／工具 | `backend/linkin/` | 已落地（含管線注入 `pipeline.py`） |
 | 種子 | `backend/scripts/seed_linkin_world.py` | 已落地 |
 | OPC 微服務 | `opc_service/` | 既有 6 級閉環 |
 | 前端監控與靈境面板 | `frontend/src/` | 已落地 |
 | Docker Compose / CI / LICENSE | 倉庫根目錄 | 既有 |
+
+> 上列路徑**已經存在**。請勿平行再寫一套 `backend/main.py`、`backend/core/graph.py` 或第二套監控前端。缺口應補在既有模組上（本文件對齊 2026-09-04）。

@@ -2,7 +2,7 @@
 
 統一模式下不再區分「標準/公司/OPC」三種模式，而是單一 EvoLoop 管線：
 
-    記憶檢索 → OPC 上下文增強（自動） → 複雜度路由
+    記憶檢索 → OPC 上下文增強（自動） → 靈境 RAG 增強（自動） → 複雜度路由
       ├─ 簡單任務 → 單次 LLM 生成
       └─ 複雜任務 → 公司運行時（分解→執行→審查→整合）
     → 評估 → 反思 → 改進（迭代迴圈） → 存檔
@@ -139,6 +139,15 @@ def route_by_complexity(state: EvoLoopState) -> str:
     complexity = state.get("task_complexity")
 
     try:
+        from backend.linkin.pipeline import is_linkin_complex_task
+
+        if is_linkin_complex_task(query):
+            logger.info("靈境世界觀任務判定為複雜，啟用公司運行時")
+            return "run_company"
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("靈境複雜度判斷略過：%s", exc)
+
+    try:
         from backend.core.cost_speed_router import (
             classify_task_complexity,
             cost_speed_enabled,
@@ -176,6 +185,16 @@ def run_company(state: EvoLoopState) -> dict[str, Any]:
     """
     query = state.get("query", "")
     template_name = state.get("company_template", "quick_task")
+
+    try:
+        from backend.linkin.pipeline import prefix_query_with_linkin, resolve_linkin_company_template
+
+        linkin_template = resolve_linkin_company_template(state)
+        if linkin_template:
+            template_name = linkin_template
+        query = prefix_query_with_linkin(query, state)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("靈境公司前綴略過：%s", exc)
 
     # 選擇組織架構模板
     config = BUILTIN_TEMPLATES.get(template_name)

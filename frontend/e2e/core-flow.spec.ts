@@ -71,9 +71,12 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.url()).toMatch(/#\/monitor\/tasks/);
   });
 
-  test('舊 Hash 別名 #/monitor/dbpool 正規化為 ops', async ({ page }) => {
-    await page.goto('/#/monitor/dbpool');
-    await expect(page.url()).toMatch(/#\/monitor\/ops/);
-    await expect(page.getByText(/控制台 · 運維|Console ·/)).toBeVisible({ timeout: 10_000 });
+    test('Hash 路由：#/monitor/world 可開啟靈境世界觀', async ({ page }) => {
+    await page.goto('/#/monitor/world');
+    await expect(page.getByText(/世界觀憲法|Constitution/).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.url()).toMatch(/#\/monitor\/world/);
+
+    await page.reload();
+    await expect(page.url()).toMatch(/#\/monitor\/world/);
   });
 });

@@ -240,8 +240,9 @@ data: {"error": "錯誤訊息"}
 
 - `GET/PUT /linkin/constitution` — 世界觀憲法
 - `GET/POST /linkin/npcs`、`PUT/DELETE /linkin/npcs/{id}`、`POST /linkin/npcs/{id}/dialogue`
-- `POST /linkin/quests/generate`、`GET /linkin/quests`
-- `POST /linkin/buildings/generate`、`GET /linkin/buildings`
-- `POST/GET /linkin/items`
+- `POST /linkin/quests/generate`、`GET /linkin/quests`、`DELETE /linkin/quests/{id}`
+- `POST /linkin/buildings/generate`、`GET /linkin/buildings`、`DELETE /linkin/buildings/{id}`
+- `POST/GET /linkin/items`、`DELETE /linkin/items/{id}`
+- `GET /linkin/events`
 - `POST /linkin/admin/execute`（敏感操作需 `confirmed`）
 - `GET /linkin/overview`

@@ -2,7 +2,7 @@
  * QuestPanel — 任務生成（類型／難度）與列表。
  */
 import { useCallback, useEffect, useState } from 'react';
-import { fetchQuests, generateQuest, type Quest } from '../../api/linkin';
+import { deleteQuest, fetchQuests, generateQuest, type Quest } from '../../api/linkin';
 
 export default function QuestPanel() {
   const [quests, setQuests] = useState<Quest[]>([]);
@@ -31,6 +31,19 @@ export default function QuestPanel() {
     setError(null);
     try {
       await generateQuest({ playerId, questType, difficulty, region });
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onDelete = async (id: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteQuest(id);
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -93,6 +106,14 @@ export default function QuestPanel() {
               <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{quest.difficulty}</span>
             </div>
             <p className="mt-1 text-[12px] leading-relaxed text-[#AEAEB2]">{quest.description}</p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void onDelete(quest.id)}
+              className="mt-2 text-[10px] text-red-400 disabled:opacity-40"
+            >
+              刪除
+            </button>
           </article>
         ))}
       </div>

@@ -13,7 +13,7 @@
 - 任務完成後寫入 JSONL 對話存檔（與 /chat 同一存檔管線）
 
 統一管線流程：
-  記憶檢索 → OPC 上下文增強（自動） → 複雜度路由
+  記憶檢索 → OPC 上下文增強（自動） → 靈境 RAG 增強（自動） → 複雜度路由
     ├─ 工業任務（OPC 可用）→ 6 級閉環（感知→預處理→分析→診斷→決策→執行）
     ├─ 複雜任務 → 公司運行時（分解→執行→審查→整合）
     └─ 簡單任務 → 單次 LLM 生成
@@ -41,6 +41,12 @@ from backend.core.company_nodes import (
     _is_complex_task,
     _needs_opc_context,
     enhance_with_opc_context,
+)
+from backend.linkin.pipeline import (
+    enhance_with_linkin_context,
+    is_linkin_complex_task,
+    prefix_query_with_linkin,
+    resolve_linkin_company_template,
 )
 from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD
 from backend.services.archiver import save_session_archive_sync
@@ -424,6 +430,10 @@ class TaskManager:
         if _needs_opc_context(query):
             return "opc"
 
+        # 靈境世界觀建造／NPC／任務／道具走公司運行時
+        if is_linkin_complex_task(query):
+            return "company"
+
         # 複雜任務走公司運行時
         if _is_complex_task(query):
             return "company"
@@ -481,6 +491,19 @@ class TaskManager:
                 tracer.log_context_injection(
                     source="opc", items=[opc_ctx["summary"]],
                     phase="enhance_opc_context", query=record.query,
+                )
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            # 靈境 RAG 增強（命中世界觀關鍵詞才注入）
+            self._set_phase(record, "enhance_linkin_context")
+            state.update(await asyncio.to_thread(enhance_with_linkin_context, state))
+            linkin_ctx = state.get("linkin_context", {}) or {}
+            if linkin_ctx.get("summary"):
+                tracer.log_context_injection(
+                    source="linkin", items=[linkin_ctx["summary"]],
+                    phase="enhance_linkin_context", query=record.query,
                 )
             if self._check_cancelled(record):
                 self._finish(record)
@@ -698,13 +721,26 @@ class TaskManager:
         if config is None:
             config = BUILTIN_TEMPLATES["quick_task"]
 
+        linkin_state: dict[str, Any] = {
+            "query": record.query,
+            "company_template": record.template or "quick_task",
+        }
+        try:
+            linkin_state.update(enhance_with_linkin_context(linkin_state))
+            linkin_template = resolve_linkin_company_template(linkin_state)
+            if linkin_template:
+                config = BUILTIN_TEMPLATES.get(linkin_template) or config
+            company_query = prefix_query_with_linkin(record.query, linkin_state)
+        except Exception:  # noqa: BLE001
+            company_query = record.query
+
         orchestrator = CompanyOrchestrator(config)
         self._attach_company_listener(record, orchestrator)
         # 註冊 orchestrator 引用（供取消使用）
         self._orchestrators[record.task_id] = orchestrator
 
         try:
-            result = await orchestrator.execute(record.query)
+            result = await orchestrator.execute(company_query)
         except Exception as exc:  # noqa: BLE001
             logger.error("公司任務 %s 執行失敗：%s", record.task_id, exc)
             record.status = "failed"
