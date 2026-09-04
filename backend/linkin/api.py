@@ -11,6 +11,7 @@ from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
+from starlette.convertors import CONVERTOR_TYPES, Convertor, register_url_convertor
 
 from backend.linkin.constitution import (
     allowed_styles_for_region,
@@ -58,6 +59,21 @@ from backend.linkin.tools import (
 )
 
 logger = logging.getLogger(__name__)
+
+# 避免 POST /buildings/import-base64 被 GET/DELETE /buildings/{building_id}
+# 部分匹配成 405 Method Not Allowed（Starlette 先收集 PARTIAL 再 405）。
+class _BuildingIdConvertor(Convertor):
+    regex = r"bld-[A-Za-z0-9_-]+"
+
+    def convert(self, value: str) -> str:
+        return value
+
+    def to_string(self, value: str) -> str:
+        return str(value)
+
+
+if "bldid" not in CONVERTOR_TYPES:
+    register_url_convertor("bldid", _BuildingIdConvertor())
 
 linkin_router = APIRouter(prefix="/linkin", tags=["linkin"])
 
@@ -515,13 +531,13 @@ def list_buildings() -> dict[str, Any]:
     return {"buildings": items, "count": len(items)}
 
 
-@linkin_router.get("/buildings/{building_id}")
+@linkin_router.get("/buildings/{building_id:bldid}")
 def get_building(building_id: str) -> dict[str, Any]:
     building, _model = _persist_schematic(_building_or_404(building_id))
     return {"building": building}
 
 
-@linkin_router.get("/buildings/{building_id}/preview")
+@linkin_router.get("/buildings/{building_id:bldid}/preview")
 def building_preview(building_id: str) -> dict[str, Any]:
     building, model = _persist_schematic(_building_or_404(building_id))
     payload = preview_payload(model, building_id=building_id)
@@ -536,7 +552,7 @@ def building_preview(building_id: str) -> dict[str, Any]:
     return payload
 
 
-@linkin_router.get("/buildings/{building_id}/schematic")
+@linkin_router.get("/buildings/{building_id:bldid}/schematic")
 def download_building_schematic(building_id: str) -> Response:
     _persist_schematic(_building_or_404(building_id))
     path = schematic_path(building_id)
@@ -549,13 +565,13 @@ def download_building_schematic(building_id: str) -> Response:
     )
 
 
-@linkin_router.delete("/buildings/{building_id}")
+@linkin_router.delete("/buildings/{building_id:bldid}")
 def remove_building(building_id: str) -> dict[str, Any]:
     remove_schematic_file(building_id)
     return _delete_entity_or_404("buildings", building_id)
 
 
-@linkin_router.post("/buildings/{building_id}/dispatch")
+@linkin_router.post("/buildings/{building_id:bldid}/dispatch")
 def dispatch_building_to_world(building_id: str) -> dict[str, Any]:
     building = _building_or_404(building_id)
     try:

@@ -22,16 +22,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
   }
   if (!resp.ok) {
-    const detail = (data as { detail?: unknown })?.detail;
-    const message =
-      typeof detail === 'string'
-        ? detail
-        : detail && typeof detail === 'object' && 'message' in detail
-          ? String((detail as { message: string }).message)
-          : `請求失敗（HTTP ${resp.status}）`;
-    throw new Error(message);
+    throw new Error(_httpError(resp.status, data, text));
   }
   return data as T;
+}
+
+function _httpError(status: number, data: unknown, text: string): string {
+  if (status === 405) {
+    return '後端不接受此操作（HTTP 405）。請重啟 python -m backend.main 後再試。';
+  }
+  const detail = (data as { detail?: unknown })?.detail;
+  if (typeof detail === 'string') return detail;
+  if (detail && typeof detail === 'object' && 'message' in detail) {
+    return String((detail as { message: string }).message);
+  }
+  return text?.trim() ? text.trim().slice(0, 240) : `請求失敗（HTTP ${status}）`;
 }
 
 export type Constitution = {
@@ -251,14 +256,7 @@ export async function importSchematic(
     }
   }
   if (!resp.ok) {
-    const detail = (data as { detail?: unknown })?.detail;
-    const message =
-      typeof detail === 'string'
-        ? detail
-        : detail && typeof detail === 'object' && 'message' in detail
-          ? String((detail as { message: string }).message)
-          : `請求失敗（HTTP ${resp.status}）`;
-    throw new Error(message);
+    throw new Error(_httpError(resp.status, data, text));
   }
   return data as { building: Building; preview: BuildingPreview };
 }
