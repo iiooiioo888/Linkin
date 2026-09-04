@@ -298,6 +298,30 @@ def test_seed_linkin_roles(linkin_env):
     assert "執行者" in executor["name"] or "执行者" in executor["name"] or "建築" in executor["name"]
 
 
+def test_seed_refreshes_stale_system_prompt(linkin_env):
+    from backend.company.role_catalog import create_custom_role, get_snapshot
+    from backend.linkin.roles import seed_linkin_roles
+
+    create_custom_role(
+        {
+            "id": "linkin_build_director",
+            "name": "建築總監",
+            "level": 1,
+            "system_prompt": "旧提示词 [待Phase 1补充] 三大阵营（需在Phase 1中具体定义）",
+        }
+    )
+    stale = get_snapshot("custom_linkin_build_director")
+    assert stale is not None
+    assert "[待Phase" in stale["system_prompt"]
+
+    seed_linkin_roles()
+    refreshed = get_snapshot("custom_linkin_build_director")
+    assert refreshed is not None
+    assert "[待Phase" not in refreshed["system_prompt"]
+    assert "织庭盟" in refreshed["system_prompt"]
+    assert "灵丝术" in refreshed["system_prompt"]
+
+
 def test_seed_linkin_roles_skips_staff_when_director_fails(linkin_env, monkeypatch):
     from backend.company.role_catalog import get_snapshot
     from backend.linkin import roles as roles_mod

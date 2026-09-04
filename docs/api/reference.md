@@ -231,3 +231,17 @@ data: {"error": "錯誤訊息"}
 ### GET /health
 
 健康檢查。回傳 `{"status": "ok"}`
+
+---
+
+## 靈境·Linkin
+
+完整表格見 [靈境 API](../linkin/api.md)。常用端點：
+
+- `GET/PUT /linkin/constitution` — 世界觀憲法
+- `GET/POST /linkin/npcs`、`PUT/DELETE /linkin/npcs/{id}`、`POST /linkin/npcs/{id}/dialogue`
+- `POST /linkin/quests/generate`、`GET /linkin/quests`
+- `POST /linkin/buildings/generate`、`GET /linkin/buildings`
+- `POST/GET /linkin/items`
+- `POST /linkin/admin/execute`（敏感操作需 `confirmed`）
+- `GET /linkin/overview`

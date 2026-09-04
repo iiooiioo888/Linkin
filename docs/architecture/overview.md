@@ -67,9 +67,10 @@ graph LR
 | 向量資料庫 | ChromaDB | 記憶存儲與相似檢索 |
 | 快取 | Redis | 任務持久化 · 會話狀態 |
 | 工業協議 | OPC UA (asyncua) | 工業數據讀寫與訂閱 |
+| 靈境世界觀 | `backend/linkin/` | 憲法、工具鐵律、RAG 四庫、16 席子角色 |
 | 前端 | React 18 + Vite + TypeScript | IDE 風格 UI · Tailwind CSS v4 |
-| 測試 | pytest + pytest-asyncio | 185+ 案例 · Mock 隔離 |
-| 部署 | Docker Compose | 五服務一鍵編排 |
+| 測試 | pytest + pytest-asyncio | Mock 隔離 LLM／Chroma／OPC |
+| 部署 | Docker Compose | Backend、Frontend、Redis、Chroma、OPC、Nginx |
 
 ## 數據流
 
