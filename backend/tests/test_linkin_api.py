@@ -189,6 +189,9 @@ def test_quest_and_item_and_overview(client: TestClient):
     assert quest.status_code == 200
     assert client.get("/linkin/quests").json()["count"] == 1
 
+    listed_before = client.get("/linkin/buildings")
+    assert listed_before.status_code == 200
+
     building = client.post(
         "/linkin/buildings/generate",
         json={
@@ -200,6 +203,9 @@ def test_quest_and_item_and_overview(client: TestClient):
         },
     )
     assert building.status_code == 200
+    listed_buildings = client.get("/linkin/buildings")
+    assert listed_buildings.status_code == 200
+    assert listed_buildings.json()["count"] == listed_before.json()["count"] + 1
 
     item = client.post(
         "/linkin/items",
@@ -269,6 +275,7 @@ def test_existing_chat_and_monitor_routes_untouched():
     assert "/linkin/overview" in paths
     assert "/linkin/constitution" in paths
     assert "/linkin/npcs" in paths
+    assert "/linkin/buildings" in paths
 
 
 def test_seed_linkin_roles(linkin_env):
@@ -282,7 +289,57 @@ def test_seed_linkin_roles(linkin_env):
     assert director["level"] == 1
     prompt = director["system_prompt"]
     assert "灵境意志" in prompt or "灵境·Linkin" in prompt
+    assert "[待Phase" not in prompt
+    assert "织庭盟" in prompt
+    assert "灵丝术" in prompt
     executor = get_snapshot("custom_linkin_build_executor")
     assert executor is not None
     assert executor["level"] == 2
     assert "執行者" in executor["name"] or "执行者" in executor["name"] or "建築" in executor["name"]
+
+
+def test_seed_linkin_roles_skips_staff_when_director_fails(linkin_env, monkeypatch):
+    from backend.company.role_catalog import get_snapshot
+    from backend.linkin import roles as roles_mod
+
+    original = roles_mod._safe_create
+
+    def _fail_build_director(payload):
+        if payload.get("id") == "linkin_build_director":
+            return None
+        return original(payload)
+
+    monkeypatch.setattr(roles_mod, "_safe_create", _fail_build_director)
+    seeded = roles_mod.seed_linkin_roles()
+    assert len(seeded) == 12
+    assert get_snapshot("custom_linkin_build_director") is None
+    assert get_snapshot("custom_linkin_build_executor") is None
+    assert get_snapshot("custom_linkin_build_reviewer") is None
+    assert get_snapshot("custom_linkin_build_scribe") is None
+    assert get_snapshot("custom_linkin_narrative_director") is not None
+    assert get_snapshot("custom_linkin_narrative_executor") is not None
+
+
+def test_format_npc_text_relationships_consistent():
+    from backend.linkin.tools import format_npc_text, npc_relationships
+
+    card = {
+        "name": "司契·白绫",
+        "faction": "织庭盟",
+        "occupation": "典章司仪",
+        "personality": "严谨",
+        "location": "织庭都",
+        "speech_style": "文言夹白",
+        "backstory": "抄录织梦者残章",
+        "relationships": {"雾衡": "互相尊重"},
+    }
+    text = format_npc_text(card)
+    assert "NPC：司契·白绫" in text
+    assert "关系：雾衡:互相尊重" in text
+
+    missing = format_npc_text({**card, "relationships": None})
+    assert missing.endswith("关系：")
+    listed = format_npc_text({**card, "relationships": ["雾衡"]})
+    assert listed.endswith("关系：")
+    assert npc_relationships({"relationships": ["雾衡"]}) == {}
+    assert npc_relationships({"relationships": {"雾衡": "合作"}}) == {"雾衡": "合作"}

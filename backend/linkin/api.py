@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 import os
+import re
+import json
 import uuid
 from typing import Any
 
@@ -28,7 +30,9 @@ from backend.linkin.tools import (
     TOOL_NPC_DIALOGUE,
     TOOL_QUEST_GENERATE,
     ToolValidationError,
+    format_npc_text,
     invoke_tool,
+    npc_relationships,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,26 +44,55 @@ def register_linkin(app) -> None:
     app.include_router(linkin_router)
 
 
+def _llm_ready() -> bool:
+    if os.getenv("EVOL_LINKIN_NO_LLM", "").strip().lower() in {"1", "true", "yes"}:
+        return False
+    try:
+        from backend.core.llm_config import get_runtime_config
+
+        cfg = get_runtime_config()
+        key = str(cfg.get("api_key") or os.getenv("OPENAI_API_KEY") or "").strip()
+    except Exception:  # noqa: BLE001
+        key = str(os.getenv("OPENAI_API_KEY") or "").strip()
+    return bool(key) and not key.startswith("sk-your")
+
+
+def _try_call_llm(prompt: str, *, system: str, fallback: str) -> str:
+    if not _llm_ready():
+        return fallback
+    try:
+        from backend.core.llm import call_llm
+
+        text = call_llm(prompt, system=system)
+        return (text or "").strip() or fallback
+    except Exception:  # noqa: BLE001
+        logger.warning("靈境 LLM 呼叫失敗，改用本地模板", exc_info=True)
+        return fallback
+
+
+def _extract_json_object(text: str) -> dict[str, Any] | None:
+    raw = (text or "").strip()
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else None
+    except json.JSONDecodeError:
+        match = re.search(r"\{[\s\S]*\}", raw)
+        if not match:
+            return None
+        try:
+            parsed = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+
+
 def _tool_http(exc: ToolValidationError) -> HTTPException:
     status = 409 if exc.code == "needs_confirmation" else 400
     return HTTPException(
         status_code=status,
         detail={"message": str(exc), "code": exc.code, **exc.extra},
-    )
-
-
-def _npc_text(card: dict[str, Any]) -> str:
-    rel = card.get("relationships") or {}
-    rel_text = "、".join(f"{k}:{v}" for k, v in rel.items()) if isinstance(rel, dict) else ""
-    return (
-        f"NPC：{card.get('name')}\n"
-        f"阵营：{card.get('faction')}\n"
-        f"职业：{card.get('occupation')}\n"
-        f"性格：{card.get('personality')}\n"
-        f"所在：{card.get('location')}\n"
-        f"语言风格：{card.get('speech_style')}\n"
-        f"背景：{card.get('backstory')}\n"
-        f"关系：{rel_text}"
     )
 
 
@@ -74,7 +107,7 @@ def _npc_from_record(record: dict[str, Any]) -> dict[str, Any]:
         "backstory": meta.get("backstory") or record.get("text") or "",
         "location": meta.get("location") or "",
         "speech_style": meta.get("speech_style") or "",
-        "relationships": meta.get("relationships") or {},
+        "relationships": npc_relationships(meta),
         "backend": record.get("backend"),
         "updated_at": meta.get("updated_at"),
     }
@@ -114,7 +147,7 @@ def create_npc(body: dict[str, Any]) -> dict[str, Any]:
     try:
         stored = get_store().upsert(
             COL_NPCS,
-            _npc_text(card),
+            format_npc_text(card),
             dict(card),
             record_id=card["id"],
             query_hint=f"创建NPC {card['name']}",
@@ -158,7 +191,7 @@ def update_npc(npc_id: str, body: dict[str, Any]) -> dict[str, Any]:
     try:
         stored = get_store().upsert(
             COL_NPCS,
-            _npc_text(card),
+            format_npc_text(card),
             dict(card),
             record_id=npc_id,
             query_hint=f"更新NPC {card['name']}",
@@ -193,7 +226,7 @@ def npc_dialogue(npc_id: str, body: dict[str, Any]) -> dict[str, Any]:
     retrieved = store.search(COL_NPCS, f"{card['name']} {card['backstory'][:80]}", k=3)
     message = invoked["params"]["player_message"]
     context = "\n".join(item.get("text") or "" for item in retrieved) or (npc.get("text") or "")
-    reply = _dialogue_stub(card, message, context)
+    reply = _npc_reply(card, message, context)
     store.upsert(
         COL_PLAYERS,
         f"玩家对 {card['name']} 说：{message}\n回应：{reply}",
@@ -211,27 +244,25 @@ def npc_dialogue(npc_id: str, body: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _dialogue_stub(card: dict[str, Any], message: str, context: str) -> str:
+def _npc_reply(card: dict[str, Any], message: str, context: str) -> str:
     style = card.get("speech_style") or "沉稳"
     name = card.get("name") or "无名旅人"
-    api_key = os.getenv("OPENAI_API_KEY", "")
-    if api_key and not api_key.startswith("sk-your"):
-        try:
-            from backend.core.llm import call_llm
-            from backend.linkin.prompts import inherit_prompt
-
-            prompt = (
-                f"你正在扮演灵境 NPC「{name}」。性格：{card.get('personality')}。"
-                f"背景：{card.get('backstory')}。语言风格：{style}。\n"
-                f"检索到的角色资料：\n{context[:1200]}\n"
-                f"玩家说：{message}\n"
-                "只输出一句符合角色卡的对白，不要解释规则。"
-            )
-            return call_llm(prompt, system=inherit_prompt("npc_director"))
-        except Exception:  # noqa: BLE001
-            pass
     snippet = (card.get("backstory") or "")[:40]
-    return f"{name}（{style}）：「我记下了你的话。{snippet}……灵境不会遗忘约定。」"
+    fallback = f"{name}（{style}）：「我记下了你的话。{snippet}……灵境不会遗忘约定。」"
+    try:
+        from backend.linkin.prompts import inherit_prompt
+
+        system = inherit_prompt("npc_director")
+    except Exception:  # noqa: BLE001
+        system = "你是灵境·Linkin 的 NPC。回应必须符合角色卡，禁止现实政治与写实暴力。"
+    prompt = (
+        f"你正在扮演灵境 NPC「{name}」。性格：{card.get('personality')}。"
+        f"背景：{card.get('backstory')}。语言风格：{style}。\n"
+        f"检索到的角色资料：\n{context[:1200]}\n"
+        f"玩家说：{message}\n"
+        "只输出一句符合角色卡的对白，不要解释规则。"
+    )
+    return _try_call_llm(prompt, system=system, fallback=fallback)
 
 
 @linkin_router.post("/quests/generate")
@@ -245,17 +276,39 @@ def generate_quest(body: dict[str, Any]) -> dict[str, Any]:
     region = params.get("region") or "织庭都"
     lore = store.search(COL_WORLDVIEW, f"{region} {params.get('faction')} 阵营 任务", k=3)
     lore_text = "；".join((hit.get("text") or "")[:80] for hit in lore) or "三大阵营张力"
+    title = f"{params['quest_type']}：{region}的灵丝回响"
+    description = (
+        f"在{region}调查与「{lore_text[:60]}」相关的异动。"
+        f"难度：{params['difficulty']}。须遵守世界观宪法，不得改写已记载历史。"
+    )
+    try:
+        from backend.linkin.prompts import inherit_prompt
+
+        system = inherit_prompt("narrative_director")
+    except Exception:  # noqa: BLE001
+        system = "你是灵境·Linkin 的叙事总监。任务必须源自三大阵营张力。"
+    llm_raw = _try_call_llm(
+        (
+            "根据世界观资料生成一个灵境任务。只输出 JSON："
+            '{"title":"...","description":"..."}\n'
+            f"区域：{region}\n类型：{params['quest_type']}\n难度：{params['difficulty']}\n"
+            f"资料：{lore_text[:800]}"
+        ),
+        system=system,
+        fallback="",
+    )
+    parsed = _extract_json_object(llm_raw) if llm_raw else None
+    if parsed:
+        title = str(parsed.get("title") or title).strip() or title
+        description = str(parsed.get("description") or description).strip() or description
     quest = {
         "id": f"quest-{uuid.uuid4().hex[:10]}",
         "player_id": params["player_id"],
         "quest_type": params["quest_type"],
         "difficulty": params["difficulty"],
         "region": region,
-        "title": f"{params['quest_type']}：{region}的灵丝回响",
-        "description": (
-            f"在{region}调查与「{lore_text[:60]}」相关的异动。"
-            f"难度：{params['difficulty']}。须遵守世界观宪法，不得改写已记载历史。"
-        ),
+        "title": title,
+        "description": description,
         "rewards": {"灵丝碎片": 3 if params["difficulty"] == "简单" else 8},
     }
     upsert_entity("quests", quest)
@@ -299,6 +352,12 @@ def generate_building(body: dict[str, Any]) -> dict[str, Any]:
         skip_quality=True,
     )
     return {"building": building}
+
+
+@linkin_router.get("/buildings")
+def list_buildings() -> dict[str, Any]:
+    items = list_entities("buildings")
+    return {"buildings": items, "count": len(items)}
 
 
 @linkin_router.get("/items")

@@ -149,6 +149,27 @@ def validate_builder_generate(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def npc_relationships(card: dict[str, Any]) -> dict[str, Any]:
+    """正規化角色卡關係欄：僅接受 dict，其餘（含 None / list）視為空。"""
+    rel = card.get("relationships")
+    return rel if isinstance(rel, dict) else {}
+
+
+def format_npc_text(card: dict[str, Any]) -> str:
+    """將 NPC 角色卡編成 RAG 寫入文本；種子與 API 必須使用同一份邏輯。"""
+    rel_text = "、".join(f"{k}:{v}" for k, v in npc_relationships(card).items())
+    return (
+        f"NPC：{card.get('name')}\n"
+        f"阵营：{card.get('faction')}\n"
+        f"职业：{card.get('occupation')}\n"
+        f"性格：{card.get('personality')}\n"
+        f"所在：{card.get('location')}\n"
+        f"语言风格：{card.get('speech_style')}\n"
+        f"背景：{card.get('backstory')}\n"
+        f"关系：{rel_text}"
+    )
+
+
 def validate_npc_create(params: dict[str, Any]) -> dict[str, Any]:
     card = params.get("characterCard") or params.get("character_card") or params
     if not isinstance(card, dict):
@@ -171,7 +192,7 @@ def validate_npc_create(params: dict[str, Any]) -> dict[str, Any]:
         "backstory": backstory,
         "location": _as_text(card.get("location")).strip(),
         "speech_style": _as_text(card.get("speech_style") or card.get("speechStyle")).strip(),
-        "relationships": card.get("relationships") if isinstance(card.get("relationships"), dict) else {},
+        "relationships": npc_relationships(card),
     }
 
 

@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
 from backend.linkin.constitution import load_constitution, worldview_seed_documents  # noqa: E402
 from backend.linkin.knowledge import COL_EVENTS, COL_NPCS, COL_WORLDVIEW, get_store, reset_store  # noqa: E402
 from backend.linkin.roles import seed_linkin_roles  # noqa: E402
+from backend.linkin.tools import format_npc_text  # noqa: E402
 
 SEED_NPCS = [
     {
@@ -65,15 +66,6 @@ SEED_NPCS = [
 ]
 
 
-def _npc_text(card: dict) -> str:
-    rel = "、".join(f"{k}:{v}" for k, v in (card.get("relationships") or {}).items())
-    return (
-        f"NPC：{card['name']}\n阵营：{card['faction']}\n职业：{card['occupation']}\n"
-        f"性格：{card['personality']}\n所在：{card['location']}\n"
-        f"语言风格：{card['speech_style']}\n背景：{card['backstory']}\n关系：{rel}"
-    )
-
-
 def seed_worldview() -> tuple[int, str]:
     store = get_store()
     count = 0
@@ -95,7 +87,7 @@ def seed_npcs() -> int:
     for card in SEED_NPCS:
         store.upsert(
             COL_NPCS,
-            _npc_text(card),
+            format_npc_text(card),
             dict(card),
             record_id=card["id"],
             skip_quality=True,

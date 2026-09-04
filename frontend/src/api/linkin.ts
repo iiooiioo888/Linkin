@@ -135,6 +135,7 @@ export const generateBuilding = (body: {
   region: string;
   block_count: number;
 }) => request<{ building: Building }>('/linkin/buildings/generate', { method: 'POST', body: JSON.stringify(body) });
+export const fetchBuildings = () => request<{ buildings: Building[]; count: number }>('/linkin/buildings');
 
 export const fetchItems = () => request<{ items: Item[]; count: number }>('/linkin/items');
 export const createItem = (body: Omit<Item, 'id'>) =>

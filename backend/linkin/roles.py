@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.company.role_catalog import create_custom_role, get_snapshot
+from backend.company.role_catalog import create_custom_role, get_snapshot, update_role_settings
 from backend.linkin.prompts import (
     ROLE_BUILD_DIRECTOR,
     ROLE_EXECUTOR,
@@ -34,11 +34,23 @@ STAFF: tuple[tuple[str, str, str, int, str], ...] = (
 )
 
 
+def _prompt_stale(text: str) -> bool:
+    return "待Phase" in text or "需在Phase 1" in text or "[待补充]" in text or "[待補充]" in text
+
+
 def _safe_create(payload: dict[str, Any]) -> dict[str, Any] | None:
     slug = payload["id"]
     prefixed = slug if slug.startswith("custom_") else f"custom_{slug}"
     existing = get_snapshot(prefixed)
+    new_prompt = str(payload.get("system_prompt") or "")
     if existing is not None:
+        old_prompt = str(existing.get("system_prompt") or "")
+        if new_prompt and (old_prompt != new_prompt or _prompt_stale(old_prompt)):
+            try:
+                return update_role_settings(prefixed, {"system_prompt": new_prompt})
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("刷新靈境角色提示詞失敗 %s：%s", prefixed, exc)
+                return existing
         return existing
     try:
         return create_custom_role(payload)
@@ -73,9 +85,11 @@ def seed_linkin_roles() -> list[dict[str, Any]]:
                 "notes": "靈境·Linkin L1 部門主管，system_prompt 繼承頂層提示詞。",
             }
         )
-        if director:
-            created.append(director)
-        director_catalog_id = director["id"] if director else f"custom_{director_id}"
+        if director is None:
+            logger.warning("靈境總監建立失敗，跳過該部門職員角色：%s", director_id)
+            continue
+        created.append(director)
+        director_catalog_id = str(director.get("id") or f"custom_{director_id}")
         for staff_key, staff_slug, staff_title, level, staff_cat in STAFF:
             role = _safe_create(
                 {
