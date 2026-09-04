@@ -87,6 +87,7 @@ htmlcov/
 skills/awesome-design-md/
 
 # OPC runtime audit logs (not product assets)
+opc_service/audit_logs/
 opc_service/audit_logs/*.jsonl
 
 # Local runtime SQLite / OPC cache

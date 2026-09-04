@@ -13,7 +13,7 @@ export default function MinecraftBridgePanel() {
   const [status, setStatus] = useState<MinecraftStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'idle' | 'probe' | 'call'>('idle');
   const [tool, setTool] = useState('place_block');
   const [x, setX] = useState('100');
   const [y, setY] = useState('64');
@@ -38,7 +38,7 @@ export default function MinecraftBridgePanel() {
   }, [load]);
 
   const onProbe = async () => {
-    setBusy(true);
+    setBusy('probe');
     setError(null);
     try {
       await probeMinecraft();
@@ -47,12 +47,12 @@ export default function MinecraftBridgePanel() {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setBusy(false);
+      setBusy('idle');
     }
   };
 
   const onCall = async () => {
-    setBusy(true);
+    setBusy('call');
     setError(null);
     setMessage(null);
     const args: Record<string, unknown> = {};
@@ -83,7 +83,7 @@ export default function MinecraftBridgePanel() {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setBusy(false);
+      setBusy('idle');
     }
   };
 
@@ -102,8 +102,8 @@ export default function MinecraftBridgePanel() {
           <button type="button" onClick={() => void load()} className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]">
             重新整理
           </button>
-          <button type="button" disabled={busy} onClick={() => void onProbe()} className="rounded-xl border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-2 py-1 text-[11px] text-[#64D2FF] disabled:opacity-40">
-            {busy ? '探測中' : '探測連線'}
+          <button type="button" disabled={busy !== 'idle'} onClick={() => void onProbe()} className="rounded-xl border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-2 py-1 text-[11px] text-[#64D2FF] disabled:opacity-40">
+            {busy === 'probe' ? '探測中' : '探測連線'}
           </button>
         </div>
       </div>
@@ -170,7 +170,7 @@ export default function MinecraftBridgePanel() {
             </>
           )}
         </div>
-        <button type="button" disabled={busy} onClick={() => void onCall()} className="mt-3 rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40">
+        <button type="button" disabled={busy !== 'idle'} onClick={() => void onCall()} className="mt-3 rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40">
           執行
         </button>
         {result && (
