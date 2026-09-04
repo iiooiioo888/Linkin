@@ -1,4 +1,4 @@
-"""靈境統一管線注入：非靈境查詢不得改路由；命中世界觀才注入 RAG。"""
+"""靈境統一管線注入：非靈境且非 Minecraft 控制查詢不得改路由；命中世界觀才注入 RAG。"""
 
 from __future__ import annotations
 
@@ -79,6 +79,13 @@ def test_story_studio_only_for_default_template():
     assert resolve_linkin_company_template(state) is None
 
 
+def test_route_minecraft_query_to_company():
+    from backend.core.company_nodes import route_by_complexity
+
+    state = {"query": "使用 place_block 放钻石块", "execution_strategy": "auto"}
+    assert route_by_complexity(state) == "run_company"
+
+
 def test_graph_includes_linkin_node():
     from backend.core.graph import build_graph
 
@@ -116,3 +123,18 @@ def test_generate_injects_linkin_overlay(monkeypatch):
     )
     assert "測試摘要" in captured["prompt"]
     assert "靈境·Linkin" in captured["system"]
+
+
+def test_minecraft_query_injects_mcp_without_rag():
+    query = "在坐标(100, 64, 200)处放置一个钻石块"
+    assert needs_linkin_context(query) is False
+    ctx = enhance_with_linkin_context({"query": query})["linkin_context"]
+    assert ctx["active"] is True
+    assert ctx["minecraft"] is True
+    assert ctx["complex"] is True
+    assert ctx["rag_hits"] == 0
+    assert "Minecraft MCP" in ctx["summary"]
+    assert "pose_block" in ctx["system_overlay"]
+    assert resolve_linkin_company_template(
+        {"query": query, "company_template": "quick_task", "linkin_context": ctx}
+    ) == "story_studio"

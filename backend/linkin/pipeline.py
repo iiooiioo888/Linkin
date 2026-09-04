@@ -1,6 +1,7 @@
 """靈境上下文增強：掛在統一管線上，對齊 OPC 的「感知後注入」模式。
 
-非靈境查詢一律空物件返回，不碰 RAG、不改路由。
+非靈境且非 Minecraft 控制的查詢一律空物件返回，不碰 RAG、不改路由。
+Minecraft 控制查詢只注入 MCP 摘要（不碰 RAG），並標為複雜任務以便走 story_studio。
 """
 
 from __future__ import annotations
@@ -44,6 +45,12 @@ _SYSTEM_OVERLAY = (
     "不得改寫已記載歷史；建築風格須匹配區域；NPC 背景不可為空。"
 )
 
+_MC_SYSTEM_OVERLAY = (
+    "你正在透過 Minecraft MCP 指揮遊戲世界。"
+    "放置方塊使用 place_block（遠端 MineMCP 工具名為 pose_block）。"
+    "禁止呼叫 write_file 等檔案系統工具。敏感指令需 confirmed=true。"
+)
+
 
 def needs_linkin_context(query: str) -> bool:
     """查詢是否涉及靈境世界觀（僅注入 RAG，不強制公司運行時）。"""
@@ -85,24 +92,39 @@ def constitution_brief() -> str:
 def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
     """靈境 RAG 增強：命中世界觀關鍵詞時注入憲法摘要與知識庫檢索。
 
+    Minecraft 控制查詢即使未提靈境也注入 MCP 摘要（不碰 RAG），
+    以便公司運行時改走 story_studio、角色能呼叫放置工具。
     知識庫／憲法不可用時靜默降級（不中斷主流程）。
     """
     query = state.get("query", "")
-    if not needs_linkin_context(query):
+    world_hit = needs_linkin_context(query)
+    mc_hit = False
+    mcp_block = ""
+    try:
+        from backend.tools.minecraft_mcp import connector_status_brief, is_minecraft_control_query
+
+        mc_hit = is_minecraft_control_query(query)
+        if mc_hit:
+            mcp_block = "\n" + connector_status_brief()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Minecraft MCP 摘要略過：%s", exc)
+
+    if not world_hit and not mc_hit:
         return {"linkin_context": {}}
 
-    brief = constitution_brief()
+    brief = constitution_brief() if world_hit else ""
     hits: list[dict[str, Any]] = []
     backend = "none"
-    try:
-        from backend.linkin.knowledge import COL_WORLDVIEW, COL_NPCS, COL_EVENTS, get_store
+    if world_hit:
+        try:
+            from backend.linkin.knowledge import COL_WORLDVIEW, COL_NPCS, COL_EVENTS, get_store
 
-        store = get_store()
-        backend = "chroma" if store.backend_status().get("chroma") else "json"
-        for collection in (COL_WORLDVIEW, COL_NPCS, COL_EVENTS):
-            hits.extend(store.search(collection, query, k=2))
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("靈境 RAG 檢索失敗（降級僅憲法）：%s", exc)
+            store = get_store()
+            backend = "chroma" if store.backend_status().get("chroma") else "json"
+            for collection in (COL_WORLDVIEW, COL_NPCS, COL_EVENTS):
+                hits.extend(store.search(collection, query, k=2))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("靈境 RAG 檢索失敗（降級僅憲法）：%s", exc)
 
     hit_lines: list[str] = []
     for hit in hits[:6]:
@@ -110,21 +132,19 @@ def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
         if text:
             hit_lines.append(f"- {text[:160]}")
     rag_block = ("\n【靈境知識庫】\n" + "\n".join(hit_lines)) if hit_lines else ""
-    mcp_block = ""
-    try:
-        from backend.tools.minecraft_mcp import connector_status_brief, is_minecraft_control_query
-
-        if is_minecraft_control_query(query):
-            mcp_block = "\n" + connector_status_brief()
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("Minecraft MCP 摘要略過：%s", exc)
+    overlays = []
+    if world_hit:
+        overlays.append(_SYSTEM_OVERLAY)
+    if mc_hit:
+        overlays.append(_MC_SYSTEM_OVERLAY)
     summary = f"{brief}{rag_block}{mcp_block}".strip()
     return {
         "linkin_context": {
             "active": True,
             "summary": summary,
-            "system_overlay": _SYSTEM_OVERLAY,
-            "complex": is_linkin_complex_task(query),
+            "system_overlay": "\n".join(overlays),
+            "complex": is_linkin_complex_task(query) or mc_hit,
+            "minecraft": mc_hit,
             "rag_hits": len(hits),
             "backend": backend,
         }
@@ -132,11 +152,28 @@ def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
 
 
 def resolve_linkin_company_template(state: EvoLoopState) -> str | None:
-    """靈境複雜任務且呼叫端仍用預設 quick_task 時，改走故事工作室。"""
+    """靈境複雜任務或 Minecraft 控制任務且呼叫端仍用預設 quick_task 時，改走故事工作室。
+
+    quick_task 只有 manager＋developer；developer 不能放方塊。
+    story_studio 含 creative_lead／story_writer，才能實際呼叫 MCP 寫入工具。
+    """
     ctx = state.get("linkin_context") or {}
-    if not isinstance(ctx, dict) or not ctx.get("active"):
+    query = state.get("query", "")
+    mc_hit = False
+    if isinstance(ctx, dict) and ctx.get("minecraft"):
+        mc_hit = True
+    else:
+        try:
+            from backend.tools.minecraft_mcp import is_minecraft_control_query
+
+            mc_hit = is_minecraft_control_query(query)
+        except Exception:  # noqa: BLE001
+            mc_hit = False
+    active = isinstance(ctx, dict) and bool(ctx.get("active"))
+    complex_hit = bool(isinstance(ctx, dict) and ctx.get("complex")) or is_linkin_complex_task(query)
+    if not active and not mc_hit:
         return None
-    if not ctx.get("complex") and not is_linkin_complex_task(state.get("query", "")):
+    if not complex_hit and not mc_hit:
         return None
     current = str(state.get("company_template") or "quick_task").strip() or "quick_task"
     if current == "quick_task":

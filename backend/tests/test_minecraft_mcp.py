@@ -40,6 +40,18 @@ def client(linkin_env):
         yield c
 
 
+def test_place_via_location_string():
+    text = execute_for_agent("place_block", location="100, 64, 200", material="钻石块")
+    payload = json.loads(text)
+    assert payload["ok"] is True
+    assert payload["dry_run"] is True
+    assert payload["params"]["x"] == 100
+    assert payload["params"]["y"] == 64
+    assert payload["params"]["z"] == 200
+    assert payload["params"]["material"] == "DIAMOND_BLOCK"
+    assert payload["remote"] == "pose_block"
+
+
 def test_is_minecraft_control_query():
     assert mcp.is_minecraft_control_query("在坐标(100, 64, 200)处放置一个钻石块") is True
     assert mcp.is_minecraft_control_query("使用 place_block") is True

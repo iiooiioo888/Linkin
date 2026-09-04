@@ -32,8 +32,12 @@ Level 4: Support（11）          — 審查、整合、Prompt、法務、記憶
 | `page_dev` | 頁面開發 | 前端為主 |
 | `fullstack_app` | 全端開發 | 完整團隊 |
 | `research_report` | 研究報告 | 研究為主 |
-| `story_studio` | 情節／世界觀；靈境複雜任務預設。含 Minecraft 建造工具（manager／creative_lead／story_writer） |
+| `story_studio` | 情節／世界觀／Minecraft 建造 | manager／creative_lead／story_writer 可調用 MCP |
 | `full_company` | 完整公司 | 全角色啟用 |
+
+## Minecraft MCP 工具
+
+公司角色透過 `tool_registry` 的 ReAct `tool_call` 區塊呼叫 `backend/tools/minecraft_mcp.py`（JSON-RPC → MineMCP）。寫入工具僅 manager／creative_lead／story_writer／`custom_linkin_build_*` 可用；`execute_command` 另限建築總監。未設定 `EVOL_MC_MCP_TOKEN` 時乾跑，不寫入世界。Minecraft 控制查詢與靈境建造任務在預設 `quick_task` 時會改走 `story_studio`，避免只有 developer 執行卻無權放方塊。詳見 [Minecraft MCP](../linkin/minecraft-mcp.md)。
 
 ## 執行流程
 
