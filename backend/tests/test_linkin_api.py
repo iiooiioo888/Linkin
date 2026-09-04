@@ -281,9 +281,9 @@ def test_existing_chat_and_monitor_routes_untouched():
     assert "/linkin/events" in paths
     assert "/linkin/minecraft/status" in paths
     assert "/linkin/minecraft/call" in paths
-    assert "/linkin/buildings/{building_id}/dispatch" in paths
-    assert "/linkin/buildings/{building_id}/preview" in paths
-    assert "/linkin/buildings/{building_id}/schematic" in paths
+    assert "/linkin/buildings/{building_id}/dispatch" in paths or "/linkin/buildings/{building_id:bldid}/dispatch" in paths
+    assert "/linkin/buildings/{building_id}/preview" in paths or "/linkin/buildings/{building_id:bldid}/preview" in paths
+    assert "/linkin/buildings/{building_id}/schematic" in paths or "/linkin/buildings/{building_id:bldid}/schematic" in paths
     assert "/linkin/buildings/import" in paths
     assert "/linkin/buildings/import-base64" in paths
     assert "/linkin/quests/{quest_id}" in paths or any(p.endswith("/quests/{quest_id}") for p in paths)
@@ -342,6 +342,17 @@ def test_building_schematic_v3_preview_download_and_import(client: TestClient):
     assert from_b64.status_code == 200, from_b64.text
     assert from_b64.json()["building"]["voxel_count"] == building["voxel_count"]
     assert from_b64.json()["preview"]["schematic_base64"]
+
+
+def test_import_base64_not_method_not_allowed(client: TestClient):
+    """靜態路徑不可被 /buildings/{id} 吃成 405。"""
+    resp = client.post("/linkin/buildings/import-base64", json={"schematic_base64": "not-valid"})
+    assert resp.status_code != 405, resp.text
+    assert resp.status_code == 400
+    generate = client.post("/linkin/buildings/generate", json={"prompt": "x"})
+    assert generate.status_code != 405
+    preview = client.get("/linkin/buildings/import-base64/preview")
+    assert preview.status_code == 404
 
 
 def test_entity_delete_and_events(client: TestClient):
