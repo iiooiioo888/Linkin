@@ -35,6 +35,10 @@ Base URL 與主應用相同：`http://localhost:8000`
 | GET | `/linkin/items` | 道具列表 |
 | DELETE | `/linkin/items/{id}` | 刪除道具 |
 | GET | `/linkin/events` | 歷史事件（RAG 事件庫） |
+| GET | `/linkin/minecraft/status` | MineMCP 橋接狀態、乾跑、最近審計 |
+| POST | `/linkin/minecraft/probe` | `tools/list` 探測（乾跑不發 HTTP） |
+| POST | `/linkin/minecraft/call` | `{tool, arguments}`；鐵律與方塊上限與公司工具相同 |
+| POST | `/linkin/buildings/{id}/dispatch` | 在方案錨點放置標記方塊（不一次填滿） |
 
 ## 管理與總覽
 
@@ -50,3 +54,7 @@ Base URL 與主應用相同：`http://localhost:8000`
 - 風格與區域文化不符 → `style_mismatch`
 - 方塊超限 → `block_limit`
 - 未確認的踢人／封禁／停服 → `needs_confirmation`
+- Admin.execute 通過後會轉發 Minecraft MCP `execute_command`（未設定 Token 則乾跑）
+- 單次 fill 超過憲法／`EVOL_MC_MCP_MAX_FILL` → `block_limit`
+
+詳見 [Minecraft MCP 整合](minecraft-mcp.md)。

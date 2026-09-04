@@ -30,6 +30,10 @@ services:
       # LLM 模型池定時爬取（OpenRouter / 通用端點 /models）
       - EVOL_LLM_OPS_ENABLED=true
       - EVOL_LLM_OPS_INTERVAL_SEC=300
+      # 宿主機 MineMCP（Windows Docker）：http://host.docker.internal:3000
+      # - EVOL_MC_MCP_ENABLED=true
+      # - EVOL_MC_MCP_URL=http://host.docker.internal:3000
+      # - EVOL_MC_MCP_TOKEN=
     depends_on:
       redis:
         condition: service_healthy

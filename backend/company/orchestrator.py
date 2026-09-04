@@ -580,9 +580,22 @@ class CompanyOrchestrator:
                 "step": step + 1,
             })
 
-            tool_result = await asyncio.to_thread(
-                tool_registry.execute, tool_request, role_value
-            )
+            allow_tools, catalog_allowed = self._catalog_tool_filter(role_value)
+            if not allow_tools:
+                from backend.company.tools import ToolCallResult
+
+                tool_result = ToolCallResult(
+                    tool=tool_request.tool,
+                    success=False,
+                    error="此角色已停用工具調用（allow_tool_use=false）",
+                )
+            else:
+                tool_result = await asyncio.to_thread(
+                    tool_registry.execute,
+                    tool_request,
+                    role_value,
+                    catalog_allowed=catalog_allowed,
+                )
 
             observation = (
                 str(tool_result.result)[:3000]
@@ -1248,13 +1261,29 @@ class CompanyOrchestrator:
     # Docker 工具集成
     # ═══════════════════════════════════════════════════════════
 
+    @staticmethod
+    def _catalog_tool_filter(role_value: str) -> tuple[bool, list[str] | None]:
+        """角色目錄：allow_tool_use 與 tools_allowed（空列表 = 不額外限制）。"""
+        from backend.company.role_catalog import resolve_runtime
+
+        runtime = resolve_runtime(role_value)
+        if runtime.get("allow_tool_use") is False:
+            return False, None
+        allowed = [str(item).strip() for item in (runtime.get("tools_allowed") or []) if str(item).strip()]
+        return True, (allowed or None)
+
     def _get_docker_tools_for_role(self, role_type: RoleType) -> str:
         """獲取角色可用的工具說明文字（使用新工具註冊表）。
 
-        包含 Docker 工具、記憶查詢等所有該角色可用的工具。
-        若角色無可用工具，回傳空字串。
+        包含 Docker、記憶、實驗室與 Minecraft MCP 等該角色可用的工具。
+        若角色無可用工具或已停用工具，回傳空字串。
         """
-        return tool_registry.format_tools_prompt(role_type.value)
+        allow_tools, catalog_allowed = self._catalog_tool_filter(role_type.value)
+        if not allow_tools:
+            return ""
+        return tool_registry.format_tools_prompt(
+            role_type.value, catalog_allowed=catalog_allowed
+        )
 
     def execute_docker_request(self, tool_name: str, args: dict[str, Any] | None = None) -> str:
         """執行 Docker 工具請求（供外部調用）。

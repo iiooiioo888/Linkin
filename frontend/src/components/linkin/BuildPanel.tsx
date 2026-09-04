@@ -2,7 +2,7 @@
  * BuildPanel — 建築生成（風格、坐標、5000 方塊上限）與方案列表。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { deleteBuilding, fetchBuildings, fetchConstitution, generateBuilding, type Building } from '../../api/linkin';
+import { deleteBuilding, dispatchBuilding, fetchBuildings, fetchConstitution, generateBuilding, type Building } from '../../api/linkin';
 
 const FALLBACK_REGION_STYLES: Record<string, string[]> = {
   织庭都: ['织梦典章', '白石圣殿', '契约广场', '金线回廊'],
@@ -22,6 +22,7 @@ export default function BuildPanel() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dispatchNote, setDispatchNote] = useState<string | null>(null);
 
   const styles = useMemo(() => regionStyles[region] ?? Object.values(regionStyles).flat(), [region, regionStyles]);
   const overLimit = blockCount > 5000;
@@ -71,6 +72,27 @@ export default function BuildPanel() {
     }
   };
 
+  const onDispatch = async (id: string) => {
+    setBusy(true);
+    setError(null);
+    setDispatchNote(null);
+    try {
+      const data = await dispatchBuilding(id);
+      const mcp = data.minecraft;
+      setDispatchNote(
+        mcp && mcp.dry_run
+          ? '已乾跑派發標記方塊（未連 Minecraft）。設定 EVOL_MC_MCP_ENABLED 後會寫入世界。'
+          : '已派發標記方塊到 Minecraft 錨點。',
+      );
+      setResult(data.building);
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onDelete = async (id: string) => {
     setBusy(true);
     setError(null);
@@ -97,6 +119,7 @@ export default function BuildPanel() {
         </button>
       </div>
       {error && <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {dispatchNote && <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">{dispatchNote}</div>}
 
       <div className="grid gap-3 lg:grid-cols-2">
         <label className="text-[10px] text-[#8a8f98]">描述 prompt
@@ -151,14 +174,24 @@ export default function BuildPanel() {
             </div>
             <p className="mt-1 text-[12px] leading-relaxed text-[#AEAEB2]">{item.prompt}</p>
             {item.note && <p className="mt-1 text-[11px] text-[#8a8f98]">{item.note}</p>}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void onDelete(item.id)}
-              className="mt-2 text-[10px] text-red-400 disabled:opacity-40"
-            >
-              刪除
-            </button>
+            <div className="mt-2 flex gap-3">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void onDispatch(item.id)}
+                className="text-[10px] text-[#64D2FF] disabled:opacity-40"
+              >
+                發送到 Minecraft
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void onDelete(item.id)}
+                className="text-[10px] text-red-400 disabled:opacity-40"
+              >
+                刪除
+              </button>
+            </div>
           </article>
         ))}
       </div>

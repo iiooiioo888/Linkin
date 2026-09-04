@@ -31,7 +31,8 @@ _LINKIN_WORK_RE = re.compile(
     r"任务|任務|主线|主線|支线|支線|"
     r"道具|附魔|"
     r"世界观|世界觀|宪法|憲法|"
-    r"BuilderAI"
+    r"BuilderAI|"
+    r"minecraft|方块|方塊|放置|坐标|座標"
     r")",
     re.IGNORECASE,
 )
@@ -109,7 +110,15 @@ def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
         if text:
             hit_lines.append(f"- {text[:160]}")
     rag_block = ("\n【靈境知識庫】\n" + "\n".join(hit_lines)) if hit_lines else ""
-    summary = f"{brief}{rag_block}".strip()
+    mcp_block = ""
+    try:
+        from backend.tools.minecraft_mcp import connector_status_brief, is_minecraft_control_query
+
+        if is_minecraft_control_query(query):
+            mcp_block = "\n" + connector_status_brief()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Minecraft MCP 摘要略過：%s", exc)
+    summary = f"{brief}{rag_block}{mcp_block}".strip()
     return {
         "linkin_context": {
             "active": True,

@@ -52,6 +52,7 @@ export const MONITOR_LINKIN_TABS: MonitorTabItem[] = [
   { key: 'quests', icon: '⚑', label: '任務' },
   { key: 'building', icon: '⌂', label: '建築' },
   { key: 'items', icon: '◆', label: '道具' },
+  { key: 'minecraft', icon: '▣', label: 'Minecraft' },
 ];
 
 export const MONITOR_NAV_GROUPS: MonitorNavGroup[] = [
@@ -92,6 +93,7 @@ export const MONITOR_NAV_GROUPS: MonitorNavGroup[] = [
       { key: 'quests', icon: '⚑', label: '任務', hint: '主線／支線／日常' },
       { key: 'building', icon: '⌂', label: '建築', hint: '風格與方塊上限' },
       { key: 'items', icon: '◆', label: '道具', hint: '稀有度平衡' },
+      { key: 'minecraft', icon: '▣', label: 'Minecraft', hint: 'MineMCP 橋接與審計' },
     ],
   },
 ];

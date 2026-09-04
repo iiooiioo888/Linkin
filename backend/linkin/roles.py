@@ -20,6 +20,24 @@ from backend.linkin.prompts import (
 
 logger = logging.getLogger(__name__)
 
+MC_READ_TOOLS = ["get_player", "get_online_players"]
+MC_BUILD_TOOLS = ["place_block", "break_block", "fill_block", "pose_block", *MC_READ_TOOLS]
+MC_ADMIN_TOOLS = [*MC_BUILD_TOOLS, "execute_command"]
+
+
+def _tools_for(dept_slug: str, staff_slug: str | None) -> list[str]:
+    if staff_slug in {ROLE_REVIEWER, ROLE_SCRIBE}:
+        return list(MC_READ_TOOLS)
+    if dept_slug == "build":
+        if staff_slug is None:
+            return list(MC_ADMIN_TOOLS)
+        if staff_slug == ROLE_EXECUTOR:
+            return list(MC_BUILD_TOOLS)
+        return list(MC_READ_TOOLS)
+    if dept_slug in {"narrative", "npc"}:
+        return list(MC_READ_TOOLS)
+    return []
+
 DEPARTMENTS: tuple[tuple[str, str, str, str], ...] = (
     (ROLE_BUILD_DIRECTOR, "build", "建築總監", "creative"),
     (ROLE_NARRATIVE_DIRECTOR, "narrative", "敘事總監", "creative"),
@@ -43,13 +61,23 @@ def _safe_create(payload: dict[str, Any]) -> dict[str, Any] | None:
     prefixed = slug if slug.startswith("custom_") else f"custom_{slug}"
     existing = get_snapshot(prefixed)
     new_prompt = str(payload.get("system_prompt") or "")
+    wanted_tools = payload.get("tools_allowed")
     if existing is not None:
+        patch: dict[str, Any] = {}
         old_prompt = str(existing.get("system_prompt") or "")
         if new_prompt and (old_prompt != new_prompt or _prompt_stale(old_prompt)):
+            patch["system_prompt"] = new_prompt
+        if wanted_tools is not None:
+            old_tools = [str(item) for item in (existing.get("tools_allowed") or [])]
+            new_tools = [str(item) for item in wanted_tools]
+            if old_tools != new_tools:
+                patch["tools_allowed"] = new_tools
+                patch["allow_tool_use"] = True
+        if patch:
             try:
-                return update_role_settings(prefixed, {"system_prompt": new_prompt})
+                return update_role_settings(prefixed, patch)
             except Exception as exc:  # noqa: BLE001
-                logger.warning("刷新靈境角色提示詞失敗 %s：%s", prefixed, exc)
+                logger.warning("刷新靈境角色設定失敗 %s：%s", prefixed, exc)
                 return existing
         return existing
     try:
@@ -83,6 +111,8 @@ def seed_linkin_roles() -> list[dict[str, Any]]:
                 "max_parallel_work": 4,
                 "tags": ["linkin", slug, "director"],
                 "notes": "靈境·Linkin L1 部門主管，system_prompt 繼承頂層提示詞。",
+                "tools_allowed": _tools_for(slug, None),
+                "allow_tool_use": True,
             }
         )
         if director is None:
@@ -107,6 +137,8 @@ def seed_linkin_roles() -> list[dict[str, Any]]:
                     "max_parallel_work": 2,
                     "tags": ["linkin", slug, staff_slug],
                     "notes": f"靈境·Linkin L{level} {staff_title}，繼承頂層提示詞。",
+                    "tools_allowed": _tools_for(slug, staff_key),
+                    "allow_tool_use": True,
                 }
             )
             if role:

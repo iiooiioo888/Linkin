@@ -37,7 +37,8 @@ export type MonitorTab =
   | 'npcs'
   | 'quests'
   | 'building'
-  | 'items';
+  | 'items'
+  | 'minecraft';
 
 export interface AppShellProps {
   /** 当前活跃视图 */

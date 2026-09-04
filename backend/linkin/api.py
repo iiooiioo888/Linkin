@@ -23,6 +23,11 @@ from backend.linkin.knowledge import (
     list_entities,
     upsert_entity,
 )
+from backend.linkin.minecraft import (
+    dispatch_building,
+    execute_named_tool,
+    monitor_status as minecraft_monitor_status,
+)
 from backend.linkin.tools import (
     TOOL_ADMIN_EXECUTE,
     TOOL_BUILDER_GENERATE,
@@ -93,6 +98,13 @@ def _delete_entity_or_404(collection: str, rec_id: str) -> dict[str, Any]:
     if not delete_entity(collection, rec_id):
         raise HTTPException(status_code=404, detail=f"{collection} 不存在")
     return {"deleted": True, "id": rec_id}
+
+
+def _building_or_404(building_id: str) -> dict[str, Any]:
+    for item in list_entities("buildings"):
+        if str(item.get("id")) == building_id:
+            return item
+    raise HTTPException(status_code=404, detail="建築方案不存在")
 
 
 def _tool_http(exc: ToolValidationError) -> HTTPException:
@@ -377,6 +389,30 @@ def remove_building(building_id: str) -> dict[str, Any]:
     return _delete_entity_or_404("buildings", building_id)
 
 
+@linkin_router.post("/buildings/{building_id}/dispatch")
+def dispatch_building_to_world(building_id: str) -> dict[str, Any]:
+    building = _building_or_404(building_id)
+    try:
+        result = dispatch_building(building)
+    except ToolValidationError as exc:
+        raise _tool_http(exc) from exc
+    updated = upsert_entity(
+        "buildings",
+        {
+            **building,
+            "status": "dispatched" if result.get("ok") else building.get("status") or "planned",
+            "mcp": {"ok": result.get("ok"), "dry_run": result.get("dry_run"), "note": result.get("note")},
+        },
+    )
+    get_store().upsert(
+        COL_EVENTS,
+        f"建築派發 {building_id} → Minecraft MCP（ok={result.get('ok')} dry_run={result.get('dry_run')}）",
+        {"kind": "minecraft", "building_id": building_id},
+        skip_quality=True,
+    )
+    return {"building": updated, "minecraft": result}
+
+
 @linkin_router.get("/items")
 def list_items() -> dict[str, Any]:
     items = list_entities("items")
@@ -429,7 +465,23 @@ def admin_execute(body: dict[str, Any]) -> dict[str, Any]:
         {"kind": "admin", "sensitive": params["sensitive"]},
         skip_quality=True,
     )
-    return {"executed": True, "command": params["command"], "sensitive": params["sensitive"]}
+    mcp_result: dict[str, Any] | None = None
+    try:
+        mcp_result = execute_named_tool(
+            "execute_command",
+            {"command": params["command"], "confirmed": params["confirmed"]},
+        )
+    except ToolValidationError as exc:
+        raise _tool_http(exc) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Admin.execute MCP 橋接失敗：%s", exc)
+        mcp_result = {"ok": False, "error": str(exc)}
+    return {
+        "executed": True,
+        "command": params["command"],
+        "sensitive": params["sensitive"],
+        "minecraft": mcp_result,
+    }
 
 
 @linkin_router.get("/events")
@@ -449,12 +501,45 @@ def list_events() -> dict[str, Any]:
     return {"events": items, "count": len(items)}
 
 
+@linkin_router.get("/minecraft/status")
+def minecraft_status() -> dict[str, Any]:
+    return minecraft_monitor_status()
+
+
+@linkin_router.post("/minecraft/probe")
+def minecraft_probe() -> dict[str, Any]:
+    from backend.tools.minecraft_mcp import probe_connection
+
+    return probe_connection()
+
+
+@linkin_router.post("/minecraft/call")
+def minecraft_call(body: dict[str, Any]) -> dict[str, Any]:
+    tool_name = str(body.get("tool") or body.get("name") or "").strip()
+    if not tool_name:
+        raise HTTPException(status_code=400, detail="需要 tool")
+    raw_args = body.get("arguments") if "arguments" in body else body.get("args")
+    if isinstance(raw_args, dict):
+        payload = dict(raw_args)
+    else:
+        payload = {
+            key: value
+            for key, value in body.items()
+            if key not in {"tool", "name", "arguments", "args"}
+        }
+    try:
+        return execute_named_tool(tool_name, payload)
+    except ToolValidationError as exc:
+        raise _tool_http(exc) from exc
+
+
 @linkin_router.get("/overview")
 def overview() -> dict[str, Any]:
     store = get_store()
     const = load_constitution()
     factions = const.get("factions") or []
     magic = const.get("magic") or {}
+    mcp_status = minecraft_monitor_status()
     return {
         "world_name": const.get("world_name"),
         "will": (const.get("foundation") or {}).get("will"),
@@ -471,5 +556,11 @@ def overview() -> dict[str, Any]:
             "factions_defined": len(factions) == 3,
             "magic_defined": bool(magic.get("name")) and "[待Phase" not in str(magic.get("name")),
             "rag": store.backend_status(),
+            "minecraft": {
+                "dry_run": mcp_status.get("dry_run"),
+                "enabled": mcp_status.get("enabled"),
+                "connected": mcp_status.get("connected"),
+            },
         },
+        "minecraft": mcp_status,
     }

@@ -29,6 +29,17 @@
 |------|--------|------|
 | `EVOL_ROLE_CATALOG_PATH` | `backend/data/role_catalog.json` | 角色設定覆蓋 + 自定義角色持久化路徑 |
 
+### Minecraft MCP
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `EVOL_MC_MCP_ENABLED` | `false` | 對 MineMCP 發送真實 JSON-RPC |
+| `EVOL_MC_MCP_URL` | `http://127.0.0.1:3000` | 插件 HTTP 位址 |
+| `EVOL_MC_MCP_TOKEN` | — | 與 `plugins/MineMCP/config.yml` 相同 |
+| `EVOL_MC_MCP_RPC_PATH` | `/sse` | JSON-RPC 路徑 |
+| `EVOL_MC_MCP_WORLD` | `world` | 預設世界 |
+| `EVOL_MC_MCP_MAX_FILL` | `5000` | 單次 fill 上限 |
+
 ### 反思閉環
 
 | 變數 | 預設值 | 說明 |

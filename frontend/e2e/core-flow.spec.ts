@@ -71,12 +71,21 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.url()).toMatch(/#\/monitor\/tasks/);
   });
 
-    test('Hash 路由：#/monitor/world 可開啟靈境世界觀', async ({ page }) => {
+  test('Hash 路由：#/monitor/world 可開啟靈境世界觀', async ({ page }) => {
     await page.goto('/#/monitor/world');
     await expect(page.getByText(/世界觀憲法|Constitution/).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.url()).toMatch(/#\/monitor\/world/);
 
     await page.reload();
     await expect(page.url()).toMatch(/#\/monitor\/world/);
+  });
+
+  test('Hash 路由：#/monitor/minecraft 可開啟 MCP 橋接', async ({ page }) => {
+    await page.goto('/#/monitor/minecraft');
+    await expect(page.getByText(/Minecraft MCP/).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.url()).toMatch(/#\/monitor\/minecraft/);
+
+    await page.reload();
+    await expect(page.url()).toMatch(/#\/monitor\/minecraft/);
   });
 });

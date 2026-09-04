@@ -129,7 +129,27 @@ class ReActExecutor:
         Returns:
             ReActResult
         """
-        tools_prompt = self.registry.format_tools_prompt(role)
+        catalog_allowed = None
+        tools_enabled = True
+        try:
+            from backend.company.role_catalog import resolve_runtime
+
+            runtime = resolve_runtime(role or "")
+            if role and runtime.get("allow_tool_use") is False:
+                tools_prompt = ""
+                tools_enabled = False
+            else:
+                allowed = [
+                    str(item).strip()
+                    for item in (runtime.get("tools_allowed") or [])
+                    if str(item).strip()
+                ]
+                catalog_allowed = allowed or None
+                tools_prompt = self.registry.format_tools_prompt(
+                    role, catalog_allowed=catalog_allowed
+                )
+        except Exception:  # noqa: BLE001
+            tools_prompt = self.registry.format_tools_prompt(role)
         system_prompt = REACT_SYSTEM_PROMPT.format(max_steps=self.max_steps)
         
         # 對話歷史（累積 Thought/Action/Observation）
@@ -201,7 +221,18 @@ class ReActExecutor:
             step.tool_call = {"tool": tool_request.tool, "args": tool_request.args}
             step.action = f"調用工具 {tool_request.tool}"
             
-            tool_result = self.registry.execute(tool_request, role=role)
+            if not tools_enabled:
+                from backend.company.tools import ToolCallResult
+
+                tool_result = ToolCallResult(
+                    tool=tool_request.tool,
+                    success=False,
+                    error="此角色已停用工具調用（allow_tool_use=false）",
+                )
+            else:
+                tool_result = self.registry.execute(
+                    tool_request, role=role, catalog_allowed=catalog_allowed
+                )
             step.tool_result = tool_result
 
             if tool_result.success:

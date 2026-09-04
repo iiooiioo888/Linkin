@@ -89,6 +89,7 @@ graph LR
 | 主題 | 你會得到什麼 |
 |------|-------------|
 | **靈境·Linkin** | 世界觀憲法、NPC／任務／建築／道具、監控中心「靈境」分頁；種子：`python -m backend.scripts.seed_linkin_world` |
+| **Minecraft MCP** | MineMCP JSON-RPC 封成公司角色工具（`place_block` 等）；未設 Token 乾跑；監控「靈境 → Minecraft」 |
 | **監控中心擴充** | 含靈境分頁；80 席角色工作台；完整角色設定表單；自定義角色新增／複製／刪除；監控偏好（輪詢、分組、篩選） |
 | **角色總覽操作** | 依 L0–L4 分組；左側層級錨點跳轉；活躍／告警為篩選而非第二套計數；卡片右上角為該角色合計成本 |
 | **示範資料** | `python -m backend.scripts.seed_demo_content` 寫入 60 任務、60 推理軌跡、60 知識庫條目（Chroma 失敗則降級 JSON） |
@@ -164,7 +165,8 @@ Synthesizer 整合 → 外部反思回圈
 linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 ├── backend/                     # FastAPI + LangGraph
 │   ├── main.py                  #   /chat /tasks /monitor/* /linkin/* /config /cloud /docker
-│   ├── linkin/                  #   靈境憲法 / NPC / 任務 / 建築 / 道具
+│   ├── linkin/                  #   靈境憲法 / NPC / 任務 / 建築 / 道具 / Minecraft 護欄
+│   ├── tools/                   #   Minecraft MCP JSON-RPC 封裝
 │   ├── core/
 │   │   ├── graph.py             #     統一模式圖 + 複雜度路由
 │   │   ├── nodes.py             #     生成 / 多維評估 / 分層反思 / 改進
@@ -208,7 +210,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 │           ├── RoleSettingsPanel.tsx
 │           ├── LlmOpsPanel.tsx
 │           ├── HubPanel.tsx      #   Hub 操作台（內嵌於監控，非獨立產品線）
-│           ├── linkin/          #   憲法／NPC／任務／建築／道具面板
+│           ├── linkin/          #   憲法／NPC／任務／建築／道具／Minecraft 橋接
 │           └── ...
 ├── docs/                        # 知識庫（含 docs/linkin/）
 ├── .github/workflows/
@@ -506,6 +508,19 @@ docker compose logs -f backend
 |------|------|------|
 | `EVOL_ROLE_CATALOG_PATH` | `backend/data/role_catalog.json` | 角色目錄持久化路徑 |
 
+### Minecraft MCP（MineMCP）
+
+| 變數 | 預設 | 說明 |
+|------|------|------|
+| `EVOL_MC_MCP_ENABLED` | `false` | `true` 才對 Paper 插件發真實 JSON-RPC |
+| `EVOL_MC_MCP_URL` | `http://127.0.0.1:3000` | MineMCP 位址（不含 `/sse`） |
+| `EVOL_MC_MCP_TOKEN` | — | 與 `plugins/MineMCP/config.yml` 相同；未設則乾跑 |
+| `EVOL_MC_MCP_RPC_PATH` | `/sse` | JSON-RPC 路徑 |
+| `EVOL_MC_MCP_WORLD` | `world` | 預設世界 |
+| `EVOL_MC_MCP_MAX_FILL` | `5000` | 單次 fill 上限 |
+
+詳見 [docs/linkin/minecraft-mcp.md](docs/linkin/minecraft-mcp.md)。
+
 ### LLM 快取
 
 | 變數 | 預設 | 說明 |
@@ -677,7 +692,7 @@ Pages 僅靜態前端預覽。聊天、寫入 OPC、刷新模型目錄等需連�
 | Phase 5 | DSPy 提示優化 | ⏳ |
 | Phase 6–8 | 公司運行時、OPC、軌跡可視化 | ✅ |
 | Phase 9–10 | 系統優化、知識庫 | ✅ |
-| Phase 11 | MCP 工具接入 | ⏳ |
+| Phase 11 | MCP 工具接入（MineMCP → 公司角色工具） | ✅ |
 | Phase 12 | 記憶蒸餾 + A/B 評估 | ⏳ |
 | Phase 13 | 監控中心擴充（角色設定／自定義角色／80 席） | ✅ |
 | Phase 14 | 模型池鎖定 + OpenRouter 爬取 + LLM 運維 | ✅ |

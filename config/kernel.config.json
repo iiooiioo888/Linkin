@@ -1,6 +1,0 @@
-{
-  "modulesDir": "modules",
-  "configDir": "config",
-  "replayBufferSize": 10000,
-  "logLevel": "info"
-}

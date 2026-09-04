@@ -24,14 +24,37 @@ build/
 
 # 测试与覆盖率
 .pytest_cache/
+.pytest_tmp/
+.pytest_tmp*/
 .coverage
 htmlcov/
 .tox/
 
-# Node (前端暂未启用，但预排除)
+# 本機快取／上游殘件
+.pip_wheels/
+.chroma_probe/
+Evoloop/
+skills/
+
+# Node
 node_modules/
 frontend/node_modules/
 frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+
+# Abandoned TypeScript microkernel
+kernel/
+modules/
+shared/
+
+# Runtime SQLite / Chroma / telemetry
+hub_data.sqlite3
+backend/data/chroma/
+backend/data/linkin/chroma/
+backend/data/routing_feedback.json
+opc_service/data/edge_cache.json
+opc_service/audit_logs/
 
 # 环境变量（通过 docker-compose/env_file 注入）
 .env

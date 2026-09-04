@@ -32,6 +32,7 @@ Level 4: Support（11）          — 審查、整合、Prompt、法務、記憶
 | `page_dev` | 頁面開發 | 前端為主 |
 | `fullstack_app` | 全端開發 | 完整團隊 |
 | `research_report` | 研究報告 | 研究為主 |
+| `story_studio` | 情節／世界觀；靈境複雜任務預設。含 Minecraft 建造工具（manager／creative_lead／story_writer） |
 | `full_company` | 完整公司 | 全角色啟用 |
 
 ## 執行流程

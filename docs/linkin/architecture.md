@@ -15,8 +15,11 @@
                 │
                 ├── constitution.json   世界觀憲法
                 ├── tools.py            工具鐵律
+                ├── minecraft.py        MineMCP 護欄與公司工具註冊
                 ├── knowledge.py        RAG 四庫（Chroma → JSON 降級）
                 └── roles.py            16 席子角色（繼承頂層提示詞）
+
+backend/tools/minecraft_mcp.py     JSON-RPC 客戶端（Token／乾跑／審計）
 
 統一圖：
   retrieve_memories → enhance_with_opc_context → enhance_with_linkin_context
@@ -46,7 +49,8 @@
 | 公司協調器與 80 席角色 | `backend/company/` | 既有；靈境加 16 席 custom |
 | AI Hub | `backend/hub/` | 既有 |
 | 監控／雲／Docker | `backend/services/` | 既有 |
-| 靈境憲法／API／工具 | `backend/linkin/` | 已落地（含管線注入 `pipeline.py`） |
+| 靈境憲法／API／工具 | `backend/linkin/` | 已落地（含管線注入 `pipeline.py`、Minecraft 護欄 `minecraft.py`） |
+| Minecraft MCP 橋接 | `backend/tools/minecraft_mcp.py` | 已落地（MineMCP JSON-RPC，乾跑預設） |
 | 種子 | `backend/scripts/seed_linkin_world.py` | 已落地 |
 | OPC 微服務 | `opc_service/` | 既有 6 級閉環 |
 | 前端監控與靈境面板 | `frontend/src/` | 已落地 |

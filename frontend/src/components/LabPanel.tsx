@@ -12,14 +12,8 @@ import {
   YAxis,
 } from 'recharts';
 import type { ArchifyIR, FirecrawlScrapeResult, PonytailReviewResult } from '../api/client';
-import {
-  labArchifyEvoloop,
-  labArchifyGenerate,
-  labFirecrawlScrape,
-  labFirecrawlSearch,
-  labOptimizePrompt,
-  labPonytailReview,
-} from '../api/client';
+import { labArchifyEvoloop, labArchifyGenerate, labFirecrawlScrape, labFirecrawlSearch, labOptimizePrompt, labPonytailReview } from '../api/client';
+import { fetchMinecraftStatus, type MinecraftStatus } from '../api/linkin';
 import { LAB_INTEGRATION_TABS, LAB_TABS, type LabSubTab } from '../lib/labTabs';
 import ArchifyViewer from './ArchifyViewer';
 import PromptEditor from './PromptEditor';
@@ -29,6 +23,10 @@ const DEMO_BEFORE = `你是一位工業助手。根據感測資料回答問題�
 請盡量詳細說明。`;
 
 const MCP_TOOLS = [
+  { id: 'place_block', name: 'place_block', desc: 'Minecraft 放置方塊（遠端 pose_block）', enabled: true, risk: 'high' },
+  { id: 'fill_block', name: 'fill_block', desc: 'Minecraft 區域填充（受方塊上限）', enabled: true, risk: 'high' },
+  { id: 'execute_command', name: 'execute_command', desc: 'Minecraft 指令（敏感需二次確認）', enabled: true, risk: 'high' },
+  { id: 'get_player', name: 'get_player', desc: '讀取線上玩家資訊', enabled: true, risk: 'low' },
   { id: 'opc.read', name: 'OPC Read', desc: '讀取白名單標籤', enabled: true, risk: 'low' },
   { id: 'opc.write', name: 'OPC Write', desc: '經護欄寫入', enabled: true, risk: 'high' },
   { id: 'memory.search', name: 'Memory Search', desc: '向量記憶檢索', enabled: true, risk: 'low' },
@@ -104,6 +102,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
   const [reviewError, setReviewError] = useState<string | null>(null);
 
   const [tools, setTools] = useState(MCP_TOOLS);
+  const [mcpStatus, setMcpStatus] = useState<MinecraftStatus | null>(null);
 
   const winner = useMemo(() => {
     const scoreA = AB_SERIES.reduce((s, r) => s + r.a, 0) / AB_SERIES.length;
@@ -122,6 +121,13 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
       setArchLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (tab !== 'mcp') return;
+    void fetchMinecraftStatus()
+      .then(setMcpStatus)
+      .catch(() => setMcpStatus(null));
+  }, [tab]);
 
   useEffect(() => {
     if (tab === 'archify' && !archIr && !archLoading) {
@@ -459,6 +465,11 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
 
         {tab === 'mcp' && (
           <div className="mx-auto max-w-2xl space-y-3">
+            <p className="text-[11px] text-[#8E8E93]">
+              Minecraft MCP：{mcpStatus?.dry_run ? '乾跑' : mcpStatus?.connected ? '已連線' : '狀態未知'}
+              {mcpStatus?.url ? ` · ${mcpStatus.url}` : ''}
+              。公司角色經 tool_registry 呼叫；檔案系統工具預設封鎖。
+            </p>
             {tools.map((t) => (
               <label
                 key={t.id}

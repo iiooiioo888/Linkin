@@ -69,6 +69,7 @@ htmlcov/
 .pytest_cache/
 .mypy_cache/
 .pytest_tmp/
+.pytest_tmp*/
 
 # Local pip wheel cache / extracted vendor trees
 .pip_wheels/
@@ -76,22 +77,52 @@ htmlcov/
 # Local Chroma probe / antivirus workaround dumps
 .chroma_probe/
 
+# IDE harness / screenshots (not product assets)
+.qoder/
+
+# Nested leftover clone of upstream EvoLoop (this repo is Linkin)
+/Evoloop/
+
+# Third-party DESIGN.md dump (root DESIGN.md is the product visual source)
+skills/awesome-design-md/
+
 # OPC runtime audit logs (not product assets)
 opc_service/audit_logs/*.jsonl
 
 # Local runtime SQLite / OPC cache
 hub_data.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
 opc_service/data/edge_cache.json
 
-# Runtime session traces (seed demo traces remain tracked)
+# Runtime traces (seed demo traces remain tracked)
 backend/data/traces/trace_sess-*.jsonl
+backend/data/traces/trace_*.jsonl
+!backend/data/traces/trace_demo-*.jsonl
+
+# Runtime company runs (demo seed remains tracked)
+backend/data/company_runs/run_*.jsonl
+!backend/data/company_runs/run_demo*.jsonl
 
 # Runtime routing telemetry (not seed assets)
 backend/data/routing_feedback.json
 
+# Minecraft MCP 執行期稽核（非正式種子）
+backend/data/linkin/mcp_audit.jsonl
+
 # Local Chroma persist dirs (JSON 種子仍提交)
 backend/data/linkin/chroma/
 backend/data/chroma/
+
+# Playwright
+frontend/playwright-report/
+frontend/test-results/
+
+# Abandoned TypeScript microkernel (product is Python FastAPI + React)
+/kernel/
+/modules/
+/shared/
 
 # Compression
 *.zip

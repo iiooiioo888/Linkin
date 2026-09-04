@@ -2,12 +2,13 @@
  * WorldConstitutionPanel — 世界觀憲法檢視／編輯。
  */
 import { useCallback, useEffect, useState } from 'react';
-import { fetchConstitution, fetchEvents, fetchOverview, saveConstitution, type Constitution, type Overview, type WorldEvent } from '../../api/linkin';
+import { fetchConstitution, fetchEvents, fetchMinecraftStatus, fetchOverview, saveConstitution, type Constitution, type MinecraftStatus, type Overview, type WorldEvent } from '../../api/linkin';
 
 export default function WorldConstitutionPanel() {
   const [data, setData] = useState<Constitution | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [events, setEvents] = useState<WorldEvent[]>([]);
+  const [minecraft, setMinecraft] = useState<MinecraftStatus | null>(null);
   const [jsonText, setJsonText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -16,14 +17,16 @@ export default function WorldConstitutionPanel() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [constitution, ov, ev] = await Promise.all([
+      const [constitution, ov, ev, mc] = await Promise.all([
         fetchConstitution(),
         fetchOverview(),
         fetchEvents().catch(() => ({ events: [] as WorldEvent[] })),
+        fetchMinecraftStatus().catch(() => null),
       ]);
       setData(constitution);
       setOverview(ov);
       setEvents(ev.events);
+      setMinecraft(mc);
       setJsonText(JSON.stringify(constitution, null, 2));
     } catch (err) {
       setError((err as Error).message);
@@ -89,6 +92,12 @@ export default function WorldConstitutionPanel() {
             <p className="text-sm font-medium">{card.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mb-4 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] text-[#8a8f98]">
+        Minecraft MCP：{minecraft?.dry_run ? '乾跑（未寫入世界）' : minecraft?.connected ? '已連線' : '未連線'}
+        {minecraft?.url ? ` · ${minecraft.url}` : ''}
+        {' '}· 監控中心「靈境 → Minecraft」可探測與審計
       </div>
 
       <div className="mb-4 grid gap-3 lg:grid-cols-2">

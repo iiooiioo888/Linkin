@@ -98,40 +98,66 @@ class ToolRegistry:
         """獲取工具定義。"""
         return self._tools.get(name)
 
-    def list_tools(self, role: str | None = None) -> list[ToolDefinition]:
-        """列出可用工具（按角色過濾）。
+    @staticmethod
+    def _role_matches(role: str, allowed_roles: list[str]) -> bool:
+        if role in allowed_roles:
+            return True
+        if role.startswith("custom_") and role[7:] in allowed_roles:
+            return True
+        if f"custom_{role}" in allowed_roles:
+            return True
+        for token in allowed_roles:
+            if token.endswith("*") and role.startswith(token[:-1]):
+                return True
+        return False
+
+    def _role_permitted(self, tool: ToolDefinition, role: str | None) -> bool:
+        if role is None or not tool.allowed_roles:
+            return True
+        if self._role_matches(role, tool.allowed_roles):
+            return True
+        return bool(tool.readonly)
+
+    def list_tools(
+        self,
+        role: str | None = None,
+        *,
+        catalog_allowed: list[str] | None = None,
+    ) -> list[ToolDefinition]:
+        """列出可用工具（按角色與目錄 tools_allowed 過濾）。
 
         Args:
             role: 角色名稱，None 表示列出所有工具
+            catalog_allowed: 角色目錄非空 tools_allowed 時取交集；None/空 = 不額外限制
 
         Returns:
             該角色可用的工具列表
         """
         if role is None:
-            return list(self._tools.values())
-
-        result = []
-        for tool in self._tools.values():
-            # 空列表 = 所有角色可用
-            if not tool.allowed_roles:
-                result.append(tool)
-            elif role in tool.allowed_roles:
-                result.append(tool)
-            elif tool.readonly:
-                # 只讀工具對所有角色開放
-                result.append(tool)
+            result = list(self._tools.values())
+        else:
+            result = [tool for tool in self._tools.values() if self._role_permitted(tool, role)]
+        if catalog_allowed:
+            allowed = set(catalog_allowed)
+            result = [tool for tool in result if tool.name in allowed]
         return result
 
-    def format_tools_prompt(self, role: str | None = None) -> str:
+    def format_tools_prompt(
+        self,
+        role: str | None = None,
+        *,
+        catalog_allowed: list[str] | None = None,
+    ) -> str:
         """生成工具說明文字（注入 Prompt）。
 
         Args:
             role: 角色名稱，用於過濾可用工具
+            catalog_allowed: 角色目錄 tools_allowed 交集（空則不額外限制）
 
         Returns:
             格式化的工具說明，若無可用工具則回傳空字串
         """
-        tools = self.list_tools(role)
+        tools = self.list_tools(role, catalog_allowed=catalog_allowed)
         if not tools:
             return ""
 
@@ -182,12 +208,15 @@ class ToolRegistry:
         self,
         request: ToolCallRequest,
         role: str | None = None,
+        *,
+        catalog_allowed: list[str] | None = None,
     ) -> ToolCallResult:
         """執行工具調用。
 
         Args:
             request: 工具調用請求
             role: 調用者角色（用於權限檢查）
+            catalog_allowed: 角色目錄 tools_allowed 交集（空則不額外限制）
 
         Returns:
             ToolCallResult
@@ -201,13 +230,18 @@ class ToolRegistry:
             )
 
         # 權限檢查
-        if role and tool.allowed_roles:
-            if role not in tool.allowed_roles and not tool.readonly:
-                return ToolCallResult(
-                    tool=request.tool,
-                    success=False,
-                    error=f"角色 {role} 無權使用工具 {request.tool}",
-                )
+        if role and not self._role_permitted(tool, role):
+            return ToolCallResult(
+                tool=request.tool,
+                success=False,
+                error=f"角色 {role} 無權使用工具 {request.tool}",
+            )
+        if catalog_allowed and request.tool not in catalog_allowed:
+            return ToolCallResult(
+                tool=request.tool,
+                success=False,
+                error=f"角色目錄未授權工具 {request.tool}",
+            )
 
         try:
             result = tool.execute(**request.args)
@@ -375,6 +409,10 @@ def _register_builtin_tools() -> None:
         execute=lambda: _lab.get_evoloop_architecture(),
         readonly=True,
     )
+
+    from backend.linkin.minecraft import register_company_tools as _register_mc
+
+    _register_mc(tool_registry)
 
 
 # 模組載入時註冊內建工具

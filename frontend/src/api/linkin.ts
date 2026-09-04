@@ -113,6 +113,44 @@ export type Overview = {
     factions_defined: boolean;
     magic_defined: boolean;
     rag: { chroma: boolean; fallback?: string | null; error?: string | null };
+    minecraft?: {
+      dry_run?: boolean;
+      enabled?: boolean;
+      connected?: boolean;
+    };
+  };
+  minecraft?: MinecraftStatus;
+};
+
+export type MinecraftAudit = {
+  ts?: string;
+  tool?: string;
+  remote?: string;
+  ok?: boolean;
+  dry_run?: boolean;
+  error?: string;
+  duration_ms?: number;
+};
+
+export type MinecraftStatus = {
+  enabled: boolean;
+  live: boolean;
+  dry_run: boolean;
+  url: string;
+  world: string;
+  token_configured: boolean;
+  connected?: boolean;
+  max_blocks?: number;
+  company_tools?: string[];
+  tools?: string[];
+  recent?: MinecraftAudit[];
+  probe?: {
+    ok?: boolean;
+    connected?: boolean;
+    dry_run?: boolean;
+    message?: string;
+    error?: string;
+    remote_tools?: string[];
   };
 };
 
@@ -159,3 +197,17 @@ export const deleteItem = (id: string) =>
 export const fetchEvents = () => request<{ events: WorldEvent[]; count: number }>('/linkin/events');
 
 export const fetchOverview = () => request<Overview>('/linkin/overview');
+
+export const fetchMinecraftStatus = () => request<MinecraftStatus>('/linkin/minecraft/status');
+export const probeMinecraft = () =>
+  request<MinecraftStatus['probe']>('/linkin/minecraft/probe', { method: 'POST', body: '{}' });
+export const callMinecraftTool = (tool: string, arguments_: Record<string, unknown>) =>
+  request<Record<string, unknown>>('/linkin/minecraft/call', {
+    method: 'POST',
+    body: JSON.stringify({ tool, arguments: arguments_ }),
+  });
+export const dispatchBuilding = (id: string) =>
+  request<{ building: Building; minecraft: Record<string, unknown> }>(
+    `/linkin/buildings/${id}/dispatch`,
+    { method: 'POST', body: '{}' },
+  );

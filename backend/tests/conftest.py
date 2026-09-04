@@ -39,6 +39,15 @@ def _isolate_role_catalog(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_minecraft_mcp(tmp_path, monkeypatch):
+    """所有測試共用：Minecraft MCP 預設乾跑，審計寫入暫存。"""
+    monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "false")
+    monkeypatch.setenv("EVOL_MC_MCP_TOKEN", "")
+    monkeypatch.setenv("EVOL_MC_MCP_AUDIT_PATH", str(tmp_path / "mcp_audit.jsonl"))
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _isolate_llm_config_and_ops(tmp_path, monkeypatch):
     """隔離 LLM 配置檔，並關閉模型目錄背景迴圈。"""
     monkeypatch.setenv("EVOL_CONFIG_DIR", str(tmp_path / "llm_cfg"))

@@ -140,12 +140,16 @@ def route_by_complexity(state: EvoLoopState) -> str:
 
     try:
         from backend.linkin.pipeline import is_linkin_complex_task
+        from backend.tools.minecraft_mcp import is_minecraft_control_query
 
         if is_linkin_complex_task(query):
             logger.info("靈境世界觀任務判定為複雜，啟用公司運行時")
             return "run_company"
+        if is_minecraft_control_query(query):
+            logger.info("Minecraft MCP 控制任務判定為複雜，啟用公司運行時")
+            return "run_company"
     except Exception as exc:  # noqa: BLE001
-        logger.debug("靈境複雜度判斷略過：%s", exc)
+        logger.debug("靈境／Minecraft 複雜度判斷略過：%s", exc)
 
     try:
         from backend.core.cost_speed_router import (

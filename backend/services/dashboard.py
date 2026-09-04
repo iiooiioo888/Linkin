@@ -174,6 +174,13 @@ def _collect_capabilities(
     except OSError:
         archive_files = 0
 
+    try:
+        from backend.linkin.minecraft import monitor_status as minecraft_monitor_status
+
+        mcp_status = minecraft_monitor_status()
+    except Exception:  # noqa: BLE001
+        mcp_status = {"dry_run": True, "connected": False, "world": "world"}
+
     return [
         {
             "key": "llm",
@@ -230,6 +237,18 @@ def _collect_capabilities(
             "description": "每次對話生命週期結構化存為 JSONL，供審計與行為分析。",
             "status": "active" if archive_files > 0 else "idle",
             "stats": {"files": archive_files},
+        },
+        {
+            "key": "minecraft_mcp",
+            "name": "Minecraft MCP",
+            "icon": "▣",
+            "description": "MineMCP JSON-RPC 橋接：公司角色可放置／破壞／填充方塊並執行指令。",
+            "status": "active" if not mcp_status.get("dry_run") else "idle",
+            "stats": {
+                "dry_run": mcp_status.get("dry_run"),
+                "connected": mcp_status.get("connected"),
+                "world": mcp_status.get("world"),
+            },
         },
     ]
 

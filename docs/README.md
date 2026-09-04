@@ -26,6 +26,7 @@
 - [世界觀](linkin/worldview.md) — 三大陣營、靈絲術、區域風格
 - [系統設計](linkin/architecture.md) — 掛載方式、五層控制、部件對照
 - [靈境 API](linkin/api.md) — `/linkin/*` 與工具鐵律
+- [Minecraft MCP](linkin/minecraft-mcp.md) — MineMCP 橋接、角色工具、乾跑
 - [頂層系統提示詞](linkin/system-prompt.md) — 所有子角色繼承的活文件
 
 ### 🛠️ 開發

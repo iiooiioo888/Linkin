@@ -52,7 +52,7 @@ def test_empty_data_degrades_safely(tmp_path, monkeypatch):
     # 能力註冊表為靜態結構，始終完整
     keys = [c["key"] for c in data["capabilities"]]
     assert keys == [
-        "llm", "reflection_loop", "company_runtime", "memory", "opc_ua", "archiver",
+        "llm", "reflection_loop", "company_runtime", "memory", "opc_ua", "archiver", "minecraft_mcp",
     ]
 
 

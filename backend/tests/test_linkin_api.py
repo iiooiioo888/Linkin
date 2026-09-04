@@ -219,6 +219,8 @@ def test_quest_and_item_and_overview(client: TestClient):
     assert body["world_name"] == "灵境·Linkin"
     assert body["compliance"]["factions_defined"] is True
     assert body["compliance"]["magic_defined"] is True
+    assert body["compliance"]["minecraft"]["dry_run"] is True
+    assert body["minecraft"]["dry_run"] is True
     assert body["quest_count"] == 1
     assert body["item_count"] == 1
 
@@ -277,6 +279,9 @@ def test_existing_chat_and_monitor_routes_untouched():
     assert "/linkin/npcs" in paths
     assert "/linkin/buildings" in paths
     assert "/linkin/events" in paths
+    assert "/linkin/minecraft/status" in paths
+    assert "/linkin/minecraft/call" in paths
+    assert "/linkin/buildings/{building_id}/dispatch" in paths
     assert "/linkin/quests/{quest_id}" in paths or any(p.endswith("/quests/{quest_id}") for p in paths)
 
 
@@ -329,6 +334,8 @@ def test_seed_linkin_roles(linkin_env):
     director = get_snapshot("custom_linkin_build_director")
     assert director is not None
     assert director["level"] == 1
+    assert "place_block" in (director.get("tools_allowed") or [])
+    assert "execute_command" in (director.get("tools_allowed") or [])
     prompt = director["system_prompt"]
     assert "灵境意志" in prompt or "灵境·Linkin" in prompt
     assert "[待Phase" not in prompt
@@ -338,6 +345,8 @@ def test_seed_linkin_roles(linkin_env):
     assert executor is not None
     assert executor["level"] == 2
     assert "執行者" in executor["name"] or "执行者" in executor["name"] or "建築" in executor["name"]
+    assert "place_block" in (executor.get("tools_allowed") or [])
+    assert "execute_command" not in (executor.get("tools_allowed") or [])
 
 
 def test_seed_refreshes_stale_system_prompt(linkin_env):
@@ -409,3 +418,68 @@ def test_format_npc_text_relationships_consistent():
     assert listed.endswith("关系：")
     assert npc_relationships({"relationships": ["雾衡"]}) == {}
     assert npc_relationships({"relationships": {"雾衡": "合作"}}) == {"雾衡": "合作"}
+
+
+def test_minecraft_status_dry_run_call_and_dispatch(client: TestClient):
+    status = client.get("/linkin/minecraft/status")
+    assert status.status_code == 200
+    assert status.json()["dry_run"] is True
+    assert status.json()["enabled"] is False
+
+    probe = client.post("/linkin/minecraft/probe")
+    assert probe.status_code == 200
+    assert probe.json()["dry_run"] is True
+    assert probe.json()["connected"] is False
+
+    placed = client.post(
+        "/linkin/minecraft/call",
+        json={
+            "tool": "place_block",
+            "arguments": {"x": 120, "y": 64, "z": -300, "material": "OAK_PLANKS"},
+        },
+    )
+    assert placed.status_code == 200
+    payload = placed.json()
+    assert payload["ok"] is True
+    assert payload["dry_run"] is True
+    assert payload["remote"] == "pose_block"
+
+    denied = client.post(
+        "/linkin/minecraft/call",
+        json={"tool": "read_file", "arguments": {"path": "secrets.env"}},
+    )
+    assert denied.status_code == 400
+
+    building = client.post(
+        "/linkin/buildings/generate",
+        json={
+            "prompt": "月光庭园一座小桥",
+            "style": "精灵古典",
+            "location": "120, 64, -300",
+            "region": "精灵森林",
+            "block_count": 80,
+        },
+    )
+    assert building.status_code == 200
+    bld_id = building.json()["building"]["id"]
+    dispatched = client.post(f"/linkin/buildings/{bld_id}/dispatch")
+    assert dispatched.status_code == 200
+    mcp = dispatched.json()["minecraft"]
+    assert mcp["ok"] is True
+    assert mcp["dry_run"] is True
+    assert dispatched.json()["building"]["status"] == "dispatched"
+
+    missing_xyz = client.post(
+        "/linkin/buildings/generate",
+        json={
+            "prompt": "雾中庭园一座隐所",
+            "style": "隐士木屋",
+            "location": "宁渊谷",
+            "region": "宁渊谷",
+            "block_count": 40,
+        },
+    )
+    assert missing_xyz.status_code == 200
+    bad_id = missing_xyz.json()["building"]["id"]
+    failed = client.post(f"/linkin/buildings/{bad_id}/dispatch")
+    assert failed.status_code == 400

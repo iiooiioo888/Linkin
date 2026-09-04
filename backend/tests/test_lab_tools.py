@@ -141,5 +141,7 @@ def test_company_tool_registry_includes_lab_tools():
         "ponytail_review",
         "archify_generate",
         "archify_evoloop",
+        "place_block",
+        "execute_command",
     ):
         assert expected in names
