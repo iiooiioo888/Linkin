@@ -1,5 +1,0 @@
-{"timestamp":"2026-08-11T06:50:29.790434Z","operation":"write","tag_name":"FlowRate","value":50.0,"reason":"測試","result":"blocked","detail":"标签 FlowRate 不在写入白名单中，已拒绝"}
-{"timestamp":"2026-08-11T06:56:10.629125Z","operation":"write","tag_name":"FlowRate","value":50.0,"reason":"測試","result":"blocked","detail":"标签 FlowRate 不在写入白名单中，已拒绝"}
-{"timestamp":"2026-08-11T06:59:46.014147Z","operation":"write","tag_name":"FlowRate","value":50.0,"reason":"測試","result":"blocked","detail":"标签 FlowRate 不在写入白名单中，已拒绝"}
-{"timestamp":"2026-08-11T07:19:39.461646Z","operation":"write","tag_name":"FlowRate","value":50.0,"reason":"測試","result":"blocked","detail":"标签 FlowRate 不在写入白名单中，已拒绝"}
-{"timestamp":"2026-08-11T07:28:17.690400Z","operation":"write","tag_name":"FlowRate","value":50.0,"reason":"測試","result":"blocked","detail":"标签 FlowRate 不在写入白名单中，已拒绝"}

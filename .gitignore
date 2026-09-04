@@ -79,6 +79,13 @@ htmlcov/
 # OPC runtime audit logs (not product assets)
 opc_service/audit_logs/*.jsonl
 
+# Local runtime SQLite / OPC cache
+hub_data.sqlite3
+opc_service/data/edge_cache.json
+
+# Runtime session traces (seed demo traces remain tracked)
+backend/data/traces/trace_sess-*.jsonl
+
 # Runtime routing telemetry (not seed assets)
 backend/data/routing_feedback.json
 
