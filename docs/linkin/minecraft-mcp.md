@@ -71,6 +71,9 @@ Docker 後端要打宿主機上的 Minecraft 時，Windows 可用 `EVOL_MC_MCP_U
 | POST | `/linkin/minecraft/probe` |
 | POST | `/linkin/minecraft/call` |
 | POST | `/linkin/buildings/{id}/dispatch` 錨點放一顆標記方塊，不一次填滿方案體積 |
+| GET | `/linkin/buildings/{id}/preview` Three.js 體素 |
+| GET | `/linkin/buildings/{id}/schematic` 下載 Sponge Schematic **v3** `.schem` |
+| POST | `/linkin/buildings/import` 匯入 `.schem`（v1／v2／v3，儲存升級為 v3） |
 | POST | `/linkin/admin/execute` 通過鐵律後轉發 `execute_command` |
 
 監控中心：**靈境 → Minecraft**。建築面板可「發送到 Minecraft」。實驗室 MCP 分頁顯示橋接狀態。

@@ -282,7 +282,66 @@ def test_existing_chat_and_monitor_routes_untouched():
     assert "/linkin/minecraft/status" in paths
     assert "/linkin/minecraft/call" in paths
     assert "/linkin/buildings/{building_id}/dispatch" in paths
+    assert "/linkin/buildings/{building_id}/preview" in paths
+    assert "/linkin/buildings/{building_id}/schematic" in paths
+    assert "/linkin/buildings/import" in paths
+    assert "/linkin/buildings/import-base64" in paths
     assert "/linkin/quests/{quest_id}" in paths or any(p.endswith("/quests/{quest_id}") for p in paths)
+
+
+def test_building_schematic_v3_preview_download_and_import(client: TestClient):
+    created = client.post(
+        "/linkin/buildings/generate",
+        json={
+            "prompt": "月光庭园一座小桥",
+            "style": "精灵古典",
+            "location": "120, 64, -300",
+            "region": "精灵森林",
+            "block_count": 80,
+        },
+    )
+    assert created.status_code == 200, created.text
+    body = created.json()
+    building = body["building"]
+    assert building["schematic_version"] == 3
+    assert building["format"] == "sponge_schematic"
+    assert building["width"] >= 1
+    assert building["voxel_count"] >= 1
+    assert body["preview"]["version"] == 3
+    assert body["preview"]["voxel_count"] == building["voxel_count"]
+    assert body["preview"]["schematic_base64"]
+    assert body["preview"]["schematic_base64"].startswith("H4sI")
+    bld_id = building["id"]
+
+    preview = client.get(f"/linkin/buildings/{bld_id}/preview")
+    assert preview.status_code == 200
+    assert preview.json()["voxels"]
+    assert preview.json()["biome"] == "minecraft:forest"
+
+    downloaded = client.get(f"/linkin/buildings/{bld_id}/schematic")
+    assert downloaded.status_code == 200
+    raw = downloaded.content
+    assert raw[:2] == b"\x1f\x8b"
+    assert 'attachment; filename="' in downloaded.headers.get("content-disposition", "")
+
+    imported = client.post(
+        "/linkin/buildings/import",
+        files={"file": ("bridge.schem", raw, "application/octet-stream")},
+        data={"prompt": "匯入小桥", "location": "1, 64, 1", "region": "精灵森林", "style": "精灵古典"},
+    )
+    assert imported.status_code == 200, imported.text
+    imported_building = imported.json()["building"]
+    assert imported_building["schematic_version"] == 3
+    assert imported_building["voxel_count"] == building["voxel_count"]
+    assert imported_building["id"] != bld_id
+
+    from_b64 = client.post(
+        "/linkin/buildings/import-base64",
+        json={"schematic_base64": body["preview"]["schematic_base64"], "prompt": "Base64 小桥"},
+    )
+    assert from_b64.status_code == 200, from_b64.text
+    assert from_b64.json()["building"]["voxel_count"] == building["voxel_count"]
+    assert from_b64.json()["preview"]["schematic_base64"]
 
 
 def test_entity_delete_and_events(client: TestClient):

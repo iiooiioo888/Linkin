@@ -110,6 +110,9 @@ backend/data/company_runs/run_*.jsonl
 backend/data/routing_feedback.json
 
 # Minecraft MCP 執行期稽核（非正式種子）
+# Runtime sponge schematics (generated / imported binaries)
+*.schem
+backend/data/linkin/schematics/*.schem
 backend/data/linkin/mcp_audit.jsonl
 
 # Local Chroma persist dirs (JSON 種子仍提交)

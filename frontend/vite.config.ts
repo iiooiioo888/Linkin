@@ -1,6 +1,11 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+
+const root = fileURLToPath(new URL('.', import.meta.url))
+const posix = (value: string) => value.replace(/\\/g, '/')
 
 // GitHub Pages 專案站必須用 /Evoloop/，本機與 Docker 維持 /
 const base = process.env.VITE_BASE || '/'
@@ -10,10 +15,25 @@ export default defineConfig({
   base,
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
-    include: ['react-is', 'recharts'],
+    include: [
+      'react-is',
+      'recharts',
+      'three',
+      'three/examples/jsm/controls/OrbitControls.js',
+    ],
   },
   resolve: {
-    dedupe: ['react', 'react-dom', 'react-is'],
+    alias: [
+      {
+        find: /^three\/addons\/(.*)$/,
+        replacement: posix(path.resolve(root, 'node_modules/three/examples/jsm')) + '/$1',
+      },
+      {
+        find: /^three$/,
+        replacement: posix(path.resolve(root, 'node_modules/three/build/three.module.js')),
+      },
+    ],
+    dedupe: ['react', 'react-dom', 'react-is', 'three'],
   },
   server: {
     // 5173 在部分 Windows 環境會 EACCES；預設 3001 避開占用

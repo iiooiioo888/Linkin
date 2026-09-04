@@ -9,9 +9,25 @@ import json
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 
-from backend.linkin.constitution import load_constitution, save_constitution, update_constitution
+from backend.linkin.constitution import (
+    allowed_styles_for_region,
+    load_constitution,
+    save_constitution,
+    update_constitution,
+)
+from backend.linkin.schematic import (
+    SchematicError,
+    attach_schematic,
+    b64_to_schem_bytes,
+    ensure_schematic,
+    import_schematic_bytes,
+    preview_payload,
+    remove_schematic_file,
+    schematic_path,
+)
 from backend.linkin.knowledge import (
     COL_EVENTS,
     COL_NPCS,
@@ -105,6 +121,21 @@ def _building_or_404(building_id: str) -> dict[str, Any]:
         if str(item.get("id")) == building_id:
             return item
     raise HTTPException(status_code=404, detail="建築方案不存在")
+
+
+def _schematic_http(exc: SchematicError) -> HTTPException:
+    return HTTPException(
+        status_code=400,
+        detail={"message": str(exc), "code": "invalid_schematic"},
+    )
+
+
+def _persist_schematic(building: dict[str, Any]) -> tuple[dict[str, Any], Any]:
+    try:
+        updated, model = ensure_schematic(building)
+    except SchematicError as exc:
+        raise _schematic_http(exc) from exc
+    return upsert_entity("buildings", updated), model
 
 
 def _tool_http(exc: ToolValidationError) -> HTTPException:
@@ -362,12 +393,14 @@ def generate_building(body: dict[str, Any]) -> dict[str, Any]:
     except ToolValidationError as exc:
         raise _tool_http(exc) from exc
     params = invoked["params"]
-    building = {
-        "id": f"bld-{uuid.uuid4().hex[:10]}",
-        **params,
-        "status": "planned",
-        "note": f"已校验风格与 {params['block_count']} 方塊上限。",
-    }
+    building = attach_schematic(
+        {
+            "id": f"bld-{uuid.uuid4().hex[:10]}",
+            **params,
+            "status": "planned",
+            "note": f"已校验风格与 {params['block_count']} 方塊上限。",
+        }
+    )
     upsert_entity("buildings", building)
     get_store().upsert(
         COL_WORLDVIEW,
@@ -375,7 +408,105 @@ def generate_building(body: dict[str, Any]) -> dict[str, Any]:
         {"kind": "building", "building_id": building["id"], "style": params["style"]},
         skip_quality=True,
     )
-    return {"building": building}
+    try:
+        _, model = ensure_schematic(building)
+        preview = preview_payload(model, building_id=str(building["id"]))
+    except SchematicError:
+        preview = None
+    return {"building": building, "preview": preview}
+
+
+@linkin_router.post("/buildings/import")
+def import_building(
+    file: UploadFile = File(...),
+    prompt: str = Form(""),
+    style: str = Form(""),
+    location: str = Form("0, 64, 0"),
+    region: str = Form(""),
+) -> dict[str, Any]:
+    filename = (file.filename or "").lower()
+    if filename and not filename.endswith((".schem", ".nbt")):
+        raise HTTPException(status_code=400, detail="請上傳 .schem 或 .nbt")
+    data = file.file.read()
+    style_text = style.strip()
+    region_text = region.strip()
+    if style_text and region_text:
+        allowed = allowed_styles_for_region(region_text)
+        if allowed is not None and style_text not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": f"風格「{style_text}」與區域「{region_text}」文化不符。允許：{'、'.join(allowed)}",
+                    "code": "style_mismatch",
+                    "style": style_text,
+                    "region": region_text,
+                    "allowed_styles": allowed,
+                },
+            )
+    rec_id = f"bld-{uuid.uuid4().hex[:10]}"
+    try:
+        record, model = import_schematic_bytes(
+            data,
+            building_id=rec_id,
+            prompt=prompt.strip(),
+            style=style_text,
+            location=location.strip() or "0, 64, 0",
+            region=region_text,
+        )
+    except SchematicError as exc:
+        raise _schematic_http(exc) from exc
+    stored = upsert_entity("buildings", record)
+    get_store().upsert(
+        COL_WORLDVIEW,
+        f"建筑方案（匯入 schematic）：{stored.get('style')} @ {stored.get('location')}\n{stored.get('prompt')}",
+        {"kind": "building", "building_id": stored["id"], "style": stored.get("style")},
+        skip_quality=True,
+    )
+    return {"building": stored, "preview": preview_payload(model, building_id=str(stored["id"]))}
+
+
+@linkin_router.post("/buildings/import-base64")
+def import_building_base64(body: dict[str, Any]) -> dict[str, Any]:
+    b64 = str(body.get("schematic_base64") or body.get("base64") or "")
+    try:
+        data = b64_to_schem_bytes(b64)
+    except SchematicError as exc:
+        raise _schematic_http(exc) from exc
+    style_text = str(body.get("style") or "").strip()
+    region_text = str(body.get("region") or "").strip()
+    if style_text and region_text:
+        allowed = allowed_styles_for_region(region_text)
+        if allowed is not None and style_text not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": f"風格「{style_text}」與區域「{region_text}」文化不符。允許：{'、'.join(allowed)}",
+                    "code": "style_mismatch",
+                    "style": style_text,
+                    "region": region_text,
+                    "allowed_styles": allowed,
+                },
+            )
+    rec_id = f"bld-{uuid.uuid4().hex[:10]}"
+    try:
+        record, model = import_schematic_bytes(
+            data,
+            building_id=rec_id,
+            prompt=str(body.get("prompt") or "").strip(),
+            style=style_text,
+            location=str(body.get("location") or "0, 64, 0").strip() or "0, 64, 0",
+            region=region_text,
+        )
+    except SchematicError as exc:
+        raise _schematic_http(exc) from exc
+    stored = upsert_entity("buildings", record)
+    get_store().upsert(
+        COL_WORLDVIEW,
+        f"建筑方案（匯入 Base64 schematic）：{stored.get('style')} @ {stored.get('location')}\n{stored.get('prompt')}",
+        {"kind": "building", "building_id": stored["id"], "style": stored.get("style")},
+        skip_quality=True,
+    )
+    return {"building": stored, "preview": preview_payload(model, building_id=str(stored["id"]))}
 
 
 @linkin_router.get("/buildings")
@@ -384,8 +515,43 @@ def list_buildings() -> dict[str, Any]:
     return {"buildings": items, "count": len(items)}
 
 
+@linkin_router.get("/buildings/{building_id}")
+def get_building(building_id: str) -> dict[str, Any]:
+    building, _model = _persist_schematic(_building_or_404(building_id))
+    return {"building": building}
+
+
+@linkin_router.get("/buildings/{building_id}/preview")
+def building_preview(building_id: str) -> dict[str, Any]:
+    building, model = _persist_schematic(_building_or_404(building_id))
+    payload = preview_payload(model, building_id=building_id)
+    payload["building"] = {
+        "id": building.get("id"),
+        "style": building.get("style"),
+        "prompt": building.get("prompt"),
+        "kind": building.get("kind") or payload.get("kind"),
+        "region": building.get("region"),
+        "location": building.get("location"),
+    }
+    return payload
+
+
+@linkin_router.get("/buildings/{building_id}/schematic")
+def download_building_schematic(building_id: str) -> Response:
+    _persist_schematic(_building_or_404(building_id))
+    path = schematic_path(building_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="schematic 檔案不存在")
+    return Response(
+        content=path.read_bytes(),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{building_id}.schem"'},
+    )
+
+
 @linkin_router.delete("/buildings/{building_id}")
 def remove_building(building_id: str) -> dict[str, Any]:
+    remove_schematic_file(building_id)
     return _delete_entity_or_404("buildings", building_id)
 
 

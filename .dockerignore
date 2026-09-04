@@ -52,6 +52,7 @@ shared/
 hub_data.sqlite3
 backend/data/chroma/
 backend/data/linkin/chroma/
+backend/data/linkin/schematics/
 backend/data/routing_feedback.json
 opc_service/data/edge_cache.json
 opc_service/audit_logs/

@@ -78,6 +78,31 @@ export type Building = {
   block_count: number;
   status?: string;
   note?: string;
+  kind?: string;
+  width?: number;
+  height?: number;
+  length?: number;
+  voxel_count?: number;
+  schematic_version?: number;
+  format?: string;
+  biome?: string;
+};
+
+export type BuildingPreview = {
+  id: string;
+  kind?: string;
+  width: number;
+  height: number;
+  length: number;
+  version: number;
+  data_version?: number;
+  voxel_count: number;
+  biome?: string;
+  palette: Array<{ name: string; color: string; opacity?: number; emissive?: string }>;
+  voxels: Array<{ x: number; y: number; z: number; i: number }>;
+  schematic_base64?: string;
+  schematic_filename?: string;
+  building?: Partial<Building>;
 };
 
 export type Item = {
@@ -183,10 +208,60 @@ export const generateBuilding = (body: {
   location: string;
   region: string;
   block_count: number;
-}) => request<{ building: Building }>('/linkin/buildings/generate', { method: 'POST', body: JSON.stringify(body) });
+}) => request<{ building: Building; preview?: BuildingPreview | null }>('/linkin/buildings/generate', { method: 'POST', body: JSON.stringify(body) });
 export const fetchBuildings = () => request<{ buildings: Building[]; count: number }>('/linkin/buildings');
+export const fetchBuildingPreview = (id: string) => request<BuildingPreview>(`/linkin/buildings/${id}/preview`);
+export const schematicUrl = (id: string) => apiUrl(`/linkin/buildings/${id}/schematic`);
 export const deleteBuilding = (id: string) =>
   request<{ deleted: boolean }>(`/linkin/buildings/${id}`, { method: 'DELETE' });
+
+export const importSchematicBase64 = (
+  schematicBase64: string,
+  meta: { prompt?: string; style?: string; location?: string; region?: string },
+) =>
+  request<{ building: Building; preview: BuildingPreview }>('/linkin/buildings/import-base64', {
+    method: 'POST',
+    body: JSON.stringify({
+      schematic_base64: schematicBase64,
+      prompt: meta.prompt ?? '',
+      style: meta.style ?? '',
+      location: meta.location ?? '',
+      region: meta.region ?? '',
+    }),
+  });
+
+export async function importSchematic(
+  file: File,
+  meta: { prompt?: string; style?: string; location?: string; region?: string },
+): Promise<{ building: Building; preview: BuildingPreview }> {
+  const form = new FormData();
+  form.append('file', file);
+  if (meta.prompt) form.append('prompt', meta.prompt);
+  if (meta.style) form.append('style', meta.style);
+  if (meta.location) form.append('location', meta.location);
+  if (meta.region) form.append('region', meta.region);
+  const resp = await fetch(apiUrl('/linkin/buildings/import'), { method: 'POST', body: form });
+  const text = await resp.text();
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { detail: text };
+    }
+  }
+  if (!resp.ok) {
+    const detail = (data as { detail?: unknown })?.detail;
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : detail && typeof detail === 'object' && 'message' in detail
+          ? String((detail as { message: string }).message)
+          : `請求失敗（HTTP ${resp.status}）`;
+    throw new Error(message);
+  }
+  return data as { building: Building; preview: BuildingPreview };
+}
 
 export const fetchItems = () => request<{ items: Item[]; count: number }>('/linkin/items');
 export const createItem = (body: Omit<Item, 'id'>) =>
