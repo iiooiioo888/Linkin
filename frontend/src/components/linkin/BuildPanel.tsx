@@ -21,7 +21,7 @@ export default function BuildPanel() {
   const [result, setResult] = useState<Building | null>(null);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'idle' | 'generate' | 'dispatch' | 'delete'>('idle');
   const [dispatchNote, setDispatchNote] = useState<string | null>(null);
 
   const styles = useMemo(() => regionStyles[region] ?? Object.values(regionStyles).flat(), [region, regionStyles]);
@@ -59,7 +59,7 @@ export default function BuildPanel() {
   }, [styles, style]);
 
   const onGenerate = async () => {
-    setBusy(true);
+    setBusy('generate');
     setError(null);
     try {
       const data = await generateBuilding({ prompt, style, location, region, block_count: blockCount });
@@ -68,12 +68,12 @@ export default function BuildPanel() {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setBusy(false);
+      setBusy('idle');
     }
   };
 
   const onDispatch = async (id: string) => {
-    setBusy(true);
+    setBusy('dispatch');
     setError(null);
     setDispatchNote(null);
     try {
@@ -89,12 +89,12 @@ export default function BuildPanel() {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setBusy(false);
+      setBusy('idle');
     }
   };
 
   const onDelete = async (id: string) => {
-    setBusy(true);
+    setBusy('delete');
     setError(null);
     try {
       await deleteBuilding(id);
@@ -103,7 +103,7 @@ export default function BuildPanel() {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setBusy(false);
+      setBusy('idle');
     }
   };
 
@@ -151,8 +151,8 @@ export default function BuildPanel() {
         </div>
       </div>
 
-      <button type="button" disabled={busy} onClick={() => void onGenerate()} className="mt-4 self-start rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40">
-        {busy ? '生成中' : '生成建築方案'}
+      <button type="button" disabled={busy !== 'idle'} onClick={() => void onGenerate()} className="mt-4 self-start rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40">
+        {busy === 'generate' ? '生成中' : '生成建築方案'}
       </button>
 
       {result && (
@@ -177,7 +177,7 @@ export default function BuildPanel() {
             <div className="mt-2 flex gap-3">
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy !== 'idle'}
                 onClick={() => void onDispatch(item.id)}
                 className="text-[10px] text-[#64D2FF] disabled:opacity-40"
               >
@@ -185,7 +185,7 @@ export default function BuildPanel() {
               </button>
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy !== 'idle'}
                 onClick={() => void onDelete(item.id)}
                 className="text-[10px] text-red-400 disabled:opacity-40"
               >
