@@ -1,14 +1,38 @@
 [
   {
-    "id": "bld-0574ab9045",
+    "id": "bld-da66319610",
     "prompt": "在林冠间搭建一座月光庭园小桥",
     "style": "精灵古典",
     "location": "120, 64, -300",
     "region": "精灵森林",
-    "block_count": 800,
+    "block_count": 390,
     "status": "planned",
-    "note": "已校验风格与 800 方塊上限。",
-    "updated_at": "2026-09-04T09:54:51.085728+00:00",
-    "created_at": "2026-09-04T09:54:51.085728+00:00"
+    "note": "已生成 Sponge Schematic v3（390 方塊，7×8×32）。",
+    "format": "sponge_schematic",
+    "schematic_version": 3,
+    "data_version": 3955,
+    "kind": "bridge",
+    "width": 7,
+    "height": 8,
+    "length": 32,
+    "offset": [
+      0,
+      0,
+      0
+    ],
+    "voxel_count": 390,
+    "palette": [
+      "minecraft:air",
+      "minecraft:lantern",
+      "minecraft:oak_log",
+      "minecraft:oak_planks",
+      "minecraft:stripped_oak_wood"
+    ],
+    "biome": "minecraft:forest",
+    "biome_count": 1,
+    "block_budget": 800,
+    "schematic_file": "bld-da66319610.schem",
+    "updated_at": "2026-09-04T10:02:33.091400+00:00",
+    "created_at": "2026-09-04T10:01:23.558744+00:00"
   }
 ]

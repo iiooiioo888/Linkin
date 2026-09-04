@@ -1,11 +1,6 @@
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-
-const root = fileURLToPath(new URL('.', import.meta.url))
-const posix = (value: string) => value.replace(/\\/g, '/')
 
 // GitHub Pages 專案站必須用 /Evoloop/，本機與 Docker 維持 /
 const base = process.env.VITE_BASE || '/'
@@ -23,16 +18,6 @@ export default defineConfig({
     ],
   },
   resolve: {
-    alias: [
-      {
-        find: /^three\/addons\/(.*)$/,
-        replacement: posix(path.resolve(root, 'node_modules/three/examples/jsm')) + '/$1',
-      },
-      {
-        find: /^three$/,
-        replacement: posix(path.resolve(root, 'node_modules/three/build/three.module.js')),
-      },
-    ],
     dedupe: ['react', 'react-dom', 'react-is', 'three'],
   },
   server: {

@@ -93,7 +93,7 @@ declare module 'three' {
   }
 }
 
-declare module 'three/addons/controls/OrbitControls.js' {
+declare module 'three/examples/jsm/controls/OrbitControls.js' {
   import type { PerspectiveCamera } from 'three';
 
   export class OrbitControls {
