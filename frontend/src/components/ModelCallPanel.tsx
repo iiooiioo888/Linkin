@@ -3,6 +3,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchOptimizationMonitor } from '../api/client';
+import { navPathForTab } from '../lib/monitorTabs';
 import type { OptimizationMonitorData } from '../types';
 
 function Bar({ pct, color = '#007AFF' }: { pct: number; color?: string }) {
@@ -50,9 +51,16 @@ export default function ModelCallPanel() {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold">模型調用分布</h2>
+          <h2 className="text-sm font-semibold">調用用量</h2>
           <p className="mt-0.5 text-[11px] text-[#8a8f98]">
             從全鏈路 Trace 彙總 LLM 調用 · 按模型與環節統計
+          </p>
+          <p className="mt-1 text-[11px] text-[#636366]">
+            要改金鑰或目錄請到{' '}
+            <a href="#/monitor/llm" className="text-[#64D2FF] hover:underline">
+              {navPathForTab('llm')}
+            </a>
+            。
           </p>
         </div>
         <button

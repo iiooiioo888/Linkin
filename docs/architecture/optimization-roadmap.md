@@ -150,7 +150,7 @@ EVOL_ROUTING_LENGTH_BIAS=0
 
 ## P2：邊緣快取層
 
-監控中心「系統指標」彙總的是 **EvoLoop 自身運行狀態**（快取命中率、反思輪次、路由門檻、Trace、任務成功率等），**不是** OPC UA 工業現場感測。
+監控中心「運行指標」彙總的是 **EvoLoop 自身運行狀態**（快取命中率、反思輪次、路由門檻、Trace、任務成功率等），**不是** OPC UA 工業現場感測。
 
 - **前端**：`SystemMetricsPanel`（分頁鍵 `metrics`）· `GET /monitor/optimization`
 - **工業 OPC 任務路徑**（閥位、馬達等感測標籤）僅在 `resolved_path === 'opc'` 時由 `opc_service` 處理，與監控中心系統指標無關
@@ -159,7 +159,7 @@ EVOL_ROUTING_LENGTH_BIAS=0
 
 **模組**：`backend/services/optimization_monitor.py` → `_layered_cache_status()`
 
-反映 `backend/core/llm_cache.py` 精確 + 語義快取條目數與命中率，供 `GET /monitor/optimization` 與「系統指標」分頁使用。
+反映 `backend/core/llm_cache.py` 精確 + 語義快取條目數與命中率，供 `GET /monitor/optimization` 與「運行指標」分頁使用。
 
 ```env
 EVOL_LLM_CACHE_SIZE=512
@@ -172,7 +172,7 @@ EVOL_SEMANTIC_THRESHOLD=0.92
 
 **模組**：`opc_service/sense.py`
 
-僅在 `route_by_complexity` 走 OPC 6 級閉環時使用，與系統指標監控無關。
+僅在 `route_by_complexity` 走 OPC 6 級閉環時使用，與運行指標監控無關。
 
 | 模式 | 行為 |
 |------|------|

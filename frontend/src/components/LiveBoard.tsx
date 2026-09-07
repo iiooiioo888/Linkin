@@ -1,6 +1,6 @@
 /**
- * LiveBoard — 大螢幕即時監控（Apple 控制中心風格）。
- * 單一柵格、真實狀態驅動；無 KPI 重複列、無場景輪播。
+ * LiveBoard — 控制台總覽（Apple 控制中心風格）。
+ * 卡片可跳到對應分頁：API 路由／角色／任務／觀測，避免功能孤立。
  */
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
@@ -11,9 +11,11 @@ import {
   mapPhaseToPipelineIndex,
   pickActiveAgents,
   pickBusyAgents,
-  stageBackends,
 } from '../lib/animLive';
 import { LAB_INTEGRATION_TABS, type LabSubTab } from '../lib/labTabs';
+import { requestRoleSettingsDesk } from '../lib/agentUi';
+import { navPathForTab } from '../lib/monitorTabs';
+import type { MonitorTab } from './AppShell';
 
 const PIPELINE = [
   { id: 'sense', label: '感知' },
@@ -31,6 +33,25 @@ const RED = '#FF453A';
 const GRAY = '#98989D';
 
 export type LiveBoardDensity = 'page' | 'dock';
+
+export interface LiveBoardNav {
+  onOpenTab?: (tab: MonitorTab) => void;
+  onOpenLab?: (sub: LabSubTab) => void;
+  onOpenTraces?: () => void;
+  onOpenAgent?: (id: string) => void;
+}
+
+function GoBtn({ onClick, label = '前往' }: { onClick: () => void; label?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-[10px] font-bold text-[#0A84FF] hover:underline"
+    >
+      {label}
+    </button>
+  );
+}
 
 function FrostCard({
   title,
@@ -57,6 +78,93 @@ function FrostCard({
         {children}
       </div>
     </section>
+  );
+}
+
+function WorkflowStrip({
+  feed,
+  onOpenTab,
+}: {
+  feed: AnimLiveFeed;
+  onOpenTab?: (tab: MonitorTab) => void;
+}) {
+  const routes = feed.llmOps?.api_routes ?? [];
+  const apiReady =
+    routes.some((r) => r.configured && r.enabled) || Boolean(feed.llmOps?.configured);
+  const pinned = feed.agents.filter((a) => Boolean(a.preferred_model || a.preferred_provider)).length;
+  const running = feed.runningTasks > 0 || feed.live;
+  const steps: Array<{
+    n: string;
+    label: string;
+    hint: string;
+    tab: MonitorTab;
+    done: boolean;
+    onClick?: () => void;
+  }> = [
+    {
+      n: '1',
+      label: '配置 API',
+      hint: apiReady ? `${routes.length || 1} 組可用` : '金鑰與模型目錄',
+      tab: 'llm',
+      done: apiReady,
+    },
+    {
+      n: '2',
+      label: '指定角色',
+      hint: pinned ? `${pinned} 席已指定` : '模型與 Token',
+      tab: 'agents',
+      done: pinned > 0,
+      onClick: () => {
+        requestRoleSettingsDesk();
+        onOpenTab?.('agents');
+      },
+    },
+    {
+      n: '3',
+      label: '執行任務',
+      hint: running ? '進行中' : '佇列與進度',
+      tab: 'tasks',
+      done: running,
+    },
+    {
+      n: '4',
+      label: '觀測用量',
+      hint: '延遲與成本',
+      tab: 'models',
+      done: false,
+    },
+  ];
+  const nextIdx = steps.findIndex((s) => !s.done);
+  return (
+    <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+      {steps.map((s, i) => {
+        const next = i === nextIdx;
+        return (
+          <button
+            key={s.tab}
+            type="button"
+            onClick={() => (s.onClick ? s.onClick() : onOpenTab?.(s.tab))}
+            className={`rounded-2xl border px-3 py-2.5 text-left transition-colors ${
+              next
+                ? 'border-[#0A84FF]/50 bg-[#0A84FF]/10'
+                : s.done
+                  ? 'border-white/[0.08] bg-[#1C1C1E]'
+                  : 'border-white/[0.08] bg-[#1C1C1E] hover:border-[#0A84FF]/40'
+            }`}
+          >
+            <p
+              className={`text-[10px] font-bold uppercase tracking-wider ${
+                next ? 'text-[#64D2FF]' : s.done ? 'text-[#30D158]' : 'text-[#636366]'
+              }`}
+            >
+              {s.done ? '完成' : next ? '下一步' : s.n}
+            </p>
+            <p className="mt-0.5 text-[13px] font-semibold text-[#F5F5F7]">{s.label}</p>
+            <p className="text-[10px] text-[#8E8E93]">{s.hint}</p>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -125,7 +233,15 @@ function RingMetric({
   );
 }
 
-function PipelineCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
+function PipelineCard({
+  feed,
+  dock,
+  onOpen,
+}: {
+  feed: AnimLiveFeed;
+  dock?: boolean;
+  onOpen?: () => void;
+}) {
   const liveIdx =
     mapPhaseToPipelineIndex(feed.streamPhase) ?? mapPhaseToPipelineIndex(feed.taskPhase);
   const phase = feed.streamPhase || feed.taskPhase;
@@ -134,7 +250,10 @@ function PipelineCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
     <FrostCard
       title="管線"
       accessory={
-        <StatusDot color={liveIdx != null ? BLUE : GRAY} label={phase ? String(phase) : '待命'} />
+        <span className="flex items-center gap-2">
+          <StatusDot color={liveIdx != null ? BLUE : GRAY} label={phase ? String(phase) : '待命'} />
+          {onOpen ? <GoBtn onClick={onOpen} /> : null}
+        </span>
       }
     >
       <div className={`flex items-center gap-1 ${dock ? 'py-1' : 'py-3'} sm:gap-2`}>
@@ -179,7 +298,17 @@ function PipelineCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
   );
 }
 
-function CompanyCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
+function CompanyCard({
+  feed,
+  dock,
+  onOpen,
+  onOpenAgent,
+}: {
+  feed: AnimLiveFeed;
+  dock?: boolean;
+  onOpen?: () => void;
+  onOpenAgent?: (id: string) => void;
+}) {
   const busy = useMemo(() => pickBusyAgents(feed.agents, dock ? 4 : 5), [feed.agents, dock]);
   const active = useMemo(() => pickActiveAgents(feed.agents, 6), [feed.agents]);
 
@@ -187,16 +316,37 @@ function CompanyCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
     <FrostCard
       title="協作"
       accessory={
-        <StatusDot
-          color={active.length ? GREEN : busy.length ? ORANGE : GRAY}
-          label={active.length ? `${active.length} 執行` : busy.length ? `${busy.length} 佇列` : '空閒'}
-        />
+        <span className="flex items-center gap-2">
+          <StatusDot
+            color={active.length ? GREEN : busy.length ? ORANGE : GRAY}
+            label={active.length ? `${active.length} 執行` : busy.length ? `${busy.length} 佇列` : '空閒'}
+          />
+          {onOpen ? <GoBtn onClick={onOpen} label="角色" /> : null}
+        </span>
       }
       className={dock ? 'max-h-[180px]' : 'max-h-[240px]'}
       scroll={busy.length > (dock ? 3 : 4)}
     >
       {busy.length === 0 ? (
-        <p className="py-6 text-center text-[12px] text-[#636366]">無忙碌角色</p>
+        <div className="py-4 text-center">
+          <p className="text-[12px] text-[#636366]">無忙碌角色</p>
+          {feed.agents.some((a) => a.preferred_model || a.preferred_provider) ? (
+            <p className="mt-1 text-[11px] text-[#8E8E93]">
+              {feed.agents.filter((a) => a.preferred_model || a.preferred_provider).length} 席已指定模型
+            </p>
+          ) : onOpen ? (
+            <button
+              type="button"
+              onClick={() => {
+                requestRoleSettingsDesk();
+                onOpen();
+              }}
+              className="mt-2 text-[11px] font-medium text-[#0A84FF] hover:underline"
+            >
+              指定模型與 Token
+            </button>
+          ) : null}
+        </div>
       ) : (
         <div className="space-y-4">
           {busy.map((a) => {
@@ -206,7 +356,19 @@ function CompanyCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
               Math.round((a.capacity_used ?? 0) * 100) || (a.executing ? 55 : a.queue ? 20 : 8),
             );
             return (
-              <div key={a.id} className="flex items-center gap-3">
+              <div
+                key={a.id}
+                className={`flex items-center gap-3 ${onOpenAgent ? 'cursor-pointer rounded-lg hover:bg-white/[0.04]' : ''}`}
+                onClick={() => onOpenAgent?.(a.id)}
+                onKeyDown={(e) => {
+                  if (onOpenAgent && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    onOpenAgent(a.id);
+                  }
+                }}
+                role={onOpenAgent ? 'button' : undefined}
+                tabIndex={onOpenAgent ? 0 : undefined}
+              >
                 <span
                   className="apple-dot shrink-0"
                   style={{
@@ -238,17 +400,28 @@ function CompanyCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
   );
 }
 
-function BudgetCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
+function BudgetCard({
+  feed,
+  dock,
+  onOpen,
+}: {
+  feed: AnimLiveFeed;
+  dock?: boolean;
+  onOpen?: () => void;
+}) {
   const b = budgetPct(feed.summary);
 
   return (
     <FrostCard
       title="預算"
       accessory={
-        <StatusDot
-          color={b.totalUsd > 0 ? BLUE : GRAY}
-          label={b.totalUsd > 0 ? `$${b.totalUsd.toFixed(3)}` : '無用量'}
-        />
+        <span className="flex items-center gap-2">
+          <StatusDot
+            color={b.totalUsd > 0 ? BLUE : GRAY}
+            label={b.totalUsd > 0 ? `$${b.totalUsd.toFixed(3)}` : '無用量'}
+          />
+          {onOpen ? <GoBtn onClick={onOpen} label="用量" /> : null}
+        </span>
       }
     >
       <div className={`flex items-center justify-around ${dock ? 'py-1' : 'py-2'}`}>
@@ -271,7 +444,13 @@ function BudgetCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
   );
 }
 
-function SystemMetricsCard({ feed }: { feed: AnimLiveFeed }) {
+function SystemMetricsCard({
+  feed,
+  onOpen,
+}: {
+  feed: AnimLiveFeed;
+  onOpen?: () => void;
+}) {
   const opt = feed.optimization;
   const hitPct = Math.round((opt?.llm_cache.hit_rate ?? 0) * 100);
   const traceCount = opt?.trace.trace_count ?? 0;
@@ -281,8 +460,13 @@ function SystemMetricsCard({ feed }: { feed: AnimLiveFeed }) {
 
   return (
     <FrostCard
-      title="系統指標"
-      accessory={<StatusDot color={tone} label={hitPct >= 30 ? '快取活躍' : '累積中'} />}
+      title="運行指標"
+      accessory={
+        <span className="flex items-center gap-2">
+          <StatusDot color={tone} label={hitPct >= 30 ? '快取活躍' : '累積中'} />
+          {onOpen ? <GoBtn onClick={onOpen} /> : null}
+        </span>
+      }
     >
       <div className="grid grid-cols-3 gap-4 py-2">
         {[
@@ -305,64 +489,25 @@ function SystemMetricsCard({ feed }: { feed: AnimLiveFeed }) {
   );
 }
 
-function RouterCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
-  const backends = useMemo(() => stageBackends(feed.optimization), [feed.optimization]);
-  const routing = feed.optimization?.routing_feedback;
-  const phase = (feed.streamPhase || feed.taskPhase || '').toLowerCase();
-  const hotIdx = backends.findIndex(
-    (b) => phase.includes(b.id.toLowerCase()) || phase.includes(b.label.toLowerCase()),
-  );
-  const maxW = Math.max(...backends.map((b) => b.weight), 1);
-
-  return (
-    <FrostCard
-      title="路由"
-      accessory={
-        <StatusDot
-          color={hotIdx >= 0 ? BLUE : GRAY}
-          label={routing?.total ? `${routing.total}` : `${backends.length}`}
-        />
-      }
-      bodyClassName="apple-chart"
-    >
-      <div className={`flex items-end gap-3 ${dock ? 'h-[88px]' : 'h-[120px]'} sm:gap-4`}>
-        {backends.map((b, i) => {
-          const hot = i === hotIdx;
-          const h = (dock ? 18 : 24) + (b.weight / maxW) * (dock ? 52 : 76);
-          return (
-            <div key={b.id} className="flex min-w-0 flex-1 flex-col items-center justify-end">
-              <div
-                className="w-full rounded-t-lg transition-[height,background] duration-400"
-                style={{
-                  height: h,
-                  background: hot
-                    ? `linear-gradient(180deg, ${BLUE}, ${BLUE}88)`
-                    : 'rgba(255,255,255,0.08)',
-                  boxShadow: hot ? `0 0 16px ${BLUE}44` : undefined,
-                }}
-              />
-              <p
-                className="mt-2 truncate text-[10px] font-medium"
-                style={{ color: hot ? BLUE : '#AEAEB2' }}
-              >
-                {b.label}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-    </FrostCard>
-  );
-}
-
-function EventsCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
+function EventsCard({
+  feed,
+  dock,
+  onOpen,
+}: {
+  feed: AnimLiveFeed;
+  dock?: boolean;
+  onOpen?: () => void;
+}) {
   const lines = useMemo(() => buildReportLines(feed.agents, dock ? 4 : 6), [feed.agents, dock]);
 
   return (
     <FrostCard
       title="事件"
       accessory={
-        <StatusDot color={lines.length ? GREEN : GRAY} label={lines.length ? `${lines.length}` : '無'} />
+        <span className="flex items-center gap-2">
+          <StatusDot color={lines.length ? GREEN : GRAY} label={lines.length ? `${lines.length}` : '無'} />
+          {onOpen ? <GoBtn onClick={onOpen} label="軌跡" /> : null}
+        </span>
       }
       className={dock ? 'max-h-[200px]' : 'max-h-[260px]'}
       scroll={lines.length > (dock ? 3 : 4)}
@@ -394,7 +539,7 @@ function EventsCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
   );
 }
 
-function ApiPoolCard({ feed }: { feed: AnimLiveFeed }) {
+function ApiPoolCard({ feed, onOpen }: { feed: AnimLiveFeed; onOpen?: () => void }) {
   const ops = feed.llmOps;
   const routes = ops?.api_routes ?? [];
   const configured = routes.filter((r) => r.configured && r.enabled);
@@ -405,23 +550,22 @@ function ApiPoolCard({ feed }: { feed: AnimLiveFeed }) {
   return (
     <FrostCard
       title="API 池"
-      accessory={
-        <a href="#/monitor/llm" className="text-[10px] font-bold text-[#0A84FF] hover:underline">
-          管理
-        </a>
-      }
+      accessory={onOpen ? <GoBtn onClick={onOpen} label="管理" /> : undefined}
     >
       {!ops ? (
         <p className="py-4 text-center text-[12px] text-[#636366]">同步中…</p>
       ) : routes.length === 0 && !ops.configured ? (
         <div className="py-4 text-center">
           <p className="text-[12px] text-[#AEAEB2]">尚未配置 API</p>
-          <a
-            href="#/monitor/llm"
-            className="mt-2 inline-block text-[11px] font-medium text-[#0A84FF] hover:underline"
-          >
-            前往系統 → API 路由
-          </a>
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              className="mt-2 inline-block text-[11px] font-medium text-[#0A84FF] hover:underline"
+            >
+              前往 {navPathForTab('llm')}
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="space-y-2 py-1">
@@ -450,7 +594,13 @@ function ApiPoolCard({ feed }: { feed: AnimLiveFeed }) {
               enabled: true,
             }]).slice(0, 4).map((route) => (
               <li key={route.id} className="flex items-center justify-between gap-2 py-1.5 first:pt-0">
-                <span className="truncate text-[12px] font-medium text-[#F5F5F7]">{route.name}</span>
+                <button
+                  type="button"
+                  className="min-w-0 truncate text-left text-[12px] font-medium text-[#F5F5F7] hover:text-[#64D2FF]"
+                  onClick={onOpen}
+                >
+                  {route.name}
+                </button>
                 <span className="shrink-0 font-mono text-[10px] text-[#8E8E93]">
                   {route.model || `${route.allowed_models.length} 模`}
                 </span>
@@ -528,11 +678,13 @@ export default function LiveBoard({
   feed,
   density = 'page',
   onOpenLab,
+  onOpenTab,
+  onOpenTraces,
+  onOpenAgent,
 }: {
   feed: AnimLiveFeed;
   density?: LiveBoardDensity;
-  onOpenLab?: (sub: LabSubTab) => void;
-}) {
+} & LiveBoardNav) {
   const dock = density === 'dock';
   const updated = feed.updatedAt
     ? new Date(feed.updatedAt).toLocaleTimeString('zh-TW', {
@@ -554,9 +706,12 @@ export default function LiveBoard({
         }`}
       >
         {!dock && (
-          <header className="mb-4 flex items-center justify-end gap-2">
-            <StatusDot color={feed.live ? GREEN : GRAY} label={feed.live ? 'LIVE' : 'IDLE'} />
-            {updated && <span className="apple-data text-[10px] text-[#636366]">{updated}</span>}
+          <header className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-[11px] text-[#8E8E93]">控制台總覽 · 配置 API → 指定角色 → 執行 → 觀測</p>
+            <span className="flex items-center gap-2">
+              <StatusDot color={feed.live ? GREEN : GRAY} label={feed.live ? 'LIVE' : 'IDLE'} />
+              {updated && <span className="apple-data text-[10px] text-[#636366]">{updated}</span>}
+            </span>
           </header>
         )}
 
@@ -567,19 +722,24 @@ export default function LiveBoard({
           </div>
         )}
 
+        {!dock && <WorkflowStrip feed={feed} onOpenTab={onOpenTab} />}
+
         {dock ? (
           <div className="lb-dock-grid">
+            <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
+            <CompanyCard
+              feed={feed}
+              dock
+              onOpen={() => onOpenTab?.('agents')}
+              onOpenAgent={onOpenAgent}
+            />
             <div className="lb-span-2">
-              <PipelineCard feed={feed} dock />
+              <PipelineCard feed={feed} dock onOpen={() => onOpenTab?.('pipeline')} />
             </div>
-            <CompanyCard feed={feed} dock />
-            <BudgetCard feed={feed} dock />
-            <ApiPoolCard feed={feed} />
+            <BudgetCard feed={feed} dock onOpen={() => onOpenTab?.('models')} />
+            <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
             <div className="lb-span-2">
-              <RouterCard feed={feed} dock />
-            </div>
-            <div className="lb-span-2">
-              <EventsCard feed={feed} dock />
+              <EventsCard feed={feed} dock onOpen={onOpenTraces} />
             </div>
             <div className="lb-span-2">
               <LabToolsCard dock onOpenLab={onOpenLab} />
@@ -587,15 +747,19 @@ export default function LiveBoard({
           </div>
         ) : (
           <div className="lb-board-grid">
+            <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
+            <CompanyCard
+              feed={feed}
+              onOpen={() => onOpenTab?.('agents')}
+              onOpenAgent={onOpenAgent}
+            />
             <div className="lb-span-2">
-              <PipelineCard feed={feed} />
+              <PipelineCard feed={feed} onOpen={() => onOpenTab?.('pipeline')} />
             </div>
-            <CompanyCard feed={feed} />
-            <BudgetCard feed={feed} />
-            <ApiPoolCard feed={feed} />
-            <SystemMetricsCard feed={feed} />
+            <BudgetCard feed={feed} onOpen={() => onOpenTab?.('models')} />
+            <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
             <div className="lb-span-2">
-              <EventsCard feed={feed} />
+              <EventsCard feed={feed} onOpen={onOpenTraces} />
             </div>
             <LabToolsCard onOpenLab={onOpenLab} />
           </div>

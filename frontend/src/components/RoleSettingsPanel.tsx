@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AgentCatalogMeta, RoleAgent, RolePreset } from '../types';
 import { CATEGORY_LABEL, ROUTING_LABEL, TIER_LABEL } from '../lib/agentUi';
+import { navPathForTab } from '../lib/monitorTabs';
 import PromptEditor from './PromptEditor';
 
 export interface RoleSettingsDraft {
@@ -232,6 +233,7 @@ interface RoleSettingsPanelProps {
   agents: RoleAgent[];
   saving: boolean;
   error: string | null;
+  initialSection?: 'identity' | 'model' | 'prompt' | 'alerts' | 'runtime';
   onSave: (draft: RoleSettingsDraft) => Promise<void>;
   onReset?: () => Promise<void>;
   onDelete?: () => Promise<void>;
@@ -244,18 +246,19 @@ export default function RoleSettingsPanel({
   agents,
   saving,
   error,
+  initialSection = 'identity',
   onSave,
   onReset,
   onDelete,
   onClone,
 }: RoleSettingsPanelProps) {
   const [draft, setDraft] = useState<RoleSettingsDraft>(() => draftFromAgent(agent));
-  const [section, setSection] = useState<'identity' | 'model' | 'prompt' | 'alerts' | 'runtime'>('identity');
+  const [section, setSection] = useState<'identity' | 'model' | 'prompt' | 'alerts' | 'runtime'>(initialSection);
 
   useEffect(() => {
     setDraft(draftFromAgent(agent));
-    setSection('identity');
-  }, [agent]);
+    setSection(initialSection);
+  }, [agent, initialSection]);
 
   const categories = catalog?.categories ?? Object.entries(CATEGORY_LABEL).map(([id, label]) => ({ id, label }));
   const tiers = catalog?.tiers ?? Object.entries(TIER_LABEL).map(([id, label]) => ({ id, label }));
@@ -320,7 +323,7 @@ export default function RoleSettingsPanel({
         {(
           [
             ['identity', '身分／組織'],
-            ['model', '模型／路由'],
+            ['model', '模型／Token'],
             ['prompt', '角色設定'],
             ['runtime', '執行／合規'],
             ['alerts', '預算／告警／監控'],
@@ -456,15 +459,28 @@ export default function RoleSettingsPanel({
 
       {section === 'model' && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {(catalog?.api_routes?.length ?? 0) === 0 && (
+          {(catalog?.api_routes?.length ?? 0) === 0 && catalog != null && (
             <p className="md:col-span-2 rounded-xl border border-[#FF9F0A]/25 bg-[#FF9F0A]/8 px-3 py-2 text-[12px] text-[#FF9F0A]">
               尚未配置 API。請先到{' '}
               <a href="#/monitor/llm" className="font-medium underline">
-                系統 → API 路由
+                {navPathForTab('llm')}
               </a>{' '}
               加入千問／DeepSeek／Kimi／OpenRouter。
             </p>
           )}
+          <div className="md:col-span-2 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[12px] text-[#AEAEB2]">
+            目前生效：
+            <span className="ml-1 font-medium text-[#F5F5F7]">
+              {(catalog?.api_routes ?? []).find((r) => r.id === draft.preferred_provider)?.name
+                || catalog?.api_routes?.find((r) => r.is_default)?.name
+                || '全域預設'}
+            </span>
+            {' · '}
+            <span className="font-mono text-[#F5F5F7]">{draft.preferred_model || '該 API 預設模型'}</span>
+            {' · 輸出 '}
+            <span className="font-mono text-[#F5F5F7]">{draft.max_output_tokens.toLocaleString()}</span>
+            {draft.context_window > 0 ? ` · 上下文 ${draft.context_window.toLocaleString()}` : ' · 上下文不截斷'}
+          </div>
           <Field label="模型層級">
             <select
               className={inputCls}

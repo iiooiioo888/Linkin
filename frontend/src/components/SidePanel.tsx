@@ -5,8 +5,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { AGENT_STATUS_META, agentOpenCount, dispatchJumpAgent, isAlertAgent, isLiveAgent } from '../lib/agentUi';
+import { AGENT_STATUS_META, agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, isAlertAgent, isLiveAgent, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT } from '../lib/agentUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
+import { fetchLlmOps } from '../api/client';
+import type { ApiRoutePublic, ChatSession, RoleAgent, TaskSummary } from '../types';
 import {
   LAB_NAV_GROUPS,
   type LabSubTab,
@@ -20,7 +22,6 @@ import {
   type ConsoleNavKey,
 } from '../lib/monitorTabs';
 import { useMonitorStore } from '../stores/monitorStore';
-import type { ChatSession, RoleAgent, TaskSummary } from '../types';
 import type { MonitorTab, ViewKey } from './AppShell';
 import TraceRoster from './TraceRoster';
 
@@ -175,7 +176,7 @@ function AgentRoster({
         if (scope === 'live' && !isLiveAgent(a)) return false;
         if (scope === 'alert' && !isAlertAgent(a)) return false;
         if (!q) return true;
-        const hay = `${a.name} ${a.id} ${a.description ?? ''} ${(a.responsibilities ?? []).join(' ')}`.toLowerCase();
+        const hay = `${a.name} ${a.id} ${a.description ?? ''} ${a.preferred_model ?? ''} ${(a.responsibilities ?? []).join(' ')}`.toLowerCase();
         return hay.includes(q);
       })
       .sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9));
@@ -281,7 +282,7 @@ function AgentRoster({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜尋名稱、職責…"
+            placeholder="搜尋角色、模型、職責…"
             className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] text-[#F5F5F7] placeholder:text-[#636366] outline-none focus:border-[#007AFF]/50"
           />
           {(searching || scope !== 'all') && (
@@ -370,6 +371,92 @@ function AgentRoster({
           );
         }}
       />
+      )}
+    </div>
+  );
+}
+
+function ApiRouteRoster() {
+  const [routes, setRoutes] = useState<ApiRoutePublic[]>([]);
+  const [strategy, setStrategy] = useState('role_preferred');
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = () =>
+      fetchLlmOps()
+        .then((ops) => {
+          setRoutes(ops.api_routes ?? []);
+          setStrategy(ops.route_strategy || 'role_preferred');
+        })
+        .catch(() => {
+          setRoutes([]);
+        });
+    void load();
+    const timer = setInterval(() => void load(), 8000);
+    window.addEventListener(API_ROUTES_CHANGED_EVENT, load);
+    const onEdit = (e: Event) => setActiveId((e as CustomEvent<string>).detail || null);
+    const onNew = () => setActiveId(null);
+    window.addEventListener(EDIT_API_ROUTE_EVENT, onEdit);
+    window.addEventListener(NEW_API_ROUTE_EVENT, onNew);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(API_ROUTES_CHANGED_EVENT, load);
+      window.removeEventListener(EDIT_API_ROUTE_EVENT, onEdit);
+      window.removeEventListener(NEW_API_ROUTE_EVENT, onNew);
+    };
+  }, []);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 space-y-1.5 border-b border-white/[0.06] px-3 pb-3 pt-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[#636366]">已配置的 API</p>
+          <button
+            type="button"
+            onClick={() => dispatchNewApiRoute()}
+            className="rounded-md px-1.5 py-0.5 text-[10px] text-[#64D2FF] hover:bg-white/[0.06]"
+          >
+            新增
+          </button>
+        </div>
+        <p className="text-[10px] text-[#8E8E93]">
+          {routes.length} 組 · 策略 {strategy}
+        </p>
+      </div>
+      {routes.length === 0 ? (
+        <p className="px-3 py-8 text-center text-[11px] text-[#636366]">
+          尚未加入 API。請在右側選擇供應商並填入金鑰。
+        </p>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
+          {routes.map((route) => (
+            <button
+              key={route.id}
+              type="button"
+              onClick={() => dispatchEditApiRoute(route.id)}
+              className={`mx-1.5 mb-0.5 flex w-[calc(100%-12px)] items-center gap-2 rounded-lg px-2.5 py-1.5 text-left ${
+                activeId === route.id
+                  ? 'bg-white/[0.06] text-[#F5F5F7]'
+                  : 'text-[#AEAEB2] hover:bg-white/[0.03] hover:text-[#F5F5F7]'
+              }`}
+            >
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  !route.enabled ? 'bg-[#8E8E93]' : route.configured ? 'bg-[#30D158]' : 'bg-[#FF9F0A]'
+                }`}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[12px] font-medium text-[#F5F5F7]">
+                  {route.name}
+                  {route.is_default ? <span className="ml-1 text-[9px] text-[#64D2FF]">預設</span> : null}
+                </span>
+                <span className="block truncate text-[10px] text-[#636366]">
+                  {route.provider_label || route.provider} · {route.allowed_models.length} 模型
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -470,16 +557,21 @@ function TabBtn({
   item,
   active,
   onClick,
+  compact = false,
 }: {
   item: ConsoleNavItem | { key: string; icon: string; label: string; hint?: string };
   active: boolean;
   onClick: () => void;
+  compact?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors ${
+      title={item.hint}
+      className={`relative flex w-full items-center gap-2 rounded-lg text-left transition-colors ${
+        compact ? 'px-2 py-1' : 'px-2.5 py-1.5'
+      } ${
         active
           ? 'bg-white/[0.06] text-[#F5F5F7]'
           : 'text-[#98989D] hover:bg-white/[0.03] hover:text-[#F5F5F7]'
@@ -488,7 +580,7 @@ function TabBtn({
       <span className="w-4 shrink-0 text-center text-[12px] leading-none opacity-70">{item.icon}</span>
       <span className="min-w-0 flex-1">
         <span className={`block truncate text-[12px] ${active ? 'font-medium' : ''}`}>{item.label}</span>
-        {item.hint && (
+        {!compact && item.hint && (
           <span className="block truncate text-[10px] text-[#636366]">{item.hint}</span>
         )}
       </span>
@@ -597,20 +689,27 @@ function MonitorSidebar({
   const onLab = activity === 'lab';
   const onAgentsTab = activeView === 'monitor' && monitorTab === 'agents';
   const onTasksTab = activeView === 'monitor' && monitorTab === 'tasks';
+  const onLlmTab = activeView === 'monitor' && monitorTab === 'llm';
   const onTraces = activeView === 'traces';
   const currentKey: ConsoleNavKey = onTraces ? 'traces' : monitorTab;
   const activeGroup = navGroupForTab(currentKey);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
+    setup: true,
     execute: true,
     observe: activeGroup === 'observe',
     system: activeGroup === 'system',
-    linkin: true,
+    linkin: activeGroup === 'linkin',
   }));
+  const [allNav, setAllNav] = useState(false);
 
   useEffect(() => {
     if (!activeGroup) return;
     setOpenGroups((prev) => (prev[activeGroup] ? prev : { ...prev, [activeGroup]: true }));
   }, [activeGroup]);
+
+  useEffect(() => {
+    setAllNav(false);
+  }, [currentKey]);
 
   const pick = (key: ConsoleNavKey) => {
     if (key === 'traces') {
@@ -620,45 +719,72 @@ function MonitorSidebar({
     onMonitorTabChange(key);
     if (key !== 'agents' && focusAgentId) onFocusAgent(null);
     if (key !== 'tasks' && focusTaskId) onFocusTask(null);
-    if (key !== 'agents' && key !== 'tasks') onClose();
+    if (key !== 'agents' && key !== 'tasks' && key !== 'llm') onClose();
   };
 
   if (onLab) {
     return <LabSidebar labSubTab={labSubTab} onLabSubTabChange={onLabSubTabChange} />;
   }
 
-  const showRoster = onAgentsTab || onTasksTab || onTraces;
+  const showRoster = onAgentsTab || onTasksTab || onTraces || onLlmTab;
+  const activeGroupDef = MONITOR_NAV_GROUPS.find((g) => g.id === activeGroup);
+  const currentItem = activeGroupDef?.items.find((i) => i.key === currentKey);
+
+  const renderGroups = (compact: boolean) =>
+    (compact ? MONITOR_NAV_GROUPS.filter((g) => g.id === activeGroup) : MONITOR_NAV_GROUPS).map((group) => {
+      const open = compact || (openGroups[group.id] ?? (group.id === 'execute' || group.id === 'setup'));
+      return (
+        <div key={group.id}>
+          {!compact && (
+            <GroupToggle
+              label={group.label}
+              open={open}
+              onToggle={() => setOpenGroups((prev) => ({ ...prev, [group.id]: !open }))}
+            />
+          )}
+          {open && (
+            <div className={`space-y-0.5 px-2 ${compact ? 'pb-2' : 'pb-1'}`}>
+              {group.items.map((item) => (
+                <TabBtn
+                  key={item.key}
+                  item={item}
+                  compact={compact}
+                  active={currentKey === item.key}
+                  onClick={() => pick(item.key)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <nav
-        className={`shrink-0 overflow-y-auto ${showRoster ? 'max-h-[42%] border-b border-white/[0.06]' : 'min-h-0 flex-1'}`}
+        className={`shrink-0 overflow-y-auto ${
+          showRoster
+            ? `border-b border-white/[0.06] ${allNav ? 'max-h-[46%]' : ''}`
+            : 'min-h-0 flex-1'
+        }`}
         aria-label={activityTitle(activity)}
       >
-        {MONITOR_NAV_GROUPS.map((group) => {
-          const open = openGroups[group.id] ?? group.id === 'execute';
-          return (
-            <div key={group.id}>
-              <GroupToggle
-                label={group.label}
-                open={open}
-                onToggle={() => setOpenGroups((prev) => ({ ...prev, [group.id]: !open }))}
-              />
-              {open && (
-                <div className="space-y-0.5 px-2 pb-1">
-                  {group.items.map((item) => (
-                    <TabBtn
-                      key={item.key}
-                      item={item}
-                      active={currentKey === item.key}
-                      onClick={() => pick(item.key)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {showRoster && (
+          <div className="flex items-center justify-between gap-2 px-3 pb-1 pt-2">
+            <p className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wider text-[#636366]">
+              {activeGroupDef?.label}
+              {currentItem ? ` · ${currentItem.label}` : ''}
+            </p>
+            <button
+              type="button"
+              onClick={() => setAllNav((v) => !v)}
+              className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] text-[#64D2FF] hover:bg-white/[0.06]"
+            >
+              {allNav ? '收起' : '全部功能'}
+            </button>
+          </div>
+        )}
+        {showRoster && !allNav ? renderGroups(true) : renderGroups(false)}
       </nav>
 
       {onAgentsTab ? (
@@ -677,6 +803,8 @@ function MonitorSidebar({
             onMonitorTabChange('tasks');
           }}
         />
+      ) : onLlmTab ? (
+        <ApiRouteRoster />
       ) : onTraces ? (
         <TraceRoster
           selectedTaskId={traceTaskId}
@@ -717,7 +845,7 @@ export default function SidePanel({
       )}
 
       <aside
-        className={`fixed inset-y-10 left-11 z-30 flex w-56 flex-col overflow-hidden border-r border-white/[0.06] apple-chrome transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-10 left-11 z-30 flex w-60 flex-col overflow-hidden border-r border-white/[0.06] apple-chrome transition-transform md:static md:translate-x-0 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

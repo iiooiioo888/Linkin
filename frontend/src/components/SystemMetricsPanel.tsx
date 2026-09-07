@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchOptimizationMonitor } from '../api/client';
+import { navPathForTab } from '../lib/monitorTabs';
 import type { OptimizationMonitorData } from '../types';
 import { RoadmapTable } from './ChatMonitorCards';
 
@@ -206,9 +207,20 @@ export default function SystemMetricsPanel() {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold">系統指標監控</h2>
+          <h2 className="text-sm font-semibold">運行指標</h2>
           <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            反思閉環 · 快取 · 路由 · Trace · 任務運行時（非工業 OPC 感測）
+            快取 · 反思 · 優化路線圖 · 環節模型（非工業 OPC）
+          </p>
+          <p className="mt-1 text-[11px] text-[#636366]">
+            API 金鑰在{' '}
+            <a href="#/monitor/llm" className="text-[#64D2FF] hover:underline">
+              {navPathForTab('llm')}
+            </a>
+            ；用量在{' '}
+            <a href="#/monitor/models" className="text-[#64D2FF] hover:underline">
+              觀測 → 調用用量
+            </a>
+            。
           </p>
         </div>
         <div className="flex items-center gap-2">

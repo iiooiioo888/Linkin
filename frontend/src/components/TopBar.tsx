@@ -3,7 +3,7 @@
  */
 import { useTranslation } from 'react-i18next';
 import { setLocale } from '../i18n';
-import { monitorTabLabel, resolveActivity } from '../lib/monitorTabs';
+import { consoleChromeLabel, resolveActivity } from '../lib/monitorTabs';
 import { labSubTabLabel, type LabSubTab } from '../lib/labTabs';
 import type { MonitorTab, ViewKey } from './AppShell';
 
@@ -35,13 +35,9 @@ export default function TopBar({
   const viewLabel =
     activity === 'chat'
       ? t('nav.chat')
-      : activeView === 'traces'
-        ? traceTaskId
-          ? `${t('nav.console')} · ${t('nav.traces')} · ${traceTaskId.slice(0, 8)}…`
-          : `${t('nav.console')} · ${t('nav.traces')}`
-        : activity === 'lab'
-          ? `${t('nav.lab')} · ${labSubTabLabel(labSubTab)}`
-          : `${t('nav.console')} · ${monitorTabLabel(monitorTab)}`;
+      : activity === 'lab'
+        ? `${t('nav.lab')} · ${labSubTabLabel(labSubTab)}`
+        : `${t('nav.console')} · ${consoleChromeLabel(activeView, monitorTab, labSubTabLabel(labSubTab), traceTaskId)}`;
 
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.06] apple-chrome px-3">

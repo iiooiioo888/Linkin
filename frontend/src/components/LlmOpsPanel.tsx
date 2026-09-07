@@ -1,12 +1,12 @@
 /**
- * LlmOpsPanel — 控制台「系統 → API 路由」。
- * 左：多 API 配置；右：健康快照與模型目錄。
+ * LlmOpsPanel — 控制台「配置 → API 路由」。
+ * 側欄列已配置 API；主區編輯金鑰／模型與目錄。用量與角色設定分屬觀測／執行。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchLlmOps, refreshLlmModels, updateLlmOpsPrefs } from '../api/client';
+import { navPathForTab } from '../lib/monitorTabs';
 import type { LlmOpsData } from '../types';
 import ApiRoutesEditor from './ApiRoutesEditor';
-import OptimizationPanel from './OptimizationPanel';
 
 function fmtWhen(iso: string | undefined): string {
   if (!iso) return '尚未檢查';
@@ -35,8 +35,8 @@ export default function LlmOpsPanel() {
   const [data, setData] = useState<LlmOpsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pageTab, setPageTab] = useState<'edit' | 'catalog'>('edit');
   const [query, setQuery] = useState('');
-  const [showCatalog, setShowCatalog] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -69,13 +69,24 @@ export default function LlmOpsPanel() {
     );
   }, [models, query]);
 
+  const groupedCatalog = useMemo(() => {
+    const map = new Map<string, typeof filtered>();
+    for (const m of filtered) {
+      const key = m.route_name || '未歸組';
+      const list = map.get(key) ?? [];
+      list.push(m);
+      map.set(key, list);
+    }
+    return [...map.entries()];
+  }, [filtered]);
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas text-[#f7f8f8]">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-white/[0.08] px-4 py-2.5">
         <div>
           <h2 className="text-sm font-semibold">API 路由</h2>
           <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            多組 API 並存（千問／DeepSeek／Kimi／OpenRouter）。角色在「執行 → 角色 → 模型／路由」指定模型與 Token。
+            多組 API 並存；每組再勾選可用模型。角色在「{navPathForTab('agents')} → 模型／設定」指定。
           </p>
         </div>
         <div className="flex gap-2">
@@ -109,111 +120,111 @@ export default function LlmOpsPanel() {
       </div>
 
       {error && (
-        <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
+        <div className="mx-4 mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
       )}
 
-      <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-5">
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">供應商鎖定</p>
-          <p className="mt-1 text-sm text-[#f7f8f8]">{data?.provider_label ?? '—'}</p>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">{data?.lock_message}</p>
-        </div>
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">健康</p>
-          <p className={`mt-1 text-sm ${health.tone}`}>{health.text}</p>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            來源 {data?.catalog_source || '—'} · 原因 {ops?.last_reason || '—'}
-          </p>
-        </div>
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">可用模型</p>
-          <p className="mt-1 font-mono text-lg text-[#f7f8f8]">{data?.allowed_models.length ?? 0}</p>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            {data?.api_routes?.length ?? 0} 組 API · 策略 {data?.route_strategy || 'role_preferred'}
-          </p>
-        </div>
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">最近 / 下次檢查</p>
-          <p className="mt-1 text-sm text-[#f7f8f8]">{fmtWhen(ops?.last_ok_at || data?.catalog_fetched_at)}</p>
-          <p className={`mt-0.5 text-[11px] ${ops?.stale ? 'text-amber-300' : 'text-[#8a8f98]'}`}>
-            下次 {fmtWhen(ops?.next_check_at)} · {ops?.last_latency_ms ?? 0} ms
-          </p>
-        </div>
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">定時間隔</p>
-          <p className="mt-1 font-mono text-lg text-[#f7f8f8]">{ops?.refresh_interval_sec ?? 300}s</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {[60, 300, 900].map((sec) => (
-              <button
-                key={sec}
-                type="button"
-                className={`rounded px-1.5 py-0.5 text-[10px] ${
-                  ops?.refresh_interval_sec === sec ? 'bg-[#007AFF]/20 text-[#64D2FF]' : 'text-[#8a8f98]'
-                }`}
-                onClick={() => void updateLlmOpsPrefs(sec).then(setData)}
-              >
-                {sec >= 60 ? `${sec / 60} 分` : `${sec}s`}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b border-white/[0.06] px-4 py-2 text-[11px]">
+        <span className={health.tone}>{health.text}</span>
+        <span className="text-[#8a8f98]">
+          {data?.api_routes?.length ?? 0} 組 API · {data?.allowed_models.length ?? 0} 模型 · {data?.route_strategy || 'role_preferred'}
+        </span>
+        <span className="text-[#636366]">{data?.lock_message}</span>
+        <span className={`ml-auto ${ops?.stale ? 'text-amber-300' : 'text-[#636366]'}`}>
+          下次 {fmtWhen(ops?.next_check_at)}
+        </span>
+        <span className="flex gap-1">
+          {[60, 300, 900].map((sec) => (
+            <button
+              key={sec}
+              type="button"
+              className={`rounded px-1.5 py-0.5 text-[10px] ${
+                ops?.refresh_interval_sec === sec ? 'bg-[#007AFF]/20 text-[#64D2FF]' : 'text-[#8a8f98]'
+              }`}
+              onClick={() => void updateLlmOpsPrefs(sec).then(setData)}
+            >
+              {sec >= 60 ? `${sec / 60} 分` : `${sec}s`}
+            </button>
+          ))}
+        </span>
       </div>
 
       {ops?.last_error && (
-        <p className="mb-3 text-[12px] text-amber-200">
+        <p className="shrink-0 px-4 pt-2 text-[12px] text-amber-200">
           上次錯誤：{ops.last_error}（連續失敗 {ops.consecutive_fail}）
         </p>
       )}
 
-      <div className="grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-12">
-        <section className="xl:col-span-5">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#62666d]">配置</p>
-          <ApiRoutesEditor onChanged={() => void refresh()} />
-        </section>
+      <div className="flex shrink-0 gap-1 px-4 pt-3">
+        {(
+          [
+            ['edit', '編輯'],
+            ['catalog', `目錄 ${models.length}`],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setPageTab(key)}
+            className={`rounded-lg px-2.5 py-1 text-[12px] ${
+              pageTab === key ? 'bg-[#007AFF]/20 text-[#64D2FF]' : 'text-[#8a8f98] hover:text-[#d0d6e0]'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-        <section className="xl:col-span-7">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setShowCatalog((v) => !v)}
-              className="text-[10px] font-semibold uppercase tracking-wider text-[#62666d] hover:text-[#AEAEB2]"
-            >
-              {showCatalog ? '▾' : '▸'} 模型目錄 · 目前預設 {data?.model || '—'}
-            </button>
-            <div className="flex items-center gap-2">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {pageTab === 'edit' && (
+          <div className="max-w-2xl">
+            <ApiRoutesEditor hideList onChanged={() => void refresh()} />
+            <p className="mt-4 text-[11px] text-[#636366]">
+              下一步：到{' '}
+              <a href="#/monitor/agents" className="text-[#64D2FF] hover:underline">
+                {navPathForTab('agents')} → 模型／設定
+              </a>
+              {' '}為每個角色指定模型與 Token；用量見{' '}
+              <a href="#/monitor/models" className="text-[#64D2FF] hover:underline">
+                {navPathForTab('models')}
+              </a>
+              。
+            </p>
+          </div>
+        )}
+
+        {pageTab === 'catalog' && (
+          <>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] text-[#8a8f98]">目前預設 {data?.model || '—'}</p>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="搜尋模型 ID / 名稱 / API"
-                className="w-48 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#d0d6e0] placeholder:text-[#62666d]"
+                className="w-56 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#d0d6e0] placeholder:text-[#62666d]"
               />
-              <p className="hidden text-[10px] text-[#62666d] lg:block">{data?.catalog_url}</p>
             </div>
-          </div>
-          {showCatalog && (
-            <>
-              <div className="overflow-hidden rounded-lg border border-white/[0.08]">
-                <table className="w-full text-left text-[12px]">
-                  <thead className="bg-[#1C1C1E] text-[10px] uppercase tracking-wider text-[#62666d]">
+            <div className="overflow-hidden rounded-lg border border-white/[0.08]">
+              <table className="w-full text-left text-[12px]">
+                <thead className="bg-[#1C1C1E] text-[10px] uppercase tracking-wider text-[#62666d]">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">模型 ID</th>
+                    <th className="px-3 py-2 font-medium">名稱</th>
+                    <th className="px-3 py-2 font-medium">API</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
                     <tr>
-                      <th className="px-3 py-2 font-medium">模型 ID</th>
-                      <th className="px-3 py-2 font-medium">名稱</th>
-                      <th className="px-3 py-2 font-medium">owned_by</th>
-                      <th className="px-3 py-2 font-medium">API</th>
+                      <td colSpan={3} className="px-3 py-8 text-center text-[#62666d]">
+                        {models.length === 0
+                          ? '尚無目錄。在左側加入千問／DeepSeek／Kimi／OpenRouter 後按「立刻檢查目錄」。'
+                          : '沒有符合搜尋的模型'}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="px-3 py-8 text-center text-[#62666d]">
-                          {models.length === 0
-                            ? '尚無目錄。在左側加入千問／DeepSeek／Kimi／OpenRouter 後按「立刻檢查目錄」。'
-                            : '沒有符合搜尋的模型'}
-                        </td>
-                      </tr>
-                    ) : (
-                      filtered.slice(0, 120).map((m) => (
-                        <tr key={`${m.route_name || ''}-${m.id}`} className="border-t border-white/[0.08]">
+                  ) : (
+                    groupedCatalog.flatMap(([group, rows]) =>
+                      rows.slice(0, 80).map((m, idx) => (
+                        <tr key={`${group}-${m.id}`} className="border-t border-white/[0.08]">
                           <td className="px-3 py-1.5 font-mono text-[#d0d6e0]">
                             {m.id}
                             {m.id === data?.model ? (
@@ -221,21 +232,21 @@ export default function LlmOpsPanel() {
                             ) : null}
                           </td>
                           <td className="px-3 py-1.5 text-[#8a8f98]">{m.name}</td>
-                          <td className="px-3 py-1.5 text-[#62666d]">{m.owned_by || '—'}</td>
-                          <td className="px-3 py-1.5 text-[#8a8f98]">{m.route_name || '—'}</td>
+                          <td className="px-3 py-1.5 text-[#8a8f98]">
+                            {idx === 0 || rows[idx - 1]?.route_name !== m.route_name ? group : ''}
+                          </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              {filtered.length > 120 && (
-                <p className="mt-2 text-[11px] text-[#62666d]">僅顯示前 120 筆，請用搜尋縮小範圍。</p>
-              )}
-            </>
-          )}
-          <OptimizationPanel />
-        </section>
+                      )),
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {filtered.length > 80 && (
+              <p className="mt-2 text-[11px] text-[#62666d]">僅顯示前 80 筆／組，請用搜尋縮小範圍。</p>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

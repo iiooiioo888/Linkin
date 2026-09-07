@@ -47,17 +47,17 @@ test.describe('EvoLoop 核心 UI', () => {
 
   test('Hash 路由：#/monitor/tasks 可書籤與刷新還原', async ({ page }) => {
     await page.goto('/#/monitor/tasks');
-    await expect(page.getByText(/控制台 · 任務|Console ·/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/控制台 · .*任務|Console ·/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByPlaceholder(/搜尋任務|Search tasks/i)).toBeVisible({ timeout: 10_000 });
 
     await page.reload();
-    await expect(page.getByText(/控制台 · 任務|Console ·/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/控制台 · .*任務|Console ·/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/tasks/);
   });
 
   test('Hash 路由：#/traces 可書籤與刷新還原', async ({ page }) => {
     await page.goto('/#/traces');
-    await expect(page.getByText(/控制台 · 軌跡|執行軌跡|Traces/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/控制台 · .*軌跡|執行軌跡|Traces/i).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByPlaceholder(/搜尋任務 ID|Search task ID/i)).toBeVisible({ timeout: 10_000 });
 
     await page.reload();
@@ -67,7 +67,7 @@ test.describe('EvoLoop 核心 UI', () => {
   test('管線分頁「任務監控」跳轉至 tasks 分頁', async ({ page }) => {
     await page.goto('/#/monitor/pipeline');
     await page.getByRole('button', { name: /任務監控/ }).click();
-    await expect(page.getByText(/控制台 · 任務|Console ·/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/控制台 · .*任務|Console ·/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/tasks/);
   });
 
@@ -82,11 +82,18 @@ test.describe('EvoLoop 核心 UI', () => {
 
   test('Hash 路由：#/monitor/llm 可開啟 API 路由', async ({ page }) => {
     await page.goto('/#/monitor/llm');
-    await expect(page.getByText(/控制台 · API 路由|Console ·/).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/控制台 · .*API 路由|Console ·/).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/全域分發策略|已配置的 API/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/llm/);
 
     await page.reload();
+    await expect(page.url()).toMatch(/#\/monitor\/llm/);
+  });
+
+  test('即時看板工作流可跳轉 API 路由', async ({ page }) => {
+    await page.goto('/#/monitor');
+    await page.getByRole('button', { name: '配置 API' }).click();
+    await expect(page.getByText(/全域分發策略|已配置的 API/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/llm/);
   });
 

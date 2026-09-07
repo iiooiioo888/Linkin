@@ -113,11 +113,41 @@ export function fmtWhen(iso: string | null | undefined): string {
 }
 
 export const JUMP_AGENT_EVENT = 'evoloop:jump-agent';
+export const EDIT_API_ROUTE_EVENT = 'linkin:edit-api-route';
+export const NEW_API_ROUTE_EVENT = 'linkin:new-api-route';
+export const API_ROUTES_CHANGED_EVENT = 'linkin:api-routes-changed';
 
-export type JumpAgentDetail = { id?: string; level?: number };
+export type AgentDeskTab = 'tasks' | 'monitor' | 'settings' | 'org';
+export type JumpAgentDetail = { id?: string; level?: number; deskTab?: AgentDeskTab };
+
+/** 控制台跨頁：角色面板尚未掛載時先記下要開的工作台分頁。 */
+let pendingDeskTab: AgentDeskTab | null = null;
+
+export function requestRoleSettingsDesk(agentId?: string) {
+  pendingDeskTab = 'settings';
+  dispatchJumpAgent({ id: agentId, deskTab: 'settings' });
+}
+
+export function consumePendingDeskTab(): AgentDeskTab | null {
+  const next = pendingDeskTab;
+  pendingDeskTab = null;
+  return next;
+}
 
 export function dispatchJumpAgent(detail: JumpAgentDetail) {
   window.dispatchEvent(new CustomEvent<JumpAgentDetail>(JUMP_AGENT_EVENT, { detail }));
+}
+
+export function dispatchEditApiRoute(routeId: string) {
+  window.dispatchEvent(new CustomEvent<string>(EDIT_API_ROUTE_EVENT, { detail: routeId }));
+}
+
+export function dispatchNewApiRoute() {
+  window.dispatchEvent(new Event(NEW_API_ROUTE_EVENT));
+}
+
+export function dispatchApiRoutesChanged() {
+  window.dispatchEvent(new Event(API_ROUTES_CHANGED_EVENT));
 }
 
 export function pickDefaultAgentId(agents: RoleAgent[], preferred?: string | null): string {

@@ -2,7 +2,7 @@
  * API 分割編輯器：多供應商（千問／DeepSeek／Kimi／OpenRouter）+ 每組多模型。
  * 設定彈窗與控制台「API 路由」共用，避免兩套入口漂移。
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import {
   deleteApiRoute,
   fetchConfig,
@@ -14,6 +14,8 @@ import {
   type LlmConfig,
 } from '../api/client';
 import type { ApiRoutePublic } from '../types';
+import { EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, dispatchApiRoutesChanged } from '../lib/agentUi';
+import { navPathForTab } from '../lib/monitorTabs';
 
 export const PROVIDER_PRESETS = [
   {
@@ -128,9 +130,14 @@ interface ApiRoutesEditorProps {
   /** 儲存／刪除／測連後回呼（控制台同步健康快照、頂欄「未配置」） */
   onChanged?: () => void;
   className?: string;
+  /** 設定彈窗用：隱藏「刷新全部目錄」（控制台已有） */
+  compact?: boolean;
+  /** 控制台側欄已有清單時隱藏重複列表 */
+  hideList?: boolean;
 }
 
-export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutesEditorProps) {
+export default function ApiRoutesEditor({ onChanged, className = '', compact = false, hideList = false }: ApiRoutesEditorProps) {
+  const modelListId = useId();
   const [cfg, setCfg] = useState<LlmConfig | null>(null);
   const [draft, setDraft] = useState(emptyDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -201,6 +208,25 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
     });
   }, []);
 
+  useEffect(() => {
+    const onEdit = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      const route = routes.find((r) => r.id === id);
+      if (route) startEdit(route);
+    };
+    const onNew = () => {
+      setEditingId(null);
+      setDraft(emptyDraft());
+      setShowKey(false);
+    };
+    window.addEventListener(EDIT_API_ROUTE_EVENT, onEdit);
+    window.addEventListener(NEW_API_ROUTE_EVENT, onNew);
+    return () => {
+      window.removeEventListener(EDIT_API_ROUTE_EVENT, onEdit);
+      window.removeEventListener(NEW_API_ROUTE_EVENT, onNew);
+    };
+  }, [routes, startEdit]);
+
   const handleSaveRoute = useCallback(async () => {
     setStatus({ kind: 'busy', text: '儲存並刷新該 API 模型目錄…' });
     try {
@@ -231,12 +257,13 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
       setCfg({ ...next, api_routes: state.api_routes, route_strategy: state.route_strategy });
       setStatus({
         kind: 'ok',
-        text: `已儲存「${draft.name || draft.provider}」。角色可在「執行 → 角色 → 模型／路由」指定此 API。`,
+        text: `已儲存「${draft.name || draft.provider}」。角色可在「${navPathForTab('agents')} → 設定」指定此 API。`,
       });
       setDraft(emptyDraft());
       setEditingId(null);
       setShowKey(false);
       onChanged?.();
+      dispatchApiRoutesChanged();
     } catch (err) {
       setStatus({ kind: 'fail', text: (err as Error).message });
     }
@@ -255,6 +282,7 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
         }
         setStatus({ kind: 'ok', text: '已刪除該 API' });
         onChanged?.();
+        dispatchApiRoutesChanged();
       } catch (err) {
         setStatus({ kind: 'fail', text: (err as Error).message });
       }
@@ -288,6 +316,7 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
         await load();
         setStatus({ kind: 'ok', text: '目錄已更新' });
         onChanged?.();
+        dispatchApiRoutesChanged();
       } catch (err) {
         setStatus({ kind: 'fail', text: (err as Error).message });
       }
@@ -303,6 +332,7 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
           prev ? { ...prev, route_strategy: state.route_strategy, api_routes: state.api_routes } : prev,
         );
         onChanged?.();
+        dispatchApiRoutesChanged();
       } catch (err) {
         setStatus({ kind: 'fail', text: (err as Error).message });
       }
@@ -343,7 +373,7 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-3 ${compact || hideList ? '' : 'md:grid-cols-2'}`}>
         <label className="block">
           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-[#636366]">
             全域分發策略
@@ -360,20 +390,27 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
             ))}
           </select>
         </label>
-        <div className="flex items-end">
-          <button
-            type="button"
-            onClick={() => void handleRefresh()}
-            disabled={status.kind === 'busy'}
-            className="w-full rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[#F5F5F7] hover:bg-white/[0.04] disabled:opacity-50"
-          >
-            刷新全部模型目錄
-          </button>
-        </div>
+        {!compact && !hideList && (
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={() => void handleRefresh()}
+              disabled={status.kind === 'busy'}
+              className="w-full rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[#F5F5F7] hover:bg-white/[0.04] disabled:opacity-50"
+            >
+              刷新全部模型目錄
+            </button>
+          </div>
+        )}
       </div>
 
       {cfg?.lock_message && <p className="text-[11px] text-[#64D2FF]/90">{cfg.lock_message}</p>}
 
+      {hideList ? (
+        <p className="text-[11px] text-[#8E8E93]">
+          左側清單點選編輯；此處新增或修改金鑰與可用模型。
+        </p>
+      ) : (
       <div className="space-y-2">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-[#636366]">已配置的 API</p>
         {routes.length === 0 ? (
@@ -454,6 +491,7 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
           ))
         )}
       </div>
+      )}
 
       <div className="rounded-xl border border-white/[0.08] p-3">
         <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-[#636366]">
@@ -509,13 +547,13 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
 
         <label className="mb-1 block text-[11px] text-[#8E8E93]">此 API 預設模型</label>
         <input
-          list="linkin-route-models"
+          list={modelListId}
           className={`mb-3 ${inputCls}`}
           value={draft.model}
           onChange={(e) => setDraft({ ...draft, model: e.target.value })}
           placeholder={editingModels[0] || preset?.defaultModel || '模型 ID'}
         />
-        <datalist id="linkin-route-models">
+        <datalist id={modelListId}>
           {editingModels.map((id) => (
             <option key={id} value={id} />
           ))}
@@ -636,7 +674,7 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
           </label>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {editingId && (
             <button
               type="button"
@@ -648,6 +686,31 @@ export default function ApiRoutesEditor({ onChanged, className = '' }: ApiRoutes
             >
               取消編輯
             </button>
+          )}
+          {hideList && editingId && (
+            <>
+              <button
+                type="button"
+                onClick={() => void handleRefresh(editingId)}
+                className="rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[#F5F5F7] hover:bg-white/[0.04]"
+              >
+                目錄
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleTest(editingId)}
+                className="rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[#F5F5F7] hover:bg-white/[0.04]"
+              >
+                測試
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDelete(editingId)}
+                className="rounded-xl border border-[#FF453A]/30 px-3 py-2 text-sm text-[#FF453A] hover:bg-[#FF453A]/10"
+              >
+                刪除
+              </button>
+            </>
           )}
           <button
             type="button"

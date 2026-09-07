@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { fetchDockerBudget, fetchDockerStatus } from '../api/client';
 import type { DockerBudget, DockerStatus } from '../types';
+import { useMonitorStore } from '../stores/monitorStore';
 
 interface StatusBarProps {
   llmConfigured: boolean | null;
@@ -32,6 +33,8 @@ function Dot({ tone }: { tone: 'ok' | 'warn' | 'err' | 'idle' }) {
 export default function StatusBar({ llmConfigured, taskCount, memoryCount }: StatusBarProps) {
   const [dockerStatus, setDockerStatus] = useState<DockerStatus | null>(null);
   const [dockerBudget, setDockerBudget] = useState<DockerBudget | null>(null);
+  const llmOps = useMonitorStore((s) => s.llmOps);
+  const apiReady = (llmOps?.api_routes ?? []).filter((r) => r.enabled && r.configured).length;
 
   useEffect(() => {
     let cancelled = false;
@@ -82,7 +85,19 @@ export default function StatusBar({ llmConfigured, taskCount, memoryCount }: Sta
       <div className="flex min-w-0 items-center gap-3 overflow-x-auto">
         <span className="apple-status-item">
           <Dot tone={llmTone} />
-          <span>{llmConfigured === false ? 'LLM 未配置' : '就緒'}</span>
+          <a href="#/monitor/llm" className="hover:text-[#F5F5F7]">
+            {llmConfigured === false
+              ? 'LLM 未配置'
+              : apiReady > 0
+                ? `API ${apiReady}`
+                : '就緒'}
+          </a>
+        </span>
+
+        <span className="apple-status-item hidden sm:inline-flex">
+          <a href="#/monitor/agents" className="hover:text-[#F5F5F7]">
+            角色
+          </a>
         </span>
 
         <span className="apple-status-item hidden sm:inline-flex">

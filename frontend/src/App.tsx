@@ -696,6 +696,8 @@ export default function App() {
             sending={sending}
             error={error}
             lastQuery={lastQuery}
+            llmConfigured={llmConfigured}
+            onOpenSettings={() => setSettingsOpen(true)}
             onSend={sendQuery}
             onRetry={handleRetry}
             onDismissError={() => setError(null)}
@@ -735,6 +737,14 @@ export default function App() {
         onGoConsole={() => {
           setSettingsOpen(false);
           handleMonitorTabChange('llm');
+        }}
+        onGoAgents={() => {
+          setSettingsOpen(false);
+          handleMonitorTabChange('agents');
+        }}
+        onGoUsage={() => {
+          setSettingsOpen(false);
+          handleMonitorTabChange('models');
         }}
       />
     </>

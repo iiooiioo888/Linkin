@@ -20,6 +20,7 @@ import {
   TIER_LABEL,
   agentOpenCount,
   blankMetrics,
+  consumePendingDeskTab,
   fmtUsd,
   fmtWhen,
   JUMP_AGENT_EVENT,
@@ -698,9 +699,29 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent }: Agent
   }, [focusAgentId]);
 
   useEffect(() => {
+    const pending = consumePendingDeskTab();
+    if (pending) {
+      setDeskTab(pending);
+      setLayout('desk');
+      setAppliedDefaultTab(true);
+      setAppliedDefaultLayout(true);
+    }
+  }, []);
+
+  useEffect(() => {
     const onJump = (event: Event) => {
-      const { id, level } = (event as CustomEvent<JumpAgentDetail>).detail ?? {};
-      if (id) setSelectedId(id);
+      const { id, level, deskTab: nextTab } = (event as CustomEvent<JumpAgentDetail>).detail ?? {};
+      if (id) {
+        setSelectedId(id);
+        setLayout('desk');
+        setAppliedDefaultLayout(true);
+      }
+      if (nextTab) {
+        setDeskTab(nextTab);
+        setLayout('desk');
+        setAppliedDefaultTab(true);
+        setAppliedDefaultLayout(true);
+      }
       const jumpingLevel = typeof level === 'number' && !id;
       if (jumpingLevel) {
         setLayout((cur) => (cur === 'desk' ? (overviewMode === 'cards' ? 'floor' : 'catalog') : cur));
@@ -837,7 +858,6 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent }: Agent
   };
 
   const browseLayout = layout !== 'desk';
-  const statusMeta = selected ? AGENT_STATUS_META[selected.status] ?? AGENT_STATUS_META.idle : null;
 
   const visibleItems = useMemo(() => {
     if (!selected) return [];
@@ -856,79 +876,74 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent }: Agent
   const inboxReview = selected?.inbox.in_review ?? 0;
   const now = selected ? currentItem(selected) : null;
   const reports = selected?.direct_reports ?? [];
+  const selectedRoute = selected
+    ? (data?.catalog_meta?.api_routes ?? []).find((r) => r.id === selected.preferred_provider)
+    : undefined;
+  const selectedModelLabel = selected
+    ? [
+        selectedRoute?.name,
+        selected.preferred_model || (TIER_LABEL[selected.default_tier] ?? selected.default_tier),
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : '';
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas text-[#f7f8f8]">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] px-4 py-2.5">
+      {browseLayout && (
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] px-4 py-2">
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold">
-            {layout === 'desk' && selected ? selected.name : `角色總覽 · ${agents.length}`}
-          </h2>
-          <p className="mt-0.5 text-[11px] text-[#8E8E93]">
-            {layout === 'desk' && selected
-              ? `左側名冊切換角色 · ${statusMeta?.label ?? ''} · L${selected.level}`
-              : '點角色進入工作台；左側可持續切換'}
-          </p>
+          <h2 className="truncate text-sm font-semibold">角色總覽 · {agents.length}</h2>
+          <p className="mt-0.5 text-[11px] text-[#8E8E93]">點角色進入工作台；左側可持續切換</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-0.5">
             <button
               type="button"
               onClick={() => setLayout('desk')}
-              className={`rounded px-2 py-1 text-[11px] ${
-                layout === 'desk' ? 'bg-[#007AFF]/20 text-[#64D2FF]' : 'text-[#8a8f98]'
-              }`}
+              className="rounded px-2 py-1 text-[11px] text-[#8a8f98]"
             >
               工作台
             </button>
             <button
               type="button"
-              onClick={() => {
-                setLayout(overviewMode === 'cards' ? 'floor' : 'catalog');
-              }}
-              className={`rounded px-2 py-1 text-[11px] ${
-                browseLayout ? 'bg-[#007AFF]/20 text-[#64D2FF]' : 'text-[#8a8f98]'
-              }`}
+              className="rounded bg-[#007AFF]/20 px-2 py-1 text-[11px] text-[#64D2FF]"
             >
               總覽
             </button>
           </div>
-          {browseLayout && (
-            <>
-              <div className="flex rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOverviewMode('list');
-                    setLayout('catalog');
-                  }}
-                  className={`rounded px-2 py-1 text-[11px] ${
-                    overviewMode === 'list' ? 'bg-white/[0.08] text-[#F5F5F7]' : 'text-[#8a8f98]'
-                  }`}
-                >
-                  列表
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOverviewMode('cards');
-                    setLayout('floor');
-                  }}
-                  className={`rounded px-2 py-1 text-[11px] ${
-                    overviewMode === 'cards' ? 'bg-white/[0.08] text-[#F5F5F7]' : 'text-[#8a8f98]'
-                  }`}
-                >
-                  卡片
-                </button>
-              </div>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="搜尋角色／職責／提示詞"
-                className="w-40 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#f7f8f8]"
-              />
-            </>
-          )}
+          <div className="flex rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-0.5">
+            <button
+              type="button"
+              onClick={() => {
+                setOverviewMode('list');
+                setLayout('catalog');
+              }}
+              className={`rounded px-2 py-1 text-[11px] ${
+                overviewMode === 'list' ? 'bg-white/[0.08] text-[#F5F5F7]' : 'text-[#8a8f98]'
+              }`}
+            >
+              列表
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOverviewMode('cards');
+                setLayout('floor');
+              }}
+              className={`rounded px-2 py-1 text-[11px] ${
+                overviewMode === 'cards' ? 'bg-white/[0.08] text-[#F5F5F7]' : 'text-[#8a8f98]'
+              }`}
+            >
+              卡片
+            </button>
+          </div>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="搜尋角色／職責／提示詞"
+            className="w-40 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#f7f8f8]"
+          />
           <button
             type="button"
             onClick={() => {
@@ -948,6 +963,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent }: Agent
           </button>
         </div>
       </div>
+      )}
 
       {error && (
         <div className="mx-4 mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
@@ -1148,7 +1164,14 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent }: Agent
                       </button>
                       <div className="w-28 shrink-0 text-[10px] text-[#8a8f98]">
                         <p>{CATEGORY_LABEL[agent.category] ?? agent.category}</p>
-                        <p className="font-mono">{agent.preferred_model || (TIER_LABEL[agent.default_tier] ?? agent.default_tier)}</p>
+                        <p className="font-mono">
+                          {(data?.catalog_meta?.api_routes ?? []).find((r) => r.id === agent.preferred_provider)?.name
+                            || agent.preferred_model
+                            || (TIER_LABEL[agent.default_tier] ?? agent.default_tier)}
+                        </p>
+                        {agent.preferred_model ? (
+                          <p className="truncate font-mono text-[#62666d]">{agent.preferred_model}</p>
+                        ) : null}
                       </div>
                       <div className="w-36 shrink-0 text-right">
                         {(agent.cost_usd ?? 0) > 0 ? (
@@ -1248,11 +1271,42 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent }: Agent
                     {selected.on_call ? ' · 值班' : ''}
                     {selected.reporting_to ? ` · 匯報 ${roleLabel(selected.reporting_to)}` : ''}
                     {' · '}佇列 {selected.queue} · 執行 {selected.executing} · 審查 {inboxReview}
-                    {' · '}
-                    {selected.preferred_model || (TIER_LABEL[selected.default_tier] ?? selected.default_tier)}
+                    {selectedModelLabel ? (
+                      <>
+                        {' · '}
+                        <button
+                          type="button"
+                          className="text-[#64D2FF] hover:underline"
+                          onClick={() => setDeskTab('settings')}
+                          title="開啟模型／設定"
+                        >
+                          {selectedModelLabel}
+                          {selected.max_output_tokens
+                            ? ` · ${selected.max_output_tokens.toLocaleString()} tok`
+                            : ''}
+                        </button>
+                      </>
+                    ) : null}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#F5F5F7]"
+                    onClick={() => setLayout(overviewMode === 'cards' ? 'floor' : 'catalog')}
+                  >
+                    總覽
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#F5F5F7]"
+                    onClick={() => {
+                      setCloneFrom(null);
+                      setCreating(true);
+                    }}
+                  >
+                    新增
+                  </button>
                   <button
                     type="button"
                     className="rounded-lg border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#F5F5F7]"
@@ -1285,7 +1339,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent }: Agent
                 {([
                   ['tasks', `任務 ${agentOpenCount(selected)}`],
                   ['monitor', '監控'],
-                  ['settings', '設定'],
+                  ['settings', '模型／設定'],
                   ['org', '組織'],
                 ] as const).map(([key, label]) => (
                   <button
@@ -1310,6 +1364,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent }: Agent
                   agents={agents}
                   saving={saving}
                   error={saveError}
+                  initialSection="model"
                   onClone={() => {
                     setCloneFrom(selected);
                     setCreating(true);
@@ -1519,7 +1574,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent }: Agent
                     >
                       <option value="tasks">預設分頁：任務</option>
                       <option value="monitor">預設分頁：監控</option>
-                      <option value="settings">預設分頁：角色設定</option>
+                      <option value="settings">預設分頁：模型／設定</option>
                       <option value="org">預設分頁：組織</option>
                     </select>
                     <button

@@ -1,6 +1,6 @@
 /**
  * 基礎設施合併面板：AI Hub · 雲 · 檢查點 · 連接池。
- * API 路由已升為控制台一級頁面（系統 → API 路由）。
+ * API 路由已升為控制台一級頁面（配置 → API 路由）。
  */
 import { useState } from 'react';
 import CheckpointsPanel from './CheckpointsPanel';

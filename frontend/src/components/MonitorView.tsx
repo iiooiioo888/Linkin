@@ -52,8 +52,14 @@ function PanelFallback() {
 
 function LiveTab({
   onOpenLab,
+  onOpenTab,
+  onOpenTraces,
+  onOpenAgent,
 }: {
   onOpenLab?: (sub: LabSubTab) => void;
+  onOpenTab?: (tab: MonitorTab) => void;
+  onOpenTraces?: () => void;
+  onOpenAgent?: (id: string) => void;
 }) {
   const agents = useMonitorStore((s) => s.agents);
   const optimization = useMonitorStore((s) => s.optimization);
@@ -81,7 +87,13 @@ function LiveTab({
       {!connected && !error && (
         <div className="shrink-0 px-5 py-2 text-[10px] text-[#48484A]">離線資料</div>
       )}
-      <LiveBoard feed={liveFeed} onOpenLab={onOpenLab} />
+      <LiveBoard
+        feed={liveFeed}
+        onOpenLab={onOpenLab}
+        onOpenTab={onOpenTab}
+        onOpenTraces={onOpenTraces}
+        onOpenAgent={onOpenAgent}
+      />
     </div>
   );
 }
@@ -110,6 +122,12 @@ export default function MonitorView({
             onOpenLab={(sub) => {
               onTabChange('lab');
               onLabSubTabChange(sub);
+            }}
+            onOpenTab={onTabChange}
+            onOpenTraces={() => onOpenTrace?.('')}
+            onOpenAgent={(id) => {
+              onFocusAgent(id);
+              onTabChange('agents');
             }}
           />
         )}
