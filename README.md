@@ -90,6 +90,7 @@ graph LR
 |------|-------------|
 | **靈境·Linkin** | 活動欄獨立「靈境」：世界觀／NPC／任務／道具／工作室角色；種子：`python -m backend.scripts.seed_linkin_world` |
 | **Minecraft MCP** | 獨立活動「Minecraft」（建築／橋接）；MineMCP JSON-RPC；未設 Token 乾跑 |
+| **量化行情工具** | 金融角色可 `tool_call` 引用 Yahoo／東方財富／新浪／Stooq／Frankfurter／CoinPaprika／Binance（報價、31 策略回測含增強成交量／單成交量、策略庫目錄、優化、Walk-Forward、組合、資金流）；實驗室「策略庫」分類樹勾選引用，「策略圖」用 Archify 可視化全部策略；可選 Tushare／Finnhub／Alpha Vantage Token；不嵌入 stock-quant 完整工作站 |
 | **監控中心擴充** | 控制台（EvoLoop 公司角色）與靈境工作室分開；自定義角色 CRUD；監控偏好 |
 | **角色總覽操作** | 依 L0–L4 分組；左側層級錨點跳轉；活躍／告警為篩選而非第二套計數；卡片右上角為該角色合計成本 |
 | **示範資料** | `python -m backend.scripts.seed_demo_content` 寫入 60 任務、60 推理軌跡、60 知識庫條目（Chroma 失敗則降級 JSON） |
@@ -181,6 +182,10 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 │   │   ├── roles.py             #     80 個內建角色 + 組織模板
 │   │   ├── role_catalog.py      #     角色設定覆蓋 + 自定義角色持久化
 │   │   ├── orchestrator.py      #     公司協調器
+│   │   ├── tools.py             #     公司工具註冊（實驗室／Minecraft／量化）
+│   │   ├── quant_tools.py       #     角色可呼叫的免費行情／回測／資金流工具
+│   │   ├── quant_strategy_catalog.py  #  stock-quant 策略庫目錄（分類／別名）
+│   │   ├── quant_strategy_maps.py     #  策略庫 → Archify IR（可視化）
 │   │   └── ...
 │   ├── hub/                     #   AI Hub（探針 / 熔斷 / 目錄）
 │   ├── services/
@@ -212,6 +217,9 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 │           ├── RoleSettingsPanel.tsx
 │           ├── LlmOpsPanel.tsx
 │           ├── HubPanel.tsx      #   Hub 操作台（內嵌於監控，非獨立產品線）
+│           ├── StrategyCatalogPanel.tsx  # 實驗室回測策略庫分類樹
+│           ├── StrategyMapPanel.tsx      # Archify 策略可視化
+│           ├── ArchifyViewer.tsx         # Archify IR → SVG
 │           ├── linkin/          #   憲法／NPC／任務／建築／道具／Minecraft 橋接
 │           └── ...
 ├── docs/                        # 知識庫（含 docs/linkin/）
@@ -250,6 +258,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 | 工作項狀態機 | Planning → Ready → Executing → In Review → Rework / Done / Blocked |
 | 錯誤回退 | 公司失敗但有部分產出 → 降級反思閉環繼續優化 |
 | SSE 即時串流 | 分解／執行／審查／整合各階段進度推送 |
+| **量化工具** | 金融角色可呼叫 `market_quote`／`market_backtest`／`market_portfolio`／`fx_rate`／`crypto_quote`（Yahoo 主源，免費 JSON API） |
 
 #### 內建角色層級
 
@@ -292,6 +301,29 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 | 安全護欄 | 寫入白名單 + 數值邊界 + 審計日誌（禁止繞過） |
 | 超時降級 | 每級可超時後用上一級快取繼續 |
 
+### 📈 量化行情（角色工具）
+
+對齊 [stock-quant](https://github.com/iiooiioo888/stock-quant) 的報價／K 線／分鐘線／31 策略回測（含博客內建 `enhanced_volume`／`single_volume`）／策略庫目錄／優化／Walk-Forward／11 種組合／資金流／基準對比，交由量化研究桌角色引用。實驗室 **策略庫**（`#/monitor/lab/quant`）以分類樹瀏覽可回測／規劃項；**策略圖**（`#/monitor/lab/maps`）用 [Archify](https://github.com/tt-a1i/archify) IR 把全部策略畫成總覽、分類拓撲與工作流，角色可 `archify_strategies`。不嵌入 stock-quant 完整工作站 UI。
+
+| 工具 | 資料源 | 說明 |
+|------|--------|------|
+| `market_quote` / `market_kline` / `market_realtime` | Yahoo（A 股備援東財／新浪，美股備援 Stooq） | 最新價、歷史 K 線、即時盤口 |
+| `market_minutes` | 東方財富 | A 股分鐘線 |
+| `market_backtest` / `market_compare` | 同上 | 31 種引擎（含增強成交量／單成交量）；對比依夏普排序；可設 T+1／漲跌停／移動止損 |
+| `market_strategy_catalog` | — | 分類／搜尋策略庫；`wired` 可回測，其餘為目錄／規劃 |
+| `archify_strategies` | — | 策略庫 → Archify IR（總覽／分類／單策略工作流） |
+| `market_optimize` / `market_walkforward` / `market_heatmap` | 同上 | 網格尋優、樣本外驗證、參數熱力圖 |
+| `market_signals` / `market_leaderboard` | 同上 | 多空投票與跨標的排行 |
+| `market_watch` | 同上 | 漲跌、MA20、均線訊號 |
+| `market_screener` / `market_fundamentals` | 東方財富 | A 股快照與 PE／PB／ROE |
+| `market_capital_flow` / `market_flow` / `market_north_flow` / `market_dragon_tiger` / `market_sectors` | 東方財富 | 個股／大盤資金流、北向、龍虎榜、板塊 |
+| `market_benchmark` / `market_returns` | Yahoo／東財 | 相對滬深300、多股區間收益 |
+| `market_portfolio` | Yahoo／東財 | 等權／風險平價／Kelly／MVO 等 11 種 |
+| `fx_rate` | Frankfurter（currency-api 備援） | 免註冊匯率 |
+| `crypto_quote` | CoinPaprika（CoinGecko／Binance 備援） | 無需 API Key |
+
+可選環境變數：`EVOL_TUSHARE_TOKEN`、`EVOL_FINNHUB_TOKEN`、`EVOL_ALPHAVANTAGE_KEY`。詳見 [docs/company/quant-tools.md](docs/company/quant-tools.md)。
+
 ---
 
 ## 🖥️ 監控中心
@@ -328,7 +360,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 | **伺服器** | 建築 | Schematic 生成、3D 預覽、方案畫廊、派發到世界 |
 | | 橋接 | MineMCP 探測、工具呼叫、審計 |
 
-**實驗室**獨立活動：提示詞／爬蟲／架構／精簡，以及 OPC／記憶等通用 MCP 開關（不含 Minecraft 工具）。
+**實驗室**獨立活動：提示詞／爬蟲／架構／精簡／**策略庫**，以及 OPC／記憶等通用 MCP 開關（不含 Minecraft 工具）。
 
 頂欄齒輪為 **快速加入 API**（與控制台 API 路由共用同一編輯器）。EvoLoop 角色級模型與 Token 只在控制台「執行 → 角色 → 設定」指定；靈境班底在「靈境 → 工作室」。
 
@@ -360,6 +392,9 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 - `GET/PUT /config` · `POST /config/test`
 - `GET/PUT/POST/DELETE /config/routes` · `POST /config/routes/{id}/refresh` · `POST /config/routes/{id}/test` · `PUT /config/strategy`
 - `GET /docker/*` · `GET/POST /cloud/*` — 實例與雲控制台
+- `GET /lab/quant/strategies` — 回測策略庫分類樹（實驗室瀏覽）
+- `GET /lab/archify/strategies` — 策略庫 Archify 總覽／分類拓撲
+- `GET /lab/archify/strategies/{id}` — 單策略工作流／生命週期 IR
 - `GET /memories` · `DELETE /memories/{id}` · `POST /memories/cleanup` — 記憶庫；Chroma 空則讀 JSON
 
 ---
@@ -570,6 +605,10 @@ docker compose logs -f backend
 
 詳見 [docs/linkin/minecraft-mcp.md](docs/linkin/minecraft-mcp.md)。
 
+### 量化行情（免費數據源）
+
+無需金鑰即可使用。可選：`EVOL_TUSHARE_TOKEN`、`EVOL_FINNHUB_TOKEN`、`EVOL_ALPHAVANTAGE_KEY`。角色透過 `tool_call` 呼叫 `market_quote` 等工具；網路失敗時回傳結構化錯誤，不中斷公司運行時。詳見 [docs/company/quant-tools.md](docs/company/quant-tools.md)。
+
 ### LLM 快取
 
 | 變數 | 預設 | 說明 |
@@ -620,6 +659,7 @@ pytest backend/tests/test_architecture.py
 | 類別 | 涵蓋 |
 |------|------|
 | 公司運行時 | 狀態機、預算、拆分、事件、檢查點、自定義角色 |
+| 量化工具 | Yahoo／東方財富／Frankfurter／CoinPaprika／Binance（monkeypatch，不連外網） |
 | 模型池 | DeepSeek 鎖定、OpenRouter 爬取、Hub 交集、HTTP 運維端點 |
 | 監控中心 | Agent 監控、角色設定 CRUD、偏好 |
 | OPC／反思／架構 | 護欄、閉環、LLM 調用層約束 |
@@ -651,6 +691,7 @@ pytest backend/tests/test_architecture.py
 | [架構總覽](docs/architecture/overview.md) | 統一管線、資料流 |
 | [反思閉環](docs/architecture/reflection-loop.md) | 多維評估、快取 |
 | [公司運行時](docs/architecture/company-runtime.md) | 多代理人、80 席角色、預算 |
+| [量化行情工具](docs/company/quant-tools.md) | 角色可呼叫的 Yahoo／東方財富／Frankfurter 行情、回測與資金流 |
 | [OPC 整合](docs/architecture/opc-integration.md) | 6 級閉環、護欄 |
 | [REST API](docs/api/reference.md) | 端點與 SSE |
 | [配置參考](docs/config/reference.md) | 環境變數、模型池、價格 |
@@ -748,6 +789,7 @@ Pages 僅靜態前端預覽。聊天、寫入 OPC、刷新模型目錄等需連�
 | Phase 15 | 合拼單一版本 + GitHub Pages | ✅ |
 | Phase 16 | 角色總覽操作（層級跳轉／篩選／成本列）+ 示範種子 | ✅ |
 | Phase 17 | 靈境·Linkin（憲法／RAG／監控分頁／統一管線注入） | ✅ |
+| Phase 18 | 量化行情公司工具（stock-quant 能力 → 角色 `tool_call`，含 31 策略／策略庫目錄／11 種組合／資金流／分鐘線） | ✅ |
 
 ---
 

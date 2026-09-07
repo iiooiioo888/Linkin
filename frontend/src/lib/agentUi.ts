@@ -131,6 +131,37 @@ export function tasksInColumn<T extends { status: string }>(items: T[], key: Tas
   return items.filter((item) => taskColumnKey(item.status) === key);
 }
 
+/** 管線階段：尚未走到＝隊列，當前＝執行中，已過＝已完成 */
+export const PIPELINE_STAGES = [
+  { id: 'sense', label: '感知' },
+  { id: 'route', label: '路由' },
+  { id: 'gen', label: '生成' },
+  { id: 'eval', label: '評估' },
+  { id: 'reflect', label: '反思' },
+  { id: 'out', label: '輸出' },
+] as const;
+
+export function pipelineStageColumn(index: number, activeIndex: number | null): WorkItemColumnKey {
+  if (activeIndex == null) return 'queue';
+  if (index < activeIndex) return 'done';
+  if (index === activeIndex) return 'executing';
+  return 'queue';
+}
+
+/** 執行軌跡事件：準備＝隊列，調用＝執行中，結果＝已完成 */
+export const TRACE_EVENT_COLUMNS: Record<WorkItemColumnKey, readonly string[]> = {
+  queue: ['context_injection', 'phase_change', 'state_snapshot', 'memory_operation'],
+  executing: ['llm_call', 'tool_call'],
+  done: ['evaluation', 'reflection', 'improvement', 'error'],
+};
+
+export function traceEventColumn(event: string): WorkItemColumnKey {
+  for (const col of WORK_ITEM_COLUMNS) {
+    if (TRACE_EVENT_COLUMNS[col.key].includes(event)) return col.key;
+  }
+  return 'queue';
+}
+
 export function isLiveAgent(agent: Pick<RoleAgent, 'status'>): boolean {
   return agent.status === 'busy' || agent.status === 'waiting';
 }
@@ -163,7 +194,20 @@ export const EDIT_API_ROUTE_EVENT = 'linkin:edit-api-route';
 export const NEW_API_ROUTE_EVENT = 'linkin:new-api-route';
 export const API_ROUTES_CHANGED_EVENT = 'linkin:api-routes-changed';
 
-export type AgentDeskTab = 'tasks' | 'monitor' | 'settings' | 'overview' | 'org';
+export const QUANT_DESK_ROLE_IDS = new Set([
+  'finance_lead',
+  'quant_analyst',
+  'risk_analyst',
+  'market_data_eng',
+  'portfolio_mgr',
+  'sentiment_analyst',
+]);
+
+export function isQuantDeskRole(id: string | null | undefined): boolean {
+  return Boolean(id && QUANT_DESK_ROLE_IDS.has(id));
+}
+
+export type AgentDeskTab = 'tasks' | 'monitor' | 'settings' | 'quant' | 'overview' | 'org';
 export type JumpAgentDetail = { id?: string; level?: number; deskTab?: AgentDeskTab };
 
 /** 控制台跨頁：角色面板尚未掛載時先記下要開的工作台分頁。 */

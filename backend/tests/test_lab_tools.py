@@ -129,6 +129,33 @@ def test_lab_api_endpoints(client: TestClient, monkeypatch):
     assert r.status_code == 200
     assert r.json()["meta"]["title"]
 
+    r = client.get("/lab/quant/strategies")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert body["engine_count"] >= 29
+    assert body["groups"]
+    assert any(row["status"] == "wired" for row in body["items"])
+
+    r = client.get("/lab/archify/strategies")
+    assert r.status_code == 200
+    maps = r.json()
+    assert maps["ok"] is True
+    assert maps["overview"]["nodes"]
+    assert maps["data_flow"]["meta"]["type"] == "data-flow"
+    assert any(g["id"] == "ma" for g in maps["groups"])
+    assert any(n["id"] == "dual_ma" for n in next(g for g in maps["groups"] if g["id"] == "ma")["architecture"]["nodes"])
+
+    r = client.get("/lab/archify/strategies/dual_ma")
+    assert r.status_code == 200
+    one = r.json()
+    assert one["ok"] is True
+    assert one["workflow"]["meta"]["type"] == "workflow"
+    assert one["item"]["id"] == "dual_ma"
+
+    r = client.get("/lab/archify/strategies/not-a-strategy")
+    assert r.status_code == 404
+
 
 def test_company_tool_registry_includes_lab_tools():
     from backend.company.tools import tool_registry
@@ -141,7 +168,17 @@ def test_company_tool_registry_includes_lab_tools():
         "ponytail_review",
         "archify_generate",
         "archify_evoloop",
+        "archify_strategies",
         "place_block",
         "execute_command",
+        "market_quote",
+        "market_backtest",
+        "market_compare",
+        "market_optimize",
+        "market_walkforward",
+        "market_strategy_catalog",
+        "market_minutes",
+        "fx_rate",
+        "crypto_quote",
     ):
         assert expected in names

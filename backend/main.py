@@ -1467,6 +1467,38 @@ async def lab_archify_generate(body: ArchifyGenerateRequest):
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+@app.get("/lab/archify/strategies")
+async def lab_archify_strategies():
+    """Archify — 策略庫總覽／分類拓撲 IR（全部策略可視化）。"""
+    from backend.company.quant_strategy_maps import strategy_catalog_maps
+
+    return strategy_catalog_maps()
+
+
+@app.get("/lab/archify/strategies/{strategy_id}")
+async def lab_archify_strategy(strategy_id: str):
+    """Archify — 單策略工作流／生命週期 IR。"""
+    from backend.company.quant_strategy_maps import strategy_maps
+
+    payload = strategy_maps(strategy_id)
+    if not payload.get("ok"):
+        raise HTTPException(status_code=404, detail=payload.get("error") or "未知策略")
+    return payload
+
+
+@app.get("/lab/quant/strategies")
+async def lab_quant_strategies(category: str = "", query: str = "", status: str = ""):
+    """stock-quant 策略庫分類樹（實驗室瀏覽；角色仍用 market_strategy_catalog）。"""
+    from backend.company.quant_strategy_catalog import market_strategy_catalog
+
+    return market_strategy_catalog(
+        category=category,
+        query=query,
+        status=status,
+        listing=True,
+    )
+
+
 # ═══════════════════════════════════════════════════════════
 # 數據庫連接池管理 API（供 UI 使用）
 # ═══════════════════════════════════════════════════════════

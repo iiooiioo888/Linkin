@@ -1,5 +1,5 @@
 /**
- * 實驗室面板 — Firecrawl · Prompt Optimizer · Archify · Ponytail · MCP · A/B。
+ * 實驗室面板 — Firecrawl · Prompt Optimizer · Archify · Ponytail · 策略庫 · 策略圖 · MCP · A/B。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ArchifyIR, FirecrawlScrapeResult, PonytailReviewResult } from '../api/client';
@@ -11,6 +11,8 @@ import ArchifyViewer from './ArchifyViewer';
 import LcBarChart from './charts/LcBarChart';
 import MediaGallery from './media/MediaGallery';
 import PromptEditor from './PromptEditor';
+import StrategyCatalogPanel from './StrategyCatalogPanel';
+import StrategyMapPanel from './StrategyMapPanel';
 import ErrorState from './ui/ErrorState';
 
 const DEMO_BEFORE = `你是一位工業助手。根據感測資料回答問題。
@@ -234,7 +236,9 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
         {tabMeta?.upstream && (
           <div className="mx-auto mb-4 flex max-w-5xl items-center gap-2">
             <UpstreamLink name={tabMeta.upstream.name} url={tabMeta.upstream.url} />
-            <span className="text-[10px] text-[#48484A]">後端 API · LLM 經 call_llm</span>
+            <span className="text-[10px] text-[#48484A]">
+              {tab === 'quant' ? '角色 tool_call 引用' : tab === 'maps' ? 'Archify 可視化 · 角色可引用' : '後端 API · LLM 經 call_llm'}
+            </span>
           </div>
         )}
 
@@ -507,6 +511,10 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
             ))}
           </div>
         )}
+
+        {tab === 'quant' && <StrategyCatalogPanel />}
+
+        {tab === 'maps' && <StrategyMapPanel />}
 
         {tab === 'ab' && (
           <div className="grid gap-5 lg:grid-cols-[1fr_220px]">

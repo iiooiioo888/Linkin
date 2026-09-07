@@ -5,7 +5,7 @@
  *   #/chat
  *   #/monitor | #/monitor/tasks | #/monitor/tasks/{taskId}
  *   #/monitor/agents/{agentId}
- *   #/monitor/lab | #/monitor/lab/{prompt|firecrawl|archify|ponytail|mcp|ab}
+ *   #/monitor/lab | #/monitor/lab/{prompt|firecrawl|archify|ponytail|quant|maps|mcp|ab}
  *   #/monitor/world | #/monitor/npcs | #/monitor/quests | #/monitor/items | #/monitor/studio
  *   #/monitor/building | #/monitor/minecraft
  *   #/traces | #/traces/{taskId}

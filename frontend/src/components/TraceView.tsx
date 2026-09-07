@@ -1,223 +1,93 @@
-/** TraceView — 執行軌跡視圖（思考過程查看器）。
- *
- * 軌跡清單由左側 TraceRoster 共用；此處僅渲染事件時間線。
- */
-import { useCallback, useEffect, useState } from 'react';
+/** TraceView — 執行軌跡：與任務／角色同一套骨架（指標帶 + 三欄 + 時間線）。 */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchTaskTrace } from '../api/client';
+import { WORK_ITEM_COLUMNS, fmtWhen, traceEventColumn } from '../lib/agentUi';
 import type { TraceEntry } from '../types';
+import { StatusColumnBoard } from './StatusColumnBoard';
 
-// ── 事件類型元數據 ──
-const EVENT_META: Record<string, { label: string; icon: string; color: string }> = {
-  llm_call: { label: 'LLM 調用', icon: '🤖', color: 'text-[#007AFF]' },
-  context_injection: { label: '上下文注入', icon: '📎', color: 'text-cyan-400' },
-  evaluation: { label: '評估', icon: '📊', color: 'text-yellow-400' },
-  reflection: { label: '反思', icon: '💭', color: 'text-purple-400' },
-  improvement: { label: '改進', icon: '✨', color: 'text-green-400' },
-  phase_change: { label: '階段切換', icon: '🔀', color: 'text-gray-400' },
-  tool_call: { label: '工具調用', icon: '🔧', color: 'text-orange-400' },
-  state_snapshot: { label: '狀態快照', icon: '📸', color: 'text-blue-400' },
-  memory_operation: { label: '記憶操作', icon: '🧠', color: 'text-pink-400' },
-  error: { label: '錯誤', icon: '❌', color: 'text-red-400' },
+const EVENT_META: Record<string, { label: string; color: string }> = {
+  llm_call: { label: 'LLM 調用', color: 'var(--apple-blue-soft)' },
+  context_injection: { label: '上下文注入', color: 'var(--apple-secondary)' },
+  evaluation: { label: '評估', color: 'var(--apple-orange)' },
+  reflection: { label: '反思', color: '#bf5af2' },
+  improvement: { label: '改進', color: 'var(--apple-green)' },
+  phase_change: { label: '階段切換', color: 'var(--apple-tertiary)' },
+  tool_call: { label: '工具調用', color: 'var(--apple-orange)' },
+  state_snapshot: { label: '狀態快照', color: 'var(--apple-blue-soft)' },
+  memory_operation: { label: '記憶操作', color: '#bf5af2' },
+  error: { label: '錯誤', color: 'var(--apple-red)' },
 };
 
 const FILTER_OPTIONS = [
   { value: 'all', label: '全部' },
-  { value: 'llm_call', label: '🤖 LLM' },
-  { value: 'context_injection', label: '📎 上下文' },
-  { value: 'evaluation', label: '📊 評估' },
-  { value: 'reflection', label: '💭 反思' },
-  { value: 'improvement', label: '✨ 改進' },
-  { value: 'tool_call', label: '🔧 工具' },
-  { value: 'error', label: '❌ 錯誤' },
+  { value: 'llm_call', label: 'LLM' },
+  { value: 'tool_call', label: '工具' },
+  { value: 'evaluation', label: '評估' },
+  { value: 'reflection', label: '反思' },
+  { value: 'error', label: '錯誤' },
 ];
 
-function formatTs(ts: string): string {
-  try {
-    const d = new Date(ts);
-    return d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  } catch {
-    return ts;
+function eventSummary(entry: TraceEntry): string {
+  if (entry.event === 'llm_call') {
+    return `${entry.model ? `[${entry.model}] ` : ''}${String(entry.prompt ?? '').slice(0, 80)}`;
   }
+  if (entry.event === 'evaluation') return `分數 ${entry.score ?? '—'} ${String(entry.feedback ?? '').slice(0, 60)}`;
+  if (entry.event === 'reflection') return String(entry.reflection ?? '').slice(0, 80);
+  if (entry.event === 'context_injection') return `來源 ${entry.source ?? '—'} · ${entry.count ?? 0} 條`;
+  if (entry.event === 'tool_call') return `${entry.success ? '✓' : '✗'} ${entry.tool ?? ''}`;
+  if (entry.event === 'error') return String(entry.error ?? '').slice(0, 80);
+  if (entry.phase) return entry.phase;
+  return '';
 }
 
-/** 單條軌跡事件卡片 */
-function TraceEventCard({ entry }: { entry: TraceEntry }) {
-  const [expanded, setExpanded] = useState(false);
-  const meta = EVENT_META[entry.event] ?? { label: entry.event, icon: '📋', color: 'text-gray-400' };
-
+function TraceEventCard({ entry, expanded, onToggle }: { entry: TraceEntry; expanded: boolean; onToggle: () => void }) {
+  const meta = EVENT_META[entry.event] ?? { label: entry.event, color: 'var(--apple-tertiary)' };
+  const col = traceEventColumn(entry.event);
+  const bad = entry.event === 'error' || entry.success === false;
   return (
-    <div className="apple-card apple-card--tight !p-0 p-3 transition-colors hover:border-[#34343a]">
-      {/* 標題行 */}
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 text-left"
-      >
-        <span className="text-sm">{meta.icon}</span>
-        <span className={`text-xs font-medium ${meta.color}`}>{meta.label}</span>
-        {entry.phase && (
-          <span className="rounded-full bg-[#141516] px-2 py-0.5 text-[10px] text-[#8a8f98]">
-            {entry.phase}
-          </span>
-        )}
-        {entry.iteration != null && entry.iteration > 0 && (
-          <span className="rounded-full bg-[#141516] px-2 py-0.5 text-[10px] text-[#8a8f98]">
-            迭代 {entry.iteration}
-          </span>
-        )}
-        <span className="ml-auto text-[10px] text-[#62666d]">{formatTs(entry.ts)}</span>
-        <span className="text-[10px] text-[#62666d]">{expanded ? '▲' : '▼'}</span>
-      </button>
-
-      {/* 摘要（未展開時） */}
-      {!expanded && (
-        <div className="mt-1.5">
-          {entry.event === 'llm_call' && (
-            <p className="truncate text-[11px] text-[#8a8f98]">
-              {entry.model && <span className="text-[#007AFF]">[{entry.model}] </span>}
-              {String(entry.prompt ?? '').slice(0, 100)}...
-            </p>
-          )}
-          {entry.event === 'evaluation' && (
-            <p className="text-[11px] text-[#8a8f98]">
-              分數：<span className="font-medium text-yellow-400">{entry.score ?? '?'}</span>
-              {entry.feedback && ` · ${String(entry.feedback).slice(0, 80)}`}
-            </p>
-          )}
-          {entry.event === 'reflection' && (
-            <p className="truncate text-[11px] text-[#8a8f98]">
-              {String(entry.reflection ?? '').slice(0, 120)}
-            </p>
-          )}
-          {entry.event === 'context_injection' && (
-            <p className="text-[11px] text-[#8a8f98]">
-              來源：{entry.source} · {entry.count ?? 0} 條
-            </p>
-          )}
-          {entry.event === 'tool_call' && (
-            <p className="text-[11px] text-[#8a8f98]">
-              {entry.success ? '✓' : '✗'} {entry.tool}
-            </p>
-          )}
-          {entry.event === 'error' && (
-            <p className="truncate text-[11px] text-red-400">{String(entry.error ?? '').slice(0, 100)}</p>
-          )}
-        </div>
-      )}
-
-      {/* 展開詳情 */}
-      {expanded && (
-        <div className="mt-2 space-y-2 border-t border-white/[0.08] pt-2">
-          {entry.event === 'llm_call' && (
-            <>
-              {entry.system && (
-                <div>
-                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#62666d]">System</p>
-                  <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md apple-canvas p-2 text-[11px] leading-relaxed text-[#d0d6e0]">
-                    {entry.system}
-                  </pre>
-                </div>
-              )}
-              <div>
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#62666d]">
-                  Prompt ({entry.prompt_length ?? 0} chars)
-                </p>
-                <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md apple-canvas p-2 text-[11px] leading-relaxed text-[#d0d6e0]">
-                  {entry.prompt}
-                </pre>
-              </div>
-              <div>
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[#62666d]">
-                  Response ({entry.response_length ?? 0} chars)
-                </p>
-                <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md apple-canvas p-2 text-[11px] leading-relaxed text-[#d0d6e0]">
-                  {entry.response}
-                </pre>
-              </div>
-              <div className="flex gap-3 text-[10px] text-[#62666d]">
-                {entry.model && <span>模型：{entry.model}</span>}
-                {entry.cost != null && <span>成本：${entry.cost}</span>}
-                {entry.duration_ms != null && <span>耗時：{entry.duration_ms}ms</span>}
-              </div>
-            </>
-          )}
-          {entry.event === 'evaluation' && (
-            <>
-              <div className="flex gap-4">
-                <span className="text-sm font-medium text-yellow-400">分數：{entry.score ?? '?'}</span>
-                {entry.iteration != null && <span className="text-[11px] text-[#8a8f98]">迭代 {entry.iteration}</span>}
-              </div>
-              {entry.strengths && (
-                <div>
-                  <p className="mb-1 text-[10px] font-medium text-green-400">優點</p>
-                  <p className="text-[11px] text-[#d0d6e0]">{entry.strengths}</p>
-                </div>
-              )}
-              {entry.weaknesses && (
-                <div>
-                  <p className="mb-1 text-[10px] font-medium text-red-400">缺點</p>
-                  <p className="text-[11px] text-[#d0d6e0]">{entry.weaknesses}</p>
-                </div>
-              )}
-              {entry.raw_response && (
-                <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md apple-canvas p-2 text-[11px] text-[#8a8f98]">
-                  {entry.raw_response}
-                </pre>
-              )}
-            </>
-          )}
-          {entry.event === 'reflection' && (
-            <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md apple-canvas p-2 text-[11px] leading-relaxed text-[#d0d6e0]">
-              {entry.reflection}
+    <button type="button" onClick={onToggle} className={`rd-tc w-full ${expanded ? 'on' : ''}`}>
+      <div className="rd-tc-t">
+        <span className={`rd-od ${bad ? 'off' : col === 'executing' ? 'run' : col === 'done' ? 'on' : 'off'}`} />
+        <span className="rd-tc-ttl" style={{ color: meta.color }}>{meta.label}</span>
+        <span className="rd-tc-id">{fmtWhen(entry.ts)}</span>
+      </div>
+      <p className="rd-tc-d">{eventSummary(entry) || entry.phase || '—'}</p>
+      <div className="rd-tc-m">
+        <span className={`rd-badge ${col === 'executing' ? 'run' : ''}`}>{entry.phase || col}</span>
+        {entry.iteration != null && entry.iteration > 0 ? (
+          <span className="rd-tc-meta">迭代 {entry.iteration}</span>
+        ) : null}
+      </div>
+      {expanded ? (
+        <div className="mt-2 space-y-1.5 border-t border-white/[0.08] pt-2 text-left">
+          {entry.system ? (
+            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+              {entry.system}
             </pre>
-          )}
-          {entry.event === 'improvement' && (
-            <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md apple-canvas p-2 text-[11px] leading-relaxed text-[#d0d6e0]">
-              {entry.improved_answer}
+          ) : null}
+          {entry.prompt ? (
+            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+              {entry.prompt}
             </pre>
-          )}
-          {entry.event === 'context_injection' && entry.items && (
-            <div className="space-y-1">
-              {entry.items.map((item, i) => (
-                <p key={i} className="rounded-md apple-canvas p-2 text-[11px] text-[#d0d6e0]">
-                  {item.slice(0, 300)}
-                </p>
-              ))}
-            </div>
-          )}
-          {entry.event === 'tool_call' && (
-            <>
-              <div className="flex items-center gap-2">
-                <span className={entry.success ? 'text-green-400' : 'text-red-400'}>
-                  {entry.success ? '✓ 成功' : '✗ 失敗'}
-                </span>
-                <span className="text-[11px] text-[#8a8f98]">{entry.tool}</span>
-              </div>
-              {entry.args && (
-                <pre className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded-md apple-canvas p-2 text-[11px] text-[#d0d6e0]">
-                  {JSON.stringify(entry.args, null, 2)}
-                </pre>
-              )}
-              {entry.result && (
-                <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md apple-canvas p-2 text-[11px] text-[#d0d6e0]">
-                  {entry.result}
-                </pre>
-              )}
-            </>
-          )}
-          {entry.event === 'error' && (
-            <div>
-              <p className="text-[11px] text-red-400">{entry.error}</p>
-              {entry.context && <p className="mt-1 text-[10px] text-[#62666d]">上下文：{entry.context}</p>}
-            </div>
-          )}
+          ) : null}
+          {entry.response ? (
+            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+              {entry.response}
+            </pre>
+          ) : null}
+          {entry.result ? (
+            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+              {entry.result}
+            </pre>
+          ) : null}
+          {entry.error ? <p className="text-[11px] text-[#FF453A]">{entry.error}</p> : null}
         </div>
-      )}
-    </div>
+      ) : null}
+    </button>
   );
 }
 
 interface TraceViewProps {
-  /** 外部導航指定要開啟的任務軌跡 */
   taskId?: string | null;
   onTaskIdChange?: (taskId: string | null) => void;
 }
@@ -228,6 +98,7 @@ export default function TraceView({ taskId = null, onTaskIdChange }: TraceViewPr
   const [events, setEvents] = useState<TraceEntry[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [expanded, setExpanded] = useState<number | null>(null);
 
   const loadEvents = useCallback(
     async (nextTaskId: string) => {
@@ -259,77 +130,151 @@ export default function TraceView({ taskId = null, onTaskIdChange }: TraceViewPr
   }, [taskId, selectedTaskId, loadEvents]);
 
   const filteredEvents = filter === 'all' ? events : events.filter((e) => e.event === filter);
+  const byCol = useMemo(() => {
+    const grouped = { queue: [] as TraceEntry[], executing: [] as TraceEntry[], done: [] as TraceEntry[] };
+    for (const entry of filteredEvents) grouped[traceEventColumn(entry.event)].push(entry);
+    return grouped;
+  }, [filteredEvents]);
+
+  const llmCount = events.filter((e) => e.event === 'llm_call').length;
+  const toolCount = events.filter((e) => e.event === 'tool_call').length;
+  const errCount = events.filter((e) => e.event === 'error').length;
+  const recent = [...filteredEvents].slice(-8).reverse();
 
   return (
-    <div className="flex h-full flex-col apple-canvas">
-      <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
-        <h2 className="text-sm font-medium tracking-tight text-[#f7f8f8]">
+    <div className="rd-shell apple-canvas">
+      <div className="rd-th">
+        <h2>
           執行軌跡
-          {selectedTaskId && (
-            <span className="ml-2 font-mono text-xs font-normal text-[#007AFF]">{selectedTaskId}</span>
-          )}
+          {selectedTaskId ? (
+            <span className="ml-2 font-mono text-[11px] font-normal text-[var(--apple-blue-soft)]">
+              {selectedTaskId.slice(0, 12)}
+            </span>
+          ) : null}
         </h2>
-        {selectedTaskId && (
+        {selectedTaskId ? (
           <button
+            type="button"
+            className="rd-btn"
             onClick={() => {
               setSelectedTaskId(null);
               onTaskIdChange?.(null);
               setEvents([]);
             }}
-            className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-1.5 text-xs text-[#f7f8f8] transition-colors hover:border-[#34343a]"
           >
             清除選取
           </button>
-        )}
+        ) : null}
       </div>
 
-      {error && (
-        <p className="border-b border-red-900/50 bg-red-950/30 px-4 py-2 text-xs text-red-400">
-          {error}
-        </p>
-      )}
+      {error ? (
+        <p className="shrink-0 border-b border-red-900/50 bg-red-950/30 px-4 py-2 text-[11px] text-red-400">{error}</p>
+      ) : null}
 
-      {!selectedTaskId && (
-        <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-          <p className="text-sm text-[#8a8f98]">從左側選擇軌跡檔案</p>
-          <p className="mt-1 text-[11px] text-[#48484A]">執行任務後，思考過程會自動記錄在此</p>
+      <div className="rd-stats">
+        <div className="rd-stat">
+          <span className="rd-stat-l">隊列</span>
+          <span className="rd-stat-v">{byCol.queue.length}</span>
         </div>
-      )}
-
-      {selectedTaskId && (
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex flex-wrap gap-1.5 border-b border-white/[0.08] px-4 py-2">
-            {FILTER_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setFilter(opt.value)}
-                className={`rounded-full px-3 py-1 text-[11px] transition-colors ${
-                  filter === opt.value
-                    ? 'bg-[#141516] text-[#f7f8f8]'
-                    : 'text-[#8a8f98] hover:text-[#d0d6e0]'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-            <span className="ml-auto text-[10px] text-[#62666d]">
-              {filteredEvents.length} / {events.length} 條
-            </span>
-          </div>
-
-          <div className="flex-1 space-y-2 overflow-y-auto p-4">
-            {eventsLoading && (
-              <p className="py-12 text-center text-xs text-[#62666d]">載入中...</p>
-            )}
-            {!eventsLoading && filteredEvents.length === 0 && (
-              <p className="py-12 text-center text-xs text-[#62666d]">無符合條件的事件</p>
-            )}
-            {filteredEvents.map((entry) => (
-              <TraceEventCard key={entry.seq} entry={entry} />
-            ))}
-          </div>
+        <div className="rd-stat">
+          <span className="rd-stat-l">執行中</span>
+          <span className="rd-stat-v">{byCol.executing.length}</span>
         </div>
-      )}
+        <div className="rd-stat">
+          <span className="rd-stat-l">已完成</span>
+          <span className={`rd-stat-v ${byCol.done.length ? 'ok' : ''}`}>{byCol.done.length}</span>
+        </div>
+        <div className="rd-stat">
+          <span className="rd-stat-l">LLM</span>
+          <span className="rd-stat-v">{llmCount}</span>
+        </div>
+        <div className="rd-stat">
+          <span className="rd-stat-l">工具</span>
+          <span className="rd-stat-v">{toolCount}</span>
+        </div>
+        <div className="rd-stat">
+          <span className="rd-stat-l">錯誤</span>
+          <span className={`rd-stat-v ${errCount ? 'er' : ''}`}>{errCount}</span>
+        </div>
+      </div>
+
+      <div className="rd-body">
+        <div className="rd-tasks">
+          <div className="rd-th">
+            <h2>
+              {selectedTaskId ? `事件 — ${filteredEvents.length}/${events.length}` : '事件'}
+            </h2>
+            {selectedTaskId ? (
+              <div className="rd-ttabs">
+                {FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`rd-ttb ${filter === opt.value ? 'on' : ''}`}
+                    onClick={() => setFilter(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-[#636366]">從左側選擇軌跡檔案</p>
+            )}
+          </div>
+          {eventsLoading ? (
+            <p className="py-12 text-center text-[11px] text-[#636366]">載入中...</p>
+          ) : (
+            <StatusColumnBoard
+              columns={WORK_ITEM_COLUMNS.map((col) => {
+                const rows = byCol[col.key];
+                return {
+                  key: col.key,
+                  label: col.label,
+                  count: rows.length,
+                  children: rows.map((entry) => (
+                    <TraceEventCard
+                      key={entry.seq}
+                      entry={entry}
+                      expanded={expanded === entry.seq}
+                      onToggle={() => setExpanded((cur) => (cur === entry.seq ? null : entry.seq))}
+                    />
+                  )),
+                };
+              })}
+            />
+          )}
+        </div>
+
+        <aside className="rd-rp">
+          <div className="rd-sec">
+            <div className="rd-tt">事件時間線</div>
+            {recent.length === 0 ? (
+              <p className="py-1 text-[11px] text-[#636366]">
+                {selectedTaskId ? '尚無事件' : '執行任務後，思考過程會自動記錄在此'}
+              </p>
+            ) : (
+              <div className="rd-ev">
+                {recent.map((ev) => {
+                  const bad = ev.event === 'error';
+                  const meta = EVENT_META[ev.event] ?? { label: ev.event, color: 'var(--apple-tertiary)' };
+                  return (
+                    <div key={`tl-${ev.seq}`} className="rd-ev-row">
+                      <span className={`rd-ev-dot ${bad ? 'er' : 'go'}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[10.5px] text-[#AEAEB2]">
+                          {meta.label}
+                          {eventSummary(ev) ? ` — ${eventSummary(ev)}` : ''}
+                        </div>
+                        <div className="apple-data text-[8.5px] text-[#636366]">{fmtWhen(ev.ts)}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

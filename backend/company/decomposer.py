@@ -643,7 +643,7 @@ class TaskDecomposer:
             (["部署", "deploy", "ci/cd", "docker", "k8s", "維運"], "devops"),
             (["分析", "analyst", "研究", "research", "報告", "report"], "analyst"),
             (["審查", "review", "檢查"], "reviewer"),
-            (["量化", "估值", "pe", "股票", "行情"], "quant_analyst"),
+            (["量化", "估值", "pe", "股票", "行情", "回測", "夏普", "外匯", "加密"], "quant_analyst"),
             (["opc", "工業", "產線", "標籤"], "opc_engineer"),
             (["爬蟲", "crawl", "採集"], "crawler"),
             (["故事", "情節", "對白", "story"], "story_writer"),

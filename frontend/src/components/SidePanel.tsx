@@ -193,17 +193,18 @@ function AgentRoster({
 
   const rows: RosterRow[] = useMemo(() => {
     const out: RosterRow[] = [];
+    const searchingNow = query.trim().length > 0;
     for (const lv of ROSTER_LEVELS) {
       const list = filtered.filter((a) => a.level === lv.level);
       if (!list.length) continue;
       out.push({ kind: 'header', key: `h-${lv.level}`, label: `${lv.short} ${lv.label}`, count: list.length });
-      if (!openLevels.has(lv.level)) continue;
+      if (!searchingNow && !openLevels.has(lv.level)) continue;
       for (const agent of list) {
         out.push({ kind: 'agent', key: agent.id, agent });
       }
     }
     return out;
-  }, [filtered, openLevels]);
+  }, [filtered, openLevels, query]);
 
   const searching = query.trim().length > 0;
 

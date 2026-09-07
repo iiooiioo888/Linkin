@@ -570,7 +570,7 @@ ROLE_FINANCE_LEAD = RoleDefinition(
     responsibilities=[
         "制定估值方法、風險上限與研究日曆",
         "審查量化分析師的假設與數據來源",
-        "對齊 StocksX 行情工具與投資備忘格式",
+        "對齊 StocksX 與量化工具（market_quote／market_backtest／market_strategy_catalog／資金流／基本面）與投資備忘格式",
         "在成本與資訊優勢之間分配模型預算",
     ],
     can_delegate_to=[
@@ -586,6 +586,11 @@ ROLE_FINANCE_LEAD = RoleDefinition(
     max_parallel_work=3,
     system_prompt=(
         "你是一位金融主管，擅長把市場問題拆成可驗證的研究任務。"
+        "可指派量化分析師呼叫 market_quote、market_kline、market_minutes、market_realtime、"
+        "market_backtest、market_compare、market_optimize、market_walkforward、market_signals、"
+        "market_watch、market_screener、market_fundamentals、market_capital_flow、market_flow、"
+        "market_north_flow、market_dragon_tiger、market_sectors、market_portfolio、"
+        "market_benchmark、market_returns、fx_rate、crypto_quote、market_sources、market_strategy_catalog。"
         "你要求標明數據來源、假設、風險與不確定性，禁止投資保證。"
     ),
 )
@@ -650,7 +655,8 @@ ROLE_QUANT_ANALYST = RoleDefinition(
     level=3,
     reporting_to=RoleType.FINANCE_LEAD,
     responsibilities=[
-        "拉取行情、估值與基本面（StocksX）",
+        "拉取行情、估值與基本面（market_quote／market_fundamentals）",
+        "以 market_strategy_catalog 選策略，必要時用 archify_strategies 看工作流，再用 market_kline、market_backtest、market_compare、market_optimize、market_walkforward 做研究回測",
         "產出 PE/PB、風險與情境分析",
         "標明數據時間戳與模型假設",
         "撰寫投資備忘，禁止保證報酬",
@@ -659,8 +665,12 @@ ROLE_QUANT_ANALYST = RoleDefinition(
     default_tier=BudgetTier.REASONING,
     max_parallel_work=2,
     system_prompt=(
-        "你是一位量化分析師，使用 StocksX 工具取得行情與財務指標。"
-        "輸出必須含數據來源、假設、風險與不確定性，禁止投資建議保證。"
+        "你是一位量化分析師，使用免費行情工具取得 K 線、基本面與資金流。"
+        "選策略先呼叫 market_strategy_catalog；可用 archify_strategies 看總覽／分類／單策略工作流；可回測 id 再交給 market_backtest／market_compare。"
+        "優先呼叫 market_quote、market_kline、market_minutes、market_backtest、market_compare、"
+        "market_optimize、market_walkforward、market_signals、market_watch、market_benchmark、"
+        "market_screener、market_fundamentals、market_capital_flow、market_flow、market_portfolio；"
+        "外匯用 fx_rate，加密貨幣用 crypto_quote。輸出必須含數據來源、假設、風險與不確定性，禁止投資建議保證。"
     ),
 )
 
@@ -1139,6 +1149,7 @@ ROLE_RISK_ANALYST = RoleDefinition(
     reporting_to=RoleType.FINANCE_LEAD,
     responsibilities=[
         "評估倉位、情境與最大回撤",
+        "可用 market_backtest／market_compare／market_watch 核對回撤與預警",
         "檢查估值假設與資料缺口",
         "標明無法量化的不確定性",
     ],
@@ -1147,7 +1158,7 @@ ROLE_RISK_ANALYST = RoleDefinition(
     max_parallel_work=2,
     system_prompt=(
         "你是風險分析師，挑戰估值假設並標明最壞情境。"
-        "禁止保證報酬，必須寫出資料缺口與上限。"
+        "可引用 market_backtest／market_compare 的最大回撤與 market_watch 預警，禁止保證報酬，必須寫出資料缺口與上限。"
     ),
 )
 
@@ -1157,7 +1168,7 @@ ROLE_MARKET_DATA_ENG = RoleDefinition(
     level=3,
     reporting_to=RoleType.FINANCE_LEAD,
     responsibilities=[
-        "檢查 StocksX 行情時效、欄位與異常值",
+        "檢查 Yahoo／東方財富／新浪／Stooq 行情時效、欄位與異常值",
         "對齊幣別、復權與交易時段",
         "產出資料品質報告",
     ],
@@ -1165,8 +1176,9 @@ ROLE_MARKET_DATA_ENG = RoleDefinition(
     default_tier=BudgetTier.ROUTINE,
     max_parallel_work=2,
     system_prompt=(
-        "你是行情工程師，負責 StocksX 資料品質。"
-        "輸出必須含時間戳、來源與已知缺口。"
+        "你是行情工程師，負責 market_quote／market_kline／market_minutes／market_realtime／market_sources／market_strategy_catalog 資料品質。"
+        "優先 Yahoo，A 股可備援東方財富／新浪，美股可備援 Stooq；設 Token 時可走 Tushare／Finnhub／Alpha Vantage。"
+        "外匯用 fx_rate，加密貨幣用 crypto_quote。輸出必須含時間戳、來源與已知缺口。"
     ),
 )
 
@@ -1399,14 +1411,14 @@ ROLE_PORTFOLIO_MGR = _exec_role(
     RoleType.PORTFOLIO_MGR, "投資組合經理", reporting_to=RoleType.FINANCE_LEAD,
     responsibilities=["配置權重與再平衡規則", "檢查集中度與上限", "禁止保證報酬"],
     default_tier=BudgetTier.REASONING,
-    system_prompt="你是投資組合經理，輸出權重、上限與再平衡條件，禁止保證報酬。",
+    system_prompt="你是投資組合經理，可引用 market_portfolio（equal_weight／risk_parity／vol_target／kelly／mvo／max_div 等）、market_returns、market_benchmark、market_compare 核對權重、上限與再平衡條件，禁止保證報酬。",
 )
 
 ROLE_SENTIMENT_ANALYST = _exec_role(
     RoleType.SENTIMENT_ANALYST, "情緒分析師", reporting_to=RoleType.FINANCE_LEAD,
     responsibilities=["整理新聞／社群事件衝擊", "區分事實、傳聞與情緒", "標明來源時間戳"],
     default_tier=BudgetTier.ROUTINE,
-    system_prompt="你是情緒分析師，每條結論都要有來源、時間與不確定性，禁止當投資保證。",
+    system_prompt="你是情緒分析師，可引用 market_watch、market_dragon_tiger、market_sectors 對照事件衝擊；每條結論都要有來源、時間與不確定性，禁止當投資保證。",
 )
 
 ROLE_BILLING_OPS = _exec_role(
@@ -1784,7 +1796,7 @@ def create_quant_desk() -> CompanyConfig:
     """量化研究桌：StocksX 估值與風險備忘。"""
     return CompanyConfig(
         name="量化研究桌",
-        description="適用於行情分析、估值與投資備忘（StocksX）",
+        description="適用於行情分析、估值與投資備忘（market_quote／market_backtest／market_optimize／market_portfolio／資金流）",
         roles={
             RoleType.MANAGER: ROLE_MANAGER,
             RoleType.FINANCE_LEAD: ROLE_FINANCE_LEAD,

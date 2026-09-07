@@ -668,7 +668,7 @@ function LabToolsCard({
         )}
       </div>
       <p className="mt-2 text-[10px] leading-relaxed text-[#636366]">
-        Firecrawl 爬蟲 · Prompt Optimizer · Archify 架構 · Ponytail 精簡
+        Firecrawl 爬蟲 · Prompt Optimizer · Archify 架構 · Ponytail 精簡 · stock-quant 策略庫
       </p>
     </FrostCard>
   );

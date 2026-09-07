@@ -409,10 +409,27 @@ def _register_builtin_tools() -> None:
         execute=lambda: _lab.get_evoloop_architecture(),
         readonly=True,
     )
+    from backend.company.quant_strategy_maps import archify_strategies as _archify_strategies
+
+    tool_registry.register(
+        name="archify_strategies",
+        description="把 stock-quant 策略庫編成 Archify IR（總覽／分類／單策略工作流），供可視化與角色引用。",
+        parameters={
+            "view": {
+                "type": "string",
+                "description": "overview、data_flow、lifecycle、group 或 strategy",
+            },
+            "id": {"type": "string", "description": "分類 id（ma…）或策略 id（dual_ma…）"},
+        },
+        execute=lambda view="overview", id="": _archify_strategies(view=view, id=id),
+        readonly=True,
+    )
 
     from backend.linkin.minecraft import register_company_tools as _register_mc
+    from backend.company.quant_tools import register_company_tools as _register_quant
 
     _register_mc(tool_registry)
+    _register_quant(tool_registry)
 
 
 # 模組載入時註冊內建工具

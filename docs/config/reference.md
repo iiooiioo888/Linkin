@@ -42,6 +42,16 @@
 | `EVOL_MC_MCP_WORLD` | `world` | 預設世界 |
 | `EVOL_MC_MCP_MAX_FILL` | `5000` | 單次 fill 上限 |
 
+### 量化行情工具
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `EVOL_TUSHARE_TOKEN` | — | 可選；設定後 A 股日線可備援 Tushare |
+| `EVOL_FINNHUB_TOKEN` | — | 可選；美股報價／日線備援 |
+| `EVOL_ALPHAVANTAGE_KEY` | — | 可選；免費層約 25 次/日 |
+
+無需金鑰即可使用 Yahoo／東方財富／新浪／Stooq／Frankfurter／CoinPaprika。詳見 [量化行情工具](../company/quant-tools.md)。
+
 ### 反思閉環
 
 | 變數 | 預設值 | 說明 |

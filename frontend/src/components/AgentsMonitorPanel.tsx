@@ -24,6 +24,7 @@ import {
   fmtUsd,
   fmtWhen,
   isLinkinStudioAgent,
+  isQuantDeskRole,
   itemsInColumn,
   pickDefaultAgentId,
   workItemColumnKey,
@@ -36,6 +37,7 @@ import type { AgentMonitorData, AgentWorkItem, RoleAgent } from '../types';
 import RoleSettingsPanel, { CreateRoleModal, draftToPayload, type RoleSettingsDraft } from './RoleSettingsPanel';
 import { RdCell, RoleDeskHeader, RoleRightPanel, RoleStatsStrip, type RoleDeskTab } from './RoleDeskLayout';
 import { StatusColumnBoard } from './StatusColumnBoard';
+import StrategyCatalogPanel from './StrategyCatalogPanel';
 import { ITEM_STATUS_META } from './TaskPanel';
 
 function itemStatus(status: string): { label: string; cls: string } {
@@ -43,7 +45,7 @@ function itemStatus(status: string): { label: string; cls: string } {
 }
 
 function toDeskTab(tab?: string | null): RoleDeskTab {
-  if (tab === 'monitor' || tab === 'settings') return tab;
+  if (tab === 'monitor' || tab === 'settings' || tab === 'quant') return tab;
   return 'tasks';
 }
 
@@ -104,8 +106,25 @@ function ExtraGrid({ cells }: { cells: Array<{ label: string; value: string; col
   );
 }
 
-function RoleMonitorExtras({ agent }: { agent: RoleAgent }) {
+function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQuant?: () => void }) {
   const m = agent.metrics ?? blankMetrics();
+  if (isQuantDeskRole(agent.id)) {
+    return (
+      <div className="space-y-2">
+        <ExtraGrid
+          cells={[
+            { label: '工具呼叫', value: String(m.tool_calls) },
+            { label: '可回測', value: '29' },
+            { label: '策略目錄', value: '300+' },
+            { label: '完成', value: String(agent.done) },
+          ]}
+        />
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={onOpenQuant}>
+          開啟回測策略庫
+        </button>
+      </div>
+    );
+  }
   if (agent.id === 'reviewer') {
     return (
       <ExtraGrid
@@ -321,6 +340,11 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   const roster = data?.agents?.length ? data.agents : AGENT_FALLBACK_ROSTER;
   const agents = filterAgentsByDesk(roster, deskScope);
   const selected = agents.find((a) => a.id === selectedId) ?? agents[0] ?? null;
+  const quantDesk = isQuantDeskRole(selected?.id);
+
+  useEffect(() => {
+    if (deskTab === 'quant' && !quantDesk) setDeskTab('tasks');
+  }, [deskTab, quantDesk]);
 
   const openDesk = (id: string, tab?: RoleDeskTab | 'org') => {
     setSelectedId(id);
@@ -363,6 +387,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
             modelLabel={selectedModelLabel}
             deskTab={deskTab}
             onDeskTab={setDeskTab}
+            showQuant={quantDesk}
           />
           {(selected.alerts?.length ?? 0) > 0 && (
             <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-[11px] text-amber-100">
@@ -452,6 +477,21 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                     />
                   </div>
                 </>
+              ) : deskTab === 'quant' ? (
+                <>
+                  <div className="rd-th">
+                    <h2>回測策略庫</h2>
+                    <a href="#/monitor/lab/quant" className="rd-btn text-[11px] text-[#0A84FF]">
+                      實驗室全屏
+                    </a>
+                    <a href="#/monitor/lab/maps" className="rd-btn text-[11px] text-[#0A84FF]">
+                      策略圖
+                    </a>
+                  </div>
+                  <div className="rd-pane">
+                    <StrategyCatalogPanel embedded />
+                  </div>
+                </>
               ) : deskTab === 'monitor' ? (
                 <>
                   <div className="rd-th"><h2>角色監控</h2></div>
@@ -459,7 +499,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                     <RoleDeepMonitor agent={selected} />
                     <section className="rd-sec">
                       <div className="rd-tt">角色專屬</div>
-                      <RoleMonitorExtras agent={selected} />
+                      <RoleMonitorExtras agent={selected} onOpenQuant={() => setDeskTab('quant')} />
                     </section>
                     <section className="rd-sec">
                       <div className="rd-tt">監控偏好</div>

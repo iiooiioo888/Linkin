@@ -38,6 +38,41 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.url()).toMatch(/#\/monitor\/lab\/firecrawl/);
   });
 
+  test('Hash 路由：#/monitor/lab/maps 顯示策略可視化', async ({ page }) => {
+    await page.goto('/#/monitor/lab/maps');
+    await expect(page.getByText(/實驗室 · 策略圖|Lab ·/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.sq-tree-title', { hasText: '策略圖' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('【移動平均線】')).toBeVisible();
+    await expect(page.getByText('角色引用')).toBeVisible();
+    await expect(page.getByText('Archify', { exact: false }).first()).toBeVisible();
+
+    await page.reload();
+    await expect(page.url()).toMatch(/#\/monitor\/lab\/maps/);
+  });
+
+  test('Hash 路由：#/monitor/lab/quant 顯示回測策略庫', async ({ page }) => {
+    await page.goto('/#/monitor/lab/quant');
+    await expect(page.getByText(/實驗室 · 策略庫|Lab ·/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.sq-tree-title', { hasText: '策略庫' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('【移動平均線】')).toBeVisible();
+    await expect(page.getByText('角色引用')).toBeVisible();
+
+    await page.reload();
+    await expect(page.url()).toMatch(/#\/monitor\/lab\/quant/);
+  });
+
+  test('量化角色工作台可開啟回測策略庫', async ({ page }) => {
+    await page.goto('/#/monitor/agents');
+    await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
+    await page.getByPlaceholder(/搜尋角色|Search roles/).fill('量化');
+    await page.locator('.ar-ri', { hasText: '量化分析師' }).click();
+    await page.locator('.rd-header .rd-acts').getByRole('button', { name: '策略庫' }).click();
+    await expect(page.getByRole('heading', { name: '回測策略庫' })).toBeVisible();
+    await expect(page.locator('.sq-tree-title', { hasText: '策略庫' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('【移動平均線】')).toBeVisible();
+    await expect(page.getByText('角色引用')).toBeVisible();
+  });
+
   test('角色分頁可開啟名冊', async ({ page }) => {
     await page.goto('/');
     await page.getByTitle('控制台').or(page.getByTitle('Console')).click();
@@ -71,6 +106,9 @@ test.describe('EvoLoop 核心 UI', () => {
     await page.goto('/#/traces');
     await expect(page.getByText(/執行軌跡|軌跡|Traces/i).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByPlaceholder(/搜尋任務 ID|Search task ID/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
+    await expect(page.locator('.rd-col-h', { hasText: '執行中' })).toBeVisible();
+    await expect(page.locator('.rd-col-h', { hasText: '已完成' })).toBeVisible();
 
     await page.reload();
     await expect(page.url()).toMatch(/#\/traces/);
@@ -78,6 +116,9 @@ test.describe('EvoLoop 核心 UI', () => {
 
   test('管線分頁「任務監控」跳轉至 tasks 分頁', async ({ page }) => {
     await page.goto('/#/monitor/pipeline');
+    await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
+    await expect(page.locator('.rd-col-h', { hasText: '執行中' })).toBeVisible();
+    await expect(page.locator('.rd-col-h', { hasText: '已完成' })).toBeVisible();
     await page.getByRole('button', { name: /任務監控/ }).click();
     await expect(page.getByPlaceholder(/搜尋任務|Search tasks/i)).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/tasks/);

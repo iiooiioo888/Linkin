@@ -39,6 +39,10 @@ Level 4: Support（11）          — 審查、整合、Prompt、法務、記憶
 
 公司角色透過 `tool_registry` 的 ReAct `tool_call` 區塊呼叫 `backend/tools/minecraft_mcp.py`（JSON-RPC → MineMCP）。寫入工具僅 manager／creative_lead／story_writer／`custom_linkin_build_*` 可用；`execute_command` 另限建築總監。未設定 `EVOL_MC_MCP_TOKEN` 時乾跑，不寫入世界。Minecraft 控制查詢與靈境建造任務在預設 `quick_task` 時會改走 `story_studio`，避免只有 developer 執行卻無權放方塊。詳見 [Minecraft MCP](../linkin/minecraft-mcp.md)。
 
+## 量化行情工具
+
+金融／研究角色透過同一套 `tool_call` 呼叫 `backend/company/quant_tools.py`（Yahoo 主源，A 股可備援東方財富／新浪；外匯 Frankfurter；加密貨幣 CoinPaprika／CoinGecko／Binance；可選 Tushare／Finnhub／Alpha Vantage）。工具含報價、分鐘線、31 策略回測（含增強成交量／單成交量）、策略庫目錄、網格優化、Walk-Forward、訊號投票、11 種組合與基準對比。實驗室「策略庫」分類樹（`GET /lab/quant/strategies`）供瀏覽與複製 tool_call；「策略圖」（`GET /lab/archify/strategies`）用 Archify 可視化全部策略，角色可 `archify_strategies`。不嵌入 stock-quant 完整工作站。詳見 [量化行情工具](../company/quant-tools.md)。
+
 ## 執行流程
 
 ```

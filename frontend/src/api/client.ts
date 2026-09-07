@@ -1122,10 +1122,75 @@ export interface PonytailReviewResult {
   };
 }
 
+export interface ArchifyNode {
+  id: string;
+  label: string;
+  role?: string;
+  status?: string;
+  lane?: string;
+  detail?: string;
+}
+
+export interface ArchifyEdge {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export interface ArchifyLane {
+  id: string;
+  label: string;
+}
+
 export interface ArchifyIR {
-  meta?: { title?: string; type?: string; locale?: string; source?: string };
-  nodes: Array<{ id: string; label: string; role?: string }>;
-  edges: Array<{ from: string; to: string; label?: string }>;
+  meta?: {
+    title?: string;
+    type?: string;
+    locale?: string;
+    source?: string;
+    view?: string;
+    visual_preset?: string;
+    inspired_by?: string;
+    category?: string;
+    strategy?: string;
+  };
+  nodes: ArchifyNode[];
+  edges: ArchifyEdge[];
+  lanes?: ArchifyLane[];
+}
+
+export interface StrategyMapGroup {
+  id: string;
+  name: string;
+  total: number;
+  wired: number;
+  items: QuantStrategyItem[];
+  architecture: ArchifyIR;
+}
+
+export interface StrategyMapCatalog {
+  ok: boolean;
+  inspired_by?: string;
+  catalog?: string;
+  engine_count?: number;
+  catalog_count?: number;
+  wired_count?: number;
+  overview: ArchifyIR;
+  data_flow: ArchifyIR;
+  lifecycle: ArchifyIR;
+  groups: StrategyMapGroup[];
+  views?: Array<{ id: string; title: string; kind: string }>;
+  disclaimer?: string;
+  hint?: string;
+}
+
+export interface StrategyMapDetail {
+  ok: boolean;
+  item: QuantStrategyItem;
+  architecture: ArchifyIR;
+  workflow: ArchifyIR;
+  lifecycle: ArchifyIR;
+  hint?: string;
 }
 
 async function readApiError(resp: Response): Promise<string> {
@@ -1204,6 +1269,62 @@ export async function labArchifyGenerate(description: string): Promise<ArchifyIR
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ description }),
   });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+export async function labArchifyStrategies(): Promise<StrategyMapCatalog> {
+  const resp = await fetch(apiUrl('/lab/archify/strategies'));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+export async function labArchifyStrategy(strategyId: string): Promise<StrategyMapDetail> {
+  const resp = await fetch(apiUrl(`/lab/archify/strategies/${encodeURIComponent(strategyId)}`));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+export interface QuantStrategyItem {
+  id: string;
+  name: string;
+  category: string;
+  category_name: string;
+  status: 'wired' | 'catalog' | string;
+  engine: string | null;
+}
+
+export interface QuantStrategyGroup {
+  id: string;
+  name: string;
+  total: number;
+  wired: number;
+  items: QuantStrategyItem[];
+}
+
+export interface QuantStrategyCatalog {
+  ok: boolean;
+  engine_count: number;
+  catalog_count: number;
+  wired_count: number;
+  matched?: number;
+  groups?: QuantStrategyGroup[];
+  items?: QuantStrategyItem[];
+  disclaimer?: string;
+  inspired_by?: string;
+}
+
+export async function labQuantStrategies(opts?: {
+  category?: string;
+  query?: string;
+  status?: string;
+}): Promise<QuantStrategyCatalog> {
+  const params = new URLSearchParams();
+  if (opts?.category) params.set('category', opts.category);
+  if (opts?.query) params.set('query', opts.query);
+  if (opts?.status) params.set('status', opts.status);
+  const qs = params.toString();
+  const resp = await fetch(apiUrl(`/lab/quant/strategies${qs ? `?${qs}` : ''}`));
   if (!resp.ok) throw new Error(await readApiError(resp));
   return resp.json();
 }

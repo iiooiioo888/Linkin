@@ -1,7 +1,7 @@
 /**
- * 實驗室子分頁 — Firecrawl / Prompt Optimizer / Archify / Ponytail 等。
+ * 實驗室子分頁 — Firecrawl / Prompt Optimizer / Archify / Ponytail / 策略庫 / 策略圖 等。
  */
-export type LabSubTab = 'prompt' | 'firecrawl' | 'archify' | 'ponytail' | 'mcp' | 'ab';
+export type LabSubTab = 'prompt' | 'firecrawl' | 'archify' | 'ponytail' | 'quant' | 'maps' | 'mcp' | 'ab';
 
 export type LabTabItem = {
   key: LabSubTab;
@@ -12,7 +12,7 @@ export type LabTabItem = {
   upstream?: { name: string; url: string };
 };
 
-/** 四大整合工具（使用者指定）。 */
+/** 整合工具（上游專案）。 */
 export const LAB_INTEGRATION_TABS: LabTabItem[] = [
   {
     key: 'prompt',
@@ -41,6 +41,20 @@ export const LAB_INTEGRATION_TABS: LabTabItem[] = [
     label: '精簡',
     hint: '審查與裁剪',
     upstream: { name: 'ponytail', url: 'https://github.com/DietrichGebert/ponytail' },
+  },
+  {
+    key: 'quant',
+    icon: '◈',
+    label: '策略庫',
+    hint: '回測分類樹',
+    upstream: { name: 'stock-quant', url: 'https://github.com/iiooiioo888/stock-quant' },
+  },
+  {
+    key: 'maps',
+    icon: '▦',
+    label: '策略圖',
+    hint: '全部策略可視化',
+    upstream: { name: 'archify', url: 'https://github.com/tt-a1i/archify' },
   },
 ];
 

@@ -2,7 +2,7 @@
  * 角色工作台骨架：標題列、指標帶、右側資訊欄。
  * 色彩沿用控制台既有語彙，只改結構。
  */
-import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useMemo, type ReactNode } from 'react';
 import type { AgentEvent, AgentWorkItem, RoleAgent } from '../types';
 import {
   blankMetrics,
@@ -33,7 +33,7 @@ function eventLabel(event: string): string {
   return EVENT_LABELS[event] ?? event.replace(/_/g, ' ');
 }
 
-export type RoleDeskTab = 'tasks' | 'monitor' | 'settings';
+export type RoleDeskTab = 'tasks' | 'monitor' | 'settings' | 'quant';
 
 export function RoleDeskHeader({
   agent,
@@ -41,12 +41,14 @@ export function RoleDeskHeader({
   deskTab,
   onDeskTab,
   extra,
+  showQuant,
 }: {
   agent: RoleAgent;
   modelLabel?: string;
   deskTab: RoleDeskTab;
   onDeskTab: (tab: RoleDeskTab) => void;
   extra?: ReactNode;
+  showQuant?: boolean;
 }) {
   const open = agent.executing + agent.queue;
   return (
@@ -70,6 +72,15 @@ export function RoleDeskHeader({
       </div>
       <div className="rd-acts">
         {extra}
+        {showQuant ? (
+          <button
+            type="button"
+            className={`rd-btn ${deskTab === 'quant' ? 'on' : ''}`}
+            onClick={() => onDeskTab('quant')}
+          >
+            策略庫
+          </button>
+        ) : null}
         <button
           type="button"
           className={`rd-btn ${deskTab === 'monitor' ? 'on' : ''}`}
@@ -139,17 +150,14 @@ function OrgNode({
   agent,
   current,
   onOpen,
-  onBind,
 }: {
   agent: RoleAgent;
   current?: boolean;
   onOpen: (id: string) => void;
-  onBind: (id: string, el: HTMLElement | null) => void;
 }) {
   return (
     <button
       type="button"
-      ref={(el) => onBind(agent.id, el)}
       className={`rd-onode ${current ? 'cur' : ''}`}
       title={`L${agent.level} ${agent.name}`}
       onClick={() => onOpen(agent.id)}
@@ -199,7 +207,7 @@ function childrenOf(id: string, agents: RoleAgent[], byId: Map<string, RoleAgent
   return preferLive(out);
 }
 
-const MAX_PER_LAYER = 5;
+const MAX_PER_LAYER = 8;
 
 type OrgLayer = { key: string; label: string; nodes: RoleAgent[]; extra: number };
 
@@ -235,71 +243,14 @@ function orgLayers(agent: RoleAgent, agents: RoleAgent[]): OrgLayer[] {
   layers.push(down);
 
   const seen = new Set([agent.id, ...down.nodes.map((item) => item.id)]);
-  const grandchildren = preferLive(
-    down.nodes.flatMap((item) => childrenOf(item.id, agents, byId)).filter((item) => !seen.has(item.id)),
-  );
   const uniqueGrand: RoleAgent[] = [];
-  for (const item of grandchildren) {
+  for (const item of preferLive(down.nodes.flatMap((node) => childrenOf(node.id, agents, byId)))) {
     if (seen.has(item.id)) continue;
     seen.add(item.id);
     uniqueGrand.push(item);
   }
   if (uniqueGrand.length) layers.push(takeLayer(`skip-${agent.id}`, uniqueGrand));
   return layers;
-}
-
-type OrgForkGeom = { w: number; parentXs: number[]; childXs: number[] };
-
-function centerX(el: HTMLElement, originLeft: number): number {
-  const box = el.getBoundingClientRect();
-  return box.left + box.width / 2 - originLeft;
-}
-
-function layerEls(layer: OrgLayer, nodes: Map<string, HTMLElement>): HTMLElement[] {
-  return [
-    ...layer.nodes.map((node) => nodes.get(node.id)),
-    layer.extra > 0 ? nodes.get(`${layer.key}-extra`) : null,
-  ].filter((el): el is HTMLElement => Boolean(el));
-}
-
-function measureForks(wrap: HTMLElement, layers: OrgLayer[], nodes: Map<string, HTMLElement>): OrgForkGeom[] {
-  const originLeft = wrap.getBoundingClientRect().left;
-  const w = wrap.clientWidth;
-  const forks: OrgForkGeom[] = [];
-  for (let i = 1; i < layers.length; i += 1) {
-    forks.push({
-      w,
-      parentXs: layerEls(layers[i - 1], nodes).map((el) => centerX(el, originLeft)),
-      childXs: layerEls(layers[i], nodes).map((el) => centerX(el, originLeft)),
-    });
-  }
-  return forks;
-}
-
-function OrgFork({ fork }: { fork?: OrgForkGeom }) {
-  const w = fork?.w ?? 0;
-  const parentXs = fork?.parentXs ?? [];
-  const childXs = fork?.childXs ?? [];
-  const ready = w > 0 && parentXs.length > 0 && childXs.length > 0;
-  const busXs = ready ? [...parentXs, ...childXs] : [];
-  return (
-    <div className="rd-tree-conn" aria-hidden>
-      {ready ? (
-        <svg width={w} height={18} viewBox={`0 0 ${w} 18`}>
-          {parentXs.map((x, i) => (
-            <line key={`p-${i}`} x1={x} y1={0} x2={x} y2={9} />
-          ))}
-          <line x1={Math.min(...busXs)} y1={9} x2={Math.max(...busXs)} y2={9} />
-          {childXs.map((x, i) => (
-            <g key={`c-${i}`}>
-              <circle cx={x} cy={9} r={2.2} />
-              <line x1={x} y1={9} x2={x} y2={18} />
-            </g>
-          ))}
-        </svg>
-      ) : null}
-    </div>
-  );
 }
 
 export function OrgReportTree({
@@ -311,26 +262,7 @@ export function OrgReportTree({
   agents: RoleAgent[];
   onOpen: (id: string) => void;
 }) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const nodeEls = useRef(new Map<string, HTMLElement>());
-  const [forks, setForks] = useState<OrgForkGeom[]>([]);
   const layers = useMemo(() => orgLayers(agent, agents), [agent, agents]);
-  const bindNode = (id: string, el: HTMLElement | null) => {
-    if (el) nodeEls.current.set(id, el);
-    else nodeEls.current.delete(id);
-  };
-
-  useLayoutEffect(() => {
-    const wrap = wrapRef.current;
-    if (!wrap) return undefined;
-    const sync = () => setForks(measureForks(wrap, layers, nodeEls.current));
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(wrap);
-    for (const el of nodeEls.current.values()) ro.observe(el);
-    return () => ro.disconnect();
-  }, [layers, agent.id]);
-
   const canDelegate = agent.can_delegate_to ?? [];
   const reportsHere = agents.filter((item) => item.reporting_to === agent.id || (agent.direct_reports ?? []).includes(item.id)).length;
   const missing = (agent.direct_reports ?? []).filter(
@@ -343,10 +275,10 @@ export function OrgReportTree({
   return (
     <div className="rd-sec">
       <div className="rd-tt">組織回報鏈</div>
-      <div className="rd-tree" ref={wrapRef}>
+      <div className="rd-tree">
         {layers.map((layer, idx) => (
           <Fragment key={layer.key}>
-            {idx > 0 ? <OrgFork fork={forks[idx - 1]} /> : null}
+            {idx > 0 ? <div className="rd-tree-conn" aria-hidden /> : null}
             <div className="rd-tree-row">
               <span className="rd-tree-lvl">{layer.label}</span>
               <div className="rd-tree-nodes">
@@ -356,16 +288,10 @@ export function OrgReportTree({
                     agent={node}
                     current={node.id === agent.id}
                     onOpen={onOpen}
-                    onBind={bindNode}
                   />
                 ))}
                 {layer.extra > 0 ? (
-                  <span
-                    ref={(el) => bindNode(`${layer.key}-extra`, el)}
-                    className="rd-onode rd-onode-more"
-                  >
-                    另 {layer.extra}
-                  </span>
+                  <span className="rd-onode rd-onode-more">另 {layer.extra}</span>
                 ) : null}
               </div>
             </div>
