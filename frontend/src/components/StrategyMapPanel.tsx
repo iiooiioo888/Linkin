@@ -37,6 +37,7 @@ export default function StrategyMapPanel() {
   const [kind, setKind] = useState<Kind>('architecture');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +62,7 @@ export default function StrategyMapPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadTick]);
 
   const q = query.trim().toLowerCase();
   const groups = useMemo(() => {
@@ -182,7 +183,7 @@ export default function StrategyMapPanel() {
     return <p className="py-8 text-center text-[12px] text-[#8E8E93]">載入策略圖…</p>;
   }
   if (error) {
-    return <ErrorState kind="partial" message={error} />;
+    return <ErrorState kind="partial" message={error} onRetry={() => setReloadTick((n) => n + 1)} />;
   }
 
   const kindBtns: Array<[Kind, string]> = activeId

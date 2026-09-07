@@ -45,7 +45,7 @@ export default function LcLineChart({
   yMax?: number;
 }) {
   const host = useRef<HTMLDivElement>(null);
-  const [mode, setMode] = useState<'lcjs' | 'fallback'>('lcjs');
+  const [mode, setMode] = useState<'lcjs' | 'fallback'>('fallback');
   const payload = useMemo(() => JSON.stringify({ series, yMax }), [series, yMax]);
 
   useEffect(() => {
@@ -55,31 +55,36 @@ export default function LcLineChart({
     let chart: { dispose: () => void } | null = null;
 
     void (async () => {
-      const [lc, theme, mod] = await Promise.all([getLcFactory(), darkTheme(), loadLcjs()]);
-      if (disposed) return;
-      if (!lc || !theme || !mod) {
-        setMode('fallback');
-        return;
-      }
-      setMode('lcjs');
-      const xy = lc.ChartXY({ container: el, theme, animationsEnabled: false });
-      xy.setTitle('').setPadding({ left: 4, right: 10, top: 4, bottom: 4 });
-      if (yMax != null) xy.getDefaultAxisY().setInterval({ start: 0, end: yMax, stopAxisAfter: false });
-      const { SolidFill, ColorHEX, SolidLine } = mod;
-      for (const s of series) {
-        const line = xy
-          .addPointLineAreaSeries()
-          .setName(s.name ?? s.id)
-          .setStrokeStyle(new SolidLine({ thickness: 2, fillStyle: new SolidFill({ color: ColorHEX(s.color) }) }))
-          .setAreaFillStyle(new SolidFill({ color: ColorHEX(s.color).setA(30) }));
-        if (s.points.length) {
-          line.appendSamples({
-            xValues: s.points.map((p) => p.x),
-            yValues: s.points.map((p) => p.y),
-          });
+      try {
+        const [lc, theme, mod] = await Promise.all([getLcFactory(), darkTheme(), loadLcjs()]);
+        if (disposed) return;
+        if (!lc || !theme || !mod) {
+          setMode('fallback');
+          return;
         }
+        const xy = lc.ChartXY({ container: el, theme, animationsEnabled: false });
+        xy.setTitle('').setPadding({ left: 4, right: 10, top: 4, bottom: 4 });
+        if (yMax != null) xy.getDefaultAxisY().setInterval({ start: 0, end: yMax, stopAxisAfter: false });
+        const { SolidFill, ColorHEX, SolidLine } = mod;
+        for (const s of series) {
+          const line = xy
+            .addPointLineAreaSeries()
+            .setName(s.name ?? s.id)
+            .setStrokeStyle(new SolidLine({ thickness: 2, fillStyle: new SolidFill({ color: ColorHEX(s.color) }) }))
+            .setAreaFillStyle(new SolidFill({ color: ColorHEX(s.color).setA(30) }));
+          if (s.points.length) {
+            line.appendSamples({
+              xValues: s.points.map((p) => p.x),
+              yValues: s.points.map((p) => p.y),
+            });
+          }
+        }
+        chart = xy;
+        if (!disposed && el.clientHeight > 0) setMode('lcjs');
+      } catch (err) {
+        console.warn('[lcjs] ChartXY 失敗，改用 SVG', err);
+        if (!disposed) setMode('fallback');
       }
-      chart = xy;
     })();
 
     return () => {
@@ -88,13 +93,14 @@ export default function LcLineChart({
     };
   }, [payload, series, yMax]);
 
-  if (mode === 'fallback') {
-    return (
-      <div style={{ height }} className="w-full">
-        <FallbackLine series={series} height={height} />
-      </div>
-    );
-  }
-
-  return <div ref={host} className="h-full w-full" style={{ minHeight: height }} />;
+  return (
+    <div className="relative w-full" style={{ height, minHeight: height }}>
+      {mode === 'fallback' ? <FallbackLine series={series} height={height} /> : null}
+      <div
+        ref={host}
+        className={mode === 'lcjs' ? 'h-full w-full' : 'pointer-events-none absolute inset-0 opacity-0'}
+        style={{ minHeight: height }}
+      />
+    </div>
+  );
 }

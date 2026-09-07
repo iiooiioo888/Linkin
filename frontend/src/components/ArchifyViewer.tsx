@@ -147,8 +147,8 @@ export default function ArchifyViewer({
   }, [compact, ir.lanes, ir.nodes, ltr, many]);
 
   const posList = [...positions.values()];
-  const width = Math.max(320, ...posList.map((p) => p.x + p.w + 24), 1);
-  const height = Math.max(180, ...posList.map((p) => p.y + p.h + 24), 1);
+  const width = Math.max(480, ...posList.map((p) => p.x + p.w + 24), 1);
+  const height = Math.max(240, ...posList.map((p) => p.y + p.h + 24), 1);
   const title = ir.meta?.title ?? '架構圖';
   const kind = ir.meta?.type ?? 'architecture';
 

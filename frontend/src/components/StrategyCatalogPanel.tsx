@@ -11,6 +11,7 @@ import {
   type QuantStrategyPreview,
 } from '../api/client';
 import ArchifyViewer from './ArchifyViewer';
+import CapitalFlowPanel from './CapitalFlowPanel';
 import LcLineChart from './charts/LcLineChart';
 import ErrorState from './ui/ErrorState';
 
@@ -56,6 +57,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [chartLoading, setChartLoading] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +87,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadTick]);
 
   useEffect(() => {
     if (!activeId) {
@@ -224,7 +226,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
     return <p className="py-8 text-center text-[12px] text-[#8E8E93]">載入策略庫…</p>;
   }
   if (error) {
-    return <ErrorState kind="partial" message={error} />;
+    return <ErrorState kind="partial" message={error} onRetry={() => setReloadTick((n) => n + 1)} />;
   }
 
   const chartFail = preview?.chart && preview.chart.ok === false ? preview.chart.error : null;
@@ -390,6 +392,9 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
                   <p className="sq-chart-stat-v">{chart?.last_signal ?? '—'}</p>
                 </div>
               </div>
+              {chart?.demo ? (
+                <p className="px-4 pb-2 text-[10px] text-[#8E8E93]">{chart.note || '示範曲線（行情源暫時不可用）'}</p>
+              ) : null}
               <div className="apple-card__body apple-card__body--static apple-chart h-[220px]">
                 <LcLineChart
                   height={220}
@@ -424,6 +429,12 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
             <p className="px-4 py-8 text-center text-[11px] text-[#636366]">尚無價格曲線</p>
           )}
         </section>
+        <CapitalFlowPanel
+          strategyId={active?.id ?? null}
+          symbol={appliedSymbol}
+          strategyName={active?.name}
+          wired={active?.status === 'wired'}
+        />
       </div>
 
       <aside className="sq-tree-side">

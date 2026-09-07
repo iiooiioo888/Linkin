@@ -2258,12 +2258,19 @@ body {
 }
 
 .apple-card--diagram {
-  min-height: 260px;
+  min-height: 280px;
+  height: auto;
+  overflow: auto;
+}
+
+.apple-card--diagram > .apple-card__body {
+  flex: 0 0 auto;
+  min-height: 240px;
   overflow: auto;
 }
 
 .archify-canvas {
-  min-height: 220px;
+  min-height: 240px;
   overflow: auto;
   padding: 8px 10px 12px;
 }
@@ -2272,12 +2279,19 @@ body {
   display: block;
   width: 100%;
   height: auto;
-  min-height: 220px;
+  min-height: 240px;
   flex-shrink: 0;
 }
 
 .sq-chart-card {
   min-height: 220px;
+  overflow: auto;
+}
+
+.sq-chart-card > .apple-chart {
+  flex: 0 0 auto;
+  min-height: 180px;
+  overflow: hidden;
 }
 
 .sq-chart-stats {
@@ -2316,4 +2330,112 @@ body {
   .sq-map {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* ── 資金流三視圖 ── */
+.cf-panel .apple-card__head {
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.cf-profile-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cf-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 4px;
+}
+
+.cf-tab-hint {
+  padding: 0 12px 8px;
+  font-size: 10px;
+  color: var(--apple-tertiary);
+}
+
+.cf-mermaid {
+  overflow-x: auto;
+  padding: 4px 0;
+}
+
+.cf-mermaid-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cf-mermaid-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--apple-label);
+}
+
+.cf-mermaid-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.cf-mermaid-err {
+  font-size: 11px;
+  color: #e74c3c;
+  margin-bottom: 6px;
+}
+
+.cf-mermaid-fallback {
+  font-size: 10px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  color: var(--apple-secondary);
+}
+
+.cf-timeline-wrap {
+  overflow-x: auto;
+}
+
+.cf-timeline {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.cf-timeline th,
+.cf-timeline td {
+  border: 1px solid var(--apple-hairline);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.cf-timeline th {
+  background: var(--apple-canvas);
+  font-weight: 600;
+  color: var(--apple-secondary);
+  white-space: nowrap;
+}
+
+.cf-timeline .cf-equity {
+  font-weight: 700;
+  color: var(--apple-label);
+}
+
+.cf-backtest-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 12px 0;
+  font-size: 10px;
+  color: var(--apple-tertiary);
+}
+
+.cf-disclaimer {
+  padding: 6px 12px 10px;
+  font-size: 10px;
+  color: var(--apple-tertiary);
 }

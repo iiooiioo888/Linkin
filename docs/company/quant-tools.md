@@ -57,7 +57,7 @@ Hub 的 `StocksX_get_price` 仍為沙箱測試工具；真實公開行情走下�
 
 策略庫對齊 stock-quant `strategies/strategy_library.py`（均線／動量／均值回歸／波動率／趨勢／形態／突破／組合／ML 規劃）。
 
-- 瀏覽：實驗室 → **策略庫**，或 `GET /lab/quant/strategies`；圖表預覽 `GET /lab/quant/preview?strategy=dual_ma&symbol=600519`
+- 瀏覽：實驗室 → **策略庫**，或 `GET /lab/quant/strategies`；圖表預覽 `GET /lab/quant/preview?strategy=dual_ma&symbol=600519`；**資金流三視圖** `GET /lab/quant/capital-flow?strategy=dual_ma&symbol=600519&initial_capital=1000000`（瀑布 Mermaid、狀態機、時間軸表）
 - 可視化：實驗室 → **策略圖**，或 `GET /lab/archify/strategies`；單策略 `GET /lab/archify/strategies/dual_ma`
 - 角色：先呼叫：
 

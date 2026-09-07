@@ -179,6 +179,27 @@ def test_lab_quant_preview_returns_workflow_and_chart(client: TestClient, monkey
     assert planned.json()["chart"] is None
 
 
+def test_lab_quant_capital_flow(client, monkeypatch):
+    from backend.tests.test_quant_tools import _yahoo_payload
+
+    closes = [100 + i * 0.5 for i in range(80)]
+    monkeypatch.setattr(
+        "backend.company.quant_tools._http_get_json",
+        lambda url, params=None: _yahoo_payload(closes),
+    )
+    r = client.get(
+        "/lab/quant/capital-flow",
+        params={"strategy": "dual_ma", "symbol": "600519", "initial_capital": 1_000_000},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert "waterfall_mermaid" in body
+    assert "state_machine_mermaid" in body
+    assert len(body["timeline"]) >= 2
+    assert "600519" in body["waterfall_mermaid"]
+
+
 def test_company_tool_registry_includes_lab_tools():
     from backend.company.tools import tool_registry
 

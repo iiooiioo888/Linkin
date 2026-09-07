@@ -1510,6 +1510,33 @@ async def lab_quant_preview(strategy: str, symbol: str = "600519"):
     return payload
 
 
+@app.get("/lab/quant/capital-flow")
+async def lab_quant_capital_flow(
+    strategy: str,
+    symbol: str = "600519",
+    initial_capital: float = 1_000_000.0,
+    stop_loss_pct: float | None = None,
+    trailing_stop_pct: float | None = None,
+    position_pct: float | None = None,
+    enable_t1: bool = False,
+):
+    """策略資金流三視圖：瀑布 Mermaid、狀態機 Mermaid、時間軸表。"""
+    from backend.company.quant_capital_flow_maps import strategy_capital_flow
+
+    payload = strategy_capital_flow(
+        strategy,
+        symbol=symbol,
+        initial_capital=initial_capital,
+        stop_loss_pct=stop_loss_pct,
+        trailing_stop_pct=trailing_stop_pct,
+        position_pct=position_pct,
+        enable_t1=enable_t1,
+    )
+    if not payload.get("ok"):
+        raise HTTPException(status_code=404, detail=payload.get("error") or "未知策略")
+    return payload
+
+
 # ═══════════════════════════════════════════════════════════
 # 數據庫連接池管理 API（供 UI 使用）
 # ═══════════════════════════════════════════════════════════

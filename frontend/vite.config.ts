@@ -15,6 +15,7 @@ export default defineConfig({
       '@lightningchart/lcjs',
       'three',
       'three/examples/jsm/controls/OrbitControls.js',
+      'mermaid',
     ],
   },
   resolve: {

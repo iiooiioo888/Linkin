@@ -603,6 +603,45 @@ def strategy_maps(strategy_id: str, catalog: dict[str, Any] | None = None) -> di
     }
 
 
+def _demo_preview_chart(engine: str, symbol: str, reason: str) -> dict[str, Any]:
+    """行情源失敗時仍給實驗室一條可畫的確定性曲線。"""
+    n = 72
+    seed = sum(ord(ch) for ch in f"{engine}:{symbol}") or 1
+    equity: list[dict[str, Any]] = []
+    hold: list[dict[str, Any]] = []
+    close: list[dict[str, Any]] = []
+    eq = 1.0
+    price = 80.0 + (seed % 40)
+    base = price
+    peak = 1.0
+    max_dd = 0.0
+    for i in range(n):
+        wave = ((i + seed) % 13 - 6) * 0.004
+        price = max(5.0, price * (1 + wave))
+        eq = max(0.4, eq * (1 + wave * 0.7 + ((i % 9) - 4) * 0.0015))
+        peak = max(peak, eq)
+        if peak:
+            max_dd = max(max_dd, (peak - eq) / peak)
+        stamp = str(i)
+        close.append({"t": stamp, "v": round(price, 4)})
+        hold.append({"t": stamp, "v": round(price / base, 6)})
+        equity.append({"t": stamp, "v": round(eq, 6)})
+    return {
+        "ok": True,
+        "demo": True,
+        "symbol": symbol,
+        "strategy": engine,
+        "total_return": round(equity[-1]["v"] - 1.0, 6),
+        "max_drawdown": round(max_dd, 6),
+        "sharpe": round(0.4 + (seed % 10) / 20, 2),
+        "trades": 3 + seed % 8,
+        "last_signal": "hold",
+        "chart": {"equity": equity, "hold": hold, "close": close},
+        "note": f"示範曲線（{reason[:120]}）",
+        "disclaimer": "示範曲線僅供介面預覽，禁止當作收益保證。",
+    }
+
+
 def strategy_preview(strategy_id: str, symbol: str = "600519") -> dict[str, Any]:
     """實驗室預覽：工作流 IR +（可回測時）權益／收盤曲線。"""
     payload = strategy_maps(strategy_id)
@@ -618,9 +657,16 @@ def strategy_preview(strategy_id: str, symbol: str = "600519") -> dict[str, Any]
 
     engine = str(item.get("engine") or item.get("id") or "")
     try:
-        payload["chart"] = market_backtest(code, strategy=engine, include_chart=True)
+        chart = market_backtest(code, strategy=engine, include_chart=True)
     except Exception as exc:  # noqa: BLE001
-        payload["chart"] = {"ok": False, "error": str(exc)[:400], "tool": "market_backtest"}
+        chart = {"ok": False, "error": str(exc)[:400], "tool": "market_backtest"}
+    series = chart.get("chart") if isinstance(chart, dict) else None
+    has_equity = isinstance(series, dict) and bool(series.get("equity"))
+    if not chart.get("ok") or not has_equity:
+        reason = str(chart.get("error") or "行情源暫時不可用")
+        payload["chart"] = _demo_preview_chart(engine, code, reason)
+        return payload
+    payload["chart"] = chart
     return payload
 
 

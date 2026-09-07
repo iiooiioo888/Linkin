@@ -70,3 +70,17 @@ def test_strategy_preview_skips_chart_for_catalog():
     payload = strategy_preview("lstm_predictor")
     assert payload["ok"] is True
     assert payload["chart"] is None
+
+
+def test_strategy_preview_demo_chart_when_feed_fails(monkeypatch):
+    monkeypatch.setattr(
+        "backend.company.quant_tools.market_backtest",
+        lambda *args, **kwargs: {"ok": False, "error": "yahoo timeout", "tool": "market_backtest"},
+    )
+    payload = strategy_preview("dual_ma", symbol="600519")
+    assert payload["ok"] is True
+    chart = payload["chart"]
+    assert chart["ok"] is True
+    assert chart["demo"] is True
+    assert chart["chart"]["equity"]
+    assert chart["chart"]["close"]

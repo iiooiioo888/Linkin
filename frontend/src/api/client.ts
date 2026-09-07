@@ -1200,6 +1200,7 @@ export interface QuantChartPoint {
 
 export interface QuantPreviewChart {
   ok?: boolean;
+  demo?: boolean;
   strategy?: string;
   total_return?: number;
   max_drawdown?: number;
@@ -1207,6 +1208,7 @@ export interface QuantPreviewChart {
   trades?: number;
   last_signal?: string;
   error?: string;
+  note?: string;
   chart?: {
     equity: QuantChartPoint[];
     hold: QuantChartPoint[];
@@ -1361,6 +1363,78 @@ export async function labQuantStrategies(opts?: {
   if (opts?.status) params.set('status', opts.status);
   const qs = params.toString();
   const resp = await fetch(apiUrl(`/lab/quant/strategies${qs ? `?${qs}` : ''}`));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+export interface CapitalFlowTimelineRow {
+  time: string;
+  event: string;
+  cash: string;
+  position: string;
+  margin: string;
+  equity: string;
+  note: string;
+}
+
+export interface CapitalFlowProfile {
+  cash_buffer_pct: number;
+  margin_pct: number;
+  reserve_pct: number;
+  position_pct: number;
+  stop_loss_pct?: number;
+  trailing_stop_pct?: number;
+  daily_loss_limit_pct?: number;
+  short_enabled?: boolean;
+  intraday?: boolean;
+  rebalance?: boolean;
+  long_pct?: number;
+  short_pct?: number;
+}
+
+export interface QuantCapitalFlow {
+  ok: boolean;
+  strategy: string;
+  engine: string | null;
+  name: string;
+  symbol: string;
+  initial_capital: number;
+  initial_capital_fmt: string;
+  profile: CapitalFlowProfile;
+  waterfall_mermaid: string;
+  state_machine_mermaid: string;
+  timeline: CapitalFlowTimelineRow[];
+  scene_hints?: { scene: string; chart: string; title: string }[];
+  backtest_summary?: {
+    total_return?: number;
+    max_drawdown?: number;
+    trades?: number;
+    last_signal?: string;
+  } | null;
+  disclaimer?: string;
+  hint?: string;
+  error?: string;
+}
+
+export async function labQuantCapitalFlow(
+  strategy: string,
+  opts?: {
+    symbol?: string;
+    initialCapital?: number;
+    stopLossPct?: number;
+    trailingStopPct?: number;
+    positionPct?: number;
+    enableT1?: boolean;
+  },
+): Promise<QuantCapitalFlow> {
+  const params = new URLSearchParams({ strategy });
+  if (opts?.symbol) params.set('symbol', opts.symbol);
+  if (opts?.initialCapital != null) params.set('initial_capital', String(opts.initialCapital));
+  if (opts?.stopLossPct != null) params.set('stop_loss_pct', String(opts.stopLossPct));
+  if (opts?.trailingStopPct != null) params.set('trailing_stop_pct', String(opts.trailingStopPct));
+  if (opts?.positionPct != null) params.set('position_pct', String(opts.positionPct));
+  if (opts?.enableT1) params.set('enable_t1', 'true');
+  const resp = await fetch(apiUrl(`/lab/quant/capital-flow?${params}`));
   if (!resp.ok) throw new Error(await readApiError(resp));
   return resp.json();
 }
