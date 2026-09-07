@@ -2,6 +2,8 @@
   "nav": {
     "chat": "Chat",
     "console": "Console",
+    "linkin": "Linkin",
+    "minecraft": "Minecraft",
     "work": "Execute",
     "observe": "Observe",
     "system": "System",

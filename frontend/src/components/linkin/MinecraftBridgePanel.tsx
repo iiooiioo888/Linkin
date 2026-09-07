@@ -8,6 +8,7 @@ import {
   probeMinecraft,
   type MinecraftStatus,
 } from '../../api/linkin';
+import { navPathForTab } from '../../lib/monitorTabs';
 
 export default function MinecraftBridgePanel() {
   const [status, setStatus] = useState<MinecraftStatus | null>(null);
@@ -96,6 +97,7 @@ export default function MinecraftBridgePanel() {
           <h2 className="text-sm font-semibold">Minecraft MCP</h2>
           <p className="mt-0.5 text-[11px] text-[#8a8f98]">
             公司角色工具橋接 MineMCP（JSON-RPC）。遠端放置工具名為 pose_block。
+            建築 Schematic 在「{navPathForTab('building')}」。
           </p>
         </div>
         <div className="flex gap-2">

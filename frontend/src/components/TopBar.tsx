@@ -32,12 +32,17 @@ export default function TopBar({
 }: TopBarProps) {
   const { t, i18n } = useTranslation();
   const activity = resolveActivity(activeView, monitorTab);
+  const path = consoleChromeLabel(activeView, monitorTab, labSubTabLabel(labSubTab), traceTaskId);
   const viewLabel =
     activity === 'chat'
       ? t('nav.chat')
       : activity === 'lab'
         ? `${t('nav.lab')} · ${labSubTabLabel(labSubTab)}`
-        : `${t('nav.console')} · ${consoleChromeLabel(activeView, monitorTab, labSubTabLabel(labSubTab), traceTaskId)}`;
+        : activity === 'linkin'
+          ? `${t('nav.linkin')} · ${path}`
+          : activity === 'minecraft'
+            ? `${t('nav.minecraft')} · ${path}`
+            : `${t('nav.console')} · ${path}`;
 
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.06] apple-chrome px-3">

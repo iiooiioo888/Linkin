@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchOptimizationMonitor } from '../api/client';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { OptimizationMonitorData } from '../types';
+import LcBarChart from './charts/LcBarChart';
 
 function Bar({ pct, color = '#007AFF' }: { pct: number; color?: string }) {
   return (
@@ -90,6 +91,28 @@ export default function ModelCallPanel() {
             <p className="mt-1 truncate font-mono text-sm text-[#f7f8f8]">{kpi.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mb-4 apple-card apple-card--tight !p-0 overflow-hidden">
+        <p className="border-b border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
+          模型佔比
+        </p>
+        <div className="h-[220px] p-2">
+          {(calls?.by_model ?? []).length === 0 ? (
+            <p className="p-3 text-xs text-[#62666d]">尚無 llm_call 軌跡，完成任務後將自動彙總。</p>
+          ) : (
+            <LcBarChart
+              height={200}
+              categories={(calls?.by_model ?? []).slice(0, 8).map((row) => row.model.split('/').pop() ?? row.model)}
+              groups={[
+                {
+                  subCategory: '調用次數',
+                  values: (calls?.by_model ?? []).slice(0, 8).map((row) => row.count),
+                },
+              ]}
+            />
+          )}
+        </div>
       </div>
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">

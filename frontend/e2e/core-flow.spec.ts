@@ -73,6 +73,7 @@ test.describe('EvoLoop 核心 UI', () => {
 
   test('Hash 路由：#/monitor/world 可開啟靈境世界觀', async ({ page }) => {
     await page.goto('/#/monitor/world');
+    await expect(page.getByText(/靈境 · .*世界觀|Linkin ·/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/世界觀憲法|Constitution/).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.url()).toMatch(/#\/monitor\/world/);
 
@@ -99,10 +100,30 @@ test.describe('EvoLoop 核心 UI', () => {
 
   test('Hash 路由：#/monitor/minecraft 可開啟 MCP 橋接', async ({ page }) => {
     await page.goto('/#/monitor/minecraft');
+    await expect(page.getByText(/Minecraft · .*橋接/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/Minecraft MCP/).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.url()).toMatch(/#\/monitor\/minecraft/);
 
     await page.reload();
+    await expect(page.url()).toMatch(/#\/monitor\/minecraft/);
+  });
+
+  test('活動欄：控制台與靈境不含 Minecraft，獨立活動可進橋接', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTitle('控制台').or(page.getByTitle('Console')).click();
+    await expect(page.getByRole('button', { name: /即時|Live/ }).first()).toBeVisible();
+    await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /世界觀/ })).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /橋接/ })).toHaveCount(0);
+
+    await page.getByTitle('靈境').or(page.getByTitle('Linkin')).click();
+    await expect(page.getByRole('button', { name: /世界觀/ }).first()).toBeVisible();
+    await expect(page.getByRole('navigation', { name: '靈境' }).getByRole('button', { name: /橋接/ })).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: '靈境' }).getByRole('button', { name: /建築/ })).toHaveCount(0);
+
+    await page.getByTitle('Minecraft').click();
+    await expect(page.getByRole('button', { name: /建築/ }).first()).toBeVisible();
+    await page.getByRole('button', { name: /橋接/ }).click();
+    await expect(page.getByText(/Minecraft MCP/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/minecraft/);
   });
 });

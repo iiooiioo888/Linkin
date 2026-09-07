@@ -6,6 +6,8 @@
  *   #/monitor | #/monitor/tasks | #/monitor/tasks/{taskId}
  *   #/monitor/agents/{agentId}
  *   #/monitor/lab | #/monitor/lab/{prompt|firecrawl|archify|ponytail|mcp|ab}
+ *   #/monitor/world | #/monitor/npcs | #/monitor/quests | #/monitor/items
+ *   #/monitor/building | #/monitor/minecraft
  *   #/traces | #/traces/{taskId}
  */
 import type { MonitorTab, ViewKey } from '../components/AppShell';

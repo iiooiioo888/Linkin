@@ -58,7 +58,7 @@ EvoLoop 不是普通的 AI 助手——它是具備**自我反思閉環**的**�
 | 🔄 **反思閉環** | 4 維度獨立評分（準確／完整／清晰／相關），低於門檻自動反思改進直到達標 |
 | 🏢 **公司運行時** | 複雜任務自動觸發：Manager 分解 → 多角色並行 → Reviewer 審查 → Synthesizer 整合 |
 | 🏭 **OPC 整合** | 工業任務注入感測上下文，6 級閉環（感知→預處理→分析→診斷→決策→執行） |
-| 🖥️ **監控中心** | 控制台五組：配置（API 路由）· 執行（即時總覽可跳轉）· 觀測 · 系統 · 靈境 |
+| 🖥️ **監控中心** | 活動欄五層：對話 · 控制台（EvoLoop）· 靈境（世界）· Minecraft · 實驗室 |
 | 🎭 **角色目錄** | **80** 個內建角色（Level 0–4）+ 自定義角色 CRUD + 執行期設定覆蓋 |
 | 🔌 **模型池鎖定** | 依已存 API 鎖定可用模型；單一廠商只准該廠商；OpenRouter 等通用端點爬取 `/models` |
 | ☁️ **雲控制台** | 費用帳單、資源監控、告警中心、Docker 實例管理 |
@@ -88,9 +88,9 @@ graph LR
 
 | 主題 | 你會得到什麼 |
 |------|-------------|
-| **靈境·Linkin** | 世界觀憲法、NPC／任務／建築／道具、監控中心「靈境」分頁；種子：`python -m backend.scripts.seed_linkin_world` |
-| **Minecraft MCP** | MineMCP JSON-RPC 封成公司角色工具（`place_block` 等）；未設 Token 乾跑；監控「靈境 → Minecraft」 |
-| **監控中心擴充** | 含靈境分頁；80 席角色工作台；完整角色設定表單；自定義角色新增／複製／刪除；監控偏好（輪詢、分組、篩選） |
+| **靈境·Linkin** | 活動欄獨立「靈境」：世界觀／NPC／任務／道具；種子：`python -m backend.scripts.seed_linkin_world` |
+| **Minecraft MCP** | 獨立活動「Minecraft」（建築／橋接）；MineMCP JSON-RPC；未設 Token 乾跑 |
+| **監控中心擴充** | 控制台（EvoLoop）與靈境分開；80 席角色工作台；自定義角色 CRUD；監控偏好 |
 | **角色總覽操作** | 依 L0–L4 分組；左側層級錨點跳轉；活躍／告警為篩選而非第二套計數；卡片右上角為該角色合計成本 |
 | **示範資料** | `python -m backend.scripts.seed_demo_content` 寫入 60 任務、60 推理軌跡、60 知識庫條目（Chroma 失敗則降級 JSON） |
 | **通用模型優化** | 只存 DeepSeek → 全系統只能用 DeepSeek；OpenRouter／Ollama／vLLM → 爬取 `/models` 寫入配置；定時檢查 + 手動刷新 + 健康快照 |
@@ -114,7 +114,7 @@ graph LR
 | 項目 | 現況 |
 |------|------|
 | 分支 | 僅 `master`（舊 `main` 已合併停用） |
-| 前端 | 一套 IDE 風格 UI；主視圖僅 **聊天／監控中心／軌跡** |
+| 前端 | 一套 IDE 風格 UI；活動欄 **對話／控制台／靈境／Minecraft／實驗室** |
 | 監控 | Hub 併入監控中心；導航與降級資料單一來源（`monitorTabs` / `monitorFallbacks`） |
 | CI / Pages | 推送 `master` → `test.yml` 測試 + `deploy-pages.yml` 部署 GitHub Pages |
 | 倉庫 | [iiooiioo888/Evoloop](https://github.com/iiooiioo888/Evoloop) → [GitHub Pages](https://iiooiioo888.github.io/Evoloop/) |
@@ -128,8 +128,10 @@ graph LR
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                     🖥️ 前端（單一版本 · React + Vite）              │
-│  ActivityBar │ SidePanel（層級跳轉）│ ChatView │ MonitorView │ TraceView │
-│  監控：Agents / 總覽 / 控制面版 / OPC / Hub / LLM / 雲 / 記憶 / CP │
+│  ActivityBar（對話／控制台／靈境／Minecraft／實驗室）│ SidePanel │ ChatView │ MonitorView │ TraceView │
+│  控制台：API 路由／即時／角色／管線／用量／基礎設施                               │
+│  靈境：世界觀／NPC／任務／道具                                                     │
+│  Minecraft：建築方案／MineMCP 橋接                                                 │
 └───────────────────────────────┬──────────────────────────────────┘
                                 │ REST + WebSocket + SSE
 ┌───────────────────────────────┴──────────────────────────────────┐
@@ -294,7 +296,9 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 
 ## 🖥️ 監控中心
 
-前端**只有一個控制台**（`MonitorView`）。左側三層：活動欄（對話／控制台／實驗室）→ 側欄分組 → 主區。分頁定義在 `frontend/src/lib/monitorTabs.ts`：
+前端**只有一套主視圖**（`MonitorView`）。左側三層：活動欄（對話／控制台／靈境／Minecraft／實驗室）→ 側欄分組 → 主區。分頁定義在 `frontend/src/lib/monitorTabs.ts`。
+
+**控制台**（EvoLoop 原功能，不含 Minecraft）：
 
 | 分組 | 分頁 | 說明 |
 |------|------|------|
@@ -309,9 +313,32 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 | | 用戶反饋 | 評分紀錄 |
 | **系統** | 記憶 | 向量檢索 |
 | | 基礎設施 | AI Hub／雲端／檢查點／連接池 |
-| **靈境** | 世界觀／NPC／任務／建築／道具／Minecraft | 遊戲內容與 MineMCP |
+
+**靈境**（世界內容，不連遊戲伺服器）：
+
+| 分組 | 分頁 | 說明 |
+|------|------|------|
+| **世界** | 世界觀／NPC／任務／道具 | 憲法、角色卡、主線支線、稀有度；陣營／NPC／道具以 neiki-gallery 燈箱瀏覽 |
+
+**Minecraft**（獨立活動，與靈境、控制台分開）：
+
+| 分組 | 分頁 | 說明 |
+|------|------|------|
+| **伺服器** | 建築 | Schematic 生成、3D 預覽、方案畫廊、派發到世界 |
+| | 橋接 | MineMCP 探測、工具呼叫、審計 |
+
+**實驗室**獨立活動：提示詞／爬蟲／架構／精簡，以及 OPC／記憶等通用 MCP 開關（不含 Minecraft 工具）。
 
 頂欄齒輪為 **快速加入 API**（與控制台 API 路由共用同一編輯器）。角色級模型與 Token 只在「執行 → 角色 → 模型／設定」指定。
+
+### 圖表與影像
+
+| 庫 | 用途 |
+|------|------|
+| **LightningChart JS** | 控制台／實驗室／雲監控圖表（WebGL）。授權寫入前端 `VITE_LCJS_LICENSE`；未設時自動降級 Canvas，畫面仍可用 |
+| **neiki-gallery** | NPC／道具／陣營／任務／建築方案畫廊；爬蟲抓到的圖；對話 Markdown 圖片燈箱。含砌體、網格、馬賽克、畫中畫 |
+
+圖表入口：`frontend/src/components/charts/`。畫廊入口：`frontend/src/components/media/MediaGallery.tsx`（vendor：`frontend/src/vendor/neiki-gallery/`）。
 
 ### 監控偏好（角色 Agent）
 

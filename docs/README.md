@@ -53,4 +53,4 @@
 | 理解反思閉環如何工作 | [反思閉環](architecture/reflection-loop.md) |
 | 理解多代理人如何協作 | [公司運行時](architecture/company-runtime.md) |
 | 接入工業設備 | [OPC 整合](architecture/opc-integration.md) |
-| 靈境世界觀／NPC／建築 | [世界觀](linkin/worldview.md) · [靈境 API](linkin/api.md) |
+| 靈境世界觀／NPC／Minecraft | [世界觀](linkin/worldview.md) · [靈境 API](linkin/api.md) · [Minecraft MCP](linkin/minecraft-mcp.md) |

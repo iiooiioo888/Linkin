@@ -1,5 +1,5 @@
 /**
- * ActivityBar — 三層活動：對話 / 控制台 / 實驗室。
+ * ActivityBar — 五層活動：對話 / 控制台 / 靈境 / Minecraft / 實驗室。
  */
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +33,32 @@ const ITEMS: { key: ActivityKey; labelKey: string; icon: (active: boolean) => Re
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
         <rect x="2" y="3" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.3" />
         <path d="M6 15h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    key: 'linkin',
+    labelKey: 'nav.linkin',
+    icon: () => (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+        <circle cx="9" cy="9" r="6.2" stroke="currentColor" strokeWidth="1.3" />
+        <ellipse cx="9" cy="9" rx="2.6" ry="6.2" stroke="currentColor" strokeWidth="1.2" />
+        <path d="M3 9h12" stroke="currentColor" strokeWidth="1.2" />
+      </svg>
+    ),
+  },
+  {
+    key: 'minecraft',
+    labelKey: 'nav.minecraft',
+    icon: () => (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+        <path
+          d="M9 2.4l6.2 3.2v6.8L9 15.6 2.8 12.4V5.6L9 2.4z"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+        />
+        <path d="M9 2.4v13.2M2.8 5.6L9 8.8l6.2-3.2" stroke="currentColor" strokeWidth="1.2" />
       </svg>
     ),
   },

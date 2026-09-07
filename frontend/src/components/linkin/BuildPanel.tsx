@@ -16,6 +16,9 @@ import {
   type BuildingPreview,
 } from '../../api/linkin';
 import BuildingViewer from './BuildingViewer';
+import { activityNavPath } from '../../lib/monitorTabs';
+import { buildingPostcardUri } from '../../lib/visualCards';
+import MediaGallery from '../media/MediaGallery';
 
 const FALLBACK_REGION_STYLES: Record<string, string[]> = {
   织庭都: ['织梦典章', '白石圣殿', '契约广场', '金线回廊'],
@@ -200,7 +203,10 @@ export default function BuildPanel() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold">建築生成</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">BuilderAI.generate → nbtlib Gzip .schem（Sponge v3）＋ Base64，Three.js 預覽，單次 ≤ 5000 方塊</p>
+          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
+            BuilderAI.generate → nbtlib Gzip .schem（Sponge v3）＋ Base64，Three.js 預覽，單次 ≤ 5000 方塊。
+            連線探測在「{activityNavPath('minecraft')}」。
+          </p>
         </div>
         <button type="button" onClick={() => void load()} className="rounded-xl border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98]">
           重新整理
@@ -310,6 +316,25 @@ export default function BuildPanel() {
       )}
 
       <h3 className="mb-2 mt-6 text-[11px] font-semibold text-[#8a8f98]">已規劃方案（{buildings.length}）</h3>
+      {buildings.length > 0 && (
+        <div className="mb-3">
+          <MediaGallery
+            layout="masonry"
+            items={buildings.map((item) => ({
+              src: buildingPostcardUri({
+                style: item.style,
+                region: item.region,
+                width: item.width,
+                height: item.height,
+                length: item.length,
+              }),
+              caption: `${item.style} · ${item.voxel_count || item.block_count} 方塊`,
+              alt: item.style,
+              tags: item.region || item.style,
+            }))}
+          />
+        </div>
+      )}
       <div className="space-y-2">
         {buildings.length === 0 && <p className="py-8 text-center text-xs text-[#636366]">尚無建築方案</p>}
         {buildings.map((item) => (

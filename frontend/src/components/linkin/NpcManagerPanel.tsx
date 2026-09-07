@@ -3,6 +3,8 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { createNpc, deleteNpc, fetchNpcs, npcDialogue, updateNpc, type NpcCard } from '../../api/linkin';
+import { npcPortraitUri } from '../../lib/visualCards';
+import MediaGallery, { VisualThumb } from '../media/MediaGallery';
 
 const EMPTY: NpcCard = {
   name: '',
@@ -120,6 +122,25 @@ export default function NpcManagerPanel() {
       <div className="grid min-h-0 flex-1 gap-0 overflow-hidden lg:grid-cols-[1fr_1.1fr]">
         <div className="overflow-y-auto border-b border-white/[0.06] p-3 lg:border-b-0 lg:border-r">
           {npcs.length === 0 && <p className="py-8 text-center text-xs text-[#636366]">尚無 NPC，請先建立角色卡</p>}
+          {npcs.length > 0 && (
+            <div className="mb-3">
+              <MediaGallery
+                layout="mosaic"
+                items={npcs.map((npc) => ({
+                  src: npcPortraitUri(npc.name, npc.faction, npc.occupation),
+                  caption: `${npc.name} · ${npc.faction}`,
+                  alt: npc.name,
+                  tags: npc.faction,
+                  size: npc.occupation ? 'large' : 'small',
+                }))}
+                filter
+                onOpen={(_, index) => {
+                  const npc = npcs[index];
+                  if (npc) selectNpc(npc);
+                }}
+              />
+            </div>
+          )}
           <div className="space-y-2">
             {npcs.map((npc) => (
               <button
@@ -128,11 +149,16 @@ export default function NpcManagerPanel() {
                 onClick={() => selectNpc(npc)}
                 className={`w-full rounded-lg border px-3 py-2 text-left ${selected === npc.id ? 'border-[#64D2FF]/40 bg-[#64D2FF]/10' : 'border-white/[0.08] bg-[#1C1C1E]'}`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[13px] font-medium">{npc.name}</p>
-                  <span className="text-[10px] text-[#8a8f98]">{npc.faction}</span>
+                <div className="flex items-center gap-3">
+                  <VisualThumb src={npcPortraitUri(npc.name, npc.faction, npc.occupation)} alt={npc.name} className="h-12 w-9" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[13px] font-medium">{npc.name}</p>
+                      <span className="text-[10px] text-[#8a8f98]">{npc.faction}</span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-[11px] text-[#AEAEB2]">{npc.backstory}</p>
+                  </div>
                 </div>
-                <p className="mt-1 line-clamp-2 text-[11px] text-[#AEAEB2]">{npc.backstory}</p>
                 {npc.id && (
                   <span
                     className="mt-2 inline-block text-[10px] text-red-400"

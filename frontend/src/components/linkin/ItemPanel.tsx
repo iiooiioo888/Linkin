@@ -3,6 +3,8 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { createItem, deleteItem, fetchItems, type Item } from '../../api/linkin';
+import { itemTileUri } from '../../lib/visualCards';
+import MediaGallery, { VisualThumb } from '../media/MediaGallery';
 
 export default function ItemPanel() {
   const [items, setItems] = useState<Item[]>([]);
@@ -72,6 +74,22 @@ export default function ItemPanel() {
       </div>
       {error && <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
 
+      {items.length > 0 && (
+        <div className="mb-4">
+          <MediaGallery
+            layout="mosaic"
+            filter
+            items={items.map((item, index) => ({
+              src: itemTileUri(item.name, item.rarity, item.type),
+              caption: `${item.name} · ${item.rarity}`,
+              alt: item.name,
+              tags: `${item.type},${item.rarity}`,
+              size: item.rarity === 'legendary' || item.rarity === 'epic' ? 'large' : index % 5 === 0 ? 'large' : 'small',
+            }))}
+          />
+        </div>
+      )}
+
       <div className="mb-4 grid gap-2 rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3 sm:grid-cols-2 lg:grid-cols-6">
         <label className="text-[10px] text-[#8a8f98] lg:col-span-2">名稱
           <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
@@ -124,7 +142,12 @@ export default function ItemPanel() {
             )}
             {items.map((item) => (
               <tr key={item.id} className="border-t border-white/[0.06]">
-                <td className="px-3 py-2">{item.name}</td>
+                <td className="px-3 py-2">
+                  <span className="inline-flex items-center gap-2">
+                    <VisualThumb src={itemTileUri(item.name, item.rarity, item.type)} alt={item.name} className="h-8 w-8" />
+                    {item.name}
+                  </span>
+                </td>
                 <td className="px-3 py-2 text-[#AEAEB2]">{item.type}</td>
                 <td className="px-3 py-2 text-[#AEAEB2]">{item.rarity}</td>
                 <td className="px-3 py-2 text-[#8a8f98]">{JSON.stringify(item.attributes)}</td>

@@ -3,6 +3,8 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { deleteQuest, fetchQuests, generateQuest, type Quest } from '../../api/linkin';
+import { questCardUri } from '../../lib/visualCards';
+import MediaGallery from '../media/MediaGallery';
 
 export default function QuestPanel() {
   const [quests, setQuests] = useState<Quest[]>([]);
@@ -98,6 +100,17 @@ export default function QuestPanel() {
 
       <div className="space-y-2">
         {quests.length === 0 && <p className="py-10 text-center text-xs text-[#636366]">尚無任務</p>}
+        {quests.length > 0 && (
+          <MediaGallery
+            layout="filmstrip"
+            items={quests.map((quest) => ({
+              src: questCardUri(quest.title, quest.quest_type, quest.difficulty),
+              caption: `${quest.title} · ${quest.quest_type}`,
+              alt: quest.title,
+              tags: `${quest.quest_type},${quest.difficulty}`,
+            }))}
+          />
+        )}
         {quests.map((quest) => (
           <article key={quest.id} className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
             <div className="flex flex-wrap items-center gap-2">

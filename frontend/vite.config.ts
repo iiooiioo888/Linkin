@@ -12,7 +12,7 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       'react-is',
-      'recharts',
+      '@lightningchart/lcjs',
       'three',
       'three/examples/jsm/controls/OrbitControls.js',
     ],

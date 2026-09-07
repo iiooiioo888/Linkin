@@ -3,11 +3,12 @@
  *
  * 顯示 CPU / 記憶體 / 網路使用量折線圖，
  * 支援 1h / 6h / 24h 時間範圍切換。
- * 使用純 CSS 繪製簡單折線圖，無外部依賴。
+ * 圖表走 LightningChart JS（WebGL）。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchCloudMonitoring } from '../api/client';
 import type { CloudMonitoring } from '../types';
+import LcLineChart from './charts/LcLineChart';
 
 const RANGE_OPTIONS = [
   { value: '1h', label: '1 小時' },
@@ -27,7 +28,6 @@ function getColor(svc: string): string {
   return SERVICE_COLORS[svc] ?? '#9ca3af';
 }
 
-/** 簡易 SVG 折線圖 */
 function MiniLineChart({
   points,
   maxY,
@@ -52,22 +52,7 @@ function MiniLineChart({
     );
   }
 
-  const width = 400;
-  const padding = 4;
-  const chartW = width - padding * 2;
-  const chartH = height - padding * 2;
-  const safeMax = maxY || 1;
-
-  const polyline = points
-    .map((v, i) => {
-      const x = padding + (i / (points.length - 1)) * chartW;
-      const y = padding + chartH - (v / safeMax) * chartH;
-      return `${x},${y}`;
-    })
-    .join(' ');
-
   const latest = points[points.length - 1];
-  const fillArea = `${polyline} ${padding + chartW},${padding + chartH} ${padding},${padding + chartH}`;
 
   return (
     <div className="rounded-lg border border-gray-800 bg-gray-900/80 p-3">
@@ -77,16 +62,17 @@ function MiniLineChart({
           {latest.toFixed(1)}{unit}
         </p>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-16 w-full">
-        <polygon points={fillArea} fill={`${color}15`} />
-        <polyline
-          points={polyline}
-          fill="none"
-          stroke={color}
-          strokeWidth="1.5"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
+      <LcLineChart
+        height={height}
+        yMax={maxY || 1}
+        series={[
+          {
+            id: label,
+            color,
+            points: points.map((y, x) => ({ x, y })),
+          },
+        ]}
+      />
     </div>
   );
 }

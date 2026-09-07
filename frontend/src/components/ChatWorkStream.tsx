@@ -3,10 +3,10 @@
  * 任務進行中展示階段、草稿、角色產出與思考過程。
  */
 import { useMemo } from 'react';
-import ReactMarkdown from 'react-markdown';
 import type { KanbanItem, TaskEvent, TaskProgress } from '../types';
 import { eventBody, splitThink } from '../lib/splitThink';
 import { MonitorSection } from './ChatMonitorCards';
+import MarkdownBody from './media/MarkdownBody';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, roleLabel } from './TaskPanel';
 
 interface ChatWorkStreamProps {
@@ -80,7 +80,7 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
       <MonitorSection title="生成內容" hint={liveText ? `${liveText.length} 字` : '等待寫入'}>
         {liveText ? (
           <div className="markdown-body max-h-[320px] overflow-y-auto text-[12px] leading-relaxed text-[#F5F5F7]">
-            <ReactMarkdown>{liveText}</ReactMarkdown>
+            <MarkdownBody markdown={liveText} className="" />
           </div>
         ) : (
           <p className="py-6 text-center text-[11px] text-[#636366]">

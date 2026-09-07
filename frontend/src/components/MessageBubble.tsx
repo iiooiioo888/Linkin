@@ -1,10 +1,10 @@
 /** 單則訊息：無框助手回覆 + 任務卡。 */
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import type { ChatMessage } from '../types';
 import { cancelTask, resumeTask, sendFeedback } from '../api/client';
 import { splitThink } from '../lib/splitThink';
 import { ReflectionRadar } from './ReflectionCharts';
+import MarkdownBody from './media/MarkdownBody';
 import TaskPanel from './TaskPanel';
 import ErrorState from './ui/ErrorState';
 
@@ -120,7 +120,7 @@ export default function MessageBubble({
                       {message.streaming || runningTask ? '生成中' : '回覆'}
                     </p>
                   )}
-                  <ReactMarkdown>{visible}</ReactMarkdown>
+                  <MarkdownBody markdown={visible} />
                 </div>
               ) : (
                 message.streaming && !thinking && (

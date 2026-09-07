@@ -2,14 +2,17 @@
  * AppShell — IDE 风格布局容器。
  *
  * 布局：TopBar → [ActivityBar | SidePanel | MainContent | RightPanel] → StatusBar
- * 管理 activeView / rightPanelOpen / sidebarOpen 等布局状态。
+ * 活動：對話 / 控制台（EvoLoop）/ 靈境（世界）/ Minecraft（建築 + 橋接）/ 實驗室
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ChatSession } from '../types';
 import type { LabSubTab } from '../lib/labTabs';
 import {
   ACTIVITY_DEFAULT_TAB,
+  isConsoleTab,
+  isLinkinTab,
+  isMinecraftTab,
   resolveActivity,
   type ActivityKey,
 } from '../lib/monitorTabs';
@@ -121,6 +124,15 @@ export default function AppShell({
   }, [activeView]);
 
   const activity = resolveActivity(activeView, monitorTab);
+  const lastTabByActivity = useRef<Partial<Record<ActivityKey, MonitorTab>>>({});
+
+  useEffect(() => {
+    if (activeView === 'traces') {
+      lastTabByActivity.current.console = lastTabByActivity.current.console ?? 'live';
+      return;
+    }
+    lastTabByActivity.current[activity] = monitorTab;
+  }, [activity, activeView, monitorTab]);
 
   const handleActivityChange = useCallback(
     (next: ActivityKey) => {
@@ -134,7 +146,26 @@ export default function AppShell({
         onMonitorTabChange('lab');
         return;
       }
-      if (monitorTab !== 'lab') {
+      if (next === 'linkin') {
+        const remembered = lastTabByActivity.current.linkin;
+        onMonitorTabChange(
+          isLinkinTab(remembered) ? remembered! : (ACTIVITY_DEFAULT_TAB.linkin as MonitorTab),
+        );
+        return;
+      }
+      if (next === 'minecraft') {
+        const remembered = lastTabByActivity.current.minecraft;
+        onMonitorTabChange(
+          isMinecraftTab(remembered) ? remembered! : (ACTIVITY_DEFAULT_TAB.minecraft as MonitorTab),
+        );
+        return;
+      }
+      const remembered = lastTabByActivity.current.console;
+      if (isConsoleTab(remembered)) {
+        onMonitorTabChange(remembered!);
+        return;
+      }
+      if (isConsoleTab(monitorTab) && activeView !== 'chat') {
         onViewChange('monitor');
         return;
       }

@@ -13,6 +13,7 @@
     "openapi": "python ../backend/scripts/export_openapi.py"
   },
   "dependencies": {
+    "@lightningchart/lcjs": "^9.0.0",
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/vite": "^4.3.3",
     "@xyflow/react": "^12.11.5",
@@ -23,7 +24,6 @@
     "react-is": "^19.2.8",
     "react-markdown": "^10.1.0",
     "react-virtuoso": "^4.18.12",
-    "recharts": "^3.10.1",
     "tailwindcss": "^4.3.3",
     "three": "^0.180.0",
     "zustand": "^5.0.15"

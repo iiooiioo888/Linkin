@@ -14,9 +14,10 @@ import {
   type LabSubTab,
 } from '../lib/labTabs';
 import {
-  MONITOR_NAV_GROUPS,
+  CONSOLE_NAV_GROUPS,
   activityTitle,
   navGroupForTab,
+  navGroupsForActivity,
   resolveActivity,
   type ConsoleNavItem,
   type ConsoleNavKey,
@@ -687,6 +688,7 @@ function MonitorSidebar({
 }) {
   const activity = resolveActivity(activeView, monitorTab);
   const onLab = activity === 'lab';
+  const navGroups = navGroupsForActivity(activity);
   const onAgentsTab = activeView === 'monitor' && monitorTab === 'agents';
   const onTasksTab = activeView === 'monitor' && monitorTab === 'tasks';
   const onLlmTab = activeView === 'monitor' && monitorTab === 'llm';
@@ -698,7 +700,8 @@ function MonitorSidebar({
     execute: true,
     observe: activeGroup === 'observe',
     system: activeGroup === 'system',
-    linkin: activeGroup === 'linkin',
+    world: true,
+    minecraft: activeGroup === 'minecraft',
   }));
   const [allNav, setAllNav] = useState(false);
 
@@ -727,12 +730,15 @@ function MonitorSidebar({
   }
 
   const showRoster = onAgentsTab || onTasksTab || onTraces || onLlmTab;
-  const activeGroupDef = MONITOR_NAV_GROUPS.find((g) => g.id === activeGroup);
+  const activeGroupDef = navGroups.find((g) => g.id === activeGroup) ?? CONSOLE_NAV_GROUPS.find((g) => g.id === activeGroup);
   const currentItem = activeGroupDef?.items.find((i) => i.key === currentKey);
 
   const renderGroups = (compact: boolean) =>
-    (compact ? MONITOR_NAV_GROUPS.filter((g) => g.id === activeGroup) : MONITOR_NAV_GROUPS).map((group) => {
-      const open = compact || (openGroups[group.id] ?? (group.id === 'execute' || group.id === 'setup'));
+    (compact ? navGroups.filter((g) => g.id === activeGroup) : navGroups).map((group) => {
+      const open =
+        compact ||
+        (openGroups[group.id] ??
+          (group.id === 'execute' || group.id === 'setup' || group.id === 'world' || group.id === 'minecraft'));
       return (
         <div key={group.id}>
           {!compact && (

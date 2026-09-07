@@ -2,13 +2,15 @@
  * WorldConstitutionPanel — 世界觀憲法檢視／編輯。
  */
 import { useCallback, useEffect, useState } from 'react';
-import { fetchConstitution, fetchEvents, fetchMinecraftStatus, fetchOverview, saveConstitution, type Constitution, type MinecraftStatus, type Overview, type WorldEvent } from '../../api/linkin';
+import { fetchConstitution, fetchEvents, fetchOverview, saveConstitution, type Constitution, type Overview, type WorldEvent } from '../../api/linkin';
+import { activityNavPath } from '../../lib/monitorTabs';
+import { eventCardUri, factionBannerUri, schoolBannerUri } from '../../lib/visualCards';
+import MediaGallery from '../media/MediaGallery';
 
 export default function WorldConstitutionPanel() {
   const [data, setData] = useState<Constitution | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [events, setEvents] = useState<WorldEvent[]>([]);
-  const [minecraft, setMinecraft] = useState<MinecraftStatus | null>(null);
   const [jsonText, setJsonText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -17,16 +19,14 @@ export default function WorldConstitutionPanel() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [constitution, ov, ev, mc] = await Promise.all([
+      const [constitution, ov, ev] = await Promise.all([
         fetchConstitution(),
         fetchOverview(),
         fetchEvents().catch(() => ({ events: [] as WorldEvent[] })),
-        fetchMinecraftStatus().catch(() => null),
       ]);
       setData(constitution);
       setOverview(ov);
       setEvents(ev.events);
-      setMinecraft(mc);
       setJsonText(JSON.stringify(constitution, null, 2));
     } catch (err) {
       setError((err as Error).message);
@@ -95,14 +95,33 @@ export default function WorldConstitutionPanel() {
       </div>
 
       <div className="mb-4 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] text-[#8a8f98]">
-        Minecraft MCP：{minecraft?.dry_run ? '乾跑（未寫入世界）' : minecraft?.connected ? '已連線' : '未連線'}
-        {minecraft?.url ? ` · ${minecraft.url}` : ''}
-        {' '}· 監控中心「靈境 → Minecraft」可探測與審計
+        世界觀約束 NPC／任務／道具。Minecraft 連線、建築派發與審計在
+        <a href="#/monitor/minecraft" className="ml-1 text-[#64D2FF] hover:underline">
+          {activityNavPath('minecraft')}
+        </a>
+        。
       </div>
 
       <div className="mb-4 grid gap-3 lg:grid-cols-2">
         <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
           <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">三大陣營</h3>
+          {factions.length > 0 && (
+            <div className="mb-3">
+              <MediaGallery
+                layout="grid"
+                items={factions.map((faction) => ({
+                  src: factionBannerUri(
+                    String(faction.name ?? ''),
+                    String(faction.alignment ?? ''),
+                    String(faction.creed ?? ''),
+                  ),
+                  caption: String(faction.name ?? ''),
+                  alt: String(faction.name ?? ''),
+                  tags: String(faction.alignment ?? ''),
+                }))}
+              />
+            </div>
+          )}
           <div className="space-y-2">
             {factions.map((faction) => (
               <div key={String(faction.id || faction.name)} className="rounded-lg border border-white/[0.06] px-2.5 py-2">
@@ -116,6 +135,19 @@ export default function WorldConstitutionPanel() {
           <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">靈絲術</h3>
           <p className="text-[13px] font-medium">{String(data?.magic?.name || '—')} · {String(data?.magic?.alias || '')}</p>
           <p className="mt-1 text-[11px] leading-relaxed text-[#AEAEB2]">{String(data?.magic?.principle || '')}</p>
+          {schools.length > 0 && (
+            <div className="mt-3">
+              <MediaGallery
+                layout="grid"
+                items={schools.map((school) => ({
+                  src: schoolBannerUri(String(school.name ?? ''), String(school.domain ?? '')),
+                  caption: `${school.name} · ${school.domain}`,
+                  alt: String(school.name ?? ''),
+                  tags: String(school.domain ?? ''),
+                }))}
+              />
+            </div>
+          )}
           <ul className="mt-2 space-y-1 text-[11px] text-[#8a8f98]">
             {schools.map((school) => (
               <li key={String(school.id || school.name)}>{school.name} — {school.domain}</li>
@@ -127,6 +159,17 @@ export default function WorldConstitutionPanel() {
       {events.length > 0 && (
         <section className="mb-4 rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
           <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">歷史事件</h3>
+          <div className="mb-3">
+            <MediaGallery
+              layout="filmstrip"
+              items={events.map((event) => ({
+                src: eventCardUri(event.title || event.kind || event.id, event.kind),
+                caption: event.title || event.kind || event.id,
+                alt: event.title || event.id,
+                tags: event.kind,
+              }))}
+            />
+          </div>
           <ul className="space-y-2">
             {events.map((event) => (
               <li key={event.id} className="rounded-lg border border-white/[0.06] px-2.5 py-2">

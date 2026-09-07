@@ -45,7 +45,7 @@ export const LAB_INTEGRATION_TABS: LabTabItem[] = [
 ];
 
 export const LAB_EXTRA_TABS: LabTabItem[] = [
-  { key: 'mcp', icon: '◇', label: 'MCP', hint: '工具開關' },
+  { key: 'mcp', icon: '◇', label: 'MCP', hint: 'OPC／記憶／爬蟲開關' },
   { key: 'ab', icon: '▣', label: 'A/B', hint: '提示詞對照' },
 ];
 

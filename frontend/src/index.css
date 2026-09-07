@@ -453,6 +453,39 @@ body {
   stroke-width: 1;
 }
 
+.media-gallery {
+  --neiki-accent: #007aff;
+  --neiki-bg: #1c1c1e;
+}
+
+.media-gallery a {
+  display: block;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.media-gallery img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #111113;
+}
+
+.media-gallery--filmstrip img {
+  aspect-ratio: 16 / 10;
+  min-height: 96px;
+}
+
+.media-compare {
+  min-height: 220px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111113;
+}
+
 /* 深色細滾動條 */
 * {
   scrollbar-width: thin;

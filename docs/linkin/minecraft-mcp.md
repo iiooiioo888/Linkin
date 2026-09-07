@@ -76,7 +76,7 @@ Docker 後端要打宿主機上的 Minecraft 時，Windows 可用 `EVOL_MC_MCP_U
 | POST | `/linkin/buildings/import` 匯入 `.schem`（v1／v2／v3，儲存升級為 v3） |
 | POST | `/linkin/admin/execute` 通過鐵律後轉發 `execute_command` |
 
-監控中心：**靈境 → Minecraft**。建築面板可「發送到 Minecraft」。實驗室 MCP 分頁顯示橋接狀態。
+監控中心活動欄 **Minecraft** 獨立於靈境：建築方案與 MineMCP 橋接。靈境只保留世界觀／NPC／任務／道具。建築面板可「發送到 Minecraft」。實驗室 MCP 只保留 OPC／記憶等通用開關，不含 MineMCP。
 
 ## 其他 MCP 實作
 

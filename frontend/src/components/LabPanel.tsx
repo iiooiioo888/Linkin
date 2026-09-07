@@ -2,20 +2,14 @@
  * 實驗室面板 — Firecrawl · Prompt Optimizer · Archify · Ponytail · MCP · A/B。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import type { ArchifyIR, FirecrawlScrapeResult, PonytailReviewResult } from '../api/client';
 import { labArchifyEvoloop, labArchifyGenerate, labFirecrawlScrape, labFirecrawlSearch, labOptimizePrompt, labPonytailReview } from '../api/client';
-import { fetchMinecraftStatus, type MinecraftStatus } from '../api/linkin';
 import { LAB_INTEGRATION_TABS, LAB_TABS, type LabSubTab } from '../lib/labTabs';
+import { activityNavPath } from '../lib/monitorTabs';
+import { extractMarkdownImages } from '../lib/visualCards';
 import ArchifyViewer from './ArchifyViewer';
+import LcBarChart from './charts/LcBarChart';
+import MediaGallery from './media/MediaGallery';
 import PromptEditor from './PromptEditor';
 import ErrorState from './ui/ErrorState';
 
@@ -23,10 +17,6 @@ const DEMO_BEFORE = `你是一位工業助手。根據感測資料回答問題�
 請盡量詳細說明。`;
 
 const MCP_TOOLS = [
-  { id: 'place_block', name: 'place_block', desc: 'Minecraft 放置方塊（遠端 pose_block）', enabled: true, risk: 'high' },
-  { id: 'fill_block', name: 'fill_block', desc: 'Minecraft 區域填充（受方塊上限）', enabled: true, risk: 'high' },
-  { id: 'execute_command', name: 'execute_command', desc: 'Minecraft 指令（敏感需二次確認）', enabled: true, risk: 'high' },
-  { id: 'get_player', name: 'get_player', desc: '讀取線上玩家資訊', enabled: true, risk: 'low' },
   { id: 'opc.read', name: 'OPC Read', desc: '讀取白名單標籤', enabled: true, risk: 'low' },
   { id: 'opc.write', name: 'OPC Write', desc: '經護欄寫入', enabled: true, risk: 'high' },
   { id: 'memory.search', name: 'Memory Search', desc: '向量記憶檢索', enabled: true, risk: 'low' },
@@ -102,13 +92,17 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
   const [reviewError, setReviewError] = useState<string | null>(null);
 
   const [tools, setTools] = useState(MCP_TOOLS);
-  const [mcpStatus, setMcpStatus] = useState<MinecraftStatus | null>(null);
 
   const winner = useMemo(() => {
     const scoreA = AB_SERIES.reduce((s, r) => s + r.a, 0) / AB_SERIES.length;
     const scoreB = AB_SERIES.reduce((s, r) => s + r.b, 0) / AB_SERIES.length;
     return { scoreA, scoreB, better: scoreB >= scoreA ? 'B' : 'A' };
   }, []);
+
+  const scrapeImages = useMemo(
+    () => (fcScrape ? extractMarkdownImages(fcScrape.markdown, fcScrape.url) : []),
+    [fcScrape],
+  );
 
   const loadEvoloopArch = useCallback(async () => {
     setArchLoading(true);
@@ -121,13 +115,6 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
       setArchLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    if (tab !== 'mcp') return;
-    void fetchMinecraftStatus()
-      .then(setMcpStatus)
-      .catch(() => setMcpStatus(null));
-  }, [tab]);
 
   useEffect(() => {
     if (tab === 'archify' && !archIr && !archLoading) {
@@ -336,6 +323,19 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                   {fcScrape.hint && (
                     <p className="mt-2 text-[10px] text-[#FF9F0A]">{fcScrape.hint}</p>
                   )}
+                  {scrapeImages.length > 0 && (
+                    <div className="mt-3">
+                      <MediaGallery
+                        items={scrapeImages.map((img) => ({
+                          src: img.src,
+                          caption: img.caption,
+                          alt: img.caption,
+                          tags: 'scrape',
+                        }))}
+                        layout="masonry"
+                      />
+                    </div>
+                  )}
                   <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] text-[#AEAEB2]">
                     {fcScrape.markdown}
                   </pre>
@@ -466,9 +466,8 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
         {tab === 'mcp' && (
           <div className="mx-auto max-w-2xl space-y-3">
             <p className="text-[11px] text-[#8E8E93]">
-              Minecraft MCP：{mcpStatus?.dry_run ? '乾跑' : mcpStatus?.connected ? '已連線' : '狀態未知'}
-              {mcpStatus?.url ? ` · ${mcpStatus.url}` : ''}
-              。公司角色經 tool_registry 呼叫；檔案系統工具預設封鎖。
+              執行期通用工具開關（OPC／記憶／爬蟲／Docker）。Minecraft 放置、填充與指令在
+              「{activityNavPath('minecraft')}」，不與實驗室混用。
             </p>
             {tools.map((t) => (
               <label
@@ -516,23 +515,14 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                 <h2 className="apple-title">記憶蒸餾 · 評分對照</h2>
               </div>
               <div className="apple-card__body apple-card__body--static apple-chart h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={AB_SERIES} barGap={6} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fill: '#AEAEB2', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 10]} tick={{ fill: '#636366', fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
-                    <Tooltip
-                      contentStyle={{
-                        background: '#2C2C2E',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: 12,
-                        fontSize: 11,
-                      }}
-                    />
-                    <Bar dataKey="a" name="對照組 A" fill="rgba(142,142,147,0.55)" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="b" name="實驗組 B" fill="#007AFF" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <LcBarChart
+                  height={280}
+                  categories={AB_SERIES.map((row) => row.name)}
+                  groups={[
+                    { subCategory: '對照組 A', values: AB_SERIES.map((row) => row.a) },
+                    { subCategory: '實驗組 B', values: AB_SERIES.map((row) => row.b) },
+                  ]}
+                />
               </div>
             </section>
             <section className="apple-card apple-card--pad flex flex-col justify-center gap-4">
