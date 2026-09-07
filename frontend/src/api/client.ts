@@ -8,7 +8,7 @@
  * 生產環境可設定 VITE_API_URL 環境變數指向後端位址。
  */
 
-import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, HubMonitorData, LlmOpsData, OpcMonitorData, OptimizationMonitorData, RoleAgent, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
+import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, HubMonitorData, LlmOpsData, OpcMonitorData, OptimizationMonitorData, RoleAgent, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
 
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -200,7 +200,23 @@ export interface LlmConfig {
   catalog_source?: string;
   catalog_fetched_at?: string;
   catalog_error?: string;
+  route_strategy?: string;
+  default_route_id?: string;
+  api_routes?: ApiRoutePublic[];
+  models_by_provider?: LlmOpsData['models_by_provider'];
+  route_strategies?: LlmOpsData['route_strategies'];
+  provider_presets?: LlmOpsData['provider_presets'];
   ops?: LlmOpsData['ops'];
+}
+
+export interface ApiRouterState {
+  route_strategy: string;
+  default_route_id: string;
+  strategies: Array<{ id: string; label: string }>;
+  presets: Array<{ id: string; name: string; api_base: string; model: string; label: string }>;
+  api_routes: ApiRoutePublic[];
+  allowed_models: string[];
+  models_by_provider: NonNullable<LlmOpsData['models_by_provider']>;
 }
 
 /** 取得当前 LLM 配置狀態。 */
@@ -257,6 +273,65 @@ export async function updateLlmOpsPrefs(refreshIntervalSec: number): Promise<Llm
 export async function testConfig(): Promise<{ ok: boolean; reply?: string; error?: string }> {
   const resp = await fetch(apiUrl('/config/test'), { method: 'POST' });
   if (!resp.ok) throw new Error(`測試請求失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function fetchApiRoutes(): Promise<ApiRouterState> {
+  const resp = await fetch(apiUrl('/config/routes'));
+  if (!resp.ok) throw new Error(`讀取 API 路由失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function upsertApiRoute(payload: {
+  id?: string;
+  name?: string;
+  provider?: string;
+  api_key?: string;
+  api_base?: string;
+  model?: string;
+  allowed_models?: string[];
+  weight?: number;
+  enabled?: boolean;
+  fallback?: boolean;
+  is_default?: boolean;
+  models_locked?: boolean;
+  keep_api_key?: boolean;
+  provider_routing?: Record<string, unknown> | null;
+}): Promise<ApiRouterState> {
+  const resp = await fetch(apiUrl('/config/routes'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) throw new Error(`儲存 API 路由失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function deleteApiRoute(routeId: string): Promise<ApiRouterState> {
+  const resp = await fetch(apiUrl(`/config/routes/${encodeURIComponent(routeId)}`), { method: 'DELETE' });
+  if (!resp.ok) throw new Error(`刪除 API 路由失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function refreshApiRoute(routeId: string): Promise<ApiRoutePublic> {
+  const resp = await fetch(apiUrl(`/config/routes/${encodeURIComponent(routeId)}/refresh`), { method: 'POST' });
+  if (!resp.ok) throw new Error(`刷新路由目錄失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function testApiRoute(routeId: string): Promise<{ ok: boolean; reply?: string; error?: string; route_id?: string }> {
+  const resp = await fetch(apiUrl(`/config/routes/${encodeURIComponent(routeId)}/test`), { method: 'POST' });
+  if (!resp.ok) throw new Error(`測試路由失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function updateRouteStrategy(routeStrategy: string, defaultRouteId?: string): Promise<ApiRouterState> {
+  const resp = await fetch(apiUrl('/config/strategy'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ route_strategy: routeStrategy, default_route_id: defaultRouteId }),
+  });
+  if (!resp.ok) throw new Error(`更新路由策略失敗（HTTP ${resp.status}）`);
   return resp.json();
 }
 

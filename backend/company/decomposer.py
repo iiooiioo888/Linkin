@@ -33,7 +33,7 @@ from backend.company.state import (
     WorkItemStatus,
 )
 from backend.company.work_item import WorkItemManager
-from backend.core.llm import call_llm, parse_json_response
+from backend.core.llm import call_llm, llm_kwargs_for_role, parse_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -332,6 +332,16 @@ class TaskDecomposer:
             valid_roles = "/".join(rt.value for rt in self.config.roles)
 
         model = self.budget.resolve_model_for_tier(BudgetTier.REASONING)
+        llm_opts: dict = {}
+        try:
+            from backend.company.role_catalog import resolve_runtime
+
+            runtime = resolve_runtime(RoleType.MANAGER.value)
+            if runtime.get("preferred_model"):
+                model = runtime["preferred_model"]
+            llm_opts = llm_kwargs_for_role(runtime)
+        except Exception:  # noqa: BLE001
+            llm_opts = {}
         prompt = self.prompt_config.manager_decompose.format(
             goal=goal,
             org_chart=org_chart_str,
@@ -346,6 +356,7 @@ class TaskDecomposer:
                 prompt,
                 system=self.prompt_config.manager_decompose_system,
                 model=model,
+                **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "high")
             self.budget.record_cost(cost)

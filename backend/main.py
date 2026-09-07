@@ -24,7 +24,14 @@ from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD, evoloop_graph
 from backend.core import nodes
 from backend.core.llm import call_llm, call_llm_stream, split_thinking
 from backend.core.llm_config import get_runtime_config, masked_key, save_runtime_config
-from backend.core.provider_pool import public_pool, refresh_model_catalog, set_refresh_interval
+from backend.core.provider_pool import public_pool, refresh_model_catalog, refresh_route_catalog, set_refresh_interval
+from backend.core.api_router import (
+    delete_route,
+    public_router_state,
+    save_routes,
+    set_route_strategy,
+    upsert_route,
+)
 from backend.services.llm_ops import collect_llm_ops, llm_ops_loop, run_ops_once
 from backend.hub.monitor import collect_hub_monitor
 from backend.services.optimization_monitor import collect_optimization_monitor
@@ -159,6 +166,37 @@ class LlmConfigRequest(BaseModel):
     api_key: str | None = None
     api_base: str | None = None
     model: str | None = None
+    route_strategy: str | None = None
+    default_route_id: str | None = None
+
+
+class ApiRouteBody(BaseModel):
+    id: str = ""
+    name: str = ""
+    provider: str = ""
+    api_key: str | None = None
+    api_base: str = ""
+    model: str = ""
+    models: list[str] = []
+    allowed_models: list[str] = []
+    weight: int = 10
+    enabled: bool = True
+    fallback: bool = False
+    is_default: bool = False
+    models_locked: bool = False
+    keep_api_key: bool = False
+    provider_routing: dict[str, Any] | None = None
+
+
+class ApiRoutesReplaceBody(BaseModel):
+    api_routes: list[ApiRouteBody]
+    route_strategy: str | None = None
+    default_route_id: str = ""
+
+
+class RouteStrategyBody(BaseModel):
+    route_strategy: str
+    default_route_id: str | None = None
 
 
 class TaskRequest(BaseModel):
@@ -200,12 +238,89 @@ async def get_config():
 async def update_config(req: LlmConfigRequest):
     """動態更新 LLM 配置（即時生效並持久化），隨後刷新可用模型池。"""
     save_runtime_config(api_key=req.api_key, api_base=req.api_base, model=req.model)
+    if req.route_strategy:
+        set_route_strategy(req.route_strategy)
+    if req.default_route_id:
+        from backend.core.llm_config import merge_runtime_config
+
+        merge_runtime_config({"default_route_id": req.default_route_id.strip().lower()})
     logger.info("LLM 配置已更新（model=%s, api_base=%s）", req.model, req.api_base)
     try:
         refresh_model_catalog(reason="save")
     except Exception as exc:  # noqa: BLE001
         logger.warning("儲存後刷新模型目錄失敗：%s", exc)
     return await get_config()
+
+
+@app.get("/config/routes")
+async def get_config_routes():
+    """多 API 路由清單（金鑰脱敏）。"""
+    return public_router_state()
+
+
+@app.put("/config/routes")
+async def replace_config_routes(body: ApiRoutesReplaceBody):
+    """整批覆寫 API 路由。"""
+    save_routes(
+        [r.model_dump() for r in body.api_routes],
+        strategy=body.route_strategy,
+        default_id=body.default_route_id,
+    )
+    try:
+        refresh_model_catalog(reason="routes")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("路由儲存後刷新目錄失敗：%s", exc)
+    return public_router_state()
+
+
+@app.post("/config/routes")
+async def upsert_config_route(body: ApiRouteBody):
+    """新增或更新一條 API 路由。"""
+    route = upsert_route(body.model_dump())
+    try:
+        refresh_route_catalog(route["id"], reason="save")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("路由 %s 刷新目錄失敗：%s", route.get("id"), exc)
+    return public_router_state()
+
+
+@app.delete("/config/routes/{route_id}")
+async def delete_config_route(route_id: str):
+    delete_route(route_id)
+    return public_router_state()
+
+
+@app.post("/config/routes/{route_id}/refresh")
+async def refresh_config_route(route_id: str):
+    try:
+        return await asyncio.to_thread(refresh_route_catalog, route_id, reason="manual")
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"刷新路由目錄失敗：{exc}") from exc
+
+
+@app.post("/config/routes/{route_id}/test")
+async def test_config_route(route_id: str):
+    """以指定路由實際呼叫 LLM 驗證連線。"""
+    try:
+        reply = call_llm("請用兩個字回覆：成功。", temperature=0, route_id=route_id)
+        return {"ok": True, "reply": reply.strip(), "route_id": route_id}
+    except Exception as exc:
+        logger.warning("路由 %s 連線測試失敗：%s", route_id, exc)
+        return {"ok": False, "error": str(exc)[:300], "route_id": route_id}
+
+
+@app.put("/config/strategy")
+async def update_route_strategy(body: RouteStrategyBody):
+    strategy = set_route_strategy(body.route_strategy)
+    if body.default_route_id:
+        from backend.core.llm_config import merge_runtime_config
+
+        merge_runtime_config({"default_route_id": body.default_route_id.strip().lower()})
+    state = public_router_state()
+    state["route_strategy"] = strategy
+    return state
 
 
 class LlmOpsPrefsBody(BaseModel):
@@ -882,6 +997,7 @@ class RoleSettingsBody(BaseModel):
     default_tier: str | None = None
     max_parallel_work: int | None = None
     preferred_model: str | None = None
+    preferred_provider: str | None = None
     daily_budget_usd: float | None = None
     tools_allowed: list[str] | None = None
     notes: str | None = None
@@ -934,6 +1050,7 @@ class CustomRoleBody(BaseModel):
     max_parallel_work: int = 2
     default_tier: str = "routine"
     preferred_model: str = ""
+    preferred_provider: str = ""
     daily_budget_usd: float = 0
     tools_allowed: list[str] = []
     notes: str = ""

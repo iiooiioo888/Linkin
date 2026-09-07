@@ -80,6 +80,16 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.url()).toMatch(/#\/monitor\/world/);
   });
 
+  test('Hash 路由：#/monitor/llm 可開啟 API 路由', async ({ page }) => {
+    await page.goto('/#/monitor/llm');
+    await expect(page.getByText(/控制台 · API 路由|Console ·/).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/全域分發策略|已配置的 API/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.url()).toMatch(/#\/monitor\/llm/);
+
+    await page.reload();
+    await expect(page.url()).toMatch(/#\/monitor\/llm/);
+  });
+
   test('Hash 路由：#/monitor/minecraft 可開啟 MCP 橋接', async ({ page }) => {
     await page.goto('/#/monitor/minecraft');
     await expect(page.getByText(/Minecraft MCP/).first()).toBeVisible({ timeout: 15_000 });

@@ -58,7 +58,7 @@ EvoLoop 不是普通的 AI 助手——它是具備**自我反思閉環**的**�
 | 🔄 **反思閉環** | 4 維度獨立評分（準確／完整／清晰／相關），低於門檻自動反思改進直到達標 |
 | 🏢 **公司運行時** | 複雜任務自動觸發：Manager 分解 → 多角色並行 → Reviewer 審查 → Synthesizer 整合 |
 | 🏭 **OPC 整合** | 工業任務注入感測上下文，6 級閉環（感知→預處理→分析→診斷→決策→執行） |
-| 🖥️ **監控中心** | 單一前端：角色 Agent／總覽／控制面版／OPC／AI Hub／LLM 運維／雲控制台／記憶／檢查點；側欄可跳轉層級 |
+| 🖥️ **監控中心** | 控制台四組：執行（即時／任務／角色／管線）· 觀測 · 系統（API 路由／記憶／基礎設施）· 靈境 |
 | 🎭 **角色目錄** | **80** 個內建角色（Level 0–4）+ 自定義角色 CRUD + 執行期設定覆蓋 |
 | 🔌 **模型池鎖定** | 依已存 API 鎖定可用模型；單一廠商只准該廠商；OpenRouter 等通用端點爬取 `/models` |
 | ☁️ **雲控制台** | 費用帳單、資源監控、告警中心、Docker 實例管理 |
@@ -294,19 +294,24 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 
 ## 🖥️ 監控中心
 
-前端**只有一個監控中心**（`MonitorView`）。分頁順序與側欄共用 `frontend/src/lib/monitorTabs.ts`：
+前端**只有一個控制台**（`MonitorView`）。左側三層：活動欄（對話／控制台／實驗室）→ 側欄分組 → 主區。分頁定義在 `frontend/src/lib/monitorTabs.ts`：
 
-| 分頁 | 說明 |
-|------|------|
-| **角色 Agent** | 每位角色獨立工作台；總覽依層級排卡片；側欄錨點跳轉 L0–L4；活躍／告警篩選；卡片右上角為合計成本 |
-| **總覽** | 系統健康與各模組入口 |
-| **控制面版** | 任務與儀表板聚合 |
-| **OPC 監控** | 護欄、審計、即時標籤 |
-| **AI Hub** | 探針、熔斷、呼叫日誌、預算（操作台內嵌於本分頁） |
-| **LLM 運維** | 供應商鎖定、可用模型目錄、定時檢查、手動刷新、健康快照 |
-| **雲控制台** | 帳單、資源監控、告警、**Docker 實例管理** |
-| **記憶庫** | 向量記憶檢視與清理；空庫時可跑種子腳本或等待對話寫入 |
-| **檢查點** | 運行檢查點列表與恢復入口 |
+| 分組 | 分頁 | 說明 |
+|------|------|------|
+| **執行** | 即時 | 總覽看板：管線、角色、預算、API 池 |
+| | 任務 | 佇列與進度 |
+| | 角色 | 內建＋自定義角色工作台；**模型／路由**分頁指定 API、模型、Token |
+| | 管線 | 階段圖 |
+| | 軌跡 | 執行步驟（側欄獨立入口） |
+| **觀測** | 系統指標 | CPU／OPC |
+| | 模型調用 | Trace 彙總的延遲與成本 |
+| | 用戶反饋 | 評分紀錄 |
+| **系統** | **API 路由** | 多 API 配置、健康、模型目錄、分發策略 |
+| | 記憶 | 向量檢索 |
+| | 基礎設施 | AI Hub／雲端／檢查點／連接池 |
+| **靈境** | 世界觀／NPC／任務／建築／道具／Minecraft | 遊戲內容與 MineMCP |
+
+頂欄齒輪為 **快速加入 API**（與控制台 API 路由共用同一編輯器）。角色級模型與 Token 只在「執行 → 角色」設定。
 
 ### 監控偏好（角色 Agent）
 
@@ -325,6 +330,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 - `GET /monitor/opc` · `GET /monitor/hub` · `GET /monitor/llm-ops`
 - `POST /config/models/refresh` · `PUT /config/ops`
 - `GET/PUT /config` · `POST /config/test`
+- `GET/PUT/POST/DELETE /config/routes` · `POST /config/routes/{id}/refresh` · `POST /config/routes/{id}/test` · `PUT /config/strategy`
 - `GET /docker/*` · `GET/POST /cloud/*` — 實例與雲控制台
 - `GET /memories` · `DELETE /memories/{id}` · `POST /memories/cleanup` — 記憶庫；Chroma 空則讀 JSON
 
@@ -332,15 +338,27 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 
 ## 🔌 模型池與運維
 
-核心模組：`backend/core/provider_pool.py` + `backend/services/llm_ops.py`。
+核心模組：`backend/core/provider_pool.py` + `backend/core/api_router.py` + `backend/services/llm_ops.py`。
+
+### API 分割（多 API / 多模型）
+
+可同時保存多組供應商憑證（千問、DeepSeek、Kimi、OpenRouter…）。千問與 OpenRouter 各自有多個模型；請求依 **角色指定** 或 **全域策略**（加權輪詢／隨機／最少負載／故障轉移）分發。
+
+| 能力 | 說明 |
+|------|------|
+| 多 API 並存 | 控制台 **系統 → API 路由**（或頂欄齒輪）可加入多條路由，每條獨立金鑰、端點、模型目錄 |
+| 多模型 | 千問：qwen-plus / max / turbo…；OpenRouter：爬取 `/models` |
+| 角色級設定 | 每個角色可獨立指定供應商、模型、輸出 Token、上下文 Token，以及故障轉移模型 |
+| 向後相容 | 未設定 `api_routes` 時，頂層單一 `api_key` 仍視為預設路由 |
 
 ### 鎖定規則
 
 | 情境 | 行為 |
 |------|------|
 | 只配置 DeepSeek（或 Qwen／Moonshot／智譜／MiMo 等單一廠商） | Agent **只能**使用該廠商模型，不會落到無關的預設模型 |
+| 同時配置多組 API | Agent 可用任一已配置路由的模型；角色可鎖定某一組 API |
 | OpenRouter／Ollama／vLLM／OpenAI 相容通用端點 | `GET /models` 爬取可用目錄，寫入運行時配置 |
-| 角色偏好模型不在池內 | 自動 `clamp` 到池內第一個可用模型 |
+| 角色偏好模型不在該 API 池內 | 自動 `clamp` 到該路由第一個可用模型 |
 | Hub 目錄 | 與目前 API 可用池取交集（只存 DeepSeek 時 Hub 只顯示相容列） |
 | Claude／Anthropic | **禁止**進入可用池 |
 
@@ -361,7 +379,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 | 能力 | 說明 |
 |------|------|
 | 定時檢查 | 背景迴圈依間隔刷新模型目錄（預設 300 秒） |
-| 手動刷新 | 監控中心 **LLM 運維** 或 `POST /config/models/refresh` |
+| 手動刷新 | 控制台 **系統 → API 路由** 或 `POST /config/models/refresh` |
 | 健康快照 | 上次成功時間、延遲、連續失敗、是否過期（stale） |
 | 開關 | `EVOL_LLM_OPS_ENABLED` / `EVOL_LLM_OPS_INTERVAL_SEC` |
 
@@ -386,6 +404,8 @@ EVOL_LLM_OPS_INTERVAL_SEC=300
 
 → 定時／手動爬取 `/models`，目錄寫入配置與監控面板；Agent 只能從該目錄選用。
 
+**範例 C — 多 API 分割：** 在控制台「系統 → API 路由」同時加入千問與 DeepSeek；開發者角色指定 `qwen-max`，審查者角色指定 `deepseek-v4-pro`。全域策略可維持「角色指定優先」。
+
 ---
 
 ## 🔬 系統優化
@@ -394,6 +414,7 @@ EVOL_LLM_OPS_INTERVAL_SEC=300
 |---|------|------|
 | 1–16 | 既有架構優化 | 多維評分、錯誤回退、語義快取、動態迭代、記憶品質、自適應並發、StateStore、SSE、價格動態化、OPC 降級、公司串流、記憶去重／蒸餾、Prompt 壓縮、品質門 |
 | 17 | **模型池鎖定** | 依 API 供應商鎖定可用模型，禁止跨廠商誤用 |
+| 17b | **API 分割** | 多組 API 並存；角色級模型／Token；加權輪詢與故障轉移 |
 | 18 | **通用目錄爬取** | OpenRouter 等端點定時／手動同步 `/models` |
 | 19 | **角色目錄** | 監控中心可編輯內建設定並建立自定義角色（80 席） |
 | 20 | **單一前端版本** | Hub 併入監控中心；Pages／CI 單一主線 |
@@ -661,7 +682,7 @@ Windows 暫存目錄權限問題。`pyproject.toml` 已設 `--basetemp=.pytest_t
 <details>
 <summary><b>Q: OpenRouter 目錄多久更新一次？</b></summary>
 
-預設每 300 秒背景刷新（`EVOL_LLM_OPS_INTERVAL_SEC`）。監控中心 **LLM 運維** 可手動刷新；`EVOL_LLM_OPS_ENABLED=false` 可關閉背景任務。
+預設每 300 秒背景刷新（`EVOL_LLM_OPS_INTERVAL_SEC`）。控制台 **系統 → API 路由** 可手動刷新；`EVOL_LLM_OPS_ENABLED=false` 可關閉背景任務。
 </details>
 
 <details>

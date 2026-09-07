@@ -49,7 +49,7 @@ from backend.company.state import (
     WorkItemStatus,
 )
 from backend.company.work_item import WorkItemManager
-from backend.core.llm import call_llm, parse_json_response, split_thinking
+from backend.core.llm import call_llm, llm_kwargs_for_role, parse_json_response, split_thinking
 from backend.services.docker_manager import DockerManager, get_docker_manager
 
 logger = logging.getLogger(__name__)
@@ -528,6 +528,7 @@ class CompanyOrchestrator:
         role_value: str,
         item,
         max_tool_steps: int = 3,
+        llm_kwargs: dict | None = None,
     ) -> str:
         """執行 LLM 調用並處理工具調用閉環。
 
@@ -556,7 +557,7 @@ class CompanyOrchestrator:
                 full_prompt = current_prompt + "\n\n" + "\n\n".join(conversation_suffix)
 
             raw = await asyncio.to_thread(
-                call_llm, full_prompt, system=system, model=model
+                call_llm, full_prompt, system=system, model=model, **(llm_kwargs or {})
             )
 
             # 解析工具調用
@@ -632,7 +633,7 @@ class CompanyOrchestrator:
             + "\n\n（已達到最大工具調用次數，請根據目前所有資訊，直接給出最終交付物。）"
         )
         return await asyncio.to_thread(
-            call_llm, final_prompt, system=system, model=model
+            call_llm, final_prompt, system=system, model=model, **(llm_kwargs or {})
         )
 
     async def _execute_single_item(self, goal: str, item) -> None:
@@ -652,6 +653,7 @@ class CompanyOrchestrator:
         runtime = resolve_runtime(role_type.value)
         if runtime.get("preferred_model"):
             model = runtime["preferred_model"]
+        llm_opts = llm_kwargs_for_role(runtime)
         context = self._build_context(item)
 
         # 使用角色專用執行提示（若有）
@@ -713,12 +715,14 @@ class CompanyOrchestrator:
                     raw = await asyncio.wait_for(
                         self._execute_with_tool_loop(
                             prompt, system_prompt, model, role_type.value, item,
+                            llm_kwargs=llm_opts,
                         ),
                         timeout=timeout_s,
                     )
                 else:
                     raw = await self._execute_with_tool_loop(
                         prompt, system_prompt, model, role_type.value, item,
+                        llm_kwargs=llm_opts,
                     )
 
                 # 記錄成功響應時間（優化 #6）
@@ -812,6 +816,7 @@ class CompanyOrchestrator:
             runtime = resolve_runtime(RoleType.REVIEWER.value)
             if runtime.get("preferred_model"):
                 model = runtime["preferred_model"]
+            llm_opts = llm_kwargs_for_role(runtime)
 
             artifact_text = current.artifacts.get("output", str(current.artifacts))
 
@@ -827,6 +832,7 @@ class CompanyOrchestrator:
                     prompt,
                     system=runtime.get("system_prompt") or role_def.system_prompt or self.prompt_config.reviewer_system,
                     model=model,
+                    **llm_opts,
                 )
                 cost = CostTracker.estimate_cost_rough(model, "medium")
                 self.budget.record_cost(cost)
@@ -900,6 +906,10 @@ class CompanyOrchestrator:
         if role_def is None:
             role_def = STANDARD_ROLES.get(role_type, STANDARD_ROLES[RoleType.DEVELOPER])
         model = self.budget.resolve_model_for_tier(item.tier)
+        runtime = resolve_runtime(role_type.value)
+        if runtime.get("preferred_model"):
+            model = runtime["preferred_model"]
+        llm_opts = llm_kwargs_for_role(runtime)
 
         context = self._build_context(item)
 
@@ -927,16 +937,22 @@ class CompanyOrchestrator:
                         asyncio.to_thread(
                             call_llm,
                             prompt,
-                            system=role_def.system_prompt or self.prompt_config.developer_execute_system,
+                            system=runtime.get("system_prompt")
+                            or role_def.system_prompt
+                            or self.prompt_config.developer_execute_system,
                             model=model,
+                            **llm_opts,
                         ),
                         timeout=retry_cfg.deadline_seconds,
                     )
                 else:
                     raw = call_llm(
                         prompt,
-                        system=role_def.system_prompt or self.prompt_config.developer_execute_system,
+                        system=runtime.get("system_prompt")
+                        or role_def.system_prompt
+                        or self.prompt_config.developer_execute_system,
                         model=model,
+                        **llm_opts,
                     )
                 cost = CostTracker.estimate_cost_rough(model, "high")
                 self.budget.record_cost(cost)
@@ -977,6 +993,10 @@ class CompanyOrchestrator:
     async def _review_and_synthesize(self, goal: str) -> tuple[str, dict[str, Any]]:
         """P1：Reviewer + Synthesizer 合併 — 單次 LLM 審查並整合交付物。"""
         model = self.budget.resolve_model_for_tier(BudgetTier.REASONING)
+        synth_runtime = resolve_runtime(RoleType.SYNTHESIZER.value)
+        if synth_runtime.get("preferred_model"):
+            model = synth_runtime["preferred_model"]
+        llm_opts = llm_kwargs_for_role(synth_runtime)
         artifacts_text = self._collect_artifacts()
         stats = self.work_items.get_stats()
 
@@ -993,6 +1013,7 @@ class CompanyOrchestrator:
                 prompt,
                 system=self.prompt_config.review_synth_merge_system,
                 model=model,
+                **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "high")
             self.budget.record_cost(cost)
@@ -1020,6 +1041,10 @@ class CompanyOrchestrator:
             RoleType.SYNTHESIZER, STANDARD_ROLES[RoleType.SYNTHESIZER]
         )
         model = self.budget.resolve_model_for_tier(BudgetTier.REASONING)
+        runtime = resolve_runtime(RoleType.SYNTHESIZER.value)
+        if runtime.get("preferred_model"):
+            model = runtime["preferred_model"]
+        llm_opts = llm_kwargs_for_role(runtime)
 
         artifacts_text = self._collect_artifacts()
         stats = self.work_items.get_stats()
@@ -1035,10 +1060,11 @@ class CompanyOrchestrator:
         try:
             raw = call_llm(
                 prompt,
-                system=resolve_runtime(RoleType.SYNTHESIZER.value).get("system_prompt")
+                system=runtime.get("system_prompt")
                 or role_def.system_prompt
                 or self.prompt_config.synthesizer_system,
                 model=model,
+                **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "high")
             self.budget.record_cost(cost)
@@ -1057,6 +1083,10 @@ class CompanyOrchestrator:
     async def _manager_final_review(self, goal: str, final_output: str) -> dict:
         """Manager 最終審查整合結果。"""
         model = self.budget.resolve_model_for_tier(BudgetTier.REASONING)
+        runtime = resolve_runtime(RoleType.MANAGER.value)
+        if runtime.get("preferred_model"):
+            model = runtime["preferred_model"]
+        llm_opts = llm_kwargs_for_role(runtime)
         stats = self.work_items.get_stats()
 
         prompt = self.prompt_config.manager_final_review.format(
@@ -1072,6 +1102,7 @@ class CompanyOrchestrator:
                 prompt,
                 system=self.prompt_config.manager_decompose_system,
                 model=model,
+                **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "medium")
             self.budget.record_cost(cost)

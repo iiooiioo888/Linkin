@@ -732,6 +732,10 @@ export default function App() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onSaved={refreshConfigStatus}
+        onGoConsole={() => {
+          setSettingsOpen(false);
+          handleMonitorTabChange('llm');
+        }}
       />
     </>
   );

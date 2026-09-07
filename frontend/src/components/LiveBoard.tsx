@@ -394,6 +394,75 @@ function EventsCard({ feed, dock }: { feed: AnimLiveFeed; dock?: boolean }) {
   );
 }
 
+function ApiPoolCard({ feed }: { feed: AnimLiveFeed }) {
+  const ops = feed.llmOps;
+  const routes = ops?.api_routes ?? [];
+  const configured = routes.filter((r) => r.configured && r.enabled);
+  const strategy = ops?.route_strategy || 'role_preferred';
+  const modelCount = ops?.allowed_models.length ?? 0;
+  const tone = !ops ? GRAY : configured.length ? GREEN : ORANGE;
+
+  return (
+    <FrostCard
+      title="API 池"
+      accessory={
+        <a href="#/monitor/llm" className="text-[10px] font-bold text-[#0A84FF] hover:underline">
+          管理
+        </a>
+      }
+    >
+      {!ops ? (
+        <p className="py-4 text-center text-[12px] text-[#636366]">同步中…</p>
+      ) : routes.length === 0 && !ops.configured ? (
+        <div className="py-4 text-center">
+          <p className="text-[12px] text-[#AEAEB2]">尚未配置 API</p>
+          <a
+            href="#/monitor/llm"
+            className="mt-2 inline-block text-[11px] font-medium text-[#0A84FF] hover:underline"
+          >
+            前往系統 → API 路由
+          </a>
+        </div>
+      ) : (
+        <div className="space-y-2 py-1">
+          <div className="flex items-center justify-between text-[11px] text-[#8E8E93]">
+            <StatusDot
+              color={tone}
+              label={
+                routes.length
+                  ? `${configured.length}/${routes.length} 啟用`
+                  : ops.configured
+                    ? '單一 API'
+                    : '未配置'
+              }
+            />
+            <span>
+              {modelCount} 模型 · {strategy}
+            </span>
+          </div>
+          <ul className="divide-y divide-white/[0.06]">
+            {(routes.length ? routes : [{
+              id: 'primary',
+              name: ops.provider_label || '預設 API',
+              model: ops.model,
+              allowed_models: ops.allowed_models,
+              configured: ops.configured,
+              enabled: true,
+            }]).slice(0, 4).map((route) => (
+              <li key={route.id} className="flex items-center justify-between gap-2 py-1.5 first:pt-0">
+                <span className="truncate text-[12px] font-medium text-[#F5F5F7]">{route.name}</span>
+                <span className="shrink-0 font-mono text-[10px] text-[#8E8E93]">
+                  {route.model || `${route.allowed_models.length} 模`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </FrostCard>
+  );
+}
+
 function LabToolsCard({
   dock,
   onOpenLab,
@@ -505,6 +574,7 @@ export default function LiveBoard({
             </div>
             <CompanyCard feed={feed} dock />
             <BudgetCard feed={feed} dock />
+            <ApiPoolCard feed={feed} />
             <div className="lb-span-2">
               <RouterCard feed={feed} dock />
             </div>
@@ -522,6 +592,7 @@ export default function LiveBoard({
             </div>
             <CompanyCard feed={feed} />
             <BudgetCard feed={feed} />
+            <ApiPoolCard feed={feed} />
             <SystemMetricsCard feed={feed} />
             <div className="lb-span-2">
               <EventsCard feed={feed} />

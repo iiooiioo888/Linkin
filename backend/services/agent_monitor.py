@@ -123,6 +123,7 @@ def _blank_agent(snapshot: dict[str, Any]) -> dict[str, Any]:
         "max_parallel_work": int(snapshot.get("max_parallel_work") or 2),
         "default_tier": snapshot.get("default_tier") or "routine",
         "preferred_model": snapshot.get("preferred_model") or "",
+        "preferred_provider": snapshot.get("preferred_provider") or "",
         "daily_budget_usd": float(snapshot.get("daily_budget_usd") or 0),
         "tools_allowed": list(snapshot.get("tools_allowed") or []),
         "notes": snapshot.get("notes") or "",

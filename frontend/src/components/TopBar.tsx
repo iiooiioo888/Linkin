@@ -61,10 +61,15 @@ export default function TopBar({
 
       <div className="ml-auto flex items-center gap-0.5">
         {llmConfigured === false && (
-          <span className="mr-1 hidden items-center gap-1.5 text-[10px] text-[#FF9F0A] sm:flex">
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="mr-1 hidden items-center gap-1.5 text-[10px] text-[#FF9F0A] sm:flex"
+            title="開啟 API 設定"
+          >
             <span className="apple-dot apple-dot--warn" />
             未配置
-          </span>
+          </button>
         )}
 
         <button

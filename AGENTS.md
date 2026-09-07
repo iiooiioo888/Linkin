@@ -14,7 +14,7 @@ EvoLoop 是一个具备自我反思闭环的**统一模式** AI 助手系统。�
 
 | 模块 | 路径 | 职责 |
 | --- | --- | --- |
-| 图定义 | `backend/core/` | LangGraph 反思闭环图定义、标准/公司/OPC 节点实现、LiteLLM 统一调用层、EvoLoopState 状态模型 |
+| 图定义 | `backend/core/` | LangGraph 反思闭环、LiteLLM 调用层（`llm.py`）、多 API 路由（`api_router.py`）、模型池锁定、EvoLoopState |
 | 公司运行时 | `backend/company/` | 多代理人协调器、角色定义、工作项状态机与依赖 DAG、预算控制与模型路由、Prompt 模板 |
 | Minecraft MCP | `backend/tools/` + `backend/linkin/minecraft.py` | MineMCP JSON-RPC 封装、铁律、审计；角色经 tool_registry 调用 |
 | OPC 微服务 | `opc_service/` | OPC UA 工业数据读写与订阅、安全护栏（白名单/边界检查/审计日志）、模拟 OPC 服务器 |

@@ -42,8 +42,9 @@ export const MONITOR_OBSERVE_TABS: MonitorTabItem[] = [
 ];
 
 export const MONITOR_SYSTEM_TABS: MonitorTabItem[] = [
+  { key: 'llm', icon: '⊞', label: 'API 路由' },
   { key: 'memory', icon: '◌', label: '記憶' },
-  { key: 'ops', icon: '⚙', label: '運維' },
+  { key: 'ops', icon: '⚙', label: '基礎設施' },
 ];
 
 export const MONITOR_LINKIN_TABS: MonitorTabItem[] = [
@@ -80,8 +81,9 @@ export const MONITOR_NAV_GROUPS: MonitorNavGroup[] = [
     id: 'system',
     label: '系統',
     items: [
+      { key: 'llm', icon: '⊞', label: 'API 路由', hint: '多 API／多模型' },
       { key: 'memory', icon: '◌', label: '記憶', hint: '向量檢索' },
-      { key: 'ops', icon: '⚙', label: '運維', hint: 'LLM / Hub / 連線池' },
+      { key: 'ops', icon: '⚙', label: '基礎設施', hint: 'Hub／雲／檢查點／連線池' },
     ],
   },
   {
@@ -127,11 +129,11 @@ export const MONITOR_TAB_ALIASES: Record<string, MonitorTab> = {
   task: 'tasks',
   dashboard: 'tasks',
   hub: 'ops',
-  llm: 'ops',
   cloud: 'ops',
   checkpoints: 'ops',
   opc: 'metrics',
   dbpool: 'ops',
+  routes: 'llm',
 };
 
 const WORK_TAB_KEYS = new Set<string>(MONITOR_WORK_TABS.map((t) => t.key));

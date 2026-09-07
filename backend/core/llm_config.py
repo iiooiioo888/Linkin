@@ -99,6 +99,13 @@ def save_runtime_config(
             logger.warning("LLM 配置持久化失败（内存中仍生效）：%s", exc)
 
     _sync_env(snapshot)
+    try:
+        from backend.core.api_router import sync_primary_into_routes
+
+        sync_primary_into_routes()
+        snapshot = get_runtime_config()
+    except Exception:  # noqa: BLE001 — 路由同步失敗不得擋住主配置
+        logger.debug("同步 primary 路由失敗", exc_info=True)
     return snapshot
 
 

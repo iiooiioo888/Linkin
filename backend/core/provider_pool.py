@@ -225,11 +225,7 @@ def _model_in_pool(requested: str, allowed: list[str]) -> str | None:
     return None
 
 
-def clamp_model(requested: str | None, *, cfg: dict[str, Any] | None = None) -> str:
-    """把請求模型鎖在目前 API 能用的池內。"""
-    from backend.core.llm_config import get_runtime_config
-
-    runtime = cfg or get_runtime_config()
+def _clamp_against(requested: str | None, runtime: dict[str, Any]) -> str:
     allowed = [str(x) for x in (runtime.get("allowed_models") or []) if str(x).strip()]
     fallback = (runtime.get("model") or "").strip() or (allowed[0] if allowed else "gpt-4o")
     if is_forbidden_model(fallback) and allowed:
@@ -253,6 +249,49 @@ def clamp_model(requested: str | None, *, cfg: dict[str, Any] | None = None) -> 
     return fallback
 
 
+def clamp_model(
+    requested: str | None,
+    *,
+    cfg: dict[str, Any] | None = None,
+    route_id: str | None = None,
+) -> str:
+    """把請求模型鎖在目前 API（或指定路由）能用的池內。
+
+    配置多條 API 時，會先找擁有該模型的路由；找不到才回退預設路由。
+    只配一組金鑰時行為與原本單一廠商鎖定相同。
+    """
+    from backend.core.llm_config import get_runtime_config
+
+    runtime = cfg or get_runtime_config()
+    if cfg is None:
+        try:
+            from backend.core.api_router import (
+                find_route_for_model,
+                get_route,
+                list_enabled_routes,
+                route_as_cfg,
+                union_allowed_models,
+            )
+
+            if route_id:
+                route = get_route(route_id, runtime)
+                if route:
+                    return _clamp_against(requested, route_as_cfg(route))
+            routes = list_enabled_routes(runtime)
+            if len(routes) >= 2:
+                if requested:
+                    owned = find_route_for_model(requested, runtime)
+                    if owned:
+                        return _clamp_against(requested, route_as_cfg(owned))
+                runtime = {
+                    **runtime,
+                    "allowed_models": union_allowed_models(runtime),
+                }
+        except Exception:  # noqa: BLE001 — 路由層失敗時回退單一池
+            logger.debug("多 API 路由 clamp 回退單一池", exc_info=True)
+    return _clamp_against(requested, runtime)
+
+
 def compatible_hub_models(
     hub_ids: Iterable[str],
     provider_of: Mapping[str, str] | None = None,
@@ -266,6 +305,14 @@ def compatible_hub_models(
 
     runtime = get_runtime_config()
     allowed = [str(x) for x in (runtime.get("allowed_models") or []) if str(x).strip()]
+    try:
+        from backend.core.api_router import union_allowed_models
+
+        union = union_allowed_models(runtime)
+        if union:
+            allowed = union
+    except Exception:  # noqa: BLE001
+        pass
     kind = str(
         runtime.get("provider_kind")
         or classify_provider(str(runtime.get("api_base") or ""), str(runtime.get("model") or ""))
@@ -305,15 +352,14 @@ def refresh_interval_sec(cfg: dict[str, Any] | None = None) -> int:
     return max(60, min(3600, raw))
 
 
-def refresh_model_catalog(*, reason: str = "manual") -> dict[str, Any]:
-    """爬取或回退靜態目錄，寫入 llm_config，並必要時修正預設模型。"""
-    from backend.core.llm_config import get_runtime_config, merge_runtime_config
-
-    cfg = get_runtime_config()
-    api_base = str(cfg.get("api_base") or "")
-    api_key = str(cfg.get("api_key") or "")
-    current_model = str(cfg.get("model") or "")
-    kind = classify_provider(api_base, current_model)
+def fetch_catalog(
+    api_base: str,
+    api_key: str,
+    current_model: str,
+    kind: str = "",
+) -> dict[str, Any]:
+    """對單一端點爬取或回退靜態目錄（不寫入配置）。"""
+    kind = kind or classify_provider(api_base, current_model)
     url = models_endpoint(api_base, kind)
     started = datetime.now(timezone.utc)
     error = ""
@@ -349,24 +395,123 @@ def refresh_model_catalog(*, reason: str = "manual") -> dict[str, Any]:
 
     elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
     ok = source == "crawl" or (source in {"static", "configured"} and bool(allowed))
-    snapshot = merge_runtime_config(
+    return {
+        "provider": kind,
+        "model": chosen,
+        "allowed_models": allowed,
+        "catalog_models": models[:200],
+        "catalog_source": source,
+        "catalog_fetched_at": _now_iso(),
+        "catalog_error": error,
+        "catalog_url": url,
+        "elapsed_ms": elapsed_ms,
+        "ok": ok,
+    }
+
+
+def _merge_catalog_into_route(route: dict[str, Any], catalog: dict[str, Any]) -> dict[str, Any]:
+    allowed = list(catalog.get("allowed_models") or [])
+    model = str(catalog.get("model") or route.get("model") or "")
+    if route.get("models_locked"):
+        prev = [str(x) for x in (route.get("allowed_models") or []) if str(x).strip()]
+        kept = [m for m in prev if _model_in_pool(m, allowed)]
+        if kept:
+            allowed = kept
+            if model and not _model_in_pool(model, kept):
+                model = kept[0]
+    return {
+        **route,
+        "provider": catalog.get("provider") or route.get("provider"),
+        "model": model,
+        "allowed_models": allowed,
+        "models_locked": bool(route.get("models_locked")),
+        "catalog_models": catalog.get("catalog_models") or route.get("catalog_models") or [],
+        "catalog_source": catalog.get("catalog_source") or "",
+        "catalog_error": catalog.get("catalog_error") or "",
+        "catalog_fetched_at": catalog.get("catalog_fetched_at") or "",
+        "catalog_url": catalog.get("catalog_url") or "",
+    }
+
+
+def refresh_route_catalog(route_id: str, *, reason: str = "manual") -> dict[str, Any]:
+    """刷新單一 API 路由的模型目錄。"""
+    from backend.core.api_router import get_route, public_route, upsert_route
+
+    route = get_route(route_id)
+    if route is None:
+        raise KeyError(f"找不到 API 路由：{route_id}")
+    catalog = fetch_catalog(
+        str(route.get("api_base") or ""),
+        str(route.get("api_key") or ""),
+        str(route.get("model") or ""),
+        str(route.get("provider") or ""),
+    )
+    updated = upsert_route({**_merge_catalog_into_route(route, catalog), "keep_api_key": True})
+    logger.info("路由 %s 目錄已刷新（reason=%s, source=%s）", route_id, reason, catalog["catalog_source"])
+    return public_route(updated)
+
+
+def refresh_model_catalog(*, reason: str = "manual", route_id: str | None = None) -> dict[str, Any]:
+    """爬取或回退靜態目錄，寫入 llm_config，並必要時修正預設模型。
+
+    有多條 API 路由時會逐條刷新；route_id 指定則只刷新該路由。
+    """
+    from backend.core.llm_config import get_runtime_config, merge_runtime_config
+
+    if route_id:
+        refresh_route_catalog(route_id, reason=reason)
+        return public_pool()
+
+    cfg = get_runtime_config()
+    catalog = fetch_catalog(
+        str(cfg.get("api_base") or ""),
+        str(cfg.get("api_key") or ""),
+        str(cfg.get("model") or ""),
+        str(cfg.get("provider_kind") or ""),
+    )
+    ok = bool(catalog["ok"])
+    merge_runtime_config(
         {
-            "model": chosen,
-            "provider_kind": kind,
-            "allowed_models": allowed,
-            "catalog_models": models[:200],
-            "catalog_source": source,
-            "catalog_fetched_at": _now_iso(),
-            "catalog_error": error,
-            "catalog_url": url,
+            "model": catalog["model"],
+            "provider_kind": catalog["provider"],
+            "allowed_models": catalog["allowed_models"],
+            "catalog_models": catalog["catalog_models"],
+            "catalog_source": catalog["catalog_source"],
+            "catalog_fetched_at": catalog["catalog_fetched_at"],
+            "catalog_error": catalog["catalog_error"],
+            "catalog_url": catalog["catalog_url"],
             "ops_last_reason": reason,
             "ops_last_ok_at": _now_iso() if ok else cfg.get("ops_last_ok_at") or "",
-            "ops_last_error": error,
-            "ops_last_latency_ms": elapsed_ms,
+            "ops_last_error": catalog["catalog_error"],
+            "ops_last_latency_ms": catalog["elapsed_ms"],
             "ops_consecutive_fail": 0 if ok else int(cfg.get("ops_consecutive_fail") or 0) + 1,
         }
     )
-    return public_pool(snapshot)
+    try:
+        from backend.core.api_router import PRIMARY_ROUTE_ID, list_routes, save_routes, sync_primary_into_routes
+
+        sync_primary_into_routes()
+        refreshed: list[dict[str, Any]] = []
+        for route in list_routes():
+            is_primary = route.get("id") == PRIMARY_ROUTE_ID or route.get("is_default")
+            if is_primary:
+                refreshed.append(_merge_catalog_into_route(route, catalog))
+                continue
+            if not route.get("enabled", True) or not (route.get("api_key") or route.get("api_base")):
+                refreshed.append(route)
+                continue
+            extra_cat = fetch_catalog(
+                str(route.get("api_base") or ""),
+                str(route.get("api_key") or ""),
+                str(route.get("model") or ""),
+                str(route.get("provider") or ""),
+            )
+            refreshed.append(_merge_catalog_into_route(route, extra_cat))
+        if refreshed:
+            save_routes(refreshed)
+    except Exception:  # noqa: BLE001 — 額外路由刷新失敗不得擋住主目錄
+        logger.warning("額外 API 路由目錄刷新失敗", exc_info=True)
+    return public_pool()
 
 
 def public_pool(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -389,17 +534,60 @@ def public_pool(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
     else:
         stale = True
     allowed = [str(x) for x in (runtime.get("allowed_models") or []) if str(x).strip()]
+    router_state: dict[str, Any] = {}
+    try:
+        from backend.core.api_router import public_router_state, union_allowed_models
+
+        router_state = public_router_state(runtime)
+        union = router_state.get("allowed_models") or union_allowed_models(runtime)
+        if union:
+            allowed = union
+    except Exception:  # noqa: BLE001
+        router_state = {}
+    route_count = len(router_state.get("api_routes") or [])
     models = runtime.get("catalog_models") or [{"id": m, "name": m, "owned_by": kind} for m in allowed]
+    if route_count >= 2:
+        merged: list[dict[str, str]] = []
+        seen: set[str] = set()
+        for route in router_state.get("api_routes") or []:
+            label = str(route.get("name") or route.get("id") or "")
+            for item in route.get("catalog") or []:
+                if isinstance(item, dict):
+                    mid = str(item.get("id") or "").strip()
+                    row = {
+                        "id": mid,
+                        "name": str(item.get("name") or mid),
+                        "owned_by": str(item.get("owned_by") or route.get("provider") or ""),
+                        "route_id": str(route.get("id") or ""),
+                        "route_name": label,
+                    }
+                else:
+                    mid = str(item).strip()
+                    row = {"id": mid, "name": mid, "owned_by": str(route.get("provider") or ""), "route_id": str(route.get("id") or ""), "route_name": label}
+                key = mid.lower()
+                if not mid or key in seen:
+                    continue
+                seen.add(key)
+                merged.append(row)
+        if merged:
+            models = merged
     return {
         "provider_kind": kind,
         "provider_label": KIND_LABELS.get(kind, kind),
-        "single_vendor": (kind not in CRAWL_KINDS)
-        or (kind == "openai" and not str(runtime.get("api_base") or "")),
-        "lock_message": _lock_message(kind, allowed),
+        "single_vendor": route_count <= 1 and (
+            (kind not in CRAWL_KINDS) or (kind == "openai" and not str(runtime.get("api_base") or ""))
+        ),
+        "lock_message": _lock_message(kind, allowed, route_count=route_count, router_state=router_state),
         "model": runtime.get("model") or "",
         "api_base": runtime.get("api_base") or "",
         "configured": bool(runtime.get("api_key")),
         "allowed_models": allowed,
+        "route_strategy": router_state.get("route_strategy") or "role_preferred",
+        "default_route_id": router_state.get("default_route_id") or "",
+        "api_routes": router_state.get("api_routes") or [],
+        "models_by_provider": router_state.get("models_by_provider") or [],
+        "route_strategies": router_state.get("strategies") or [],
+        "provider_presets": router_state.get("presets") or [],
         "catalog": models,
         "catalog_source": runtime.get("catalog_source") or "",
         "catalog_url": runtime.get("catalog_url") or "",
@@ -439,8 +627,19 @@ def _next_check_at(fetched: str, interval: int) -> str:
         return ""
 
 
-def _lock_message(kind: str, allowed: list[str]) -> str:
+def _lock_message(
+    kind: str,
+    allowed: list[str],
+    *,
+    route_count: int = 0,
+    router_state: dict[str, Any] | None = None,
+) -> str:
     n = len(allowed)
+    routes = list((router_state or {}).get("api_routes") or [])
+    enabled = [r for r in routes if r.get("enabled") and r.get("configured")]
+    if len(enabled) >= 2:
+        names = "、".join(str(r.get("name") or r.get("id")) for r in enabled[:6])
+        return f"已配置 {len(enabled)} 組 API（{names}），共 {n} 個可用模型；角色可各自指定供應商與模型"
     if kind == "openrouter":
         return f"OpenRouter 通用目錄：已載入 {n} 個可用模型（已排除 Claude）"
     if kind in CRAWL_KINDS:
@@ -770,6 +969,16 @@ def failover_models(requested: str | None, cfg: dict[str, Any] | None = None) ->
 
     runtime = cfg or get_runtime_config()
     allowed = [str(x) for x in (runtime.get("allowed_models") or []) if str(x).strip()]
+    if cfg is None:
+        try:
+            from backend.core.api_router import find_route_for_model, route_as_cfg
+
+            owned = find_route_for_model(requested or str(runtime.get("model") or ""), runtime)
+            if owned:
+                runtime = route_as_cfg(owned)
+                allowed = [str(x) for x in (runtime.get("allowed_models") or []) if str(x).strip()]
+        except Exception:  # noqa: BLE001
+            pass
     primary = clamp_model(requested or str(runtime.get("model") or ""), cfg=runtime)
     if not allowed:
         return [primary]

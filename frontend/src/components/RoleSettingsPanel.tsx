@@ -14,6 +14,7 @@ export interface RoleSettingsDraft {
   default_tier: string;
   max_parallel_work: number;
   preferred_model: string;
+  preferred_provider: string;
   daily_budget_usd: number;
   toolsText: string;
   notes: string;
@@ -62,6 +63,7 @@ export function draftFromAgent(agent: RoleAgent): RoleSettingsDraft {
     default_tier: agent.default_tier || 'routine',
     max_parallel_work: agent.max_parallel_work || 2,
     preferred_model: agent.preferred_model ?? '',
+    preferred_provider: agent.preferred_provider ?? '',
     daily_budget_usd: agent.daily_budget_usd ?? 0,
     toolsText: (agent.tools_allowed ?? []).join(', '),
     notes: agent.notes ?? '',
@@ -111,6 +113,7 @@ export function draftToPayload(draft: RoleSettingsDraft): Record<string, unknown
     default_tier: draft.default_tier,
     max_parallel_work: draft.max_parallel_work,
     preferred_model: draft.preferred_model,
+    preferred_provider: draft.preferred_provider,
     daily_budget_usd: draft.daily_budget_usd,
     tools_allowed: draft.toolsText.split(',').map((s) => s.trim()).filter(Boolean),
     notes: draft.notes,
@@ -172,6 +175,57 @@ function Field({
 const inputCls =
   'w-full rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-[12px] text-[#f7f8f8] outline-none focus:border-[#007AFF]/60';
 
+function tokenHint(
+  model: string,
+  hints?: Record<string, { max_context: number; max_output: number }>,
+) {
+  if (!hints || !model) return undefined;
+  const bare = model.split('/').pop() || model;
+  return hints[model] || hints[bare];
+}
+
+function TokenSlider({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <Field label={label} hint={hint}>
+      <div className="flex items-center gap-2">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={Math.min(max, Math.max(min, value))}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="flex-1 accent-[#007AFF]"
+        />
+        <input
+          type="number"
+          min={min}
+          max={max}
+          className={`${inputCls} w-24`}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value) || min)}
+        />
+      </div>
+    </Field>
+  );
+}
+
 interface RoleSettingsPanelProps {
   agent: RoleAgent;
   catalog: AgentCatalogMeta | undefined;
@@ -208,6 +262,9 @@ export default function RoleSettingsPanel({
   const levels = catalog?.levels ?? [];
   const tools = catalog?.tool_names ?? [];
   const routing = catalog?.routing_strategies ?? Object.entries(ROUTING_LABEL).map(([id, label]) => ({ id, label }));
+  const selectedHint = tokenHint(draft.preferred_model, catalog?.model_token_hints);
+  const outputMax = selectedHint?.max_output ?? 32768;
+  const contextMax = selectedHint?.max_context ?? 2_000_000;
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(draftFromAgent(agent)), [agent, draft]);
 
@@ -399,6 +456,15 @@ export default function RoleSettingsPanel({
 
       {section === 'model' && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {(catalog?.api_routes?.length ?? 0) === 0 && (
+            <p className="md:col-span-2 rounded-xl border border-[#FF9F0A]/25 bg-[#FF9F0A]/8 px-3 py-2 text-[12px] text-[#FF9F0A]">
+              尚未配置 API。請先到{' '}
+              <a href="#/monitor/llm" className="font-medium underline">
+                系統 → API 路由
+              </a>{' '}
+              加入千問／DeepSeek／Kimi／OpenRouter。
+            </p>
+          )}
           <Field label="模型層級">
             <select
               className={inputCls}
@@ -412,19 +478,54 @@ export default function RoleSettingsPanel({
               ))}
             </select>
           </Field>
-          <Field label="指定模型" hint="空白=目前 API 預設；只能填可用池">
-            <input
+          <Field label="API 供應商" hint="空白=全域預設路由">
+            <select
               className={inputCls}
-              list="role-allowed-models"
-              placeholder={catalog?.allowed_models?.[0] || 'deepseek-v4-flash'}
+              value={draft.preferred_provider}
+              onChange={(e) => {
+                const next = e.target.value;
+                const group = (catalog?.models_by_provider ?? []).find((g) => g.route_id === next);
+                const nextModel =
+                  next && group && !group.models.includes(draft.preferred_model)
+                    ? group.models[0] || ''
+                    : draft.preferred_model;
+                setDraft({ ...draft, preferred_provider: next, preferred_model: nextModel });
+              }}
+            >
+              <option value="">全域預設（{catalog?.api_routes?.find((r) => r.is_default)?.name || '目前 API'}）</option>
+              {(catalog?.api_routes ?? []).map((route) => (
+                <option key={route.id} value={route.id} disabled={route.enabled === false}>
+                  {route.name}（{route.provider_label || route.provider}）
+                  {route.is_default ? ' · 預設' : ''}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="指定模型" hint="依上方供應商列出可用模型；空白=該 API 預設">
+            <select
+              className={inputCls}
               value={draft.preferred_model}
               onChange={(e) => setDraft({ ...draft, preferred_model: e.target.value })}
-            />
-            <datalist id="role-allowed-models">
-              {(catalog?.allowed_models ?? []).map((id) => (
-                <option key={id} value={id} />
-              ))}
-            </datalist>
+            >
+              <option value="">該 API 預設模型</option>
+              {(catalog?.models_by_provider ?? []).length > 0
+                ? (catalog?.models_by_provider ?? [])
+                    .filter((g) => !draft.preferred_provider || g.route_id === draft.preferred_provider)
+                    .map((g) => (
+                      <optgroup key={g.route_id} label={`${g.name} · ${g.provider_label || g.provider}`}>
+                        {g.models.map((id) => (
+                          <option key={`${g.route_id}-${id}`} value={id}>
+                            {id}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))
+                : (catalog?.allowed_models ?? []).map((id) => (
+                    <option key={id} value={id}>
+                      {id}
+                    </option>
+                  ))}
+            </select>
           </Field>
           <Field label="路由策略">
             <select
@@ -458,16 +559,32 @@ export default function RoleSettingsPanel({
               onChange={(e) => setDraft({ ...draft, temperature: Number(e.target.value) })}
             />
           </Field>
-          <Field label="最大輸出 Token">
-            <input
-              type="number"
-              min={256}
-              max={128000}
-              className={inputCls}
-              value={draft.max_output_tokens}
-              onChange={(e) => setDraft({ ...draft, max_output_tokens: Number(e.target.value) || 4096 })}
-            />
-          </Field>
+          <TokenSlider
+            label="最大輸出 Token"
+            hint={
+              selectedHint
+                ? `單次回覆上限 · 此模型建議 ≤ ${outputMax.toLocaleString()}`
+                : '單次回覆上限，寫入 API max_tokens'
+            }
+            value={draft.max_output_tokens}
+            min={256}
+            max={outputMax}
+            step={256}
+            onChange={(n) => setDraft({ ...draft, max_output_tokens: n || 4096 })}
+          />
+          <TokenSlider
+            label="上下文 Token"
+            hint={
+              selectedHint
+                ? `0=不截斷 · 此模型上下文 ${contextMax.toLocaleString()}`
+                : '0=不截斷；超過則截斷提示'
+            }
+            value={draft.context_window}
+            min={0}
+            max={contextMax}
+            step={1024}
+            onChange={(n) => setDraft({ ...draft, context_window: n || 0 })}
+          />
           <Field label="逾時毫秒">
             <input
               type="number"
@@ -532,9 +649,6 @@ export default function RoleSettingsPanel({
           </Field>
           <Field label="心跳秒數" hint="0=關閉">
             <input type="number" min={0} className={inputCls} value={draft.heartbeat_sec} onChange={(e) => setDraft({ ...draft, heartbeat_sec: Number(e.target.value) || 0 })} />
-          </Field>
-          <Field label="上下文視窗" hint="0=模型預設">
-            <input type="number" min={0} className={inputCls} value={draft.context_window} onChange={(e) => setDraft({ ...draft, context_window: Number(e.target.value) || 0 })} />
           </Field>
           <Field label="每日工作項上限" hint="0=不限">
             <input type="number" min={0} className={inputCls} value={draft.max_daily_items} onChange={(e) => setDraft({ ...draft, max_daily_items: Number(e.target.value) || 0 })} />
@@ -692,6 +806,9 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
   const [tier, setTier] = useState(cloneFrom?.default_tier || 'routine');
   const [description, setDescription] = useState(cloneFrom?.description ?? '');
   const [model, setModel] = useState(cloneFrom?.preferred_model ?? '');
+  const [provider, setProvider] = useState(cloneFrom?.preferred_provider ?? '');
+  const [maxOutput, setMaxOutput] = useState(cloneFrom?.max_output_tokens ?? 4096);
+  const [contextWindow, setContextWindow] = useState(cloneFrom?.context_window ?? 0);
   const [budget, setBudget] = useState(cloneFrom?.daily_budget_usd ?? 0);
   const [routing, setRouting] = useState(cloneFrom?.routing_strategy || 'quality_first');
   const [parallel, setParallel] = useState(cloneFrom?.max_parallel_work ?? 2);
@@ -806,18 +923,54 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
             onChange={(e) => setDescription(e.target.value)}
           />
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <select
+              className={inputCls}
+              value={provider}
+              onChange={(e) => {
+                const next = e.target.value;
+                const group = (catalog?.models_by_provider ?? []).find((g) => g.route_id === next);
+                setProvider(next);
+                if (next && group && !group.models.includes(model)) {
+                  setModel(group.models[0] || '');
+                }
+              }}
+            >
+              <option value="">API：全域預設</option>
+              {(catalog?.api_routes ?? []).map((route) => (
+                <option key={route.id} value={route.id}>
+                  {route.name}
+                </option>
+              ))}
+            </select>
+            <select className={inputCls} value={model} onChange={(e) => setModel(e.target.value)}>
+              <option value="">模型：該 API 預設</option>
+              {(catalog?.models_by_provider ?? [])
+                .filter((g) => !provider || g.route_id === provider)
+                .flatMap((g) => g.models.map((mid) => ({ group: g.name, mid })))
+                .map((row) => (
+                  <option key={`${row.group}-${row.mid}`} value={row.mid}>
+                    {row.mid}
+                  </option>
+                ))}
+            </select>
             <input
               className={inputCls}
-              placeholder="指定模型（可空）"
-              list="create-allowed-models"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
+              type="number"
+              min={256}
+              max={128000}
+              placeholder="輸出 Token"
+              value={maxOutput}
+              onChange={(e) => setMaxOutput(Number(e.target.value) || 4096)}
             />
-            <datalist id="create-allowed-models">
-              {(catalog?.allowed_models ?? []).map((mid) => (
-                <option key={mid} value={mid} />
-              ))}
-            </datalist>
+            <input
+              className={inputCls}
+              type="number"
+              min={0}
+              max={2000000}
+              placeholder="上下文 Token（0=不截斷）"
+              value={contextWindow}
+              onChange={(e) => setContextWindow(Number(e.target.value) || 0)}
+            />
             <select className={inputCls} value={routing} onChange={(e) => setRouting(e.target.value)}>
               {(catalog?.routing_strategies ?? [{ id: 'quality_first', label: '品質優先' }]).map((r) => (
                 <option key={r.id} value={r.id}>
@@ -900,6 +1053,9 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
                   clone_from: cloneFrom?.id,
                   description,
                   preferred_model: model,
+                  preferred_provider: provider,
+                  max_output_tokens: maxOutput,
+                  context_window: contextWindow,
                   daily_budget_usd: budget,
                   routing_strategy: routing,
                   max_parallel_work: parallel,

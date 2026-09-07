@@ -20,6 +20,7 @@ const ModelCallPanel = lazy(() => import('./ModelCallPanel'));
 const UserFeedbackPanel = lazy(() => import('./UserFeedbackPanel'));
 const LabPanel = lazy(() => import('./LabPanel'));
 const OpsPanel = lazy(() => import('./OpsPanel'));
+const LlmOpsPanel = lazy(() => import('./LlmOpsPanel'));
 const MemoryPanel = lazy(() => import('./MemoryPanel'));
 const WorldConstitutionPanel = lazy(() => import('./linkin/WorldConstitutionPanel'));
 const NpcManagerPanel = lazy(() => import('./linkin/NpcManagerPanel'));
@@ -99,9 +100,7 @@ export default function MonitorView({
 }: MonitorViewProps) {
   const tab = activeTab;
 
-  useMonitorHub(
-    tab === 'agents' || tab === 'pipeline' || tab === 'live' || tab === 'tasks',
-  );
+  useMonitorHub(tab !== 'lab');
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden apple-canvas">
@@ -133,6 +132,7 @@ export default function MonitorView({
           <LabPanel activeTab={labSubTab} onTabChange={onLabSubTabChange} />
         )}
         {tab === 'ops' && <OpsPanel />}
+        {tab === 'llm' && <LlmOpsPanel />}
         {tab === 'memory' && (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas">
             <MemoryPanel />
@@ -144,7 +144,6 @@ export default function MonitorView({
         {tab === 'building' && <BuildPanel />}
         {tab === 'items' && <ItemPanel />}
         {tab === 'minecraft' && <MinecraftBridgePanel />}
-        {tab === 'dbpool' && <OpsPanel />}
       </Suspense>
     </div>
   );

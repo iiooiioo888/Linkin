@@ -30,7 +30,7 @@ MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 2.0
 
 
-def _llm_params() -> dict:
+def _llm_params(target: dict | None = None) -> dict:
     """讀取当前生效的 LLM 參數（每次呼叫時讀取，支援動態變更）。
 
     自訂 api_base 場景（如 Qwen 相容模式）：模型名必須帶
@@ -38,14 +38,46 @@ def _llm_params() -> dict:
     （未帶前綴的未知模型名會報 "LLM Provider NOT provided"），
     且 api_base 會覆蓋官方端點。
     """
+    if target:
+        params: dict = {"model": target.get("model") or "gpt-4o"}
+        if target.get("api_key"):
+            params["api_key"] = target["api_key"]
+        if target.get("api_base"):
+            params["api_base"] = target["api_base"]
+            params["model"] = _ensure_provider_prefix(params["model"])
+        return params
     cfg = get_runtime_config()
-    params: dict = {"model": cfg.get("model") or "gpt-4o"}
+    params = {"model": cfg.get("model") or "gpt-4o"}
     if cfg.get("api_key"):
         params["api_key"] = cfg["api_key"]
     if cfg.get("api_base"):
         params["api_base"] = cfg["api_base"]
         params["model"] = _ensure_provider_prefix(params["model"])
     return params
+
+
+def _resolve_call_target(model: str | None, route_id: str | None) -> dict:
+    from backend.core.api_router import resolve_target
+
+    return resolve_target(model=model, route_id=route_id)
+
+
+def _truncate_prompt(prompt: str, max_context_tokens: int | None) -> str:
+    """依角色上下文 Token 上限粗估截斷（約 4 字元 / token）。"""
+    if not max_context_tokens or max_context_tokens <= 0:
+        return prompt
+    max_chars = max(256, int(max_context_tokens) * 4)
+    if len(prompt) <= max_chars:
+        return prompt
+    keep = max_chars - 40
+    return prompt[:keep] + "\n\n[...上下文已依角色 Token 上限截斷...]"
+
+
+def _openrouter_extra(target: dict) -> dict:
+    routing = target.get("provider_routing")
+    if not isinstance(routing, dict) or not routing:
+        return {}
+    return {"extra_body": {"provider": routing}}
 
 
 def _ensure_provider_prefix(model: str) -> str:
@@ -100,20 +132,29 @@ def _completion_once(
     system: str | None = None,
     model: str | None = None,
     max_retries: int | None = None,
+    *,
+    route_id: str | None = None,
+    max_context_tokens: int | None = None,
     **kwargs,
 ) -> str:
     """單一模型 LLM 呼叫（含重試，不含池級 Failover）。"""
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": prompt})
+    messages.append({"role": "user", "content": _truncate_prompt(prompt, max_context_tokens)})
 
-    params = _llm_params()
+    try:
+        target = _resolve_call_target(model, route_id)
+    except Exception:  # noqa: BLE001 — 路由解析失敗回退單一配置
+        target = None
+    params = _llm_params(target)
     if model:
         params["model"] = model
-    params["model"] = clamp_model(params.get("model"))
+    clamp_cfg = (target or {}).get("cfg")
+    params["model"] = clamp_model(params.get("model"), cfg=clamp_cfg, route_id=route_id)
     if params.get("api_base"):
         params["model"] = _ensure_provider_prefix(params["model"])
+    extra = _openrouter_extra(target or {})
 
     retries = MAX_RETRIES if max_retries is None else max(1, int(max_retries))
     last_error: Exception | None = None
@@ -123,6 +164,7 @@ def _completion_once(
                 model=params["model"],
                 messages=messages,
                 **{k: v for k, v in params.items() if k != "model"},
+                **extra,
                 **kwargs,
             )
             return _message_visible_text(response.choices[0].message)
@@ -140,11 +182,55 @@ def _completion_once(
     raise RuntimeError(f"LLM 呼叫於 {retries} 次重試後仍失敗") from last_error
 
 
+def _build_call_hops(
+    route_id: str | None,
+    model: str | None,
+    extra_models: list[str],
+) -> list[tuple[str | None, str | None]]:
+    """(route_id, model) 嘗試序列：主路由 → 角色備援模型 → API 備援鏈。"""
+    hops: list[tuple[str | None, str | None]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def _add(rid: str | None, mid: str | None) -> None:
+        key = ((rid or "").strip(), (mid or "").strip())
+        if key in seen:
+            return
+        seen.add(key)
+        hops.append((rid, mid))
+
+    try:
+        from backend.core.api_router import list_failover_chain
+
+        chain = list_failover_chain(route_id=route_id, model=model, extra_models=extra_models)
+    except Exception:  # noqa: BLE001
+        chain = []
+    if not chain:
+        _add(route_id, model)
+        return hops
+
+    _add(str(chain[0].get("id") or route_id or "") or route_id, model)
+    for extra in extra_models:
+        try:
+            from backend.core.api_router import find_route_for_model
+
+            owned = find_route_for_model(extra)
+        except Exception:  # noqa: BLE001
+            owned = None
+        _add((owned or {}).get("id") or None, extra)
+    for route in chain[1:]:
+        _add(str(route.get("id") or "") or None, str(route.get("model") or model or "") or model)
+    return hops or [(route_id, model)]
+
+
 def call_llm(
     prompt: str,
     system: str | None = None,
     model: str | None = None,
     max_retries: int | None = None,
+    *,
+    route_id: str | None = None,
+    max_context_tokens: int | None = None,
+    role_failover_models: list[str] | None = None,
     **kwargs,
 ) -> str:
     """呼叫 LLM 並回傳回應文字。
@@ -155,48 +241,188 @@ def call_llm(
     max_retries 預設 3（與 MAX_RETRIES 相同），以保持反思閉環行為；
     Hub 路由器切模型前應傳 max_retries=1，避免 3×3 放大延遲。
     啟用 EVOL_LLM_POOL_FAILOVER 時，主模型逾時或限流會自動切換池內備援。
+    多 API 路由時依 route_id / 模型歸屬選擇憑證；max_tokens / temperature
+    可經 kwargs 傳入（角色 Token 限制）。主路由失敗且有備援路由時會跨 API 切換。
     """
-    params = _llm_params()
-    resolved_model = clamp_model(model or params.get("model"))
+    extras = role_failover_models or kwargs.pop("role_failover_models", None) or []
+    extras = [str(item).strip() for item in extras if str(item).strip()]
+    hops = _build_call_hops(route_id, model, extras)
+
+    if len(hops) <= 1:
+        hop_route, hop_model = hops[0] if hops else (route_id, model)
+        return _call_llm_on_route(
+            prompt,
+            system=system,
+            model=hop_model,
+            max_retries=max_retries,
+            route_id=hop_route,
+            max_context_tokens=max_context_tokens,
+            **kwargs,
+        )
+
+    last_error: Exception | None = None
+    for hop, (hop_route_id, hop_model) in enumerate(hops):
+        hop_retries = max_retries if hop == 0 else 1
+        try:
+            return _call_llm_on_route(
+                prompt,
+                system=system,
+                model=hop_model,
+                max_retries=hop_retries,
+                route_id=hop_route_id,
+                max_context_tokens=max_context_tokens,
+                **kwargs,
+            )
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+            if hop + 1 < len(hops):
+                nxt = hops[hop + 1][0]
+                logger.warning("API 路由 %s 失敗，切換備援 %s：%s", hop_route_id, nxt, exc)
+                continue
+            raise
+    if last_error:
+        raise last_error
+    return _call_llm_on_route(
+        prompt,
+        system=system,
+        model=model,
+        max_retries=max_retries,
+        route_id=route_id,
+        max_context_tokens=max_context_tokens,
+        **kwargs,
+    )
+
+
+def _call_llm_on_route(
+    prompt: str,
+    system: str | None = None,
+    model: str | None = None,
+    max_retries: int | None = None,
+    *,
+    route_id: str | None = None,
+    max_context_tokens: int | None = None,
+    **kwargs,
+) -> str:
+    kwargs.pop("role_failover_models", None)
+    tracked = ""
+    try:
+        target = _resolve_call_target(model, route_id)
+        clamp_cfg = target.get("cfg")
+        resolved_model = clamp_model(model or target.get("model"), cfg=clamp_cfg, route_id=route_id)
+        params = _llm_params(target)
+        tracked = str(route_id or target.get("route_id") or "")
+    except Exception:  # noqa: BLE001
+        params = _llm_params()
+        clamp_cfg = None
+        resolved_model = clamp_model(model or params.get("model"))
+        target = None
+        tracked = str(route_id or "")
     if params.get("api_base"):
         resolved_model = _ensure_provider_prefix(resolved_model)
 
-    # ── 查詢快取 ──
-    cache = get_llm_cache()
-    cached = cache.get(prompt, system, resolved_model)
-    if cached is not None:
-        return cached
+    try:
+        from backend.core.api_router import mark_route_end, mark_route_start
 
-    if pool_failover_enabled():
-        chain = failover_models(resolved_model)
-        if len(chain) > 1:
-            text, used_model, hops = invoke_with_pool_failover(
-                _completion_once,
-                prompt=prompt,
-                system=system,
-                models=chain,
-                max_retries=max_retries,
-                **kwargs,
-            )
-            if hops > 0:
-                logger.info(
-                    "模型池 Failover：%s → %s（跳過 %d 個）",
-                    resolved_model,
-                    used_model,
-                    hops,
+        mark_route_start(tracked)
+    except Exception:  # noqa: BLE001
+        mark_route_end = None  # type: ignore[assignment]
+
+    try:
+        prompt = _truncate_prompt(prompt, max_context_tokens)
+
+        cache = get_llm_cache()
+        cached = cache.get(prompt, system, resolved_model)
+        if cached is not None:
+            return cached
+
+        call_kw = dict(kwargs)
+        call_kw["route_id"] = route_id or (target or {}).get("route_id")
+        call_kw["max_context_tokens"] = max_context_tokens
+
+        if pool_failover_enabled():
+            chain = failover_models(resolved_model, cfg=clamp_cfg)
+            if len(chain) > 1:
+                text, used_model, hops = invoke_with_pool_failover(
+                    _completion_once,
+                    prompt=prompt,
+                    system=system,
+                    models=chain,
+                    max_retries=max_retries,
+                    **call_kw,
                 )
-            cache.put(prompt, system, used_model, text)
-            return text
+                if hops > 0:
+                    logger.info(
+                        "模型池 Failover：%s → %s（跳過 %d 個）",
+                        resolved_model,
+                        used_model,
+                        hops,
+                    )
+                cache.put(prompt, system, used_model, text)
+                return text
 
-    result = _completion_once(
-        prompt=prompt,
-        system=system,
-        model=resolved_model,
-        max_retries=max_retries,
-        **kwargs,
-    )
-    cache.put(prompt, system, resolved_model, result)
-    return result
+        result = _completion_once(
+            prompt=prompt,
+            system=system,
+            model=resolved_model,
+            max_retries=max_retries,
+            **call_kw,
+        )
+        cache.put(prompt, system, resolved_model, result)
+        return result
+    finally:
+        if mark_route_end is not None:
+            try:
+                mark_route_end(tracked)
+            except Exception:  # noqa: BLE001
+                pass
+
+
+def llm_kwargs_for_role(runtime: dict | None) -> dict:
+    """把角色設定轉成 call_llm 參數（供應商、Token、溫度）。"""
+    if not runtime:
+        return {}
+    out: dict = {}
+    provider = str(runtime.get("preferred_provider") or "").strip()
+    if provider:
+        try:
+            from backend.core.api_router import resolve_route_ref
+
+            route = resolve_route_ref(provider)
+            out["route_id"] = (route or {}).get("id") or provider
+        except Exception:  # noqa: BLE001
+            out["route_id"] = provider
+    failover = [
+        str(item).strip()
+        for item in (runtime.get("failover_models") or [])
+        if str(item).strip()
+    ]
+    if failover:
+        out["role_failover_models"] = failover
+    try:
+        tokens = int(runtime.get("max_output_tokens") or 0)
+    except (TypeError, ValueError):
+        tokens = 0
+    if tokens > 0:
+        out["max_tokens"] = tokens
+    if runtime.get("temperature") is not None:
+        try:
+            out["temperature"] = float(runtime["temperature"])
+        except (TypeError, ValueError):
+            pass
+    ctx = runtime.get("context_window") or runtime.get("max_context_tokens")
+    try:
+        ctx_n = int(ctx or 0)
+    except (TypeError, ValueError):
+        ctx_n = 0
+    if ctx_n > 0:
+        out["max_context_tokens"] = ctx_n
+    retries = runtime.get("max_retries")
+    if retries is not None:
+        try:
+            out["max_retries"] = max(1, int(retries))
+        except (TypeError, ValueError):
+            pass
+    return out
 
 
 def call_llm_stream(
@@ -204,6 +430,9 @@ def call_llm_stream(
     system: str | None = None,
     model: str | None = None,
     max_retries: int | None = None,
+    *,
+    route_id: str | None = None,
+    max_context_tokens: int | None = None,
     **kwargs,
 ):
     """呼叫 LLM 並串流回傳回應片段（生成器）。
@@ -213,14 +442,20 @@ def call_llm_stream(
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": prompt})
+    messages.append({"role": "user", "content": _truncate_prompt(prompt, max_context_tokens)})
 
-    params = _llm_params()
+    try:
+        target = _resolve_call_target(model, route_id)
+    except Exception:  # noqa: BLE001
+        target = None
+    params = _llm_params(target)
     if model:
         params["model"] = model
-    params["model"] = clamp_model(params.get("model"))
+    clamp_cfg = (target or {}).get("cfg")
+    params["model"] = clamp_model(params.get("model"), cfg=clamp_cfg, route_id=route_id)
     if params.get("api_base"):
         params["model"] = _ensure_provider_prefix(params["model"])
+    extra = _openrouter_extra(target or {})
 
     retries = MAX_RETRIES if max_retries is None else max(1, int(max_retries))
     last_error: Exception | None = None
@@ -231,6 +466,7 @@ def call_llm_stream(
                 messages=messages,
                 stream=True,
                 **{k: v for k, v in params.items() if k != "model"},
+                **extra,
                 **kwargs,
             )
             in_think = False

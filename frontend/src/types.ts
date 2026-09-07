@@ -777,6 +777,40 @@ export interface LlmCatalogModel {
   id: string;
   name: string;
   owned_by: string;
+  route_id?: string;
+  route_name?: string;
+}
+
+export interface ApiRoutePublic {
+  id: string;
+  name: string;
+  provider: string;
+  provider_label: string;
+  api_key: string;
+  configured: boolean;
+  api_base: string;
+  model: string;
+  allowed_models: string[];
+  catalog: LlmCatalogModel[];
+  catalog_source: string;
+  catalog_error: string;
+  catalog_fetched_at: string;
+  catalog_url: string;
+  weight: number;
+  enabled: boolean;
+  fallback: boolean;
+  is_default: boolean;
+  models_locked?: boolean;
+  provider_routing?: Record<string, unknown> | null;
+}
+
+export interface ModelsByProvider {
+  route_id: string;
+  name: string;
+  provider: string;
+  provider_label: string;
+  enabled: boolean;
+  models: string[];
 }
 
 export interface OptimizationRoadmapItem {
@@ -924,6 +958,18 @@ export interface LlmOpsData {
   catalog_url: string;
   catalog_fetched_at: string;
   catalog_error: string;
+  route_strategy?: string;
+  default_route_id?: string;
+  api_routes?: ApiRoutePublic[];
+  models_by_provider?: ModelsByProvider[];
+  route_strategies?: Array<{ id: string; label: string }>;
+  provider_presets?: Array<{
+    id: string;
+    name: string;
+    api_base: string;
+    model: string;
+    label: string;
+  }>;
   ops: {
     refresh_interval_sec: number;
     last_ok_at: string;
@@ -944,6 +990,19 @@ export interface AgentCatalogMeta {
   tool_names: string[];
   builtin_ids: string[];
   allowed_models?: string[];
+  api_routes?: Array<{
+    id: string;
+    name: string;
+    provider: string;
+    provider_label: string;
+    model: string;
+    allowed_models: string[];
+    enabled: boolean;
+    configured?: boolean;
+    is_default?: boolean;
+  }>;
+  models_by_provider?: ModelsByProvider[];
+  model_token_hints?: Record<string, { max_context: number; max_output: number }>;
   routing_strategies?: Array<{ id: string; label: string }>;
   role_presets?: RolePreset[];
   org_templates?: Array<{ id: string; name: string; description: string; role_count: number }>;
@@ -986,6 +1045,7 @@ export interface RoleAgent {
   max_parallel_work: number;
   default_tier: string;
   preferred_model?: string;
+  preferred_provider?: string;
   daily_budget_usd?: number;
   tools_allowed?: string[];
   notes?: string;

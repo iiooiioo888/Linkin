@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from backend.company.tools import ToolCallResult, ToolRegistry
-from backend.core.llm import call_llm
+from backend.core.llm import call_llm, llm_kwargs_for_role
 
 logger = logging.getLogger(__name__)
 
@@ -131,10 +131,15 @@ class ReActExecutor:
         """
         catalog_allowed = None
         tools_enabled = True
+        llm_opts: dict[str, Any] = {}
+        model = self.model
         try:
             from backend.company.role_catalog import resolve_runtime
 
             runtime = resolve_runtime(role or "")
+            if runtime.get("preferred_model"):
+                model = runtime["preferred_model"]
+            llm_opts = llm_kwargs_for_role(runtime)
             if role and runtime.get("allow_tool_use") is False:
                 tools_prompt = ""
                 tools_enabled = False
@@ -174,7 +179,8 @@ class ReActExecutor:
                 response = call_llm(
                     current_prompt,
                     system=system_prompt,
-                    model=self.model,
+                    model=model,
+                    **llm_opts,
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.error("ReAct LLM 調用失敗（step %d）：%s", step_num, exc)
@@ -260,7 +266,7 @@ class ReActExecutor:
         # 最後一次嘗試：要求總結
         try:
             summary_prompt = "\n\n".join(conversation) + "\n\n（已達到最大步數，請根據目前的觀察結果，輸出 Final Answer 總結你的發現。）"
-            final_response = call_llm(summary_prompt, system=system_prompt, model=self.model)
+            final_response = call_llm(summary_prompt, system=system_prompt, model=model, **llm_opts)
             if "Final Answer:" in final_response:
                 final_answer = final_response.split("Final Answer:", 1)[1].strip()
             else:

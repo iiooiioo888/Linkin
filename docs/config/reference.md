@@ -16,6 +16,8 @@
 | `EVOL_MODEL` | `gpt-4o` | 預設模型（會被模型池 clamp） |
 | `EVOL_EMBED_MODEL` | `text-embedding-3-small` | 嵌入模型（用於記憶檢索和語義快取） |
 
+多組 API 請用控制台「系統 → API 路由」（或頂欄齒輪）或 `POST /config/routes` 寫入 `llm_config.json` 的 `api_routes`，不必再靠單一環境變數切換供應商。
+
 ### 模型池運維
 
 | 變數 | 預設值 | 說明 |

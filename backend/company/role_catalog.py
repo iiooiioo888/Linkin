@@ -74,6 +74,7 @@ ROUTING_STRATEGIES = {"cost_first", "speed_first", "quality_first", "manual"}
 
 DEFAULT_RUNTIME: dict[str, Any] = {
     "preferred_model": "",
+    "preferred_provider": "",
     "daily_budget_usd": 0.0,
     "weekly_budget_usd": 0.0,
     "monthly_budget_usd": 0.0,
@@ -288,6 +289,8 @@ def _merge_runtime(target: dict[str, Any], source: dict[str, Any] | None) -> dic
         return target
     if source.get("preferred_model") is not None:
         target["preferred_model"] = str(source.get("preferred_model") or "").strip()
+    if source.get("preferred_provider") is not None:
+        target["preferred_provider"] = str(source.get("preferred_provider") or "").strip().lower()
     if source.get("daily_budget_usd") is not None:
         target["daily_budget_usd"] = max(0.0, float(source["daily_budget_usd"] or 0))
     if source.get("tools_allowed") is not None:
@@ -483,13 +486,15 @@ def resolve_runtime(role_id: str) -> dict[str, Any]:
             "enabled": True,
             "system_prompt": "",
             "preferred_model": "",
+            "preferred_provider": "",
             "name": role_id,
         }
     preferred = str(out.get("preferred_model") or "").strip()
+    provider = str(out.get("preferred_provider") or "").strip()
     if preferred:
         from backend.core.provider_pool import clamp_model
 
-        out["preferred_model"] = clamp_model(preferred)
+        out["preferred_model"] = clamp_model(preferred, route_id=provider or None)
     return out
 
 
@@ -570,6 +575,8 @@ def _settings_payload(data: dict[str, Any]) -> dict[str, Any]:
         payload["max_parallel_work"] = max(1, min(16, int(data.get("max_parallel_work") or 1)))
     if "preferred_model" in data:
         payload["preferred_model"] = str(data.get("preferred_model") or "").strip()
+    if "preferred_provider" in data:
+        payload["preferred_provider"] = str(data.get("preferred_provider") or "").strip().lower()
     if "daily_budget_usd" in data:
         payload["daily_budget_usd"] = max(0.0, float(data.get("daily_budget_usd") or 0))
     if "tools_allowed" in data:
@@ -705,6 +712,7 @@ def create_custom_role(data: dict[str, Any]) -> dict[str, Any]:
             "max_parallel_work": src.get("max_parallel_work"),
             "default_tier": src.get("default_tier"),
             "preferred_model": src.get("preferred_model"),
+            "preferred_provider": src.get("preferred_provider"),
             "daily_budget_usd": src.get("daily_budget_usd"),
             "tools_allowed": src.get("tools_allowed"),
             "notes": src.get("notes"),
@@ -809,6 +817,47 @@ def _allowed_models() -> list[str]:
         return []
 
 
+def _models_by_provider() -> list[dict[str, Any]]:
+    try:
+        from backend.core.api_router import public_router_state
+
+        return list(public_router_state().get("models_by_provider") or [])
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _api_routes_meta() -> list[dict[str, Any]]:
+    try:
+        from backend.core.api_router import public_router_state
+
+        routes = public_router_state().get("api_routes") or []
+        return [
+            {
+                "id": r.get("id"),
+                "name": r.get("name"),
+                "provider": r.get("provider"),
+                "provider_label": r.get("provider_label"),
+                "model": r.get("model"),
+                "allowed_models": r.get("allowed_models") or [],
+                "enabled": r.get("enabled", True),
+                "configured": r.get("configured"),
+                "is_default": r.get("is_default"),
+            }
+            for r in routes
+        ]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _model_token_hints() -> dict[str, dict[str, int]]:
+    try:
+        from backend.core.api_router import MODEL_TOKEN_HINTS
+
+        return dict(MODEL_TOKEN_HINTS)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def catalog_meta() -> dict[str, Any]:
     tool_names: list[str] = []
     try:
@@ -829,6 +878,9 @@ def catalog_meta() -> dict[str, Any]:
         "tool_names": tool_names,
         "builtin_ids": sorted(RESERVED_IDS),
         "allowed_models": _allowed_models(),
+        "api_routes": _api_routes_meta(),
+        "models_by_provider": _models_by_provider(),
+        "model_token_hints": _model_token_hints(),
         "routing_strategies": [
             {"id": "quality_first", "label": "品質優先"},
             {"id": "cost_first", "label": "成本優先"},

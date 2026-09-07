@@ -1,12 +1,11 @@
 /**
- * LlmOpsPanel — 監控中心：依已存 API 鎖定的模型池與定時檢查。
- *
- * 單一廠商（DeepSeek 等）只顯示該廠商模型；
- * OpenRouter / 通用端點顯示爬取目錄、健康與刷新間隔。
+ * LlmOpsPanel — 控制台「系統 → API 路由」。
+ * 左：多 API 配置；右：健康快照與模型目錄。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchLlmOps, refreshLlmModels, updateLlmOpsPrefs } from '../api/client';
 import type { LlmOpsData } from '../types';
+import ApiRoutesEditor from './ApiRoutesEditor';
 import OptimizationPanel from './OptimizationPanel';
 
 function fmtWhen(iso: string | undefined): string {
@@ -37,6 +36,7 @@ export default function LlmOpsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
+  const [showCatalog, setShowCatalog] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -64,17 +64,18 @@ export default function LlmOpsPanel() {
       (m) =>
         m.id.toLowerCase().includes(q) ||
         (m.name || '').toLowerCase().includes(q) ||
-        (m.owned_by || '').toLowerCase().includes(q),
+        (m.owned_by || '').toLowerCase().includes(q) ||
+        (m.route_name || '').toLowerCase().includes(q),
     );
   }, [models, query]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold">LLM 運維</h2>
+          <h2 className="text-sm font-semibold">API 路由</h2>
           <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            只存 DeepSeek API 時 Agent 只能打 DeepSeek；OpenRouter 等通用端點會爬取 /models 寫入配置
+            多組 API 並存（千問／DeepSeek／Kimi／OpenRouter）。角色在「執行 → 角色 → 模型／路由」指定模型與 Token。
           </p>
         </div>
         <div className="flex gap-2">
@@ -127,7 +128,9 @@ export default function LlmOpsPanel() {
         <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
           <p className="text-[10px] uppercase tracking-wider text-[#62666d]">可用模型</p>
           <p className="mt-1 font-mono text-lg text-[#f7f8f8]">{data?.allowed_models.length ?? 0}</p>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">預設 {data?.model || '—'}</p>
+          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
+            {data?.api_routes?.length ?? 0} 組 API · 策略 {data?.route_strategy || 'role_preferred'}
+          </p>
         </div>
         <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
           <p className="text-[10px] uppercase tracking-wider text-[#62666d]">最近 / 下次檢查</p>
@@ -162,58 +165,78 @@ export default function LlmOpsPanel() {
         </p>
       )}
 
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
-          Agent 可用模型 · 目前預設 {data?.model || '—'}
-        </p>
-        <div className="flex items-center gap-2">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜尋模型 ID / 名稱"
-            className="w-48 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#d0d6e0] placeholder:text-[#62666d]"
-          />
-          <p className="text-[10px] text-[#62666d]">{data?.catalog_url}</p>
-        </div>
-      </div>
-      <div className="overflow-hidden rounded-lg border border-white/[0.08]">
-        <table className="w-full text-left text-[12px]">
-          <thead className="bg-[#1C1C1E] text-[10px] uppercase tracking-wider text-[#62666d]">
-            <tr>
-              <th className="px-3 py-2 font-medium">模型 ID</th>
-              <th className="px-3 py-2 font-medium">名稱</th>
-              <th className="px-3 py-2 font-medium">owned_by</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="px-3 py-8 text-center text-[#62666d]">
-                  {models.length === 0
-                    ? '尚無目錄。儲存 DeepSeek / OpenRouter API 後按「立刻檢查目錄」。'
-                    : '沒有符合搜尋的模型'}
-                </td>
-              </tr>
-            ) : (
-              filtered.slice(0, 120).map((m) => (
-                <tr key={m.id} className="border-t border-white/[0.08]">
-                  <td className="px-3 py-1.5 font-mono text-[#d0d6e0]">
-                    {m.id}
-                    {m.id === data?.model ? <span className="ml-2 text-[10px] text-[#64D2FF]">預設</span> : null}
-                  </td>
-                  <td className="px-3 py-1.5 text-[#8a8f98]">{m.name}</td>
-                  <td className="px-3 py-1.5 text-[#62666d]">{m.owned_by || '—'}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      {filtered.length > 120 && (
-        <p className="mt-2 text-[11px] text-[#62666d]">僅顯示前 120 筆，請用搜尋縮小範圍。</p>
-      )}
+      <div className="grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-12">
+        <section className="xl:col-span-5">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#62666d]">配置</p>
+          <ApiRoutesEditor onChanged={() => void refresh()} />
+        </section>
 
-      <OptimizationPanel />
+        <section className="xl:col-span-7">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCatalog((v) => !v)}
+              className="text-[10px] font-semibold uppercase tracking-wider text-[#62666d] hover:text-[#AEAEB2]"
+            >
+              {showCatalog ? '▾' : '▸'} 模型目錄 · 目前預設 {data?.model || '—'}
+            </button>
+            <div className="flex items-center gap-2">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="搜尋模型 ID / 名稱 / API"
+                className="w-48 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#d0d6e0] placeholder:text-[#62666d]"
+              />
+              <p className="hidden text-[10px] text-[#62666d] lg:block">{data?.catalog_url}</p>
+            </div>
+          </div>
+          {showCatalog && (
+            <>
+              <div className="overflow-hidden rounded-lg border border-white/[0.08]">
+                <table className="w-full text-left text-[12px]">
+                  <thead className="bg-[#1C1C1E] text-[10px] uppercase tracking-wider text-[#62666d]">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">模型 ID</th>
+                      <th className="px-3 py-2 font-medium">名稱</th>
+                      <th className="px-3 py-2 font-medium">owned_by</th>
+                      <th className="px-3 py-2 font-medium">API</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-8 text-center text-[#62666d]">
+                          {models.length === 0
+                            ? '尚無目錄。在左側加入千問／DeepSeek／Kimi／OpenRouter 後按「立刻檢查目錄」。'
+                            : '沒有符合搜尋的模型'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filtered.slice(0, 120).map((m) => (
+                        <tr key={`${m.route_name || ''}-${m.id}`} className="border-t border-white/[0.08]">
+                          <td className="px-3 py-1.5 font-mono text-[#d0d6e0]">
+                            {m.id}
+                            {m.id === data?.model ? (
+                              <span className="ml-2 text-[10px] text-[#64D2FF]">預設</span>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-1.5 text-[#8a8f98]">{m.name}</td>
+                          <td className="px-3 py-1.5 text-[#62666d]">{m.owned_by || '—'}</td>
+                          <td className="px-3 py-1.5 text-[#8a8f98]">{m.route_name || '—'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {filtered.length > 120 && (
+                <p className="mt-2 text-[11px] text-[#62666d]">僅顯示前 120 筆，請用搜尋縮小範圍。</p>
+              )}
+            </>
+          )}
+          <OptimizationPanel />
+        </section>
+      </div>
     </div>
   );
 }
