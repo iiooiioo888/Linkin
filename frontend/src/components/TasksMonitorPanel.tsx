@@ -5,8 +5,10 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cancelTask, fetchTask, resumeTask } from '../api/client';
+import { TASK_COLUMNS, taskColumnKey, tasksInColumn, type TaskColumnKey } from '../lib/agentUi';
 import { useMonitorStore } from '../stores/monitorStore';
 import type { TaskProgress, TaskSummary } from '../types';
+import { StatusColumnBoard } from './StatusColumnBoard';
 import TaskPanel, {
   COMPANY_PHASES,
   OPC_PHASES,
@@ -22,11 +24,10 @@ interface TasksMonitorPanelProps {
   onOpenTrace?: (taskId: string) => void;
 }
 
-type StatusFilter = 'all' | 'running' | 'completed' | 'failed';
-type ViewMode = 'list' | 'kanban';
+type StatusFilter = TaskColumnKey;
 
 const STATUS_META: Record<string, { label: string; cls: string; dot: string }> = {
-  pending: { label: '等待', cls: 'text-[#FF9500]', dot: 'bg-[#FF9500]' },
+  pending: { label: '隊列', cls: 'text-[#FF9500]', dot: 'bg-[#FF9500]' },
   running: { label: '執行中', cls: 'text-[#007AFF]', dot: 'bg-[#007AFF]' },
   completed: { label: '已完成', cls: 'text-[#34C759]', dot: 'bg-[#34C759]' },
   failed: { label: '失敗', cls: 'text-[#FF3B30]', dot: 'bg-[#FF3B30]' },
@@ -40,11 +41,6 @@ const PATH_META: Record<string, { icon: string; label: string }> = {
   opc: { icon: '🏭', label: 'OPC' },
 };
 
-const KANBAN_COLS: { key: string; label: string; statuses: string[] }[] = [
-  { key: 'active', label: '進行中', statuses: ['pending', 'running'] },
-  { key: 'done', label: '已完成', statuses: ['completed'] },
-  { key: 'bad', label: '失敗 / 取消', statuses: ['failed', 'cancelled', 'interrupted'] },
-];
 
 function relTime(sec: number): string {
   const diff = Math.floor(Date.now() / 1000 - sec);
@@ -68,37 +64,6 @@ function phasesFor(task: TaskSummary) {
   return STANDARD_PHASES;
 }
 
-function matchesFilter(task: TaskSummary, filter: StatusFilter): boolean {
-  if (filter === 'all') return true;
-  if (filter === 'running') return task.status === 'running' || task.status === 'pending';
-  if (filter === 'completed') return task.status === 'completed';
-  return task.status === 'failed' || task.status === 'cancelled' || task.status === 'interrupted';
-}
-
-function Kpi({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: 'blue' | 'green' | 'red' | 'neutral';
-}) {
-  const cls =
-    accent === 'blue'
-      ? 'text-[#007AFF]'
-      : accent === 'green'
-        ? 'text-[#34C759]'
-        : accent === 'red'
-          ? 'text-[#FF3B30]'
-          : 'text-[#F5F5F7]';
-  return (
-    <div className="apple-card apple-card--tight apple-card--pad">
-      <p className="apple-title">{label}</p>
-      <p className={`apple-data mt-2 text-[22px] leading-none ${cls}`}>{value}</p>
-    </div>
-  );
-}
 
 function PhaseStrip({ task }: { task: TaskSummary }) {
   const phases = phasesFor(task);
@@ -142,38 +107,24 @@ function TaskCard({
 }) {
   const meta = STATUS_META[task.status] ?? STATUS_META.pending;
   const path = PATH_META[task.resolved_path] ?? PATH_META.simple;
+  const col = taskColumnKey(task.status);
+  const running = col === 'running';
+  const shortId = task.task_id.replace(/^.*[#-]/, '').slice(-4) || task.task_id.slice(0, 4);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
-        active
-          ? 'border-[#007AFF]/40 bg-[#007AFF]/10'
-          : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04]'
-      }`}
-    >
-      <div className="flex items-start gap-2">
-        <span className="mt-0.5 text-[13px]">{path.icon}</span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium text-[#F5F5F7]">{task.query || '（無標題）'}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[#8E8E93]">
-            <span className={meta.cls}>{meta.label}</span>
-            <span>·</span>
-            <span>{path.label}</span>
-            <span>·</span>
-            <span>{relTime(task.created_at)}</span>
-            {task.score != null && (
-              <>
-                <span>·</span>
-                <span className="text-[#64D2FF]">{task.score} 分</span>
-              </>
-            )}
-          </div>
-          <PhaseStrip task={task} />
-        </div>
-        <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${meta.dot}`} />
+    <button type="button" onClick={onClick} className={`rd-tc w-full ${active ? 'on' : ''}`}>
+      <div className="rd-tc-t">
+        <span className={`rd-od shrink-0 ${running ? 'run' : col === 'done' ? 'on' : 'off'}`} />
+        <span className="rd-tc-ttl">{task.query || '（無標題）'}</span>
+        <span className="rd-tc-id">#{shortId}</span>
       </div>
+      <p className="rd-tc-d">{path.label} · {relTime(task.created_at)}</p>
+      <div className="rd-tc-m">
+        <span className={`rd-badge ${running ? 'run' : ''}`}>{meta.label}</span>
+        <span className="rd-tc-meta">{path.icon}</span>
+        {task.score != null ? <span className="rd-tc-cost">{task.score} 分</span> : null}
+      </div>
+      <PhaseStrip task={task} />
     </button>
   );
 }
@@ -188,19 +139,13 @@ export default function TasksMonitorPanel({
   const connected = useMonitorStore((s) => s.connected);
   const storeError = useMonitorStore((s) => s.error);
 
-  const [filter, setFilter] = useState<StatusFilter>('all');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [filter, setFilter] = useState<StatusFilter>('running');
   const [detail, setDetail] = useState<TaskProgress | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 
   const tasks = dashboard?.tasks ?? [];
   const stats = dashboard?.stats;
-
-  const filtered = useMemo(
-    () => tasks.filter((t) => matchesFilter(t, filter)),
-    [tasks, filter],
-  );
 
   const runningIds = useMemo(
     () => tasks.filter((t) => t.status === 'running' || t.status === 'pending').map((t) => t.task_id),
@@ -251,141 +196,84 @@ export default function TasksMonitorPanel({
     }
   };
 
-  const pick = (taskId: string) => onFocusTask(taskId);
+  const pick = (taskId: string) => {
+    onFocusTask(taskId);
+    setFilter(taskColumnKey(tasks.find((t) => t.task_id === taskId)?.status ?? 'pending'));
+  };
+  const queueCount = tasksInColumn(tasks, 'queue').length;
+  const runningCount = tasksInColumn(tasks, 'running').length;
+  const doneCount = tasksInColumn(tasks, 'done').length;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas">
-      {/* 頂欄 */}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-6 py-3">
-        <div>
-          <p className="apple-heading text-[15px]">任務</p>
-          <p className="mt-0.5 text-[11px] text-[#636366]">
-            {connected ? '即時同步' : '離線資料'}
-            {stats ? ` · 共 ${stats.tasks_total} 筆` : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-white/[0.08] p-0.5">
-            {(['list', 'kanban'] as ViewMode[]).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setViewMode(mode)}
-                className={`rounded-md px-2.5 py-1 text-[11px] transition-colors ${
-                  viewMode === mode
-                    ? 'bg-white/[0.08] text-[#F5F5F7]'
-                    : 'text-[#8E8E93] hover:text-[#F5F5F7]'
-                }`}
-              >
-                {mode === 'list' ? '列表' : '看板'}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="rd-th">
+        <h2>任務列表 — {tasks.length}</h2>
+        <span className="apple-data text-[10px] text-[#636366]">
+          {connected ? '即時同步' : '離線資料'}
+        </span>
       </div>
 
       {storeError && (
-        <div className="shrink-0 px-6 pt-3">
+        <div className="shrink-0 px-4 pt-2">
           <ErrorState kind="partial" message={storeError} compact />
         </div>
       )}
 
-      {/* KPI */}
-      <div className="shrink-0 grid grid-cols-2 gap-3 px-6 py-4 sm:grid-cols-4 lg:grid-cols-5">
-        <Kpi label="執行中" value={String(stats?.tasks_running ?? 0)} accent="blue" />
-        <Kpi label="已完成" value={String(stats?.tasks_completed ?? 0)} accent="green" />
-        <Kpi label="失敗" value={String(stats?.tasks_failed ?? 0)} accent="red" />
-        <Kpi label="成功率" value={`${stats?.success_rate ?? 0}%`} />
-        <Kpi
-          label="平均評分"
-          value={stats?.avg_score != null ? String(stats.avg_score) : '—'}
-        />
+      <div className="rd-stats">
+        <div className="rd-stat">
+          <span className="rd-stat-l">隊列</span>
+          <span className="rd-stat-v">{queueCount}</span>
+        </div>
+        <div className="rd-stat">
+          <span className="rd-stat-l">執行中</span>
+          <span className="rd-stat-v">{runningCount}</span>
+        </div>
+        <div className="rd-stat">
+          <span className="rd-stat-l">已完成</span>
+          <span className={`rd-stat-v ${doneCount ? 'ok' : ''}`}>{stats?.tasks_completed ?? doneCount}</span>
+        </div>
+        <div className="rd-stat">
+          <span className="rd-stat-l">失敗</span>
+          <span className={`rd-stat-v ${(stats?.tasks_failed ?? 0) > 0 ? 'er' : ''}`}>{stats?.tasks_failed ?? 0}</span>
+        </div>
+        <div className="rd-stat">
+          <span className="rd-stat-l">成功率</span>
+          <span className={`rd-stat-v ${(stats?.success_rate ?? 0) > 0 ? 'ok' : ''}`}>{stats?.success_rate ?? 0}%</span>
+        </div>
+        <div className="rd-stat">
+          <span className="rd-stat-l">平均評分</span>
+          <span className="rd-stat-v">{stats?.avg_score != null ? String(stats.avg_score) : '—'}</span>
+        </div>
       </div>
 
-      {/* 篩選 */}
-      <div className="shrink-0 flex gap-1.5 overflow-x-auto px-6 pb-3">
-        {(
-          [
-            { key: 'all', label: '全部' },
-            { key: 'running', label: '執行中' },
-            { key: 'completed', label: '已完成' },
-            { key: 'failed', label: '失敗' },
-          ] as { key: StatusFilter; label: string }[]
-        ).map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => setFilter(item.key)}
-            className={`shrink-0 rounded-full border px-3 py-1 text-[11px] transition-colors ${
-              filter === item.key
-                ? 'border-[#007AFF]/50 bg-[#007AFF]/15 text-[#64D2FF]'
-                : 'border-white/[0.08] text-[#8E8E93] hover:border-white/[0.15] hover:text-[#F5F5F7]'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {/* 主區 */}
-      <div className="flex min-h-0 flex-1 gap-0 overflow-hidden border-t border-white/[0.06]">
-        {/* 左：任務列表 / 看板 */}
-        <div
-          className={`min-h-0 overflow-y-auto ${
-            focusTaskId ? 'w-full shrink-0 border-r border-white/[0.06] lg:w-[340px]' : 'flex-1'
-          }`}
-        >
-          <div className="p-4">
-            {filtered.length === 0 ? (
-              <p className="py-12 text-center text-[12px] text-[#636366]">尚無符合條件的任務</p>
-            ) : viewMode === 'list' ? (
-              <div className="space-y-2">
-                {filtered.map((task) => (
+      <div className="rd-body">
+        <div className={`rd-tasks ${focusTaskId ? 'lg:max-w-none' : ''}`}>
+          <StatusColumnBoard
+            selectedKey={filter}
+            onSelect={(key) => setFilter(key as TaskColumnKey)}
+            compact={Boolean(focusTaskId)}
+            columns={TASK_COLUMNS.map((col) => {
+              const colTasks = tasksInColumn(tasks, col.key);
+              return {
+                key: col.key,
+                label: col.label,
+                count: colTasks.length,
+                children: colTasks.map((task) => (
                   <TaskCard
                     key={task.task_id}
                     task={task}
                     active={focusTaskId === task.task_id}
                     onClick={() => pick(task.task_id)}
                   />
-                ))}
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-3">
-                {KANBAN_COLS.map((col) => {
-                  const colTasks = filtered.filter((t) => col.statuses.includes(t.status));
-                  return (
-                    <div key={col.key} className="min-w-0">
-                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#636366]">
-                        {col.label}
-                        <span className="ml-1 font-mono text-[#48484A]">{colTasks.length}</span>
-                      </p>
-                      <div className="space-y-2">
-                        {colTasks.length === 0 ? (
-                          <p className="rounded-lg border border-dashed border-white/[0.06] py-6 text-center text-[11px] text-[#48484A]">
-                            空
-                          </p>
-                        ) : (
-                          colTasks.map((task) => (
-                            <TaskCard
-                              key={task.task_id}
-                              task={task}
-                              active={focusTaskId === task.task_id}
-                              onClick={() => pick(task.task_id)}
-                            />
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                )),
+              };
+            })}
+          />
         </div>
 
         {/* 右：詳情 */}
         {focusTaskId && (
-          <div className="hidden min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex">
+          <div className="hidden min-h-0 min-w-0 flex-1 flex-col overflow-y-auto border-l border-white/[0.06] lg:flex">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.06] bg-[#0d0d0f]/95 px-5 py-2.5 backdrop-blur">
               <p className="truncate text-[12px] font-medium text-[#F5F5F7]">
                 {detail?.query ?? focusTaskId.slice(0, 8)}

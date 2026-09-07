@@ -2,9 +2,18 @@
  * 角色工作台骨架：標題列、指標帶、右側資訊欄。
  * 色彩沿用控制台既有語彙，只改結構。
  */
-import type { ReactNode } from 'react';
+import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AgentEvent, AgentWorkItem, RoleAgent } from '../types';
-import { blankMetrics, fmtUsd, fmtWhen } from '../lib/agentUi';
+import {
+  blankMetrics,
+  fmtUsd,
+  fmtWhen,
+  itemsInColumn,
+  workItemColumnKey,
+  WORK_ITEM_COLUMN_COLOR,
+  WORK_ITEM_COLUMNS,
+  type WorkItemColumnKey,
+} from '../lib/agentUi';
 import { EVENT_LABELS, roleLabel } from './TaskPanel';
 
 const RING = 2 * Math.PI * 15.5;
@@ -130,16 +139,19 @@ function OrgNode({
   agent,
   current,
   onOpen,
+  onBind,
 }: {
   agent: RoleAgent;
   current?: boolean;
   onOpen: (id: string) => void;
+  onBind: (id: string, el: HTMLElement | null) => void;
 }) {
   return (
     <button
       type="button"
+      ref={(el) => onBind(agent.id, el)}
       className={`rd-onode ${current ? 'cur' : ''}`}
-      title={agent.name}
+      title={`L${agent.level} ${agent.name}`}
       onClick={() => onOpen(agent.id)}
     >
       <span className={`rd-od ${isLive(agent) ? 'on' : 'off'}`} />
@@ -149,20 +161,13 @@ function OrgNode({
   );
 }
 
-function resolveByIds(ids: string[] | undefined, byId: Map<string, RoleAgent>): RoleAgent[] {
-  const seen = new Set<string>();
-  const out: RoleAgent[] = [];
-  for (const id of ids ?? []) {
-    const next = byId.get(id);
-    if (!next || seen.has(next.id)) continue;
-    seen.add(next.id);
-    out.push(next);
-  }
-  return out;
-}
-
 function preferLive(agents: RoleAgent[]): RoleAgent[] {
-  return [...agents].sort((a, b) => Number(isLive(b)) - Number(isLive(a)));
+  return [...agents].sort((a, b) => {
+    const live = Number(isLive(b)) - Number(isLive(a));
+    if (live) return live;
+    if (a.level !== b.level) return a.level - b.level;
+    return a.name.localeCompare(b.name, 'zh-Hant');
+  });
 }
 
 function ancestorChain(agent: RoleAgent, byId: Map<string, RoleAgent>): RoleAgent[] {
@@ -179,67 +184,120 @@ function ancestorChain(agent: RoleAgent, byId: Map<string, RoleAgent>): RoleAgen
   return chain;
 }
 
-const MAX_REPORTS = 6;
-const MAX_GRAND = 5;
-const FORK_W = 320;
-const FORK_H = 18;
+function childrenOf(id: string, agents: RoleAgent[], byId: Map<string, RoleAgent>): RoleAgent[] {
+  const seen = new Set<string>();
+  const out: RoleAgent[] = [];
+  const push = (item: RoleAgent | undefined) => {
+    if (!item || item.id === id || seen.has(item.id)) return;
+    seen.add(item.id);
+    out.push(item);
+  };
+  for (const childId of byId.get(id)?.direct_reports ?? []) push(byId.get(childId));
+  for (const item of agents) {
+    if (item.reporting_to === id) push(item);
+  }
+  return preferLive(out);
+}
 
-type OrgLayer = { level: number; nodes: RoleAgent[]; extra: number };
+const MAX_PER_LAYER = 5;
+
+type OrgLayer = { key: string; label: string; nodes: RoleAgent[]; extra: number };
+
+function layerLabel(nodes: RoleAgent[]): string {
+  const levels = [...new Set(nodes.map((node) => node.level))].sort((a, b) => a - b);
+  if (levels.length === 1) return `L${levels[0]}`;
+  return `L${levels[0]}–${levels[levels.length - 1]}`;
+}
+
+function takeLayer(key: string, nodes: RoleAgent[]): OrgLayer {
+  return {
+    key,
+    label: layerLabel(nodes),
+    nodes: nodes.slice(0, MAX_PER_LAYER),
+    extra: Math.max(0, nodes.length - MAX_PER_LAYER),
+  };
+}
 
 function orgLayers(agent: RoleAgent, agents: RoleAgent[]): OrgLayer[] {
   const byId = new Map(agents.map((item) => [item.id, item]));
   const layers: OrgLayer[] = [
-    ...ancestorChain(agent, byId).map((node) => ({ level: node.level, nodes: [node], extra: 0 })),
-    { level: agent.level, nodes: [agent], extra: 0 },
+    ...ancestorChain(agent, byId).map((node) => ({
+      key: `up-${node.id}`,
+      label: `L${node.level}`,
+      nodes: [node],
+      extra: 0,
+    })),
+    { key: `cur-${agent.id}`, label: `L${agent.level}`, nodes: [agent], extra: 0 },
   ];
-  const reports = preferLive(resolveByIds(agent.direct_reports, byId).filter((item) => item.id !== agent.id));
+  const reports = childrenOf(agent.id, agents, byId);
   if (!reports.length) return layers;
+  const down = takeLayer(`down-${agent.id}`, reports);
+  layers.push(down);
 
-  const shown = reports.slice(0, MAX_REPORTS);
-  layers.push({
-    level: shown[0].level,
-    nodes: shown,
-    extra: Math.max(0, reports.length - shown.length),
-  });
-
+  const seen = new Set([agent.id, ...down.nodes.map((item) => item.id)]);
   const grandchildren = preferLive(
-    resolveByIds(
-      shown.flatMap((item) => item.direct_reports ?? []),
-      byId,
-    ).filter((item) => item.id !== agent.id && !shown.some((node) => node.id === item.id)),
+    down.nodes.flatMap((item) => childrenOf(item.id, agents, byId)).filter((item) => !seen.has(item.id)),
   );
-  if (!grandchildren.length) return layers;
-  const grandShown = grandchildren.slice(0, MAX_GRAND);
-  layers.push({
-    level: grandShown[0].level,
-    nodes: grandShown,
-    extra: Math.max(0, grandchildren.length - grandShown.length),
-  });
+  const uniqueGrand: RoleAgent[] = [];
+  for (const item of grandchildren) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    uniqueGrand.push(item);
+  }
+  if (uniqueGrand.length) layers.push(takeLayer(`skip-${agent.id}`, uniqueGrand));
   return layers;
 }
 
-function OrgFork({ count }: { count: number }) {
-  const ticks = Math.max(1, Math.min(count, 6));
-  const mid = FORK_W / 2;
-  const pad = ticks === 1 ? mid : 40;
-  const span = FORK_W - pad * 2;
-  const xs = Array.from({ length: ticks }, (_, i) =>
-    ticks === 1 ? mid : pad + (span * i) / (ticks - 1),
-  );
+type OrgForkGeom = { w: number; parentXs: number[]; childXs: number[] };
+
+function centerX(el: HTMLElement, originLeft: number): number {
+  const box = el.getBoundingClientRect();
+  return box.left + box.width / 2 - originLeft;
+}
+
+function layerEls(layer: OrgLayer, nodes: Map<string, HTMLElement>): HTMLElement[] {
+  return [
+    ...layer.nodes.map((node) => nodes.get(node.id)),
+    layer.extra > 0 ? nodes.get(`${layer.key}-extra`) : null,
+  ].filter((el): el is HTMLElement => Boolean(el));
+}
+
+function measureForks(wrap: HTMLElement, layers: OrgLayer[], nodes: Map<string, HTMLElement>): OrgForkGeom[] {
+  const originLeft = wrap.getBoundingClientRect().left;
+  const w = wrap.clientWidth;
+  const forks: OrgForkGeom[] = [];
+  for (let i = 1; i < layers.length; i += 1) {
+    forks.push({
+      w,
+      parentXs: layerEls(layers[i - 1], nodes).map((el) => centerX(el, originLeft)),
+      childXs: layerEls(layers[i], nodes).map((el) => centerX(el, originLeft)),
+    });
+  }
+  return forks;
+}
+
+function OrgFork({ fork }: { fork?: OrgForkGeom }) {
+  const w = fork?.w ?? 0;
+  const parentXs = fork?.parentXs ?? [];
+  const childXs = fork?.childXs ?? [];
+  const ready = w > 0 && parentXs.length > 0 && childXs.length > 0;
+  const busXs = ready ? [...parentXs, ...childXs] : [];
   return (
     <div className="rd-tree-conn" aria-hidden>
-        <svg viewBox={`0 0 ${FORK_W} ${FORK_H}`} preserveAspectRatio="xMidYMid meet">
-        <line x1={mid} y1={0} x2={mid} y2={FORK_H / 2} />
-        {ticks > 1 ? (
-          <line x1={xs[0]} y1={FORK_H / 2} x2={xs[ticks - 1]} y2={FORK_H / 2} />
-        ) : null}
-        {xs.map((x, i) => (
-          <g key={`tick-${i}`}>
-            {ticks > 1 ? <circle cx={x} cy={FORK_H / 2} r={2.5} /> : null}
-            <line x1={x} y1={FORK_H / 2} x2={x} y2={FORK_H} />
-          </g>
-        ))}
-      </svg>
+      {ready ? (
+        <svg width={w} height={18} viewBox={`0 0 ${w} 18`}>
+          {parentXs.map((x, i) => (
+            <line key={`p-${i}`} x1={x} y1={0} x2={x} y2={9} />
+          ))}
+          <line x1={Math.min(...busXs)} y1={9} x2={Math.max(...busXs)} y2={9} />
+          {childXs.map((x, i) => (
+            <g key={`c-${i}`}>
+              <circle cx={x} cy={9} r={2.2} />
+              <line x1={x} y1={9} x2={x} y2={18} />
+            </g>
+          ))}
+        </svg>
+      ) : null}
     </div>
   );
 }
@@ -253,53 +311,78 @@ export function OrgReportTree({
   agents: RoleAgent[];
   onOpen: (id: string) => void;
 }) {
-  const layers = orgLayers(agent, agents);
-  const canDelegate = agent.can_delegate_to ?? [];
-  const rawReports = (agent.direct_reports ?? []).length;
-  const shownIds = new Set(layers.flatMap((layer) => layer.nodes.map((node) => node.id)));
-  const unresolvedReports = (agent.direct_reports ?? []).filter(
-    (id) => id !== agent.id && !shownIds.has(id) && !agents.some((item) => item.id === id),
-  ).length;
-  const hasChain = layers.length > 1;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const nodeEls = useRef(new Map<string, HTMLElement>());
+  const [forks, setForks] = useState<OrgForkGeom[]>([]);
+  const layers = useMemo(() => orgLayers(agent, agents), [agent, agents]);
+  const bindNode = (id: string, el: HTMLElement | null) => {
+    if (el) nodeEls.current.set(id, el);
+    else nodeEls.current.delete(id);
+  };
 
-  if (!hasChain) {
-    return (
-      <div className="rd-sec">
-        <div className="rd-tt">組織回報鏈</div>
-        <p className="text-[11px] text-[#636366]">
-          {rawReports > 0 ? '下級不在此名冊' : '無上級，亦無直屬下級'}
-        </p>
-        {canDelegate.length > 0 ? (
-          <p className="mt-2 text-[10px] text-[#636366]">
-            可委派 {canDelegate.slice(0, 4).map(roleLabel).join('、')}
-            {canDelegate.length > 4 ? ` 等 ${canDelegate.length}` : ''}
-          </p>
-        ) : null}
-      </div>
-    );
-  }
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return undefined;
+    const sync = () => setForks(measureForks(wrap, layers, nodeEls.current));
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(wrap);
+    for (const el of nodeEls.current.values()) ro.observe(el);
+    return () => ro.disconnect();
+  }, [layers, agent.id]);
+
+  const canDelegate = agent.can_delegate_to ?? [];
+  const reportsHere = agents.filter((item) => item.reporting_to === agent.id || (agent.direct_reports ?? []).includes(item.id)).length;
+  const missing = (agent.direct_reports ?? []).filter(
+    (id) =>
+      id !== agent.id &&
+      !id.startsWith('custom_linkin_') &&
+      !agents.some((item) => item.id === id),
+  ).length;
 
   return (
     <div className="rd-sec">
       <div className="rd-tt">組織回報鏈</div>
-      <div className="rd-tree">
+      <div className="rd-tree" ref={wrapRef}>
         {layers.map((layer, idx) => (
-          <div key={`L${layer.level}-${layer.nodes.map((node) => node.id).join('-')}`} className="rd-tree-block">
-            {idx > 0 ? <OrgFork count={layer.nodes.length} /> : null}
+          <Fragment key={layer.key}>
+            {idx > 0 ? <OrgFork fork={forks[idx - 1]} /> : null}
             <div className="rd-tree-row">
-              <span className="rd-tree-lvl">L{layer.level}</span>
+              <span className="rd-tree-lvl">{layer.label}</span>
               <div className="rd-tree-nodes">
                 {layer.nodes.map((node) => (
-                  <OrgNode key={node.id} agent={node} current={node.id === agent.id} onOpen={onOpen} />
+                  <OrgNode
+                    key={node.id}
+                    agent={node}
+                    current={node.id === agent.id}
+                    onOpen={onOpen}
+                    onBind={bindNode}
+                  />
                 ))}
+                {layer.extra > 0 ? (
+                  <span
+                    ref={(el) => bindNode(`${layer.key}-extra`, el)}
+                    className="rd-onode rd-onode-more"
+                  >
+                    另 {layer.extra}
+                  </span>
+                ) : null}
               </div>
             </div>
-            {layer.extra > 0 ? <div className="rd-tree-extra">另 {layer.extra} 位</div> : null}
-          </div>
+          </Fragment>
         ))}
       </div>
-      {unresolvedReports > 0 ? (
-        <p className="mt-2 text-[10px] text-[#636366]">另 {unresolvedReports} 位下級不在此名冊</p>
+      {layers.length < 2 ? (
+        <p className="mt-2 text-[10px] text-[#636366]">
+          {missing > 0 ? '下級不在此名冊' : reportsHere > 0 ? '直屬已列於上方' : '無上級，亦無直屬下級'}
+        </p>
+      ) : null}
+      {missing > 0 ? <p className="mt-2 text-[10px] text-[#636366]">另 {missing} 位下級不在此名冊</p> : null}
+      {layers.length < 2 && canDelegate.length > 0 ? (
+        <p className="mt-2 text-[10px] text-[#636366]">
+          可委派 {canDelegate.slice(0, 4).map(roleLabel).join('、')}
+          {canDelegate.length > 4 ? ` 等 ${canDelegate.length}` : ''}
+        </p>
       ) : null}
     </div>
   );
@@ -312,49 +395,52 @@ export function TaskStatusBlock({
   onOpenItem,
 }: {
   agent: RoleAgent;
-  filter: string;
-  onFilter: (key: string) => void;
+  filter: WorkItemColumnKey;
+  onFilter: (key: WorkItemColumnKey) => void;
   onOpenItem?: (item: AgentWorkItem) => void;
 }) {
-  const running = agent.work_items.filter((i) => i.status === 'executing');
-  const queue = agent.work_items.filter((i) => i.status === 'planning' || i.status === 'ready');
-  const done = agent.work_items.filter((i) => i.status === 'done');
-  const preview =
-    filter === 'done' ? done : filter === 'all' ? agent.work_items : running.length ? running : agent.work_items.filter((i) => i.status === 'executing' || i.status === 'planning' || i.status === 'ready' || i.status === 'in_review');
+  const activeKey: WorkItemColumnKey = filter;
+  const preview = itemsInColumn(agent.work_items, activeKey);
   return (
     <div className="rd-sec">
       <div className="rd-tt">任務狀態</div>
       <div className="rd-sum">
-        <button type="button" className={`rd-card ${filter === 'executing' || filter === 'open' ? 'sel' : ''}`} onClick={() => onFilter('executing')}>
-          <div className="rd-num" style={{ color: running.length ? 'var(--apple-orange)' : 'var(--apple-tertiary)' }}>{running.length}</div>
-          <div className="rd-lbl">執行中</div>
-        </button>
-        <button type="button" className={`rd-card ${filter === 'queue' ? 'sel' : ''}`} onClick={() => onFilter('queue')}>
-          <div className="rd-num" style={{ color: queue.length ? 'var(--apple-label)' : 'var(--apple-tertiary)' }}>{queue.length}</div>
-          <div className="rd-lbl">隊列</div>
-        </button>
-        <button type="button" className={`rd-card ${filter === 'done' ? 'sel' : ''}`} onClick={() => onFilter('done')}>
-          <div className="rd-num" style={{ color: done.length ? 'var(--apple-green)' : 'var(--apple-tertiary)' }}>{done.length}</div>
-          <div className="rd-lbl">完成</div>
-        </button>
+        {WORK_ITEM_COLUMNS.map((col) => {
+          const count = itemsInColumn(agent.work_items, col.key).length;
+          return (
+            <button
+              key={col.key}
+              type="button"
+              className={`rd-card ${activeKey === col.key ? 'sel' : ''}`}
+              onClick={() => onFilter(col.key)}
+            >
+              <div
+                className="rd-num"
+                style={{ color: count ? WORK_ITEM_COLUMN_COLOR[col.key] : 'var(--apple-tertiary)' }}
+              >
+                {count}
+              </div>
+              <div className="rd-lbl">{col.label}</div>
+            </button>
+          );
+        })}
       </div>
       <div className="rd-mini">
-        {preview.slice(0, 5).map((item) => (
+        {preview.slice(0, 5).map((item) => {
+          const col = workItemColumnKey(item.status);
+          return (
           <button
             key={`${item.task_id}-${item.id}-${item.kind}`}
             type="button"
             className="rd-item"
             onClick={() => onOpenItem?.(item)}
           >
-            <span
-              className={`rd-sd ${
-                item.status === 'executing' ? 'r' : item.status === 'done' ? 'd' : 'q'
-              }`}
-            />
+            <span className={`rd-sd ${col === 'executing' ? 'r' : col === 'done' ? 'd' : 'q'}`} />
             <span className="rd-item-name">{item.title}</span>
             <span className="rd-item-right">{fmtUsd(item.cost_usd)}</span>
           </button>
-        ))}
+          );
+        })}
         {preview.length === 0 ? <p className="py-2 text-center text-[11px] text-[#636366]">尚無工作項</p> : null}
       </div>
     </div>
@@ -555,8 +641,8 @@ export function RoleRightPanel({
 }: {
   agent: RoleAgent;
   agents: RoleAgent[];
-  filter: string;
-  onFilter: (key: string) => void;
+  filter: WorkItemColumnKey;
+  onFilter: (key: WorkItemColumnKey) => void;
   onOpen: (id: string) => void;
   onOpenItem?: (item: AgentWorkItem) => void;
 }) {

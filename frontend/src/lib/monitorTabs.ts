@@ -94,7 +94,7 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     label: '執行',
     items: [
       { key: 'live', icon: '◎', label: '即時', hint: '總覽，點卡片跳轉' },
-      { key: 'tasks', icon: '▣', label: '任務', hint: '佇列與進度' },
+      { key: 'tasks', icon: '▣', label: '任務', hint: '隊列／執行中／已完成' },
       { key: 'agents', icon: '◈', label: '角色', hint: '模型／Token／工作台' },
       { key: 'pipeline', icon: '⬡', label: '管線', hint: '反思閉環階段' },
       TRACES_NAV_ITEM,

@@ -4,10 +4,12 @@
  */
 import { useMemo } from 'react';
 import type { KanbanItem, TaskEvent, TaskProgress } from '../types';
+import { WORK_ITEM_COLUMNS, workItemColumnKey } from '../lib/agentUi';
 import { eventBody, splitThink } from '../lib/splitThink';
 import { MonitorSection } from './ChatMonitorCards';
 import MarkdownBody from './media/MarkdownBody';
-import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, roleLabel } from './TaskPanel';
+import { StatusColumnBoard } from './StatusColumnBoard';
+import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, ITEM_STATUS_META, roleLabel } from './TaskPanel';
 
 interface ChatWorkStreamProps {
   task: TaskProgress;
@@ -91,39 +93,51 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
 
       {items.length > 0 && (
         <MonitorSection title="角色產出" hint={`${items.length} 項`}>
-          <div className="space-y-3">
-            {items.map(({ item, status }) => {
-              const parsed = splitThink(item.output ?? '');
-              const think = (item.thinking || parsed.thinking).trim();
-              const output = parsed.content || item.output || '';
-              return (
-                <div key={item.id} className="apple-inset rounded-lg px-2.5 py-2">
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <p className="truncate text-[11px] font-bold text-[#F5F5F7]">{item.title}</p>
-                    <span className="shrink-0 text-[10px] text-[#636366]">{status}</span>
-                  </div>
-                  {item.assignee && (
-                    <p className="mb-1 text-[10px] text-[#8E8E93]">{roleLabel(item.assignee)}</p>
-                  )}
-                  {think && (
-                    <details className="mb-2">
-                      <summary className="cursor-pointer text-[10px] text-[#636366]">思考過程</summary>
-                      <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-[#8E8E93]">
-                        {think}
-                      </pre>
-                    </details>
-                  )}
-                  {output ? (
-                    <div className="max-h-56 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[#AEAEB2]">
-                      {output}
+          <StatusColumnBoard
+            compact
+            columns={WORK_ITEM_COLUMNS.map((col) => {
+              const rows = items.filter((row) => workItemColumnKey(row.status) === col.key);
+              return {
+                key: col.key,
+                label: col.label,
+                count: rows.length,
+                children: rows.map(({ item, status }) => {
+                  const parsed = splitThink(item.output ?? '');
+                  const think = (item.thinking || parsed.thinking).trim();
+                  const output = parsed.content || item.output || '';
+                  const meta = ITEM_STATUS_META[status] ?? { label: status };
+                  const running = col.key === 'executing';
+                  return (
+                    <div key={item.id} className="rd-tc">
+                      <div className="rd-tc-t">
+                        <span className={`rd-od ${running ? 'run' : col.key === 'done' ? 'on' : 'off'}`} />
+                        <span className="rd-tc-ttl">{item.title}</span>
+                      </div>
+                      <div className="rd-tc-m">
+                        <span className={`rd-badge ${running ? 'run' : ''}`}>{meta.label}</span>
+                        {item.assignee ? <span className="rd-tc-meta">{roleLabel(item.assignee)}</span> : null}
+                      </div>
+                      {think && (
+                        <details className="mt-1.5">
+                          <summary className="cursor-pointer text-[10px] text-[#636366]">思考過程</summary>
+                          <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-[#8E8E93]">
+                            {think}
+                          </pre>
+                        </details>
+                      )}
+                      {output ? (
+                        <p className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[#AEAEB2]">
+                          {output}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-[#636366]">{running ? '此角色尚未寫入' : '無產出'}</p>
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-[11px] text-[#636366]">{running ? '此角色尚未寫入' : '無產出'}</p>
-                  )}
-                </div>
-              );
+                  );
+                }),
+              };
             })}
-          </div>
+          />
         </MonitorSection>
       )}
 

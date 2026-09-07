@@ -46,12 +46,21 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.locator('.ar-ri', { hasText: '建築總監' })).toHaveCount(0);
     await expect(page.locator('.ar-ri', { hasText: '建築執行者' })).toHaveCount(0);
     await expect(page.locator('.rd-header .rd-acts').getByRole('button', { name: '新增' })).toHaveCount(0);
+    await expect(page.getByText('組織回報鏈')).toBeVisible();
+    await expect(page.locator('.rd-tree .rd-tree-lvl').first()).toHaveText(/L\d/);
+    await expect(page.locator('.rd-onode.cur')).toBeVisible();
+    await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
+    await expect(page.locator('.rd-col-h', { hasText: '執行中' })).toBeVisible();
+    await expect(page.locator('.rd-col-h', { hasText: '已完成' })).toBeVisible();
   });
 
   test('Hash 路由：#/monitor/tasks 可書籤與刷新還原', async ({ page }) => {
     await page.goto('/#/monitor/tasks');
     await expect(page.getByRole('button', { name: '新項' })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByPlaceholder(/搜尋任務|Search tasks/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
+    await expect(page.locator('.rd-col-h', { hasText: '執行中' })).toBeVisible();
+    await expect(page.locator('.rd-col-h', { hasText: '已完成' })).toBeVisible();
 
     await page.reload();
     await expect(page.getByPlaceholder(/搜尋任務|Search tasks/i)).toBeVisible({ timeout: 10_000 });

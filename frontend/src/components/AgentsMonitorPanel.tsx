@@ -3,7 +3,7 @@
  * 骨架對齊角色稿：標題列 + 指標帶 + 任用列表 + 右側資訊欄。
  * 角色名冊在左側 SidePanel；總覽是控制台「即時」，不在此頁重複。
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   createCustomAgent,
   deleteCustomAgent,
@@ -14,30 +14,29 @@ import {
 } from '../api/client';
 import {
   CATEGORY_LABEL,
+  JUMP_AGENT_EVENT,
   ROUTING_LABEL,
   TIER_LABEL,
+  WORK_ITEM_COLUMNS,
   blankMetrics,
   consumePendingDeskTab,
   filterAgentsByDesk,
   fmtUsd,
   fmtWhen,
-  JUMP_AGENT_EVENT,
   isLinkinStudioAgent,
+  itemsInColumn,
   pickDefaultAgentId,
+  workItemColumnKey,
   type AgentDeskScope,
   type JumpAgentDetail,
+  type WorkItemColumnKey,
 } from '../lib/agentUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import type { AgentMonitorData, AgentWorkItem, RoleAgent } from '../types';
 import RoleSettingsPanel, { CreateRoleModal, draftToPayload, type RoleSettingsDraft } from './RoleSettingsPanel';
 import { RdCell, RoleDeskHeader, RoleRightPanel, RoleStatsStrip, type RoleDeskTab } from './RoleDeskLayout';
+import { StatusColumnBoard } from './StatusColumnBoard';
 import { ITEM_STATUS_META } from './TaskPanel';
-
-const LIST_FILTERS: Array<{ key: string; label: string; statuses?: string[] }> = [
-  { key: 'executing', label: '執行中', statuses: ['executing'] },
-  { key: 'all', label: '全部' },
-  { key: 'done', label: '完成', statuses: ['done'] },
-];
 
 function itemStatus(status: string): { label: string; cls: string } {
   return ITEM_STATUS_META[status] ?? { label: status, cls: 'bg-gray-700/60 text-gray-300' };
@@ -60,16 +59,13 @@ function WorkItemCard({
   compact?: boolean;
 }) {
   const st = itemStatus(item.status);
-  const running = item.status === 'executing';
+  const col = workItemColumnKey(item.status);
+  const running = col === 'executing';
   const shortId = (item.task_id || item.id || '').replace(/^.*[#-]/, '').slice(-4) || item.id.slice(0, 4);
   return (
-    <button type="button" onClick={onToggle} className="rd-tc w-full">
+    <button type="button" onClick={onToggle} className={`rd-tc w-full ${expanded ? 'on' : ''}`}>
       <div className="rd-tc-t">
-        <span
-          className={`rd-od shrink-0 ${
-            running ? 'run' : item.status === 'done' ? 'on' : 'off'
-          }`}
-        />
+        <span className={`rd-od shrink-0 ${running ? 'run' : col === 'done' ? 'on' : 'off'}`} />
         <span className="rd-tc-ttl">{item.title}</span>
         <span className="rd-tc-id">#{shortId}</span>
       </div>
@@ -228,7 +224,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>(focusAgentId || '');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [itemFilter, setItemFilter] = useState<string>('executing');
+  const [itemFilter, setItemFilter] = useState<WorkItemColumnKey>('executing');
   const [deskTab, setDeskTab] = useState<RoleDeskTab>('tasks');
   const [creating, setCreating] = useState(false);
   const [cloneFrom, setCloneFrom] = useState<RoleAgent | null>(null);
@@ -332,22 +328,6 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
     setExpandedId(null);
     if (tab) setDeskTab(toDeskTab(tab));
   };
-
-  const visibleItems = useMemo(() => {
-    if (!selected) return [];
-    const filterDef = LIST_FILTERS.find((f) => f.key === itemFilter);
-    let items = selected.work_items;
-    if (filterDef?.statuses) {
-      items = items.filter((i) => filterDef.statuses!.includes(i.status));
-    } else if (itemFilter === 'queue') {
-      items = items.filter((i) => i.status === 'planning' || i.status === 'ready');
-    } else if (itemFilter === 'open') {
-      items = items.filter((i) =>
-        ['planning', 'ready', 'executing', 'in_review', 'rework', 'blocked'].includes(i.status),
-      );
-    }
-    return items;
-  }, [itemFilter, selected]);
 
   const selectedRoute = selected
     ? (data?.catalog_meta?.api_routes ?? []).find((r) => r.id === selected.preferred_provider)
@@ -542,44 +522,34 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
               ) : (
                 <>
                   <div className="rd-th">
-                    <h2>任用列表 — {visibleItems.length}/{selected.work_items.length}</h2>
-                    <div className="rd-ttabs">
-                      {LIST_FILTERS.map((f) => (
-                        <button
-                          key={f.key}
-                          type="button"
-                          onClick={() => setItemFilter(f.key)}
-                          className={`rd-ttb ${itemFilter === f.key ? 'on' : ''}`}
-                        >
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
+                    <h2>任用列表 — {selected.work_items.length}</h2>
                   </div>
-                  <div className="rd-tl">
-                    {visibleItems.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-white/[0.08] px-4 py-10 text-center">
-                        <p className="text-[13px] text-[#AEAEB2]">尚無{itemFilter === 'all' ? '' : '符合條件的'}工作項</p>
-                        <p className="mt-1 text-[11px] text-[#636366]">
-                          此角色待命。公司任務分解後，指派給「{selected.name}」的工作會出現在此列表。
-                        </p>
-                      </div>
-                    ) : (
-                      visibleItems.map((item) => (
-                        <WorkItemCard
-                          key={`${item.task_id}-${item.id}-${item.kind}`}
-                          item={item}
-                          expanded={expandedId === `${item.task_id}-${item.id}-${item.kind}`}
-                          onToggle={() =>
-                            setExpandedId((cur) => {
-                              const key = `${item.task_id}-${item.id}-${item.kind}`;
-                              return cur === key ? null : key;
-                            })
-                          }
-                        />
-                      ))
-                    )}
-                  </div>
+                  <StatusColumnBoard
+                    selectedKey={itemFilter}
+                    onSelect={(key) => setItemFilter(key as WorkItemColumnKey)}
+                    columns={WORK_ITEM_COLUMNS.map((col) => {
+                      const items = itemsInColumn(selected.work_items, col.key);
+                      return {
+                        key: col.key,
+                        label: col.label,
+                        count: items.length,
+                        children: items.map((item) => (
+                          <WorkItemCard
+                            key={`${item.task_id}-${item.id}-${item.kind}`}
+                            item={item}
+                            compact
+                            expanded={expandedId === `${item.task_id}-${item.id}-${item.kind}`}
+                            onToggle={() =>
+                              setExpandedId((cur) => {
+                                const key = `${item.task_id}-${item.id}-${item.kind}`;
+                                return cur === key ? null : key;
+                              })
+                            }
+                          />
+                        )),
+                      };
+                    })}
+                  />
                 </>
               )}
             </div>
@@ -595,6 +565,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
               onOpen={(id) => openDesk(id)}
               onOpenItem={(item) => {
                 setDeskTab('tasks');
+                setItemFilter(workItemColumnKey(item.status));
                 setExpandedId(`${item.task_id}-${item.id}-${item.kind}`);
               }}
             />

@@ -1,7 +1,7 @@
 /**
  * 角色 Agent 監控共用顯示邏輯。
  */
-import type { RoleAgent } from '../types';
+import type { AgentWorkItem, RoleAgent } from '../types';
 
 export const AGENT_STATUS_META: Record<string, { label: string; dot: string; text: string }> = {
   busy: { label: '執行中', dot: 'bg-[#4cc38a] animate-pulse', text: 'text-[#4cc38a]' },
@@ -83,6 +83,52 @@ export const CATEGORY_LABEL: Record<string, string> = {
 
 export function agentOpenCount(agent: Pick<RoleAgent, 'queue' | 'executing' | 'inbox' | 'blocked'>): number {
   return agent.queue + agent.executing + (agent.inbox.in_review ?? 0) + agent.blocked;
+}
+
+/** 控制台任用／任務子項統一三欄：隊列 → 執行中 → 已完成 */
+export const WORK_ITEM_COLUMNS = [
+  { key: 'queue', label: '隊列', statuses: ['planning', 'ready', 'blocked'] },
+  { key: 'executing', label: '執行中', statuses: ['executing', 'in_review', 'rework'] },
+  { key: 'done', label: '已完成', statuses: ['done'] },
+] as const;
+
+export type WorkItemColumnKey = (typeof WORK_ITEM_COLUMNS)[number]['key'];
+
+export const WORK_ITEM_COLUMN_COLOR: Record<WorkItemColumnKey, string> = {
+  queue: 'var(--apple-label)',
+  executing: 'var(--apple-orange)',
+  done: 'var(--apple-green)',
+};
+
+export function workItemColumnKey(status: string): WorkItemColumnKey {
+  for (const col of WORK_ITEM_COLUMNS) {
+    if ((col.statuses as readonly string[]).includes(status)) return col.key;
+  }
+  return 'queue';
+}
+
+export function itemsInColumn(items: AgentWorkItem[], key: WorkItemColumnKey): AgentWorkItem[] {
+  return items.filter((item) => workItemColumnKey(item.status) === key);
+}
+
+/** 控制台任務列表同一套三欄：隊列 → 執行中 → 已完成 */
+export const TASK_COLUMNS = [
+  { key: 'queue', label: '隊列', statuses: ['pending'] },
+  { key: 'running', label: '執行中', statuses: ['running'] },
+  { key: 'done', label: '已完成', statuses: ['completed', 'failed', 'cancelled', 'interrupted'] },
+] as const;
+
+export type TaskColumnKey = (typeof TASK_COLUMNS)[number]['key'];
+
+export function taskColumnKey(status: string): TaskColumnKey {
+  for (const col of TASK_COLUMNS) {
+    if ((col.statuses as readonly string[]).includes(status)) return col.key;
+  }
+  return 'queue';
+}
+
+export function tasksInColumn<T extends { status: string }>(items: T[], key: TaskColumnKey): T[] {
+  return items.filter((item) => taskColumnKey(item.status) === key);
 }
 
 export function isLiveAgent(agent: Pick<RoleAgent, 'status'>): boolean {

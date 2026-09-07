@@ -1,12 +1,14 @@
 /** 任務介面面板（參考 PysdnOPC 任務列表風格）。
  *
  * 公司模式：角色流水線芯片（Manager → 執行角色 → Reviewer →
- * Synthesizer）+ 按角色分組的工作項內容 + 事件時間軸。
+ * Synthesizer）+ 子項三欄（隊列／執行中／已完成）+ 事件時間軸。
  * 標準模式：階段進度 + 評分軌跡。
  */
 import { useMemo, useState } from 'react';
 import type { TaskProgress, KanbanItem } from '../types';
 import { OPC_PHASES } from '../types';
+import { WORK_ITEM_COLUMNS, workItemColumnKey } from '../lib/agentUi';
+import { StatusColumnBoard } from './StatusColumnBoard';
 
 interface TaskPanelProps {
   task: TaskProgress;
@@ -149,7 +151,7 @@ export const ITEM_STATUS_META: Record<string, { label: string; cls: string; bar:
   executing: { label: '執行中', cls: 'bg-yellow-500/15 text-yellow-300', bar: 'bg-yellow-400' },
   in_review: { label: '審查中', cls: 'bg-purple-500/15 text-purple-300', bar: 'bg-purple-400' },
   rework: { label: '修改中', cls: 'bg-orange-500/15 text-orange-300', bar: 'bg-orange-400' },
-  done: { label: '完成', cls: 'bg-green-500/15 text-green-300', bar: 'bg-green-400' },
+  done: { label: '已完成', cls: 'bg-green-500/15 text-green-300', bar: 'bg-green-400' },
   blocked: { label: '阻塞', cls: 'bg-red-500/15 text-red-300', bar: 'bg-red-400' },
 };
 
@@ -396,55 +398,51 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
         </div>
       )}
 
-      {/* ══ 公司模式：按角色分組的工作項內容 ══ */}
-      {isCompany && roleGroups.length > 0 && (
-        <div className="mt-2.5 flex flex-col gap-1.5">
-          {roleGroups.map((g) => (
-            <div key={g.role} className="rounded-lg border border-white/5 bg-gray-800/40 px-2.5 py-1.5">
-              <p className="mb-1 flex items-center gap-1.5 font-medium text-gray-200">
-                {roleLabel(g.role)}
-                <RoleIcon status={g.status} />
-                <span className="ml-auto flex items-center gap-1.5 text-[10px] font-normal text-gray-500">
-                  <span className="inline-block h-1 w-12 overflow-hidden rounded-full bg-gray-700">
-                    <span
-                      className="block h-full rounded-full bg-gradient-to-r from-blue-500 to-green-400 transition-all duration-500"
-                      style={{ width: `${g.entries.length ? (g.entries.filter((e) => e.status === 'done').length / g.entries.length) * 100 : 0}%` }}
-                    />
-                  </span>
-                  {g.entries.filter((e) => e.status === 'done').length}/{g.entries.length}
-                </span>
-              </p>
-              {g.entries.map(({ status, item }) => {
-                const meta = ITEM_STATUS_META[status] ?? { label: status, cls: 'bg-gray-700/60 text-gray-300', bar: 'bg-gray-500' };
-                return (
-                  <div key={item.id} className="mb-1.5 last:mb-0">
-                    <div className="flex items-start gap-1.5 text-[11px]">
-                      <span className={`mt-1 h-3 w-0.5 shrink-0 rounded-full ${meta.bar}`} />
-                      <span className={`mt-0.5 shrink-0 rounded px-1 py-px text-[10px] ${meta.cls}`}>
-                        {meta.label}
-                      </span>
-                      <span className="min-w-0 flex-1 text-[#AEAEB2]" title={item.description}>
-                        {item.title}
-                      </span>
+      {/* ══ 公司模式：子項三欄（隊列 / 執行中 / 已完成） ══ */}
+      {isCompany && totalCount > 0 && (
+        <div className="mt-2.5">
+          <StatusColumnBoard
+            compact
+            columns={WORK_ITEM_COLUMNS.map((col) => {
+              const entries = roleGroups
+                .flatMap((g) => g.entries.map((e) => ({ ...e, role: g.role })))
+                .filter((e) => workItemColumnKey(e.status) === col.key);
+              return {
+                key: col.key,
+                label: col.label,
+                count: entries.length,
+                children: entries.map(({ status, item, role }) => {
+                  const meta = ITEM_STATUS_META[status] ?? { label: status, cls: 'bg-gray-700/60 text-gray-300' };
+                  const running = col.key === 'executing';
+                  return (
+                    <div key={item.id} className="rd-tc">
+                      <div className="rd-tc-t">
+                        <span className={`rd-od ${running ? 'run' : col.key === 'done' ? 'on' : 'off'}`} />
+                        <span className="rd-tc-ttl">{item.title}</span>
+                      </div>
+                      <div className="rd-tc-m">
+                        <span className={`rd-badge ${running ? 'run' : ''}`}>{meta.label}</span>
+                        <span className="rd-tc-meta">{roleLabel(role)}</span>
+                      </div>
+                      {item.thinking?.trim() && (
+                        <details className="mt-1.5">
+                          <summary className="cursor-pointer text-[10px] text-[#636366]">思考過程</summary>
+                          <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-[#8E8E93]">
+                            {item.thinking}
+                          </pre>
+                        </details>
+                      )}
+                      {item.output?.trim() && (
+                        <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[#8E8E93]">
+                          {item.output}
+                        </p>
+                      )}
                     </div>
-                    {item.thinking?.trim() && (
-                      <details className="mt-1 ml-3">
-                        <summary className="cursor-pointer text-[10px] text-[#636366]">思考過程</summary>
-                        <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-[#8E8E93]">
-                          {item.thinking}
-                        </pre>
-                      </details>
-                    )}
-                    {item.output?.trim() && (
-                      <p className="mt-1 ml-3 max-h-48 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[#8E8E93]">
-                        {item.output}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                  );
+                }),
+              };
+            })}
+          />
         </div>
       )}
 

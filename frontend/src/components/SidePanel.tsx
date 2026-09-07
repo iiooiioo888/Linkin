@@ -2,10 +2,10 @@
  * SidePanel — 左側上下文面板。
  * Chat → 會話；Monitor → 精簡分頁 + 虛擬滾動名冊。
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope } from '../lib/agentUi';
+import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { fetchLlmOps } from '../api/client';
 import type { ApiRoutePublic, ChatSession, RoleAgent, TaskSummary } from '../types';
@@ -423,6 +423,10 @@ const EMPTY_TASKS: TaskSummary[] = [];
 const selectTaskRoster = (s: ReturnType<typeof useMonitorStore.getState>) =>
   s.dashboard?.tasks ?? EMPTY_TASKS;
 
+type TaskRosterRow =
+  | { kind: 'header'; key: TaskColumnKey; label: string; count: number }
+  | { kind: 'task'; key: string; task: TaskSummary };
+
 function TaskRoster({
   focusTaskId,
   onPick,
@@ -431,8 +435,8 @@ function TaskRoster({
   onPick: (id: string) => void;
 }) {
   const tasks = useMonitorStore(useShallow(selectTaskRoster));
-  const running = tasks.filter((t) => t.status === 'running' || t.status === 'pending').length;
   const [query, setQuery] = useState('');
+  const [openCols, setOpenCols] = useState<Set<TaskColumnKey>>(() => new Set(['queue', 'running', 'done']));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -442,41 +446,34 @@ function TaskRoster({
     return list.slice(0, 80);
   }, [tasks, query]);
 
-  const renderItem = useCallback(
-    (_i: number, task: TaskSummary) => {
-      const active = task.task_id === focusTaskId;
-      const dot = TASK_STATUS_DOT[task.status] ?? 'bg-[#8E8E93]';
-      return (
-        <button
-          type="button"
-          onClick={() => onPick(task.task_id)}
-          className={`mx-2 mb-0.5 flex w-[calc(100%-16px)] items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors ${
-            active
-              ? 'bg-white/[0.06] text-[#F5F5F7]'
-              : 'text-[#AEAEB2] hover:bg-white/[0.03] hover:text-[#F5F5F7]'
-          }`}
-        >
-          <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[12px] font-medium text-[#F5F5F7]">
-              {task.query || task.task_id.slice(0, 8)}
-            </span>
-            <span className="block truncate text-[10px] text-[#636366]">
-              {task.resolved_path || task.strategy} · {task.phase}
-            </span>
-          </span>
-        </button>
-      );
-    },
-    [focusTaskId, onPick],
-  );
+  const rows: TaskRosterRow[] = useMemo(() => {
+    const out: TaskRosterRow[] = [];
+    for (const col of TASK_COLUMNS) {
+      const list = tasksInColumn(filtered, col.key);
+      out.push({ kind: 'header', key: col.key, label: col.label, count: list.length });
+      if (!openCols.has(col.key)) continue;
+      for (const task of list) {
+        out.push({ kind: 'task', key: task.task_id, task });
+      }
+    }
+    return out;
+  }, [filtered, openCols]);
+
+  useEffect(() => {
+    if (!focusTaskId) return;
+    const task = tasks.find((t) => t.task_id === focusTaskId);
+    if (!task) return;
+    const col = taskColumnKey(task.status);
+    setOpenCols((cur) => (cur.has(col) ? cur : new Set(cur).add(col)));
+  }, [focusTaskId, tasks]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 space-y-2 border-b border-white/[0.06] px-3 pb-3 pt-2">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-[#636366]">
-          {tasks.length} 筆 · {running} 執行中
-        </p>
+      <div className="ar-h">
+        <span className="ar-ht">任務列表</span>
+        <span className="ar-hc">{tasks.length}</span>
+      </div>
+      <div className="ar-search">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -491,9 +488,55 @@ function TaskRoster({
       ) : (
         <Virtuoso
           className="min-h-0 flex-1"
-          data={filtered}
-          computeItemKey={(_i, task) => task.task_id}
-          itemContent={renderItem}
+          data={rows}
+          computeItemKey={(_i, row) => row.key}
+          itemContent={(_i, row) => {
+            if (row.kind === 'header') {
+              const open = openCols.has(row.key);
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenCols((cur) => {
+                      const next = new Set(cur);
+                      if (next.has(row.key)) next.delete(row.key);
+                      else next.add(row.key);
+                      return next;
+                    });
+                  }}
+                  className="ar-rg"
+                >
+                  <span className="inline-block w-2 font-mono text-[#48484A]">{open ? '▾' : '▸'}</span>
+                  <span>{row.label}</span>
+                  <span className="ml-auto font-mono text-[10px] text-[#636366]">{row.count}</span>
+                </button>
+              );
+            }
+            const { task } = row;
+            const active = task.task_id === focusTaskId;
+            const dot = TASK_STATUS_DOT[task.status] ?? 'bg-[#8E8E93]';
+            return (
+              <button
+                type="button"
+                onClick={() => onPick(task.task_id)}
+                className={`mx-2 mb-0.5 flex w-[calc(100%-16px)] items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors ${
+                  active
+                    ? 'bg-white/[0.06] text-[#F5F5F7]'
+                    : 'text-[#AEAEB2] hover:bg-white/[0.03] hover:text-[#F5F5F7]'
+                }`}
+              >
+                <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12px] font-medium text-[#F5F5F7]">
+                    {task.query || task.task_id.slice(0, 8)}
+                  </span>
+                  <span className="block truncate text-[10px] text-[#636366]">
+                    {task.resolved_path || task.strategy} · {task.phase}
+                  </span>
+                </span>
+              </button>
+            );
+          }}
         />
       )}
     </div>
