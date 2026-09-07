@@ -3,7 +3,7 @@
  */
 import { useTranslation } from 'react-i18next';
 import { setLocale } from '../i18n';
-import { consoleChromeLabel, resolveActivity } from '../lib/monitorTabs';
+import { consoleChromeLabel, consoleChromeTabKey, CONSOLE_CHROME_TABS, resolveActivity } from '../lib/monitorTabs';
 import { labSubTabLabel, type LabSubTab } from '../lib/labTabs';
 import type { MonitorTab, ViewKey } from './AppShell';
 
@@ -17,6 +17,7 @@ interface TopBarProps {
   onRightPanelToggle: () => void;
   onOpenSettings: () => void;
   onToggleSidebar: () => void;
+  onMonitorTabChange?: (tab: MonitorTab) => void;
 }
 
 export default function TopBar({
@@ -29,10 +30,12 @@ export default function TopBar({
   onRightPanelToggle,
   onOpenSettings,
   onToggleSidebar,
+  onMonitorTabChange,
 }: TopBarProps) {
   const { t, i18n } = useTranslation();
   const activity = resolveActivity(activeView, monitorTab);
   const path = consoleChromeLabel(activeView, monitorTab, labSubTabLabel(labSubTab), traceTaskId);
+  const chromeKey = activity === 'console' ? consoleChromeTabKey(activeView === 'traces' ? 'traces' : monitorTab) : null;
   const viewLabel =
     activity === 'chat'
       ? t('nav.chat')
@@ -42,7 +45,7 @@ export default function TopBar({
           ? `${t('nav.linkin')} · ${path}`
           : activity === 'minecraft'
             ? `${t('nav.minecraft')} · ${path}`
-            : `${t('nav.console')} · ${path}`;
+            : t('nav.console');
 
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.06] apple-chrome px-3">
@@ -57,8 +60,30 @@ export default function TopBar({
       </button>
 
       <span className="text-[13px] font-semibold text-[#F5F5F7]">靈境·Linkin</span>
-      <span className="hidden text-[11px] text-[#636366] sm:inline">— Evoloop 運行時</span>
-      <span className="text-[12px] text-[#636366]">· {viewLabel}</span>
+      {activity === 'console' && onMonitorTabChange ? (
+        <>
+          <nav className="console-hdr-tabs ml-2 hidden min-w-0 sm:flex" aria-label="控制台主入口">
+            {CONSOLE_CHROME_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => onMonitorTabChange(tab.key)}
+                className={`console-hdr-tab ${chromeKey === tab.key ? 'on' : ''}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+          {path && chromeKey && chromeKey !== monitorTab ? (
+            <span className="hidden min-w-0 truncate text-[11px] text-[#636366] lg:inline">· {path}</span>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <span className="hidden text-[11px] text-[#636366] sm:inline">— Evoloop 運行時</span>
+          <span className="min-w-0 truncate text-[12px] text-[#636366]">· {viewLabel}</span>
+        </>
+      )}
 
       <div className="ml-auto flex items-center gap-0.5">
         {llmConfigured === false && (

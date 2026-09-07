@@ -25,6 +25,7 @@ export type MonitorNavGroupId =
   | 'observe'
   | 'system'
   | 'world'
+  | 'studio'
   | 'minecraft';
 
 export type MonitorNavGroup = {
@@ -62,12 +63,13 @@ export const MONITOR_SYSTEM_TABS: MonitorTabItem[] = [
   { key: 'ops', icon: '⚙', label: '基礎設施' },
 ];
 
-/** 靈境世界內容（非 Minecraft）。 */
+/** 靈境世界內容（非 Minecraft、非控制台公司角色）。 */
 export const MONITOR_WORLD_TABS: MonitorTabItem[] = [
   { key: 'world', icon: '✧', label: '世界觀' },
   { key: 'npcs', icon: '☺', label: 'NPC' },
   { key: 'quests', icon: '⚑', label: '任務' },
   { key: 'items', icon: '◆', label: '道具' },
+  { key: 'studio', icon: '◈', label: '工作室' },
 ];
 
 /** Minecraft：建築方案與 MineMCP 橋接（獨立活動，不進靈境側欄）。 */
@@ -128,6 +130,13 @@ export const LINKIN_NAV_GROUPS: MonitorNavGroup[] = [
       { key: 'items', icon: '◆', label: '道具', hint: '稀有度平衡' },
     ],
   },
+  {
+    id: 'studio',
+    label: '工作室',
+    items: [
+      { key: 'studio', icon: '◈', label: '工作室角色', hint: '建築／敘事／NPC／道具班底' },
+    ],
+  },
 ];
 
 export const MINECRAFT_NAV_GROUPS: MonitorNavGroup[] = [
@@ -185,6 +194,8 @@ export const MONITOR_TAB_ALIASES: Record<string, MonitorTab> = {
   routes: 'llm',
   mc: 'minecraft',
   minecraft_mcp: 'minecraft',
+  studio_roles: 'studio',
+  linkin_roles: 'studio',
 };
 
 const WORK_TAB_KEYS = new Set<string>(MONITOR_WORK_TABS.map((t) => t.key));
@@ -196,6 +207,20 @@ const CONSOLE_TAB_KEYS = new Set<string>([
   ...MONITOR_OBSERVE_TABS.map((t) => t.key),
   ...MONITOR_SYSTEM_TABS.map((t) => t.key),
 ]);
+
+/** 控制台頂欄五個主入口（靈境／Minecraft 不進此列）。 */
+export const CONSOLE_CHROME_TABS: Array<{ key: MonitorTab; label: string; match: MonitorTab[] }> = [
+  { key: 'live', label: '總覽', match: ['live', 'pipeline'] },
+  { key: 'tasks', label: '新項', match: ['tasks'] },
+  { key: 'models', label: '使用', match: ['models', 'metrics', 'feedback'] },
+  { key: 'llm', label: '權限', match: ['llm', 'ops', 'memory'] },
+  { key: 'agents', label: '執行-角色', match: ['agents'] },
+];
+
+export function consoleChromeTabKey(tab: MonitorTab | 'traces'): MonitorTab | null {
+  if (tab === 'traces') return 'tasks';
+  return CONSOLE_CHROME_TABS.find((item) => item.match.includes(tab))?.key ?? null;
+}
 
 export const ACTIVITY_DEFAULT_TAB: Record<Exclude<ActivityKey, 'chat'>, MonitorTab | 'traces'> = {
   console: 'live',

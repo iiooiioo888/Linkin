@@ -13,7 +13,7 @@ import {
   pickBusyAgents,
 } from '../lib/animLive';
 import { LAB_INTEGRATION_TABS, type LabSubTab } from '../lib/labTabs';
-import { requestRoleSettingsDesk } from '../lib/agentUi';
+import { filterAgentsByDesk, requestRoleSettingsDesk } from '../lib/agentUi';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { MonitorTab } from './AppShell';
 
@@ -686,8 +686,12 @@ export default function LiveBoard({
   density?: LiveBoardDensity;
 } & LiveBoardNav) {
   const dock = density === 'dock';
-  const updated = feed.updatedAt
-    ? new Date(feed.updatedAt).toLocaleTimeString('zh-TW', {
+  const consoleFeed = useMemo(
+    () => ({ ...feed, agents: filterAgentsByDesk(feed.agents, 'console') }),
+    [feed],
+  );
+  const updated = consoleFeed.updatedAt
+    ? new Date(consoleFeed.updatedAt).toLocaleTimeString('zh-TW', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
@@ -722,13 +726,13 @@ export default function LiveBoard({
           </div>
         )}
 
-        {!dock && <WorkflowStrip feed={feed} onOpenTab={onOpenTab} />}
+        {!dock && <WorkflowStrip feed={consoleFeed} onOpenTab={onOpenTab} />}
 
         {dock ? (
           <div className="lb-dock-grid">
             <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
             <CompanyCard
-              feed={feed}
+              feed={consoleFeed}
               dock
               onOpen={() => onOpenTab?.('agents')}
               onOpenAgent={onOpenAgent}
@@ -739,7 +743,7 @@ export default function LiveBoard({
             <BudgetCard feed={feed} dock onOpen={() => onOpenTab?.('models')} />
             <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
             <div className="lb-span-2">
-              <EventsCard feed={feed} dock onOpen={onOpenTraces} />
+              <EventsCard feed={consoleFeed} dock onOpen={onOpenTraces} />
             </div>
             <div className="lb-span-2">
               <LabToolsCard dock onOpenLab={onOpenLab} />
@@ -749,7 +753,7 @@ export default function LiveBoard({
           <div className="lb-board-grid">
             <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
             <CompanyCard
-              feed={feed}
+              feed={consoleFeed}
               onOpen={() => onOpenTab?.('agents')}
               onOpenAgent={onOpenAgent}
             />
@@ -759,7 +763,7 @@ export default function LiveBoard({
             <BudgetCard feed={feed} onOpen={() => onOpenTab?.('models')} />
             <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
             <div className="lb-span-2">
-              <EventsCard feed={feed} onOpen={onOpenTraces} />
+              <EventsCard feed={consoleFeed} onOpen={onOpenTraces} />
             </div>
             <LabToolsCard onOpenLab={onOpenLab} />
           </div>

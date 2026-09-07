@@ -117,7 +117,7 @@ export const EDIT_API_ROUTE_EVENT = 'linkin:edit-api-route';
 export const NEW_API_ROUTE_EVENT = 'linkin:new-api-route';
 export const API_ROUTES_CHANGED_EVENT = 'linkin:api-routes-changed';
 
-export type AgentDeskTab = 'tasks' | 'monitor' | 'settings' | 'org';
+export type AgentDeskTab = 'tasks' | 'monitor' | 'settings' | 'overview' | 'org';
 export type JumpAgentDetail = { id?: string; level?: number; deskTab?: AgentDeskTab };
 
 /** 控制台跨頁：角色面板尚未掛載時先記下要開的工作台分頁。 */
@@ -150,9 +150,22 @@ export function dispatchApiRoutesChanged() {
   window.dispatchEvent(new Event(API_ROUTES_CHANGED_EVENT));
 }
 
+export function isLinkinStudioAgent(agent: Pick<RoleAgent, 'id' | 'tags'> | string | null | undefined): boolean {
+  if (!agent) return false;
+  if (typeof agent === 'string') return agent.startsWith('custom_linkin_');
+  const tags = agent.tags ?? [];
+  return agent.id.startsWith('custom_linkin_') || tags.includes('linkin');
+}
+
+export type AgentDeskScope = 'console' | 'linkin';
+
+export function filterAgentsByDesk(agents: RoleAgent[], desk: AgentDeskScope): RoleAgent[] {
+  return agents.filter((agent) => (desk === 'linkin' ? isLinkinStudioAgent(agent) : !isLinkinStudioAgent(agent)));
+}
+
 export function pickDefaultAgentId(agents: RoleAgent[], preferred?: string | null): string {
   if (preferred && agents.some((a) => a.id === preferred)) return preferred;
   const busy = agents.find((a) => a.status === 'busy') ?? agents.find((a) => a.status === 'waiting' || a.status === 'error');
   if (busy) return busy.id;
-  return agents.find((a) => a.id === 'manager')?.id ?? agents[0]?.id ?? 'manager';
+  return agents.find((a) => a.id === 'manager')?.id ?? agents[0]?.id ?? '';
 }

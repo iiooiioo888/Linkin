@@ -6,7 +6,7 @@
  *   #/monitor | #/monitor/tasks | #/monitor/tasks/{taskId}
  *   #/monitor/agents/{agentId}
  *   #/monitor/lab | #/monitor/lab/{prompt|firecrawl|archify|ponytail|mcp|ab}
- *   #/monitor/world | #/monitor/npcs | #/monitor/quests | #/monitor/items
+ *   #/monitor/world | #/monitor/npcs | #/monitor/quests | #/monitor/items | #/monitor/studio
  *   #/monitor/building | #/monitor/minecraft
  *   #/traces | #/traces/{taskId}
  */
@@ -56,7 +56,7 @@ export function parseAppRoute(hash: string): AppRoute {
     return {
       view: 'monitor',
       monitorTab: tab,
-      focusAgentId: tab === 'agents' && focusRaw ? focusRaw : null,
+      focusAgentId: (tab === 'agents' || tab === 'studio') && focusRaw ? focusRaw : null,
       focusTaskId: tab === 'tasks' && focusRaw ? focusRaw : null,
       traceTaskId: null,
       labSubTab,
@@ -81,6 +81,9 @@ export function buildAppRouteHash(route: AppRoute): string {
   if (route.view === 'monitor') {
     if (route.monitorTab === 'agents' && route.focusAgentId) {
       return `#/monitor/agents/${encodeURIComponent(route.focusAgentId)}`;
+    }
+    if (route.monitorTab === 'studio' && route.focusAgentId) {
+      return `#/monitor/studio/${encodeURIComponent(route.focusAgentId)}`;
     }
     if (route.monitorTab === 'tasks' && route.focusTaskId) {
       return `#/monitor/tasks/${encodeURIComponent(route.focusTaskId)}`;

@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { AGENT_STATUS_META, agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, isAlertAgent, isLiveAgent, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT } from '../lib/agentUi';
+import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope } from '../lib/agentUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { fetchLlmOps } from '../api/client';
 import type { ApiRoutePublic, ChatSession, RoleAgent, TaskSummary } from '../types';
@@ -152,22 +152,30 @@ const ROSTER_LEVELS = [
 function AgentRoster({
   focusAgentId,
   onPick,
+  deskScope = 'console',
 }: {
   focusAgentId: string | null;
   onPick: (id: string) => void;
+  deskScope?: AgentDeskScope;
 }) {
   const storeAgents = useMonitorStore((s) => s.agents?.agents);
-  const agents = storeAgents?.length ? storeAgents : AGENT_FALLBACK_ROSTER;
+  const agents = filterAgentsByDesk(storeAgents?.length ? storeAgents : AGENT_FALLBACK_ROSTER, deskScope);
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<'all' | 'live' | 'alert'>('all');
+  const [openLevels, setOpenLevels] = useState<Set<number>>(() => new Set([0, 1]));
   const listRef = useRef<VirtuosoHandle>(null);
 
-  const liveCount = useMemo(() => agents.filter(isLiveAgent).length, [agents]);
-  const alertCount = useMemo(() => agents.filter(isAlertAgent).length, [agents]);
-  const enabledCount = useMemo(
-    () => agents.filter((a) => a.enabled !== false).length,
-    [agents],
-  );
+  useEffect(() => {
+    if (!focusAgentId) return;
+    const agent = agents.find((a) => a.id === focusAgentId);
+    if (!agent) return;
+    setOpenLevels((cur) => {
+      if (cur.has(agent.level)) return cur;
+      const next = new Set(cur);
+      next.add(agent.level);
+      return next;
+    });
+  }, [agents, focusAgentId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -189,20 +197,13 @@ function AgentRoster({
       const list = filtered.filter((a) => a.level === lv.level);
       if (!list.length) continue;
       out.push({ kind: 'header', key: `h-${lv.level}`, label: `${lv.short} ${lv.label}`, count: list.length });
+      if (!openLevels.has(lv.level)) continue;
       for (const agent of list) {
         out.push({ kind: 'agent', key: agent.id, agent });
       }
     }
     return out;
-  }, [filtered]);
-
-  const jumpToLevel = (level: number) => {
-    const idx = rows.findIndex((r) => r.kind === 'header' && r.key === `h-${level}`);
-    if (idx >= 0) {
-      listRef.current?.scrollToIndex({ index: idx, align: 'start', behavior: 'smooth' });
-    }
-    dispatchJumpAgent({ level });
-  };
+  }, [filtered, openLevels]);
 
   const searching = query.trim().length > 0;
 
@@ -216,93 +217,43 @@ function AgentRoster({
   };
 
   const filterTabs = [
-    { key: 'all' as const, label: '全部', count: agents.length, title: '顯示全部角色' },
-    { key: 'live' as const, label: '活躍', count: liveCount, title: '只看執行中或等待中' },
-    { key: 'alert' as const, label: '告警', count: alertCount, title: '只看告警、錯誤或超預算' },
+    { key: 'all' as const, label: '全部', title: '顯示全部角色' },
+    { key: 'live' as const, label: '限定', title: '只看執行中或等待中' },
+    { key: 'alert' as const, label: '告警', title: '只看告警、錯誤或超預算' },
   ];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 space-y-2 border-b border-white/[0.06] px-3 pb-3 pt-2">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#636366]">左側跳轉</p>
-          <p className="text-[10px] text-[#8E8E93]" title="啟用席次／名冊總數">
-            {enabledCount}/{agents.length}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-1" aria-label="依層級跳轉">
-          {ROSTER_LEVELS.map((lv) => {
-            const count = filtered.filter((a) => a.level === lv.level).length;
-            return (
-              <button
-                key={lv.level}
-                type="button"
-                disabled={count === 0}
-                title={count ? `跳到 ${lv.short} ${lv.label}` : `${lv.short} 目前沒有符合的角色`}
-                onClick={() => jumpToLevel(lv.level)}
-                className={`rounded-md px-1.5 py-0.5 text-[10px] leading-none ${
-                  count === 0
-                    ? 'cursor-not-allowed text-[#48484A]'
-                    : 'bg-white/[0.05] text-[#AEAEB2] hover:bg-white/[0.1] hover:text-[#F5F5F7]'
-                }`}
-              >
-                {lv.short}
-                <span className="ml-0.5 font-mono text-[#636366]">{count}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex rounded-xl bg-white/[0.04] p-0.5" role="tablist" aria-label="角色篩選">
-          {filterTabs.map((tab) => {
-            const active = scope === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                title={tab.title}
-                onClick={() => pickScope(tab.key)}
-                className={`flex min-w-0 flex-1 items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-[11px] leading-none transition-colors ${
-                  active
-                    ? tab.key === 'alert'
-                      ? 'bg-[#FF453A]/15 font-medium text-[#FF453A] shadow-sm'
-                      : tab.key === 'live'
-                        ? 'bg-[#30D158]/15 font-medium text-[#30D158] shadow-sm'
-                        : 'bg-white/[0.1] font-medium text-[#F5F5F7] shadow-sm'
-                    : 'text-[#8E8E93] hover:text-[#AEAEB2]'
-                }`}
-              >
-                {tab.label}
-                <span className="apple-data text-[10px]">{tab.count}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜尋角色、模型、職責…"
-            className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] text-[#F5F5F7] placeholder:text-[#636366] outline-none focus:border-[#007AFF]/50"
-          />
-          {(searching || scope !== 'all') && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="shrink-0 rounded-lg px-1.5 py-1 text-[10px] text-[#64D2FF] hover:bg-white/[0.06]"
-              title="清除篩選與搜尋"
-            >
-              清除
-              <span className="ml-1 font-mono text-[#8E8E93]">{filtered.length}</span>
-            </button>
-          )}
-        </div>
+      <div className="ar-h">
+        <span className="ar-ht">{deskScope === 'linkin' ? '工作室' : '角色層級'}</span>
+        <span className="ar-hc">{agents.length}</span>
+      </div>
+      <div className="ar-flt" role="tablist" aria-label="角色篩選">
+        {filterTabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={scope === tab.key}
+            title={tab.title}
+            onClick={() => pickScope(tab.key)}
+            className={`ar-fbtn ${scope === tab.key ? 'on' : ''} ${scope === tab.key && tab.key === 'alert' ? 'alert' : ''}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="ar-search">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="搜尋角色..."
+        />
       </div>
       {rows.length === 0 ? (
         <div className="px-4 py-8 text-center">
           <p className="text-[12px] text-[#AEAEB2]">
-            {searching ? '沒有符合搜尋的角色' : scope === 'alert' ? '目前沒有告警' : scope === 'live' ? '目前沒有活躍角色' : '尚無名冊'}
+            {searching ? '沒有符合搜尋的角色' : scope === 'alert' ? '目前沒有告警' : scope === 'live' ? '目前沒有限定角色' : '尚無名冊'}
           </p>
           {(scope !== 'all' || searching) && (
             <button
@@ -321,17 +272,33 @@ function AgentRoster({
         data={rows}
         itemContent={(_i, row) => {
           if (row.kind === 'header') {
+            const level = Number(row.key.slice(2));
+            const open = openLevels.has(level);
             return (
-              <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-[#636366]">
-                {row.label}
-                <span className="ml-1 font-mono text-[#48484A]">{row.count}</span>
-              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenLevels((cur) => {
+                    const next = new Set(cur);
+                    if (next.has(level)) next.delete(level);
+                    else next.add(level);
+                    return next;
+                  });
+                }}
+                className="ar-rg"
+              >
+                <span className={`ar-ch ${open ? 'open' : ''}`}>▶</span>
+                <span>{row.label}</span>
+                <span className="ar-rc">{row.count}</span>
+              </button>
             );
           }
           const agent = row.agent;
-          const meta = AGENT_STATUS_META[agent.status] ?? AGENT_STATUS_META.idle;
           const active = agent.id === focusAgentId;
           const count = agentOpenCount(agent);
+          const live = agent.status === 'busy';
+          const wait = agent.status === 'waiting';
+          const err = agent.status === 'error';
           return (
             <button
               type="button"
@@ -339,35 +306,14 @@ function AgentRoster({
                 dispatchJumpAgent({ id: agent.id, level: agent.level });
                 onPick(agent.id);
               }}
-              className={`mx-2 mb-0.5 flex w-[calc(100%-16px)] items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors ${
-                active
-                  ? 'bg-white/[0.06] text-[#F5F5F7]'
-                  : 'text-[#AEAEB2] hover:bg-white/[0.03] hover:text-[#F5F5F7]'
-              }`}
+              className={`ar-ri ${active ? 'on' : ''}`}
             >
-              <span
-                className={`apple-dot shrink-0 ${agent.status === 'busy' ? 'apple-dot--ok' : ''}`}
-                style={
-                  agent.status === 'busy'
-                    ? undefined
-                    : agent.status === 'error'
-                      ? { background: '#FF3B30', boxShadow: '0 0 0 2px #FF3B3033, 0 0 10px #FF3B3055' }
-                      : agent.status === 'waiting'
-                        ? { background: '#FF9500', boxShadow: '0 0 0 2px #FF950033, 0 0 10px #FF950055' }
-                        : { background: '#8E8E93', boxShadow: '0 0 0 2px #8E8E9333' }
-                }
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[12px] font-medium text-[#F5F5F7]">
-                  {agent.name}
-                  {agent.enabled === false ? <span className="ml-1 text-[9px] text-[#FF3B30]">停</span> : null}
-                </span>
-                <span className={`block truncate text-[10px] ${meta.text}`}>
-                  {meta.label}
-                  {count > 0 ? ` · ${count} 項` : ''}
-                </span>
+              <span className={`ar-dot ${live ? 'on' : wait ? 'wait' : err ? 'err' : ''}`} />
+              <span className="min-w-0 flex-1 truncate">
+                {agent.name}
+                {agent.enabled === false ? <span className="ml-1 text-[9px] text-[#FF3B30]">停</span> : null}
               </span>
-              {count > 0 && <span className="apple-data text-[10px] text-[#8E8E93]">{count}</span>}
+              {count > 0 ? <span className="ar-rr">{count}</span> : null}
             </button>
           );
         }}
@@ -690,6 +636,8 @@ function MonitorSidebar({
   const onLab = activity === 'lab';
   const navGroups = navGroupsForActivity(activity);
   const onAgentsTab = activeView === 'monitor' && monitorTab === 'agents';
+  const onStudioTab = activeView === 'monitor' && monitorTab === 'studio';
+  const onRoleDesk = onAgentsTab || onStudioTab;
   const onTasksTab = activeView === 'monitor' && monitorTab === 'tasks';
   const onLlmTab = activeView === 'monitor' && monitorTab === 'llm';
   const onTraces = activeView === 'traces';
@@ -701,6 +649,7 @@ function MonitorSidebar({
     observe: activeGroup === 'observe',
     system: activeGroup === 'system',
     world: true,
+    studio: true,
     minecraft: activeGroup === 'minecraft',
   }));
   const [allNav, setAllNav] = useState(false);
@@ -720,16 +669,16 @@ function MonitorSidebar({
       return;
     }
     onMonitorTabChange(key);
-    if (key !== 'agents' && focusAgentId) onFocusAgent(null);
+    if (key !== 'agents' && key !== 'studio' && focusAgentId) onFocusAgent(null);
     if (key !== 'tasks' && focusTaskId) onFocusTask(null);
-    if (key !== 'agents' && key !== 'tasks' && key !== 'llm') onClose();
+    if (key !== 'agents' && key !== 'studio' && key !== 'tasks' && key !== 'llm') onClose();
   };
 
   if (onLab) {
     return <LabSidebar labSubTab={labSubTab} onLabSubTabChange={onLabSubTabChange} />;
   }
 
-  const showRoster = onAgentsTab || onTasksTab || onTraces || onLlmTab;
+  const showRoster = onRoleDesk || onTasksTab || onTraces || onLlmTab;
   const activeGroupDef = navGroups.find((g) => g.id === activeGroup) ?? CONSOLE_NAV_GROUPS.find((g) => g.id === activeGroup);
   const currentItem = activeGroupDef?.items.find((i) => i.key === currentKey);
 
@@ -738,7 +687,7 @@ function MonitorSidebar({
       const open =
         compact ||
         (openGroups[group.id] ??
-          (group.id === 'execute' || group.id === 'setup' || group.id === 'world' || group.id === 'minecraft'));
+          (group.id === 'execute' || group.id === 'setup' || group.id === 'world' || group.id === 'studio' || group.id === 'minecraft'));
       return (
         <div key={group.id}>
           {!compact && (
@@ -770,7 +719,9 @@ function MonitorSidebar({
       <nav
         className={`shrink-0 overflow-y-auto ${
           showRoster
-            ? `border-b border-white/[0.06] ${allNav ? 'max-h-[46%]' : ''}`
+            ? `border-b border-white/[0.06] ${
+                onRoleDesk && !allNav ? 'max-h-11 overflow-hidden' : allNav ? 'max-h-[46%]' : ''
+              }`
             : 'min-h-0 flex-1'
         }`}
         aria-label={activityTitle(activity)}
@@ -790,15 +741,16 @@ function MonitorSidebar({
             </button>
           </div>
         )}
-        {showRoster && !allNav ? renderGroups(true) : renderGroups(false)}
+        {onRoleDesk && !allNav ? null : showRoster && !allNav ? renderGroups(true) : renderGroups(false)}
       </nav>
 
-      {onAgentsTab ? (
+      {onRoleDesk ? (
         <AgentRoster
+          deskScope={onStudioTab ? 'linkin' : 'console'}
           focusAgentId={focusAgentId}
           onPick={(id) => {
             onFocusAgent(id);
-            onMonitorTabChange('agents');
+            onMonitorTabChange(onStudioTab ? 'studio' : 'agents');
           }}
         />
       ) : onTasksTab ? (

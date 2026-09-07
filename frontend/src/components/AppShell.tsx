@@ -41,6 +41,7 @@ export type MonitorTab =
   | 'quests'
   | 'building'
   | 'items'
+  | 'studio'
   | 'minecraft';
 
 export interface AppShellProps {
@@ -189,6 +190,7 @@ export default function AppShell({
         }}
         onOpenSettings={onOpenSettings}
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        onMonitorTabChange={onMonitorTabChange}
       />
 
       {/* ══ 中间区域：ActivityBar + SidePanel + Main + RightPanel ══ */}

@@ -41,23 +41,26 @@ test.describe('EvoLoop 核心 UI', () => {
   test('角色分頁可開啟名冊', async ({ page }) => {
     await page.goto('/');
     await page.getByTitle('控制台').or(page.getByTitle('Console')).click();
-    await page.getByRole('button', { name: /角色|Agents/ }).click();
+    await page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /角色|Agents/ }).click();
     await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.ar-ri', { hasText: '建築總監' })).toHaveCount(0);
+    await expect(page.locator('.ar-ri', { hasText: '建築執行者' })).toHaveCount(0);
+    await expect(page.locator('.rd-header .rd-acts').getByRole('button', { name: '新增' })).toHaveCount(0);
   });
 
   test('Hash 路由：#/monitor/tasks 可書籤與刷新還原', async ({ page }) => {
     await page.goto('/#/monitor/tasks');
-    await expect(page.getByText(/控制台 · .*任務|Console ·/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('button', { name: '新項' })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByPlaceholder(/搜尋任務|Search tasks/i)).toBeVisible({ timeout: 10_000 });
 
     await page.reload();
-    await expect(page.getByText(/控制台 · .*任務|Console ·/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByPlaceholder(/搜尋任務|Search tasks/i)).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/tasks/);
   });
 
   test('Hash 路由：#/traces 可書籤與刷新還原', async ({ page }) => {
     await page.goto('/#/traces');
-    await expect(page.getByText(/控制台 · .*軌跡|執行軌跡|Traces/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/執行軌跡|軌跡|Traces/i).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByPlaceholder(/搜尋任務 ID|Search task ID/i)).toBeVisible({ timeout: 10_000 });
 
     await page.reload();
@@ -67,7 +70,7 @@ test.describe('EvoLoop 核心 UI', () => {
   test('管線分頁「任務監控」跳轉至 tasks 分頁', async ({ page }) => {
     await page.goto('/#/monitor/pipeline');
     await page.getByRole('button', { name: /任務監控/ }).click();
-    await expect(page.getByText(/控制台 · .*任務|Console ·/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByPlaceholder(/搜尋任務|Search tasks/i)).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/tasks/);
   });
 
@@ -83,7 +86,7 @@ test.describe('EvoLoop 核心 UI', () => {
 
   test('Hash 路由：#/monitor/llm 可開啟 API 路由', async ({ page }) => {
     await page.goto('/#/monitor/llm');
-    await expect(page.getByText(/控制台 · .*API 路由|Console ·/).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: '權限' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/全域分發策略|已配置的 API/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/llm/);
 
@@ -119,11 +122,27 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.getByRole('button', { name: /世界觀/ }).first()).toBeVisible();
     await expect(page.getByRole('navigation', { name: '靈境' }).getByRole('button', { name: /橋接/ })).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: '靈境' }).getByRole('button', { name: /建築/ })).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: '靈境' }).getByRole('button', { name: /工作室角色/ })).toBeVisible();
 
     await page.getByTitle('Minecraft').click();
     await expect(page.getByRole('button', { name: /建築/ }).first()).toBeVisible();
     await page.getByRole('button', { name: /橋接/ }).click();
     await expect(page.getByText(/Minecraft MCP/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/minecraft/);
+  });
+
+  test('靈境工作室角色不進控制台執行-角色', async ({ page }) => {
+    await page.goto('/#/monitor/agents');
+    await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: '執行-角色' })).toBeVisible();
+    await expect(page.locator('.ar-ri', { hasText: '建築總監' })).toHaveCount(0);
+    await expect(page.locator('.rd-header .rd-acts').getByRole('button', { name: /^新增$/ })).toHaveCount(0);
+
+    await page.goto('/#/monitor/studio');
+    await expect(page.getByText(/靈境 · .*工作室/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('建築總監').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('建築執行者').first()).toBeVisible();
+    await expect(page.url()).toMatch(/#\/monitor\/studio/);
   });
 });

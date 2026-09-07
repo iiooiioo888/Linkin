@@ -5,6 +5,7 @@
 import { lazy, Suspense } from 'react';
 import { useMonitorHub } from '../hooks/useMonitorHub';
 import { buildAnimLiveFeed } from '../lib/animLive';
+import { isLinkinStudioAgent } from '../lib/agentUi';
 import { useMonitorStore } from '../stores/monitorStore';
 import type { TaskProgress } from '../types';
 import type { MonitorTab } from './AppShell';
@@ -127,7 +128,7 @@ export default function MonitorView({
             onOpenTraces={() => onOpenTrace?.('')}
             onOpenAgent={(id) => {
               onFocusAgent(id);
-              onTabChange('agents');
+              onTabChange(isLinkinStudioAgent(id) ? 'studio' : 'agents');
             }}
           />
         )}
@@ -140,7 +141,7 @@ export default function MonitorView({
           />
         )}
         {tab === 'agents' && (
-          <AgentsMonitorPanel focusAgentId={focusAgentId} onFocusAgent={onFocusAgent} />
+          <AgentsMonitorPanel focusAgentId={focusAgentId} onFocusAgent={onFocusAgent} deskScope="console" />
         )}
         {tab === 'pipeline' && <PipelineView onGoTasks={() => onTabChange('tasks')} />}
         {tab === 'metrics' && <SystemMetricsPanel />}
@@ -161,6 +162,9 @@ export default function MonitorView({
         {tab === 'quests' && <QuestPanel />}
         {tab === 'building' && <BuildPanel />}
         {tab === 'items' && <ItemPanel />}
+        {tab === 'studio' && (
+          <AgentsMonitorPanel focusAgentId={focusAgentId} onFocusAgent={onFocusAgent} deskScope="linkin" />
+        )}
         {tab === 'minecraft' && <MinecraftBridgePanel />}
       </Suspense>
     </div>

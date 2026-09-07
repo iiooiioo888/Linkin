@@ -16,6 +16,7 @@ import {
   routesEqual,
   syncAppRouteHash,
 } from './lib/appRoute';
+import { isLinkinStudioAgent } from './lib/agentUi';
 import {
   loadActiveSessionId,
   loadSessions,
@@ -588,10 +589,13 @@ export default function App() {
 
   const handleMonitorTabChange = useCallback(
     (tab: MonitorTab) => {
+      const keepAgent =
+        (tab === 'agents' && !isLinkinStudioAgent(focusAgentId)) ||
+        (tab === 'studio' && isLinkinStudioAgent(focusAgentId));
       navigateRoute({
         view: 'monitor',
         monitorTab: tab,
-        focusAgentId: tab === 'agents' ? focusAgentId : null,
+        focusAgentId: keepAgent ? focusAgentId : null,
         focusTaskId: tab === 'tasks' ? focusTaskId : null,
         labSubTab: tab === 'lab' ? labSubTab : 'prompt',
       });
@@ -611,7 +615,7 @@ export default function App() {
       if (id) {
         navigateRoute({
           view: 'monitor',
-          monitorTab: 'agents',
+          monitorTab: isLinkinStudioAgent(id) ? 'studio' : 'agents',
           focusAgentId: id,
           focusTaskId: null,
         });
