@@ -604,6 +604,7 @@ def _run_position_series(
     trailing_stop_pct: float = 0.0,
     enable_t1: bool = False,
     enable_limit: bool = False,
+    include_chart: bool = False,
 ) -> dict[str, Any]:
     slip = max(0.0, float(slippage_pct or 0.0)) / 100.0
     stop = max(0.0, float(stop_loss_pct or 0.0)) / 100.0
@@ -658,7 +659,15 @@ def _run_position_series(
         else:
             equity.append(equity[-1])
     signal = "long" if want_long and want_long[-1] else "cash"
-    return _pack_backtest(equity, trades, signal, extra=extra)
+    return _pack_backtest(
+        equity,
+        trades,
+        signal,
+        extra=extra,
+        dates=dates,
+        closes=closes,
+        include_chart=bool(include_chart),
+    )
 
 
 def _run_rsi(closes: list[float], dates: list[str], period: int = 14, **risk: Any) -> dict[str, Any]:
@@ -1281,6 +1290,7 @@ def _dispatch_strategy(
     trailing_stop_pct: float = 0.0,
     enable_t1: bool = False,
     enable_limit: bool = False,
+    include_chart: bool = False,
 ) -> dict[str, Any]:
     risk = {
         "slippage_pct": slippage_pct,
@@ -1289,6 +1299,7 @@ def _dispatch_strategy(
         "trailing_stop_pct": trailing_stop_pct,
         "enable_t1": enable_t1,
         "enable_limit": enable_limit,
+        "include_chart": include_chart,
     }
     hi = highs if highs is not None else closes
     lo = lows if lows is not None else closes
@@ -1587,11 +1598,34 @@ def _run_macd(closes: list[float], dates: list[str], **risk: Any) -> dict[str, A
     )
 
 
+def _chart_points(dates: list[str], values: list[float], n: int = 96) -> list[dict[str, Any]]:
+    if not values:
+        return []
+    length = min(len(values), len(dates) if dates else len(values))
+    if length <= 0:
+        return []
+    if length <= n:
+        idxs = list(range(length))
+    else:
+        step = (length - 1) / (n - 1)
+        idxs = sorted({min(length - 1, int(round(i * step))) for i in range(n)})
+        if idxs[-1] != length - 1:
+            idxs.append(length - 1)
+    points: list[dict[str, Any]] = []
+    for i in idxs:
+        stamp = dates[i] if i < len(dates) else str(i)
+        points.append({"t": str(stamp), "v": round(float(values[i]), 6)})
+    return points
+
+
 def _pack_backtest(
     equity: list[float],
     trades: list[dict[str, Any]],
     signal: str,
     extra: dict[str, Any] | None = None,
+    dates: list[str] | None = None,
+    closes: list[float] | None = None,
+    include_chart: bool = False,
 ) -> dict[str, Any]:
     wins = [t for t in trades if t.get("side") == "sell" and float(t.get("ret") or 0) > 0]
     sells = [t for t in trades if t.get("side") == "sell"]
@@ -1610,6 +1644,16 @@ def _pack_backtest(
     }
     if extra:
         payload.update(extra)
+    if include_chart and equity:
+        stamps = dates or [str(i) for i in range(len(equity))]
+        hold: list[float] = []
+        if closes and closes[0]:
+            hold = [price / closes[0] for price in closes[: len(equity)]]
+        payload["chart"] = {
+            "equity": _chart_points(stamps, equity),
+            "hold": _chart_points(stamps, hold) if hold else [],
+            "close": _chart_points(stamps, closes[: len(equity)] if closes else []),
+        }
     return payload
 
 
@@ -1727,6 +1771,7 @@ def market_backtest(
     trailing_stop_pct: float = 0.0,
     enable_t1: bool = False,
     enable_limit: bool = False,
+    include_chart: bool = False,
 ) -> dict[str, Any]:
     try:
         code = normalize_symbol(symbol)
@@ -1760,6 +1805,7 @@ def market_backtest(
             trailing_stop_pct=float(trailing_stop_pct or 0),
             enable_t1=bool(enable_t1),
             enable_limit=bool(enable_limit),
+            include_chart=bool(include_chart),
         )
         params: dict[str, Any]
         if name in {

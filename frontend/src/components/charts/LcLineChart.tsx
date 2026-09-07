@@ -13,16 +13,19 @@ function FallbackLine({ series, height }: { series: LineSeriesInput[]; height: n
   const h = Math.max(80, height);
   const allY = series.flatMap((s) => s.points.map((p) => p.y));
   const allX = series.flatMap((s) => s.points.map((p) => p.x));
-  const maxY = Math.max(1, ...allY);
-  const minX = Math.min(0, ...allX);
-  const maxX = Math.max(minX + 1, ...allX);
+  const minY = allY.length ? Math.min(...allY) : 0;
+  const maxY = allY.length ? Math.max(...allY) : 1;
+  const spanY = maxY - minY || Math.abs(maxY) || 1;
+  const minX = allX.length ? Math.min(...allX) : 0;
+  const maxX = allX.length ? Math.max(...allX) : minX + 1;
+  const spanX = maxX - minX || 1;
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="h-full w-full" role="img" aria-label="折線圖">
       {series.map((s) => {
         const d = s.points
           .map((p, i) => {
-            const x = 8 + ((p.x - minX) / (maxX - minX)) * (w - 16);
-            const y = h - 10 - (p.y / maxY) * (h - 20);
+            const x = 8 + ((p.x - minX) / spanX) * (w - 16);
+            const y = h - 10 - ((p.y - minY) / spanY) * (h - 20);
             return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
           })
           .join(' ');

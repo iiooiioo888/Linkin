@@ -4,6 +4,7 @@ from backend.company.quant_strategy_maps import (
     archify_strategies,
     strategy_catalog_maps,
     strategy_maps,
+    strategy_preview,
 )
 
 
@@ -63,3 +64,9 @@ def test_archify_strategies_views():
     assert flow["ir"]["meta"]["type"] == "data-flow"
     one = archify_strategies("strategy", id="rsi")
     assert one["workflow"]["nodes"]
+
+
+def test_strategy_preview_skips_chart_for_catalog():
+    payload = strategy_preview("lstm_predictor")
+    assert payload["ok"] is True
+    assert payload["chart"] is None

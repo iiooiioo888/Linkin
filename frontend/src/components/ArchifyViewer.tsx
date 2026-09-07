@@ -154,7 +154,7 @@ export default function ArchifyViewer({
 
   if (!ir.nodes.length) {
     return (
-      <div className="apple-card overflow-hidden">
+      <div className="apple-card apple-card--diagram">
         <div className="apple-card__head">
           <h2 className="apple-title">{title}</h2>
         </div>
@@ -164,17 +164,20 @@ export default function ArchifyViewer({
   }
 
   return (
-    <div className="apple-card overflow-hidden">
+    <div className="apple-card apple-card--diagram">
       <div className="apple-card__head">
         <h2 className="apple-title">{title}</h2>
         <span className="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93]">
           Archify · {kind}
         </span>
       </div>
-      <div className="apple-card__body apple-card__body--static overflow-x-auto p-2">
+      <div className="apple-card__body apple-card__body--static archify-canvas">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="min-w-full"
+          width={width}
+          height={height}
+          preserveAspectRatio="xMidYMid meet"
+          className="archify-svg"
           role="img"
           aria-label={title}
         >

@@ -1499,6 +1499,17 @@ async def lab_quant_strategies(category: str = "", query: str = "", status: str 
     )
 
 
+@app.get("/lab/quant/preview")
+async def lab_quant_preview(strategy: str, symbol: str = "600519"):
+    """策略工作流 IR + 回測權益／收盤曲線（實驗室圖表）。"""
+    from backend.company.quant_strategy_maps import strategy_preview
+
+    payload = strategy_preview(strategy, symbol=symbol)
+    if not payload.get("ok"):
+        raise HTTPException(status_code=404, detail=payload.get("error") or "未知策略")
+    return payload
+
+
 # ═══════════════════════════════════════════════════════════
 # 數據庫連接池管理 API（供 UI 使用）
 # ═══════════════════════════════════════════════════════════

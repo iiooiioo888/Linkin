@@ -157,6 +157,28 @@ def test_lab_api_endpoints(client: TestClient, monkeypatch):
     assert r.status_code == 404
 
 
+def test_lab_quant_preview_returns_workflow_and_chart(client: TestClient, monkeypatch):
+    from backend.tests.test_quant_tools import _up_then_down, _yahoo_payload
+
+    closes = _up_then_down(90)
+    monkeypatch.setattr(
+        "backend.company.quant_tools._http_get_json",
+        lambda url, params=None: _yahoo_payload(closes),
+    )
+    r = client.get("/lab/quant/preview", params={"strategy": "dual_ma", "symbol": "600519"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert body["workflow"]["nodes"]
+    assert body["chart"]["ok"] is True
+    assert body["chart"]["chart"]["equity"]
+    assert body["chart"]["chart"]["close"]
+
+    planned = client.get("/lab/quant/preview", params={"strategy": "lstm_predictor"})
+    assert planned.status_code == 200
+    assert planned.json()["chart"] is None
+
+
 def test_company_tool_registry_includes_lab_tools():
     from backend.company.tools import tool_registry
 

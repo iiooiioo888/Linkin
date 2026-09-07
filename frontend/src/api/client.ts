@@ -1193,6 +1193,32 @@ export interface StrategyMapDetail {
   hint?: string;
 }
 
+export interface QuantChartPoint {
+  t: string;
+  v: number;
+}
+
+export interface QuantPreviewChart {
+  ok?: boolean;
+  strategy?: string;
+  total_return?: number;
+  max_drawdown?: number;
+  sharpe?: number | null;
+  trades?: number;
+  last_signal?: string;
+  error?: string;
+  chart?: {
+    equity: QuantChartPoint[];
+    hold: QuantChartPoint[];
+    close: QuantChartPoint[];
+  };
+}
+
+export interface QuantStrategyPreview extends StrategyMapDetail {
+  symbol?: string;
+  chart?: QuantPreviewChart | null;
+}
+
 async function readApiError(resp: Response): Promise<string> {
   try {
     const body = (await resp.json()) as { detail?: string };
@@ -1281,6 +1307,16 @@ export async function labArchifyStrategies(): Promise<StrategyMapCatalog> {
 
 export async function labArchifyStrategy(strategyId: string): Promise<StrategyMapDetail> {
   const resp = await fetch(apiUrl(`/lab/archify/strategies/${encodeURIComponent(strategyId)}`));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+export async function labQuantPreview(
+  strategy: string,
+  symbol = '600519',
+): Promise<QuantStrategyPreview> {
+  const params = new URLSearchParams({ strategy, symbol });
+  const resp = await fetch(apiUrl(`/lab/quant/preview?${params}`));
   if (!resp.ok) throw new Error(await readApiError(resp));
   return resp.json();
 }

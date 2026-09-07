@@ -129,6 +129,14 @@ def test_market_backtest_dual_ma_and_macd(monkeypatch):
     rsi = market_backtest("600519", strategy="rsi")
     assert rsi["ok"] is True
     assert rsi["strategy"] == "rsi"
+    assert "chart" not in rsi
+
+    drawn = market_backtest("600519", strategy="dual_ma", include_chart=True)
+    assert drawn["ok"] is True
+    assert drawn["chart"]["equity"]
+    assert drawn["chart"]["hold"]
+    assert drawn["chart"]["close"]
+    assert len(drawn["chart"]["equity"]) >= 2
 
 
 def test_market_compare_ranks_all_strategies(monkeypatch):

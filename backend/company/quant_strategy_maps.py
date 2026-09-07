@@ -603,6 +603,27 @@ def strategy_maps(strategy_id: str, catalog: dict[str, Any] | None = None) -> di
     }
 
 
+def strategy_preview(strategy_id: str, symbol: str = "600519") -> dict[str, Any]:
+    """實驗室預覽：工作流 IR +（可回測時）權益／收盤曲線。"""
+    payload = strategy_maps(strategy_id)
+    if not payload.get("ok"):
+        return payload
+    item = payload.get("item") or {}
+    code = (symbol or "600519").strip() or "600519"
+    payload["symbol"] = code
+    if item.get("status") != "wired":
+        payload["chart"] = None
+        return payload
+    from backend.company.quant_tools import market_backtest
+
+    engine = str(item.get("engine") or item.get("id") or "")
+    try:
+        payload["chart"] = market_backtest(code, strategy=engine, include_chart=True)
+    except Exception as exc:  # noqa: BLE001
+        payload["chart"] = {"ok": False, "error": str(exc)[:400], "tool": "market_backtest"}
+    return payload
+
+
 def strategy_catalog_maps() -> dict[str, Any]:
     data = _listing()
     groups = []

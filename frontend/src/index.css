@@ -2221,16 +2221,16 @@ body {
 }
 
 .sq-tree-embed {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .sq-tree-embed .sq-tree {
   max-height: min(58vh, 520px);
 }
 
-@media (max-width: 900px) {
-  .sq-tree-embed {
-    grid-template-columns: minmax(0, 1fr);
+@media (min-width: 1100px) {
+  .sq-tree-embed.sq-map {
+    grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
   }
 }
 
@@ -2255,6 +2255,61 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.apple-card--diagram {
+  min-height: 260px;
+  overflow: auto;
+}
+
+.archify-canvas {
+  min-height: 220px;
+  overflow: auto;
+  padding: 8px 10px 12px;
+}
+
+.archify-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 220px;
+  flex-shrink: 0;
+}
+
+.sq-chart-card {
+  min-height: 220px;
+}
+
+.sq-chart-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 0 14px 8px;
+}
+
+.sq-chart-stat {
+  min-width: 72px;
+}
+
+.sq-chart-stat-k {
+  font-size: 10px;
+  color: var(--apple-tertiary);
+}
+
+.sq-chart-stat-v {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--apple-label);
+}
+
+.sq-chart-symbol {
+  width: 108px;
+  border: 1px solid var(--apple-hairline);
+  border-radius: 8px;
+  background: var(--apple-canvas);
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--apple-label);
 }
 
 @media (max-width: 1100px) {
