@@ -71,6 +71,9 @@ htmlcov/
 .pytest_tmp/
 .pytest_tmp*/
 
+# Archify CLI render cache (self-contained HTML)
+.archify_cache/
+
 # Local pip wheel cache / extracted vendor trees
 .pip_wheels/
 

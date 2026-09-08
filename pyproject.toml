@@ -3,6 +3,9 @@ name = "evoloop"
 version = "0.1.0"
 description = "EvoLoop — 具备自我反思闭环的 AI 助手系统"
 requires-python = ">=3.12"
+# Node 前端依赖见 frontend/package.json。
+# archify（https://github.com/tt-a1i/archify）以 file:../vendor/archify 列入，
+# 后端经 backend/company/archify_compile.py 调用其 CLI 产出策略图 HTML。
 
 # ============================================================
 # Ruff — Linter & Formatter

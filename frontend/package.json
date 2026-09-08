@@ -10,13 +10,16 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "openapi": "python ../backend/scripts/export_openapi.py"
+    "openapi": "python ../backend/scripts/export_openapi.py",
+    "archify:doctor": "node ./node_modules/archify/bin/archify.mjs doctor",
+    "archify:render": "node ./node_modules/archify/bin/archify.mjs"
   },
   "dependencies": {
-    "@lightningchart/lcjs": "^9.0.0",
+    "archify": "file:../vendor/archify",
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/vite": "^4.3.3",
     "@xyflow/react": "^12.11.5",
+    "echarts": "^6.1.0",
     "i18next": "^26.4.0",
     "mermaid": "^11.17.2",
     "react": "^19.2.8",

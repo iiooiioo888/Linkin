@@ -323,10 +323,27 @@ def _listing() -> dict[str, Any]:
     return market_strategy_catalog(listing=True)
 
 
+def _unique_wired(group: dict[str, Any]) -> list[dict[str, Any]]:
+    """分類裡可回測的正規引擎（略過別名，避免同一引擎畫兩次）。"""
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for item in group.get("items") or []:
+        if item.get("status") != "wired":
+            continue
+        engine = str(item.get("engine") or item.get("id") or "")
+        if not engine or engine in seen:
+            continue
+        if str(item.get("id") or "") != engine:
+            continue
+        seen.add(engine)
+        out.append(item)
+    return out
+
+
 def overview_architecture(catalog: dict[str, Any] | None = None) -> dict[str, Any]:
     data = catalog or _listing()
     nodes = [
-        _node("feeds", "免費行情源", "external", status="hub", detail="Yahoo／東財／Frankfurter／CoinPaprika"),
+        _node("feeds", "行情源", "external", status="hub", detail="Yahoo／東財／Frankfurter"),
         _node(
             "catalog",
             f"策略庫 {data.get('catalog_count', 0)}",
@@ -336,39 +353,49 @@ def overview_architecture(catalog: dict[str, Any] | None = None) -> dict[str, An
         ),
     ]
     edges = [_edge("feeds", "catalog", "K 線")]
+    planned_n = 0
     for group in data.get("groups") or []:
         gid = f"cat_{group['id']}"
         nodes.append(
             _node(
                 gid,
-                f"【{group['name']}】 {group['wired']}/{group['total']}",
+                f"【{group['name']}】",
                 "service",
                 status="wired" if group.get("wired") else "catalog",
-                detail=group["id"],
+                detail=f"{group.get('wired', 0)}/{group.get('total', 0)}",
             )
         )
         edges.append(_edge("catalog", gid, ""))
+        for item in _unique_wired(group):
+            engine = str(item["engine"] or item["id"])
+            nodes.append(
+                _node(
+                    engine,
+                    item.get("name") or engine,
+                    "api",
+                    status="wired",
+                    detail=engine,
+                )
+            )
+            edges.append(_edge(gid, engine, "wired"))
+            edges.append(_edge(engine, "backtest", ""))
+        catalog_only = int(group.get("total") or 0) - len(_unique_wired(group))
+        if catalog_only > 0:
+            planned_n += catalog_only
+            edges.append(_edge(gid, "planned", "規劃"))
     nodes.extend(
         [
-            _node("engines", f"{data.get('engine_count', 29)} 可回測引擎", "api", status="wired"),
-            _node("planned", "規劃項", "external", status="catalog"),
             _node("backtest", "market_backtest", "api", status="hub"),
+            _node("planned", f"{planned_n} 規劃項" if planned_n else "規劃項", "external", status="catalog"),
             _node("desk", "量化研究桌", "frontend", status="hub", detail="角色 tool_call"),
         ]
     )
-    for group in data.get("groups") or []:
-        gid = f"cat_{group['id']}"
-        if group.get("wired"):
-            edges.append(_edge(gid, "engines", "wired"))
-        if int(group.get("total") or 0) > int(group.get("wired") or 0):
-            edges.append(_edge(gid, "planned", "catalog"))
     edges.extend(
         [
-            _edge("engines", "backtest", "回測"),
             _edge("backtest", "desk", "引用"),
         ]
     )
-    return _ir("策略庫總覽", "architecture", nodes, edges, extra_meta={"view": "overview"})
+    return _ir("全部策略", "architecture", nodes, edges, extra_meta={"view": "overview"})
 
 
 def overview_data_flow(catalog: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -443,37 +470,35 @@ def generic_lifecycle() -> dict[str, Any]:
 def group_architecture(group: dict[str, Any]) -> dict[str, Any]:
     gid = group["id"]
     name = group["name"]
+    wired = _unique_wired(group)
+    catalog_n = max(0, int(group.get("total") or 0) - len(wired))
     nodes = [
         _node(
             f"hub_{gid}",
             f"【{name}】",
             "data",
             status="hub",
-            detail=f"{group.get('wired', 0)}/{group.get('total', 0)} 可回測",
+            detail=f"{len(wired)} 引擎 / {group.get('total', 0)} 目錄",
         )
     ]
     edges: list[dict[str, Any]] = []
-    for item in group.get("items") or []:
-        sid = str(item["id"])
-        status = "wired" if item.get("status") == "wired" else "catalog"
+    for item in wired:
+        engine = str(item.get("engine") or item["id"])
         nodes.append(
             _node(
-                sid,
-                item.get("name") or sid,
+                engine,
+                item.get("name") or engine,
                 "service",
-                status=status,
-                detail=item.get("engine") or sid,
+                status="wired",
+                detail=engine,
             )
         )
-        edges.append(_edge(f"hub_{gid}", sid, "wired" if status == "wired" else "規劃"))
+        edges.append(_edge(f"hub_{gid}", engine, "wired"))
+        edges.append(_edge(engine, "backtest", engine))
+    if catalog_n:
+        nodes.append(_node("planned", f"{catalog_n} 規劃項", "external", status="catalog"))
+        edges.append(_edge(f"hub_{gid}", "planned", "目錄"))
     nodes.append(_node("backtest", "market_backtest", "api", status="hub"))
-    nodes.append(_node("planned", "尚未接通", "external", status="catalog"))
-    for item in group.get("items") or []:
-        sid = str(item["id"])
-        if item.get("status") == "wired":
-            edges.append(_edge(sid, "backtest", item.get("engine") or sid))
-        else:
-            edges.append(_edge(sid, "planned", ""))
     return _ir(
         f"【{name}】策略拓撲",
         "architecture",
@@ -709,7 +734,7 @@ def strategy_catalog_maps() -> dict[str, Any]:
         "groups": groups,
         "views": views,
         "disclaimer": data.get("disclaimer"),
-        "hint": "點分類看全部策略節點；點策略看工作流。角色可 archify_strategies。",
+          "hint": "Archify CLI 可視化。點分類看該類可回測引擎；點策略看工作流。角色可 archify_strategies。",
     }
 
 

@@ -3,6 +3,24 @@
  */
 import { useEffect, useId, useRef, useState } from 'react';
 
+type MermaidAPI = typeof import('mermaid').default;
+let mermaidPromise: Promise<MermaidAPI> | null = null;
+
+function loadMermaid(): Promise<MermaidAPI> {
+  if (!mermaidPromise) {
+    mermaidPromise = import('mermaid').then((mod) => {
+      mod.default.initialize({
+        startOnLoad: false,
+        theme: 'neutral',
+        securityLevel: 'strict',
+        flowchart: { htmlLabels: true, curve: 'basis' },
+      });
+      return mod.default;
+    });
+  }
+  return mermaidPromise;
+}
+
 export default function MermaidBlock({ chart, title }: { chart: string; title?: string }) {
   const rawId = useId().replace(/:/g, '');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -16,13 +34,7 @@ export default function MermaidBlock({ chart, title }: { chart: string; title?: 
 
     void (async () => {
       try {
-        const mermaid = (await import('mermaid')).default;
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: 'neutral',
-          securityLevel: 'strict',
-          flowchart: { htmlLabels: true, curve: 'basis' },
-        });
+        const mermaid = await loadMermaid();
         const { svg } = await mermaid.render(`mmd-${rawId}`, chart);
         if (!cancelled && containerRef.current) {
           containerRef.current.innerHTML = svg;

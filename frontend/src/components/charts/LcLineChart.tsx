@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { darkTheme, getLcFactory, loadLcjs } from '../../lib/lcjsHost';
+import { useMemo } from 'react';
+import type { EChartsCoreOption } from 'echarts/core';
+import { AXIS_STYLE, hexAlpha, useEChart } from '../../lib/echartsHost';
 
 export type LineSeriesInput = {
   id: string;
@@ -7,33 +8,6 @@ export type LineSeriesInput = {
   color: string;
   points: Array<{ x: number; y: number }>;
 };
-
-function FallbackLine({ series, height }: { series: LineSeriesInput[]; height: number }) {
-  const w = 640;
-  const h = Math.max(80, height);
-  const allY = series.flatMap((s) => s.points.map((p) => p.y));
-  const allX = series.flatMap((s) => s.points.map((p) => p.x));
-  const minY = allY.length ? Math.min(...allY) : 0;
-  const maxY = allY.length ? Math.max(...allY) : 1;
-  const spanY = maxY - minY || Math.abs(maxY) || 1;
-  const minX = allX.length ? Math.min(...allX) : 0;
-  const maxX = allX.length ? Math.max(...allX) : minX + 1;
-  const spanX = maxX - minX || 1;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="h-full w-full" role="img" aria-label="折線圖">
-      {series.map((s) => {
-        const d = s.points
-          .map((p, i) => {
-            const x = 8 + ((p.x - minX) / spanX) * (w - 16);
-            const y = h - 10 - ((p.y - minY) / spanY) * (h - 20);
-            return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-          })
-          .join(' ');
-        return <path key={s.id} d={d} fill="none" stroke={s.color} strokeWidth="2" />;
-      })}
-    </svg>
-  );
-}
 
 export default function LcLineChart({
   series,
@@ -44,63 +18,57 @@ export default function LcLineChart({
   height?: number;
   yMax?: number;
 }) {
-  const host = useRef<HTMLDivElement>(null);
-  const [mode, setMode] = useState<'lcjs' | 'fallback'>('fallback');
-  const payload = useMemo(() => JSON.stringify({ series, yMax }), [series, yMax]);
-
-  useEffect(() => {
-    const el = host.current;
-    if (!el) return;
-    let disposed = false;
-    let chart: { dispose: () => void } | null = null;
-
-    void (async () => {
-      try {
-        const [lc, theme, mod] = await Promise.all([getLcFactory(), darkTheme(), loadLcjs()]);
-        if (disposed) return;
-        if (!lc || !theme || !mod) {
-          setMode('fallback');
-          return;
-        }
-        const xy = lc.ChartXY({ container: el, theme, animationsEnabled: false });
-        xy.setTitle('').setPadding({ left: 4, right: 10, top: 4, bottom: 4 });
-        if (yMax != null) xy.getDefaultAxisY().setInterval({ start: 0, end: yMax, stopAxisAfter: false });
-        const { SolidFill, ColorHEX, SolidLine } = mod;
-        for (const s of series) {
-          const line = xy
-            .addPointLineAreaSeries()
-            .setName(s.name ?? s.id)
-            .setStrokeStyle(new SolidLine({ thickness: 2, fillStyle: new SolidFill({ color: ColorHEX(s.color) }) }))
-            .setAreaFillStyle(new SolidFill({ color: ColorHEX(s.color).setA(30) }));
-          if (s.points.length) {
-            line.appendSamples({
-              xValues: s.points.map((p) => p.x),
-              yValues: s.points.map((p) => p.y),
-            });
-          }
-        }
-        chart = xy;
-        if (!disposed && el.clientHeight > 0) setMode('lcjs');
-      } catch (err) {
-        console.warn('[lcjs] ChartXY 失敗，改用 SVG', err);
-        if (!disposed) setMode('fallback');
-      }
-    })();
-
-    return () => {
-      disposed = true;
-      chart?.dispose();
+  const option = useMemo<EChartsCoreOption>(() => {
+    const named = series.length > 1;
+    return {
+      backgroundColor: 'transparent',
+      animation: false,
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(28,28,30,0.92)',
+        borderColor: 'rgba(255,255,255,0.08)',
+        textStyle: { color: '#F5F5F7', fontSize: 11 },
+      },
+      legend: named
+        ? { top: 0, textStyle: { color: '#AEAEB2', fontSize: 10 }, icon: 'circle', itemWidth: 8, itemHeight: 8 }
+        : undefined,
+      grid: { left: 40, right: 12, top: named ? 28 : 10, bottom: 24, containLabel: false },
+      xAxis: {
+        type: 'value',
+        min: 'dataMin',
+        max: 'dataMax',
+        ...AXIS_STYLE,
+      },
+      yAxis: {
+        type: 'value',
+        max: yMax,
+        scale: yMax == null,
+        ...AXIS_STYLE,
+      },
+      series: series.map((row) => ({
+        id: row.id,
+        name: row.name ?? row.id,
+        type: 'line',
+        showSymbol: row.points.length < 8,
+        symbolSize: 6,
+        smooth: 0.12,
+        data: row.points.map((p) => [p.x, p.y]),
+        lineStyle: { color: row.color, width: 2 },
+        itemStyle: { color: row.color },
+        areaStyle: { color: hexAlpha(row.color, 0.16) },
+      })),
     };
-  }, [payload, series, yMax]);
+  }, [series, yMax]);
+
+  const host = useEChart(option, height);
 
   return (
-    <div className="relative w-full" style={{ height, minHeight: height }}>
-      {mode === 'fallback' ? <FallbackLine series={series} height={height} /> : null}
-      <div
-        ref={host}
-        className={mode === 'lcjs' ? 'h-full w-full' : 'pointer-events-none absolute inset-0 opacity-0'}
-        style={{ minHeight: height }}
-      />
-    </div>
+    <div
+      ref={host}
+      className="h-full w-full"
+      style={{ height, minHeight: height }}
+      role="img"
+      aria-label="折線圖"
+    />
   );
 }

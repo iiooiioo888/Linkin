@@ -111,6 +111,17 @@ def test_lab_api_endpoints(client: TestClient, monkeypatch):
         "ponytail_review",
         lambda content, **kw: {"kind": "code", "review": {"summary": "ok"}, "source": "ponytail"},
     )
+    monkeypatch.setattr(
+        "backend.company.archify_compile.render_view",
+        lambda **kw: {
+            "ok": True,
+            "html": "<html><body><svg></svg></body></html>",
+            "diagram_type": "architecture",
+            "title": "策略庫總覽",
+            "engine": "archify",
+            "source": "https://github.com/tt-a1i/archify",
+        },
+    )
     monkeypatch.setattr(lab_tools, "get_evoloop_architecture", lab_tools.get_evoloop_architecture)
 
     r = client.post("/lab/firecrawl/scrape", json={"url": "https://example.com"})
@@ -142,6 +153,7 @@ def test_lab_api_endpoints(client: TestClient, monkeypatch):
     maps = r.json()
     assert maps["ok"] is True
     assert maps["overview"]["nodes"]
+    assert any(n["id"] == "enhanced_volume" for n in maps["overview"]["nodes"])
     assert maps["data_flow"]["meta"]["type"] == "data-flow"
     assert any(g["id"] == "ma" for g in maps["groups"])
     assert any(n["id"] == "dual_ma" for n in next(g for g in maps["groups"] if g["id"] == "ma")["architecture"]["nodes"])
@@ -155,6 +167,18 @@ def test_lab_api_endpoints(client: TestClient, monkeypatch):
 
     r = client.get("/lab/archify/strategies/not-a-strategy")
     assert r.status_code == 404
+
+    r = client.get("/lab/archify/html", params={"view": "overview"})
+    assert r.status_code == 200
+    html_body = r.json()
+    assert html_body["ok"] is True
+    assert html_body["engine"] == "archify"
+    assert "<svg" in html_body["html"].lower()
+
+    artifact = client.get("/lab/archify/artifact", params={"view": "overview"})
+    assert artifact.status_code == 200
+    assert "svg" in artifact.text.lower()
+    assert "text/html" in artifact.headers.get("content-type", "")
 
 
 def test_lab_quant_preview_returns_workflow_and_chart(client: TestClient, monkeypatch):

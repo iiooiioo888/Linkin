@@ -1,19 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { darkTheme, getLcFactory } from '../../lib/lcjsHost';
-import LcBarChart from './LcBarChart';
+import { useMemo } from 'react';
+import type { EChartsCoreOption } from 'echarts/core';
+import { useEChart } from '../../lib/echartsHost';
 
 export type PieSlice = { name: string; value: number };
 
-function FallbackPie({ slices, height }: { slices: PieSlice[]; height: number }) {
-  const total = Math.max(1, slices.reduce((sum, s) => sum + s.value, 0));
-  return (
-    <LcBarChart
-      height={height}
-      categories={slices.map((s) => s.name)}
-      groups={[{ subCategory: '佔比', values: slices.map((s) => Math.round((s.value / total) * 1000) / 10) }]}
-    />
-  );
-}
+const PALETTE = ['#007AFF', '#34C759', '#FF9F0A', '#FF2D55', '#5856D6', '#8E8E93'];
 
 export default function LcPieChart({
   slices,
@@ -22,55 +13,46 @@ export default function LcPieChart({
   slices: PieSlice[];
   height?: number;
 }) {
-  const host = useRef<HTMLDivElement>(null);
-  const [mode, setMode] = useState<'lcjs' | 'fallback'>('lcjs');
-  const payload = useMemo(() => JSON.stringify(slices), [slices]);
+  const option = useMemo<EChartsCoreOption>(
+    () => ({
+      backgroundColor: 'transparent',
+      animation: false,
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: 'rgba(28,28,30,0.92)',
+        borderColor: 'rgba(255,255,255,0.08)',
+        textStyle: { color: '#F5F5F7', fontSize: 11 },
+      },
+      legend: {
+        bottom: 0,
+        textStyle: { color: '#AEAEB2', fontSize: 10 },
+      },
+      series: [
+        {
+          type: 'pie',
+          radius: ['42%', '68%'],
+          center: ['50%', '46%'],
+          data: slices.map((slice, i) => ({
+            name: slice.name,
+            value: slice.value,
+            itemStyle: { color: PALETTE[i % PALETTE.length] },
+          })),
+          label: { color: '#AEAEB2', fontSize: 10 },
+        },
+      ],
+    }),
+    [slices],
+  );
 
-  useEffect(() => {
-    const el = host.current;
-    if (!el) return;
-    let disposed = false;
-    let chart: { dispose: () => void } | null = null;
+  const host = useEChart(option, height);
 
-    void (async () => {
-      const [lc, theme] = await Promise.all([getLcFactory(), darkTheme()]);
-      if (disposed) return;
-      const pieFn = lc && 'Pie' in lc ? (lc as { Pie?: (opts: unknown) => Record<string, unknown> }).Pie : undefined;
-      if (!lc || !theme || !pieFn) {
-        setMode('fallback');
-        return;
-      }
-      try {
-        setMode('lcjs');
-        const pie = pieFn({ container: el, theme, animationsEnabled: false }) as {
-          setTitle?: (v: string) => unknown;
-          setInnerRadius?: (v: number) => unknown;
-          addSlice?: (name: string, value: number) => unknown;
-          setData?: (rows: Array<{ name: string; value: number }>) => unknown;
-          dispose: () => void;
-        };
-        pie.setTitle?.('');
-        pie.setInnerRadius?.(40);
-        if (typeof pie.setData === 'function') {
-          pie.setData(slices);
-        } else {
-          for (const slice of slices) pie.addSlice?.(slice.name, slice.value);
-        }
-        chart = pie;
-      } catch (err) {
-        console.warn('[lcjs] Pie 初始化失敗', err);
-        setMode('fallback');
-      }
-    })();
-
-    return () => {
-      disposed = true;
-      chart?.dispose();
-    };
-  }, [payload, slices]);
-
-  if (mode === 'fallback') {
-    return <FallbackPie slices={slices} height={height} />;
-  }
-  return <div ref={host} className="h-full w-full" style={{ minHeight: height }} />;
+  return (
+    <div
+      ref={host}
+      className="h-full w-full"
+      style={{ height, minHeight: height }}
+      role="img"
+      aria-label="餅圖"
+    />
+  );
 }

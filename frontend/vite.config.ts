@@ -1,18 +1,22 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { archifyRenderPlugin } from './vite-plugin-archify.ts'
 
 // GitHub Pages 專案站必須用 /Evoloop/，本機與 Docker 維持 /
 const base = process.env.VITE_BASE || '/'
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 // https://vite.dev/config/
 export default defineConfig({
   base,
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), archifyRenderPlugin(repoRoot)],
   optimizeDeps: {
     include: [
       'react-is',
-      '@lightningchart/lcjs',
+      'echarts',
       'three',
       'three/examples/jsm/controls/OrbitControls.js',
       'mermaid',

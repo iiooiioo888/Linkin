@@ -10,7 +10,7 @@ import {
   type StrategyMapCatalog,
   type StrategyMapDetail,
 } from '../api/client';
-import ArchifyViewer from './ArchifyViewer';
+import ArchifyFrame from './ArchifyFrame';
 import ErrorState from './ui/ErrorState';
 
 type Kind = 'architecture' | 'workflow' | 'lifecycle' | 'data-flow';
@@ -330,9 +330,26 @@ export default function StrategyMapPanel() {
         </div>
         {detailLoading && activeId ? (
           <p className="py-6 text-center text-[12px] text-[#8E8E93]">載入工作流…</p>
-        ) : ir ? (
-          <ArchifyViewer ir={ir} focusId={activeId} onSelect={onDiagramSelect} />
-        ) : null}
+        ) : (
+          <ArchifyFrame
+            view={
+              activeId
+                ? 'strategy'
+                : scope.startsWith('group:')
+                  ? 'group'
+                  : scope === 'data_flow'
+                    ? 'data_flow'
+                    : scope === 'lifecycle'
+                      ? 'lifecycle'
+                      : 'overview'
+            }
+            id={activeId ?? (scope.startsWith('group:') ? scope.slice(6) : undefined)}
+            kind={activeId ? kind : undefined}
+            fallbackIr={ir}
+            focusId={activeId}
+            onSelect={onDiagramSelect}
+          />
+        )}
       </div>
 
       <aside className="sq-tree-side">

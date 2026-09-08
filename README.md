@@ -219,7 +219,8 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 │           ├── HubPanel.tsx      #   Hub 操作台（內嵌於監控，非獨立產品線）
 │           ├── StrategyCatalogPanel.tsx  # 實驗室回測策略庫分類樹
 │           ├── StrategyMapPanel.tsx      # Archify 策略可視化
-│           ├── ArchifyViewer.tsx         # Archify IR → SVG
+│           ├── ArchifyFrame.tsx          # archify CLI HTML 嵌入
+│           ├── ArchifyViewer.tsx         # Archify IR → SVG 後備
 │           ├── linkin/          #   憲法／NPC／任務／建築／道具／Minecraft 橋接
 │           └── ...
 ├── docs/                        # 知識庫（含 docs/linkin/）
@@ -303,7 +304,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 
 ### 📈 量化行情（角色工具）
 
-對齊 [stock-quant](https://github.com/iiooiioo888/stock-quant) 的報價／K 線／分鐘線／31 策略回測（含博客內建 `enhanced_volume`／`single_volume`）／策略庫目錄／優化／Walk-Forward／11 種組合／資金流／基準對比，交由量化研究桌角色引用。實驗室 **策略庫**（`#/monitor/lab/quant`）以分類樹瀏覽可回測／規劃項；**策略圖**（`#/monitor/lab/maps`）用 [Archify](https://github.com/tt-a1i/archify) IR 把全部策略畫成總覽、分類拓撲與工作流，角色可 `archify_strategies`。不嵌入 stock-quant 完整工作站 UI。
+對齊 [stock-quant](https://github.com/iiooiioo888/stock-quant) 的報價／K 線／分鐘線／31 策略回測（含博客內建 `enhanced_volume`／`single_volume`）／策略庫目錄／優化／Walk-Forward／11 種組合／資金流／基準對比，交由量化研究桌角色引用。實驗室 **策略庫**（`#/monitor/lab/quant`）以分類樹瀏覽可回測／規劃項；**策略圖**（`#/monitor/lab/maps`）把 [Archify](https://github.com/tt-a1i/archify) 列為前端依賴（`file:../vendor/archify`）並呼叫其 CLI，把全部策略畫成總覽、分類拓撲與工作流。角色可 `archify_strategies`。不嵌入 stock-quant 完整工作站 UI。
 
 | 工具 | 資料源 | 說明 |
 |------|--------|------|
@@ -368,7 +369,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 
 | 庫 | 用途 |
 |------|------|
-| **LightningChart JS** | 控制台／實驗室／雲監控圖表（WebGL）。授權寫入前端 `VITE_LCJS_LICENSE`；未設時自動降級 Canvas，畫面仍可用 |
+| **Apache ECharts** | 控制台／實驗室／雲監控／回測曲線（Apache-2.0，免費、無需授權金鑰） |
 | **neiki-gallery** | NPC／道具／陣營／任務／建築方案畫廊；爬蟲抓到的圖；對話 Markdown 圖片燈箱。含砌體、網格、馬賽克、畫中畫 |
 
 圖表入口：`frontend/src/components/charts/`。畫廊入口：`frontend/src/components/media/MediaGallery.tsx`（vendor：`frontend/src/vendor/neiki-gallery/`）。
@@ -395,6 +396,9 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 - `GET /lab/quant/strategies` — 回測策略庫分類樹（實驗室瀏覽）
 - `GET /lab/archify/strategies` — 策略庫 Archify 總覽／分類拓撲
 - `GET /lab/archify/strategies/{id}` — 單策略工作流／生命週期 IR
+- `GET /lab/archify/html` — 以 archify CLI 渲染策略圖 HTML（`view=overview|data_flow|lifecycle|group|strategy`）
+- `GET /lab/archify/artifact` — 同一張圖的 `text/html`（iframe 可直接載入）
+- `POST /lab/archify/render` — 把簡化 IR 交給 archify CLI
 - `GET /memories` · `DELETE /memories/{id}` · `POST /memories/cleanup` — 記憶庫；Chroma 空則讀 JSON
 
 ---

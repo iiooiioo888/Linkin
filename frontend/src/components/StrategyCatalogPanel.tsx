@@ -10,7 +10,7 @@ import {
   type QuantStrategyItem,
   type QuantStrategyPreview,
 } from '../api/client';
-import ArchifyViewer from './ArchifyViewer';
+import ArchifyFrame from './ArchifyFrame';
 import CapitalFlowPanel from './CapitalFlowPanel';
 import LcLineChart from './charts/LcLineChart';
 import ErrorState from './ui/ErrorState';
@@ -55,7 +55,6 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
   const [appliedSymbol, setAppliedSymbol] = useState('600519');
   const [preview, setPreview] = useState<QuantStrategyPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
   const [chartLoading, setChartLoading] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
@@ -95,7 +94,6 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
       return;
     }
     let cancelled = false;
-    setPreviewLoading(true);
     setPreviewError(null);
     void labArchifyStrategy(activeId)
       .then((payload) => {
@@ -110,9 +108,6 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
         if (cancelled) return;
         setPreview(null);
         setPreviewError((err as Error).message);
-      })
-      .finally(() => {
-        if (!cancelled) setPreviewLoading(false);
       });
     return () => {
       cancelled = true;
@@ -348,12 +343,19 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
             繪製回測
           </button>
         </div>
-        {previewLoading ? (
-          <p className="py-6 text-center text-[12px] text-[#8E8E93]">載入圖表…</p>
-        ) : previewError ? (
-          <ErrorState kind="partial" message={previewError} />
-        ) : preview?.workflow ? (
-          <ArchifyViewer ir={preview.workflow} compact={embedded} />
+        {previewError ? (
+          <p className="text-[10px] text-[#8E8E93]">工作流：{previewError}</p>
+        ) : null}
+        {active && preview?.workflow ? (
+          <ArchifyFrame
+            view="strategy"
+            id={active.id}
+            kind="workflow"
+            fallbackIr={preview.workflow}
+            compact={embedded}
+          />
+        ) : active ? (
+          <p className="py-6 text-center text-[12px] text-[#8E8E93]">載入工作流…</p>
         ) : (
           <p className="py-6 text-center text-[11px] text-[#636366]">選策略後顯示工作流</p>
         )}

@@ -3,7 +3,7 @@
  *
  * 顯示 CPU / 記憶體 / 網路使用量折線圖，
  * 支援 1h / 6h / 24h 時間範圍切換。
- * 圖表走 LightningChart JS（WebGL）。
+ * 圖表走 Apache ECharts（Apache-2.0，無需授權）。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchCloudMonitoring } from '../api/client';

@@ -45,7 +45,7 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.getByText('【移動平均線】')).toBeVisible();
     await expect(page.getByText('角色引用')).toBeVisible();
     await expect(page.getByText('Archify', { exact: false }).first()).toBeVisible();
-    await expect(page.locator('svg[role="img"]').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('iframe.archify-frame, svg[role="img"]').first()).toBeVisible({ timeout: 30_000 });
 
     await page.reload();
     await expect(page.url()).toMatch(/#\/monitor\/lab\/maps/);
@@ -58,7 +58,7 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.getByText('【移動平均線】')).toBeVisible();
     await expect(page.getByText('角色引用')).toBeVisible();
     await expect(page.getByText('權益曲線')).toBeVisible();
-    await expect(page.locator('svg[role="img"]').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('iframe.archify-frame, svg[role="img"]').first()).toBeVisible({ timeout: 30_000 });
 
     await page.reload();
     await expect(page.url()).toMatch(/#\/monitor\/lab\/quant/);

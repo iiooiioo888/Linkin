@@ -7,7 +7,7 @@ import { labArchifyEvoloop, labArchifyGenerate, labFirecrawlScrape, labFirecrawl
 import { LAB_INTEGRATION_TABS, LAB_TABS, type LabSubTab } from '../lib/labTabs';
 import { activityNavPath } from '../lib/monitorTabs';
 import { extractMarkdownImages } from '../lib/visualCards';
-import ArchifyViewer from './ArchifyViewer';
+import ArchifyFrame from './ArchifyFrame';
 import LcBarChart from './charts/LcBarChart';
 import MediaGallery from './media/MediaGallery';
 import PromptEditor from './PromptEditor';
@@ -402,7 +402,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                 {archLoading ? '生成中…' : '生成架構圖'}
               </button>
             </section>
-            {archIr && <ArchifyViewer ir={archIr} />}
+            {archIr && <ArchifyFrame ir={archIr} fallbackIr={archIr} />}
             {archError && <ErrorState kind="generic" compact message={archError} />}
           </div>
         )}

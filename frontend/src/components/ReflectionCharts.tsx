@@ -1,5 +1,5 @@
 /**
- * 反思閉環可視化：四維雷達 + 迭代趨勢（LightningChart JS）。
+ * 反思閉環可視化：四維雷達 + 迭代趨勢（Apache ECharts，免費）。
  */
 import type { MultiDimEvaluation } from '../types';
 import LcLineChart from './charts/LcLineChart';

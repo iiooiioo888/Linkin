@@ -4,7 +4,6 @@ interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   readonly VITE_GITHUB_PAGES?: string;
   readonly VITE_BASE?: string;
-  readonly VITE_LCJS_LICENSE?: string;
 }
 
 interface ImportMeta {

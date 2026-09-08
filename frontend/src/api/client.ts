@@ -1223,8 +1223,9 @@ export interface QuantStrategyPreview extends StrategyMapDetail {
 
 async function readApiError(resp: Response): Promise<string> {
   try {
-    const body = (await resp.json()) as { detail?: string };
+    const body = (await resp.json()) as { detail?: string; error?: string };
     if (body.detail) return body.detail;
+    if (body.error) return body.error;
   } catch {
     /* ignore */
   }
@@ -1309,6 +1310,62 @@ export async function labArchifyStrategies(): Promise<StrategyMapCatalog> {
 
 export async function labArchifyStrategy(strategyId: string): Promise<StrategyMapDetail> {
   const resp = await fetch(apiUrl(`/lab/archify/strategies/${encodeURIComponent(strategyId)}`));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+export interface ArchifyHtml {
+  ok: boolean;
+  html: string;
+  diagram_type?: string;
+  title?: string;
+  engine?: string;
+  source?: string;
+}
+
+export function labArchifyArtifactUrl(params: {
+  view?: string;
+  id?: string;
+  kind?: string;
+}): string {
+  const query = new URLSearchParams();
+  query.set('view', params.view || 'overview');
+  if (params.id) query.set('id', params.id);
+  if (params.kind) query.set('kind', params.kind);
+  query.set('embed', '1');
+  return apiUrl(`/lab/archify/artifact?${query.toString()}`);
+}
+
+export async function labArchifyHtml(params: {
+  view?: string;
+  id?: string;
+  kind?: string;
+}): Promise<ArchifyHtml> {
+  const query = new URLSearchParams();
+  if (params.view) query.set('view', params.view);
+  if (params.id) query.set('id', params.id);
+  if (params.kind) query.set('kind', params.kind);
+  const resp = await fetch(apiUrl(`/lab/archify/html?${query.toString()}`));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+export async function labArchifyDevRender(ir: ArchifyIR): Promise<ArchifyHtml> {
+  const resp = await fetch('/__archify/render', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ir }),
+  });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+export async function labArchifyRender(ir: ArchifyIR): Promise<ArchifyHtml> {
+  const resp = await fetch(apiUrl('/lab/archify/render'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ir }),
+  });
   if (!resp.ok) throw new Error(await readApiError(resp));
   return resp.json();
 }

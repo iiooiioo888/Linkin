@@ -1,7 +1,7 @@
 # 量化行情工具（角色引用）
 
 對齊 [stock-quant](https://github.com/iiooiioo888/stock-quant) 的角色側能力：報價、K 線／分鐘線、31 種策略回測（含博客內建增強成交量／單成交量；滑點／T+1／漲跌停／移動止損）、策略庫分類目錄、網格優化、Walk-Forward、熱力圖、訊號投票、策略排行、11 種組合方法、盯盤、選股、基本面、個股／大盤資金流、北向、龍虎榜、板塊、基準對比。  
-以公司 `tool_registry` 的 ReAct `tool_call` 交給量化研究桌角色呼叫，**不**嵌入其完整 Web 工作站。人類可在實驗室 **策略庫**（`#/monitor/lab/quant`）瀏覽分類樹，勾選可回測項並複製 `market_backtest` 呼叫，頁面中間會畫工作流、權益曲線與收盤價；**策略圖**（`#/monitor/lab/maps`）用 Archify 把全部策略畫成總覽、分類拓撲與工作流。量化角色監控頁有同一入口。
+以公司 `tool_registry` 的 ReAct `tool_call` 交給量化研究桌角色呼叫，**不**嵌入其完整 Web 工作站。人類可在實驗室 **策略庫**（`#/monitor/lab/quant`）瀏覽分類樹，勾選可回測項並複製 `market_backtest` 呼叫，頁面中間會用 [Archify](https://github.com/tt-a1i/archify) CLI 畫工作流，並顯示權益曲線與收盤價；**策略圖**（`#/monitor/lab/maps`）同樣呼叫 Archify 把全部策略畫成總覽、分類拓撲與工作流。量化角色監控頁有同一入口。
 
 Hub 的 `StocksX_get_price` 仍為沙箱測試工具；真實公開行情走下列免費 API（`httpx`，無 yfinance／akshare 依賴）。
 
@@ -58,7 +58,7 @@ Hub 的 `StocksX_get_price` 仍為沙箱測試工具；真實公開行情走下�
 策略庫對齊 stock-quant `strategies/strategy_library.py`（均線／動量／均值回歸／波動率／趨勢／形態／突破／組合／ML 規劃）。
 
 - 瀏覽：實驗室 → **策略庫**，或 `GET /lab/quant/strategies`；圖表預覽 `GET /lab/quant/preview?strategy=dual_ma&symbol=600519`；**資金流三視圖** `GET /lab/quant/capital-flow?strategy=dual_ma&symbol=600519&initial_capital=1000000`（瀑布 Mermaid、狀態機、時間軸表）
-- 可視化：實驗室 → **策略圖**，或 `GET /lab/archify/strategies`；單策略 `GET /lab/archify/strategies/dual_ma`
+- 可視化：實驗室 → **策略圖**，或 `GET /lab/archify/strategies`；單策略 `GET /lab/archify/strategies/dual_ma`；正式圖 `GET /lab/archify/html?view=overview`（`view=group&id=ma`／`view=strategy&id=dual_ma`），由前端依賴 `archify`（`file:../vendor/archify`，上游 [tt-a1i/archify](https://github.com/tt-a1i/archify)）CLI 渲染；亦可 `GET /lab/archify/artifact` 直接取 HTML
 - 角色：先呼叫：
 
 ```tool_call

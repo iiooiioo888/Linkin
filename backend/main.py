@@ -17,7 +17,7 @@ import json as json_mod
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD, evoloop_graph
@@ -1404,6 +1404,13 @@ class ArchifyGenerateRequest(BaseModel):
     description: str
 
 
+class ArchifyRenderRequest(BaseModel):
+    ir: dict[str, Any] = {}
+    view: str = ""
+    id: str = ""
+    kind: str = ""
+
+
 @app.post("/lab/firecrawl/scrape")
 async def lab_firecrawl_scrape(body: FirecrawlScrapeRequest):
     """Firecrawl 單頁抓取（可選 API 金鑰）。"""
@@ -1465,6 +1472,65 @@ async def lab_archify_generate(body: ArchifyGenerateRequest):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+def _archify_public(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "html": payload["html"],
+        "diagram_type": payload.get("diagram_type"),
+        "title": payload.get("title"),
+        "engine": payload.get("engine") or "archify",
+        "source": payload.get("source"),
+    }
+
+
+@app.get("/lab/archify/html")
+async def lab_archify_html(view: str = "overview", id: str = "", kind: str = ""):
+    """用官方 archify CLI 把策略庫／系統圖編成獨立 HTML。"""
+    from backend.company.archify_compile import render_view
+
+    try:
+        return _archify_public(render_view(view=view, id=id, kind=kind))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.get("/lab/archify/artifact")
+async def lab_archify_artifact(view: str = "overview", id: str = "", kind: str = ""):
+    """同一張策略圖，直接回 Archify HTML（iframe / 另開分頁）。"""
+    from backend.company.archify_compile import render_view
+
+    try:
+        payload = render_view(view=view, id=id, kind=kind)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as orig:
+        raise HTTPException(status_code=503, detail=str(orig)) from orig
+    except Exception as orig:
+        raise HTTPException(status_code=502, detail=str(orig)) from orig
+    return HTMLResponse(payload["html"], media_type="text/html; charset=utf-8")
+
+
+@app.post("/lab/archify/render")
+async def lab_archify_render(body: ArchifyRenderRequest):
+    """把簡化 IR（或正式 Archify JSON）交給 archify CLI 渲染。"""
+    from backend.company.archify_compile import render_ir, render_view
+
+    try:
+        if body.ir:
+            return _archify_public(render_ir(body.ir))
+        return _archify_public(render_view(view=body.view, id=body.id, kind=body.kind))
+    except ValueError as orig:
+        raise HTTPException(status_code=400, detail=str(orig)) from orig
+    except FileNotFoundError as orig:
+        raise HTTPException(status_code=503, detail=str(orig)) from orig
+    except Exception as orig:
+        raise HTTPException(status_code=502, detail=str(orig)) from orig
 
 
 @app.get("/lab/archify/strategies")

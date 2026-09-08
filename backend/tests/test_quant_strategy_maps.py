@@ -21,6 +21,8 @@ def test_catalog_maps_covers_all_categories_and_wired_engines():
     node_ids = {n["id"] for n in ma["architecture"]["nodes"]}
     assert "dual_ma" in node_ids
     assert "hub_ma" in node_ids
+    overview_ids = {n["id"] for n in payload["overview"]["nodes"]}
+    assert {"dual_ma", "enhanced_volume", "single_volume", "cat_ma"} <= overview_ids
     total_nodes = sum(len(g["items"]) for g in payload["groups"])
     assert total_nodes == payload["catalog_count"]
 

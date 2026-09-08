@@ -2283,6 +2283,28 @@ body {
   flex-shrink: 0;
 }
 
+.archify-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archify-frame-card {
+  min-height: 420px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.archify-frame {
+  display: block;
+  width: 100%;
+  min-height: 480px;
+  height: min(68vh, 720px);
+  border: 0;
+  background: #0b0f14;
+}
+
 .sq-chart-card {
   min-height: 220px;
   overflow: auto;

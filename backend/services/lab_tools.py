@@ -2,7 +2,7 @@
 
 Firecrawl：可選 FIRECRAWL_API_KEY，未設定時走 httpx 輕量抓取。
 Prompt Optimizer / Ponytail：經 call_llm，遵守 AGENTS.md LLM 抽象層約束。
-Archify：輸出簡化 architecture IR，前端 SVG 渲染。
+Archify：以 tt-a1i/archify CLI 把 IR 編成獨立 HTML；前端 iframe 嵌入。
 """
 
 from __future__ import annotations

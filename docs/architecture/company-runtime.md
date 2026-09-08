@@ -41,7 +41,7 @@ Level 4: Support（11）          — 審查、整合、Prompt、法務、記憶
 
 ## 量化行情工具
 
-金融／研究角色透過同一套 `tool_call` 呼叫 `backend/company/quant_tools.py`（Yahoo 主源，A 股可備援東方財富／新浪；外匯 Frankfurter；加密貨幣 CoinPaprika／CoinGecko／Binance；可選 Tushare／Finnhub／Alpha Vantage）。工具含報價、分鐘線、31 策略回測（含增強成交量／單成交量）、策略庫目錄、網格優化、Walk-Forward、訊號投票、11 種組合與基準對比。實驗室「策略庫」分類樹（`GET /lab/quant/strategies`）供瀏覽與複製 tool_call；「策略圖」（`GET /lab/archify/strategies`）用 Archify 可視化全部策略，角色可 `archify_strategies`。不嵌入 stock-quant 完整工作站。詳見 [量化行情工具](../company/quant-tools.md)。
+金融／研究角色透過同一套 `tool_call` 呼叫 `backend/company/quant_tools.py`（Yahoo 主源，A 股可備援東方財富／新浪；外匯 Frankfurter；加密貨幣 CoinPaprika／CoinGecko／Binance；可選 Tushare／Finnhub／Alpha Vantage）。工具含報價、分鐘線、31 策略回測（含增強成交量／單成交量）、策略庫目錄、網格優化、Walk-Forward、訊號投票、11 種組合與基準對比。實驗室「策略庫」分類樹（`GET /lab/quant/strategies`）供瀏覽與複製 tool_call；「策略圖」（`GET /lab/archify/html`）以 Archify CLI 可視化全部策略，角色可 `archify_strategies`。不嵌入 stock-quant 完整工作站。詳見 [量化行情工具](../company/quant-tools.md)。
 
 ## 執行流程
 
