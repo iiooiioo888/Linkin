@@ -83,23 +83,25 @@ def test_default_digests_reject_garbage(monkeypatch):
         assert resp.status_code == 401
 
 
-def test_default_credentials_unlock(monkeypatch):
-    """預設閘門身分為 ieong / LFH@Pa$$w0rd（環境變數未覆寫時）。"""
-    monkeypatch.setenv("LINKIN_AUTH_FORCE", "1")
-    monkeypatch.delenv("LINKIN_GATE_ID", raising=False)
-    monkeypatch.delenv("LINKIN_GATE_SECRET", raising=False)
-    from backend.auth.gate import issue_login, session_user
-    from backend.main import app
+def test_default_digest_fragments_are_well_formed():
+    from backend.auth import gate as g
 
-    token = issue_login("ieong", "LFH@Pa$$w0rd", identity="unit")
-    assert token
-    assert session_user(token) == "ieong"
-    assert issue_login("ieong", "wrong", identity="unit-bad") is None
+    user_hex = "".join(g._U)
+    secret_hex = "".join(g._S)
+    assert len(g._U) == 4 and len(g._S) == 4
+    assert len(user_hex) == 64 and len(secret_hex) == 64
+    assert all(len(part) == 16 for part in (*g._U, *g._S))
+    assert user_hex != secret_hex
+    assert g._digest("nope") != user_hex
+    assert g._digest("nope") != secret_hex
 
-    with TestClient(app) as client:
-        resp = client.post(
-            "/auth/login", json={"username": "ieong", "password": "LFH@Pa$$w0rd"}
-        )
-        assert resp.status_code == 200
-        assert resp.json()["user"] == "ieong"
-        assert client.get("/dashboard").status_code == 200
+
+def test_frontend_gate_fragments_stay_in_sync():
+    from pathlib import Path
+
+    from backend.auth import gate as g
+
+    src = Path(__file__).resolve().parents[2] / "frontend" / "src" / "lib" / "gateDigest.ts"
+    text = src.read_text(encoding="utf-8")
+    for part in (*g._U, *g._S):
+        assert part in text

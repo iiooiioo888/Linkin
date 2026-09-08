@@ -140,17 +140,39 @@ class TestCostTracker:
             "cache_write",
             "reasoning",
             "image",
+            "image_output",
             "audio",
+            "audio_output",
+            "transcription",
+            "video",
             "embedding",
+            "search",
+            "tool",
+            "batch_input",
+            "batch_output",
+            "long_context",
+            "request",
+            "storage",
+            "computer",
+            "realtime",
+            "file_search",
+            "code_exec",
         }
         flash = payload["by_id"]["deepseek-v4-flash"]
         ids = {item["id"] for item in flash["items"]}
-        assert {"input", "output", "cached_input", "reasoning"} <= ids
+        assert {"input", "output", "cached_input", "reasoning", "search", "tool"} <= ids
         gemini = payload["by_id"]["gemini-3.1-pro"]
         assert gemini["image"] > 0
         assert gemini["audio"] > 0
+        assert gemini["video"] > 0
+        assert gemini["search"] > 0
         embed = payload["by_id"]["text-embedding-3-small"]
         assert embed["embedding"] > 0
+        sol = payload["by_id"]["gpt-5.6-sol"]
+        assert sol["computer"] > 0
+        assert sol["image_output"] > 0
+        search_cost = CostTracker.estimate_cost("gpt-4o", search_calls=1_000)
+        assert search_cost == pytest.approx(rate_card_for("gpt-4o")["search"])
 
     def test_estimate_cost_rough(self):
         cost = CostTracker.estimate_cost_rough("gpt-4o-mini", "medium")

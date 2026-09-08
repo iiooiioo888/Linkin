@@ -13,7 +13,7 @@ import {
   pickBusyAgents,
 } from '../lib/animLive';
 import { LAB_INTEGRATION_TABS, type LabSubTab } from '../lib/labTabs';
-import { filterAgentsByDesk, requestRoleGrillDesk, requestRoleSettingsDesk } from '../lib/agentUi';
+import { filterAgentsByDesk, requestRoleSettingsDesk } from '../lib/agentUi';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { MonitorTab } from './AppShell';
 
@@ -323,16 +323,7 @@ function CompanyCard({
             color={active.length ? GREEN : busy.length ? ORANGE : GRAY}
             label={active.length ? `${active.length} 執行` : busy.length ? `${busy.length} 佇列` : '空閒'}
           />
-          {onOpen ? <GoBtn onClick={onOpen} label="角色" /> : null}
-          {onOpenTab ? (
-            <GoBtn
-              onClick={() => {
-                requestRoleGrillDesk();
-                onOpenTab('agents');
-              }}
-              label="質詢"
-            />
-          ) : null}
+          {onOpen ? <GoBtn onClick={onOpen} label="角色／質詢" /> : null}
           {onOpenTab ? <GoBtn onClick={() => onOpenTab('memory')} label="L0" /> : null}
         </span>
       }

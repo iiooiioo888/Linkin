@@ -1,9 +1,16 @@
 /**
  * 前端閘門狀態：會話票存放於本機，請求時帶 X-Linkin-Gate。
- * 帳密校驗只在後端進行，此檔不含任何身分明文。
+ * 有後端時走 /auth/login；GitHub Pages 等靜態站改以本機摘要核對。
+ * 此檔不含任何身分明文。
  */
+import { matchLocalGate } from './gateDigest';
+
 const TOKEN_KEY = 'evoloop.runtime';
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
+const LOCAL_PREFIX = 'lg1.';
+const PAGES_MODE = import.meta.env.VITE_GITHUB_PAGES === 'true';
+const HAS_REMOTE_API = Boolean(import.meta.env.VITE_API_URL);
+const STATIC_HOST = PAGES_MODE && !HAS_REMOTE_API;
 
 type GateRecord = { t: string; u: string; exp: number };
 
@@ -56,7 +63,21 @@ function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
 
-export async function loginGate(username: string, password: string): Promise<{ ok: true; user: string } | { ok: false; error: string }> {
+function isLocalToken(token: string | null): boolean {
+  return Boolean(token?.startsWith(LOCAL_PREFIX));
+}
+
+function issueLocalSession(user: string) {
+  const token = `${LOCAL_PREFIX}${crypto.randomUUID().replaceAll('-', '')}`;
+  writeRecord({ t: token, u: user, exp: Date.now() + 12 * 3600 * 1000 });
+}
+
+type RemoteLogin =
+  | { kind: 'ok'; token: string; user: string }
+  | { kind: 'denied'; error: string }
+  | { kind: 'offline' };
+
+async function tryRemoteLogin(username: string, password: string): Promise<RemoteLogin> {
   let resp: Response;
   try {
     resp = await fetch(apiUrl('/auth/login'), {
@@ -64,11 +85,12 @@ export async function loginGate(username: string, password: string): Promise<{ o
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ username, password }),
+      signal: AbortSignal.timeout(6000),
     });
   } catch {
-    return { ok: false, error: '後端未連線，無法驗證' };
+    return { kind: 'offline' };
   }
-  if (!resp.ok) {
+  if (resp.status === 401 || resp.status === 429) {
     let detail = '帳號或密碼不正確';
     try {
       const body = (await resp.json()) as { detail?: string };
@@ -76,19 +98,43 @@ export async function loginGate(username: string, password: string): Promise<{ o
     } catch {
       /* ignore */
     }
-    return { ok: false, error: detail };
+    return { kind: 'denied', error: detail };
   }
-  const data = (await resp.json()) as { token?: string; user?: string };
-  const token = data.token ?? '';
-  const user = data.user || username.trim();
-  if (!token) return { ok: false, error: '登入回應異常' };
-  writeRecord({ t: token, u: user, exp: Date.now() + 12 * 3600 * 1000 });
+  if (!resp.ok) return { kind: 'offline' };
+  try {
+    const data = (await resp.json()) as { token?: string; user?: string };
+    const token = data.token ?? '';
+    if (!token) return { kind: 'offline' };
+    return { kind: 'ok', token, user: data.user || username.trim() };
+  } catch {
+    return { kind: 'offline' };
+  }
+}
+
+async function unlockLocal(username: string, password: string): Promise<{ ok: true; user: string } | { ok: false; error: string }> {
+  const user = username.trim();
+  const matched = await matchLocalGate(user, password);
+  if (!matched) return { ok: false, error: '帳號或密碼不正確' };
+  issueLocalSession(user);
   return { ok: true, user };
+}
+
+export async function loginGate(username: string, password: string): Promise<{ ok: true; user: string } | { ok: false; error: string }> {
+  if (!STATIC_HOST) {
+    const remote = await tryRemoteLogin(username, password);
+    if (remote.kind === 'ok') {
+      writeRecord({ t: remote.token, u: remote.user, exp: Date.now() + 12 * 3600 * 1000 });
+      return { ok: true, user: remote.user };
+    }
+    if (remote.kind === 'denied') return { ok: false, error: remote.error };
+  }
+  return unlockLocal(username, password);
 }
 
 export async function verifyGate(): Promise<boolean> {
   const token = getGateToken();
   if (!token) return false;
+  if (isLocalToken(token) || STATIC_HOST) return true;
   try {
     const resp = await fetch(apiUrl('/auth/me'), {
       credentials: 'include',
@@ -111,14 +157,16 @@ export async function verifyGate(): Promise<boolean> {
 
 export async function logoutGate(): Promise<void> {
   const token = getGateToken();
-  try {
-    await fetch(apiUrl('/auth/logout'), {
-      method: 'POST',
-      credentials: 'include',
-      headers: token ? { 'X-Linkin-Gate': token } : {},
-    });
-  } catch {
-    /* ignore */
+  if (token && !isLocalToken(token) && !STATIC_HOST) {
+    try {
+      await fetch(apiUrl('/auth/logout'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-Linkin-Gate': token },
+      });
+    } catch {
+      /* ignore */
+    }
   }
   clearGate();
 }
@@ -154,7 +202,8 @@ export function installAuthFetch() {
         resp.status === 401 &&
         shouldAttach(url) &&
         !url.includes('/auth/login') &&
-        !isHub
+        !isHub &&
+        !isLocalToken(getGateToken())
       ) {
         clearGate();
       }

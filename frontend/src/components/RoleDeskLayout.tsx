@@ -23,7 +23,6 @@ import {
   grillTargetLabel,
   INSPECT_CHAIN,
   jumpLayer,
-  jumpToGrillTree,
   jumpToL0Kernel,
   jumpToRoleDesk,
   KERNEL_CHAIN,
@@ -52,7 +51,7 @@ function eventLabel(event: string): string {
   return EVENT_LABELS[event] ?? event.replace(/_/g, ' ');
 }
 
-export type RoleDeskTab = 'tasks' | 'monitor' | 'settings' | 'quant' | 'grill';
+export type RoleDeskTab = 'tasks' | 'monitor' | 'settings' | 'quant';
 
 export function RoleDeskHeader({
   agent,
@@ -108,13 +107,6 @@ export function RoleDeskHeader({
         ) : null}
         <button
           type="button"
-          className={`rd-btn ${deskTab === 'grill' ? 'on' : ''}`}
-          onClick={() => onDeskTab('grill')}
-        >
-          質詢
-        </button>
-        <button
-          type="button"
           className={`rd-btn ${deskTab === 'monitor' ? 'on' : ''}`}
           onClick={() => onDeskTab('monitor')}
         >
@@ -132,7 +124,7 @@ export function RoleDeskHeader({
           className={`rd-btn ${deskTab === 'tasks' ? 'rd-btn-p' : ''}`}
           onClick={() => onDeskTab('tasks')}
         >
-          任用{open > 0 ? ` ${open}` : ''}
+          工作台{open > 0 ? ` ${open}` : ''}
         </button>
       </div>
     </div>
@@ -639,9 +631,11 @@ export function RahoChainBlock({ agent, onOpenGrill }: { agent: RoleAgent; onOpe
     <div className="rd-sec">
       <div className="rd-tt">
         質詢鏈
-        <button type="button" className="rd-link" onClick={() => (onOpenGrill ? onOpenGrill() : jumpToGrillTree(agent.id))}>
-          開質詢
-        </button>
+        {onOpenGrill ? (
+          <button type="button" className="rd-link" onClick={onOpenGrill}>
+            對照樹
+          </button>
+        ) : null}
       </div>
       <div className="raho-desk-lanes">
         {lanes.map((lane) => (
@@ -753,7 +747,7 @@ export function GrillFeedBlock({
               key={node.node_id}
               type="button"
               className="rd-ev-row raho-feed-row"
-              onClick={() => (onOpenGrill ? onOpenGrill() : jumpToGrillTree())}
+              onClick={() => onOpenGrill?.()}
             >
               <span className="rd-ev-dot" style={{ background: rahoTone(node.status) }} />
               <div className="min-w-0 flex-1">

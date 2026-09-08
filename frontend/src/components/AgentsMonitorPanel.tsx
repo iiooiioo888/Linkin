@@ -1,6 +1,6 @@
 /**
  * AgentsMonitorPanel — 每位公司角色一張獨立工作台。
- * 骨架對齊角色稿：標題列 + 指標帶 + 任用列表 + 右側資訊欄。
+ * 每位角色一張工作台：質詢鏈與任用合在同一視圖。
  * 角色名冊在左側 SidePanel；總覽是控制台「即時」，不在此頁重複。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,6 +21,7 @@ import {
   WORK_ITEM_COLUMNS,
   blankMetrics,
   consumePendingDeskTab,
+  consumePendingGrillReveal,
   filterAgentsByDesk,
   fmtUsd,
   fmtWhen,
@@ -49,7 +50,7 @@ function itemStatus(status: string): { label: string; cls: string } {
 }
 
 function toDeskTab(tab?: string | null): RoleDeskTab {
-  if (tab === 'monitor' || tab === 'settings' || tab === 'quant' || tab === 'grill') return tab;
+  if (tab === 'monitor' || tab === 'settings' || tab === 'quant') return tab;
   return 'tasks';
 }
 
@@ -428,7 +429,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   useEffect(() => {
     if (appliedDefaultTab) return;
     const tab = data?.monitor_prefs?.default_desk_tab;
-    if (tab === 'tasks' || tab === 'monitor' || tab === 'settings' || tab === 'org' || tab === 'overview' || tab === 'grill') {
+    if (tab === 'tasks' || tab === 'monitor' || tab === 'settings' || tab === 'org' || tab === 'overview') {
       setDeskTab(toDeskTab(tab));
       setAppliedDefaultTab(true);
     }
@@ -453,6 +454,19 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
     setExpandedId(null);
     if (tab) setDeskTab(toDeskTab(tab));
   };
+
+  const revealGrill = () => {
+    setDeskTab('tasks');
+    window.requestAnimationFrame(() => {
+      document.getElementById('role-grill-spine')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  useEffect(() => {
+    if (!selected) return;
+    if (!consumePendingGrillReveal()) return;
+    revealGrill();
+  }, [selected?.id]);
 
   const selectedRoute = selected
     ? (data?.catalog_meta?.api_routes ?? []).find((r) => r.id === selected.preferred_provider)
@@ -583,19 +597,6 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                     <StrategyCatalogPanel embedded />
                   </div>
                 </>
-              ) : deskTab === 'grill' ? (
-                <>
-                  <div className="rd-th">
-                    <h2>質詢鏈 — {selected.name}</h2>
-                  </div>
-                  <div className="rd-pane">
-                    <GrillTreePanel
-                      embedded
-                      focusRoleId={selected.id}
-                      onSelectRole={(id) => openDesk(id, 'grill')}
-                    />
-                  </div>
-                </>
               ) : deskTab === 'monitor' ? (
                 <>
                   <div className="rd-th"><h2>角色監控</h2></div>
@@ -606,7 +607,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                       <RoleMonitorExtras
                         agent={selected}
                         onOpenQuant={() => setDeskTab('quant')}
-                        onOpenGrill={() => setDeskTab('grill')}
+                        onOpenGrill={revealGrill}
                       />
                     </section>
                     <section className="rd-sec">
@@ -670,7 +671,15 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
               ) : (
                 <>
                   <div className="rd-th">
-                    <h2>任用列表 — {selected.work_items.length}</h2>
+                    <h2>質詢鏈與任用 — {selected.work_items.length}</h2>
+                  </div>
+                  <div id="role-grill-spine" className="rd-grill-fuse">
+                    <GrillTreePanel
+                      embedded
+                      compact
+                      focusRoleId={selected.id}
+                      onSelectRole={(id) => openDesk(id, 'tasks')}
+                    />
                   </div>
                   <StatusColumnBoard
                     selectedKey={itemFilter}
@@ -719,7 +728,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                 }}
                 grillNodes={selectedGrill}
                 l0={l0}
-                onOpenGrill={() => setDeskTab('grill')}
+                onOpenGrill={revealGrill}
               />
             ) : null}
           </div>

@@ -37,6 +37,7 @@ VENDOR_STATIC: dict[str, tuple[str, ...]] = {
         "qwen3-coder-plus",
         "qwen-vl-plus",
         "qwen-vl-max",
+        "qwen-omni-turbo",
     ),
     "moonshot": (
         "kimi-k2",

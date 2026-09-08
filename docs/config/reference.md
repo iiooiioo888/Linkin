@@ -8,6 +8,17 @@
 |------|------|
 | `OPENAI_API_KEY` | LLM 金鑰（LiteLLM；亦可用 DeepSeek／OpenRouter 等相容金鑰） |
 
+### 登入閘門
+
+倉庫只存 HMAC 摘要，不放來源明文。
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `LINKIN_GATE_ID` | — | 覆寫閘門帳號 |
+| `LINKIN_GATE_SECRET` | — | 覆寫閘門密語 |
+| `LINKIN_AUTH_DISABLED` | `0` | `1` 關閉閘門 |
+| `LINKIN_AUTH_FORCE` | `0` | `1` 即使 pytest 也強制開啟 |
+
 ### LLM 配置
 
 | 變數 | 預設值 | 說明 |

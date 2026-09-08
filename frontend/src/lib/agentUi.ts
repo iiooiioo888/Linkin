@@ -208,8 +208,13 @@ export function fmtPerMillion(n: number | undefined | null): string {
   return `$${v.toFixed(2)}`;
 }
 
-export function extraRateItems(card?: ModelRateCard | null): Array<{ id: string; label: string; usd_per_1m: number }> {
+export function extraRateItems(card?: ModelRateCard | null): Array<{ id: string; label: string; usd_per_1m: number; unit?: string }> {
   return (card?.items ?? []).filter((item) => item.id !== 'input' && item.id !== 'output' && item.usd_per_1m);
+}
+
+export function fmtRate(n: number | undefined | null, unit?: string): string {
+  const money = fmtPerMillion(n);
+  return unit ? `${money} / ${unit}` : `${money} / 1M tokens`;
 }
 
 export function rateOptionLabel(modelId: string, catalog?: ModelRateCatalog | null): string {
@@ -217,7 +222,7 @@ export function rateOptionLabel(modelId: string, catalog?: ModelRateCatalog | nu
   if (!card) return modelId;
   const extra = extraRateItems(card);
   const bits = [`${fmtPerMillion(card.input)} / ${fmtPerMillion(card.output)}`];
-  if (extra.length) bits.push(`+${extra.length} 項`);
+  if (extra.length) bits.push(`+${extra.length} 收費項`);
   return `${modelId} · ${bits.join(' · ')}`;
 }
 
@@ -257,9 +262,14 @@ export type JumpAgentDetail = { id?: string; level?: number; rahoLayer?: number;
 
 /** 控制台跨頁：角色面板尚未掛載時先記下要開的工作台分頁。 */
 let pendingDeskTab: AgentDeskTab | null = null;
+let pendingGrillReveal = false;
 
 export function setPendingDeskTab(tab: AgentDeskTab | null) {
   pendingDeskTab = tab;
+}
+
+export function markGrillReveal() {
+  pendingGrillReveal = true;
 }
 
 export function requestRoleSettingsDesk(agentId?: string) {
@@ -268,13 +278,20 @@ export function requestRoleSettingsDesk(agentId?: string) {
 }
 
 export function requestRoleGrillDesk(agentId?: string) {
-  pendingDeskTab = 'grill';
-  dispatchJumpAgent({ id: agentId, deskTab: 'grill' });
+  pendingDeskTab = 'tasks';
+  pendingGrillReveal = true;
+  dispatchJumpAgent({ id: agentId, deskTab: 'tasks' });
 }
 
 export function consumePendingDeskTab(): AgentDeskTab | null {
   const next = pendingDeskTab;
   pendingDeskTab = null;
+  return next;
+}
+
+export function consumePendingGrillReveal(): boolean {
+  const next = pendingGrillReveal;
+  pendingGrillReveal = false;
   return next;
 }
 

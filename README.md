@@ -563,7 +563,7 @@ docker compose logs -f backend
 2. 以 `VITE_BASE=/Evoloop/`、`VITE_GITHUB_PAGES=true` 建置前端
 3. 部署至 [https://iiooiioo888.github.io/Evoloop/](https://iiooiioo888.github.io/Evoloop/)
 
-靜態站可瀏覽 UI；完整聊天／寫入請本地或 Docker 啟動後端（可設 `VITE_API_URL`）。
+靜態站可登入並瀏覽 UI（閘門在無後端時改為本機摘要核對）；完整聊天／寫入請本地或 Docker 啟動後端（可設 `VITE_API_URL`）。
 
 手動觸發：GitHub → Actions → **Deploy to GitHub Pages** → Run workflow。
 
@@ -582,6 +582,18 @@ docker compose logs -f backend
 | `EVOL_MAX_ITERATIONS` | `3` | 最大迭代次數 |
 | `EVOL_MIN_SCORE_IMPROVEMENT` | `0.5` | 最小分數提升（低於此提前終止） |
 | `EVOL_CROSS_EVAL_MODEL` | — | 交叉評估模型 |
+
+### 登入閘門
+
+倉庫只存 HMAC 摘要，不放帳密明文。可用環境變數覆寫或關閉。
+
+| 變數 | 預設 | 說明 |
+|------|------|------|
+| `LINKIN_GATE_ID` | — | 覆寫閘門帳號（測試／部署） |
+| `LINKIN_GATE_SECRET` | — | 覆寫閘門密語 |
+| `LINKIN_AUTH_DISABLED` | `0` | `1` 關閉閘門 |
+| `LINKIN_AUTH_FORCE` | `0` | `1` 即使 pytest 也強制開啟 |
+| `E2E_GATE_ID` / `E2E_GATE_SECRET` | — | Playwright 放行閘門用 |
 
 ### 模型運維
 
@@ -767,7 +779,7 @@ Windows 暫存目錄權限問題。`pyproject.toml` 已設 `--basetemp=.pytest_t
 <details>
 <summary><b>Q: GitHub Pages 能聊天嗎？</b></summary>
 
-Pages 僅靜態前端預覽。聊天、寫入 OPC、刷新模型目錄等需連到本機或已部署的後端（可設 `VITE_API_URL`）。
+Pages 僅靜態前端預覽；登入閘門可在無後端時本機核對。聊天、寫入 OPC、刷新模型目錄等需連到本機或已部署的後端（可設 `VITE_API_URL`）。
 </details>
 
 <details>

@@ -70,14 +70,16 @@ function OrgMap({
   directory,
   onSelectRole,
   activeRoleId,
+  compact,
 }: {
   trees: GrillTree[];
   directory: typeof RAHO_LAYERS;
   onSelectRole?: (roleId: string) => void;
   activeRoleId?: string;
+  compact?: boolean;
 }) {
   return (
-    <div className="raho-org">
+    <div className={`raho-org${compact ? ' raho-org--compact' : ''}`}>
       <div className="raho-org-kernel">
         {KERNEL_CHAIN.map((layer) => (
           <LayerChip
@@ -123,7 +125,9 @@ function OrgMap({
               </li>
             ))}
           </ol>
-          <p className="raho-org-note">不隸屬 L3。驗收 L2，規劃缺陷質詢 L3，標準爭議上呈 L4／L5。</p>
+          {compact ? null : (
+            <p className="raho-org-note">不隸屬 L3。驗收 L2，規劃缺陷質詢 L3，標準爭議上呈 L4／L5。</p>
+          )}
         </div>
       </div>
     </div>
@@ -269,10 +273,12 @@ function GrillEdge({
 
 export default function GrillTreePanel({
   embedded = false,
+  compact = false,
   focusRoleId = '',
   onSelectRole,
 }: {
   embedded?: boolean;
+  compact?: boolean;
   focusRoleId?: string;
   onSelectRole?: (roleId: string) => void;
 } = {}) {
@@ -312,7 +318,11 @@ export default function GrillTreePanel({
       {embedded ? (
         <div className="mb-3 flex items-end justify-between gap-3">
           <p className="text-[12px] text-[#8E8E93]">
-            {focusRoleId ? '此角色相關的指揮／審查邊會反白。點層級可切換角色。' : '點層級即可切到對應角色工作台。'}
+            {compact
+              ? '角色即質詢節點。點層級切換工作台，下方是此角色的任用。'
+              : focusRoleId
+                ? '此角色相關的指揮／審查邊會反白。點層級可切換角色。'
+                : '點層級即可切到對應角色工作台。'}
           </p>
           <button type="button" className="rd-btn text-[11px] text-[#0A84FF]" onClick={() => void reload()}>
             重新整理
@@ -333,30 +343,40 @@ export default function GrillTreePanel({
       )}
       {error && <p className="mb-3 text-[12px] text-[#FF453A]">{error}</p>}
 
-      <OrgMap trees={trees} directory={directory} onSelectRole={onSelectRole} activeRoleId={focusRoleId} />
+      <OrgMap
+        trees={trees}
+        directory={directory}
+        onSelectRole={onSelectRole}
+        activeRoleId={focusRoleId}
+        compact={compact}
+      />
       <ChainLegend
         edges={snap.grill_chain?.length ? snap.grill_chain : GRILL_EDGES}
         onSelectRole={onSelectRole}
         focusRoleId={focusRoleId}
       />
-      <L0BiasHint snapshot={l0} compact />
+      {compact ? null : <L0BiasHint snapshot={l0} compact />}
       <RahoDecisionBar pending={pending} onResolved={() => void reload()} />
 
-      <div className="l0-tabs mb-3" role="tablist">
-        <button type="button" className={`l0-tab${detailTab === 'nodes' ? ' on' : ''}`} onClick={() => setDetailTab('nodes')}>
-          節點明細
-        </button>
-        <button type="button" className={`l0-tab${detailTab === 'l0' ? ' on' : ''}`} onClick={() => setDetailTab('l0')}>
-          知識與記憶
-        </button>
-      </div>
+      {compact ? null : (
+        <div className="l0-tabs mb-3" role="tablist">
+          <button type="button" className={`l0-tab${detailTab === 'nodes' ? ' on' : ''}`} onClick={() => setDetailTab('nodes')}>
+            節點明細
+          </button>
+          <button type="button" className={`l0-tab${detailTab === 'l0' ? ' on' : ''}`} onClick={() => setDetailTab('l0')}>
+            知識與記憶
+          </button>
+        </div>
+      )}
 
-      {detailTab === 'l0' ? (
+      {detailTab === 'l0' && !compact ? (
         <L0Panel snapshot={l0} embed query={trees[0]?.goal || ''} nodeId={focusNodeId} initialTab="memory" />
       ) : null}
 
       {detailTab === 'nodes' && trees.length === 0 && blocked.length === 0 && pending.length === 0 && (
-        <p className="py-16 text-center text-[13px] text-[#636366]">尚無質詢鏈。複雜任務啟動後會在此展開。</p>
+        <p className={`${compact ? 'py-4' : 'py-16'} text-center text-[13px] text-[#636366]`}>
+          {compact ? '尚無進行中的質詢。複雜任務啟動後會掛在此角色上。' : '尚無質詢鏈。複雜任務啟動後會在此展開。'}
+        </p>
       )}
 
       {detailTab === 'nodes' ? <div className="space-y-4">

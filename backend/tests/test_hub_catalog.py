@@ -63,6 +63,11 @@ LEGACY_RUNTIME_MODELS: frozenset[str] = frozenset(
         "text-embedding-3-small",
         "text-embedding-3-large",
         "qwen-embedding-v3",
+        "qwen-omni-turbo",
+        "gemini-3.1-flash",
+        "whisper-1",
+        "tts-1",
+        "gpt-image-1",
     }
 )
 

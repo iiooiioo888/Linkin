@@ -1992,6 +1992,27 @@ body {
   padding: 12px 14px 16px;
 }
 
+.rd-grill-fuse {
+  flex: 0 0 auto;
+  max-height: 46vh;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--apple-hairline);
+  padding: 4px 14px 8px;
+}
+
+.rd-grill-fuse .raho-org {
+  margin-bottom: 8px;
+}
+
+.raho-org--compact .raho-org-kernel,
+.raho-org--compact .raho-org-col {
+  padding: 6px 8px;
+}
+
+.raho-org--compact .raho-pyr-item {
+  padding: 4px 6px;
+}
+
 .rd-body--settings .rd-tasks {
   flex: 1;
 }

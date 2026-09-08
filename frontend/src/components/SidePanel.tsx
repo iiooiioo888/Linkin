@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, requestRoleGrillDesk, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
+import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
 import { agentRahoLabel, jumpToL0Kernel, COMMAND_CHAIN, INSPECT_CHAIN, KERNEL_CHAIN, RAHO_LAYERS, isRahoSpineRole } from '../lib/rahoUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { fetchLlmOps } from '../api/client';
@@ -663,9 +663,8 @@ function MonitorSidebar({
   const navGroups = navGroupsForActivity(activity);
   const onAgentsTab = activeView === 'monitor' && monitorTab === 'agents';
   const onStudioTab = activeView === 'monitor' && monitorTab === 'studio';
-  const onGrillTab = activeView === 'monitor' && monitorTab === 'grill';
   const onMemoryTab = activeView === 'monitor' && monitorTab === 'memory';
-  const onRoleDesk = onAgentsTab || onStudioTab || onGrillTab || onMemoryTab;
+  const onRoleDesk = onAgentsTab || onStudioTab || onMemoryTab;
   const onTasksTab = activeView === 'monitor' && monitorTab === 'tasks';
   const onLlmTab = activeView === 'monitor' && monitorTab === 'llm';
   const onTraces = activeView === 'traces';
@@ -677,9 +676,9 @@ function MonitorSidebar({
       return;
     }
     onMonitorTabChange(key);
-    if (key !== 'agents' && key !== 'studio' && key !== 'grill' && key !== 'memory' && focusAgentId) onFocusAgent(null);
+    if (key !== 'agents' && key !== 'studio' && key !== 'memory' && focusAgentId) onFocusAgent(null);
     if (key !== 'tasks' && focusTaskId) onFocusTask(null);
-    if (key !== 'agents' && key !== 'studio' && key !== 'grill' && key !== 'memory' && key !== 'tasks' && key !== 'llm') onClose();
+    if (key !== 'agents' && key !== 'studio' && key !== 'memory' && key !== 'tasks' && key !== 'llm') onClose();
   };
 
   if (onLab) {
@@ -722,7 +721,6 @@ function MonitorSidebar({
             }
             onFocusAgent(id);
             onMonitorTabChange(onStudioTab ? 'studio' : 'agents');
-            if (onGrillTab) requestRoleGrillDesk(id);
           }}
         />
       ) : onTasksTab ? (
