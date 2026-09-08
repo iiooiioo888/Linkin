@@ -1142,6 +1142,7 @@ export interface ModelRateItem {
   id: string;
   label: string;
   usd_per_1m: number;
+  unit?: string;
 }
 
 export interface ModelRateCard {
@@ -1152,8 +1153,23 @@ export interface ModelRateCard {
   cache_write?: number;
   reasoning?: number;
   image?: number;
+  image_output?: number;
   audio?: number;
+  audio_output?: number;
+  transcription?: number;
+  video?: number;
   embedding?: number;
+  search?: number;
+  tool?: number;
+  batch_input?: number;
+  batch_output?: number;
+  long_context?: number;
+  request?: number;
+  storage?: number;
+  computer?: number;
+  realtime?: number;
+  file_search?: number;
+  code_exec?: number;
   items: ModelRateItem[];
   currency?: string;
   unit?: string;
@@ -1162,7 +1178,7 @@ export interface ModelRateCard {
 export interface ModelRateCatalog {
   currency?: string;
   unit?: string;
-  fields?: Array<{ id: string; label: string }>;
+  fields?: Array<{ id: string; label: string; unit?: string }>;
   models?: ModelRateCard[];
   by_id?: Record<string, ModelRateCard>;
 }

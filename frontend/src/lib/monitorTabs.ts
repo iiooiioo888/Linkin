@@ -95,7 +95,7 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     items: [
       { key: 'live', icon: '◎', label: '即時', hint: '總覽，點卡片跳轉' },
       { key: 'tasks', icon: '▣', label: '任務', hint: '隊列／執行中／已完成' },
-      { key: 'agents', icon: '◈', label: '角色', hint: '質詢鏈／指揮層／工作台' },
+      { key: 'agents', icon: '◈', label: '角色', hint: '質詢鏈與角色工作台合一' },
       { key: 'pipeline', icon: '⬡', label: '管線', hint: '反思閉環階段' },
       TRACES_NAV_ITEM,
     ],
@@ -216,7 +216,7 @@ export const CONSOLE_CHROME_TABS: Array<{ key: MonitorTab; label: string; match:
   { key: 'tasks', label: '新項', match: ['tasks'] },
   { key: 'models', label: '使用', match: ['models', 'metrics', 'feedback'] },
   { key: 'llm', label: '權限', match: ['llm', 'ops', 'memory'] },
-  { key: 'agents', label: '角色', match: ['agents', 'grill'] },
+  { key: 'agents', label: '角色', match: ['agents'] },
 ];
 
 export function consoleChromeTabKey(tab: MonitorTab | 'traces'): MonitorTab | null {

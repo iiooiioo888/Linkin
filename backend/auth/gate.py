@@ -4,6 +4,8 @@
 - LINKIN_GATE_ID / LINKIN_GATE_SECRET：覆寫預設摘要對（部署或測試用）
 - LINKIN_AUTH_DISABLED=1：關閉閘門
 - LINKIN_AUTH_FORCE=1：即使在 pytest 中也強制開啟
+
+靜態站本機核對見 frontend/src/lib/gateDigest.ts（片段須同步）。
 """
 
 from __future__ import annotations
@@ -23,7 +25,8 @@ _FAIL_LIMIT = 8
 
 _PEPPER = bytes([0x6C, 0x6B, 0x6E, 0x2E, 0x67, 0x61, 0x74, 0x65])
 
-# 預設身分摘要（四段拼接，避免整串出現在單一常數）
+# 預設身分摘要（四段拼接，避免整串出現在單一常數）。
+# 產生時請用檔案腳本呼叫 HMAC，勿在殼層一行指令展開 $。
 _U = (
     "1f4ac7b757bc42f0",
     "2bafcc236d647a3a",
@@ -31,10 +34,10 @@ _U = (
     "77ad23899d26590d",
 )
 _S = (
-    "c0b81dc68201da23",
-    "a79ba8ce97e248e8",
-    "d8c8d7ddf2c6b32d",
-    "61bb35f4c08abb85",
+    "9a9e35eac9af48e1",
+    "4efc7d0d21cbd2ff",
+    "e7cc4ec72c0241b3",
+    "8bd13f69e5463467",
 )
 
 _sessions: dict[str, dict[str, Any]] = {}

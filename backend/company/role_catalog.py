@@ -551,7 +551,7 @@ def update_monitor_prefs(patch: dict[str, Any]) -> dict[str, Any]:
             current["group_by"] = group if group in {"level", "category"} else "level"
         if "default_desk_tab" in patch:
             tab = str(patch.get("default_desk_tab") or "tasks").strip().lower()
-            current["default_desk_tab"] = tab if tab in {"tasks", "monitor", "settings", "org", "grill"} else "tasks"
+            current["default_desk_tab"] = tab if tab in {"tasks", "monitor", "settings", "org"} else "tasks"
         if "sort_by" in patch:
             sort_by = str(patch.get("sort_by") or "level").strip().lower()
             current["sort_by"] = sort_by if sort_by in {"level", "name", "status", "cost", "queue"} else "level"

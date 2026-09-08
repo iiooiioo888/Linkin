@@ -8,6 +8,7 @@ import {
   ROUTING_LABEL,
   TIER_LABEL,
   fmtPerMillion,
+  fmtRate,
   fmtUsd,
   lookupRateCard,
   rateOptionLabel,
@@ -340,7 +341,7 @@ export default function RoleSettingsPanel({
     routeDisplayName(activeRoute) || '全域預設',
     draft.preferred_model || 'API 預設模型',
     selectedRate
-      ? `USD/1M ${fmtPerMillion(selectedRate.input)} / ${fmtPerMillion(selectedRate.output)}`
+      ? `USD ${fmtPerMillion(selectedRate.input)} / ${fmtPerMillion(selectedRate.output)} · +${Math.max(0, (selectedRate.items?.length ?? 2) - 2)} 收費項`
       : null,
     `輸出 ${draft.max_output_tokens.toLocaleString()}`,
     draft.context_window > 0 ? `上下文 ${draft.context_window.toLocaleString()}` : '上下文不截斷',
@@ -596,7 +597,7 @@ export default function RoleSettingsPanel({
             label="指定模型"
             hint={
               selectedRate
-                ? `USD/1M · 輸入 ${fmtPerMillion(selectedRate.input)} · 輸出 ${fmtPerMillion(selectedRate.output)}`
+                ? `輸入 ${fmtPerMillion(selectedRate.input)} · 輸出 ${fmtPerMillion(selectedRate.output)} · 另 ${(selectedRate.items ?? []).length} 項`
                 : '依上方供應商列出可用模型；空白=該 API 預設'
             }
           >
@@ -634,7 +635,7 @@ export default function RoleSettingsPanel({
                     key={item.id}
                     className="rounded-md bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-[#d0d6e0]"
                   >
-                    {item.label} {fmtPerMillion(item.usd_per_1m)}
+                    {item.label} {fmtRate(item.usd_per_1m, item.unit)}
                   </span>
                 ))}
               </div>

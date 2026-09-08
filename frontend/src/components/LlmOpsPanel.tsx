@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchLlmOps, refreshLlmModels, updateLlmOpsPrefs } from '../api/client';
-import { fmtPerMillion, lookupRateCard } from '../lib/agentUi';
+import { extraRateItems, fmtPerMillion, fmtRate, lookupRateCard } from '../lib/agentUi';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { LlmOpsData, ModelRateCard } from '../types';
 import ApiRoutesEditor from './ApiRoutesEditor';
@@ -220,15 +220,13 @@ export default function LlmOpsPanel() {
                     <th className="px-3 py-2 font-medium">API</th>
                     <th className="px-3 py-2 font-medium">輸入</th>
                     <th className="px-3 py-2 font-medium">輸出</th>
-                    <th className="px-3 py-2 font-medium">快取</th>
-                    <th className="px-3 py-2 font-medium">推理</th>
-                    <th className="px-3 py-2 font-medium">視覺</th>
+                    <th className="px-3 py-2 font-medium">收費項</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-8 text-center text-[#62666d]">
+                      <td colSpan={6} className="px-3 py-8 text-center text-[#62666d]">
                         {models.length === 0
                           ? '尚無目錄。在左側加入千問／DeepSeek／Kimi／OpenRouter 後按「立刻檢查目錄」。'
                           : '沒有符合搜尋的模型'}
@@ -250,13 +248,22 @@ export default function LlmOpsPanel() {
                           </td>
                           <td className="px-3 py-1.5 font-mono text-[#8a8f98]">{rateField(data, m.id, 'input')}</td>
                           <td className="px-3 py-1.5 font-mono text-[#8a8f98]">{rateField(data, m.id, 'output')}</td>
-                          <td className="px-3 py-1.5 font-mono text-[#8a8f98]">
-                            {rateField(data, m.id, 'cached_input')}
+                          <td className="px-3 py-1.5">
+                            <div className="flex flex-wrap gap-1">
+                              {extraRateItems(lookupRateCard(m.id, data?.model_rate_cards)).length === 0 ? (
+                                <span className="text-[#62666d]">—</span>
+                              ) : (
+                                extraRateItems(lookupRateCard(m.id, data?.model_rate_cards)).map((item) => (
+                                  <span
+                                    key={item.id}
+                                    className="rounded bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] text-[#AEAEB2]"
+                                  >
+                                    {item.label} {fmtRate(item.usd_per_1m, item.unit)}
+                                  </span>
+                                ))
+                              )}
+                            </div>
                           </td>
-                          <td className="px-3 py-1.5 font-mono text-[#8a8f98]">
-                            {rateField(data, m.id, 'reasoning')}
-                          </td>
-                          <td className="px-3 py-1.5 font-mono text-[#8a8f98]">{rateField(data, m.id, 'image')}</td>
                         </tr>
                       )),
                     )

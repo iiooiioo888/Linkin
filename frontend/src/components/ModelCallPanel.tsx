@@ -2,9 +2,10 @@
  * ModelCallPanel — 模型調用分布（從 Trace llm_call 事件彙總）。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchOptimizationMonitor } from '../api/client';
+import { fetchLlmOps, fetchOptimizationMonitor } from '../api/client';
+import { extraRateItems, fmtPerMillion, fmtRate, lookupRateCard } from '../lib/agentUi';
 import { navPathForTab } from '../lib/monitorTabs';
-import type { OptimizationMonitorData } from '../types';
+import type { ModelRateCatalog, OptimizationMonitorData } from '../types';
 import LcBarChart from './charts/LcBarChart';
 
 function Bar({ pct, color = '#007AFF' }: { pct: number; color?: string }) {
@@ -19,6 +20,7 @@ const PHASE_COLORS = ['#007AFF', '#64D2FF', '#4cc38a', '#f5a524', '#e5484d', '#a
 
 export default function ModelCallPanel() {
   const [data, setData] = useState<OptimizationMonitorData | null>(null);
+  const [rates, setRates] = useState<ModelRateCatalog | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,6 +33,12 @@ export default function ModelCallPanel() {
       setError((err as Error).message);
     } finally {
       setLoading(false);
+    }
+    try {
+      const ops = await fetchLlmOps();
+      setRates(ops.model_rate_cards ?? null);
+    } catch {
+      setRates(null);
     }
   }, []);
 
@@ -164,6 +172,45 @@ export default function ModelCallPanel() {
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="mt-4 apple-card apple-card--tight !p-0 overflow-hidden">
+        <p className="border-b border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
+          公開價目 · {rates?.models?.length ?? 0} 模型 · {rates?.fields?.length ?? 0} 收費項
+        </p>
+        <div className="max-h-[420px] overflow-y-auto p-3 space-y-3">
+          {(rates?.models ?? []).length === 0 ? (
+            <p className="text-xs text-[#62666d]">尚無價目。請到 API 路由檢查目錄。</p>
+          ) : (
+            (rates?.models ?? []).map((row) => {
+              const extras = extraRateItems(lookupRateCard(row.id, rates));
+              return (
+                <div key={row.id}>
+                  <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                    <span className="truncate font-mono text-[#d0d6e0]">{row.id}</span>
+                    <span className="shrink-0 tabular-nums text-[#8a8f98]">
+                      輸入 {fmtPerMillion(row.input)} · 輸出 {fmtPerMillion(row.output)}
+                    </span>
+                  </div>
+                  {extras.length ? (
+                    <div className="flex flex-wrap gap-1">
+                      {extras.map((item) => (
+                        <span
+                          key={item.id}
+                          className="rounded bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] text-[#AEAEB2]"
+                        >
+                          {item.label} {fmtRate(item.usd_per_1m, item.unit)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-[#62666d]">僅輸入／輸出</p>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
