@@ -1,4 +1,4 @@
-"""L4 元規劃官：將語意鎖定後的目標譯成戰役 DAG（里程碑，非原子任務）。
+"""L4 需求審計官的戰役譯製：將語意鎖定後的目標譯成戰役 DAG（里程碑，非原子任務）。
 
 預設走規則規劃（零 LLM），避免公司運行時測試被額外模型呼叫拖垮。
 `EVOL_RAHO_PLANNER_LLM=true` 時才用 LiteLLM 豐富節點標題與成敗標準。
@@ -33,7 +33,7 @@ class CampaignNode:
             "success_criteria": self.success_criteria,
             "depends_on": list(self.depends_on),
             "parallel_ok": self.parallel_ok,
-            "layer": int(RahoLayer.L4_PLANNER),
+            "layer": int(RahoLayer.L4_AUDITOR),
         }
 
 
@@ -50,7 +50,7 @@ class CampaignMap:
             "nodes": [n.to_dict() for n in self.nodes],
             "success_criteria": list(self.success_criteria),
             "source": self.source,
-            "layer": int(RahoLayer.L4_PLANNER),
+            "layer": int(RahoLayer.L4_AUDITOR),
         }
 
     @classmethod
@@ -198,7 +198,7 @@ def _enrich_with_llm(campaign: CampaignMap) -> CampaignMap:
 
     hint = planning_paradigm_hint()
     prompt = (
-        "你是 L4 元規劃官。把戰役目標譯成里程碑 DAG（不是原子任務）。"
+        "你是 L4 需求審計官。把戰役目標譯成里程碑 DAG（不是原子任務）。"
         "只輸出 JSON：{\"nodes\":[{\"node_id\",\"title\",\"outcome\",\"success_criteria\",\"depends_on\":[]}]}\n"
         f"目標：{campaign.goal}\n"
         f"現有骨架：{[n.to_dict() for n in campaign.nodes]}\n"

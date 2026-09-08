@@ -17,13 +17,19 @@ import {
 import { EVENT_LABELS, roleLabel } from './TaskPanel';
 import {
   agentRahoLabel,
+  COMMAND_CHAIN,
+  directionGlyph,
+  edgesForRole,
+  grillTargetLabel,
+  INSPECT_CHAIN,
   jumpLayer,
   jumpToGrillTree,
   jumpToL0Kernel,
+  jumpToRoleDesk,
+  KERNEL_CHAIN,
   kindLabel,
   nodeRoleLabel,
   orgLevelCaption,
-  RAHO_CHAIN,
   RAHO_LAYERS,
   rahoTone,
   statusLabel,
@@ -610,6 +616,18 @@ export function EventTimelineBlock({ events }: { events: AgentEvent[] }) {
 
 export function RahoChainBlock({ agent }: { agent: RoleAgent }) {
   const current = agent.raho_layer ?? 2;
+  const targets = agent.grill_targets ?? [];
+  const labels = agent.grill_target_labels ?? targets.map(grillTargetLabel);
+  const escalate = agent.escalate_targets ?? [];
+  const escalateLabels = agent.escalate_target_labels ?? escalate.map(grillTargetLabel);
+  const submit = agent.submit_targets ?? [];
+  const submitLabels = agent.submit_target_labels ?? submit.map(grillTargetLabel);
+  const related = edgesForRole(agent.id);
+  const lanes: Array<{ key: string; title: string; layers: readonly number[] }> = [
+    { key: 'command', title: '指揮', layers: COMMAND_CHAIN },
+    { key: 'inspect', title: '審查', layers: INSPECT_CHAIN },
+    { key: 'kernel', title: '核心', layers: KERNEL_CHAIN },
+  ];
   return (
     <div className="rd-sec">
       <div className="rd-tt">
@@ -618,26 +636,92 @@ export function RahoChainBlock({ agent }: { agent: RoleAgent }) {
           開質詢樹
         </button>
       </div>
-      <div className="raho-desk-chain">
-        {RAHO_CHAIN.map((layer) => {
-          const meta = RAHO_LAYERS[layer];
-          const active = layer === current;
-          const clickable = Boolean(meta.role_id && meta.role_id !== 'user');
-          return (
-            <button
-              key={layer}
-              type="button"
-              className={`raho-desk-chip${active ? ' on' : ''}${layer === 0 ? ' is-l0' : ''}`}
-              disabled={!clickable}
-              onClick={() => clickable && jumpLayer(layer, meta.role_id)}
-            >
-              {meta.short}
-            </button>
-          );
-        })}
+      <div className="raho-desk-lanes">
+        {lanes.map((lane) => (
+          <div key={lane.key} className="raho-desk-lane">
+            <span className="raho-desk-lane-h">{lane.title}</span>
+            <div className="raho-desk-chain">
+              {lane.layers.map((layer) => {
+                const meta = RAHO_LAYERS[layer];
+                const active = layer === current;
+                const clickable = Boolean(meta.role_id && meta.role_id !== 'user');
+                return (
+                  <button
+                    key={layer}
+                    type="button"
+                    className={`raho-desk-chip${active ? ' on' : ''}${layer === 0 ? ' is-l0' : ''}${layer === 1 ? ' is-l1' : ''}`}
+                    disabled={!clickable}
+                    onClick={() => clickable && jumpLayer(layer, meta.role_id)}
+                  >
+                    {meta.short}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
-      {(agent.grill_targets?.length ?? 0) > 0 ? (
-        <p className="mt-2 text-[10px] text-[#636366]">可質詢 {agent.grill_targets!.join('、')}</p>
+      {targets.length > 0 ? (
+        <p className="mt-2 text-[10px] text-[#636366]">
+          可質詢{' '}
+          {targets.map((id, idx) => (
+            <button
+              key={id}
+              type="button"
+              className="raho-legend-edge"
+              onClick={() => jumpToRoleDesk(id)}
+            >
+              {labels[idx] || grillTargetLabel(id)}
+              {idx < targets.length - 1 ? '、' : ''}
+            </button>
+          ))}
+        </p>
+      ) : null}
+      {submit.length > 0 ? (
+        <p className="mt-1 text-[10px] text-[#636366]">
+          交付{' '}
+          {submit.map((id, idx) => (
+            <button
+              key={id}
+              type="button"
+              className="raho-legend-edge"
+              onClick={() => jumpToRoleDesk(id)}
+            >
+              {submitLabels[idx] || grillTargetLabel(id)}
+              {idx < submit.length - 1 ? '、' : ''}
+            </button>
+          ))}
+        </p>
+      ) : null}
+      {escalate.length > 0 && escalate.some((id) => !targets.includes(id)) ? (
+        <p className="mt-1 text-[10px] text-[#636366]">
+          可上呈{' '}
+          {escalate
+            .filter((id) => !targets.includes(id))
+            .map((id, idx, arr) => (
+              <button
+                key={id}
+                type="button"
+                className="raho-legend-edge"
+                onClick={() => jumpToRoleDesk(id)}
+              >
+                {escalateLabels[escalate.indexOf(id)] || grillTargetLabel(id)}
+                {idx < arr.length - 1 ? '、' : ''}
+              </button>
+            ))}
+        </p>
+      ) : null}
+      {related.length > 0 ? (
+        <ul className="raho-desk-edges">
+          {related
+            .filter((edge) => edge.direction !== 'inject')
+            .slice(0, 5)
+            .map((edge) => (
+              <li key={`${edge.from_role}-${edge.to_role}-${edge.kind}-${edge.label}`}>
+                {directionGlyph(edge.direction)} {edge.label}
+              </li>
+            ))}
+        </ul>
       ) : null}
     </div>
   );

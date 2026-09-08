@@ -135,7 +135,7 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
           { label: '簽核通過', value: String(m.review_pass) },
           { label: '退回重做', value: String(m.review_rework) },
           { label: '向上呈報', value: String(m.human_escalations) },
-          { label: '質詢層', value: agent.raho_label || 'L1 憲兵審查官' },
+          { label: '線路', value: agent.raho_lane_label || '獨立審查' },
         ]}
       />
     );
@@ -148,7 +148,7 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
             { label: '戰前質詢', value: String(m.grill_count) },
             { label: '被質詢率', value: `${Math.round((m.grill_rate ?? 0) * 100)}%` },
             { label: '重試', value: String(m.retries) },
-            { label: '質詢層', value: agent.raho_short || 'L2 執行' },
+            { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
           ]}
         />
         <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={jumpToGrillTree}>
@@ -165,7 +165,7 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
             { label: '被質詢', value: `${Math.round((m.grill_rate ?? 0) * 100)}%` },
             { label: '決策清晰', value: `${Math.round((m.decision_clarity ?? 1) * 100)}%` },
             { label: '上交用戶', value: String(m.human_escalations) },
-            { label: '質詢層', value: agent.raho_short || 'L3 指揮' },
+            { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
           ]}
         />
         <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={jumpToGrillTree}>
@@ -182,7 +182,7 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
             { label: '審計回合', value: String(m.grill_count) },
             { label: '鎖定清晰', value: `${Math.round((m.decision_clarity ?? 1) * 100)}%` },
             { label: '終止／失敗', value: String(m.errors) },
-            { label: '質詢層', value: agent.raho_short || 'L4 審計' },
+            { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
           ]}
         />
         <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={jumpToGrillTree}>
@@ -274,6 +274,7 @@ function RoleDeepMonitor({ agent }: { agent: RoleAgent }) {
         <div className="rd-grid2">
           <RdCell label="狀態" value={agent.enabled === false ? '停用' : '啟用'} />
           <RdCell label="質詢層" value={agent.raho_label || '—'} />
+          <RdCell label="線路" value={agent.raho_lane_label || '—'} />
           <RdCell label="分類" value={CATEGORY_LABEL[agent.category] ?? agent.category} />
           <RdCell label="語言" value={agent.language || 'zh-TW'} />
           <RdCell label="值班" value={agent.on_call ? 'On-call' : '否'} />

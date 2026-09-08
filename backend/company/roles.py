@@ -417,8 +417,6 @@ ROLE_PRODUCT_LEAD = RoleDefinition(
         RoleType.KNOWLEDGE_MGR,
         RoleType.CUSTOMER_SUCCESS,
         RoleType.CONVERSATION_DESIGNER,
-        RoleType.REQUIREMENT_AUDITOR,
-        RoleType.TACTICAL_COMMANDER,
     ],
     default_tier=BudgetTier.REASONING,
     max_parallel_work=3,
@@ -1252,7 +1250,7 @@ ROLE_REQUIREMENT_AUDITOR = RoleDefinition(
     role_type=RoleType.REQUIREMENT_AUDITOR,
     name="需求審計官",
     level=4,
-    reporting_to=RoleType.PRODUCT_LEAD,
+    reporting_to=None,
     responsibilities=[
         "以零信任審查使用者需求，禁止確認偏誤與模糊妥協",
         "依五維評分（具體性／邊界／約束／風險／成功定義）決定是否放行",
@@ -1292,7 +1290,7 @@ ROLE_TACTICAL_COMMANDER = RoleDefinition(
     role_type=RoleType.TACTICAL_COMMANDER,
     name="戰術指揮官",
     level=2,
-    reporting_to=RoleType.MANAGER,
+    reporting_to=RoleType.REQUIREMENT_AUDITOR,
     responsibilities=[
         "把 L4 戰術指令 JSON 拆成原子級 DAG，禁止模糊節點",
         "為每個原子任務親手孵化 <200 Token 的 L2 執行者",
@@ -1674,10 +1672,11 @@ STANDARD_ROLES: dict[RoleType, RoleDefinition] = {
     RoleType.SUPPORT: ROLE_SUPPORT,
     RoleType.MEMORY_CURATOR: ROLE_MEMORY_CURATOR,
     RoleType.KNOWLEDGE_MGR: ROLE_KNOWLEDGE_MGR,
+    # RAHO 脊柱（指揮鏈 L4–L2、獨立審查 L1、環境核心 L0；組織職級見 ROLE_LEVEL）
     RoleType.REQUIREMENT_AUDITOR: ROLE_REQUIREMENT_AUDITOR,
     RoleType.TACTICAL_COMMANDER: ROLE_TACTICAL_COMMANDER,
-    RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
     RoleType.ATOMIC_EXECUTOR: ROLE_ATOMIC_EXECUTOR,
+    RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
     RoleType.ENVIRONMENT_KERNEL: ROLE_ENVIRONMENT_KERNEL,
 }
 
@@ -1825,9 +1824,6 @@ def create_full_company() -> CompanyConfig:
         roles=STANDARD_ROLES,
         org_chart={
             RoleType.MANAGER: [
-                RoleType.TACTICAL_COMMANDER,
-                RoleType.CONSTITUTIONAL_INSPECTOR,
-                RoleType.ENVIRONMENT_KERNEL,
                 RoleType.TECH_LEAD,
                 RoleType.ARCHITECT,
                 RoleType.SECURITY_LEAD,
@@ -1866,9 +1862,8 @@ def create_full_company() -> CompanyConfig:
                 RoleType.KNOWLEDGE_MGR,
                 RoleType.CUSTOMER_SUCCESS,
                 RoleType.CONVERSATION_DESIGNER,
-                RoleType.REQUIREMENT_AUDITOR,
-                RoleType.TACTICAL_COMMANDER,
             ],
+            RoleType.REQUIREMENT_AUDITOR: [RoleType.TACTICAL_COMMANDER],
             RoleType.TACTICAL_COMMANDER: [RoleType.ATOMIC_EXECUTOR],
             RoleType.FINANCE_LEAD: [
                 RoleType.QUANT_ANALYST,

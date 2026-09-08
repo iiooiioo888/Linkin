@@ -97,7 +97,7 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
       { key: 'live', icon: '◎', label: '即時', hint: '總覽，點卡片跳轉' },
       { key: 'tasks', icon: '▣', label: '任務', hint: '隊列／執行中／已完成' },
       { key: 'agents', icon: '◈', label: '角色', hint: 'RAHO 層級／模型／工作台' },
-      { key: 'grill', icon: '⚡', label: '質詢樹', hint: 'L0–L5 質詢鏈，與角色／記憶核心互通' },
+      { key: 'grill', icon: '⚡', label: '質詢樹', hint: '指揮鏈／獨立審查／L0，與角色工作台互通' },
       { key: 'pipeline', icon: '⬡', label: '管線', hint: '反思閉環階段' },
       TRACES_NAV_ITEM,
     ],

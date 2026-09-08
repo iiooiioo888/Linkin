@@ -470,17 +470,22 @@ def list_role_snapshots() -> list[dict[str, Any]]:
 
         by_id = {s["id"]: s for s in snapshots}
         for snap in snapshots:
+            attach_raho_fields(snap)
             snap["direct_reports"] = [
                 other["id"]
                 for other in snapshots
                 if other.get("reporting_to") == snap["id"]
             ]
             reporting = snap.get("reporting_to")
-            if reporting and reporting not in by_id:
+            if reporting and reporting not in by_id and reporting != "user":
                 snap["reporting_to"] = None
-        snapshots.sort(key=lambda s: (s["level"], s["id"]))
-        for snap in snapshots:
-            attach_raho_fields(snap)
+        snapshots.sort(
+            key=lambda s: (
+                0 if s.get("raho_spine") else 1,
+                -int(s.get("raho_layer") or 0) if s.get("raho_spine") else int(s.get("level") or 3),
+                s["id"],
+            )
+        )
         return snapshots
 
 

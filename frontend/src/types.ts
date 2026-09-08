@@ -199,7 +199,29 @@ export interface RahoDirectoryEntry {
   title: string;
   short: string;
   full: string;
+  lane?: 'command' | 'inspect' | 'kernel' | string;
+  lane_label?: string;
+  reports_to?: string | null;
   grill_targets?: string[];
+  grill_target_labels?: string[];
+  escalate_targets?: string[];
+  escalate_target_labels?: string[];
+  submit_targets?: string[];
+  submit_target_labels?: string[];
+  independent?: boolean;
+}
+
+export interface RahoGrillEdge {
+  from_layer: number;
+  to_layer: number;
+  from_role: string;
+  to_role: string;
+  from_label?: string;
+  to_label?: string;
+  kind: string;
+  label: string;
+  direction: 'up' | 'down' | 'inspect' | 'inject' | string;
+  lane?: string;
 }
 
 export interface L0KnowledgeEntity {
@@ -403,7 +425,22 @@ export interface RahoSnapshot {
   run_id?: string;
   campaign?: CampaignMap;
   directory?: RahoDirectoryEntry[];
+  grill_chain?: RahoGrillEdge[];
   kind_labels?: Record<string, string>;
+  direction_labels?: Record<string, string>;
+  lane_labels?: Record<string, string>;
+  raho_graph?: {
+    chain?: number[];
+    command_chain?: number[];
+    inspect_chain?: number[];
+    kernel_chain?: number[];
+    lanes?: Record<string, { id: string; label: string; layers: number[] }>;
+    layers?: RahoDirectoryEntry[];
+    edges?: RahoGrillEdge[];
+    kind_labels?: Record<string, string>;
+    direction_labels?: Record<string, string>;
+    lane_labels?: Record<string, string>;
+  };
   l0?: L0Snapshot;
 }
 
@@ -1364,7 +1401,16 @@ export interface RoleAgent {
   raho_short?: string;
   raho_title?: string;
   raho_spine?: boolean;
+  raho_lane?: string;
+  raho_lane_label?: string;
   grill_targets?: string[];
+  grill_target_labels?: string[];
+  reports_to?: string | null;
+  escalate_targets?: string[];
+  escalate_target_labels?: string[];
+  submit_targets?: string[];
+  submit_target_labels?: string[];
+  raho_independent?: boolean;
   category: string;
   reporting_to: string | null;
   can_delegate_to: string[];
@@ -1473,6 +1519,7 @@ export interface AgentMonitorData {
   };
   levels: Array<{ level: number; label: string }>;
   raho_layers?: RahoDirectoryEntry[];
+  grill_chain?: RahoGrillEdge[];
   catalog_meta?: AgentCatalogMeta;
   monitor_prefs?: AgentMonitorPrefs;
   agents: RoleAgent[];
