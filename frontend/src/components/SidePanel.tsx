@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
-import { isRahoSpineRole } from '../lib/rahoUi';
+import { agentRahoLabel, jumpToL0Kernel, RAHO_CHAIN, RAHO_LAYERS, isRahoSpineRole } from '../lib/rahoUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { fetchLlmOps } from '../api/client';
 import type { ApiRoutePublic, ChatSession, RoleAgent, TaskSummary } from '../types';
@@ -138,13 +138,8 @@ function SessionList({
 
 type RosterRow =
   | { kind: 'header'; key: string; label: string; count: number }
-  | { kind: 'agent'; key: string; agent: RoleAgent };
-
-const RAHO_SPINE_ORDER = [
-  { id: 'requirement_auditor', label: 'L4 需求審計官' },
-  { id: 'tactical_commander', label: 'L3 戰術指揮官' },
-  { id: 'constitutional_inspector', label: 'L1 憲兵審查官' },
-] as const;
+  | { kind: 'agent'; key: string; agent: RoleAgent }
+  | { kind: 'kernel'; key: string; label: string; short: string; layer: number };
 
 const ORG_LEVELS = [
   { level: 0, label: '決策層' },
@@ -185,13 +180,37 @@ function AgentRoster({
 
   const rows: RosterRow[] = useMemo(() => {
     const out: RosterRow[] = [];
-    const spine = RAHO_SPINE_ORDER.map((row) => filtered.find((a) => a.id === row.id)).filter(
-      (a): a is NonNullable<typeof a> => Boolean(a),
-    );
-    if (spine.length) {
-      out.push({ kind: 'header', key: 'h-raho', label: '質詢鏈', count: spine.length });
-      for (const agent of spine) {
-        out.push({ kind: 'agent', key: agent.id, agent });
+    if (deskScope === 'console') {
+      const spineRows: RosterRow[] = [];
+      for (const layer of RAHO_CHAIN) {
+        const meta = RAHO_LAYERS[layer];
+        if (!meta || layer === 5) continue;
+        if (layer === 0 || layer === 2) {
+          spineRows.push({
+            kind: 'kernel',
+            key: meta.role_id,
+            label: meta.full,
+            short: meta.short,
+            layer,
+          });
+          continue;
+        }
+        const hit = filtered.find((a) => a.id === meta.role_id);
+        if (hit) {
+          spineRows.push({ kind: 'agent', key: `spine-${hit.id}`, agent: hit });
+        } else {
+          spineRows.push({
+            kind: 'kernel',
+            key: meta.role_id || `layer-${layer}`,
+            label: meta.full,
+            short: meta.short,
+            layer,
+          });
+        }
+      }
+      if (spineRows.length) {
+        out.push({ kind: 'header', key: 'h-raho', label: '質詢鏈 L0–L5', count: spineRows.length });
+        out.push(...spineRows);
       }
     }
     for (const lv of ORG_LEVELS) {
@@ -203,7 +222,7 @@ function AgentRoster({
       }
     }
     return out;
-  }, [filtered]);
+  }, [filtered, deskScope]);
 
   const searching = query.trim().length > 0;
 
@@ -279,6 +298,25 @@ function AgentRoster({
               </div>
             );
           }
+          if (row.kind === 'kernel') {
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  if (row.layer === 0) jumpToL0Kernel();
+                  else if (row.layer === 2) onPick('atomic_executor');
+                  else onPick(row.key);
+                }}
+                className="ar-ri"
+              >
+                <span className={`ar-dot ${row.layer === 0 ? 'wait' : ''}`} />
+                <span className="min-w-0 flex-1 truncate">
+                  {row.short}
+                  <span className="ml-1 text-[9px] text-[#636366]">{row.label}</span>
+                </span>
+              </button>
+            );
+          }
           const agent = row.agent;
           const active = agent.id === focusAgentId;
           const count = agentOpenCount(agent);
@@ -289,7 +327,7 @@ function AgentRoster({
             <button
               type="button"
               onClick={() => {
-                dispatchJumpAgent({ id: agent.id, level: agent.level });
+                dispatchJumpAgent({ id: agent.id, level: agent.level, rahoLayer: agent.raho_layer });
                 onPick(agent.id);
               }}
               className={`ar-ri ${active ? 'on' : ''}`}
@@ -297,6 +335,7 @@ function AgentRoster({
               <span className={`ar-dot ${live ? 'on' : wait ? 'wait' : err ? 'err' : ''}`} />
               <span className="min-w-0 flex-1 truncate">
                 {agent.name}
+                <span className="ml-1 text-[9px] text-[#636366]">{agentRahoLabel(agent)}</span>
                 {agent.enabled === false ? <span className="ml-1 text-[9px] text-[#FF3B30]">停</span> : null}
               </span>
               {count > 0 ? <span className="ar-rr">{count}</span> : null}

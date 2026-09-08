@@ -254,13 +254,29 @@ FAN_PHASE3_QUESTION = (
 )
 
 
+def _l0_knowledge_cite(query: str) -> str:
+    """L4 開場引用知識庫定義，避免雙方對基礎名詞各說各話。"""
+    try:
+        from backend.company.raho.l0 import match_knowledge
+
+        hits = match_knowledge(query)
+    except Exception:  # noqa: BLE001
+        return ""
+    if not hits:
+        return ""
+    return f"知識庫已有定義：「{hits[0].content}」請用這個定義回答，不要各說各話。"
+
+
 def _opening_hook(query: str) -> str:
     """第一問開場：拒絕模糊動詞，對齊規格中的「被烤」體驗。"""
     text = (query or "").strip()
+    lead = "收到需求。"
     for verb in _VAGUE_VERB_PRIORITY:
         if verb in text:
-            return f"收到需求。我不接受「{verb}」這個模糊動詞。"
-    return "收到需求。"
+            lead = f"收到需求。我不接受「{verb}」這個模糊動詞。"
+            break
+    cite = _l0_knowledge_cite(query)
+    return f"{lead}{cite}" if cite else lead
 
 
 def _contextual_first_question(query: str) -> GrillQuestion | None:
@@ -610,7 +626,9 @@ def _llm_question(query: str, transcript: str, gaps: list[str], phase: int) -> G
             "若用戶回答含『大概／盡量／好一點』，要求量化。"
             "只輸出 JSON：{\"question\":\"...\",\"why\":\"...\",\"dimension\":\"specificity|boundary|constraints|risk|success\"}"
         )
-        raw = call_llm(prompt, system=SYSTEM_PROMPT)
+        from backend.company.raho.l0 import inject_l0
+
+        raw = call_llm(prompt, system=inject_l0(SYSTEM_PROMPT, int(RahoLayer.L4_AUDITOR), query))
         parsed = extract_json(raw)
         if parsed:
             return None
@@ -907,6 +925,12 @@ def _pack(
             "user_rounds": sess.user_rounds,
         }
     )
+    try:
+        from backend.company.raho.l0 import kernel_snapshot
+
+        payload["l0"] = kernel_snapshot(query=sess.query)
+    except Exception:  # noqa: BLE001
+        pass
     return payload
 
 
@@ -1028,6 +1052,12 @@ def auditor_start(query: str) -> dict[str, Any]:
     text = (query or "").strip()
     if not text:
         raise ValueError("query 不可為空")
+    try:
+        from backend.company.raho.l0 import remember_query
+
+        remember_query(text, task_id="auditor")
+    except Exception:  # noqa: BLE001
+        pass
     sess = STORE.new_user_session(text)
     sess.phase = 1
     sess.phase_rounds = 0

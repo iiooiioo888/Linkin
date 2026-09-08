@@ -36,7 +36,7 @@ import {
 } from '../lib/agentUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { jumpToGrillTree, nodesForRole } from '../lib/rahoUi';
-import type { AgentMonitorData, AgentWorkItem, GrillTree, RoleAgent } from '../types';
+import type { AgentMonitorData, AgentWorkItem, GrillTree, L0Snapshot, RoleAgent } from '../types';
 import RoleSettingsPanel, { CreateRoleModal, draftToPayload, type RoleSettingsDraft } from './RoleSettingsPanel';
 import { RdCell, RoleDeskHeader, RoleRightPanel, RoleStatsStrip, type RoleDeskTab } from './RoleDeskLayout';
 import { StatusColumnBoard } from './StatusColumnBoard';
@@ -304,6 +304,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   const [didAutoOpen, setDidAutoOpen] = useState(false);
   const [appliedDefaultTab, setAppliedDefaultTab] = useState(false);
   const [grillTrees, setGrillTrees] = useState<GrillTree[]>([]);
+  const [l0, setL0] = useState<L0Snapshot | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -319,8 +320,10 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
     try {
       const snap = await fetchRahoTree();
       setGrillTrees(snap.trees ?? []);
+      setL0(snap.l0 ?? null);
     } catch {
       setGrillTrees([]);
+      setL0(null);
     }
   }, [focusAgentId, deskScope]);
 
@@ -348,11 +351,27 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
 
   useEffect(() => {
     const onJump = (event: Event) => {
-      const { id, level, deskTab: nextTab } = (event as CustomEvent<JumpAgentDetail>).detail ?? {};
+      const { id, level, rahoLayer, deskTab: nextTab } = (event as CustomEvent<JumpAgentDetail>).detail ?? {};
       if (id) {
         const studio = isLinkinStudioAgent(id);
-        if (deskScope === 'linkin' ? !studio : studio) return;
-        setSelectedId(id);
+        if (id !== 'atomic_executor' && (deskScope === 'linkin' ? !studio : studio)) return;
+        const roster = filterAgentsByDesk(
+          data?.agents?.length ? data.agents : AGENT_FALLBACK_ROSTER,
+          deskScope,
+        );
+        setSelectedId(pickDefaultAgentId(roster, id) || id);
+        setDeskTab(toDeskTab(nextTab));
+        setAppliedDefaultTab(true);
+        return;
+      }
+      if (typeof rahoLayer === 'number') {
+        setSelectedId((current) => {
+          const roster = filterAgentsByDesk(
+            data?.agents?.length ? data.agents : AGENT_FALLBACK_ROSTER,
+            deskScope,
+          );
+          return pickDefaultAgentId(roster, rahoLayer === 2 ? 'atomic_executor' : current) || current;
+        });
         setDeskTab(toDeskTab(nextTab));
         setAppliedDefaultTab(true);
         return;
@@ -663,6 +682,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                   setExpandedId(`${item.task_id}-${item.id}-${item.kind}`);
                 }}
                 grillNodes={selectedGrill}
+                l0={l0}
               />
             ) : null}
           </div>

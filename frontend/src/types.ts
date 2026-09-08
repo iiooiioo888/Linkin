@@ -168,6 +168,7 @@ export interface GrillUserState {
   role?: string;
   role_label?: string;
   user_rounds?: number;
+  l0?: L0Snapshot;
 }
 
 export interface GrillTreeNode {
@@ -199,6 +200,56 @@ export interface RahoDirectoryEntry {
   short: string;
   full: string;
   grill_targets?: string[];
+}
+
+export interface L0KnowledgeEntity {
+  id: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+  relations?: string[];
+}
+
+export interface L0MemoryTrace {
+  task_id: string;
+  layer: string;
+  node_id: string;
+  summary: string;
+  decisions?: string[];
+  failure_reason?: string;
+  horizon?: 'stm' | 'mtm' | 'ltm' | string;
+}
+
+export interface L0Radar {
+  timestamp?: number;
+  metrics?: {
+    token_usage_ratio?: number;
+    avg_latency_ms?: number;
+    grill_fail_rate?: number;
+    pending_decisions?: number;
+    external_market_sentiment?: string;
+    user_urgency?: string;
+  };
+  bias_instructions?: string;
+  energy_save?: boolean;
+  pressure?: number;
+}
+
+export interface L0Snapshot {
+  layer?: number;
+  id?: string;
+  role_id?: string;
+  label?: string;
+  short?: string;
+  spine?: boolean;
+  grill_targets?: string[];
+  enabled?: boolean;
+  query?: string;
+  radar?: L0Radar;
+  knowledge?: L0KnowledgeEntity[];
+  traces?: L0MemoryTrace[];
+  prefs?: Record<string, string>;
+  directory?: RahoDirectoryEntry[];
+  generated_at?: number;
 }
 
 export interface CampaignNode {
@@ -351,6 +402,7 @@ export interface RahoSnapshot {
   campaign?: CampaignMap;
   directory?: RahoDirectoryEntry[];
   kind_labels?: Record<string, string>;
+  l0?: L0Snapshot;
 }
 
 // ==================== 思考過程軌跡 ====================

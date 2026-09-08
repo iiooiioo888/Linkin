@@ -43,11 +43,26 @@ def apply_mgp_system(system_prompt: str, *, superior: bool = False) -> str:
         from backend.company.raho.inspector import has_inspector_constitution
 
         if has_constitution(body) or has_inspector_constitution(body):
-            return body
+            layer = 1 if has_inspector_constitution(body) else 2
+            try:
+                from backend.company.raho.l0 import inject_l0
+
+                return inject_l0(body, layer, "")
+            except Exception:  # noqa: BLE001
+                return body
     preamble = MGP_SUPERIOR_PREAMBLE if superior else MGP_EXECUTOR_PREAMBLE
     if preamble in body:
-        return body
-    return f"{preamble}\n\n{body}".strip()
+        assembled = body
+    else:
+        assembled = f"{preamble}\n\n{body}".strip()
+    if superior:
+        try:
+            from backend.company.raho.l0 import inject_l0
+
+            assembled = inject_l0(assembled, 3, "")
+        except Exception:  # noqa: BLE001
+            pass
+    return assembled
 
 
 def parse_grill_output(text: str) -> tuple[str, list[GrillIssue]]:

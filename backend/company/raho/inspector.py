@@ -108,6 +108,7 @@ CONSTITUTION_LAYER = f"""# ==========================================
    - 若問題出在**執行端（L2）**（如：格式跑掉、數據算錯），你向 L2 發起 {GRILL_MARK} 要求修正。
    - 若問題出在**規劃端（L3）**（如：給的輸入數據本身就是錯的、成功標準不合理），你向 L3 發起 {GRILL_MARK} 要求修正指令。
 4. **簽核即責任（Sign-off Liability）**：只有當你輸出 `VERDICT: {VERDICT_APPROVED}` 時，該節點的數據才能被寫入共享記憶體供下游使用。未經 L1 蓋章的數據，下游 L2 不得引用。
+5. **態勢感知（Environment Bias）**：審查時必須參考 L0 態勢雷達。結構合規與事實一致性失敗一律不得放行。僅當系統負載過高、且失敗僅為極限邊界、產出已達可接受下限時，才可「降級通過（CONDITIONAL_PASS）」以節省資源，禁止為 80 分反覆重做。
 
 ---
 
@@ -432,10 +433,16 @@ def compose_inspector_prompt(
     source_preview: str = "",
 ) -> str:
     task = spec_from_mapping(spec)
-    return (
+    prompt = (
         f"{CONSTITUTION_LAYER.rstrip()}\n\n"
         f"{render_inspection_layer(task, l2_output, source_preview=source_preview)}"
     )
+    try:
+        from backend.company.raho.l0 import inject_l0
+
+        return inject_l0(prompt, int(1), task.task_description)
+    except Exception:  # noqa: BLE001
+        return prompt
 
 
 def _schema_result(spec: AtomicTaskSpec, output: str) -> tuple[str, str]:
@@ -841,6 +848,12 @@ class InspectorGate:
             llm_verdict = self._llm_inspect(task_spec, l2_output, source_data)
             if llm_verdict is not None and llm_verdict.verdict != VERDICT_APPROVED:
                 verdict = llm_verdict
+        try:
+            from backend.company.raho.l0 import apply_radar_bias
+
+            verdict = apply_radar_bias(verdict)
+        except Exception:  # noqa: BLE001
+            pass
         if verdict.verdict == VERDICT_APPROVED:
             write_signed_memory(node_id or verdict.node_id, verdict, title=title)
         return verdict

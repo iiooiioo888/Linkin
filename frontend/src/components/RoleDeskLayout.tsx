@@ -3,7 +3,7 @@
  * 色彩沿用控制台既有語彙，只改結構。
  */
 import { Fragment, useMemo, type ReactNode } from 'react';
-import type { AgentEvent, AgentWorkItem, GrillTreeNode, RoleAgent } from '../types';
+import type { AgentEvent, AgentWorkItem, GrillTreeNode, L0Snapshot, RoleAgent } from '../types';
 import {
   blankMetrics,
   fmtUsd,
@@ -17,11 +17,13 @@ import {
 import { EVENT_LABELS, roleLabel } from './TaskPanel';
 import {
   agentRahoLabel,
+  jumpLayer,
   jumpToGrillTree,
-  jumpToRoleDesk,
+  jumpToL0Kernel,
   kindLabel,
   nodeRoleLabel,
   orgLevelCaption,
+  RAHO_CHAIN,
   RAHO_LAYERS,
   rahoTone,
   statusLabel,
@@ -617,7 +619,7 @@ export function RahoChainBlock({ agent }: { agent: RoleAgent }) {
         </button>
       </div>
       <div className="raho-desk-chain">
-        {[5, 4, 3, 2, 1].map((layer) => {
+        {RAHO_CHAIN.map((layer) => {
           const meta = RAHO_LAYERS[layer];
           const active = layer === current;
           const clickable = Boolean(meta.role_id && meta.role_id !== 'user');
@@ -625,9 +627,9 @@ export function RahoChainBlock({ agent }: { agent: RoleAgent }) {
             <button
               key={layer}
               type="button"
-              className={`raho-desk-chip${active ? ' on' : ''}`}
+              className={`raho-desk-chip${active ? ' on' : ''}${layer === 0 ? ' is-l0' : ''}`}
               disabled={!clickable}
-              onClick={() => clickable && jumpToRoleDesk(meta.role_id)}
+              onClick={() => clickable && jumpLayer(layer, meta.role_id)}
             >
               {meta.short}
             </button>
@@ -674,6 +676,31 @@ export function GrillFeedBlock({ nodes }: { nodes: GrillTreeNode[] }) {
   );
 }
 
+export function L0ContextBlock({ snapshot }: { snapshot?: L0Snapshot | null }) {
+  const radar = snapshot?.radar;
+  const pressure = Math.round((radar?.pressure ?? 0) * 100);
+  const lesson = snapshot?.traces?.find((t) => t.failure_reason) ?? snapshot?.traces?.[0];
+  const knowledge = snapshot?.knowledge?.[0];
+  return (
+    <div className="rd-sec">
+      <div className="rd-tt">
+        L0 知識與記憶
+        <button type="button" className="rd-link" onClick={jumpToL0Kernel}>
+          開核心
+        </button>
+      </div>
+      <p className="text-[11px] leading-relaxed text-[#AEAEB2]">
+        {radar?.bias_instructions || '環境壓力正常，依規格驗收。'}
+      </p>
+      <p className={`mt-1 text-[10px] ${radar?.energy_save ? 'text-[#FF9F0A]' : 'text-[#636366]'}`}>
+        壓力 {pressure}%{radar?.energy_save ? ' · 節能模式' : ''}
+      </p>
+      {knowledge ? <p className="mt-1 text-[10px] text-[#8E8E93]">知識：{knowledge.content}</p> : null}
+      {lesson ? <p className="mt-1 text-[10px] text-[#8E8E93]">記憶：{lesson.summary}</p> : null}
+    </div>
+  );
+}
+
 export function RoleRightPanel({
   agent,
   agents,
@@ -682,6 +709,7 @@ export function RoleRightPanel({
   onOpen,
   onOpenItem,
   grillNodes,
+  l0,
 }: {
   agent: RoleAgent;
   agents: RoleAgent[];
@@ -690,10 +718,12 @@ export function RoleRightPanel({
   onOpen: (id: string) => void;
   onOpenItem?: (item: AgentWorkItem) => void;
   grillNodes?: GrillTreeNode[];
+  l0?: L0Snapshot | null;
 }) {
   return (
     <aside className="rd-rp">
       <RahoChainBlock agent={agent} />
+      <L0ContextBlock snapshot={l0} />
       <GrillFeedBlock nodes={grillNodes ?? []} />
       <OrgReportTree agent={agent} agents={agents} onOpen={onOpen} />
       <TaskStatusBlock agent={agent} filter={filter} onFilter={onFilter} onOpenItem={onOpenItem} />

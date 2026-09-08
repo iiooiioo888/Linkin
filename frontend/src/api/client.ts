@@ -8,7 +8,7 @@
  * 生產環境可設定 VITE_API_URL 環境變數指向後端位址。
  */
 
-import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
+import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
 
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -449,6 +449,17 @@ export async function streamAuditor(params: {
   }
   if (!result) throw new Error('需求審計官串流未回傳結果');
   return result;
+}
+
+/** RAHO：L0 環境與記憶核心。 */
+export async function fetchL0Kernel(query = '', nodeId = ''): Promise<L0Snapshot> {
+  const params = new URLSearchParams();
+  if (query) params.set('query', query);
+  if (nodeId) params.set('node_id', nodeId);
+  const q = params.toString() ? `?${params.toString()}` : '';
+  const resp = await fetch(apiUrl(`/raho/l0${q}`));
+  if (!resp.ok) throw new Error(`讀取 L0 核心失敗（HTTP ${resp.status}）`);
+  return resp.json();
 }
 
 /** RAHO：質詢樹與決策阻塞點。 */

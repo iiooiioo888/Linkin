@@ -222,7 +222,7 @@ export function isQuantDeskRole(id: string | null | undefined): boolean {
 }
 
 export type AgentDeskTab = 'tasks' | 'monitor' | 'settings' | 'quant' | 'overview' | 'org';
-export type JumpAgentDetail = { id?: string; level?: number; deskTab?: AgentDeskTab };
+export type JumpAgentDetail = { id?: string; level?: number; rahoLayer?: number; deskTab?: AgentDeskTab };
 
 /** 控制台跨頁：角色面板尚未掛載時先記下要開的工作台分頁。 */
 let pendingDeskTab: AgentDeskTab | null = null;
@@ -268,7 +268,16 @@ export function filterAgentsByDesk(agents: RoleAgent[], desk: AgentDeskScope): R
 }
 
 export function pickDefaultAgentId(agents: RoleAgent[], preferred?: string | null): string {
+  if (preferred === 'environment_kernel' || preferred === 'l0_kernel') {
+    return '';
+  }
+  if (preferred === 'atomic_executor' || preferred === 'l2_executor') {
+    const l2 = agents.find((a) => a.raho_layer === 2 || a.id === 'atomic_executor');
+    if (l2) return l2.id;
+  }
   if (preferred && agents.some((a) => a.id === preferred)) return preferred;
+  const byLayer = preferred ? agents.find((a) => a.raho_layer === Number(preferred)) : undefined;
+  if (byLayer) return byLayer.id;
   const busy = agents.find((a) => a.status === 'busy') ?? agents.find((a) => a.status === 'waiting' || a.status === 'error');
   if (busy) return busy.id;
   return agents.find((a) => a.id === 'manager')?.id ?? agents[0]?.id ?? '';

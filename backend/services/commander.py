@@ -243,6 +243,7 @@ SYSTEM_PROMPT = """# 系統指令：戰術指揮官（Tactical Commander）
 2. **上下文隔離（Context Isolation）**：L2 角色絕不繼承 L3 的冗長對話歷史。你傳遞給 L2 的「任務簡報」必須在 **200 個 Token 以內**，且必須包含明確的「輸入來源（Input Ref）」與「輸出格式範例（Output Schema）」。
 3. **工具白名單強制（Tool Whitelist）**：你必須明確指定該 L2 角色能且僅能用哪些工具（如 `read_file`, `web_search`, `python_exec`）。不允許開放「所有工具」。
 4. **質詢響應義務（Grill-Response Obligation）**：當 L2 對你的指令發起 [GRILL] 質詢時，你必須在 **3 輪對話內**給出明確的修正或補充。若 3 輪無法解決，你必須自動發起 [ESCALATE] 向上級（L4 或用戶）求助。
+5. **先查長期記憶（L0 Memory Bank）**：拆解前先讀 L0。若該用戶偏好簡潔輸出，每個 L2 的 Success Criteria 須強制加入字數上限；若歷史有類似任務失敗，優先沿用成功的 DAG，並補上當時的解法（例如反爬改走代理池）。環境雷達若顯示 API 延遲偏高，將 Max Iterations 降為 1。
 
 ## 思維框架：拆解四步法
 在生成最終輸出前，你必須在內部遵循以下邏輯鏈進行推理（Chain of Thought）：
@@ -1056,7 +1057,16 @@ def _llm_plan(ticket: dict[str, Any], *, rush: bool) -> dict[str, Any] | None:
             '"assigned_role_template":"web_scraper","parallel_ok":true}]}\n\n'
             f"{json.dumps(ticket, ensure_ascii=False)}"
         )
-        raw = call_llm(prompt, system=SYSTEM_PROMPT)
+        from backend.company.raho.l0 import inject_l0
+
+        goal = ""
+        clarified = ticket.get("clarified_goal") if isinstance(ticket.get("clarified_goal"), dict) else {}
+        if clarified:
+            goal = str(clarified.get("core_action") or clarified.get("quantified_success") or "")
+        raw = call_llm(
+            prompt,
+            system=inject_l0(SYSTEM_PROMPT, int(RahoLayer.L3_COMMANDER), goal or str(ticket)[:240]),
+        )
         data = parse_json_response(raw)
         if isinstance(data, dict) and data.get("dag_nodes"):
             return data
@@ -1144,7 +1154,7 @@ def plan_from_ticket(
         source = "rule"
 
     yaml_text = battle_plan_to_yaml(battle)
-    return {
+    pack = {
         "status": STATUS_PLAN_READY,
         "role": "tactical_commander",
         "role_label": LAYER_LABELS.get(int(RahoLayer.L3_COMMANDER), "L3 戰術指揮官"),
@@ -1158,6 +1168,17 @@ def plan_from_ticket(
         "serial_depth": battle.get("serial_depth"),
         "based_on_l4_json": battle.get("based_on_l4_json"),
     }
+    try:
+        from backend.company.raho.l0 import attach_to_plan
+
+        goal = ""
+        clarified = parsed.get("clarified_goal") if isinstance(parsed.get("clarified_goal"), dict) else {}
+        if clarified:
+            goal = str(clarified.get("core_action") or clarified.get("quantified_success") or "")
+        attach_to_plan(pack, query=goal or str(parsed.get("clarified_goal") or "")[:240])
+    except Exception:  # noqa: BLE001
+        pass
+    return pack
 
 
 def classify_grill(issues: list[GrillIssue] | list[str] | str) -> str:

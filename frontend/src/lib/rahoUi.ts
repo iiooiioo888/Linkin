@@ -1,10 +1,21 @@
 /**
  * RAHO 層級／角色統一顯示（與 backend/company/raho/protocol.py 對齊）。
- * 質詢樹、角色名冊、工作台必須走這份資料，禁止各面板自寫 L1–L5 名稱。
+ * 質詢樹、角色名冊、工作台必須走這份資料，禁止各面板自寫 L0–L5 名稱。
  */
 import type { GrillTree, GrillTreeNode, RahoDirectoryEntry, RoleAgent } from '../types';
 
+export const RAHO_CHAIN = [5, 4, 3, 2, 1, 0] as const;
+
 export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
+  0: {
+    layer: 0,
+    id: 'l0_kernel',
+    role_id: 'environment_kernel',
+    title: '環境與記憶核心',
+    short: 'L0 核心',
+    full: 'L0 環境與記憶核心',
+    grill_targets: [],
+  },
   1: {
     layer: 1,
     id: 'l1_inspector',
@@ -17,7 +28,7 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
   2: {
     layer: 2,
     id: 'l2_executor',
-    role_id: '',
+    role_id: 'atomic_executor',
     title: '原子執行者',
     short: 'L2 執行',
     full: 'L2 原子執行者',
@@ -53,9 +64,12 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
 };
 
 export const RAHO_SPINE_ROLE_IDS = [
+  'environment_kernel',
   'requirement_auditor',
   'tactical_commander',
+  'atomic_executor',
   'constitutional_inspector',
+  'user',
 ] as const;
 
 export const RAHO_KIND_LABELS: Record<string, string> = {
@@ -68,6 +82,9 @@ export const RAHO_KIND_LABELS: Record<string, string> = {
   inspect: '憲兵審查',
   campaign: '戰役下達',
   rework: '退回重做',
+  l0: '環境注入',
+  memory: '記憶回放',
+  knowledge: '知識引用',
 };
 
 export const RAHO_STATUS_LABELS: Record<string, string> = {
@@ -79,8 +96,10 @@ export const RAHO_STATUS_LABELS: Record<string, string> = {
 };
 
 const ROLE_LAYER: Record<string, number> = {
+  environment_kernel: 0,
   constitutional_inspector: 1,
   reviewer: 1,
+  atomic_executor: 2,
   tactical_commander: 3,
   requirement_auditor: 4,
   manager: 4,
@@ -88,8 +107,10 @@ const ROLE_LAYER: Record<string, number> = {
 };
 
 export function rahoLayerOf(roleId?: string | null, fallback?: number | null): number {
-  if (roleId && ROLE_LAYER[roleId]) return ROLE_LAYER[roleId];
-  if (fallback && RAHO_LAYERS[fallback]) return fallback;
+  if (roleId && Object.prototype.hasOwnProperty.call(ROLE_LAYER, roleId)) {
+    return ROLE_LAYER[roleId];
+  }
+  if (fallback != null && RAHO_LAYERS[fallback]) return fallback;
   if (roleId?.endsWith('_lead') || roleId === 'architect' || roleId === 'coordinator') return 3;
   return 2;
 }
@@ -124,11 +145,24 @@ export function statusLabel(status?: string | null): string {
   return RAHO_STATUS_LABELS[key] || key;
 }
 
+export function canonicalRoleId(layer?: number | null, roleId?: string | null): string {
+  if (roleId && roleId !== 'user') {
+    if (roleId === 'l2_executor') return 'atomic_executor';
+    if (roleId === 'l0_kernel') return 'environment_kernel';
+    return roleId;
+  }
+  return rahoMeta(layer).role_id;
+}
+
+export function isCanonicalLayerRole(roleId?: string | null): boolean {
+  if (!roleId) return false;
+  return Object.values(RAHO_LAYERS).some((meta) => meta.role_id === roleId);
+}
+
 export function nodeRoleId(node: GrillTreeNode, side: 'from' | 'to'): string {
   const id = side === 'from' ? node.from_role : node.to_role;
-  if (id && id !== 'user') return id;
   const layer = side === 'from' ? node.from_layer : node.to_layer;
-  return rahoMeta(layer).role_id;
+  return canonicalRoleId(layer, id);
 }
 
 export function nodeRoleLabel(node: GrillTreeNode, side: 'from' | 'to'): string {
@@ -153,12 +187,20 @@ export function orgLevelCaption(agent: Pick<RoleAgent, 'level' | 'level_label'>)
 }
 
 export function nodesForRole(trees: GrillTree[], roleId: string): GrillTreeNode[] {
+  const layer = rahoLayerOf(roleId);
+  const canonical = rahoMeta(layer).role_id;
+  const matchLayer = Boolean(canonical && roleId === canonical);
   const out: GrillTreeNode[] = [];
+  const seen = new Set<string>();
   for (const tree of trees) {
     for (const node of tree.nodes ?? []) {
-      if (nodeRoleId(node, 'from') === roleId || nodeRoleId(node, 'to') === roleId) {
-        out.push(node);
-      }
+      const hit =
+        nodeRoleId(node, 'from') === roleId ||
+        nodeRoleId(node, 'to') === roleId ||
+        (matchLayer && (node.from_layer === layer || node.to_layer === layer));
+      if (!hit || seen.has(node.node_id)) continue;
+      seen.add(node.node_id);
+      out.push(node);
     }
   }
   return out.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
@@ -169,12 +211,29 @@ export function openCountForRole(trees: GrillTree[], roleId: string): number {
 }
 
 export function jumpToRoleDesk(roleId: string) {
-  if (!roleId || roleId === 'user') return;
+  if (!roleId || roleId === 'user' || roleId === 'environment_kernel') {
+    if (roleId === 'environment_kernel') jumpToL0Kernel();
+    return;
+  }
   window.location.hash = `#/monitor/agents/${encodeURIComponent(roleId)}`;
 }
 
 export function jumpToGrillTree() {
   window.location.hash = '#/monitor/grill';
+}
+
+export function jumpToL0Kernel() {
+  window.location.hash = '#/monitor/memory';
+}
+
+export function jumpLayer(layer: number, roleId?: string) {
+  const canonical = canonicalRoleId(layer, roleId);
+  if (layer === 0 || canonical === 'environment_kernel') {
+    jumpToL0Kernel();
+    return;
+  }
+  if (layer === 5 || canonical === 'user') return;
+  jumpToRoleDesk(canonical);
 }
 
 export function rahoTone(status: string): string {

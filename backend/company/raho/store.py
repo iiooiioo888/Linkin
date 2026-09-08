@@ -163,6 +163,9 @@ class RahoStore:
         self.battle_plans: dict[str, dict[str, Any]] = {}
         self.grill_rounds: dict[str, int] = {}
         self.shared_memory: dict[str, dict[str, Any]] = {}
+        self.l0_traces: list[dict[str, Any]] = []
+        self.l0_prefs: dict[str, str] = {}
+        self.l0_entities: dict[str, dict[str, Any]] = {}
 
     def _trim(self, mapping: dict, limit: int) -> None:
         while len(mapping) > limit:
@@ -373,7 +376,7 @@ class RahoStore:
                         **p,
                     }
                 )
-        return {
+        payload = {
             "trees": trees,
             "pending_decisions": pending,
             "blocked": blocked,
@@ -383,6 +386,13 @@ class RahoStore:
             "directory": raho_directory(),
             "kind_labels": dict(KIND_LABELS),
         }
+        try:
+            from backend.company.raho.l0 import kernel_snapshot
+
+            payload["l0"] = kernel_snapshot()
+        except Exception:  # noqa: BLE001
+            payload["l0"] = {"layer": 0, "enabled": False, "traces": [], "knowledge": []}
+        return payload
 
 
 STORE = RahoStore()

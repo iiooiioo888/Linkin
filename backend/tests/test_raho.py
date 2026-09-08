@@ -26,6 +26,7 @@ from backend.company.raho.protocol import (
     RahoLayer,
     annotate_edge,
     attach_raho_fields,
+    canonical_role_id,
     raho_directory,
     raho_identity,
     role_to_raho_layer,
@@ -53,6 +54,9 @@ def _reset_raho(monkeypatch):
     STORE.battle_plans.clear()
     STORE.grill_rounds.clear()
     STORE.shared_memory.clear()
+    STORE.l0_traces.clear()
+    STORE.l0_prefs.clear()
+    STORE.l0_entities.clear()
     reset_scorecard()
     yield
     STORE.user_sessions.clear()
@@ -61,6 +65,9 @@ def _reset_raho(monkeypatch):
     STORE.battle_plans.clear()
     STORE.grill_rounds.clear()
     STORE.shared_memory.clear()
+    STORE.l0_traces.clear()
+    STORE.l0_prefs.clear()
+    STORE.l0_entities.clear()
     reset_scorecard()
 
 
@@ -205,7 +212,9 @@ class TestScorecardAndTree:
         assert payload["from_label"] == LAYER_LABELS[2]
         assert payload["to_label"] == LAYER_LABELS[3]
         assert payload["kind_label"] == "戰前質詢"
-        assert snap["directory"][0]["full"] == LAYER_LABELS[1]
+        assert snap["directory"][0]["full"] == LAYER_LABELS[0]
+        assert snap["directory"][1]["full"] == LAYER_LABELS[1]
+        assert snap["l0"]["role_id"] == "environment_kernel"
         STORE.resolve_node("run1", node.node_id)
         tree = STORE.get_tree("run1")
         assert tree is not None
@@ -231,7 +240,15 @@ class TestRahoIdentity:
         assert auditor["full"] == "L4 需求審計官"
         user = raho_identity(layer=5)
         assert user["role_id"] == "user"
+        kernel = raho_identity("environment_kernel")
+        assert kernel["full"] == "L0 環境與記憶核心"
+        assert kernel["spine"] is True
+        l2 = raho_identity(layer=2)
+        assert l2["role_id"] == "atomic_executor"
+        assert l2["full"] == "L2 原子執行者"
+        assert canonical_role_id(2) == "atomic_executor"
         assert [row["full"] for row in raho_directory()] == [
+            "L0 環境與記憶核心",
             "L1 憲兵審查官",
             "L2 原子執行者",
             "L3 戰術指揮官",
@@ -249,6 +266,9 @@ class TestRahoIdentity:
         edge = annotate_edge(1, 3)
         assert edge["from_label"] == "L1 憲兵審查官"
         assert edge["to_label"] == "L3 戰術指揮官"
+        l2_edge = annotate_edge(2, 3)
+        assert l2_edge["from_role"] == "atomic_executor"
+        assert l2_edge["from_label"] == "L2 原子執行者"
 
 
 class TestEscalationTtl:

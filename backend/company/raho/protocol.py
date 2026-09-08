@@ -1,10 +1,11 @@
 """RAHO 共用協議：層級、標記、設定與資料結構。
 
 遞歸對抗式分層組織（Recursive Adversarial Hierarchical Organization）：
+  L0 環境與記憶核心（三核：記憶／知識／態勢）滲透 L1–L5
   L5 用戶 → L4 需求審計官 → L3 戰術指揮官 → L2 原子執行者 → L1 憲兵審查官
   L1 為獨立審查閘門：四維度驗收、雙向 Grill（L2 重做／L3 改指令），簽核後才寫入共享記憶。
 
-質詢樹與角色名冊共用本檔的層級／角色身分，禁止前端或面板另寫一套 L1–L5 名稱。
+質詢樹與角色名冊共用本檔的層級／角色身分，禁止前端或面板另寫一套 L0–L5 名稱。
 """
 
 from __future__ import annotations
@@ -33,6 +34,7 @@ AUDITOR_DIM_THRESHOLD = 90.0
 class RahoLayer(IntEnum):
     """RAHO 金字塔層級（數字越大越高）。舊別名保留給既有呼叫。"""
 
+    L0_KERNEL = 0
     L1_INSPECTOR = 1
     L1_GRILL = 1
     L2_EXECUTOR = 2
@@ -46,6 +48,15 @@ class RahoLayer(IntEnum):
 # ── 層級／角色統一身分（質詢樹、名冊、工作台共用）──
 
 LAYER_META: dict[int, dict[str, Any]] = {
+    0: {
+        "layer": 0,
+        "id": "l0_kernel",
+        "role_id": "environment_kernel",
+        "title": "環境與記憶核心",
+        "short": "L0 核心",
+        "full": "L0 環境與記憶核心",
+        "grill_targets": [],
+    },
     1: {
         "layer": 1,
         "id": "l1_inspector",
@@ -58,7 +69,7 @@ LAYER_META: dict[int, dict[str, Any]] = {
     2: {
         "layer": 2,
         "id": "l2_executor",
-        "role_id": "",
+        "role_id": "atomic_executor",
         "title": "原子執行者",
         "short": "L2 執行",
         "full": "L2 原子執行者",
@@ -98,11 +109,16 @@ LAYER_SHORT: dict[int, str] = {layer: meta["short"] for layer, meta in LAYER_MET
 
 RAHO_SPINE_ROLES: frozenset[str] = frozenset(
     {
+        "environment_kernel",
         "constitutional_inspector",
+        "atomic_executor",
         "tactical_commander",
         "requirement_auditor",
+        "user",
     }
 )
+
+RAHO_CHAIN: tuple[int, ...] = (5, 4, 3, 2, 1, 0)
 
 KIND_LABELS: dict[str, str] = {
     "user_grill": "用戶審計",
@@ -114,10 +130,15 @@ KIND_LABELS: dict[str, str] = {
     "inspect": "憲兵審查",
     "campaign": "戰役下達",
     "rework": "退回重做",
+    "l0": "環境注入",
+    "memory": "記憶回放",
+    "knowledge": "知識引用",
 }
 
 _ROLE_OVERLAYS: dict[str, dict[str, Any]] = {
+    "environment_kernel": {"layer": 0, "title": "環境與記憶核心", "spine": True},
     "constitutional_inspector": {"layer": 1, "title": "憲兵審查官", "spine": True},
+    "atomic_executor": {"layer": 2, "title": "原子執行者", "spine": True},
     "requirement_auditor": {"layer": 4, "title": "需求審計官", "spine": True},
     "tactical_commander": {"layer": 3, "title": "戰術指揮官", "spine": True},
     "user": {"layer": 5, "title": "用戶", "spine": True},
@@ -132,6 +153,15 @@ def raho_enabled() -> bool:
 
 def user_grill_enabled() -> bool:
     return raho_enabled() and os.getenv("EVOL_RAHO_USER_GRILL", "true").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def l0_enabled() -> bool:
+    return raho_enabled() and os.getenv("EVOL_RAHO_L0", "true").lower() in {
         "1",
         "true",
         "yes",
@@ -194,6 +224,15 @@ def role_to_raho_layer(role: RoleType | str | None) -> RahoLayer:
     return RahoLayer.L2_EXECUTOR
 
 
+def canonical_role_id(layer: int | RahoLayer | None) -> str:
+    """層級在質詢樹／名冊上的正規角色 id。"""
+    try:
+        key = int(layer) if layer is not None else 2
+    except (TypeError, ValueError):
+        key = 2
+    return str(LAYER_META.get(key, LAYER_META[2]).get("role_id") or "")
+
+
 def layer_label(layer: int | RahoLayer | None, *, short: bool = False) -> str:
     try:
         key = int(layer) if layer is not None else 2
@@ -222,7 +261,7 @@ def raho_identity(
         resolved = int(RahoLayer.L2_EXECUTOR)
     meta = LAYER_META[resolved]
     title = str(overlay["title"]) if overlay else str(meta["title"])
-    role_id = value or str(meta["role_id"] or "")
+    role_id = value or str(meta["role_id"] or "atomic_executor")
     spine = bool(overlay["spine"]) if overlay else role_id in RAHO_SPINE_ROLES
     full = f"L{resolved} {title}"
     return {
@@ -275,8 +314,9 @@ def attach_raho_fields(snapshot: dict[str, Any]) -> dict[str, Any]:
     return snapshot
 
 
-def raho_directory() -> list[dict[str, Any]]:
-    return [dict(LAYER_META[layer]) for layer in (1, 2, 3, 4, 5)]
+def raho_directory(*, include_kernel: bool = True) -> list[dict[str, Any]]:
+    layers = (0, 1, 2, 3, 4, 5) if include_kernel else (1, 2, 3, 4, 5)
+    return [dict(LAYER_META[layer]) for layer in layers if layer in LAYER_META]
 
 
 def superior_layer(layer: RahoLayer) -> RahoLayer:

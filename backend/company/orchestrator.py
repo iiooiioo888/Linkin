@@ -240,6 +240,8 @@ class CompanyOrchestrator:
                         status="resolved",
                         payload=self._campaign,
                         goal=goal,
+                        from_role="requirement_auditor",
+                        to_role="tactical_commander",
                     )
                 self.events.emit(CompanyEvent.CAMPAIGN_PLANNED, {
                     "node_count": len(campaign.nodes),
@@ -1080,6 +1082,15 @@ class CompanyOrchestrator:
                             system_prompt,
                             superior=role_type == RoleType.TACTICAL_COMMANDER,
                         )
+                    from backend.company.raho.l0 import inject_l0
+                    from backend.company.raho.protocol import role_to_raho_layer
+
+                    system_prompt = inject_l0(
+                        system_prompt,
+                        int(role_to_raho_layer(role_type)),
+                        goal,
+                        task_id=item.id,
+                    )
                 except Exception:  # noqa: BLE001
                     pass
                 if timeout_s > 0:
@@ -1280,6 +1291,12 @@ class CompanyOrchestrator:
                 status="resolved" if verdict.verdict == VERDICT_APPROVED else "open",
                 payload={"item_id": item.id, "verdict": verdict.to_dict()},
                 goal=goal,
+                from_role="constitutional_inspector",
+                to_role=(
+                    "tactical_commander"
+                    if target_layer == int(RahoLayer.L3_DECOMPOSER) and verdict.verdict != VERDICT_APPROVED
+                    else "atomic_executor"
+                ),
             )
             if verdict.verdict == VERDICT_APPROVED:
                 _RAHO_STORE.resolve_node(self._run_id, node.node_id, "resolved")
