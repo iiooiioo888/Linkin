@@ -3,11 +3,12 @@
  * 骨架對齊角色稿：標題列 + 指標帶 + 任用列表 + 右側資訊欄。
  * 角色名冊在左側 SidePanel；總覽是控制台「即時」，不在此頁重複。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   createCustomAgent,
   deleteCustomAgent,
   fetchAgentMonitor,
+  fetchRahoTree,
   resetAgentSettings,
   updateAgentMonitorPrefs,
   updateAgentSettings,
@@ -34,7 +35,8 @@ import {
   type WorkItemColumnKey,
 } from '../lib/agentUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
-import type { AgentMonitorData, AgentWorkItem, RoleAgent } from '../types';
+import { jumpToGrillTree, nodesForRole } from '../lib/rahoUi';
+import type { AgentMonitorData, AgentWorkItem, GrillTree, L0Snapshot, RoleAgent } from '../types';
 import RoleSettingsPanel, { CreateRoleModal, draftToPayload, type RoleSettingsDraft } from './RoleSettingsPanel';
 import { RdCell, RoleDeskHeader, RoleRightPanel, RoleStatsStrip, type RoleDeskTab } from './RoleDeskLayout';
 import { StatusColumnBoard } from './StatusColumnBoard';
@@ -126,6 +128,69 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
       </div>
     );
   }
+  if (agent.id === 'constitutional_inspector') {
+    return (
+      <ExtraGrid
+        cells={[
+          { label: '簽核通過', value: String(m.review_pass) },
+          { label: '退回重做', value: String(m.review_rework) },
+          { label: '向上呈報', value: String(m.human_escalations) },
+          { label: '質詢層', value: agent.raho_label || 'L1 憲兵審查官' },
+        ]}
+      />
+    );
+  }
+  if (agent.id === 'atomic_executor') {
+    return (
+      <div className="space-y-2">
+        <ExtraGrid
+          cells={[
+            { label: '戰前質詢', value: String(m.grill_count) },
+            { label: '被質詢率', value: `${Math.round((m.grill_rate ?? 0) * 100)}%` },
+            { label: '重試', value: String(m.retries) },
+            { label: '質詢層', value: agent.raho_short || 'L2 執行' },
+          ]}
+        />
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={jumpToGrillTree}>
+          查看質詢樹
+        </button>
+      </div>
+    );
+  }
+  if (agent.id === 'tactical_commander') {
+    return (
+      <div className="space-y-2">
+        <ExtraGrid
+          cells={[
+            { label: '被質詢', value: `${Math.round((m.grill_rate ?? 0) * 100)}%` },
+            { label: '決策清晰', value: `${Math.round((m.decision_clarity ?? 1) * 100)}%` },
+            { label: '上交用戶', value: String(m.human_escalations) },
+            { label: '質詢層', value: agent.raho_short || 'L3 指揮' },
+          ]}
+        />
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={jumpToGrillTree}>
+          查看質詢樹
+        </button>
+      </div>
+    );
+  }
+  if (agent.id === 'requirement_auditor') {
+    return (
+      <div className="space-y-2">
+        <ExtraGrid
+          cells={[
+            { label: '審計回合', value: String(m.grill_count) },
+            { label: '鎖定清晰', value: `${Math.round((m.decision_clarity ?? 1) * 100)}%` },
+            { label: '終止／失敗', value: String(m.errors) },
+            { label: '質詢層', value: agent.raho_short || 'L4 審計' },
+          ]}
+        />
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={jumpToGrillTree}>
+          查看質詢樹
+        </button>
+      </div>
+    );
+  }
   if (agent.id === 'reviewer') {
     return (
       <ExtraGrid
@@ -208,6 +273,7 @@ function RoleDeepMonitor({ agent }: { agent: RoleAgent }) {
         <div className="rd-tt">角色與合規</div>
         <div className="rd-grid2">
           <RdCell label="狀態" value={agent.enabled === false ? '停用' : '啟用'} />
+          <RdCell label="質詢層" value={agent.raho_label || '—'} />
           <RdCell label="分類" value={CATEGORY_LABEL[agent.category] ?? agent.category} />
           <RdCell label="語言" value={agent.language || 'zh-TW'} />
           <RdCell label="值班" value={agent.on_call ? 'On-call' : '否'} />
@@ -254,6 +320,8 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   const [saveError, setSaveError] = useState<string | null>(null);
   const [didAutoOpen, setDidAutoOpen] = useState(false);
   const [appliedDefaultTab, setAppliedDefaultTab] = useState(false);
+  const [grillTrees, setGrillTrees] = useState<GrillTree[]>([]);
+  const [l0, setL0] = useState<L0Snapshot | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -265,6 +333,14 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
       );
     } catch (err) {
       setError((err as Error).message);
+    }
+    try {
+      const snap = await fetchRahoTree();
+      setGrillTrees(snap.trees ?? []);
+      setL0(snap.l0 ?? null);
+    } catch {
+      setGrillTrees([]);
+      setL0(null);
     }
   }, [focusAgentId, deskScope]);
 
@@ -292,11 +368,27 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
 
   useEffect(() => {
     const onJump = (event: Event) => {
-      const { id, level, deskTab: nextTab } = (event as CustomEvent<JumpAgentDetail>).detail ?? {};
+      const { id, level, rahoLayer, deskTab: nextTab } = (event as CustomEvent<JumpAgentDetail>).detail ?? {};
       if (id) {
         const studio = isLinkinStudioAgent(id);
-        if (deskScope === 'linkin' ? !studio : studio) return;
-        setSelectedId(id);
+        if (id !== 'atomic_executor' && (deskScope === 'linkin' ? !studio : studio)) return;
+        const roster = filterAgentsByDesk(
+          data?.agents?.length ? data.agents : AGENT_FALLBACK_ROSTER,
+          deskScope,
+        );
+        setSelectedId(pickDefaultAgentId(roster, id) || id);
+        setDeskTab(toDeskTab(nextTab));
+        setAppliedDefaultTab(true);
+        return;
+      }
+      if (typeof rahoLayer === 'number') {
+        setSelectedId((current) => {
+          const roster = filterAgentsByDesk(
+            data?.agents?.length ? data.agents : AGENT_FALLBACK_ROSTER,
+            deskScope,
+          );
+          return pickDefaultAgentId(roster, rahoLayer === 2 ? 'atomic_executor' : current) || current;
+        });
         setDeskTab(toDeskTab(nextTab));
         setAppliedDefaultTab(true);
         return;
@@ -344,6 +436,10 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   const agents = filterAgentsByDesk(roster, deskScope);
   const selected = agents.find((a) => a.id === selectedId) ?? agents[0] ?? null;
   const quantDesk = isQuantDeskRole(selected?.id);
+  const selectedGrill = useMemo(
+    () => (selected ? nodesForRole(grillTrees, selected.id) : []),
+    [grillTrees, selected],
+  );
 
   useEffect(() => {
     if (deskTab === 'quant' && !quantDesk) setDeskTab('tasks');
@@ -602,6 +698,8 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                   setItemFilter(workItemColumnKey(item.status));
                   setExpandedId(`${item.task_id}-${item.id}-${item.kind}`);
                 }}
+                grillNodes={selectedGrill}
+                l0={l0}
               />
             ) : null}
           </div>

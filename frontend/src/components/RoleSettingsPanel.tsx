@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AgentCatalogMeta, RoleAgent, RolePreset } from '../types';
 import { CATEGORY_LABEL, ROUTING_LABEL, TIER_LABEL, fmtUsd, routeDisplayName } from '../lib/agentUi';
+import { agentRahoLabel } from '../lib/rahoUi';
 import { navPathForTab } from '../lib/monitorTabs';
 import PromptEditor from './PromptEditor';
 
@@ -401,7 +402,7 @@ export default function RoleSettingsPanel({
       <section id="rs-identity" className="rs-sec">
         <div className="rs-sec-h">
           <h3 className="rs-sec-t">身分／組織</h3>
-          <span className="rs-sec-hint">層級、匯報與指派</span>
+          <span className="rs-sec-hint">質詢層由 RAHO 決定；組織職級只管匯報鏈</span>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           <Field label="顯示名稱">
@@ -420,7 +421,10 @@ export default function RoleSettingsPanel({
               {draft.enabled ? '已啟用 · 可被指派' : '已停用 · 分解時排除'}
             </button>
           </Field>
-          <Field label="層級">
+          <Field label="質詢層">
+            <input className={inputCls} value={agentRahoLabel(agent)} readOnly />
+          </Field>
+          <Field label="組織職級">
             <select
               className={inputCls}
               value={draft.level}
@@ -428,7 +432,7 @@ export default function RoleSettingsPanel({
             >
               {levels.map((lv) => (
                 <option key={lv.level} value={lv.level}>
-                  L{lv.level} {lv.label}
+                  {lv.label}
                 </option>
               ))}
             </select>
@@ -986,7 +990,7 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
             <select className={inputCls} value={level} onChange={(e) => setLevel(Number(e.target.value))}>
               {(catalog?.levels ?? []).map((lv) => (
                 <option key={lv.level} value={lv.level}>
-                  L{lv.level} {lv.label}
+                  {lv.label}
                 </option>
               ))}
             </select>

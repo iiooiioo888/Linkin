@@ -9,7 +9,15 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.company.raho.protocol import RahoLayer
+from backend.company.raho.protocol import (
+    KIND_LABELS,
+    RahoLayer,
+    annotate_edge,
+    kind_label,
+    layer_label,
+    raho_directory,
+    raho_identity,
+)
 
 _MAX_SESSIONS = 80
 _MAX_TREES = 40
@@ -21,20 +29,37 @@ class GrillNode:
     node_id: str
     from_layer: int
     to_layer: int
-    kind: str  # user_grill | mgp | escalate | resolve | timeout | user_decide
+    kind: str  # user_grill | mgp | escalate | resolve | timeout | user_decide | inspect | campaign
     status: str  # open | resolved | escalated | timeout | blocked
     summary: str
     created_at: float
     resolved_at: float | None = None
     parent_id: str | None = None
     payload: dict[str, Any] = field(default_factory=dict)
+    from_role: str = ""
+    to_role: str = ""
+    from_label: str = ""
+    to_label: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        edge = annotate_edge(
+            self.from_layer,
+            self.to_layer,
+            from_role=self.from_role,
+            to_role=self.to_role,
+        )
         return {
             "node_id": self.node_id,
             "from_layer": self.from_layer,
             "to_layer": self.to_layer,
+            "from_role": edge["from_role"],
+            "to_role": edge["to_role"],
+            "from_label": self.from_label or edge["from_label"],
+            "to_label": self.to_label or edge["to_label"],
+            "from_short": edge["from_short"],
+            "to_short": edge["to_short"],
             "kind": self.kind,
+            "kind_label": kind_label(self.kind),
             "status": self.status,
             "summary": self.summary,
             "created_at": self.created_at,
@@ -113,7 +138,9 @@ class PendingDecision:
             "run_id": self.run_id,
             "item_id": self.item_id,
             "layer": self.layer,
-            "layer_label": f"L{self.layer}",
+            "layer_label": layer_label(self.layer),
+            "role_id": raho_identity(layer=self.layer)["role_id"],
+            "role_label": layer_label(self.layer),
             "question": self.question,
             "choices": self.choices,
             "created_at": self.created_at,
@@ -136,6 +163,9 @@ class RahoStore:
         self.battle_plans: dict[str, dict[str, Any]] = {}
         self.grill_rounds: dict[str, int] = {}
         self.shared_memory: dict[str, dict[str, Any]] = {}
+        self.l0_traces: list[dict[str, Any]] = []
+        self.l0_prefs: dict[str, str] = {}
+        self.l0_entities: dict[str, dict[str, Any]] = {}
 
     def _trim(self, mapping: dict, limit: int) -> None:
         while len(mapping) > limit:
@@ -184,7 +214,10 @@ class RahoStore:
         parent_id: str | None = None,
         payload: dict[str, Any] | None = None,
         goal: str = "",
+        from_role: str = "",
+        to_role: str = "",
     ) -> GrillNode:
+        edge = annotate_edge(from_layer, to_layer, from_role=from_role, to_role=to_role)
         node = GrillNode(
             node_id=uuid.uuid4().hex[:10],
             from_layer=from_layer,
@@ -195,10 +228,28 @@ class RahoStore:
             created_at=time.time(),
             parent_id=parent_id,
             payload=payload or {},
+            from_role=edge["from_role"],
+            to_role=edge["to_role"],
+            from_label=edge["from_label"],
+            to_label=edge["to_label"],
         )
         tree = self.ensure_tree(run_id, goal)
         with self._lock:
             tree.nodes.append(node)
+        try:
+            from backend.company.raho.l0 import record_trace
+
+            fail = summary if kind in {"mgp", "inspect", "rework", "escalate"} else ""
+            record_trace(
+                task_id=run_id,
+                layer=f"L{from_layer}",
+                node_id=node.node_id,
+                summary=summary,
+                failure_reason=fail,
+                horizon="stm" if status in {"open", "blocked"} else "mtm",
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return node
 
     def resolve_node(self, run_id: str, node_id: str, status: str = "resolved") -> GrillNode | None:
@@ -339,14 +390,23 @@ class RahoStore:
                         **p,
                     }
                 )
-        return {
+        payload = {
             "trees": trees,
             "pending_decisions": pending,
             "blocked": blocked,
             "user_sessions": len(self.user_sessions),
             "battle_plans": len(self.battle_plans),
             "signed_memory": sum(1 for r in self.shared_memory.values() if r.get("signed")),
+            "directory": raho_directory(),
+            "kind_labels": dict(KIND_LABELS),
         }
+        try:
+            from backend.company.raho.l0 import kernel_snapshot
+
+            payload["l0"] = kernel_snapshot()
+        except Exception:  # noqa: BLE001
+            payload["l0"] = {"layer": 0, "enabled": False, "traces": [], "knowledge": []}
+        return payload
 
 
 STORE = RahoStore()

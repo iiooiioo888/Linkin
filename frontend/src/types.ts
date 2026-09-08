@@ -168,13 +168,21 @@ export interface GrillUserState {
   role?: string;
   role_label?: string;
   user_rounds?: number;
+  l0?: L0Snapshot;
 }
 
 export interface GrillTreeNode {
   node_id: string;
   from_layer: number;
   to_layer: number;
+  from_role?: string;
+  to_role?: string;
+  from_label?: string;
+  to_label?: string;
+  from_short?: string;
+  to_short?: string;
   kind: string;
+  kind_label?: string;
   status: string;
   summary: string;
   created_at: number;
@@ -182,6 +190,66 @@ export interface GrillTreeNode {
   parent_id?: string | null;
   blocked?: boolean;
   payload?: Record<string, unknown>;
+}
+
+export interface RahoDirectoryEntry {
+  layer: number;
+  id: string;
+  role_id: string;
+  title: string;
+  short: string;
+  full: string;
+  grill_targets?: string[];
+}
+
+export interface L0KnowledgeEntity {
+  id: string;
+  content: string;
+  metadata?: Record<string, unknown>;
+  relations?: string[];
+}
+
+export interface L0MemoryTrace {
+  task_id: string;
+  layer: string;
+  node_id: string;
+  summary: string;
+  decisions?: string[];
+  failure_reason?: string;
+  horizon?: 'stm' | 'mtm' | 'ltm' | string;
+}
+
+export interface L0Radar {
+  timestamp?: number;
+  metrics?: {
+    token_usage_ratio?: number;
+    avg_latency_ms?: number;
+    grill_fail_rate?: number;
+    pending_decisions?: number;
+    external_market_sentiment?: string;
+    user_urgency?: string;
+  };
+  bias_instructions?: string;
+  energy_save?: boolean;
+  pressure?: number;
+}
+
+export interface L0Snapshot {
+  layer?: number;
+  id?: string;
+  role_id?: string;
+  label?: string;
+  short?: string;
+  spine?: boolean;
+  grill_targets?: string[];
+  enabled?: boolean;
+  query?: string;
+  radar?: L0Radar;
+  knowledge?: L0KnowledgeEntity[];
+  traces?: L0MemoryTrace[];
+  prefs?: Record<string, string>;
+  directory?: RahoDirectoryEntry[];
+  generated_at?: number;
 }
 
 export interface CampaignNode {
@@ -222,6 +290,7 @@ export interface AtomicRoleInstance {
   max_iterations?: number;
   token_budget?: number;
   failure_fallback?: string;
+  l0_bias?: string;
 }
 
 export interface BattlePlan {
@@ -285,6 +354,7 @@ export interface BattlePlanState {
   details?: string;
   suggested_alternatives?: string[];
   waiting_for_user_decision?: boolean;
+  l0?: L0Snapshot;
   waiting_for_l4?: boolean;
   battle_plan?: BattlePlan | null;
   battle_plan_yaml?: string;
@@ -315,6 +385,9 @@ export interface RahoPendingDecision {
   run_id: string;
   item_id: string;
   layer: number;
+  layer_label?: string;
+  role_id?: string;
+  role_label?: string;
   question: string;
   choices: Array<{ key: string; label: string; rationale?: string }>;
   remaining_sec?: number;
@@ -329,6 +402,9 @@ export interface RahoSnapshot {
   tree?: GrillTree | null;
   run_id?: string;
   campaign?: CampaignMap;
+  directory?: RahoDirectoryEntry[];
+  kind_labels?: Record<string, string>;
+  l0?: L0Snapshot;
 }
 
 // ==================== 思考過程軌跡 ====================
@@ -1283,6 +1359,12 @@ export interface RoleAgent {
   name: string;
   level: number;
   level_label: string;
+  raho_layer?: number;
+  raho_label?: string;
+  raho_short?: string;
+  raho_title?: string;
+  raho_spine?: boolean;
+  grill_targets?: string[];
   category: string;
   reporting_to: string | null;
   can_delegate_to: string[];
@@ -1390,6 +1472,7 @@ export interface AgentMonitorData {
     roles_mainland_only?: number;
   };
   levels: Array<{ level: number; label: string }>;
+  raho_layers?: RahoDirectoryEntry[];
   catalog_meta?: AgentCatalogMeta;
   monitor_prefs?: AgentMonitorPrefs;
   agents: RoleAgent[];

@@ -94,7 +94,8 @@ class RoleType(str, Enum):
       Level 1: TECH/ARCHITECT/SECURITY/PRODUCT/FINANCE/INDUSTRIAL/CREATIVE/PLATFORM/AI/GROWTH LEAD
       Level 2: FRONTEND/BACKEND/TEST/DATA LEAD
       Level 3: 執行層（開發、量化、爬蟲、OPC、故事、GitHub、Hub、行情等）
-      Level 4: REVIEWER, SYNTHESIZER, ANALYST, COORDINATOR, RESEARCHER, PROMPT_ENGINEER, LEGAL, CONTENT_WRITER, SUPPORT, MEMORY, KNOWLEDGE, REQUIREMENT_AUDITOR, TACTICAL_COMMANDER, CONSTITUTIONAL_INSPECTOR
+      Level 4: REVIEWER, SYNTHESIZER, ANALYST, COORDINATOR, RESEARCHER, PROMPT_ENGINEER, LEGAL, CONTENT_WRITER, SUPPORT, MEMORY, KNOWLEDGE, REQUIREMENT_AUDITOR, TACTICAL_COMMANDER, CONSTITUTIONAL_INSPECTOR, ENVIRONMENT_KERNEL
+      RAHO 脊柱另含 ATOMIC_EXECUTOR（L2 執行池，組織層級 3）
     """
 
     # ── Level 0：最高決策層 ──
@@ -189,6 +190,8 @@ class RoleType(str, Enum):
     REQUIREMENT_AUDITOR = "requirement_auditor"  # 需求審計官：五維鎖定、戰術指令門票
     TACTICAL_COMMANDER = "tactical_commander"  # L3 戰術指揮官：原子拆解、孵化 L2
     CONSTITUTIONAL_INSPECTOR = "constitutional_inspector"  # L1 憲兵審查官：四維度驗收、雙向 Grill、簽核
+    ATOMIC_EXECUTOR = "atomic_executor"  # L2 原子執行者池：戰前檢查、專注執行
+    ENVIRONMENT_KERNEL = "environment_kernel"  # L0 環境與記憶核心：不執行任務，只滲透決策
 
 
 class RoleCategory(str, Enum):
@@ -272,6 +275,8 @@ ROLE_CATEGORY_MAP: dict[RoleType, RoleCategory] = {
     RoleType.REQUIREMENT_AUDITOR: RoleCategory.REVIEW,
     RoleType.TACTICAL_COMMANDER: RoleCategory.MANAGEMENT,
     RoleType.CONSTITUTIONAL_INSPECTOR: RoleCategory.REVIEW,
+    RoleType.ATOMIC_EXECUTOR: RoleCategory.MANAGEMENT,
+    RoleType.ENVIRONMENT_KERNEL: RoleCategory.MEMORY,
     RoleType.API_ENGINEER: RoleCategory.BACKEND,
     RoleType.OBSERVABILITY_ENG: RoleCategory.DEVOPS,
     RoleType.ACCESSIBILITY_ENG: RoleCategory.UI,
@@ -393,6 +398,8 @@ ROLE_LEVEL: dict[RoleType, int] = {
     RoleType.REQUIREMENT_AUDITOR: 4,
     RoleType.TACTICAL_COMMANDER: 2,
     RoleType.CONSTITUTIONAL_INSPECTOR: 4,
+    RoleType.ATOMIC_EXECUTOR: 3,
+    RoleType.ENVIRONMENT_KERNEL: 4,
 }
 
 

@@ -395,11 +395,22 @@ def raho_tree(run_id: str | None = None) -> dict[str, Any]:
 
     if run_id:
         tree = STORE.get_tree(run_id)
+        from backend.company.raho.l0 import kernel_snapshot
+
         return {
             "tree": tree.to_dict() if tree else None,
             "pending_decisions": [p.to_dict() for p in STORE.list_pending(run_id)],
+            "l0": kernel_snapshot(query=str(getattr(tree, "goal", "") or "")),
         }
     return STORE.snapshot()
+
+
+@app.get("/raho/l0")
+def raho_l0(query: str = "", node_id: str = "") -> dict[str, Any]:
+    """L0 環境與記憶核心：記憶軌跡、知識實體、態勢雷達。"""
+    from backend.company.raho.l0 import kernel_snapshot
+
+    return kernel_snapshot(query=query, node_id=node_id)
 
 
 @app.post("/raho/decide")

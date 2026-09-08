@@ -15,6 +15,7 @@ import re
 from typing import Any
 
 from backend.company.raho.protocol import (
+    LAYER_LABELS,
     GrillQuestion,
     RahoLayer,
     SemanticLock,
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 AUDITOR_DIM_THRESHOLD = 90.0
 MAX_PHASE_ROUNDS = 3
 MAX_AUDITOR_ROUNDS = 10
-CONFIDENCE_THRESHOLD = 0.92
+CONFIDENCE_THRESHOLD = 0.90
 
 DIM_KEYS = ("specificity", "boundary", "constraints", "risk", "success")
 DIM_LABELS = {
@@ -50,17 +51,26 @@ _OVER_AUTH_PHRASE = re.compile(
     r"(你看著辦|你看着办|你是 AI 你應該比我懂|你是AI你應該比我懂|你應該比我懂|你应该比我懂)"
 )
 _QUANT = re.compile(
-    r"(\d+(\.\d+)?\s*(%|％|小時|小时|分鐘|分钟|天|週|周|萬|万|元|塊|块|人|小時內)|"
-    r"gmv|kpi|roi|復購|复购|轉化|转化|誤報|误报|準確|准确|預算|预算|"
-    r"\d{4}-\d{2}-\d{2})",
+    r"(\d+(\.\d+)?\s*(%|％|小時|小时|分鐘|分钟|天|週|周|萬|万|元|塊|块|人)|"
+    r"\d{4}-\d{2}-\d{2})"
+)
+_METRIC_WORD = re.compile(
+    r"(gmv|kpi|roi|復購|复购|轉化|转化|誤報|误报|準確|准确|預算|预算)",
     re.IGNORECASE,
 )
+_RATE_PAIR = re.compile(r"(\d+(?:\.\d+)?)\s*%[^%\n]{0,32}(\d+(?:\.\d+)?)\s*%")
+_MONEY = re.compile(r"(\d+(?:\.\d+)?)\s*(萬|万|元|塊|块)")
+_REVIEW_GATE = re.compile(r"(人工審核|人工审核|停止推播|人工確認|人工确认)")
+_QUALITY_BOUND = re.compile(r"(品質不可|质量不可|不可降|不得降|絕對不|绝对不)")
 _SUBJECT = re.compile(r"(用戶|用户|客群|受眾|受众|賣家|卖家|粉絲|粉丝|員工|员工|客戶|客户|終端|终端|老闆|老板|發起人|发起人)")
 _ACTION = re.compile(
     r"(生成|壓縮|压缩|提升|預警|预警|調價|调价|產出|产出|交付|盯盤|盯盘|審核|审核|追蹤|追踪)"
 )
 _BEFORE_AFTER = re.compile(r"(目前|現狀|现状|介入前|目標|目标|壓縮至|压缩至|從.{0,12}到|提升到)")
-_BOUNDARY = re.compile(r"(不做|不包含|不使用|不開發|不开发|排除|絕對不|绝对不|禁止|只做|必須|必须|先做)")
+_BOUNDARY = re.compile(
+    r"(不做|不包含|不使用|不開發|不开发|排除|絕對不|绝对不|禁止|只做|必須|必须|先做|"
+    r"人工審核|人工审核|停止推播)"
+)
 _BUDGET = re.compile(r"(預算|预算|萬|万|USD|usd|新台幣|新台币|\d+\s*(元|塊|块))")
 _TIME = re.compile(r"(時程|时程|期限|deadline|週內|周内|天內|天内|\d{4}-\d{2}-\d{2}|上線|上线)")
 _RESOURCE = re.compile(
@@ -98,6 +108,22 @@ _VAGUE_VERB_PRIORITY = (
     "搞一個",
     "搞一个",
 )
+_FAN_KEYS = (
+    "管粉絲",
+    "管粉丝",
+    "管粉",
+    "粉絲",
+    "粉丝",
+    "自動管",
+    "自动管",
+    "幫我管",
+    "帮我管",
+)
+_SOFT_GOAL = re.compile(
+    r"(更黏|黏我|多買|多买|更好|提升效率|優化|优化|改善|智慧|智能|管粉|隨便|随便|看看)"
+)
+_FAN_METRIC = re.compile(r"(復購|复购|回購|回购)")
+_FAN_COST = re.compile(r"(單粉|单粉|每個新粉|每个新粉|行銷成本|营销成本|\d+\s*(元|塊|块))")
 
 # 4 階段 16 題（1–11 一字不改；12–16 補齊攻擊角度）
 QUESTION_BANK: list[dict[str, Any]] = [
@@ -217,14 +243,40 @@ QUESTION_BANK: list[dict[str, Any]] = [
 
 OVER_AUTH_REPLY = "我無法為我無法理解的目標負責，請重新填寫 Phase 2 的量化指標。"
 
+FAN_PHASE2_QUESTION = (
+    "量化失敗。請填入數字：\n\n"
+    "① 目前的「復購率（回購人數 / 總人數）」是 ___ %，目標提升到 ___ %？\n\n"
+    "② 你願意為每個新粉絲投入多少新台幣的行銷成本？"
+)
+FAN_PHASE3_QUESTION = (
+    "進行壓力測試：如果系統推薦的內容導致 5 個老粉退粉，"
+    "你希望系統自動停止推播，還是改為人工審核？請選擇。"
+)
+
+
+def _l0_knowledge_cite(query: str) -> str:
+    """L4 開場引用知識庫定義，避免雙方對基礎名詞各說各話。"""
+    try:
+        from backend.company.raho.l0 import match_knowledge
+
+        hits = match_knowledge(query)
+    except Exception:  # noqa: BLE001
+        return ""
+    if not hits:
+        return ""
+    return f"知識庫已有定義：「{hits[0].content}」請用這個定義回答，不要各說各話。"
+
 
 def _opening_hook(query: str) -> str:
     """第一問開場：拒絕模糊動詞，對齊規格中的「被烤」體驗。"""
     text = (query or "").strip()
+    lead = "收到需求。"
     for verb in _VAGUE_VERB_PRIORITY:
         if verb in text:
-            return f"收到需求。我不接受「{verb}」這個模糊動詞。"
-    return "收到需求。"
+            lead = f"收到需求。我不接受「{verb}」這個模糊動詞。"
+            break
+    cite = _l0_knowledge_cite(query)
+    return f"{lead}{cite}" if cite else lead
 
 
 def _contextual_first_question(query: str) -> GrillQuestion | None:
@@ -274,11 +326,31 @@ def _clamp(score: float) -> float:
     return max(0.0, min(100.0, score))
 
 
+def _has_rate_pair(text: str) -> bool:
+    raw = text or ""
+    if _RATE_PAIR.search(raw):
+        return True
+    return len(re.findall(r"\d+(?:\.\d+)?\s*%", raw)) >= 2
+
+
+def _has_money(text: str) -> bool:
+    return bool(_MONEY.search(text or "") or _BUDGET.search(text or ""))
+
+
+def _has_review_gate(text: str) -> bool:
+    return bool(_REVIEW_GATE.search(text or "") or _FALLBACK.search(text or ""))
+
+
 def score_dimensions(query: str, answers: list[str] | None = None) -> dict[str, float]:
     """五維 0–100 評分（規則引擎，測試可重現、不呼叫 LLM）。"""
     text = _joined(query, answers)
     answers = answers or []
     last = answers[-1] if answers else ""
+    fan = _is_fan_scenario(query)
+    rate_pair = _has_rate_pair(text)
+    money = _has_money(text)
+    review_gate = _has_review_gate(text)
+    metric = bool(_FAN_METRIC.search(text) or (fan and rate_pair))
 
     spec = 18.0
     if _SUBJECT.search(text):
@@ -287,8 +359,14 @@ def score_dimensions(query: str, answers: list[str] | None = None) -> dict[str, 
         spec += 16.0
     if _QUANT.search(text):
         spec += 28.0
+    elif _METRIC_WORD.search(text):
+        spec += 8.0
     if _BEFORE_AFTER.search(text):
         spec += 18.0
+    if metric and _QUANT.search(text):
+        spec += 12.0
+    if rate_pair:
+        spec += 10.0
     if _VAGUE.search(last) and not _QUANT.search(last):
         spec = min(spec, 38.0)
     if len(text) < 16:
@@ -299,13 +377,17 @@ def score_dimensions(query: str, answers: list[str] | None = None) -> dict[str, 
         boundary += 42.0
     if re.search(r"(80%|20%|犧牲|牺牲)", text):
         boundary += 24.0
+    if review_gate or re.search(r"(絕對可控|绝对可控)", text):
+        boundary += 40.0
+    if _QUALITY_BOUND.search(text):
+        boundary += 24.0
     if len(re.findall(r"(不做|不使用|不開發|不开发|絕對不|绝对不)", text)) >= 2:
         boundary += 18.0
-    if _VAGUE.search(last) and not _BOUNDARY.search(last):
+    if _VAGUE.search(last) and not _BOUNDARY.search(last) and not review_gate:
         boundary = min(boundary, 40.0)
 
     constraints = 10.0
-    if _BUDGET.search(text):
+    if _BUDGET.search(text) or money:
         constraints += 28.0
     if _TIME.search(text):
         constraints += 26.0
@@ -313,17 +395,23 @@ def score_dimensions(query: str, answers: list[str] | None = None) -> dict[str, 
         constraints += 18.0
     if _TRADEOFF.search(text):
         constraints += 20.0
+    if metric and (_FAN_COST.search(text) or money):
+        constraints += 40.0
+    if fan and rate_pair and money:
+        constraints += 16.0
     if _VAGUE.search(last) and not _QUANT.search(last):
         constraints = min(constraints, 35.0)
 
     risk = 10.0
     if _RISK.search(text):
         risk += 32.0
-    if _FALLBACK.search(text):
+    if _FALLBACK.search(text) or review_gate:
         risk += 36.0
     if re.search(r"(聽誰|听谁|人工|停損|停损|衝突|冲突)", text):
         risk += 16.0
-    if _VAGUE.search(last) and not _RISK.search(last):
+    if review_gate:
+        risk += 28.0
+    if _VAGUE.search(last) and not _RISK.search(last) and not review_gate:
         risk = min(risk, 36.0)
 
     success = 10.0
@@ -331,12 +419,16 @@ def score_dimensions(query: str, answers: list[str] | None = None) -> dict[str, 
         success += 32.0
     elif _BEFORE_AFTER.search(text) and _QUANT.search(text):
         success += 24.0
-    if _SUCCESS.search(text):
+    if _SUCCESS.search(text) or rate_pair:
         success += 28.0
     if re.search(r"(Excel|Prototype|報表|报表|備忘錄|备忘录|JSON)", text, re.IGNORECASE):
         success += 18.0
     if any(_CONFIRM.search(a.strip()) for a in answers):
         success += 12.0
+    if metric and _QUANT.search(text):
+        success += 22.0
+    if fan and rate_pair and review_gate:
+        success += 16.0
     if _VAGUE.search(last) and not _QUANT.search(last):
         success = min(success, 36.0)
 
@@ -350,9 +442,11 @@ def score_dimensions(query: str, answers: list[str] | None = None) -> dict[str, 
 
 
 def score_requirement(query: str, answers: list[str] | None = None) -> tuple[float, list[str]]:
-    """向後相容：回傳 (0–1 置信度, 缺口維度)。"""
+    """向後相容：回傳 (0–1 綜合置信度, 缺口維度)。鎖定仍看五維皆 > 90。"""
     dims = score_dimensions(query, answers)
-    overall = min(dims.values()) / 100.0 if dims else 0.05
+    if not dims:
+        return 0.05, list(DIM_KEYS)
+    overall = sum(float(v) for v in dims.values()) / (100.0 * len(dims))
     gaps = [key for key, val in dims.items() if val <= AUDITOR_DIM_THRESHOLD]
     legacy = []
     if "success" in gaps or "specificity" in gaps:
@@ -399,6 +493,98 @@ def _is_vague(text: str) -> bool:
     return bool(_VAGUE.search(text or "")) and not _QUANT.search(text or "")
 
 
+def _is_fan_scenario(query: str) -> bool:
+    return any(key in (query or "") for key in _FAN_KEYS)
+
+
+def _fan_contract_ready(sess: UserGrillSession) -> bool:
+    """規格第 6 節：復購率 + 單粉成本 + 人工審核備案齊了，才准進語義鎖定放行。"""
+    if not _is_fan_scenario(sess.query):
+        return False
+    text = _joined(sess.query, _user_answers(sess))
+    if not _has_rate_pair(text):
+        return False
+    if not _has_money(text):
+        return False
+    if not _has_review_gate(text):
+        return False
+    if int(sess.phase or 1) < 4 and 10 not in sess.asked_ids:
+        return False
+    return True
+
+
+def _is_unquantified(text: str, phase: int = 1) -> bool:
+    """無數字的軟目標／模糊詞視為無效；Phase 2 起更嚴格要求量化。"""
+    raw = (text or "").strip()
+    if not raw:
+        return True
+    if _QUANT.search(raw):
+        return False
+    if _CONFIRM.search(raw):
+        return False
+    if _is_vague(raw) or _SOFT_GOAL.search(raw):
+        return True
+    if int(phase or 1) >= 2 and not (
+        _TRADEOFF.search(raw) or _FALLBACK.search(raw) or _BOUNDARY.search(raw)
+    ):
+        return True
+    return False
+
+
+def _synthesize_fan_lock(sess: UserGrillSession) -> str:
+    text = _joined(sess.query, _user_answers(sess))
+    rates = re.findall(r"(\d+(?:\.\d+)?)\s*%", text)
+    target = rates[-1] if rates else "目標值"
+    cost = re.search(r"(\d+(?:\.\d+)?)\s*(元|塊|块)", text)
+    cost_s = f"{cost.group(1)} 元" if cost else "已標示單粉成本"
+    review = "且關鍵推播需經人工審核" if re.search(r"人工", text) else "且需有停損備案"
+    return (
+        f"語義鎖定：請用 50 字總結：「此專案是為提升復購率至 {target}%，"
+        f"預算單粉 {cost_s}，{review}」。確認無誤我將產出作戰圖。"
+    )
+
+
+def _scenario_next(sess: UserGrillSession) -> GrillQuestion | None:
+    """規格第 6 節粉絲／管粉情境：走範例話術，不先丟通用題庫。"""
+    if not _is_fan_scenario(sess.query):
+        return None
+    answers = _user_answers(sess)
+    last = answers[-1] if answers else ""
+    if sess.user_rounds >= 1 and 4 not in sess.asked_ids and _is_unquantified(last, 1):
+        sess.phase = 2
+        sess.phase_rounds = 0
+        sess.asked_ids.append(4)
+        return GrillQuestion(
+            FAN_PHASE2_QUESTION,
+            why="效率必須是可驗收的三段數字。",
+            dimension="success",
+        )
+    if 4 in sess.asked_ids and 7 not in sess.asked_ids and _QUANT.search(last):
+        sess.phase = 3
+        sess.phase_rounds = 0
+        sess.asked_ids.append(7)
+        return GrillQuestion(
+            FAN_PHASE3_QUESTION,
+            why="沒有備案就等於把失敗外包給運氣。",
+            dimension="risk",
+        )
+    if (
+        7 in sess.asked_ids
+        and 10 not in sess.asked_ids
+        and answers
+        and (_FALLBACK.search(last) or _RISK.search(last) or _REVIEW_GATE.search(last) or _QUANT.search(last))
+    ):
+        sess.phase = 4
+        sess.phase_rounds = 0
+        sess.asked_ids.append(10)
+        return GrillQuestion(
+            _synthesize_fan_lock(sess),
+            why="複誦才能暴露殘餘歧義。",
+            dimension="success",
+        )
+    return None
+
+
 def _is_over_auth(text: str) -> bool:
     stripped = (text or "").strip()
     if stripped in {"直接執行", "直接执行", "結束", "结束", "夠了", "够了", "锁定", "鎖定"}:
@@ -440,7 +626,9 @@ def _llm_question(query: str, transcript: str, gaps: list[str], phase: int) -> G
             "若用戶回答含『大概／盡量／好一點』，要求量化。"
             "只輸出 JSON：{\"question\":\"...\",\"why\":\"...\",\"dimension\":\"specificity|boundary|constraints|risk|success\"}"
         )
-        raw = call_llm(prompt, system=SYSTEM_PROMPT)
+        from backend.company.raho.l0 import inject_l0
+
+        raw = call_llm(prompt, system=inject_l0(SYSTEM_PROMPT, int(RahoLayer.L4_AUDITOR), query))
         parsed = extract_json(raw)
         if parsed:
             return None
@@ -502,6 +690,8 @@ def build_ticket(sess: UserGrillSession) -> dict[str, Any]:
         text,
     )
     acc = re.search(r"(準確率|准确率|誤報率|误报率)[^\d]{0,6}(\d+(?:\.\d+)?)\s*%", text)
+    rates = re.findall(r"(\d+(?:\.\d+)?)\s*%", text)
+    unit_cost = re.search(r"(\d+(?:\.\d+)?)\s*(元|塊|块)", text)
     if hours:
         quantified = (
             f"目前每日人工 {hours.group(1)}{hours.group(2)}，"
@@ -509,6 +699,12 @@ def build_ticket(sess: UserGrillSession) -> dict[str, Any]:
         )
         if acc:
             quantified += f"，{acc.group(1)} {acc.group(2)}%"
+    elif _is_fan_scenario(sess.query) and len(rates) >= 2:
+        quantified = f"目前復購率 {rates[0]}%，目標提升至 {rates[-1]}%"
+        if unit_cost:
+            quantified += f"，單粉行銷成本 {unit_cost.group(1)} 元"
+        if _has_review_gate(text):
+            quantified += "，關鍵推播需經人工審核"
     else:
         quantified = _extract_field(
             r"(.{0,40}\d+(?:\.\d+)?\s*(?:小時|小时|%|％).{0,40})",
@@ -520,15 +716,23 @@ def build_ticket(sess: UserGrillSession) -> dict[str, Any]:
         text,
         "未明示預算區間",
     )
+    if budget == "未明示預算區間" and unit_cost:
+        budget = f"單粉行銷成本 {unit_cost.group(1)} 元"
     deadline = _extract_field(r"(\d{4}-\d{2}-\d{2})", text, "未明示截止日期")
     exclusions = [m.group(0) for m in re.finditer(r"(不(?:做|使用|開發|开发|包含)[^，。,\n]{2,30})", text)]
+    if _is_fan_scenario(sess.query) and _has_review_gate(text):
+        gate = "不自動推播（關鍵內容需人工審核）"
+        if gate not in exclusions:
+            exclusions.append(gate)
     techs = []
     for name in ("Python", "PostgreSQL", "Line Notify", "Excel", "API"):
         if re.search(name, text, re.IGNORECASE):
             techs.append(name)
     risks = []
+    if _is_fan_scenario(sess.query) and _has_review_gate(text):
+        risks.append("老粉退粉（備案：關鍵推播改為人工審核）")
     if _RISK.search(text) or _FALLBACK.search(text):
-        risks.append(_extract_field(r"(.{0,20}(?:備案|备案|人工確認|人工确认|CSV)[^。\n]{0,40})", text, "已標示備案"))
+        risks.append(_extract_field(r"(.{0,20}(?:備案|备案|人工確認|人工确认|CSV|人工審核|人工审核)[^。\n]{0,40})", text, "已標示備案"))
     if not risks:
         risks.append("用戶已承認主要失敗模式並提供備案")
     priority = "Cost > Time > Quality (在預算內，稍微延後可接受)"
@@ -543,12 +747,14 @@ def build_ticket(sess: UserGrillSession) -> dict[str, Any]:
             "target_audience": _extract_field(
                 r"((?:用戶|用户|客群|賣家|卖家|粉絲|粉丝|終端|终端)[^。\n]{0,40})",
                 text,
-                sess.query[:80],
+                "內容創作者的粉絲（終端用戶）" if _is_fan_scenario(sess.query) else sess.query[:80],
             ),
             "core_action": _extract_field(
                 r"((?:自動|自动|生成|預警|预警|調價|调价|壓縮|压缩)[^。\n]{0,50})",
                 text,
-                sess.query[:120],
+                "以人工審核把關的自動粉絲經營與復購提升"
+                if _is_fan_scenario(sess.query)
+                else sess.query[:120],
             ),
             "quantified_success": quantified,
         },
@@ -715,10 +921,16 @@ def _pack(
             "termination_report": _failure_report(sess, reason) if terminated else "",
             "status": status,
             "role": "requirement_auditor",
-            "role_label": "L4 需求審計官",
+            "role_label": LAYER_LABELS.get(int(RahoLayer.L4_AUDITOR), "L4 需求審計官"),
             "user_rounds": sess.user_rounds,
         }
     )
+    try:
+        from backend.company.raho.l0 import kernel_snapshot
+
+        payload["l0"] = kernel_snapshot(query=sess.query)
+    except Exception:  # noqa: BLE001
+        pass
     return payload
 
 
@@ -805,6 +1017,18 @@ def _ask_next(sess: UserGrillSession, *, prefix: str = "") -> dict[str, Any]:
             _append_assistant(sess, question)
             _trace_l4_question(sess, question)
             return _pack(sess, question)
+    scenario = _scenario_next(sess)
+    if scenario is not None:
+        phase = int(sess.phase or 1)
+        text = scenario.question
+        if prefix and prefix.rstrip("：:") not in text:
+            text = f"{prefix}{text}" if not text.startswith("量化失敗") else text
+        text = _with_phase_tag(text, phase)
+        question = GrillQuestion(text, why=scenario.why, dimension=scenario.dimension)
+        sess.phase_rounds = int(sess.phase_rounds or 0) + 1
+        _append_assistant(sess, question)
+        _trace_l4_question(sess, question)
+        return _pack(sess, question)
     question = _llm_question(sess.query, _transcript(sess), gaps, phase)
     if question is None:
         question = _next_question(sess)
@@ -828,6 +1052,12 @@ def auditor_start(query: str) -> dict[str, Any]:
     text = (query or "").strip()
     if not text:
         raise ValueError("query 不可為空")
+    try:
+        from backend.company.raho.l0 import remember_query
+
+        remember_query(text, task_id="auditor")
+    except Exception:  # noqa: BLE001
+        pass
     sess = STORE.new_user_session(text)
     sess.phase = 1
     sess.phase_rounds = 0
@@ -878,7 +1108,13 @@ def auditor_turn(session_id: str, answer: str, *, force_lock: bool = False) -> d
             return _approve(sess)
         return _terminate(sess, f"超過 {MAX_AUDITOR_ROUNDS} 輪仍未達五維 > 90，強制終止。")
 
-    if _is_vague(text):
+    if _fan_contract_ready(sess) and (
+        _CONFIRM.search(text) or (int(sess.phase or 1) >= 4 and len(text) <= 50)
+    ):
+        sess.scores = {key: max(float(sess.scores.get(key, 0)), 91.0) for key in DIM_KEYS}
+        return _approve(sess)
+
+    if _is_unquantified(text, int(sess.phase or 1)):
         if int(sess.phase_rounds or 0) >= MAX_PHASE_ROUNDS:
             return _terminate(sess, f"{PHASE_LABELS.get(sess.phase)} 連續 {MAX_PHASE_ROUNDS} 輪仍在繞圈子（含無效模糊回答）。")
         return _ask_next(sess, prefix=_vague_prefix(int(sess.phase or 1)))

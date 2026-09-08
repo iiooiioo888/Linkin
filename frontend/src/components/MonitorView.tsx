@@ -2,12 +2,14 @@
  * MonitorView — 統一監控視圖（懶加載重模組 + Hub 推送）。
  * 分頁切換由左側 SidePanel 負責；此處僅渲染當前分頁。
  */
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { fetchL0Kernel } from '../api/client';
 import { useMonitorHub } from '../hooks/useMonitorHub';
 import { buildAnimLiveFeed } from '../lib/animLive';
 import { isLinkinStudioAgent } from '../lib/agentUi';
+import { jumpToL0Kernel } from '../lib/rahoUi';
 import { useMonitorStore } from '../stores/monitorStore';
-import type { TaskProgress } from '../types';
+import type { L0Snapshot, TaskProgress } from '../types';
 import type { MonitorTab } from './AppShell';
 import type { LabSubTab } from '../lib/labTabs';
 import LiveBoard from './LiveBoard';
@@ -23,7 +25,7 @@ const UserFeedbackPanel = lazy(() => import('./UserFeedbackPanel'));
 const LabPanel = lazy(() => import('./LabPanel'));
 const OpsPanel = lazy(() => import('./OpsPanel'));
 const LlmOpsPanel = lazy(() => import('./LlmOpsPanel'));
-const MemoryPanel = lazy(() => import('./MemoryPanel'));
+const L0Panel = lazy(() => import('./L0Panel'));
 const WorldConstitutionPanel = lazy(() => import('./linkin/WorldConstitutionPanel'));
 const NpcManagerPanel = lazy(() => import('./linkin/NpcManagerPanel'));
 const QuestPanel = lazy(() => import('./linkin/QuestPanel'));
@@ -78,6 +80,24 @@ function LiveTab({
     llmOps,
     updatedAt: generatedAt,
   });
+  const [l0, setL0] = useState<L0Snapshot | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const next = await fetchL0Kernel();
+        if (alive) setL0(next);
+      } catch {
+        if (alive) setL0(null);
+      }
+    };
+    void load();
+    const t = setInterval(() => void load(), 8000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -89,6 +109,15 @@ function LiveTab({
       {!connected && !error && (
         <div className="shrink-0 px-5 py-2 text-[10px] text-[#48484A]">離線資料</div>
       )}
+      {l0 ? (
+        <button type="button" className="l0-live mx-5 mt-4" onClick={jumpToL0Kernel}>
+          <div>
+            <p>L0 態勢 · {l0.radar?.energy_save ? '節能模式' : '壓力正常'}</p>
+            <span>{l0.radar?.bias_instructions || '三核待命：記憶／知識／雷達'}</span>
+          </div>
+          <span>壓力 {Math.round((l0.radar?.pressure ?? 0) * 100)}%</span>
+        </button>
+      ) : null}
       <LiveBoard
         feed={liveFeed}
         onOpenLab={onOpenLab}
@@ -155,8 +184,8 @@ export default function MonitorView({
         {tab === 'ops' && <OpsPanel />}
         {tab === 'llm' && <LlmOpsPanel />}
         {tab === 'memory' && (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas">
-            <MemoryPanel />
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4 apple-canvas">
+            <L0Panel />
           </div>
         )}
         {tab === 'world' && <WorldConstitutionPanel />}

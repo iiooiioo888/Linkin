@@ -261,7 +261,10 @@ export default function App() {
       let semanticLock: Record<string, unknown> = {};
       if (!options.skipGrill && options.executionStrategy !== 'simple') {
         try {
-          const grill = await startUserGrill(query, options.executionStrategy);
+          const grill =
+            options.executionStrategy === 'company'
+              ? await streamAuditor({ query })
+              : await startUserGrill(query, options.executionStrategy);
           if (grill.should_grill && !grill.locked && !grill.terminated) {
             updateSession(sessionId, (s) => ({
               ...s,

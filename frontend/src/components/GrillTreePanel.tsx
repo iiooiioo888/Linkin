@@ -1,24 +1,105 @@
 /**
- * GrillTreePanel — 遞歸質詢樹：L5→L2 質詢鏈與決策阻塞點。
+ * GrillTreePanel — 遞歸質詢樹：與角色名冊共用 L0–L5 身分。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchRahoTree } from '../api/client';
-import type { GrillTree, RahoPendingDecision, RahoSnapshot } from '../types';
+import type { GrillTree, GrillTreeNode, L0Snapshot, RahoPendingDecision, RahoSnapshot } from '../types';
+import {
+  RAHO_CHAIN,
+  RAHO_LAYERS,
+  jumpLayer,
+  jumpToRoleDesk,
+  kindLabel,
+  nodeRoleId,
+  nodeRoleLabel,
+  openCountForRole,
+  rahoTone,
+  statusLabel,
+} from '../lib/rahoUi';
+import L0Panel from './L0Panel';
+import { L0BiasHint } from './L0BiasHint';
 import RahoDecisionBar from './RahoDecisionBar';
 
-const LAYER: Record<number, string> = {
-  1: 'L1 憲兵',
-  2: 'L2 執行',
-  3: 'L3 指揮',
-  4: 'L4 規劃',
-  5: 'L5 用戶',
-};
+function Pyramid({
+  trees,
+  directory,
+}: {
+  trees: GrillTree[];
+  directory: typeof RAHO_LAYERS;
+}) {
+  return (
+    <ol className="raho-pyramid">
+      {RAHO_CHAIN.map((layer) => {
+        const meta = directory[layer] ?? RAHO_LAYERS[layer];
+        const roleId = meta.role_id;
+        const open = roleId ? openCountForRole(trees, roleId) : 0;
+        const clickable = Boolean(roleId && roleId !== 'user');
+        return (
+          <li key={layer}>
+            <button
+              type="button"
+              className={`raho-pyr-item${layer === 0 ? ' is-l0' : ''}${clickable ? '' : ' is-static'}`}
+              disabled={!clickable}
+              onClick={() => clickable && jumpLayer(layer, roleId)}
+              title={clickable ? `開啟 ${meta.full}` : meta.full}
+            >
+              <span className="raho-pyr-k">{meta.short}</span>
+              <span className="raho-pyr-t">{meta.title}</span>
+              {open > 0 ? <span className="raho-pyr-n">{open}</span> : null}
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
-function statusTone(status: string): string {
-  if (status === 'blocked' || status === 'open') return 'var(--apple-red)';
-  if (status === 'timeout') return 'var(--apple-orange, #FF9F0A)';
-  if (status === 'escalated') return '#BF5AF2';
-  return 'var(--apple-green)';
+function RoleJump({ roleId, label }: { roleId: string; label: string }) {
+  if (!roleId || roleId === 'user') {
+    return <span>{label}</span>;
+  }
+  return (
+    <button type="button" className="raho-edge-role" onClick={() => jumpToRoleDesk(roleId)}>
+      {label}
+    </button>
+  );
+}
+
+function GrillEdge({
+  node,
+  kindLabels,
+  onFocus,
+}: {
+  node: GrillTreeNode;
+  kindLabels?: Record<string, string>;
+  onFocus?: (nodeId: string) => void;
+}) {
+  const fromId = nodeRoleId(node, 'from');
+  const toId = nodeRoleId(node, 'to');
+  return (
+    <li className="raho-edge">
+      <span className="raho-edge-dot" style={{ background: rahoTone(node.status) }} />
+      <div className="min-w-0 flex-1">
+        <div className="raho-edge-path">
+          <RoleJump roleId={fromId} label={nodeRoleLabel(node, 'from')} />
+          <span aria-hidden>→</span>
+          <RoleJump roleId={toId} label={nodeRoleLabel(node, 'to')} />
+          <span className="raho-edge-kind">
+            {kindLabel(node.kind, kindLabels)} · {statusLabel(node.status)}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="raho-edge-sum"
+          onClick={() => {
+            onFocus?.(node.node_id);
+          }}
+        >
+          {node.summary}
+        </button>
+      </div>
+    </li>
+  );
 }
 
 export default function GrillTreePanel() {
@@ -42,6 +123,16 @@ export default function GrillTreePanel() {
   const trees: GrillTree[] = snap.trees ?? [];
   const pending: RahoPendingDecision[] = snap.pending_decisions ?? [];
   const blocked = snap.blocked ?? [];
+  const l0: L0Snapshot = snap.l0 ?? {};
+  const [detailTab, setDetailTab] = useState<'nodes' | 'l0'>('nodes');
+  const [focusNodeId, setFocusNodeId] = useState('');
+  const directory = useMemo(() => {
+    const next = { ...RAHO_LAYERS };
+    for (const row of snap.directory ?? []) {
+      next[row.layer] = row;
+    }
+    return next;
+  }, [snap.directory]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4">
@@ -49,7 +140,7 @@ export default function GrillTreePanel() {
         <div>
           <h2 className="text-[15px] font-semibold text-[#F5F5F7]">遞歸質詢樹</h2>
           <p className="mt-1 text-[12px] text-[#8E8E93]">
-            紅點為尚未解決的決策阻塞。下層可向上烤問，逾時則熱馬桶圈跳級至你。
+            與角色工作台同一套 L0–L5 身分。點層級或邊即可跳到對應角色／L0 核心。
           </p>
         </div>
         <button type="button" className="rd-btn text-[11px] text-[#0A84FF]" onClick={() => void reload()}>
@@ -58,13 +149,28 @@ export default function GrillTreePanel() {
       </div>
       {error && <p className="mb-3 text-[12px] text-[#FF453A]">{error}</p>}
 
+      <Pyramid trees={trees} directory={directory} />
+      <L0BiasHint snapshot={l0} compact />
       <RahoDecisionBar pending={pending} onResolved={() => void reload()} />
 
-      {trees.length === 0 && blocked.length === 0 && pending.length === 0 && (
+      <div className="l0-tabs mb-3" role="tablist">
+        <button type="button" className={`l0-tab${detailTab === 'nodes' ? ' on' : ''}`} onClick={() => setDetailTab('nodes')}>
+          節點明細
+        </button>
+        <button type="button" className={`l0-tab${detailTab === 'l0' ? ' on' : ''}`} onClick={() => setDetailTab('l0')}>
+          知識與記憶
+        </button>
+      </div>
+
+      {detailTab === 'l0' ? (
+        <L0Panel snapshot={l0} embed query={trees[0]?.goal || ''} nodeId={focusNodeId} initialTab="memory" />
+      ) : null}
+
+      {detailTab === 'nodes' && trees.length === 0 && blocked.length === 0 && pending.length === 0 && (
         <p className="py-16 text-center text-[13px] text-[#636366]">尚無質詢鏈。複雜任務啟動後會在此展開。</p>
       )}
 
-      <div className="space-y-4">
+      {detailTab === 'nodes' ? <div className="space-y-4">
         {trees.map((tree) => (
           <article key={tree.tree_id} className="rounded-xl border border-white/[0.06] bg-[#1C1C1E] p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
@@ -81,38 +187,47 @@ export default function GrillTreePanel() {
             {(tree.campaign?.nodes?.length ?? 0) > 0 && (
               <ol className="mb-3 flex flex-wrap gap-1.5">
                 {tree.campaign!.nodes!.map((node) => (
-                  <li
-                    key={node.node_id}
-                    className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-[#AEAEB2]"
-                    title={node.success_criteria}
-                  >
-                    {node.node_id} {node.title}
-                    {node.depends_on?.length ? ` ← ${node.depends_on.join(',')}` : ''}
+                  <li key={node.node_id}>
+                    <button
+                      type="button"
+                      className={`rounded-md border px-2 py-1 text-[10px] ${
+                        focusNodeId === node.node_id
+                          ? 'border-[#64D2FF] bg-[#64D2FF]/10 text-[#F5F5F7]'
+                          : 'border-white/10 bg-white/[0.03] text-[#AEAEB2]'
+                      }`}
+                      title={node.success_criteria}
+                      onClick={() => {
+                        setFocusNodeId(node.node_id);
+                        setDetailTab('l0');
+                      }}
+                    >
+                      {node.node_id} {node.title}
+                      {node.depends_on?.length ? ` ← ${node.depends_on.join(',')}` : ''}
+                    </button>
                   </li>
                 ))}
               </ol>
             )}
             <ol className="space-y-2">
               {tree.nodes.map((node) => (
-                <li key={node.node_id} className="flex gap-3">
-                  <span
-                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: statusTone(node.status) }}
-                  />
-                  <div className="min-w-0">
-                    <div className="text-[11px] text-[#8E8E93]">
-                      {LAYER[node.from_layer] ?? `L${node.from_layer}`} → {LAYER[node.to_layer] ?? `L${node.to_layer}`}
-                      {' · '}
-                      {node.kind} · {node.status}
-                    </div>
-                    <p className="text-[12px] text-[#EBEBF5]">{node.summary}</p>
-                  </div>
-                </li>
+                <GrillEdge
+                  key={node.node_id}
+                  node={node}
+                  kindLabels={snap.kind_labels}
+                  onFocus={(id) => {
+                    setFocusNodeId(id);
+                    setDetailTab('l0');
+                  }}
+                />
               ))}
             </ol>
           </article>
         ))}
-      </div>
+      </div> : null}
+
+      <p className="mt-6 text-center text-[11px] text-[#636366]">
+        點金字塔或質詢邊，即可開啟對應角色工作台；L0 開啟環境與記憶核心。
+      </p>
     </div>
   );
 }

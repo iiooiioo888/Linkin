@@ -3,7 +3,7 @@
  * 色彩沿用控制台既有語彙，只改結構。
  */
 import { Fragment, useMemo, type ReactNode } from 'react';
-import type { AgentEvent, AgentWorkItem, RoleAgent } from '../types';
+import type { AgentEvent, AgentWorkItem, GrillTreeNode, L0Snapshot, RoleAgent } from '../types';
 import {
   blankMetrics,
   fmtUsd,
@@ -15,6 +15,19 @@ import {
   type WorkItemColumnKey,
 } from '../lib/agentUi';
 import { EVENT_LABELS, roleLabel } from './TaskPanel';
+import {
+  agentRahoLabel,
+  jumpLayer,
+  jumpToGrillTree,
+  jumpToL0Kernel,
+  kindLabel,
+  nodeRoleLabel,
+  orgLevelCaption,
+  RAHO_CHAIN,
+  RAHO_LAYERS,
+  rahoTone,
+  statusLabel,
+} from '../lib/rahoUi';
 
 const RING = 2 * Math.PI * 15.5;
 
@@ -58,7 +71,8 @@ export function RoleDeskHeader({
         <div className="min-w-0">
           <h1 className="rd-name">{agent.name}</h1>
           <div className="rd-tags">
-            <span className="rd-tag">L{agent.level} {agent.level_label}</span>
+            <span className="rd-tag rd-tag--raho">{agentRahoLabel(agent)}</span>
+            <span className="rd-tag rd-tag--muted">{orgLevelCaption(agent)}</span>
             <span className="rd-tag rd-tag--ok">序列 {agent.queue}</span>
             <span className="rd-tag rd-tag--ok">執行 {agent.executing}</span>
             {agent.max_output_tokens ? (
@@ -164,7 +178,7 @@ function OrgNode({
     <button
       type="button"
       className={`rd-onode ${current ? 'cur' : ''}`}
-      title={`L${agent.level} ${agent.name}`}
+      title={`${agentRahoLabel(agent)} · ${agent.name}`}
       onClick={() => onOpen(agent.id)}
     >
       <span className={`rd-od ${isLive(agent) ? 'on' : 'off'}`} />
@@ -217,9 +231,11 @@ const MAX_PER_LAYER = 8;
 type OrgLayer = { key: string; label: string; nodes: RoleAgent[]; extra: number };
 
 function layerLabel(nodes: RoleAgent[]): string {
+  const raho = [...new Set(nodes.map((node) => node.raho_layer).filter((n): n is number => typeof n === 'number'))];
+  if (raho.length === 1) return RAHO_LAYERS[raho[0]]?.short ?? `L${raho[0]}`;
   const levels = [...new Set(nodes.map((node) => node.level))].sort((a, b) => a - b);
-  if (levels.length === 1) return `L${levels[0]}`;
-  return `L${levels[0]}–${levels[levels.length - 1]}`;
+  if (levels.length === 1) return nodes[0]?.level_label || `組織 ${levels[0]}`;
+  return `${nodes[0]?.level_label || '組織'} 等`;
 }
 
 function takeLayer(key: string, nodes: RoleAgent[]): OrgLayer {
@@ -236,11 +252,11 @@ function orgLayers(agent: RoleAgent, agents: RoleAgent[]): OrgLayer[] {
   const layers: OrgLayer[] = [
     ...ancestorChain(agent, byId).map((node) => ({
       key: `up-${node.id}`,
-      label: `L${node.level}`,
+      label: node.raho_short || orgLevelCaption(node),
       nodes: [node],
       extra: 0,
     })),
-    { key: `cur-${agent.id}`, label: `L${agent.level}`, nodes: [agent], extra: 0 },
+    { key: `cur-${agent.id}`, label: agent.raho_short || orgLevelCaption(agent), nodes: [agent], extra: 0 },
   ];
   const reports = childrenOf(agent.id, agents, byId);
   if (!reports.length) return layers;
@@ -592,6 +608,99 @@ export function EventTimelineBlock({ events }: { events: AgentEvent[] }) {
   );
 }
 
+export function RahoChainBlock({ agent }: { agent: RoleAgent }) {
+  const current = agent.raho_layer ?? 2;
+  return (
+    <div className="rd-sec">
+      <div className="rd-tt">
+        質詢鏈
+        <button type="button" className="rd-link" onClick={jumpToGrillTree}>
+          開質詢樹
+        </button>
+      </div>
+      <div className="raho-desk-chain">
+        {RAHO_CHAIN.map((layer) => {
+          const meta = RAHO_LAYERS[layer];
+          const active = layer === current;
+          const clickable = Boolean(meta.role_id && meta.role_id !== 'user');
+          return (
+            <button
+              key={layer}
+              type="button"
+              className={`raho-desk-chip${active ? ' on' : ''}${layer === 0 ? ' is-l0' : ''}`}
+              disabled={!clickable}
+              onClick={() => clickable && jumpLayer(layer, meta.role_id)}
+            >
+              {meta.short}
+            </button>
+          );
+        })}
+      </div>
+      {(agent.grill_targets?.length ?? 0) > 0 ? (
+        <p className="mt-2 text-[10px] text-[#636366]">可質詢 {agent.grill_targets!.join('、')}</p>
+      ) : null}
+    </div>
+  );
+}
+
+export function GrillFeedBlock({ nodes }: { nodes: GrillTreeNode[] }) {
+  return (
+    <div className="rd-sec">
+      <div className="rd-tt">此角色質詢</div>
+      {nodes.length === 0 ? (
+        <p className="py-1 text-[11px] text-[#636366]">尚無與此角色相關的質詢</p>
+      ) : (
+        <div className="rd-ev">
+          {nodes.slice(0, 6).map((node) => (
+            <button
+              key={node.node_id}
+              type="button"
+              className="rd-ev-row raho-feed-row"
+              onClick={jumpToGrillTree}
+            >
+              <span className="rd-ev-dot" style={{ background: rahoTone(node.status) }} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[10.5px] text-[#AEAEB2]">
+                  {nodeRoleLabel(node, 'from')} → {nodeRoleLabel(node, 'to')}
+                </div>
+                <div className="truncate text-[10px] text-[#EBEBF5]">{node.summary}</div>
+                <div className="apple-data text-[8.5px] text-[#636366]">
+                  {kindLabel(node.kind_label || node.kind)} · {statusLabel(node.status)}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function L0ContextBlock({ snapshot }: { snapshot?: L0Snapshot | null }) {
+  const radar = snapshot?.radar;
+  const pressure = Math.round((radar?.pressure ?? 0) * 100);
+  const lesson = snapshot?.traces?.find((t) => t.failure_reason) ?? snapshot?.traces?.[0];
+  const knowledge = snapshot?.knowledge?.[0];
+  return (
+    <div className="rd-sec">
+      <div className="rd-tt">
+        L0 知識與記憶
+        <button type="button" className="rd-link" onClick={jumpToL0Kernel}>
+          開核心
+        </button>
+      </div>
+      <p className="text-[11px] leading-relaxed text-[#AEAEB2]">
+        {radar?.bias_instructions || '環境壓力正常，依規格驗收。'}
+      </p>
+      <p className={`mt-1 text-[10px] ${radar?.energy_save ? 'text-[#FF9F0A]' : 'text-[#636366]'}`}>
+        壓力 {pressure}%{radar?.energy_save ? ' · 節能模式' : ''}
+      </p>
+      {knowledge ? <p className="mt-1 text-[10px] text-[#8E8E93]">知識：{knowledge.content}</p> : null}
+      {lesson ? <p className="mt-1 text-[10px] text-[#8E8E93]">記憶：{lesson.summary}</p> : null}
+    </div>
+  );
+}
+
 export function RoleRightPanel({
   agent,
   agents,
@@ -599,6 +708,8 @@ export function RoleRightPanel({
   onFilter,
   onOpen,
   onOpenItem,
+  grillNodes,
+  l0,
 }: {
   agent: RoleAgent;
   agents: RoleAgent[];
@@ -606,9 +717,14 @@ export function RoleRightPanel({
   onFilter: (key: WorkItemColumnKey) => void;
   onOpen: (id: string) => void;
   onOpenItem?: (item: AgentWorkItem) => void;
+  grillNodes?: GrillTreeNode[];
+  l0?: L0Snapshot | null;
 }) {
   return (
     <aside className="rd-rp">
+      <RahoChainBlock agent={agent} />
+      <L0ContextBlock snapshot={l0} />
+      <GrillFeedBlock nodes={grillNodes ?? []} />
       <OrgReportTree agent={agent} agents={agents} onOpen={onOpen} />
       <TaskStatusBlock agent={agent} filter={filter} onFilter={onFilter} onOpenItem={onOpenItem} />
       <TokenUsageBlock agent={agent} />

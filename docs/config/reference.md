@@ -73,6 +73,7 @@
 | `EVOL_RAHO_PLANNER_LLM` | `false` | L4 戰役 DAG 是否呼叫 LLM（關閉則純規則） |
 | `EVOL_RAHO_COMMANDER_LLM` | `false` | L3 原子 DAG 是否呼叫 LLM（關閉則純規則） |
 | `EVOL_RAHO_L1_LLM` | `false` | L1 憲兵是否在規則通過後再呼叫 LLM 覆核（關閉則純規則） |
+| `EVOL_RAHO_L0` | `true` | L0 環境與記憶核心（記憶／知識／態勢注入 L1–L5） |
 
 ### LLM 快取
 

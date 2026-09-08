@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
+import { agentRahoLabel, jumpToL0Kernel, RAHO_CHAIN, RAHO_LAYERS, isRahoSpineRole } from '../lib/rahoUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { fetchLlmOps } from '../api/client';
 import type { ApiRoutePublic, ChatSession, RoleAgent, TaskSummary } from '../types';
@@ -137,14 +138,15 @@ function SessionList({
 
 type RosterRow =
   | { kind: 'header'; key: string; label: string; count: number }
-  | { kind: 'agent'; key: string; agent: RoleAgent };
+  | { kind: 'agent'; key: string; agent: RoleAgent }
+  | { kind: 'kernel'; key: string; label: string; short: string; layer: number };
 
-const ROSTER_LEVELS = [
-  { level: 0, short: 'L0', label: '決策層' },
-  { level: 1, short: 'L1', label: '技術領導' },
-  { level: 2, short: 'L2', label: '領域領導' },
-  { level: 3, short: 'L3', label: '執行層' },
-  { level: 4, short: 'L4', label: '支援' },
+const ORG_LEVELS = [
+  { level: 0, label: '決策層' },
+  { level: 1, label: '技術領導' },
+  { level: 2, label: '領域領導' },
+  { level: 3, label: '執行層' },
+  { level: 4, label: '支援' },
 ] as const;
 
 function AgentRoster({
@@ -170,7 +172,7 @@ function AgentRoster({
         if (scope === 'live' && !isLiveAgent(a)) return false;
         if (scope === 'alert' && !isAlertAgent(a)) return false;
         if (!q) return true;
-        const hay = `${a.name} ${a.id} ${a.description ?? ''} ${a.preferred_model ?? ''} ${(a.responsibilities ?? []).join(' ')}`.toLowerCase();
+        const hay = `${a.name} ${a.id} ${a.raho_label ?? ''} ${a.level_label ?? ''} ${a.description ?? ''} ${a.preferred_model ?? ''} ${(a.responsibilities ?? []).join(' ')}`.toLowerCase();
         return hay.includes(q);
       })
       .sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9));
@@ -178,16 +180,41 @@ function AgentRoster({
 
   const rows: RosterRow[] = useMemo(() => {
     const out: RosterRow[] = [];
-    for (const lv of ROSTER_LEVELS) {
-      const list = filtered.filter((a) => a.level === lv.level);
+    if (deskScope === 'console') {
+      const spineRows: RosterRow[] = [];
+      for (const layer of RAHO_CHAIN) {
+        const meta = RAHO_LAYERS[layer];
+        if (!meta || layer === 5) continue;
+        const hit =
+          filtered.find((a) => a.id === meta.role_id) ||
+          filtered.find((a) => a.raho_spine && a.raho_layer === layer);
+        if (hit) {
+          spineRows.push({ kind: 'agent', key: `spine-${hit.id}`, agent: hit });
+        } else {
+          spineRows.push({
+            kind: 'kernel',
+            key: meta.role_id || `layer-${layer}`,
+            label: meta.full,
+            short: meta.short,
+            layer,
+          });
+        }
+      }
+      if (spineRows.length) {
+        out.push({ kind: 'header', key: 'h-raho', label: '質詢鏈 L0–L5', count: spineRows.length });
+        out.push(...spineRows);
+      }
+    }
+    for (const lv of ORG_LEVELS) {
+      const list = filtered.filter((a) => a.level === lv.level && !isRahoSpineRole(a.id));
       if (!list.length) continue;
-      out.push({ kind: 'header', key: `h-${lv.level}`, label: `${lv.short} ${lv.label}`, count: list.length });
+      out.push({ kind: 'header', key: `h-${lv.level}`, label: lv.label, count: list.length });
       for (const agent of list) {
         out.push({ kind: 'agent', key: agent.id, agent });
       }
     }
     return out;
-  }, [filtered]);
+  }, [filtered, deskScope]);
 
   const searching = query.trim().length > 0;
 
@@ -209,7 +236,7 @@ function AgentRoster({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="ar-h">
-        <span className="ar-ht">{deskScope === 'linkin' ? '工作室' : '角色層級'}</span>
+        <span className="ar-ht">{deskScope === 'linkin' ? '工作室' : '質詢鏈／組織'}</span>
         <span className="ar-hc">{agents.length}</span>
       </div>
       <div className="ar-flt" role="tablist" aria-label="角色篩選">
@@ -263,6 +290,24 @@ function AgentRoster({
               </div>
             );
           }
+          if (row.kind === 'kernel') {
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  if (row.layer === 0) jumpToL0Kernel();
+                  else onPick(row.key);
+                }}
+                className="ar-ri"
+              >
+                <span className={`ar-dot ${row.layer === 0 ? 'wait' : ''}`} />
+                <span className="min-w-0 flex-1 truncate">
+                  {row.short}
+                  <span className="ml-1 text-[9px] text-[#636366]">{row.label}</span>
+                </span>
+              </button>
+            );
+          }
           const agent = row.agent;
           const active = agent.id === focusAgentId;
           const count = agentOpenCount(agent);
@@ -273,7 +318,7 @@ function AgentRoster({
             <button
               type="button"
               onClick={() => {
-                dispatchJumpAgent({ id: agent.id, level: agent.level });
+                dispatchJumpAgent({ id: agent.id, level: agent.level, rahoLayer: agent.raho_layer });
                 onPick(agent.id);
               }}
               className={`ar-ri ${active ? 'on' : ''}`}
@@ -281,6 +326,7 @@ function AgentRoster({
               <span className={`ar-dot ${live ? 'on' : wait ? 'wait' : err ? 'err' : ''}`} />
               <span className="min-w-0 flex-1 truncate">
                 {agent.name}
+                <span className="ml-1 text-[9px] text-[#636366]">{agentRahoLabel(agent)}</span>
                 {agent.enabled === false ? <span className="ml-1 text-[9px] text-[#FF3B30]">停</span> : null}
               </span>
               {count > 0 ? <span className="ar-rr">{count}</span> : null}
@@ -600,7 +646,9 @@ function MonitorSidebar({
   const navGroups = navGroupsForActivity(activity);
   const onAgentsTab = activeView === 'monitor' && monitorTab === 'agents';
   const onStudioTab = activeView === 'monitor' && monitorTab === 'studio';
-  const onRoleDesk = onAgentsTab || onStudioTab;
+  const onGrillTab = activeView === 'monitor' && monitorTab === 'grill';
+  const onMemoryTab = activeView === 'monitor' && monitorTab === 'memory';
+  const onRoleDesk = onAgentsTab || onStudioTab || onGrillTab || onMemoryTab;
   const onTasksTab = activeView === 'monitor' && monitorTab === 'tasks';
   const onLlmTab = activeView === 'monitor' && monitorTab === 'llm';
   const onTraces = activeView === 'traces';
@@ -612,9 +660,9 @@ function MonitorSidebar({
       return;
     }
     onMonitorTabChange(key);
-    if (key !== 'agents' && key !== 'studio' && focusAgentId) onFocusAgent(null);
+    if (key !== 'agents' && key !== 'studio' && key !== 'grill' && key !== 'memory' && focusAgentId) onFocusAgent(null);
     if (key !== 'tasks' && focusTaskId) onFocusTask(null);
-    if (key !== 'agents' && key !== 'studio' && key !== 'tasks' && key !== 'llm') onClose();
+    if (key !== 'agents' && key !== 'studio' && key !== 'grill' && key !== 'memory' && key !== 'tasks' && key !== 'llm') onClose();
   };
 
   if (onLab) {
@@ -649,8 +697,12 @@ function MonitorSidebar({
       {onRoleDesk ? (
         <AgentRoster
           deskScope={onStudioTab ? 'linkin' : 'console'}
-          focusAgentId={focusAgentId}
+          focusAgentId={onMemoryTab ? 'environment_kernel' : focusAgentId}
           onPick={(id) => {
+            if (id === 'environment_kernel') {
+              jumpToL0Kernel();
+              return;
+            }
             onFocusAgent(id);
             onMonitorTabChange(onStudioTab ? 'studio' : 'agents');
           }}

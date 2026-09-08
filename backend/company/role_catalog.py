@@ -15,6 +15,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+from backend.company.raho.protocol import attach_raho_fields
 from backend.company.roles import BUILTIN_TEMPLATES, STANDARD_ROLES
 from backend.company.state import (
     ROLE_CATEGORY_MAP,
@@ -374,45 +375,49 @@ def _builtin_snapshot(role: RoleType) -> dict[str, Any]:
     definition = STANDARD_ROLES[role]
     level = definition.level if definition.level is not None else ROLE_LEVEL.get(role, 3)
     category = ROLE_CATEGORY_MAP.get(role)
-    return {
-        "id": role.value,
-        "name": definition.name,
-        "level": level,
-        "level_label": LEVEL_LABELS.get(level, "執行層"),
-        "category": category.value if category else "management",
-        "reporting_to": definition.reporting_to.value if definition.reporting_to else None,
-        "can_delegate_to": [r.value for r in definition.can_delegate_to],
-        "responsibilities": list(definition.responsibilities),
-        "system_prompt": definition.system_prompt or "",
-        "max_parallel_work": int(definition.max_parallel_work),
-        "default_tier": definition.default_tier.value if definition.default_tier else "routine",
-        **_runtime_defaults(),
-        "is_custom": False,
-        "is_builtin": True,
-        "templates": _templates_for(role.value),
-    }
+    return attach_raho_fields(
+        {
+            "id": role.value,
+            "name": definition.name,
+            "level": level,
+            "level_label": LEVEL_LABELS.get(level, "執行層"),
+            "category": category.value if category else "management",
+            "reporting_to": definition.reporting_to.value if definition.reporting_to else None,
+            "can_delegate_to": [r.value for r in definition.can_delegate_to],
+            "responsibilities": list(definition.responsibilities),
+            "system_prompt": definition.system_prompt or "",
+            "max_parallel_work": int(definition.max_parallel_work),
+            "default_tier": definition.default_tier.value if definition.default_tier else "routine",
+            **_runtime_defaults(),
+            "is_custom": False,
+            "is_builtin": True,
+            "templates": _templates_for(role.value),
+        }
+    )
 
 
 def _custom_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
     role_id = _sanitize_id(str(raw.get("id") or ""))
     level = _normalize_level(raw.get("level"), 3)
-    return {
-        "id": role_id,
-        "name": str(raw.get("name") or role_id).strip() or role_id,
-        "level": level,
-        "level_label": LEVEL_LABELS.get(level, "執行層"),
-        "category": _normalize_category(raw.get("category"), "management"),
-        "reporting_to": (str(raw.get("reporting_to")).strip() if raw.get("reporting_to") else None) or None,
-        "can_delegate_to": _as_str_list(raw.get("can_delegate_to")),
-        "responsibilities": _as_str_list(raw.get("responsibilities")),
-        "system_prompt": str(raw.get("system_prompt") or ""),
-        "max_parallel_work": max(1, min(16, int(raw.get("max_parallel_work") or 2))),
-        "default_tier": _normalize_tier(raw.get("default_tier"), "routine"),
-        **_merge_runtime(_runtime_defaults(), raw),
-        "is_custom": True,
-        "is_builtin": False,
-        "templates": _as_str_list(raw.get("templates")),
-    }
+    return attach_raho_fields(
+        {
+            "id": role_id,
+            "name": str(raw.get("name") or role_id).strip() or role_id,
+            "level": level,
+            "level_label": LEVEL_LABELS.get(level, "執行層"),
+            "category": _normalize_category(raw.get("category"), "management"),
+            "reporting_to": (str(raw.get("reporting_to")).strip() if raw.get("reporting_to") else None) or None,
+            "can_delegate_to": _as_str_list(raw.get("can_delegate_to")),
+            "responsibilities": _as_str_list(raw.get("responsibilities")),
+            "system_prompt": str(raw.get("system_prompt") or ""),
+            "max_parallel_work": max(1, min(16, int(raw.get("max_parallel_work") or 2))),
+            "default_tier": _normalize_tier(raw.get("default_tier"), "routine"),
+            **_merge_runtime(_runtime_defaults(), raw),
+            "is_custom": True,
+            "is_builtin": False,
+            "templates": _as_str_list(raw.get("templates")),
+        }
+    )
 
 
 def _apply_overlay(base: dict[str, Any], overlay: dict[str, Any] | None) -> dict[str, Any]:
@@ -474,6 +479,8 @@ def list_role_snapshots() -> list[dict[str, Any]]:
             if reporting and reporting not in by_id:
                 snap["reporting_to"] = None
         snapshots.sort(key=lambda s: (s["level"], s["id"]))
+        for snap in snapshots:
+            attach_raho_fields(snap)
         return snapshots
 
 
@@ -933,7 +940,10 @@ def _role_presets() -> list[dict[str, Any]]:
         RoleType.ROUTER_ENG,
         RoleType.CUSTOMER_SUCCESS,
         RoleType.REQUIREMENT_AUDITOR,
+        RoleType.TACTICAL_COMMANDER,
         RoleType.CONSTITUTIONAL_INSPECTOR,
+        RoleType.ATOMIC_EXECUTOR,
+        RoleType.ENVIRONMENT_KERNEL,
     ):
         snap = _builtin_snapshot(role)
         presets.append(
