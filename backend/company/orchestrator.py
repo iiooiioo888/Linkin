@@ -95,6 +95,9 @@ class CompanyOrchestrator:
         self.docker = docker_manager
         # 取消標誌：由外部（task_manager）設置，執行迴圈檢查此標誌
         self.cancel_requested = False
+        self._campaign: dict[str, Any] = {}
+        self._battle_plan: dict[str, Any] = {}
+        self._commander: dict[str, Any] = {}
 
     def request_cancel(self) -> None:
         """請求取消公司任務（執行迴圈會在下一個檢查點中止）。"""
@@ -158,7 +161,7 @@ class CompanyOrchestrator:
     # 公開 API
     # ═══════════════════════════════════════════════════════════
 
-    async def execute(self, goal: str) -> dict[str, Any]:
+    async def execute(self, goal: str, ticket: dict[str, Any] | None = None) -> dict[str, Any]:
         """執行公司目標，回傳最終結果。
 
         這是主要的進入點，執行完整的公司運行流程。
@@ -177,6 +180,14 @@ class CompanyOrchestrator:
             level=logging.INFO,
         )
         self.events.emit(CompanyEvent.COMPANY_START, {"goal": goal, "config": self.config.name})
+        try:
+            from backend.company.raho.protocol import raho_enabled
+            from backend.company.raho.store import STORE as _RAHO_STORE
+
+            if raho_enabled() and self._run_id:
+                _RAHO_STORE.ensure_tree(self._run_id, goal)
+        except Exception:  # noqa: BLE001
+            pass
 
         # ── 階段 0：雲資源預算檢查（Docker + 阿里雲 BSS）──
         docker_snapshot = self.budget.record_docker_runtime()
@@ -207,26 +218,136 @@ class CompanyOrchestrator:
                 "pressure": round(self.budget.budget_pressure, 2),
             }, degraded=True, level=logging.WARNING)
 
-        # ── 階段 1：TaskDecomposer 分解目標 ──
-        self._log("phase", {"phase": "decompose", "module": "TaskDecomposer"})
-        self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "decompose"})
-        decompose_result = await self.decomposer.decompose(goal)
-        if not decompose_result.subtasks:
-            return self._error_result("任務分解失敗，無法產生工作項")
+        # ── 階段 1a：L4 元規劃官產出戰役 DAG ──
+        self._log("phase", {"phase": "campaign_plan", "module": "RahoPlanner"})
+        self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "campaign_plan"})
+        try:
+            from backend.company.raho.planner import plan_campaign
+            from backend.company.raho.protocol import RahoLayer, raho_enabled
+            from backend.company.raho.store import STORE as _RAHO_STORE
 
-        work_items = self.decomposer.build_work_items(
-            decompose_result,
-            created_by=RoleType.MANAGER,
-        )
+            if raho_enabled():
+                campaign = plan_campaign(goal)
+                self._campaign = campaign.to_dict()
+                if self._run_id:
+                    _RAHO_STORE.set_campaign(self._run_id, self._campaign, goal)
+                    _RAHO_STORE.add_node(
+                        self._run_id,
+                        from_layer=int(RahoLayer.L4_PLANNER),
+                        to_layer=int(RahoLayer.L3_DECOMPOSER),
+                        kind="campaign",
+                        summary=campaign.brief(240),
+                        status="resolved",
+                        payload=self._campaign,
+                        goal=goal,
+                    )
+                self.events.emit(CompanyEvent.CAMPAIGN_PLANNED, {
+                    "node_count": len(campaign.nodes),
+                    "source": campaign.source,
+                    "campaign": self._campaign,
+                })
+                self._log("campaign_planned", {
+                    "node_count": len(campaign.nodes),
+                    "source": campaign.source,
+                })
+        except Exception:  # noqa: BLE001
+            logger.debug("L4 戰役規劃略過", exc_info=True)
+
+        # ── 階段 1b：L3 戰術指揮官把 L4 門票拆成原子作戰地圖 ──
+        self._log("phase", {"phase": "decompose", "module": "TacticalCommander"})
+        self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "decompose"})
+        work_items: list = []
+        decompose_meta = {"strategy": "commander", "execution_plan": ""}
+        try:
+            from backend.company.raho.commander import command_from_ticket
+            from backend.company.raho.protocol import raho_enabled
+            from backend.services.commander import extract_ticket
+
+            l4_ticket = ticket if isinstance(ticket, dict) else None
+            if l4_ticket is None:
+                l4_ticket = extract_ticket(goal)
+            if raho_enabled() and l4_ticket:
+                pack = command_from_ticket(l4_ticket)
+                self._commander = pack
+                if pack.get("status") == "REJECT_TO_L4":
+                    defects = "；".join(pack.get("defects") or ["門票檢查未過"])
+                    return {
+                        **self._error_result(f"L3 退回 L4：{defects}"),
+                        "status": "REJECT_TO_L4",
+                        "commander": pack,
+                    }
+                if pack.get("status") == "ESCALATE_TO_USER":
+                    return {
+                        **self._error_result(f"L3 上交用戶：{pack.get('reason') or '不可行'}"),
+                        "status": "ESCALATE_TO_USER",
+                        "commander": pack,
+                    }
+                if pack.get("status") == "PLAN_READY" and pack.get("battle_plan"):
+                    self._battle_plan = pack["battle_plan"]
+                    work_items = self._build_from_battle_plan(self._battle_plan)
+                    decompose_meta = {
+                        "strategy": "commander",
+                        "execution_plan": pack.get("battle_plan_yaml") or pack["battle_plan"].get("plan_id", ""),
+                    }
+                    settings = (self._battle_plan.get("global_settings") or {})
+                    try:
+                        workers = int(settings.get("max_parallel_workers") or 0)
+                        if workers > 0:
+                            self._max_parallel = workers
+                            self._worker_semaphore = asyncio.Semaphore(workers)
+                    except (TypeError, ValueError):
+                        pass
+                    self.events.emit(CompanyEvent.BATTLE_PLANNED, {
+                        "plan_id": self._battle_plan.get("plan_id"),
+                        "node_count": len(self._battle_plan.get("dag_nodes") or []),
+                        "rush_mode": bool(pack.get("rush_mode")),
+                    })
+        except Exception:  # noqa: BLE001
+            logger.debug("L3 戰術拆解略過，回退 TaskDecomposer", exc_info=True)
+
+        if not work_items:
+            decompose_result = await self.decomposer.decompose(goal)
+            if not decompose_result.subtasks:
+                return self._error_result("任務分解失敗，無法產生工作項")
+            work_items = self.decomposer.build_work_items(
+                decompose_result,
+                created_by=RoleType.MANAGER,
+            )
+            decompose_meta = {
+                "strategy": decompose_result.strategy.value,
+                "execution_plan": decompose_result.execution_plan,
+            }
+            try:
+                from backend.company.raho.atomic_pool import assemble as assemble_atomic
+                from backend.company.raho.protocol import raho_enabled
+
+                if raho_enabled():
+                    for _item in work_items:
+                        assemble_atomic(_item)
+            except Exception:  # noqa: BLE001
+                logger.debug("原子角色組裝略過", exc_info=True)
+
+        try:
+            from backend.company.raho.protocol import raho_enabled
+
+            if raho_enabled() and self._campaign:
+                from backend.company.raho.planner import CampaignMap, tag_work_items
+
+                tag_work_items(work_items, CampaignMap.from_dict(self._campaign, goal))
+        except Exception:  # noqa: BLE001
+            logger.debug("戰役節點掛載略過", exc_info=True)
         self._log("decompose_done", {
             "subtask_count": len(work_items),
-            "strategy": decompose_result.strategy.value,
-            "execution_plan": decompose_result.execution_plan,
+            "strategy": decompose_meta["strategy"],
+            "execution_plan": decompose_meta["execution_plan"],
+            "battle_plan_id": (self._battle_plan or {}).get("plan_id"),
         })
         self.events.emit(CompanyEvent.DECOMPOSE_DONE, {
             "subtask_count": len(work_items),
-            "strategy": decompose_result.strategy.value,
-            "execution_plan": decompose_result.execution_plan,
+            "strategy": decompose_meta["strategy"],
+            "execution_plan": decompose_meta["execution_plan"],
+            "campaign": self._campaign,
+            "battle_plan": self._battle_plan,
         })
 
         # ── 階段 2：執行-審查迴圈 ──
@@ -326,6 +447,10 @@ class CompanyOrchestrator:
                 "auto_optimized": docker_auto_optimized,
             },
             "run_log": self._run_log,
+            "raho": self._raho_snapshot(),
+            "campaign": self._campaign,
+            "battle_plan": self._battle_plan,
+            "commander": self._commander,
         }
 
     def get_kanban(self) -> dict:
@@ -335,6 +460,135 @@ class CompanyOrchestrator:
     def get_budget_status(self) -> dict:
         """取得預算狀態。"""
         return self.budget.to_dict()
+
+    def _raho_snapshot(self) -> dict[str, Any]:
+        try:
+            from backend.company.raho.store import STORE
+
+            run_id = self._run_id or ""
+            tree = STORE.get_tree(run_id)
+            pending = [p.to_dict() for p in STORE.list_pending(run_id)]
+            return {
+                "run_id": run_id,
+                "tree": tree.to_dict() if tree else None,
+                "pending_decisions": pending,
+                "campaign": self._campaign or (tree.campaign if tree else {}),
+                "battle_plan": self._battle_plan,
+                "commander": self._commander,
+            }
+        except Exception:  # noqa: BLE001
+            return {}
+
+    async def _maybe_resolve_mgp(
+        self,
+        goal: str,
+        item,
+        role_type: RoleType,
+        raw: str,
+        prompt: str,
+        system_prompt: str,
+        model: str,
+        llm_opts: dict | None,
+        timeout_s: float,
+    ) -> tuple[str, str]:
+        """若產出含 [GRILL]，走熱馬桶圈後重試一次執行。無標記則原樣返回。"""
+        try:
+            from backend.company.raho.escalation import resolve_grill
+            from backend.company.raho.mgp import parse_choices, parse_grill_output, strip_protocol_marks
+            from backend.company.raho.protocol import mgp_enabled
+        except Exception:  # noqa: BLE001
+            return raw, prompt
+        if not mgp_enabled():
+            return raw, prompt
+        kind, issues = parse_grill_output(raw)
+        if kind == "clear":
+            return raw, prompt
+        extra_choices = parse_choices(raw) if kind == "escalate" else []
+        self.events.emit(CompanyEvent.GRILL_RAISED, {
+            "item_id": item.id,
+            "title": item.title,
+            "role": role_type.value,
+            "issues": [i.to_dict() for i in issues],
+        })
+        resolved = await resolve_grill(
+            run_id=self._run_id or item.id,
+            item_id=item.id,
+            goal=goal,
+            title=item.title,
+            description=item.description,
+            issues=issues,
+            assignee=role_type.value,
+            choices=extra_choices or None,
+            superior="manager",
+        )
+        if resolved.get("layer") == 5:
+            self.events.emit(CompanyEvent.USER_DECISION_NEEDED, {
+                "item_id": item.id,
+                "title": item.title,
+                "question": "\n".join(i.message for i in issues)[:500],
+                "resolution": resolved,
+            })
+        self._apply_escalation_patch(item, resolved)
+        reply = str(resolved.get("reply") or "").strip()
+        self.events.emit(CompanyEvent.GRILL_RESOLVED, {
+            "item_id": item.id,
+            "layer": resolved.get("layer"),
+            "action": resolved.get("action"),
+            "timeout": bool(resolved.get("timeout")),
+        })
+        if resolved.get("timeout"):
+            self.events.emit(CompanyEvent.RAHO_TIMEOUT, {
+                "item_id": item.id, "choice": resolved.get("choice"),
+            })
+        if not reply:
+            return strip_protocol_marks(raw) or raw, prompt
+        next_prompt = prompt + f"\n\n【上級對質詢的裁決】\n{reply}\n請依裁決產出交付物，不要再重複質詢。"
+        try:
+            if timeout_s > 0:
+                retried = await asyncio.wait_for(
+                    self._execute_with_tool_loop(
+                        next_prompt, system_prompt, model, role_type.value, item,
+                        llm_kwargs=llm_opts,
+                    ),
+                    timeout=timeout_s,
+                )
+            else:
+                retried = await self._execute_with_tool_loop(
+                    next_prompt, system_prompt, model, role_type.value, item,
+                    llm_kwargs=llm_opts,
+                )
+            kind2, _ = parse_grill_output(retried)
+            if kind2 == "clear":
+                return retried, next_prompt
+            return strip_protocol_marks(retried) or reply, next_prompt
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("MGP 重試執行失敗，使用裁決原文：%s", exc)
+            return reply, next_prompt
+
+    def _apply_escalation_patch(self, item, resolved: dict) -> None:
+        """把 L3 SOP 重發的工具／預算寫回原子工作項。"""
+        if not isinstance(resolved, dict) or not item:
+            return
+        artifacts = item.artifacts if isinstance(item.artifacts, dict) else {}
+        atomic = artifacts.get("atomic_role") if isinstance(artifacts.get("atomic_role"), dict) else {}
+        tools = resolved.get("reissued_tools")
+        if isinstance(tools, list) and tools:
+            artifacts["allowed_tools"] = list(tools)
+            if atomic:
+                atomic["allowed_tools"] = list(tools)
+                layer = atomic.get("task_layer")
+                if isinstance(layer, dict):
+                    layer["allowed_tools"] = list(tools)
+        budget = resolved.get("reissued_budget")
+        if isinstance(budget, dict):
+            if budget.get("max_iterations") is not None:
+                artifacts["max_iterations"] = budget["max_iterations"]
+                if atomic:
+                    atomic["max_iterations"] = budget["max_iterations"]
+            if budget.get("token_budget") is not None:
+                artifacts["token_budget"] = budget["token_budget"]
+                if atomic:
+                    atomic["token_budget"] = budget["token_budget"]
 
     # ═══════════════════════════════════════════════════════════
     # 檢查點（Save / Resume）
@@ -377,6 +631,7 @@ class CompanyOrchestrator:
             # 恢復後與原值產生浮點誤差），其餘欄位維持序列化格式
             "budget": {**self.budget.to_dict(), "task_spent": self.budget.task_spent},
             "run_log": self._run_log,
+            "campaign": self._campaign,
         }
 
     def _restore_from_checkpoint(self, data: dict[str, Any]) -> None:
@@ -421,6 +676,7 @@ class CompanyOrchestrator:
         # 恢復日誌與 run_id
         self._run_log = data.get("run_log", [])
         self._run_id = data.get("run_id") or self._run_id
+        self._campaign = data.get("campaign") or {}
 
     @staticmethod
     def from_checkpoint(
@@ -581,7 +837,7 @@ class CompanyOrchestrator:
                 "step": step + 1,
             })
 
-            allow_tools, catalog_allowed = self._catalog_tool_filter(role_value)
+            allow_tools, catalog_allowed = self._catalog_tool_filter(role_value, item)
             if not allow_tools:
                 from backend.company.tools import ToolCallResult
 
@@ -655,38 +911,130 @@ class CompanyOrchestrator:
             model = runtime["preferred_model"]
         llm_opts = llm_kwargs_for_role(runtime)
         context = self._build_context(item)
+        try:
+            from backend.company.raho.scorecard import record_execution
+
+            record_execution(role_type.value)
+        except Exception:  # noqa: BLE001
+            pass
 
         # 使用角色專用執行提示（若有）
         role_specific_prompt = self.prompt_config.role_execute_prompts.get(role_type.value, "")
 
-        prompt = self.prompt_config.developer_execute.format(
-            goal=goal,
-            role_name=role_def.name,
-            title=item.title,
-            description=item.description,
-            context=context,
-        )
-        if role_specific_prompt:
-            prompt = prompt + "\n\n" + role_specific_prompt
+        atomic = item.artifacts.get("atomic_role") or {}
+        if atomic.get("system_prompt") or atomic.get("input_ref"):
+            from backend.services.commander import l2_task_brief
 
-        # ── 角色記憶注入：檢索該角色的相關歷史經驗 ──
-        try:
-            role_memory = get_role_memory(role_type.value)
-            memory_context = await asyncio.to_thread(
-                role_memory.retrieve_formatted, item.title, 3
+            prompt = l2_task_brief(
+                title=item.title,
+                input_ref=atomic.get("input_ref") or item.artifacts.get("input_ref"),
+                output_schema=str(atomic.get("output_schema") or ""),
+                success_criteria=str(atomic.get("kpi") or atomic.get("success_criteria") or ""),
+                allowed_tools=list(atomic.get("allowed_tools") or item.artifacts.get("allowed_tools") or []),
             )
-            if memory_context:
-                prompt = prompt + "\n\n" + memory_context
-                self._log("role_memory_injected", {
-                    "item_id": item.id, "role": role_type.value,
-                }, level=logging.DEBUG)
-        except Exception:  # noqa: BLE001 - 記憶注入失敗不阻斷執行
-            pass
+            if context and "輸入指標" not in context:
+                prompt = f"{prompt}\n{context}"
+        else:
+            prompt = self.prompt_config.developer_execute.format(
+                goal=goal,
+                role_name=role_def.name,
+                title=item.title,
+                description=item.description,
+                context=context,
+            )
+            if role_specific_prompt:
+                prompt = prompt + "\n\n" + role_specific_prompt
+        if self._campaign and not atomic.get("input_ref"):
+            try:
+                from backend.company.raho.planner import CampaignMap
 
-        # 若角色有工具權限，附加工具說明（使用新工具註冊表）
-        tools_text = self._get_docker_tools_for_role(role_type)
+                prompt = prompt + "\n\n" + CampaignMap.from_dict(self._campaign, goal).brief()
+            except Exception:  # noqa: BLE001
+                pass
+
+        # ── 角色記憶注入：原子角色只讀 input_ref，不灌歷史對話 ──
+        if not atomic.get("input_ref"):
+            try:
+                role_memory = get_role_memory(role_type.value)
+                memory_context = await asyncio.to_thread(
+                    role_memory.retrieve_formatted, item.title, 3
+                )
+                if memory_context:
+                    prompt = prompt + "\n\n" + memory_context
+                    self._log("role_memory_injected", {
+                        "item_id": item.id, "role": role_type.value,
+                    }, level=logging.DEBUG)
+            except Exception:  # noqa: BLE001 - 記憶注入失敗不阻斷執行
+                pass
+
+        # 若角色有工具權限，附加工具說明（原子角色只列白名單）
+        tools_text = self._get_docker_tools_for_role(role_type, item)
         if tools_text:
             prompt = prompt + "\n\n" + tools_text
+
+        # ── 執行前憲兵檢查：走熱馬桶圈 L3→L4→L5，禁止就地吞掉上交 ──
+        try:
+            from backend.company.raho.escalation import resolve_grill
+            from backend.company.raho.mgp import rule_inspect_instruction
+            from backend.company.raho.protocol import mgp_enabled
+
+            if mgp_enabled():
+                atomic = item.artifacts.get("atomic_role") or {}
+                task_spec = atomic.get("task_layer") if isinstance(atomic, dict) else None
+                pre_issues = rule_inspect_instruction(
+                    item.title,
+                    item.description,
+                    tools_allowed=atomic.get("allowed_tools") if isinstance(atomic, dict) else None,
+                    task_spec=task_spec,
+                )
+                if pre_issues:
+                    self.events.emit(CompanyEvent.GRILL_RAISED, {
+                        "item_id": item.id,
+                        "title": item.title,
+                        "role": role_type.value,
+                        "phase": "preflight",
+                        "issues": [i.to_dict() for i in pre_issues],
+                    })
+                    resolved = await resolve_grill(
+                        run_id=self._run_id or item.id,
+                        item_id=item.id,
+                        goal=goal,
+                        title=item.title,
+                        description=item.description,
+                        issues=pre_issues,
+                        assignee=role_type.value,
+                        superior="manager",
+                    )
+                    self._apply_escalation_patch(item, resolved)
+                    reply = str(resolved.get("reply") or "").strip()
+                    if not reply:
+                        reply = (
+                            "指令規格不足。請依標題補齊最小交付規格，標註合理假設後繼續，"
+                            "不得擴寫範圍。"
+                        )
+                    prompt = prompt + f"\n\n【上級對執行前質詢的裁決】\n{reply}"
+                    item.description = (item.description or "") + f"\n【上級補件】{reply}"
+                    if resolved.get("layer") == 5:
+                        self.events.emit(CompanyEvent.USER_DECISION_NEEDED, {
+                            "item_id": item.id,
+                            "title": item.title,
+                            "question": "\n".join(i.message for i in pre_issues)[:500],
+                            "resolution": resolved,
+                            "phase": "preflight",
+                        })
+                    if resolved.get("timeout"):
+                        self.events.emit(CompanyEvent.RAHO_TIMEOUT, {
+                            "item_id": item.id, "choice": resolved.get("choice"),
+                        })
+                    self.events.emit(CompanyEvent.GRILL_RESOLVED, {
+                        "item_id": item.id,
+                        "layer": resolved.get("layer"),
+                        "action": resolved.get("action"),
+                        "phase": "preflight",
+                        "timeout": bool(resolved.get("timeout")),
+                    })
+        except Exception:  # noqa: BLE001
+            logger.debug("執行前 MGP 略過", exc_info=True)
 
         # ── 重試迴圈（含指數退避 + 超時 + 角色升級）──
         retry_cfg = self.config.retry_config
@@ -700,6 +1048,11 @@ class CompanyOrchestrator:
                 max_retries = max(0, min(8, int(runtime["max_retries"])))
             except (TypeError, ValueError):
                 max_retries = retry_cfg.max_retries
+        if atomic.get("max_iterations") is not None:
+            try:
+                max_retries = max(0, min(max_retries, int(atomic["max_iterations"])))
+            except (TypeError, ValueError):
+                pass
 
         for attempt in range(max_retries + 1):
             import time as _time
@@ -711,6 +1064,24 @@ class CompanyOrchestrator:
                     or role_def.system_prompt
                     or self.prompt_config.developer_execute_system
                 )
+                try:
+                    from backend.company.raho.mgp import apply_mgp_system
+                    from backend.company.raho.protocol import mgp_enabled
+
+                    atomic = item.artifacts.get("atomic_role") or {}
+                    if role_type == RoleType.TACTICAL_COMMANDER and not atomic.get("system_prompt"):
+                        from backend.services.commander import apply_commander_system
+
+                        system_prompt = apply_commander_system(system_prompt)
+                    if mgp_enabled():
+                        if atomic.get("system_prompt"):
+                            system_prompt = atomic["system_prompt"]
+                        system_prompt = apply_mgp_system(
+                            system_prompt,
+                            superior=role_type == RoleType.TACTICAL_COMMANDER,
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
                 if timeout_s > 0:
                     raw = await asyncio.wait_for(
                         self._execute_with_tool_loop(
@@ -724,6 +1095,20 @@ class CompanyOrchestrator:
                         prompt, system_prompt, model, role_type.value, item,
                         llm_kwargs=llm_opts,
                     )
+                raw, prompt = await self._maybe_resolve_mgp(
+                    goal, item, role_type, raw, prompt, system_prompt, model, llm_opts, timeout_s,
+                )
+                try:
+                    from backend.company.raho.atomic_executor import parse_failed_output
+
+                    failed = parse_failed_output(raw)
+                except Exception:  # noqa: BLE001
+                    failed = None
+                if failed:
+                    last_error = f"原子任務失敗：{(failed.get('partial_output') or '')[:240]}"
+                    item.artifacts["partial_output"] = failed.get("partial_output") or ""
+                    item.artifacts["atomic_status"] = "FAILED"
+                    raise RuntimeError(last_error)
 
                 # 記錄成功響應時間（優化 #6）
                 elapsed = _time.monotonic() - _start_time
@@ -763,6 +1148,22 @@ class CompanyOrchestrator:
                     )
                 except Exception:  # noqa: BLE001 - 記憶保存失敗不阻斷流程
                     pass
+                try:
+                    from backend.company.raho.atomic_pool import recycle as recycle_atomic
+                    from backend.company.raho.context_bus import blackboard_record
+                    from backend.company.raho.protocol import RahoLayer, raho_enabled
+
+                    if raho_enabled():
+                        recycle_atomic(item)
+                        blackboard_record(
+                            task_id=self._run_id or item.id,
+                            layer=RahoLayer.L2_EXECUTOR,
+                            title=item.title,
+                            content=str(item.artifacts.get("output") or "")[:800],
+                            role=role_type.value,
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
 
                 return  # 成功，退出
 
@@ -801,14 +1202,176 @@ class CompanyOrchestrator:
             "item_id": item.id, "title": item.title, "error": last_error,
         })
 
+    def _task_spec_from_item(self, item) -> dict[str, Any]:
+        artifacts = item.artifacts if isinstance(item.artifacts, dict) else {}
+        layer = artifacts.get("task_layer")
+        if isinstance(layer, dict) and layer:
+            return layer
+        atomic = artifacts.get("atomic_role") if isinstance(artifacts.get("atomic_role"), dict) else {}
+        inner = atomic.get("task_layer")
+        if isinstance(inner, dict) and inner:
+            return inner
+        return {
+            "task_description": item.description or item.title,
+            "input_ref": artifacts.get("input_ref"),
+            "allowed_tools": artifacts.get("allowed_tools") or [],
+            "success_criteria": artifacts.get("success_criteria") or "",
+            "output_schema": artifacts.get("output_schema") or "",
+        }
+
+    async def _run_l1_inspect(self, goal: str, item, review_round: int, max_rounds: int):
+        """L1 憲兵閘門。規則驗收，不額外呼叫 LLM（除非 EVOL_RAHO_L1_LLM）。"""
+        try:
+            from backend.company.raho.inspector import (
+                VERDICT_APPROVED,
+                VERDICT_ESCALATE,
+                VERDICT_REWORK,
+                InspectorGate,
+                source_for_artifacts,
+            )
+            from backend.company.raho.protocol import RahoLayer, raho_enabled
+            from backend.company.raho.store import STORE as _RAHO_STORE
+        except Exception:  # noqa: BLE001
+            return None
+        if not raho_enabled():
+            return None
+        artifacts = item.artifacts if isinstance(item.artifacts, dict) else {}
+        if not (
+            artifacts.get("task_layer")
+            or artifacts.get("atomic_role")
+            or artifacts.get("atomic_distill")
+        ):
+            return None
+        output = str(artifacts.get("output") or "")
+        spec = self._task_spec_from_item(item)
+        source = source_for_artifacts(artifacts, output)
+        gate = InspectorGate()
+        verdict = gate.inspect(
+            spec,
+            output,
+            source_data=source,
+            rework_rounds=max(0, review_round - 1),
+            max_rework=max(1, max_rounds),
+            node_id=item.id,
+            title=item.title,
+        )
+        item.artifacts["l1_verdict"] = verdict.to_dict()
+        item.artifacts["l1_signed"] = verdict.verdict == VERDICT_APPROVED
+        self.events.emit(CompanyEvent.INSPECTOR_VERDICT, {
+            "item_id": item.id,
+            "title": item.title,
+            "verdict": verdict.verdict,
+            "quality_score": verdict.quality_score,
+            "test_results": verdict.test_results,
+            "round": review_round,
+        })
+        if self._run_id:
+            target_layer = (
+                int(RahoLayer.L2_EXECUTOR)
+                if verdict.grill and verdict.grill.target.endswith("Executor")
+                else int(RahoLayer.L3_DECOMPOSER)
+            )
+            node = _RAHO_STORE.add_node(
+                self._run_id,
+                from_layer=int(RahoLayer.L1_GRILL),
+                to_layer=target_layer if verdict.verdict != VERDICT_APPROVED else int(RahoLayer.L2_EXECUTOR),
+                kind="inspect",
+                summary=(verdict.details or verdict.verdict)[:240],
+                status="resolved" if verdict.verdict == VERDICT_APPROVED else "open",
+                payload={"item_id": item.id, "verdict": verdict.to_dict()},
+                goal=goal,
+            )
+            if verdict.verdict == VERDICT_APPROVED:
+                _RAHO_STORE.resolve_node(self._run_id, node.node_id, "resolved")
+        if verdict.verdict == VERDICT_APPROVED:
+            return verdict
+        if verdict.verdict == VERDICT_REWORK:
+            feedback = verdict.details or "L1 憲兵退回重做"
+            if verdict.grill:
+                feedback = verdict.grill.required_fix or verdict.grill.details or feedback
+                self.events.emit(CompanyEvent.GRILL_RAISED, {
+                    "item_id": item.id,
+                    "title": item.title,
+                    "phase": "inspect",
+                    "target": verdict.grill.target,
+                    "issues": [verdict.grill.to_issue().to_dict()],
+                })
+            return verdict
+        if verdict.verdict == VERDICT_ESCALATE:
+            try:
+                from backend.company.raho.escalation import resolve_grill
+
+                issues = [verdict.grill.to_issue()] if verdict.grill else []
+                if issues:
+                    result = await resolve_grill(
+                        run_id=self._run_id or item.id,
+                        item_id=item.id,
+                        goal=goal,
+                        title=item.title,
+                        description=item.description,
+                        issues=issues,
+                        assignee=item.assignee.value if item.assignee else "",
+                        superior="tactical_commander",
+                    )
+                    item.artifacts["l1_escalation"] = result
+                    reply = str(result.get("reply") or "").strip()
+                    if reply:
+                        item.description = (item.description or "") + f"\n【L1 呈報後裁決】{reply}"
+            except Exception:  # noqa: BLE001
+                logger.debug("L1 呈報裁決略過", exc_info=True)
+            return verdict
+        return verdict
+
     async def _review_item(self, goal: str, item, max_rounds: int) -> None:
-        """讓 Reviewer 審查工作項交付物。"""
+        """L1 憲兵閘門 → Reviewer 審查工作項交付物。"""
         review_round = 0
 
         while review_round < max_rounds:
             review_round += 1
             current = self.work_items.get(item.id)
             if not current or current.status != WorkItemStatus.IN_REVIEW:
+                break
+
+            l1 = await self._run_l1_inspect(goal, current, review_round, max_rounds)
+            if l1 is not None and getattr(l1, "verdict", "") == "REWORK":
+                feedback = l1.details or "L1 憲兵退回重做"
+                if l1.grill:
+                    feedback = l1.grill.required_fix or l1.grill.details or feedback
+                try:
+                    from backend.company.raho.store import STORE as _RAHO_STORE
+
+                    _RAHO_STORE.revoke_signed(current.id)
+                except Exception:  # noqa: BLE001
+                    pass
+                current.artifacts["l1_signed"] = False
+                self.work_items.request_rework(item.id, feedback)
+                self._log("review_rework", {
+                    "item_id": item.id, "round": review_round, "feedback": feedback[:200], "gate": "l1",
+                })
+                self.events.emit(CompanyEvent.REVIEW_REWORK, {
+                    "item_id": item.id, "round": review_round, "feedback": feedback[:200], "gate": "l1",
+                })
+                await self._rework_item(goal, current, feedback)
+                continue
+            if l1 is not None and getattr(l1, "verdict", "") == "ESCALATE":
+                feedback = l1.details or "L1 向上呈報"
+                if l1.grill:
+                    feedback = l1.grill.suggested_fix or l1.grill.details or feedback
+                reply = ""
+                esc = current.artifacts.get("l1_escalation") if isinstance(current.artifacts, dict) else {}
+                if isinstance(esc, dict):
+                    reply = str(esc.get("reply") or "")
+                if reply:
+                    self.work_items.request_rework(item.id, reply)
+                    self.events.emit(CompanyEvent.REVIEW_REWORK, {
+                        "item_id": item.id, "round": review_round, "feedback": reply[:200], "gate": "l1",
+                    })
+                    await self._rework_item(goal, current, reply)
+                    continue
+                self.work_items.block(item.id, feedback)
+                self.events.emit(CompanyEvent.WORK_ITEM_ESCALATE, {
+                    "item_id": item.id, "from": "l1", "to": "l3",
+                })
                 break
 
             role_def = self.config.roles.get(RoleType.REVIEWER, STANDARD_ROLES[RoleType.REVIEWER])
@@ -1130,17 +1693,36 @@ class CompanyOrchestrator:
     # ═══════════════════════════════════════════════════════════
 
     def _build_context(self, item) -> str:
-        """收集依賴工作項的交付物作為上下文。"""
-        if not item.depends_on:
+        """收集依賴工作項的交付物作為上下文（RAHO：最小可行上下文）。"""
+        deps = []
+        for dep_id in item.depends_on or []:
+            dep = self.work_items.get(dep_id)
+            if dep:
+                deps.append(dep)
+        try:
+            from backend.company.raho.context_bus import downward_context
+            from backend.company.raho.protocol import raho_enabled
+
+            if raho_enabled():
+                ctx = downward_context(item, deps)
+                milestone = (item.artifacts or {}).get("campaign_node") or {}
+                if milestone.get("title"):
+                    ctx = (
+                        f"【所屬戰役節點 {milestone.get('node_id')}】{milestone.get('title')}\n"
+                        f"成果：{milestone.get('outcome')}\n"
+                        f"成敗：{milestone.get('success_criteria')}\n\n"
+                        f"{ctx}"
+                    )
+                return ctx
+        except Exception:  # noqa: BLE001
+            pass
+        if not deps:
             return "（無依賴上下文）"
         parts = []
-        for dep_id in item.depends_on:
-            dep = self.work_items.get(dep_id)
-            if dep and dep.status == WorkItemStatus.DONE:
+        for dep in deps:
+            if dep.status == WorkItemStatus.DONE:
                 output = dep.artifacts.get("output", "")
-                parts.append(
-                    f"【依賴工作項：{dep.title}】\n{output[:1000]}"
-                )
+                parts.append(f"【依賴工作項：{dep.title}】\n{output[:1000]}")
         return "\n\n".join(parts) if parts else "（無依賴上下文）"
 
     def _collect_artifacts(self) -> str:
@@ -1277,6 +1859,61 @@ class CompanyOrchestrator:
 
         return result
 
+    def _build_from_battle_plan(self, plan: dict[str, Any]) -> list:
+        """把 L3 作戰地圖孵化成工作項（含依賴與原子角色卡）。"""
+        from backend.company.raho.atomic_pool import incubate_instance
+        from backend.company.state import BudgetTier, WorkItemStatus
+
+        template_role = {
+            "web_scraper": RoleType.CRAWLER,
+            "social_listener": RoleType.RESEARCHER,
+            "pdf_extractor": RoleType.ANALYST,
+            "data_synthesizer": RoleType.ANALYST,
+            "swot": RoleType.ANALYST,
+            "copy": RoleType.CONTENT_WRITER,
+            "code": RoleType.DEVELOPER,
+            "review": RoleType.REVIEWER,
+            "plan": RoleType.COORDINATOR,
+            "generic": RoleType.DEVELOPER,
+            "research": RoleType.RESEARCHER,
+            "file_ingest": RoleType.ANALYST,
+        }
+        available = {rt.value: rt for rt in self.config.roles}
+        nodes = list(plan.get("dag_nodes") or [])
+        instances = {
+            str(row.get("node_id")): row
+            for row in (plan.get("atomic_role_instances") or [])
+            if isinstance(row, dict)
+        }
+        created = []
+        id_map: dict[str, str] = {}
+        for node in nodes:
+            node_id = str(node.get("node_id") or f"N{len(created) + 1}")
+            tmpl = str(node.get("assigned_role_template") or "generic")
+            role = template_role.get(tmpl, RoleType.DEVELOPER)
+            if role.value not in available:
+                role = available.get("developer") or available.get("analyst") or next(iter(self.config.roles), RoleType.DEVELOPER)
+            instance = instances.get(node_id) or {}
+            desc = str(node.get("description") or "")
+            item = self.work_items.create(
+                title=desc[:80] or node_id,
+                description=desc,
+                assignee=role,
+                created_by=RoleType.TACTICAL_COMMANDER,
+                depends_on=[],
+                tier=BudgetTier.SUMMARY if instance.get("token_budget", 3000) <= 2000 else BudgetTier.ROUTINE,
+            )
+            item.artifacts["node_id"] = node_id
+            item.artifacts["battle_plan_id"] = plan.get("plan_id")
+            incubate_instance(item, {**instance, "template_id": tmpl})
+            item.transition_to(WorkItemStatus.READY)
+            created.append(item)
+            id_map[node_id] = item.id
+        for node, item in zip(nodes, created):
+            deps = [id_map[str(d)] for d in (node.get("depends_on") or []) if str(d) in id_map]
+            item.depends_on = deps
+        return created
+
     def _error_result(self, message: str) -> dict[str, Any]:
         """產出錯誤結果。"""
         return {
@@ -1286,6 +1923,10 @@ class CompanyOrchestrator:
             "kanban": self.work_items.get_kanban(),
             "budget": self.budget.to_dict(),
             "run_log": self._run_log,
+            "raho": self._raho_snapshot(),
+            "campaign": self._campaign,
+            "battle_plan": self._battle_plan,
+            "commander": self._commander,
         }
 
     # ═══════════════════════════════════════════════════════════
@@ -1293,23 +1934,38 @@ class CompanyOrchestrator:
     # ═══════════════════════════════════════════════════════════
 
     @staticmethod
-    def _catalog_tool_filter(role_value: str) -> tuple[bool, list[str] | None]:
-        """角色目錄：allow_tool_use 與 tools_allowed（空列表 = 不額外限制）。"""
+    def _catalog_tool_filter(role_value: str, item=None) -> tuple[bool, list[str] | None]:
+        """角色目錄 ∩ L3 原子白名單。空列表 = 不額外限制（除非原子角色指定）。"""
         from backend.company.role_catalog import resolve_runtime
 
         runtime = resolve_runtime(role_value)
         if runtime.get("allow_tool_use") is False:
             return False, None
-        allowed = [str(item).strip() for item in (runtime.get("tools_allowed") or []) if str(item).strip()]
+        allowed = [str(row).strip() for row in (runtime.get("tools_allowed") or []) if str(row).strip()]
+        atomic_tools: list[str] = []
+        if item is not None:
+            artifacts = getattr(item, "artifacts", None) or {}
+            atomic = artifacts.get("atomic_role") if isinstance(artifacts, dict) else {}
+            raw = []
+            if isinstance(atomic, dict):
+                raw = list(atomic.get("allowed_tools") or [])
+            if not raw and isinstance(artifacts, dict):
+                raw = list(artifacts.get("allowed_tools") or [])
+            atomic_tools = [str(t).strip() for t in raw if str(t).strip()]
+        if atomic_tools:
+            if allowed:
+                merged = [t for t in allowed if t in atomic_tools]
+                return True, merged or atomic_tools
+            return True, atomic_tools
         return True, (allowed or None)
 
-    def _get_docker_tools_for_role(self, role_type: RoleType) -> str:
+    def _get_docker_tools_for_role(self, role_type: RoleType, item=None) -> str:
         """獲取角色可用的工具說明文字（使用新工具註冊表）。
 
         包含 Docker、記憶、實驗室與 Minecraft MCP 等該角色可用的工具。
         若角色無可用工具或已停用工具，回傳空字串。
         """
-        allow_tools, catalog_allowed = self._catalog_tool_filter(role_type.value)
+        allow_tools, catalog_allowed = self._catalog_tool_filter(role_type.value, item)
         if not allow_tools:
             return ""
         return tool_registry.format_tools_prompt(

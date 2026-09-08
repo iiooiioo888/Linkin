@@ -67,6 +67,11 @@ export function RoleDeskHeader({
             {modelLabel ? <span className="rd-tag rd-tag--muted">{modelLabel}</span> : null}
             {agent.on_call ? <span className="rd-tag">值班</span> : null}
             {agent.enabled === false ? <span className="rd-tag rd-tag--err">停用</span> : null}
+            {agent.demoted || agent.metrics?.demoted ? (
+              <span className="rd-tag rd-tag--err">規劃已降級</span>
+            ) : agent.raho_rank === 'watch' || agent.metrics?.raho_rank === 'watch' ? (
+              <span className="rd-tag">被質詢偏高</span>
+            ) : null}
           </div>
         </div>
       </div>
@@ -439,39 +444,69 @@ export function CostDetailBlock({ agent }: { agent: RoleAgent }) {
   const api = m.api_spent_usd ?? agent.api_cost_usd ?? 0;
   const docker = agent.docker_cost_usd ?? 0;
   const aliyun = agent.aliyun_cost_usd ?? 0;
-  const total = m.daily_spent_usd ?? agent.cost_usd ?? api + docker + aliyun;
-  const budget = agent.daily_budget_usd ?? 0;
-  const scale = Math.max(total, budget, 0.001);
+  const cloud = m.cloud_spent_usd ?? agent.cloud_cost_usd ?? docker + aliyun;
+  const total = m.daily_spent_usd ?? agent.cost_usd ?? api + cloud;
+  const aiDaily = agent.daily_budget_usd ?? 0;
+  const aiWeekly = agent.weekly_budget_usd ?? 0;
+  const aiMonthly = agent.monthly_budget_usd ?? 0;
+  const cloudDaily = agent.cloud_daily_budget_usd ?? 0;
+  const cloudWeekly = agent.cloud_weekly_budget_usd ?? 0;
+  const cloudMonthly = agent.cloud_monthly_budget_usd ?? 0;
+  const aiScale = Math.max(api, aiDaily, 0.001);
+  const cloudScale = Math.max(cloud, cloudDaily, docker, aliyun, 0.001);
+  const limitLabel = (n: number) => (n > 0 ? fmtUsd(n) : '不限');
   return (
     <div className="rd-sec">
       <div className="rd-tt">費用明細</div>
-      <div className="rd-grid2">
-        <div className="rd-cell">
-          <div className="rd-cell-l">LLM API</div>
-          <div className="rd-cell-v" style={{ color: 'var(--apple-blue-soft)' }}>{fmtUsd(api)}</div>
-          <div className="rd-bar"><div className="rd-bar-f" style={{ width: `${pctBar(api, scale)}%`, background: 'var(--apple-blue)' }} /></div>
+      <div className="rd-budget-block">
+        <div className="rd-budget-h">
+          <strong>AI 使用預算</strong>
+          <span>只計 LLM API</span>
         </div>
-        <div className="rd-cell">
-          <div className="rd-cell-l">Docker</div>
-          <div className="rd-cell-v">{fmtUsd(docker)}</div>
-          <div className="rd-bar"><div className="rd-bar-f" style={{ width: `${pctBar(docker, scale)}%`, background: 'var(--apple-green)' }} /></div>
+        <div className="rd-grid2">
+          <div className="rd-cell">
+            <div className="rd-cell-l">今日已用</div>
+            <div className="rd-cell-v" style={{ color: agent.ai_budget_over ? 'var(--apple-orange)' : 'var(--apple-blue-soft)' }}>{fmtUsd(api)}</div>
+            <div className="rd-bar"><div className="rd-bar-f" style={{ width: `${pctBar(api, aiScale)}%`, background: 'var(--apple-blue)' }} /></div>
+          </div>
+          <div className="rd-cell">
+            <div className="rd-cell-l">日／週／月</div>
+            <div className="rd-cell-v">{limitLabel(aiDaily)} / {limitLabel(aiWeekly)} / {limitLabel(aiMonthly)}</div>
+          </div>
         </div>
-        <div className="rd-cell">
-          <div className="rd-cell-l">阿里雲</div>
-          <div className="rd-cell-v">{fmtUsd(aliyun)}</div>
-          <div className="rd-bar"><div className="rd-bar-f" style={{ width: `${pctBar(aliyun, scale)}%`, background: '#bf5af2' }} /></div>
+      </div>
+      <div className="rd-budget-block">
+        <div className="rd-budget-h">
+          <strong>雲服務預算</strong>
+          <span>Docker＋阿里雲</span>
         </div>
-        <div className="rd-cell">
-          <div className="rd-cell-l">日預算</div>
-          <div className="rd-cell-v">{budget > 0 ? fmtUsd(budget) : '不限'}</div>
+        <div className="rd-grid2">
+          <div className="rd-cell">
+            <div className="rd-cell-l">Docker</div>
+            <div className="rd-cell-v">{fmtUsd(docker)}</div>
+            <div className="rd-bar"><div className="rd-bar-f" style={{ width: `${pctBar(docker, cloudScale)}%`, background: 'var(--apple-green)' }} /></div>
+          </div>
+          <div className="rd-cell">
+            <div className="rd-cell-l">阿里雲</div>
+            <div className="rd-cell-v">{fmtUsd(aliyun)}</div>
+            <div className="rd-bar"><div className="rd-bar-f" style={{ width: `${pctBar(aliyun, cloudScale)}%`, background: '#bf5af2' }} /></div>
+          </div>
+          <div className="rd-cell">
+            <div className="rd-cell-l">雲服務小計</div>
+            <div className="rd-cell-v" style={{ color: agent.cloud_budget_over ? 'var(--apple-orange)' : undefined }}>{fmtUsd(cloud)}</div>
+          </div>
+          <div className="rd-cell">
+            <div className="rd-cell-l">日／週／月</div>
+            <div className="rd-cell-v">{limitLabel(cloudDaily)} / {limitLabel(cloudWeekly)} / {limitLabel(cloudMonthly)}</div>
+          </div>
         </div>
       </div>
       <div className="rd-cost-tot">
-        <span className="rd-cost-tot-l">今日合計</span>
+        <span className="rd-cost-tot-l">今日合計（參考）</span>
         <span className="rd-cost-tot-v">{fmtUsd(total)}</span>
       </div>
       <div className="rd-cost-note">
-        <span>含 API + Docker</span>
+        <span>兩筆預算互不混算</span>
         <span>預算告警：{m.budget_alerts ?? 0}</span>
       </div>
     </div>

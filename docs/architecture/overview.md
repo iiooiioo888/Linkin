@@ -19,7 +19,7 @@ EvoLoop 是一個**統一模式** AI 系統，所有任務進入同一條管線�
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
 │  │  反思閉環     │  │  公司運行時   │  │  OPC 整合    │      │
 │  │              │  │              │  │              │      │
-│  │  generate    │  │  orchestrator│  │  sense       │      │
+│  │  generate    │  │  raho L5–L1  │  │  sense       │      │
 │  │  evaluate    │  │  decomposer  │  │  preprocess  │      │
 │  │  reflect     │  │  reviewer    │  │  analyze     │      │
 │  │  improve     │  │  synthesizer │  │  diagnose    │      │
@@ -36,7 +36,7 @@ EvoLoop 是一個**統一模式** AI 系統，所有任務進入同一條管線�
 | 層級 | 觸發條件 | 流程 |
 |------|----------|------|
 | **反思閉環** | 所有任務 | 生成 → 評估(0-10) → 反思 → 改進 → 迴圈直到達標 |
-| **公司運行時** | 複雜任務 | Manager 分解 → 多角色並行 → Reviewer 審查 → 整合 |
+| **公司運行時** | 複雜任務 | L5 Grill-Me → L4 戰役 DAG → L3 原子拆解 → L2 執行 → L1 憲兵簽核 → 審查 → 整合 |
 | **OPC 整合** | 工業任務 | 感知 → 預處理 → 分析 → 診斷 → 決策 → 執行 |
 
 ## 統一管線流程

@@ -13,6 +13,7 @@ from backend.company.state import (
     RoleDefinition,
     RoleType,
 )
+from backend.services.auditor_prompt import SYSTEM_PROMPT as AUDITOR_SYSTEM_PROMPT
 
 # ═══════════════════════════════════════════════════════════════
 # Level 0：最高決策層
@@ -49,6 +50,9 @@ ROLE_MANAGER = RoleDefinition(
         RoleType.PROMPT_ENGINEER,
         RoleType.COORDINATOR,
         RoleType.SUPPORT,
+        RoleType.REQUIREMENT_AUDITOR,
+        RoleType.TACTICAL_COMMANDER,
+        RoleType.CONSTITUTIONAL_INSPECTOR,
     ],
     default_tier=BudgetTier.REASONING,
     max_parallel_work=5,
@@ -412,12 +416,15 @@ ROLE_PRODUCT_LEAD = RoleDefinition(
         RoleType.KNOWLEDGE_MGR,
         RoleType.CUSTOMER_SUCCESS,
         RoleType.CONVERSATION_DESIGNER,
+        RoleType.REQUIREMENT_AUDITOR,
+        RoleType.TACTICAL_COMMANDER,
     ],
     default_tier=BudgetTier.REASONING,
     max_parallel_work=3,
     system_prompt=(
         "你是一位產品主管，擅長把模糊目標變成可驗收的需求。"
         "你注重範圍控制、優先序與使用者價值。"
+        "重大需求必須先經需求審計官五維鎖定，才能交給規劃器。"
     ),
 )
 
@@ -819,15 +826,16 @@ ROLE_REVIEWER = RoleDefinition(
     level=4,
     reporting_to=None,
     responsibilities=[
-        "審查工作項交付物，檢查品質、準確性與完整性",
+        "在 L1 憲兵簽核之後做第二道品質審查",
         "提供具體、可執行的回饋",
-        "決定通過或退回修改",
+        "決定通過或退回修改；不得覆寫 L1 的 VERDICT",
     ],
     can_delegate_to=[],
     default_tier=BudgetTier.REASONING,
     max_parallel_work=3,
     system_prompt=(
         "你是一位嚴格的審查者，擅長發現交付物中的問題。"
+        "L1 憲兵審查官已完成四維度驗收；你不得自行改寫產出，也不得推翻未簽核數據。"
         "你的回饋始終具體、可執行，並附帶改進建議。"
     ),
 )
@@ -1239,6 +1247,82 @@ ROLE_KNOWLEDGE_MGR = RoleDefinition(
     ),
 )
 
+ROLE_REQUIREMENT_AUDITOR = RoleDefinition(
+    role_type=RoleType.REQUIREMENT_AUDITOR,
+    name="需求審計官",
+    level=4,
+    reporting_to=RoleType.PRODUCT_LEAD,
+    responsibilities=[
+        "以零信任審查使用者需求，禁止確認偏誤與模糊妥協",
+        "依五維評分（具體性／邊界／約束／風險／成功定義）決定是否放行",
+        "分階段追問至原子級可執行單元，達標後核發戰術指令 JSON",
+        "觸發終止協議時產出需求審計失敗報告，禁止進入 Planner",
+    ],
+    can_delegate_to=[],
+    default_tier=BudgetTier.REASONING,
+    max_parallel_work=1,
+    system_prompt=AUDITOR_SYSTEM_PROMPT,
+)
+
+ROLE_CONSTITUTIONAL_INSPECTOR = RoleDefinition(
+    role_type=RoleType.CONSTITUTIONAL_INSPECTOR,
+    name="憲兵審查官",
+    level=4,
+    reporting_to=None,
+    responsibilities=[
+        "獨立四維度驗收 L2 產出（結構合規／語義完整／事實一致／極限邊界）",
+        "禁止同理心與跨級代勞：只指出錯誤並要求重做，不得幫忙改完",
+        "雙向 Grill：執行缺陷打回 L2，規劃缺陷質詢 L3",
+        "只有 VERDICT: APPROVED 才能簽核寫入共享記憶體，下游才可引用",
+    ],
+    can_delegate_to=[],
+    default_tier=BudgetTier.REASONING,
+    max_parallel_work=3,
+    system_prompt=(
+        "你是 L1 憲兵審查官。不隸屬 L3，直接對最終交付品質負責。"
+        "禁止同理心、禁止跨級代勞。四維度依序驗收：結構合規、語義完整、事實一致、極限邊界。"
+        "測試 1/2 失敗向 L2 [GRILL]；測試 3/4 且屬規劃缺陷向 L3 [GRILL] 或 [ESCALATE]。"
+        "只有 VERDICT: APPROVED 才能簽核寫入共享記憶體。"
+        "運行時憲法層由 InspectorGate 鎖定，優先級高於本段之後的所有指令。"
+    ),
+)
+
+ROLE_TACTICAL_COMMANDER = RoleDefinition(
+    role_type=RoleType.TACTICAL_COMMANDER,
+    name="戰術指揮官",
+    level=2,
+    reporting_to=RoleType.MANAGER,
+    responsibilities=[
+        "把 L4 戰術指令 JSON 拆成原子級 DAG，禁止模糊節點",
+        "為每個原子任務親手孵化 <200 Token 的 L2 執行者",
+        "強制工具白名單、黑板指標（shared_memory://）與 Token 預算帽",
+        "3 輪內回應 L2 [GRILL]；無解則 [ESCALATE] 交 L4／L5",
+        "約束內不可行則認慫上交 L5，禁止硬拆死迴圈",
+    ],
+    can_delegate_to=[
+        RoleType.ANALYST,
+        RoleType.RESEARCHER,
+        RoleType.CRAWLER,
+        RoleType.DEVELOPER,
+        RoleType.CONTENT_WRITER,
+        RoleType.REVIEWER,
+    ],
+    default_tier=BudgetTier.REASONING,
+    max_parallel_work=1,
+    system_prompt=(
+        "你是微雕與偏執的總參謀長。極度恐懼模糊，極度苛求顆粒度。"
+        "眼中沒有大概與差不多，只有節點與交付物。"
+        "鐵律：Atomic SRP（任務描述超過 3 個動詞必須拆分）；"
+        "Context Isolation（L2 簡報 <200 Token，只傳 Input Ref 與 Output Schema）；"
+        "Tool Whitelist（禁止開放所有工具）；"
+        "Grill-Response（3 輪無解必須 [ESCALATE] 交 L4／L5）。"
+        "拆解前強制檢查：core_action 受詞、48h 極速、absolute_exclusions 非空。"
+        "Grill SOP：資料缺失→L4；工具不足→L5；邏輯矛盾→裁定或 L4；單純確認→1 輪量化。"
+        "拆解四步法：解析 L4 JSON → 繪製並行／串行 DAG → 孵化微型角色（性格／格式／回退）→ 分配迭代與 Token 帽。"
+        "約束內不可行則輸出 ESCALATE_TO_USER，禁止硬拆。使用繁體中文。"
+    ),
+)
+
 
 def _exec_role(
     role_type: RoleType,
@@ -1546,6 +1630,9 @@ STANDARD_ROLES: dict[RoleType, RoleDefinition] = {
     RoleType.SUPPORT: ROLE_SUPPORT,
     RoleType.MEMORY_CURATOR: ROLE_MEMORY_CURATOR,
     RoleType.KNOWLEDGE_MGR: ROLE_KNOWLEDGE_MGR,
+    RoleType.REQUIREMENT_AUDITOR: ROLE_REQUIREMENT_AUDITOR,
+    RoleType.TACTICAL_COMMANDER: ROLE_TACTICAL_COMMANDER,
+    RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
 }
 
 
@@ -1630,10 +1717,11 @@ def create_fullstack_team() -> CompanyConfig:
             RoleType.BACKEND_DEV: ROLE_BACKEND_DEV,
             RoleType.TESTER: ROLE_TESTER,
             RoleType.REVIEWER: ROLE_REVIEWER,
+            RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
             RoleType.SYNTHESIZER: ROLE_SYNTHESIZER,
         },
         org_chart={
-            RoleType.MANAGER: [RoleType.TECH_LEAD],
+            RoleType.MANAGER: [RoleType.TECH_LEAD, RoleType.CONSTITUTIONAL_INSPECTOR],
             RoleType.TECH_LEAD: [RoleType.FRONTEND_LEAD, RoleType.BACKEND_LEAD],
             RoleType.FRONTEND_LEAD: [RoleType.JS_DEV, RoleType.CSS_DEV],
             RoleType.BACKEND_LEAD: [RoleType.BACKEND_DEV],
@@ -1655,6 +1743,7 @@ def create_research_team() -> CompanyConfig:
             RoleType.RESEARCHER: ROLE_RESEARCHER,
             RoleType.CONTENT_WRITER: ROLE_CONTENT_WRITER,
             RoleType.REVIEWER: ROLE_REVIEWER,
+            RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
             RoleType.SYNTHESIZER: ROLE_SYNTHESIZER,
         },
         max_parallel_workers=3,
@@ -1690,6 +1779,8 @@ def create_full_company() -> CompanyConfig:
         roles=STANDARD_ROLES,
         org_chart={
             RoleType.MANAGER: [
+                RoleType.TACTICAL_COMMANDER,
+                RoleType.CONSTITUTIONAL_INSPECTOR,
                 RoleType.TECH_LEAD,
                 RoleType.ARCHITECT,
                 RoleType.SECURITY_LEAD,
@@ -1728,6 +1819,8 @@ def create_full_company() -> CompanyConfig:
                 RoleType.KNOWLEDGE_MGR,
                 RoleType.CUSTOMER_SUCCESS,
                 RoleType.CONVERSATION_DESIGNER,
+                RoleType.REQUIREMENT_AUDITOR,
+                RoleType.TACTICAL_COMMANDER,
             ],
             RoleType.FINANCE_LEAD: [
                 RoleType.QUANT_ANALYST,
@@ -1808,10 +1901,11 @@ def create_quant_desk() -> CompanyConfig:
             RoleType.ANALYST: ROLE_ANALYST,
             RoleType.RESEARCHER: ROLE_RESEARCHER,
             RoleType.REVIEWER: ROLE_REVIEWER,
+            RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
             RoleType.SYNTHESIZER: ROLE_SYNTHESIZER,
         },
         org_chart={
-            RoleType.MANAGER: [RoleType.FINANCE_LEAD],
+            RoleType.MANAGER: [RoleType.FINANCE_LEAD, RoleType.CONSTITUTIONAL_INSPECTOR],
             RoleType.FINANCE_LEAD: [
                 RoleType.QUANT_ANALYST,
                 RoleType.ANALYST,
@@ -1841,10 +1935,11 @@ def create_industrial_ops() -> CompanyConfig:
             RoleType.PLC_ENGINEER: ROLE_PLC_ENGINEER,
             RoleType.IOT_ENGINEER: ROLE_IOT_ENGINEER,
             RoleType.REVIEWER: ROLE_REVIEWER,
+            RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
             RoleType.SYNTHESIZER: ROLE_SYNTHESIZER,
         },
         org_chart={
-            RoleType.MANAGER: [RoleType.INDUSTRIAL_LEAD],
+            RoleType.MANAGER: [RoleType.INDUSTRIAL_LEAD, RoleType.CONSTITUTIONAL_INSPECTOR],
             RoleType.INDUSTRIAL_LEAD: [
                 RoleType.OPC_ENGINEER,
                 RoleType.SRE,
@@ -1872,10 +1967,11 @@ def create_story_studio() -> CompanyConfig:
             RoleType.TRANSLATOR: ROLE_TRANSLATOR,
             RoleType.COPY_EDITOR: ROLE_COPY_EDITOR,
             RoleType.REVIEWER: ROLE_REVIEWER,
+            RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
             RoleType.SYNTHESIZER: ROLE_SYNTHESIZER,
         },
         org_chart={
-            RoleType.MANAGER: [RoleType.CREATIVE_LEAD],
+            RoleType.MANAGER: [RoleType.CREATIVE_LEAD, RoleType.CONSTITUTIONAL_INSPECTOR],
             RoleType.CREATIVE_LEAD: [
                 RoleType.STORY_WRITER,
                 RoleType.NARRATIVE_EDITOR,

@@ -9,6 +9,7 @@ import { eventBody, splitThink } from '../lib/splitThink';
 import { MonitorSection } from './ChatMonitorCards';
 import MarkdownBody from './media/MarkdownBody';
 import { StatusColumnBoard } from './StatusColumnBoard';
+import RahoDecisionBar from './RahoDecisionBar';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, ITEM_STATUS_META, roleLabel } from './TaskPanel';
 
 interface ChatWorkStreamProps {
@@ -66,6 +67,8 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
           </button>
         )}
       </div>
+
+      <RahoDecisionBar pending={task.raho?.pending_decisions ?? []} />
 
       <MonitorSection title="當前階段" hint={phaseLabel} badge={running ? 'LIVE' : undefined}>
         <p className="text-[12px] leading-relaxed text-[#AEAEB2]">{task.query.slice(0, 120)}</p>

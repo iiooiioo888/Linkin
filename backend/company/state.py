@@ -94,7 +94,7 @@ class RoleType(str, Enum):
       Level 1: TECH/ARCHITECT/SECURITY/PRODUCT/FINANCE/INDUSTRIAL/CREATIVE/PLATFORM/AI/GROWTH LEAD
       Level 2: FRONTEND/BACKEND/TEST/DATA LEAD
       Level 3: 執行層（開發、量化、爬蟲、OPC、故事、GitHub、Hub、行情等）
-      Level 4: REVIEWER, SYNTHESIZER, ANALYST, COORDINATOR, RESEARCHER, PROMPT_ENGINEER, LEGAL, CONTENT_WRITER, SUPPORT, MEMORY, KNOWLEDGE
+      Level 4: REVIEWER, SYNTHESIZER, ANALYST, COORDINATOR, RESEARCHER, PROMPT_ENGINEER, LEGAL, CONTENT_WRITER, SUPPORT, MEMORY, KNOWLEDGE, REQUIREMENT_AUDITOR, TACTICAL_COMMANDER, CONSTITUTIONAL_INSPECTOR
     """
 
     # ── Level 0：最高決策層 ──
@@ -186,6 +186,9 @@ class RoleType(str, Enum):
     SUPPORT = "support"              # 支援專員：工單、FAQ、回饋
     MEMORY_CURATOR = "memory_curator"    # 記憶庫策展：向量庫、去重、過期
     KNOWLEDGE_MGR = "knowledge_mgr"      # 知識庫管理員：runbook、FAQ、術語
+    REQUIREMENT_AUDITOR = "requirement_auditor"  # 需求審計官：五維鎖定、戰術指令門票
+    TACTICAL_COMMANDER = "tactical_commander"  # L3 戰術指揮官：原子拆解、孵化 L2
+    CONSTITUTIONAL_INSPECTOR = "constitutional_inspector"  # L1 憲兵審查官：四維度驗收、雙向 Grill、簽核
 
 
 class RoleCategory(str, Enum):
@@ -266,6 +269,9 @@ ROLE_CATEGORY_MAP: dict[RoleType, RoleCategory] = {
     RoleType.HUB_OPERATOR: RoleCategory.HUB,
     RoleType.MEMORY_CURATOR: RoleCategory.MEMORY,
     RoleType.KNOWLEDGE_MGR: RoleCategory.MEMORY,
+    RoleType.REQUIREMENT_AUDITOR: RoleCategory.REVIEW,
+    RoleType.TACTICAL_COMMANDER: RoleCategory.MANAGEMENT,
+    RoleType.CONSTITUTIONAL_INSPECTOR: RoleCategory.REVIEW,
     RoleType.API_ENGINEER: RoleCategory.BACKEND,
     RoleType.OBSERVABILITY_ENG: RoleCategory.DEVOPS,
     RoleType.ACCESSIBILITY_ENG: RoleCategory.UI,
@@ -384,6 +390,9 @@ ROLE_LEVEL: dict[RoleType, int] = {
     RoleType.SUPPORT: 4,
     RoleType.MEMORY_CURATOR: 4,
     RoleType.KNOWLEDGE_MGR: 4,
+    RoleType.REQUIREMENT_AUDITOR: 4,
+    RoleType.TACTICAL_COMMANDER: 2,
+    RoleType.CONSTITUTIONAL_INSPECTOR: 4,
 }
 
 

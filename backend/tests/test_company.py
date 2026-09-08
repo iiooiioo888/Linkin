@@ -1713,8 +1713,12 @@ class TestEventSystem:
 
         expected = {
             "company_start", "company_done", "phase_change", "decompose_done",
+            "campaign_planned",
+            "battle_planned",
             "work_item_start", "work_item_done", "work_item_error",
             "work_item_retry", "work_item_escalate",
+            "grill_raised", "grill_resolved", "user_decision_needed", "raho_timeout",
+            "inspector_verdict",
             "tool_call", "tool_result",
             "review_pass", "review_rework", "review_force_done",
             "final_review_degraded",

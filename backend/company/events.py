@@ -32,6 +32,8 @@ class CompanyEvent(str, Enum):
     COMPANY_DONE = "company_done"            # 公司執行完成
     PHASE_CHANGE = "phase_change"            # 階段切換（decompose/execute/synthesize/final_review）
     DECOMPOSE_DONE = "decompose_done"        # 任務分解完成（含策略與執行計劃）
+    CAMPAIGN_PLANNED = "campaign_planned"    # L4 戰役 DAG 已產出
+    BATTLE_PLANNED = "battle_planned"        # L3 原子作戰地圖已產出
 
     # ── 工作項層級 ──
     WORK_ITEM_START = "work_item_start"      # 工作項開始執行
@@ -39,6 +41,10 @@ class CompanyEvent(str, Enum):
     WORK_ITEM_ERROR = "work_item_error"      # 工作項執行失敗
     WORK_ITEM_RETRY = "work_item_retry"      # 工作項重試中
     WORK_ITEM_ESCALATE = "work_item_escalate"  # 工作項升級到上級角色
+    GRILL_RAISED = "grill_raised"              # L2 對上級發起強制質詢
+    GRILL_RESOLVED = "grill_resolved"          # 質詢已由上層裁決
+    USER_DECISION_NEEDED = "user_decision_needed"  # 熱馬桶圈到達 L5，等待用戶
+    RAHO_TIMEOUT = "raho_timeout"              # 決策 TTL 到期自動裁決
 
     # ── 工具調用層級（Agent 工具閉環）──
     TOOL_CALL = "tool_call"                  # Agent 發起工具調用
@@ -48,6 +54,7 @@ class CompanyEvent(str, Enum):
     REVIEW_PASS = "review_pass"              # 審查通過
     REVIEW_REWORK = "review_rework"          # 審查不通過，退回修改
     REVIEW_FORCE_DONE = "review_force_done"  # 達到最大審查輪數，強制完成（降級）
+    INSPECTOR_VERDICT = "inspector_verdict"  # L1 憲兵裁決（APPROVED / REWORK / ESCALATE）
     FINAL_REVIEW_DEGRADED = "final_review_degraded"  # 最終審查異常，自動通過（降級）
 
     # ── 預算層級 ──

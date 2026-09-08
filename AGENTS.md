@@ -5,7 +5,7 @@
 EvoLoop 是一个具备自我反思闭环的**统一模式** AI 助手系统。核心架构基于 **LangGraph 统一管线**，将三大能力融合在同一条管线中：
 
 - **反思闭环**（生成 → 评估 → 反思 → 优化）：所有产出一律进入评估/反思/改进迭代回路，确保最终交付品质达标
-- **公司运行时**（Manager 分解 → 多角色并行执行 → Reviewer 审查 → Synthesizer 整合）：复杂任务自动触发，由多代理人分工协作完成
+- **公司运行时**（L5 用户 Grill-Me → L4 战役 DAG → L3 原子拆解 → L2 专注执行 → L1 宪兵审查 → Reviewer 审查 → Synthesizer 整合）：复杂任务自动触发，由递归因对抗分层组织（RAHO）制衡后分工完成
 - **OPC 整合**（感知 → 预处理 → 分析 → 诊断 → 决策 → 执行）：工业任务自动注入感测数据上下文，实现工业感知-诊断-行动闭环
 
 系统不再区分"标准/公司/OPC"三种模式，而是由 `route_by_complexity` 节点依任务内容自动判断执行路径（简单任务 → 单次生成；复杂任务 → 公司运行时；工业任务 → OPC 6 级闭环）。
@@ -15,7 +15,7 @@ EvoLoop 是一个具备自我反思闭环的**统一模式** AI 助手系统。�
 | 模块 | 路径 | 职责 |
 | --- | --- | --- |
 | 图定义 | `backend/core/` | LangGraph 反思闭环、LiteLLM 调用层（`llm.py`）、多 API 路由（`api_router.py`）、模型池锁定、EvoLoopState |
-| 公司运行时 | `backend/company/` | 多代理人协调器、角色定义、工作项状态机与依赖 DAG、预算控制与模型路由、Prompt 模板 |
+| 公司运行时 | `backend/company/` | 多代理人协调器、RAHO（`company/raho/`）、角色定义、工作项状态机与依赖 DAG、预算控制与模型路由、Prompt 模板 |
 | Minecraft MCP | `backend/tools/` + `backend/linkin/minecraft.py` | MineMCP JSON-RPC 封装、铁律、审计；角色经 tool_registry 调用 |
 | OPC 微服务 | `opc_service/` | OPC UA 工业数据读写与订阅、安全护栏（白名单/边界检查/审计日志）、模拟 OPC 服务器 |
 

@@ -350,6 +350,14 @@ class TaskDecomposer:
             task_budget=self.config.budget.task_limit_usd,
             active_tier=self.budget.budget_pressure,
         )
+        try:
+            from backend.company.raho.scorecard import planning_paradigm_hint
+
+            hint = planning_paradigm_hint()
+            if hint:
+                prompt = prompt + "\n\n" + hint
+        except Exception:  # noqa: BLE001
+            pass
 
         try:
             raw = call_llm(

@@ -27,6 +27,7 @@ import {
   isQuantDeskRole,
   itemsInColumn,
   pickDefaultAgentId,
+  routeDisplayName,
   workItemColumnKey,
   type AgentDeskScope,
   type JumpAgentDetail,
@@ -142,7 +143,9 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
         cells={[
           { label: '協調任務', value: String(agent.company_tasks.length) },
           { label: '預算告警', value: String(m.budget_alerts) },
-          { label: '錯誤', value: String(m.errors) },
+          { label: '被質詢率', value: `${Math.round((m.grill_rate ?? 0) * 100)}%` },
+          { label: '決策清晰', value: `${Math.round((m.decision_clarity ?? 1) * 100)}%` },
+          { label: 'RAHO 職級', value: m.demoted ? '已降級' : m.raho_rank === 'watch' ? '觀察' : '正常' },
         ]}
       />
     );
@@ -179,7 +182,7 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
       cells={[
         { label: '工具呼叫', value: String(m.tool_calls) },
         { label: '錯誤', value: String(m.errors), color: m.errors ? 'var(--apple-red)' : 'var(--apple-green)' },
-        { label: '容量', value: `${agent.capacity_used ?? agent.executing}/${agent.max_parallel_work}` },
+        { label: '被質詢', value: `${Math.round((m.grill_rate ?? 0) * 100)}%` },
         { label: '完成', value: String(agent.done) },
       ]}
     />
@@ -358,7 +361,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
     : undefined;
   const selectedModelLabel = selected
     ? [
-        selectedRoute?.name,
+        routeDisplayName(selectedRoute),
         selected.preferred_model || (TIER_LABEL[selected.default_tier] ?? selected.default_tier),
       ]
         .filter(Boolean)
@@ -397,25 +400,9 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
           )}
           <RoleStatsStrip agent={selected} />
 
-          <div className="rd-body">
+          <div className={`rd-body ${deskTab === 'settings' ? 'rd-body--settings' : ''}`}>
             <div className="rd-tasks">
               {deskTab === 'settings' ? (
-                <>
-                  <div className="rd-th">
-                    <h2>角色設定</h2>
-                    {deskScope === 'console' ? (
-                      <button
-                        type="button"
-                        className="rd-btn"
-                        onClick={() => {
-                          setCloneFrom(null);
-                          setCreating(true);
-                        }}
-                      >
-                        新增角色
-                      </button>
-                    ) : null}
-                  </div>
                   <div className="rd-pane">
                     <RoleSettingsPanel
                       agent={selected}
@@ -423,7 +410,14 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                       agents={agents}
                       saving={saving}
                       error={saveError}
-                      initialSection="model"
+                      onCreate={
+                        deskScope === 'console'
+                          ? () => {
+                              setCloneFrom(null);
+                              setCreating(true);
+                            }
+                          : undefined
+                      }
                       onClone={() => {
                         setCloneFrom(selected);
                         setCreating(true);
@@ -476,7 +470,6 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                       }
                     />
                   </div>
-                </>
               ) : deskTab === 'quant' ? (
                 <>
                   <div className="rd-th">
@@ -594,21 +587,23 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
               )}
             </div>
 
-            <RoleRightPanel
-              agent={selected}
-              agents={agents}
-              filter={itemFilter}
-              onFilter={(key) => {
-                setItemFilter(key);
-                setDeskTab('tasks');
-              }}
-              onOpen={(id) => openDesk(id)}
-              onOpenItem={(item) => {
-                setDeskTab('tasks');
-                setItemFilter(workItemColumnKey(item.status));
-                setExpandedId(`${item.task_id}-${item.id}-${item.kind}`);
-              }}
-            />
+            {deskTab !== 'settings' ? (
+              <RoleRightPanel
+                agent={selected}
+                agents={agents}
+                filter={itemFilter}
+                onFilter={(key) => {
+                  setItemFilter(key);
+                  setDeskTab('tasks');
+                }}
+                onOpen={(id) => openDesk(id)}
+                onOpenItem={(item) => {
+                  setDeskTab('tasks');
+                  setItemFilter(workItemColumnKey(item.status));
+                  setExpandedId(`${item.task_id}-${item.id}-${item.kind}`);
+                }}
+              />
+            ) : null}
           </div>
         </div>
       )}

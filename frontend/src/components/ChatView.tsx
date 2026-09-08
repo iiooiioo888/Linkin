@@ -23,6 +23,8 @@ interface ChatViewProps {
   onOpenTask: (messageId: string) => void;
   onOpenTrace?: (taskId: string) => void;
   onSuggest: (text: string, company: boolean) => void;
+  onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
+  onBattlePick?: (messageId: string, choice: string) => void;
 }
 
 function activeTaskMessage(messages: ChatMessage[]) {
@@ -51,10 +53,16 @@ export default function ChatView({
   onOpenTask,
   onOpenTrace,
   onSuggest,
+  onGrillAnswer,
+  onBattlePick,
 }: ChatViewProps) {
   const live = activeTaskMessage(messages);
   const showStream = Boolean(
     live?.taskState || live?.streaming || live?.thinking || live?.content,
+  );
+  const grilling = messages.some((m) => Boolean(m.grill && !m.grill.locked && !m.grill.terminated));
+  const waitingBattle = messages.some(
+    (m) => m.battle?.status === 'ESCALATE_TO_USER' && m.battle.waiting_for_user_decision,
   );
 
   return (
@@ -94,8 +102,10 @@ export default function ChatView({
           onOpenTrace={onOpenTrace}
           onSuggest={onSuggest}
           sending={sending}
+          onGrillAnswer={onGrillAnswer}
+          onBattlePick={onBattlePick}
         />
-        <InputBar disabled={sending} onSend={onSend} />
+        <InputBar disabled={sending || grilling || waitingBattle} onSend={onSend} />
       </div>
       {showStream && live && (
         <ChatWorkStream

@@ -109,6 +109,7 @@ class TaskRecord:
         # 控制細項（進階參數）
         self.options: dict[str, Any] = {}
         self.created_at = time.time()
+        self.raho: dict[str, Any] = {}
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -134,6 +135,7 @@ class TaskRecord:
             "resumable": self.resumable,
             "options": self.options,
             "created_at": self.created_at,
+            "raho": self.raho,
         }
 
     def to_snapshot(self) -> dict[str, Any]:
@@ -169,7 +171,29 @@ class TaskRecord:
         record.resumable = data.get("resumable", False)
         record.options = data.get("options", {})
         record.created_at = data.get("created_at", time.time())
+        record.raho = data.get("raho") or {}
         return record
+
+
+def _task_ticket(record: TaskRecord) -> dict[str, Any] | None:
+    ticket = (record.options or {}).get("auditor_ticket")
+    return ticket if isinstance(ticket, dict) else None
+
+
+def _apply_commander_result(record: TaskRecord, result: dict[str, Any]) -> None:
+    commander = result.get("commander")
+    battle = result.get("battle_plan")
+    if commander:
+        record.raho = {**(record.raho or {}), "commander": commander, **(result.get("raho") or {})}
+    if battle:
+        record.plan = {
+            **(record.plan or {}),
+            "strategy": "commander",
+            "subtask_count": len(battle.get("dag_nodes") or []),
+            "execution_plan": battle.get("plan_id"),
+            "battle_plan": battle,
+            "commander": commander,
+        }
 
 
 class TaskManager:
@@ -245,6 +269,12 @@ class TaskManager:
         task_id = uuid.uuid4().hex[:12]
         record = TaskRecord(task_id, query, strategy, template)
         record.options = options or {}
+        brief = record.options.get("semantic_brief") or record.options.get("locked_brief")
+        ticket = record.options.get("auditor_ticket")
+        if isinstance(brief, str) and brief.strip():
+            record.query = brief.strip()
+        elif isinstance(ticket, dict) and ticket.get("status") == "APPROVED_FOR_PLANNING":
+            record.query = json.dumps(ticket, ensure_ascii=False)
         self.tasks[task_id] = record
         self._persist(record)
         # 簡單淘汰：超出上限時刪除最舊的已完成任務
@@ -619,7 +649,21 @@ class TaskManager:
                     "subtask_count": data.get("subtask_count"),
                     "strategy": data.get("strategy"),
                     "execution_plan": data.get("execution_plan"),
+                    "campaign": data.get("campaign") or getattr(orchestrator, "_campaign", {}),
                 }
+            if event in {
+                CompanyEvent.CAMPAIGN_PLANNED,
+                CompanyEvent.BATTLE_PLANNED,
+                CompanyEvent.GRILL_RAISED,
+                CompanyEvent.GRILL_RESOLVED,
+                CompanyEvent.USER_DECISION_NEEDED,
+                CompanyEvent.RAHO_TIMEOUT,
+                CompanyEvent.INSPECTOR_VERDICT,
+            }:
+                try:
+                    record.raho = orchestrator._raho_snapshot()
+                except Exception:  # noqa: BLE001
+                    pass
             # 每次事件都刷新看板與預算快照
             try:
                 record.kanban = {
@@ -662,7 +706,7 @@ class TaskManager:
         self._orchestrators[record.task_id] = orchestrator
 
         try:
-            result = await orchestrator.execute(record.query)
+            result = await orchestrator.execute(record.query, ticket=_task_ticket(record))
         except Exception as exc:  # noqa: BLE001
             logger.error("公司任務 %s 恢復執行失敗：%s", record.task_id, exc)
             record.status = "failed"
@@ -688,6 +732,7 @@ class TaskManager:
 
         record.review = result.get("review")
         record.stats = result.get("stats")
+        record.raho = result.get("raho") or record.raho
         self._persist(record)
 
         # 公司產出進入評估/反思/改進迭代迴圈
@@ -740,7 +785,7 @@ class TaskManager:
         self._orchestrators[record.task_id] = orchestrator
 
         try:
-            result = await orchestrator.execute(company_query)
+            result = await orchestrator.execute(company_query, ticket=_task_ticket(record))
         except Exception as exc:  # noqa: BLE001
             logger.error("公司任務 %s 執行失敗：%s", record.task_id, exc)
             record.status = "failed"
@@ -755,6 +800,7 @@ class TaskManager:
             # 無論成功失敗，清理 orchestrator 引用
             self._orchestrators.pop(record.task_id, None)
 
+        _apply_commander_result(record, result)
         if not result.get("success"):
             error_msg = result.get("error") or result.get("final_output") or "公司運行時執行失敗"
             # 判斷是否為使用者取消
@@ -771,6 +817,7 @@ class TaskManager:
         # ── 提取公司運行細節（供任務頁展示） ──
         record.review = result.get("review")
         record.stats = result.get("stats")
+        record.raho = result.get("raho") or record.raho
         for entry in result.get("run_log", []):
             if entry.get("event") == "decompose_done":
                 record.plan = {

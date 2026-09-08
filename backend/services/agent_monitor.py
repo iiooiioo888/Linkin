@@ -55,6 +55,10 @@ ROLE_EVENT_HINTS: dict[str, frozenset[str]] = {
             "company_done",
             "budget_warning",
             "budget_degrade",
+            "grill_raised",
+            "grill_resolved",
+            "user_decision_needed",
+            "raho_timeout",
         }
     ),
     "reviewer": frozenset(
@@ -125,6 +129,11 @@ def _blank_agent(snapshot: dict[str, Any]) -> dict[str, Any]:
         "preferred_model": snapshot.get("preferred_model") or "",
         "preferred_provider": snapshot.get("preferred_provider") or "",
         "daily_budget_usd": float(snapshot.get("daily_budget_usd") or 0),
+        "weekly_budget_usd": float(snapshot.get("weekly_budget_usd") or 0),
+        "monthly_budget_usd": float(snapshot.get("monthly_budget_usd") or 0),
+        "cloud_daily_budget_usd": float(snapshot.get("cloud_daily_budget_usd") or 0),
+        "cloud_weekly_budget_usd": float(snapshot.get("cloud_weekly_budget_usd") or 0),
+        "cloud_monthly_budget_usd": float(snapshot.get("cloud_monthly_budget_usd") or 0),
         "tools_allowed": list(snapshot.get("tools_allowed") or []),
         "notes": snapshot.get("notes") or "",
         "enabled": bool(snapshot.get("enabled", True)),
@@ -144,8 +153,6 @@ def _blank_agent(snapshot: dict[str, Any]) -> dict[str, Any]:
         "always_require_review": bool(snapshot.get("always_require_review", False)),
         "priority": int(snapshot.get("priority") or 3),
         "description": snapshot.get("description") or "",
-        "weekly_budget_usd": float(snapshot.get("weekly_budget_usd") or 0),
-        "monthly_budget_usd": float(snapshot.get("monthly_budget_usd") or 0),
         "max_daily_items": int(snapshot.get("max_daily_items") or 0),
         "require_human_approval": bool(snapshot.get("require_human_approval", False)),
         "stream_enabled": bool(snapshot.get("stream_enabled", True)),
@@ -204,6 +211,9 @@ def _blank_agent(snapshot: dict[str, Any]) -> dict[str, Any]:
             "human_escalations": 0,
             "p95_latency_ms": 0.0,
             "weekly_spent_usd": 0.0,
+            "grill_count": 0,
+            "grill_rate": 0.0,
+            "decision_clarity": 1.0,
         },
         "alerts": [],
     }
@@ -560,6 +570,84 @@ def _ingest_run_logs(agents: dict[str, dict[str, Any]]) -> None:
             )
 
 
+_BUDGET_ALERT_MARKERS = (
+    "AI 日預算",
+    "AI 週預算",
+    "AI 月預算",
+    "雲服務日預算",
+    "雲服務週預算",
+    "雲服務月預算",
+    "日預算",
+    "週預算",
+    "月預算",
+)
+
+
+def _limit_remaining(limit: float, spent: float) -> float | None:
+    if limit <= 0:
+        return None
+    return round(max(limit - spent, 0.0), 4)
+
+
+def _limit_over(limit: float, spent: float) -> bool:
+    return bool(limit > 0 and spent > limit)
+
+
+def _strip_budget_alerts(alerts: list[dict[str, str]]) -> list[dict[str, str]]:
+    cleaned: list[dict[str, str]] = []
+    for item in alerts:
+        message = item.get("message") or ""
+        if any(marker in message for marker in _BUDGET_ALERT_MARKERS):
+            continue
+        cleaned.append(item)
+    return cleaned
+
+
+def _apply_split_budgets(agent: dict[str, Any]) -> None:
+    """AI 使用預算對 API，雲服務預算對 Docker＋阿里雲；互不混算。"""
+    api_spent = round(float(agent.get("api_cost_usd") or 0), 4)
+    cloud_spent = round(float(agent.get("cloud_cost_usd") or 0), 4)
+    ai_daily = float(agent.get("daily_budget_usd") or 0)
+    ai_weekly = float(agent.get("weekly_budget_usd") or 0)
+    ai_monthly = float(agent.get("monthly_budget_usd") or 0)
+    cloud_daily = float(agent.get("cloud_daily_budget_usd") or 0)
+    cloud_weekly = float(agent.get("cloud_weekly_budget_usd") or 0)
+    cloud_monthly = float(agent.get("cloud_monthly_budget_usd") or 0)
+
+    ai_over = (
+        _limit_over(ai_daily, api_spent)
+        or _limit_over(ai_weekly, api_spent)
+        or _limit_over(ai_monthly, api_spent)
+    )
+    cloud_over = (
+        _limit_over(cloud_daily, cloud_spent)
+        or _limit_over(cloud_weekly, cloud_spent)
+        or _limit_over(cloud_monthly, cloud_spent)
+    )
+    agent["ai_budget_remaining_usd"] = _limit_remaining(ai_daily, api_spent)
+    agent["cloud_budget_remaining_usd"] = _limit_remaining(cloud_daily, cloud_spent)
+    agent["ai_budget_over"] = ai_over
+    agent["cloud_budget_over"] = cloud_over
+    agent["budget_remaining_usd"] = agent["ai_budget_remaining_usd"]
+    agent["budget_over"] = bool(ai_over or cloud_over)
+
+    alerts = _strip_budget_alerts(list(agent.get("alerts") or []))
+    if agent.get("alert_on_budget", True):
+        if _limit_over(ai_daily, api_spent):
+            alerts.append({"level": "critical", "message": "今日 AI 使用已超過日預算"})
+        if _limit_over(ai_weekly, api_spent):
+            alerts.append({"level": "critical", "message": "已超過 AI 週預算"})
+        if _limit_over(ai_monthly, api_spent):
+            alerts.append({"level": "critical", "message": "已超過 AI 月預算"})
+        if _limit_over(cloud_daily, cloud_spent):
+            alerts.append({"level": "critical", "message": "今日雲服務已超過日預算"})
+        if _limit_over(cloud_weekly, cloud_spent):
+            alerts.append({"level": "critical", "message": "已超過雲服務週預算"})
+        if _limit_over(cloud_monthly, cloud_spent):
+            alerts.append({"level": "critical", "message": "已超過雲服務月預算"})
+    agent["alerts"] = alerts
+
+
 def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
     inbox = _empty_inbox()
     for item in agent["work_items"]:
@@ -634,6 +722,8 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
     failed = int(agent["blocked"])
     decided = done + failed
     daily_spent = round(float(agent["cost_usd"] or 0), 4)
+    api_spent = round(float(agent.get("api_cost_usd") or 0), 4)
+    cloud_spent = round(float(agent.get("cloud_cost_usd") or 0), 4)
     cap = max(int(agent["max_parallel_work"] or 1), 1)
     sla_ms = int(agent.get("sla_latency_ms") or 0)
     sla_breaches = 0
@@ -643,9 +733,6 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
             for e in events
             if float(e.get("duration_ms") or 0) > sla_ms
         )
-    budget = float(agent.get("daily_budget_usd") or 0)
-    agent["budget_remaining_usd"] = None if budget <= 0 else round(max(budget - daily_spent, 0.0), 4)
-    agent["budget_over"] = bool(budget > 0 and daily_spent > budget)
     agent["metrics"] = {
         "review_pass": sum(
             1 for e in events if e.get("event") in {"review_pass", "review_approved"}
@@ -666,8 +753,8 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
         "avg_cost_usd": round(daily_spent / items_total, 4) if items_total else 0.0,
         "capacity_pct": round(min(int(agent["executing"]), cap) / cap * 100, 1),
         "daily_spent_usd": daily_spent,
-        "api_spent_usd": round(float(agent["api_cost_usd"] or 0), 4),
-        "cloud_spent_usd": round(float(agent["cloud_cost_usd"] or 0), 4),
+        "api_spent_usd": api_spent,
+        "cloud_spent_usd": cloud_spent,
         "avg_latency_ms": round(
             sum(float(e.get("duration_ms") or 0) for e in events if e.get("duration_ms"))
             / max(sum(1 for e in events if e.get("duration_ms")), 1),
@@ -683,15 +770,48 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
         "retries": sum(1 for e in events if e.get("event") in {"retry", "work_item_retry"}),
         "failovers": sum(1 for e in events if e.get("event") in {"failover", "budget_degrade"}),
         "cache_hits": sum(1 for e in events if e.get("event") in {"cache_hit", "semantic_cache_hit"}),
-        "human_escalations": sum(1 for e in events if e.get("event") in {"human_approval", "escalation"}),
+        "human_escalations": sum(
+            1
+            for e in events
+            if e.get("event")
+            in {
+                "human_approval",
+                "escalation",
+                "user_decision_needed",
+                "work_item_escalate",
+            }
+        ),
+        "grill_count": sum(
+            1 for e in events if e.get("event") in {"grill_raised", "grill_resolved"}
+        ),
         "p95_latency_ms": _p95([float(e.get("duration_ms") or 0) for e in events if e.get("duration_ms")]),
-        "weekly_spent_usd": daily_spent,
+        "weekly_spent_usd": api_spent,
+        "weekly_cloud_spent_usd": cloud_spent,
+        "grill_rate": 0.0,
+        "decision_clarity": 1.0,
     }
+    try:
+        from backend.company.raho.scorecard import metrics_for
+
+        card = metrics_for(str(agent.get("id") or ""))
+        agent["metrics"]["grill_count"] = max(
+            int(agent["metrics"]["grill_count"]), int(card.get("grill_count") or 0)
+        )
+        agent["metrics"]["grill_rate"] = card.get("grill_rate", 0.0)
+        agent["metrics"]["decision_clarity"] = card.get("decision_clarity", 1.0)
+        agent["metrics"]["human_escalations"] = max(
+            int(agent["metrics"]["human_escalations"]),
+            int(card.get("user_escalations") or 0),
+        )
+        agent["metrics"]["demoted"] = bool(card.get("demoted"))
+        agent["metrics"]["raho_rank"] = card.get("rank") or "ok"
+        agent["demoted"] = bool(card.get("demoted"))
+        agent["raho_rank"] = card.get("rank") or "ok"
+    except Exception:  # noqa: BLE001
+        pass
     alerts: list[dict[str, str]] = []
     if not agent.get("enabled", True):
         alerts.append({"level": "info", "message": "角色已停用，分解時不會被指派"})
-    if agent.get("budget_over") and agent.get("alert_on_budget", True):
-        alerts.append({"level": "critical", "message": "今日花費已超過日預算（含 API＋雲資源）"})
     if int(agent["metrics"]["errors"]) > 0 and agent.get("alert_on_error", True):
         alerts.append({"level": "warning", "message": f"最近 {agent['metrics']['errors']} 次錯誤／降級"})
     if sla_breaches and agent.get("alert_on_sla", True):
@@ -701,6 +821,18 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
     cap_pct = float(agent["metrics"].get("capacity_pct") or 0)
     if cap_pct >= 80:
         alerts.append({"level": "warning", "message": f"並行容量已用 {cap_pct:.0f}%"})
+    grill_rate = float(agent["metrics"].get("grill_rate") or 0)
+    if agent.get("demoted") or agent["metrics"].get("demoted"):
+        alerts.append(
+            {
+                "level": "critical",
+                "message": f"規劃能力已降級：被質詢率 {grill_rate:.0%}，改走規則骨架",
+            }
+        )
+    elif grill_rate >= 0.4:
+        alerts.append(
+            {"level": "warning", "message": f"被質詢率 {grill_rate:.0%}，規劃清晰度偏低"}
+        )
     if agent.get("always_require_review"):
         alerts.append({"level": "info", "message": "此角色產出一律送審查"})
     if agent.get("require_human_approval"):
@@ -711,13 +843,11 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
         alerts.append({"level": "info", "message": "僅國內模型（避免資料出境）"})
     if not agent.get("allow_tool_use", True):
         alerts.append({"level": "warning", "message": "已關閉工具呼叫"})
-    weekly = float(agent.get("weekly_budget_usd") or 0)
-    if weekly > 0 and daily_spent > weekly and agent.get("alert_on_budget", True):
-        alerts.append({"level": "critical", "message": "已超過週預算"})
     max_items = int(agent.get("max_daily_items") or 0)
     if max_items > 0 and items_total >= max_items:
         alerts.append({"level": "warning", "message": f"今日工作項已達上限 {max_items}"})
     agent["alerts"] = alerts
+    _apply_split_budgets(agent)
     seen_tasks: dict[str, dict[str, Any]] = {}
     for item in agent["work_items"]:
         tid = str(item.get("task_id") or "")
@@ -739,7 +869,7 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
 def _allocate_cloud_costs(agents: list[dict[str, Any]]) -> dict[str, float]:
     """將 Docker + 阿里雲雲資源費用按 API 用量比例分攤到各 Agent。
 
-    預算口徑：cost_usd = api_cost_usd + cloud_cost_usd。
+    花費仍分開記：api_cost_usd 對 AI 預算，cloud_cost_usd 對雲服務預算。
     無 API 花費的活躍角色均分；全無活動時只回報彙總、不強行分攤。
     """
     docker_usd = 0.0
@@ -803,23 +933,10 @@ def _allocate_cloud_costs(agents: list[dict[str, Any]]) -> dict[str, float]:
         metrics["daily_spent_usd"] = a["cost_usd"]
         metrics["api_spent_usd"] = round(float(a.get("api_cost_usd") or 0), 4)
         metrics["cloud_spent_usd"] = cloud_share
-        metrics["weekly_spent_usd"] = a["cost_usd"]
+        metrics["weekly_spent_usd"] = metrics["api_spent_usd"]
+        metrics["weekly_cloud_spent_usd"] = cloud_share
         a["metrics"] = metrics
-        budget = float(a.get("daily_budget_usd") or 0)
-        a["budget_remaining_usd"] = None if budget <= 0 else round(max(budget - a["cost_usd"], 0.0), 4)
-        a["budget_over"] = bool(budget > 0 and a["cost_usd"] > budget)
-        # 重建預算相關告警（雲資源分攤後重新判定）
-        alerts = [
-            x
-            for x in (a.get("alerts") or [])
-            if "日預算" not in (x.get("message") or "") and "週預算" not in (x.get("message") or "")
-        ]
-        if a.get("budget_over") and a.get("alert_on_budget", True):
-            alerts.append({"level": "critical", "message": "今日花費已超過日預算（含 API＋雲資源）"})
-        weekly = float(a.get("weekly_budget_usd") or 0)
-        if weekly > 0 and a["cost_usd"] > weekly and a.get("alert_on_budget", True):
-            alerts.append({"level": "critical", "message": "已超過週預算（含 API＋雲資源）"})
-        a["alerts"] = alerts
+        _apply_split_budgets(a)
 
     return {
         "docker_usd": round(docker_usd, 4),

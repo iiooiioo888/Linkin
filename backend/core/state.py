@@ -93,5 +93,6 @@ class EvoLoopState(OPCStateFields, total=False):
     # ---- OPC 工業上下文（統一模式下自動注入） ----
     opc_context: dict[str, Any]
 
-    # ---- 靈境世界觀上下文（命中關鍵詞時注入憲法／RAG） ----
-    linkin_context: dict[str, Any]
+    # ---- RAHO 語意鎖定（用戶 Grill-Me 通過後注入） ----
+    semantic_lock: dict[str, Any]
+    raho: dict[str, Any]

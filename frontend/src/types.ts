@@ -52,6 +52,11 @@ export interface TaskOptions {
   pass_threshold?: number;
   /** 模型層級偏好 */
   model_tier?: string;
+  /** RAHO 語意鎖定簡報（取代原始 query 進入 Planner） */
+  semantic_brief?: string;
+  locked_brief?: string;
+  /** 需求審計官核發的戰術指令 JSON */
+  auditor_ticket?: Record<string, unknown>;
 }
 
 /** 任務即時狀態（POST /tasks + GET /tasks/{id}） */
@@ -92,6 +97,238 @@ export interface TaskProgress {
   opc_state?: OPCState | null;
   /** 任務建立時間（Unix 秒） */
   created_at?: number;
+  /** RAHO 質詢樹與待決決策 */
+  raho?: RahoSnapshot;
+}
+
+/** RAHO 用戶 Grill-Me 狀態 */
+export interface GrillQuestion {
+  question: string;
+  why?: string;
+  dimension?: string;
+}
+
+export interface AuditorScores {
+  specificity?: number;
+  boundary?: number;
+  constraints?: number;
+  risk?: number;
+  success?: number;
+}
+
+export interface AuditorTicket {
+  status?: string;
+  confidence_score?: number;
+  clarified_goal?: {
+    target_audience?: string;
+    core_action?: string;
+    quantified_success?: string;
+  };
+  hard_constraints?: {
+    deadline?: string;
+    budget_range?: string;
+    must_use_tech?: string[];
+    absolute_exclusions?: string[];
+  };
+  risk_register?: {
+    identified_risks?: string[];
+    user_priority?: string;
+  };
+  audit_trail?: string[];
+  dimension_scores?: AuditorScores;
+}
+
+export interface GrillUserState {
+  session_id: string;
+  locked: boolean;
+  confidence: number;
+  locked_brief?: string;
+  should_grill?: boolean;
+  question?: GrillQuestion | null;
+  turns?: number;
+  max_turns?: number;
+  closed?: boolean;
+  originalQuery?: string;
+  history?: Array<{ role: 'assistant' | 'user'; content: string; why?: string }>;
+  sendOptions?: {
+    executionStrategy: 'auto' | 'simple' | 'company';
+    companyTemplate: string;
+    taskOptions?: TaskOptions;
+  };
+  phase?: number;
+  phase_label?: string;
+  phase_rounds?: number;
+  scores?: AuditorScores;
+  ticket?: AuditorTicket | null;
+  planner?: Record<string, unknown> | null;
+  terminated?: boolean;
+  termination_reason?: string;
+  termination_report?: string;
+  status?: 'AUDITING' | 'APPROVED_FOR_PLANNING' | 'FAILED' | string;
+  role?: string;
+  role_label?: string;
+  user_rounds?: number;
+}
+
+export interface GrillTreeNode {
+  node_id: string;
+  from_layer: number;
+  to_layer: number;
+  kind: string;
+  status: string;
+  summary: string;
+  created_at: number;
+  resolved_at?: number | null;
+  parent_id?: string | null;
+  blocked?: boolean;
+  payload?: Record<string, unknown>;
+}
+
+export interface CampaignNode {
+  node_id: string;
+  title: string;
+  outcome?: string;
+  success_criteria?: string;
+  depends_on?: string[];
+  parallel_ok?: boolean;
+}
+
+export interface CampaignMap {
+  goal?: string;
+  nodes?: CampaignNode[];
+  success_criteria?: string[];
+  source?: string;
+}
+
+export interface BattleDagNode {
+  node_id: string;
+  description: string;
+  depends_on?: string[];
+  assigned_role_template?: string;
+  parallel_ok?: boolean;
+}
+
+export interface AtomicRoleInstance {
+  instance_id: string;
+  node_id: string;
+  template_id?: string;
+  name?: string;
+  trait?: string;
+  system_prompt: string;
+  allowed_tools?: string[];
+  input_ref?: string | string[];
+  output_schema?: string;
+  success_criteria?: string;
+  max_iterations?: number;
+  token_budget?: number;
+  failure_fallback?: string;
+}
+
+export interface BattlePlan {
+  plan_id?: string;
+  based_on_l4_json?: string;
+  rush_mode?: boolean;
+  serial_depth?: number;
+  parallel_roots?: string[];
+  global_settings?: {
+    default_model?: string;
+    max_parallel_workers?: number;
+    global_timeout_minutes?: number;
+  };
+  dag_nodes?: BattleDagNode[];
+  atomic_role_instances?: AtomicRoleInstance[];
+  reasoning?: BattleReasoning;
+}
+
+export interface BattleReasoning {
+  parsing?: {
+    core_action?: string;
+    quantified_success?: string;
+    deadline?: string;
+    absolute_exclusions?: string[];
+    identified_risks?: string[];
+  };
+  topology?: {
+    parallel?: string[];
+    sequential?: string[];
+    serial_depth?: number;
+    rush_mode?: boolean;
+  };
+  templating?: Array<{
+    node_id?: string;
+    template?: string;
+    name?: string;
+    trait?: string;
+    fallback?: string;
+  }>;
+  budgeting?: Array<{
+    instance_id?: string;
+    max_iterations?: number;
+    token_budget?: number;
+  }>;
+}
+
+export interface BattleChecklistItem {
+  id: string;
+  label: string;
+  pass: boolean;
+  rush_mode?: boolean;
+  hours_until_deadline?: number | null;
+}
+
+export interface BattlePlanState {
+  status: 'PLAN_READY' | 'REJECT_TO_L4' | 'ESCALATE_TO_USER' | string;
+  role_label?: string;
+  rush_mode?: boolean;
+  reason?: string;
+  defects?: string[];
+  details?: string;
+  suggested_alternatives?: string[];
+  waiting_for_user_decision?: boolean;
+  waiting_for_l4?: boolean;
+  battle_plan?: BattlePlan | null;
+  battle_plan_yaml?: string;
+  reasoning?: BattleReasoning;
+  node_count?: number;
+  serial_depth?: number;
+  checklist?: {
+    ok?: boolean;
+    defects?: string[];
+    items?: BattleChecklistItem[];
+    rush_mode?: boolean;
+  };
+}
+
+export interface GrillTree {
+  tree_id: string;
+  run_id: string;
+  goal: string;
+  created_at: number;
+  nodes: GrillTreeNode[];
+  open_count: number;
+  blocked: GrillTreeNode[];
+  campaign?: CampaignMap;
+}
+
+export interface RahoPendingDecision {
+  decision_id: string;
+  run_id: string;
+  item_id: string;
+  layer: number;
+  question: string;
+  choices: Array<{ key: string; label: string; rationale?: string }>;
+  remaining_sec?: number;
+  blocked?: boolean;
+  resolved?: boolean;
+}
+
+export interface RahoSnapshot {
+  trees?: GrillTree[];
+  pending_decisions?: RahoPendingDecision[];
+  blocked?: GrillTreeNode[];
+  tree?: GrillTree | null;
+  run_id?: string;
+  campaign?: CampaignMap;
 }
 
 // ==================== 思考過程軌跡 ====================
@@ -184,6 +421,10 @@ export interface ChatMessage {
   taskId?: string;
   /** 任務即時進度 */
   taskState?: TaskProgress;
+  /** RAHO 用戶 Grill-Me 語意鎖定 */
+  grill?: GrillUserState;
+  /** L3 戰術指揮官作戰地圖 */
+  battle?: BattlePlanState;
   /** 後端回傳的 metadata */
   meta?: {
     score?: number | null;
@@ -754,6 +995,12 @@ export interface AgentMetrics {
   human_escalations?: number;
   p95_latency_ms?: number;
   weekly_spent_usd?: number;
+  weekly_cloud_spent_usd?: number;
+  grill_count?: number;
+  grill_rate?: number;
+  decision_clarity?: number;
+  demoted?: boolean;
+  raho_rank?: 'ok' | 'watch' | 'demoted' | string;
 }
 
 export interface AgentAlert {
@@ -1047,6 +1294,11 @@ export interface RoleAgent {
   preferred_model?: string;
   preferred_provider?: string;
   daily_budget_usd?: number;
+  weekly_budget_usd?: number;
+  monthly_budget_usd?: number;
+  cloud_daily_budget_usd?: number;
+  cloud_weekly_budget_usd?: number;
+  cloud_monthly_budget_usd?: number;
   tools_allowed?: string[];
   notes?: string;
   enabled?: boolean;
@@ -1066,8 +1318,6 @@ export interface RoleAgent {
   always_require_review?: boolean;
   priority?: number;
   description?: string;
-  weekly_budget_usd?: number;
-  monthly_budget_usd?: number;
   max_daily_items?: number;
   require_human_approval?: boolean;
   stream_enabled?: boolean;
@@ -1106,7 +1356,13 @@ export interface RoleAgent {
   capacity_used: number;
   budget_remaining_usd?: number | null;
   budget_over?: boolean;
+  ai_budget_remaining_usd?: number | null;
+  ai_budget_over?: boolean;
+  cloud_budget_remaining_usd?: number | null;
+  cloud_budget_over?: boolean;
   metrics: AgentMetrics;
+  demoted?: boolean;
+  raho_rank?: 'ok' | 'watch' | 'demoted' | string;
 }
 
 export interface AgentMonitorData {
