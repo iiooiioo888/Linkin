@@ -1060,6 +1060,36 @@ def _role_presets() -> list[dict[str, Any]]:
             "default_tier": "routine",
             "hint": "成長漏斗席",
         },
+        {
+            "id": "server_admin",
+            "name": "服務器運維",
+            "level": 4,
+            "category": "devops",
+            "reporting_to": "tech_lead",
+            "system_prompt": (
+                "你是 Linux 服務器運維智能體（AIOps），只能透過具名運維工具診斷與修復，"
+                "絕不執行自由 shell。破壞性操作必須走人工批准隊列。"
+            ),
+            "responsibilities": ["巡檢與健康快照", "磁盤／日誌清理提案", "服務重啟批准"],
+            "default_tier": "routine",
+            "preferred_model": "qwen-max",
+            "temperature": 0.2,
+            "tools_allowed": [
+                "server_disk_usage",
+                "server_system_load",
+                "server_memory_usage",
+                "server_docker_status",
+                "server_service_status",
+                "server_disk_growth",
+                "server_tail_log",
+                "server_clean_packages",
+                "server_clean_temp",
+                "server_rotate_logs",
+                "server_restart_service",
+                "server_backup",
+            ],
+            "hint": "server_admin AIOps 席（寫操作需批准）",
+        },
     ]
     presets.extend(extras)
     return presets

@@ -431,6 +431,13 @@ def _register_builtin_tools() -> None:
     _register_mc(tool_registry)
     _register_quant(tool_registry)
 
+    try:  # 服務器運維智能體工具（本地定制模組，缺失時不影響其他工具註冊）
+        from backend.linkin.server_admin import register_company_tools as _register_sa
+
+        _register_sa(tool_registry)
+    except ImportError:
+        pass
+
 
 # 模組載入時註冊內建工具
 _register_builtin_tools()
