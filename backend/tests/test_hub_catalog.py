@@ -68,6 +68,20 @@ LEGACY_RUNTIME_MODELS: frozenset[str] = frozenset(
         "whisper-1",
         "tts-1",
         "gpt-image-1",
+        # 2026-09 預設模型清單更新：現行世代運行時模型（價目表已收錄）
+        "qwen3.8-max",
+        "qwen3.8-flash",
+        "qwen3.7-plus",
+        "qwen3.7-flash",
+        "kimi-k2.7-code",
+        "kimi-k2.6",
+        "glm-5.3",
+        "glm-5.3-flash",
+        "glm-5.1",
+        "glm-5",
+        "gpt-6-astra",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
     }
 )
 
