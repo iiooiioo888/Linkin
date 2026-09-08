@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
+import { isRahoSpineRole } from '../lib/rahoUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { fetchLlmOps } from '../api/client';
 import type { ApiRoutePublic, ChatSession, RoleAgent, TaskSummary } from '../types';
@@ -139,12 +140,18 @@ type RosterRow =
   | { kind: 'header'; key: string; label: string; count: number }
   | { kind: 'agent'; key: string; agent: RoleAgent };
 
-const ROSTER_LEVELS = [
-  { level: 0, short: 'L0', label: '決策層' },
-  { level: 1, short: 'L1', label: '技術領導' },
-  { level: 2, short: 'L2', label: '領域領導' },
-  { level: 3, short: 'L3', label: '執行層' },
-  { level: 4, short: 'L4', label: '支援' },
+const RAHO_SPINE_ORDER = [
+  { id: 'requirement_auditor', label: 'L4 需求審計官' },
+  { id: 'tactical_commander', label: 'L3 戰術指揮官' },
+  { id: 'constitutional_inspector', label: 'L1 憲兵審查官' },
+] as const;
+
+const ORG_LEVELS = [
+  { level: 0, label: '決策層' },
+  { level: 1, label: '技術領導' },
+  { level: 2, label: '領域領導' },
+  { level: 3, label: '執行層' },
+  { level: 4, label: '支援' },
 ] as const;
 
 function AgentRoster({
@@ -170,7 +177,7 @@ function AgentRoster({
         if (scope === 'live' && !isLiveAgent(a)) return false;
         if (scope === 'alert' && !isAlertAgent(a)) return false;
         if (!q) return true;
-        const hay = `${a.name} ${a.id} ${a.description ?? ''} ${a.preferred_model ?? ''} ${(a.responsibilities ?? []).join(' ')}`.toLowerCase();
+        const hay = `${a.name} ${a.id} ${a.raho_label ?? ''} ${a.level_label ?? ''} ${a.description ?? ''} ${a.preferred_model ?? ''} ${(a.responsibilities ?? []).join(' ')}`.toLowerCase();
         return hay.includes(q);
       })
       .sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9));
@@ -178,10 +185,19 @@ function AgentRoster({
 
   const rows: RosterRow[] = useMemo(() => {
     const out: RosterRow[] = [];
-    for (const lv of ROSTER_LEVELS) {
-      const list = filtered.filter((a) => a.level === lv.level);
+    const spine = RAHO_SPINE_ORDER.map((row) => filtered.find((a) => a.id === row.id)).filter(
+      (a): a is NonNullable<typeof a> => Boolean(a),
+    );
+    if (spine.length) {
+      out.push({ kind: 'header', key: 'h-raho', label: '質詢鏈', count: spine.length });
+      for (const agent of spine) {
+        out.push({ kind: 'agent', key: agent.id, agent });
+      }
+    }
+    for (const lv of ORG_LEVELS) {
+      const list = filtered.filter((a) => a.level === lv.level && !isRahoSpineRole(a.id));
       if (!list.length) continue;
-      out.push({ kind: 'header', key: `h-${lv.level}`, label: `${lv.short} ${lv.label}`, count: list.length });
+      out.push({ kind: 'header', key: `h-${lv.level}`, label: lv.label, count: list.length });
       for (const agent of list) {
         out.push({ kind: 'agent', key: agent.id, agent });
       }
@@ -209,7 +225,7 @@ function AgentRoster({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="ar-h">
-        <span className="ar-ht">{deskScope === 'linkin' ? '工作室' : '角色層級'}</span>
+        <span className="ar-ht">{deskScope === 'linkin' ? '工作室' : '質詢鏈／組織'}</span>
         <span className="ar-hc">{agents.length}</span>
       </div>
       <div className="ar-flt" role="tablist" aria-label="角色篩選">

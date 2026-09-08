@@ -20,10 +20,12 @@ from typing import Any
 from backend.company.raho.protocol import (
     ESCALATE_MARK,
     GRILL_MARK,
+    LAYER_LABELS,
     MAX_SUPERIOR_ROUNDS,
     MGP_EXECUTOR_PREAMBLE,
     MGP_SUPERIOR_PREAMBLE,
     GrillIssue,
+    RahoLayer,
 )
 
 logger = logging.getLogger(__name__)
@@ -1082,7 +1084,7 @@ def build_escalation(
         ],
         "waiting_for_user_decision": True,
         "role": "tactical_commander",
-        "role_label": "L3 戰術指揮官",
+        "role_label": LAYER_LABELS.get(int(RahoLayer.L3_COMMANDER), "L3 戰術指揮官"),
     }
 
 
@@ -1105,7 +1107,7 @@ def plan_from_ticket(
             "defects": ["缺少 status=APPROVED_FOR_PLANNING 的 L4 JSON"],
             "waiting_for_l4": True,
             "role": "tactical_commander",
-            "role_label": "L3 戰術指揮官",
+            "role_label": LAYER_LABELS.get(int(RahoLayer.L3_COMMANDER), "L3 戰術指揮官"),
         }
 
     check = validate_ticket(parsed, now=now)
@@ -1117,7 +1119,7 @@ def plan_from_ticket(
             "checklist": check,
             "waiting_for_l4": True,
             "role": "tactical_commander",
-            "role_label": "L3 戰術指揮官",
+            "role_label": LAYER_LABELS.get(int(RahoLayer.L3_COMMANDER), "L3 戰術指揮官"),
         }
 
     blocked = detect_infeasible(parsed, now=now)
@@ -1145,7 +1147,7 @@ def plan_from_ticket(
     return {
         "status": STATUS_PLAN_READY,
         "role": "tactical_commander",
-        "role_label": "L3 戰術指揮官",
+        "role_label": LAYER_LABELS.get(int(RahoLayer.L3_COMMANDER), "L3 戰術指揮官"),
         "rush_mode": rush,
         "checklist": check,
         "source": source,

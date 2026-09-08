@@ -149,6 +149,8 @@ def test_agent_monitor_catalog_when_empty(tmp_path, monkeypatch):
     from backend.company.role_catalog import reset_catalog_cache
     reset_catalog_cache()
     monkeypatch.setattr(task_manager, "tasks", {})
+    from backend.company.raho.store import STORE
+    STORE.user_sessions.clear()
 
     data = collect_agent_monitor()
     ids = [a["id"] for a in data["agents"]]
@@ -545,3 +547,28 @@ def test_monitor_agents_custom_role_http(tmp_path, monkeypatch):
 
         builtin_del = client.delete("/monitor/agents/manager")
         assert builtin_del.status_code == 400
+
+
+def test_agent_monitor_ingests_auditor_sessions(tmp_path, monkeypatch):
+    from backend.company.raho.store import STORE
+    from backend.services.agent_monitor import collect_agent_monitor
+    from backend.services.auditor import auditor_start
+
+    monkeypatch.setenv("EVOL_COMPANY_RUN_LOG_DIR", str(tmp_path / "empty_runs"))
+    monkeypatch.setenv("EVOL_ROLE_CATALOG_PATH", str(tmp_path / "role_catalog.json"))
+    monkeypatch.setenv("EVOL_RAHO_ENABLED", "true")
+    monkeypatch.setenv("EVOL_RAHO_USER_GRILL", "true")
+    monkeypatch.setattr("backend.services.auditor._llm_question", lambda *a, **k: None)
+    from backend.company.role_catalog import reset_catalog_cache
+    reset_catalog_cache()
+    monkeypatch.setattr(task_manager, "tasks", {})
+    STORE.user_sessions.clear()
+
+    started = auditor_start("我想做一個能幫我自動管粉絲的 AI。")
+    data = collect_agent_monitor()
+    auditor = next(a for a in data["agents"] if a["id"] == "requirement_auditor")
+    assert auditor["status"] == "busy"
+    assert auditor["work_items"]
+    assert auditor["work_items"][0]["kind"] == "requirement_audit"
+    assert started["session_id"] in auditor["work_items"][0]["id"]
+    STORE.user_sessions.clear()

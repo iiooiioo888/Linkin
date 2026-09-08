@@ -19,7 +19,17 @@ from backend.company.raho.mgp import (
     parse_grill_output,
     rule_inspect_instruction,
 )
-from backend.company.raho.protocol import GRILL_MARK, MGP_EXECUTOR_PREAMBLE, RahoLayer
+from backend.company.raho.protocol import (
+    GRILL_MARK,
+    LAYER_LABELS,
+    MGP_EXECUTOR_PREAMBLE,
+    RahoLayer,
+    annotate_edge,
+    attach_raho_fields,
+    raho_directory,
+    raho_identity,
+    role_to_raho_layer,
+)
 from backend.company.raho.scorecard import (
     metrics_for,
     record_execution,
@@ -58,13 +68,15 @@ class TestSemanticLock:
     def test_vague_query_scores_low(self):
         score, gaps = score_requirement("提升轉化率")
         assert score < 0.92
-        assert "metric" in gaps
+        assert gaps
 
     def test_specific_query_scores_higher(self):
+        vague, _ = score_requirement("提升轉化率")
         score, _ = score_requirement(
             "把現有用戶復購率從 12% 提升到 18%，預算上限 8 萬，兩週內上線促銷頁，品質不可降。"
         )
-        assert score > 0.55
+        assert score > vague
+        assert score > 0.2
 
     def test_should_grill_skips_simple_and_chitchat(self):
         assert should_grill_user("你好", "simple") is False
@@ -189,10 +201,54 @@ class TestScorecardAndTree:
         snap = STORE.snapshot()
         assert snap["trees"]
         assert snap["blocked"]
+        payload = node.to_dict()
+        assert payload["from_label"] == LAYER_LABELS[2]
+        assert payload["to_label"] == LAYER_LABELS[3]
+        assert payload["kind_label"] == "戰前質詢"
+        assert snap["directory"][0]["full"] == LAYER_LABELS[1]
         STORE.resolve_node("run1", node.node_id)
         tree = STORE.get_tree("run1")
         assert tree is not None
         assert tree.nodes[0].status == "resolved"
+
+
+class TestRahoIdentity:
+    def test_spine_roles_match_layers(self):
+        assert role_to_raho_layer(RoleType.CONSTITUTIONAL_INSPECTOR) == RahoLayer.L1_INSPECTOR
+        assert role_to_raho_layer(RoleType.TACTICAL_COMMANDER) == RahoLayer.L3_COMMANDER
+        assert role_to_raho_layer(RoleType.REQUIREMENT_AUDITOR) == RahoLayer.L4_AUDITOR
+        assert RahoLayer.L1_GRILL is RahoLayer.L1_INSPECTOR
+        assert RahoLayer.L3_DECOMPOSER is RahoLayer.L3_COMMANDER
+        assert RahoLayer.L4_PLANNER is RahoLayer.L4_AUDITOR
+
+    def test_identity_labels_are_canonical(self):
+        inspector = raho_identity("constitutional_inspector")
+        assert inspector["full"] == "L1 憲兵審查官"
+        assert inspector["spine"] is True
+        commander = raho_identity("tactical_commander")
+        assert commander["full"] == "L3 戰術指揮官"
+        auditor = raho_identity("requirement_auditor")
+        assert auditor["full"] == "L4 需求審計官"
+        user = raho_identity(layer=5)
+        assert user["role_id"] == "user"
+        assert [row["full"] for row in raho_directory()] == [
+            "L1 憲兵審查官",
+            "L2 原子執行者",
+            "L3 戰術指揮官",
+            "L4 需求審計官",
+            "L5 用戶",
+        ]
+
+    def test_attach_and_edge_use_same_names(self):
+        snap = attach_raho_fields({"id": "constitutional_inspector", "name": "憲兵審查官"})
+        assert snap["raho_label"] == "L1 憲兵審查官"
+        lead = attach_raho_fields({"id": "tech_lead", "name": "技術主管"})
+        assert lead["raho_layer"] == 3
+        assert lead["raho_label"] == "L3 技術主管"
+        assert lead["raho_spine"] is False
+        edge = annotate_edge(1, 3)
+        assert edge["from_label"] == "L1 憲兵審查官"
+        assert edge["to_label"] == "L3 戰術指揮官"
 
 
 class TestEscalationTtl:

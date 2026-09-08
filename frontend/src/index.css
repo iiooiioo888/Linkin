@@ -1104,6 +1104,20 @@ body {
   color: var(--apple-red);
 }
 
+.rd-tag--raho {
+  background: rgba(191, 90, 242, 0.14);
+  color: #d4a8ff;
+}
+
+.rd-link {
+  margin-left: auto;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 10px;
+  font-weight: 500;
+  color: #64d2ff;
+}
+
 .rd-acts {
   display: flex;
   flex-shrink: 0;
@@ -2863,6 +2877,148 @@ body {
   text-transform: uppercase;
   color: #ff9f0a;
   font-weight: 600;
+}
+
+.raho-pyramid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.raho-pyr-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: #ebebf5;
+  font-size: 11px;
+}
+
+.raho-pyr-item:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.raho-pyr-item.is-static {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.raho-pyr-k {
+  color: #d4a8ff;
+  font-weight: 600;
+}
+
+.raho-pyr-t {
+  color: #aeaeB2;
+}
+
+.raho-pyr-n {
+  border-radius: 999px;
+  background: rgba(255, 69, 58, 0.18);
+  color: #ff453a;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.raho-edge {
+  display: flex;
+  gap: 10px;
+}
+
+.raho-edge-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.raho-edge-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #8e8e93;
+}
+
+.raho-edge-role {
+  color: #64d2ff;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.raho-edge-role:hover {
+  text-decoration: underline;
+}
+
+.raho-edge-kind {
+  color: #636366;
+}
+
+.raho-edge-sum {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #ebebf5;
+}
+
+.raho-desk-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.raho-desk-chip {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 10px;
+  color: #8e8e93;
+}
+
+.raho-desk-chip.on {
+  border-color: rgba(191, 90, 242, 0.4);
+  color: #d4a8ff;
+}
+
+.raho-desk-chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.raho-feed-row {
+  width: 100%;
+  text-align: left;
+}
+
+.raho-grill-gate {
+  display: inline-block;
+  margin-left: 8px;
+  font-style: normal;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: #aeaeb2;
+  font-weight: 500;
+  font-size: 9px;
+}
+
+.raho-ticket-wrap {
+  margin-top: 10px;
+}
+
+.raho-ticket-label {
+  margin: 0 0 6px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #30d158;
 }
 
 .raho-phase-stepper {

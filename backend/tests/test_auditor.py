@@ -8,6 +8,7 @@ from backend.company.raho.store import STORE
 from backend.company.roles import STANDARD_ROLES
 from backend.company.state import RoleType
 from backend.services.auditor import (
+    QUESTION_BANK,
     RequirementAuditor,
     all_dims_locked,
     auditor_start,
@@ -63,6 +64,21 @@ class TestAuditorRole:
         assert commander.name == "戰術指揮官"
 
 
+SPEC_QUESTIONS = {
+    1: "我們現在不談解決方案。請用『最終用戶』的視角，描述他完成任務前後那一刻的具體變化。",
+    2: "現狀的痛點是什麼？如果用數字量化這個痛點，目前每個月損失多少錢 / 浪費多少小時？",
+    3: "這個需求的發起人是誰？是終端使用者要的，還是你老闆覺得要的？這兩者的差異你怎麼處理？",
+    4: "我不接受『提升效率』。請填入數字：『目前需 X 小時，目標壓縮至 Y 小時，且準確率不得低於 Z%』，請現在給出 X、Y、Z。",
+    5: "若預算超支 30%，你是要砍功能（犧牲範圍），還是延後上線（犧牲時間），還是借貸補足（犧牲成本）？請排序。",
+    6: "所謂的『完成』，具體會產出什麼格式的交付物？是 Excel 報表、可點擊的 Prototype，還是一份純文字的備忘錄？",
+    7: "假設這個方案做出來，但關鍵數據源（如 API）突然斷了，你的備案是什麼？如果沒有備案，我將標記此需求為高風險。",
+    8: "你提到希望系統『智慧』一點，但同時又要求『絕對可控』。這兩者是互斥的，當 AI 的判斷與你的直覺衝突時，你聽誰的？具體情境下如何取捨？",
+    9: "如果只能做到現在所提需求的 80%，剩下的 20% 你願意犧牲哪一部分？請具體指出這 20% 的內容。",
+    10: "為了避免誤會，請用你自己的話（不許複製貼上）重新定義一次『成功』，字數不得超過 50 字。",
+    11: "如果我現在交付了你說的 A 功能，但你實際想要的是 B 感覺，後果由誰承擔？你現在確定要將剛才的所有回答作為最終合約依據嗎？",
+}
+
+
 class TestScoring:
     def test_vague_stays_below_lock(self):
         scores = score_dimensions("我想做一個能幫我自動管粉絲的 AI。")
@@ -72,6 +88,12 @@ class TestScoring:
     def test_rich_corpus_can_lock(self):
         scores = score_dimensions("自動管粉絲", [RICH_A1, RICH_A2, RICH_A3, RICH_A4, RICH_A5])
         assert all_dims_locked(scores), scores
+
+    def test_question_bank_matches_spec_verbatim(self):
+        by_id = {item["id"]: item["question"] for item in QUESTION_BANK}
+        for qid, text in SPEC_QUESTIONS.items():
+            assert by_id[qid] == text
+        assert len(QUESTION_BANK) == 16
 
 
 class TestGateway:
@@ -205,6 +227,44 @@ class TestGateway:
         assert result["status"] == "APPROVED_FOR_PLANNING"
         assert result["ticket"]["status"] == "APPROVED_FOR_PLANNING"
         assert result["planner"]["status"] == "PLANNER_TRIGGERED"
+
+    def test_spec_example_fan_dialogue(self):
+        started = auditor_start("我想做一個能幫我自動管粉絲的 AI。")
+        q1 = started["question"]["question"]
+        assert "管粉" in q1
+        assert "介入前" in q1
+        sid = started["session_id"]
+
+        p2 = auditor_turn(sid, "就是讓他們更黏我，多買東西。")
+        q2 = (p2.get("question") or {}).get("question") or ""
+        assert p2["terminated"] is False
+        assert p2["phase"] == 2
+        assert "量化失敗" in q2
+        assert "復購率" in q2
+        assert "行銷成本" in q2
+
+        p3 = auditor_turn(sid, "大概從 15% 提升到 25% 吧，成本的話大概 50 塊。")
+        q3 = (p3.get("question") or {}).get("question") or ""
+        assert p3["phase"] == 3
+        assert "退粉" in q3
+        assert "人工審核" in q3
+
+        p4 = auditor_turn(sid, "那還是先人工審核好了。")
+        q4 = (p4.get("question") or {}).get("question") or ""
+        if not p4.get("locked"):
+            assert p4["phase"] == 4
+            assert "50 字" in q4 or "復購率" in q4
+            locked = auditor_turn(sid, "確認。")
+        else:
+            locked = p4
+        assert locked["locked"] is True
+        assert locked["status"] == "APPROVED_FOR_PLANNING"
+        assert locked["ticket"]["status"] == "APPROVED_FOR_PLANNING"
+        assert locked["ticket"]["confidence_score"] > 90
+        assert "25" in str(locked["ticket"]["clarified_goal"]["quantified_success"])
+        assert "50" in str(locked["ticket"]["hard_constraints"]["budget_range"])
+        assert any("人工" in x for x in locked["ticket"]["hard_constraints"]["absolute_exclusions"])
+        assert locked["planner"]["status"] == "PLANNER_TRIGGERED"
 
     def test_trigger_planner_rejects_low_score(self):
         rejected = trigger_planner({"status": "APPROVED_FOR_PLANNING", "confidence_score": 70})

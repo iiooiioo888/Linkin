@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from backend.company.raho.protocol import raho_directory
 from backend.company.role_catalog import (
     LEVEL_LABELS,
     catalog_meta,
@@ -67,6 +68,7 @@ ROLE_EVENT_HINTS: dict[str, frozenset[str]] = {
     "synthesizer": frozenset({"synthesize_done"}),
     "hub_operator": frozenset({"budget_warning", "budget_degrade", "tool_call"}),
     "github_ops": frozenset({"tool_call", "tool_result"}),
+    "requirement_auditor": frozenset({"user_grill", "auditor_start", "auditor_lock", "auditor_fail"}),
 }
 
 PHASE_ROLE: dict[str, str] = {
@@ -118,6 +120,12 @@ def _blank_agent(snapshot: dict[str, Any]) -> dict[str, Any]:
         "name": snapshot["name"],
         "level": snapshot["level"],
         "level_label": snapshot["level_label"],
+        "raho_layer": snapshot.get("raho_layer"),
+        "raho_label": snapshot.get("raho_label") or "",
+        "raho_short": snapshot.get("raho_short") or "",
+        "raho_title": snapshot.get("raho_title") or "",
+        "raho_spine": bool(snapshot.get("raho_spine")),
+        "grill_targets": list(snapshot.get("grill_targets") or []),
         "category": snapshot["category"],
         "reporting_to": snapshot.get("reporting_to"),
         "can_delegate_to": list(snapshot.get("can_delegate_to") or []),
@@ -946,6 +954,69 @@ def _allocate_cloud_costs(agents: list[dict[str, Any]]) -> dict[str, float]:
     }
 
 
+def _ingest_auditor_sessions(agents: dict[str, dict[str, Any]]) -> None:
+    """把進行中的需求審計會話掛到 L4 需求審計官工作台。"""
+    bucket = agents.get("requirement_auditor")
+    if not bucket:
+        return
+    try:
+        from backend.company.raho.store import STORE
+    except Exception:  # noqa: BLE001
+        logger.debug("讀取審計會話失敗（已忽略）", exc_info=True)
+        return
+
+    for sess in list(STORE.user_sessions.values()):
+        if sess.locked:
+            status = WorkItemStatus.DONE.value
+            title = "需求審計門票已核發"
+            task_status = "completed"
+        elif sess.terminated:
+            status = WorkItemStatus.BLOCKED.value
+            title = "需求審計失敗"
+            task_status = "failed"
+        else:
+            status = WorkItemStatus.EXECUTING.value
+            title = f"Phase {int(sess.phase or 1)} 需求審計"
+            task_status = "running"
+        last = ""
+        for turn in reversed(sess.turns or []):
+            if turn.get("role") == "assistant":
+                last = str(turn.get("content") or "")
+                break
+        item = {
+            "id": f"auditor:{sess.session_id}",
+            "title": title,
+            "description": (sess.query or "")[:240],
+            "status": status,
+            "kind": "requirement_audit",
+            "assignee": "requirement_auditor",
+            "task_id": f"grill:{sess.session_id}",
+            "task_query": sess.query,
+            "task_status": task_status,
+            "phase": f"phase_{int(sess.phase or 1)}",
+            "cost_usd": 0.0,
+            "estimated_cost": 0.0,
+            "output_preview": last[:280],
+            "updated_at": _now_iso(),
+            "source": "live",
+            "depends_on": [],
+            "tier": "reasoning",
+            "feedback": [],
+        }
+        _upsert_item(bucket, item)
+        _append_event(
+            bucket,
+            {
+                "ts": sess.created_at,
+                "event": "user_grill",
+                "item_id": sess.session_id,
+                "title": title,
+                "assignee": "requirement_auditor",
+                "run_id": f"grill:{sess.session_id}",
+            },
+        )
+
+
 def collect_agent_monitor() -> dict[str, Any]:
     """聚合每位角色的 Agent 工作台；目錄永遠完整，缺資料時全部待命。"""
     snapshots = list_role_snapshots()
@@ -975,6 +1046,11 @@ def collect_agent_monitor() -> dict[str, Any]:
         _ingest_run_logs(agents)
     except Exception:  # noqa: BLE001
         logger.warning("讀取公司 run log 失敗（已忽略）", exc_info=True)
+
+    try:
+        _ingest_auditor_sessions(agents)
+    except Exception:  # noqa: BLE001
+        logger.warning("讀取需求審計會話失敗（已忽略）", exc_info=True)
 
     finalized = [_finalize_agent(agent) for agent in agents.values()]
     cost_breakdown = _allocate_cloud_costs(finalized)
@@ -1013,6 +1089,7 @@ def collect_agent_monitor() -> dict[str, Any]:
             {"level": level, "label": label}
             for level, label in LEVEL_LABELS.items()
         ],
+        "raho_layers": raho_directory(),
         "catalog_meta": catalog_meta(),
         "monitor_prefs": get_monitor_prefs(),
         "agents": finalized,

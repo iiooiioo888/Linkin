@@ -60,8 +60,11 @@ export default function GrillUserCard({ grill, disabled, onAnswer }: GrillUserCa
   return (
     <div className={`raho-grill-card${terminated ? ' is-failed' : ''}${locked ? ' is-locked' : ''}`}>
       <div className="raho-grill-head">
-        <span className="raho-grill-kicker">{grill.role_label || 'L4 需求審計官'}</span>
-        <span className={pct > 92 ? 'text-[#30D158]' : terminated ? 'text-[#FF453A]' : 'text-[#FF9F0A]'}>
+        <span className="raho-grill-kicker">
+          {grill.role_label || 'L4 需求審計官'}
+          <em className="raho-grill-gate">強制前置閘門</em>
+        </span>
+        <span className={pct > 90 ? 'text-[#30D158]' : terminated ? 'text-[#FF453A]' : 'text-[#FF9F0A]'}>
           {terminated ? '審計失敗' : locked ? '已核發門票' : `綜合 ${pct}%`}
         </span>
       </div>
@@ -124,7 +127,10 @@ export default function GrillUserCard({ grill, disabled, onAnswer }: GrillUserCa
         <pre className="raho-fail-report">{grill.termination_report}</pre>
       ) : null}
       {locked && grill.ticket ? (
-        <pre className="raho-ticket">{JSON.stringify(grill.ticket, null, 2)}</pre>
+        <div className="raho-ticket-wrap">
+          <p className="raho-ticket-label">戰術指令文件 · APPROVED_FOR_PLANNING</p>
+          <pre className="raho-ticket">{JSON.stringify(grill.ticket, null, 2)}</pre>
+        </div>
       ) : null}
       {!closed && (
         <div className="raho-grill-composer">

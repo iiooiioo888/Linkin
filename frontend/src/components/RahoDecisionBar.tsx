@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { decideRaho } from '../api/client';
 import type { RahoPendingDecision } from '../types';
+import { jumpToRoleDesk, rahoLayerLabel } from '../lib/rahoUi';
 
 interface RahoDecisionBarProps {
   pending: RahoPendingDecision[];
@@ -23,7 +24,10 @@ export default function RahoDecisionBar({ pending, onResolved }: RahoDecisionBar
         <div key={p.decision_id} className="mb-3 last:mb-0">
           <p className="text-[13px] text-[#F5F5F7]">{p.question}</p>
           <p className="mt-1 text-[11px] text-[#8E8E93]">
-            L{p.layer} · 剩餘 {Math.round(p.remaining_sec ?? 0)}s
+            <button type="button" className="raho-edge-role" onClick={() => jumpToRoleDesk(p.role_id || '')}>
+              {p.layer_label || p.role_label || rahoLayerLabel(p.layer)}
+            </button>
+            {' · '}剩餘 {Math.round(p.remaining_sec ?? 0)}s
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {p.choices.map((c) => (

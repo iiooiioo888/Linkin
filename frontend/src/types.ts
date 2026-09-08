@@ -174,7 +174,14 @@ export interface GrillTreeNode {
   node_id: string;
   from_layer: number;
   to_layer: number;
+  from_role?: string;
+  to_role?: string;
+  from_label?: string;
+  to_label?: string;
+  from_short?: string;
+  to_short?: string;
   kind: string;
+  kind_label?: string;
   status: string;
   summary: string;
   created_at: number;
@@ -182,6 +189,16 @@ export interface GrillTreeNode {
   parent_id?: string | null;
   blocked?: boolean;
   payload?: Record<string, unknown>;
+}
+
+export interface RahoDirectoryEntry {
+  layer: number;
+  id: string;
+  role_id: string;
+  title: string;
+  short: string;
+  full: string;
+  grill_targets?: string[];
 }
 
 export interface CampaignNode {
@@ -315,6 +332,9 @@ export interface RahoPendingDecision {
   run_id: string;
   item_id: string;
   layer: number;
+  layer_label?: string;
+  role_id?: string;
+  role_label?: string;
   question: string;
   choices: Array<{ key: string; label: string; rationale?: string }>;
   remaining_sec?: number;
@@ -329,6 +349,8 @@ export interface RahoSnapshot {
   tree?: GrillTree | null;
   run_id?: string;
   campaign?: CampaignMap;
+  directory?: RahoDirectoryEntry[];
+  kind_labels?: Record<string, string>;
 }
 
 // ==================== 思考過程軌跡 ====================
@@ -1283,6 +1305,12 @@ export interface RoleAgent {
   name: string;
   level: number;
   level_label: string;
+  raho_layer?: number;
+  raho_label?: string;
+  raho_short?: string;
+  raho_title?: string;
+  raho_spine?: boolean;
+  grill_targets?: string[];
   category: string;
   reporting_to: string | null;
   can_delegate_to: string[];
@@ -1390,6 +1418,7 @@ export interface AgentMonitorData {
     roles_mainland_only?: number;
   };
   levels: Array<{ level: number; label: string }>;
+  raho_layers?: RahoDirectoryEntry[];
   catalog_meta?: AgentCatalogMeta;
   monitor_prefs?: AgentMonitorPrefs;
   agents: RoleAgent[];

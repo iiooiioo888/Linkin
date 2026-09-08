@@ -1,8 +1,9 @@
 """遞歸對抗式分層組織（RAHO）—— EvoLoop 公司運行時進化層。
 
-L5 用戶 Grill-Me → L4 元規劃 DAG → L3 原子拆解 → L2 專注執行
+L5 用戶 Grill-Me → L4 需求審計官 → L3 戰術指揮官 → L2 原子執行者
 L1 憲兵審查官獨立驗收：四維度壓力測試、雙向 Grill、簽核後才寫入共享記憶。
 L2 執行前仍強制戰前檢查；無法決策則熱馬桶圈上交。
+質詢樹與角色名冊共用 protocol.raho_identity。
 """
 
 from backend.company.raho.atomic_executor import AtomicExecutorFactory
@@ -25,8 +26,12 @@ from backend.company.raho.grill_user import (
 )
 from backend.company.raho.mgp import apply_mgp_system, parse_grill_output
 from backend.company.raho.protocol import (
+    LAYER_LABELS,
     RahoLayer,
+    attach_raho_fields,
+    raho_directory,
     raho_enabled,
+    raho_identity,
     user_grill_enabled,
 )
 from backend.company.raho.scorecard import all_metrics, metrics_for, should_demote
@@ -37,8 +42,12 @@ __all__ = [
     "AtomicExecutorFactory",
     "BlackboardEntry",
     "InspectorGate",
+    "LAYER_LABELS",
     "RahoLayer",
     "apply_mgp_system",
+    "attach_raho_fields",
+    "raho_directory",
+    "raho_identity",
     "assemble_atomic",
     "command_from_ticket",
     "command_grill",
