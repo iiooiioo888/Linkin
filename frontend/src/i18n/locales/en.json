@@ -54,5 +54,13 @@
     "open": "Open",
     "retry": "Retry",
     "dismiss": "Dismiss"
+  },
+  "gate": {
+    "subtitle": "Sign in to open the console",
+    "account": "Account",
+    "secret": "Password",
+    "enter": "Enter",
+    "checking": "Checking…",
+    "signOut": "Sign out"
   }
 }

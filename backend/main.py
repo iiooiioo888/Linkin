@@ -15,10 +15,21 @@ from typing import Any
 import asyncio
 import json as json_mod
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
+
+from backend.auth.gate import (
+    AUTH_COOKIE,
+    SESSION_TTL_SEC,
+    clear_session,
+    extract_token,
+    issue_login,
+    session_user,
+    ws_authorized,
+)
+from backend.middleware.auth_gate import AuthGateMiddleware
 
 from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD, evoloop_graph
 from backend.core import nodes
@@ -130,12 +141,13 @@ if not allowed_origins:
 
 logger.info("CORS allowed origins: %s", allowed_origins)
 
+app.add_middleware(AuthGateMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-Id", "X-Routing-Strategy", "X-Failover-Config", "CF-IPCountry"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-Id", "X-Routing-Strategy", "X-Failover-Config", "CF-IPCountry", "X-Linkin-Gate"],
     expose_headers=["X-Request-Id", "X-Trace-Id", "X-Chosen-Provider", "X-Cost-Usd", "X-Latency-Ms", "X-Hub-Cache", "X-RateLimit-Remaining"],
     max_age=600,
 )
@@ -223,6 +235,56 @@ class FeedbackRequest(BaseModel):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+class GateLoginBody(BaseModel):
+    username: str = ""
+    password: str = ""
+
+
+def _client_identity(request: Request) -> str:
+    forwarded = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    return forwarded or (request.client.host if request.client else "")
+
+
+def _set_gate_cookie(response: JSONResponse, token: str) -> None:
+    response.set_cookie(
+        key=AUTH_COOKIE,
+        value=token,
+        max_age=SESSION_TTL_SEC,
+        httponly=True,
+        samesite="lax",
+        path="/",
+        secure=False,
+    )
+
+
+@app.post("/auth/login")
+async def auth_login(body: GateLoginBody, request: Request):
+    token = issue_login(body.username, body.password, identity=_client_identity(request))
+    if not token:
+        raise HTTPException(status_code=401, detail="帳號或密碼不正確")
+    resp = JSONResponse({"ok": True, "user": body.username.strip(), "token": token})
+    _set_gate_cookie(resp, token)
+    return resp
+
+
+@app.get("/auth/me")
+async def auth_me(request: Request):
+    token = extract_token(request.headers, request.cookies, request.query_params)
+    user = session_user(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="未登入或會話已失效")
+    return {"ok": True, "user": user}
+
+
+@app.post("/auth/logout")
+async def auth_logout(request: Request):
+    token = extract_token(request.headers, request.cookies, request.query_params)
+    clear_session(token)
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(AUTH_COOKIE, path="/")
+    return resp
 
 
 class RahoGrillStartBody(BaseModel):
@@ -1120,6 +1182,10 @@ async def task_websocket(websocket: WebSocket, task_id: str):
 
     任务完成/失败后发送 task_finished 事件，客户端可主动关闭连接。
     """
+    if not ws_authorized(websocket):
+        await websocket.close(code=4401, reason="unauthorized")
+        return
+
     # 检查任务是否存在
     record = task_manager.get_task(task_id)
     if record is None:
@@ -1159,6 +1225,10 @@ async def monitor_hub_websocket(websocket: WebSocket):
     訊息格式：{"event": "snapshot"|"pong", "data": {...}}
     """
     from backend.services.monitor_hub import collect_monitor_hub
+
+    if not ws_authorized(websocket):
+        await websocket.close(code=4401, reason="unauthorized")
+        return
 
     await websocket.accept()
     try:

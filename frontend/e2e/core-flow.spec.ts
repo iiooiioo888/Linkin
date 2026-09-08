@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { passGate } from './gate';
 
 test.describe('EvoLoop 核心 UI', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await passGate(page);
+  });
   test('首頁載入並可切換控制台即時動態', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('body')).toBeVisible();

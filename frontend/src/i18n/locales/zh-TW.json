@@ -54,5 +54,13 @@
     "open": "開啟",
     "retry": "重試",
     "dismiss": "關閉"
+  },
+  "gate": {
+    "subtitle": "請登入後進入控制面",
+    "account": "帳號",
+    "secret": "密碼",
+    "enter": "進入",
+    "checking": "驗證中…",
+    "signOut": "登出"
   }
 }
