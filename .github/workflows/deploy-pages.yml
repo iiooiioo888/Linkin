@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +29,7 @@ jobs:
 
       - name: Export monitor fallback (single source)
         run: python -m backend.scripts.export_monitor_fallback
+        continue-on-error: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,13 +47,16 @@ jobs:
 
       - name: Build
         working-directory: ./frontend
-        run: npm run build
+        # 跳過 prebuild：export 已在上一步嘗試；檔案已在倉庫內。
+        run: npx tsc -b && npx vite build
         env:
-          VITE_BASE: /Evoloop/
+          VITE_BASE: /${{ github.event.repository.name }}/
           VITE_GITHUB_PAGES: 'true'
 
       - name: SPA fallback
-        run: cp frontend/dist/index.html frontend/dist/404.html
+        run: |
+          cp frontend/dist/index.html frontend/dist/404.html
+          touch frontend/dist/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

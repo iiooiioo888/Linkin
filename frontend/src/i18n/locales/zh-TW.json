@@ -61,6 +61,7 @@
     "secret": "密碼",
     "enter": "進入",
     "checking": "驗證中…",
+    "failed": "核對失敗，請重試",
     "signOut": "登出"
   }
 }

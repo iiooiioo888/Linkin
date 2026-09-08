@@ -61,6 +61,7 @@
     "secret": "Password",
     "enter": "Enter",
     "checking": "Checking…",
+    "failed": "Could not verify. Try again.",
     "signOut": "Sign out"
   }
 }
