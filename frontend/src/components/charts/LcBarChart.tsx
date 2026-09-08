@@ -1,40 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { darkTheme, getLcFactory } from '../../lib/lcjsHost';
+/**
+ * 純 SVG 長條圖（深色主題）。已移除 LightningChart JS 依賴。
+ * 支援單組與分組（grouped）資料。
+ */
+import { useMemo } from 'react';
 
 export type BarGroup = { subCategory: string; values: number[] };
 
-function FallbackBars({
-  categories,
-  groups,
-  height,
-}: {
-  categories: string[];
-  groups: BarGroup[];
-  height: number;
-}) {
-  const max = Math.max(1, ...groups.flatMap((g) => g.values));
-  return (
-    <div className="flex h-full items-end gap-3 px-2" style={{ minHeight: height }}>
-      {categories.map((cat, i) => (
-        <div key={cat} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-          <div className="flex h-full w-full items-end justify-center gap-0.5">
-            {groups.map((g) => (
-              <div
-                key={g.subCategory}
-                className="w-3 rounded-t bg-[#007AFF]"
-                style={{
-                  height: `${((g.values[i] ?? 0) / max) * 100}%`,
-                  background: g.subCategory.includes('A') ? 'rgba(142,142,147,0.7)' : '#007AFF',
-                }}
-              />
-            ))}
-          </div>
-          <span className="truncate text-[10px] text-[#8E8E93]">{cat}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+const W = 640;
+const PAD = { top: 10, right: 12, bottom: 24, left: 40 };
+const PALETTE = ['#0A84FF', '#8E8E93', '#34C759', '#FF9F0A', '#BF5AF2', '#FF375F'];
 
 export default function LcBarChart({
   categories,
@@ -45,42 +19,85 @@ export default function LcBarChart({
   groups: BarGroup[];
   height?: number;
 }) {
-  const host = useRef<HTMLDivElement>(null);
-  const [mode, setMode] = useState<'lcjs' | 'fallback'>('lcjs');
-  const payload = useMemo(() => JSON.stringify({ categories, groups }), [categories, groups]);
+  const H = Math.max(120, height);
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
 
-  useEffect(() => {
-    const el = host.current;
-    if (!el) return;
-    let disposed = false;
-    let chart: { dispose: () => void } | null = null;
+  const { max, ticks } = useMemo(() => {
+    const m = Math.max(1, ...groups.flatMap((g) => g.values.map((v) => v || 0)));
+    const t: number[] = [];
+    for (let i = 0; i <= 4; i += 1) t.push((m * i) / 4);
+    return { max: m, ticks: t };
+  }, [groups]);
 
-    void (async () => {
-      const [lc, theme] = await Promise.all([getLcFactory(), darkTheme()]);
-      if (disposed) return;
-      if (!lc || !theme) {
-        setMode('fallback');
-        return;
-      }
-      setMode('lcjs');
-      const bar = lc.BarChart({ container: el, theme, animationsEnabled: false });
-      bar.setTitle('');
-      if (groups.length <= 1) {
-        bar.setData(categories.map((category, i) => ({ category, value: groups[0]?.values[i] ?? 0 })));
-      } else {
-        bar.setDataGrouped(categories, groups);
-      }
-      chart = bar;
-    })();
+  const n = Math.max(1, categories.length);
+  const groupW = innerW / n;
+  const barPad = Math.min(10, groupW * 0.18);
+  const gCount = Math.max(1, groups.length);
+  const barW = Math.max(2, (groupW - barPad * 2) / gCount - 2);
 
-    return () => {
-      disposed = true;
-      chart?.dispose();
-    };
-  }, [payload, categories, groups]);
+  const fmt = (v: number) => (Math.abs(v) >= 1000 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1));
+  const yBase = PAD.top + innerH;
 
-  if (mode === 'fallback') {
-    return <FallbackBars categories={categories} groups={groups} height={height} />;
-  }
-  return <div ref={host} className="h-full w-full" style={{ minHeight: height }} />;
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="h-full w-full"
+      style={{ minHeight: height }}
+      role="img"
+      aria-label="長條圖"
+      preserveAspectRatio="none"
+    >
+      {ticks.map((t) => (
+        <g key={t}>
+          <line x1={PAD.left} y1={yBase - (t / max) * innerH} x2={W - PAD.right} y2={yBase - (t / max) * innerH} stroke="rgba(255,255,255,0.06)" />
+          <text x={PAD.left - 6} y={yBase - (t / max) * innerH + 3} textAnchor="end" fontSize="9" fill="#62666d" fontFamily="ui-monospace, monospace">
+            {fmt(t)}
+          </text>
+        </g>
+      ))}
+      {categories.map((cat, i) => (
+        <g key={cat}>
+          {groups.map((g, gi) => {
+            const v = g.values[i] ?? 0;
+            const h = Math.max(0, (v / max) * innerH);
+            const x = PAD.left + i * groupW + barPad + gi * (barW + 2);
+            return (
+              <rect
+                key={g.subCategory}
+                x={x}
+                y={yBase - h}
+                width={barW}
+                height={h}
+                rx={2}
+                fill={PALETTE[gi % PALETTE.length]}
+                opacity={gCount > 1 && gi % 2 === 1 ? 0.75 : 1}
+              >
+                <title>{`${cat} · ${g.subCategory}: ${v}`}</title>
+              </rect>
+            );
+          })}
+          <text
+            x={PAD.left + i * groupW + groupW / 2}
+            y={H - 8}
+            textAnchor="middle"
+            fontSize="9.5"
+            fill="#8E8E93"
+          >
+            {cat.length > 10 ? `${cat.slice(0, 9)}…` : cat}
+          </text>
+        </g>
+      ))}
+      {gCount > 1
+        ? groups.map((g, gi) => (
+            <g key={`lg-${g.subCategory}`} transform={`translate(${PAD.left + gi * 110}, ${PAD.top - 2})`}>
+              <rect x="0" y="-6" width="10" height="6" rx="1.5" fill={PALETTE[gi % PALETTE.length]} />
+              <text x="14" y="0" fontSize="9" fill="#8E8E93">
+                {g.subCategory}
+              </text>
+            </g>
+          ))
+        : null}
+    </svg>
+  );
 }

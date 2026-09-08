@@ -13,6 +13,9 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from starlette.convertors import CONVERTOR_TYPES, Convertor, register_url_convertor
 
+from backend.tools.server_admin import ServerAdminError
+from backend.linkin.design_llm import generate_llm_structure
+
 from backend.linkin.constitution import (
     allowed_styles_for_region,
     load_constitution,
@@ -20,6 +23,7 @@ from backend.linkin.constitution import (
     update_constitution,
 )
 from backend.linkin.schematic import (
+    attach_model,
     SchematicError,
     attach_schematic,
     b64_to_schem_bytes,
@@ -409,14 +413,25 @@ def generate_building(body: dict[str, Any]) -> dict[str, Any]:
     except ToolValidationError as exc:
         raise _tool_http(exc) from exc
     params = invoked["params"]
-    building = attach_schematic(
-        {
-            "id": f"bld-{uuid.uuid4().hex[:10]}",
-            **params,
-            "status": "planned",
-            "note": f"已校验风格与 {params['block_count']} 方塊上限。",
-        }
+    base = {
+        "id": f"bld-{uuid.uuid4().hex[:10]}",
+        **params,
+        "status": "planned",
+        "note": f"已校验风格与 {params['block_count']} 方塊上限。",
+    }
+    # LLM 先理解需求設計 3D 模型；不可用／無效時自動降級程序化生成。（本地定制）
+    designed = generate_llm_structure(
+        prompt=str(params.get("prompt") or ""),
+        style=str(params.get("style") or ""),
+        block_count=int(params.get("block_count") or 64),
+        seed=base["id"],
+        region=str(params.get("region") or ""),
     )
+    if designed is not None:
+        model, design_payload = designed
+        building = attach_model(base, model, generator="llm", design=design_payload)
+    else:
+        building = attach_schematic(base)
     upsert_entity("buildings", building)
     get_store().upsert(
         COL_WORLDVIEW,
@@ -746,3 +761,166 @@ def overview() -> dict[str, Any]:
         },
         "minecraft": mcp_status,
     }
+
+
+# ── 服務器運維智能體（本地定制，恢復自 server_admin 模組）──
+_SERVER_ERROR_STATUS = {
+    "unknown_tool": 400,
+    "invalid": 400,
+    "invalid_service": 400,
+    "path_denied": 403,
+    "service_denied": 403,
+    "dangerous_input": 403,
+    "expired": 409,
+    "invalid_state": 409,
+    "needs_confirmation": 409,
+}
+
+
+def _server_http(exc: ServerAdminError) -> HTTPException:
+    status = _SERVER_ERROR_STATUS.get(str(exc.code), 500)
+    return HTTPException(
+        status_code=status,
+        detail={"message": str(exc), "code": exc.code, **exc.extra},
+    )
+
+
+@linkin_router.get("/server/health")
+def server_health() -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    return server_ops.health_snapshot()
+
+
+@linkin_router.post("/server/ask")
+def server_ask(body: dict[str, Any]) -> dict[str, Any]:
+    """自然語言運維問答：讀操作即執行；寫操作轉 pending_approval。"""
+    from backend.linkin import server_admin as server_ops
+
+    question = str(body.get("question") or body.get("command") or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="需要 question")
+    auto_approve = bool(body.get("auto_approve"))
+    role = str(body.get("role") or "").strip()
+    try:
+        return server_ops.ask_agent(question, auto_approve=auto_approve, role=role)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ServerAdminError as exc:
+        raise _server_http(exc) from exc
+
+
+@linkin_router.get("/server/approvals")
+def server_approvals(include_done: bool = Query(False)) -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    items = server_ops.list_approvals(include_done=include_done)
+    return {"approvals": items, "count": len(items)}
+
+
+@linkin_router.post("/server/approvals/{approval_id}/confirm")
+def server_approval_confirm(approval_id: str) -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    try:
+        return server_ops.confirm_approval(approval_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ServerAdminError as exc:
+        raise _server_http(exc) from exc
+
+
+@linkin_router.post("/server/approvals/{approval_id}/cancel")
+def server_approval_cancel(approval_id: str) -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    try:
+        return server_ops.cancel_approval(approval_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ServerAdminError as exc:
+        raise _server_http(exc) from exc
+
+
+@linkin_router.post("/server/patrol")
+def server_patrol(body: dict[str, Any] | None = None) -> dict[str, Any]:
+    """主動巡檢：健康快照 + 規則提案（預設轉人工批准；不自動執行破壞性操作）。"""
+    from backend.linkin import server_admin as server_ops
+
+    auto_approve = bool((body or {}).get("auto_approve"))
+    return server_ops.patrol(auto_approve=auto_approve)
+
+
+@linkin_router.get("/server/report")
+def server_report() -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    return {"report": server_ops.daily_report()}
+
+
+@linkin_router.get("/server/audit")
+def server_audit(limit: int = Query(100, ge=1, le=1000)) -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    rows = server_ops.audit_tail(limit)
+    return {"entries": rows, "count": len(rows)}
+
+
+# ── grill-me 嚴刑拷打模式（本地定制，上游無此區塊）──
+
+
+@linkin_router.post("/grill/start")
+def grill_start(body: dict[str, Any]) -> dict[str, Any]:
+    """開一場拷問會話：body={"topic": "<計畫/決策/想法>"}。"""
+    from backend.linkin import grill_me
+
+    topic = str((body or {}).get("topic") or (body or {}).get("question") or "").strip()
+    try:
+        return {"status": "ok", **grill_me.grill_start(topic)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    except Exception as exc:  # noqa: BLE001 — LLM 未配置/失敗
+        logger.warning("grill_me 啟動失敗：%s", exc)
+        raise HTTPException(
+            status_code=503, detail={"message": f"grill-me 不可用（LLM 未配置或呼叫失敗）：{exc}"}
+        ) from exc
+
+
+@linkin_router.post("/grill/turn")
+def grill_turn(body: dict[str, Any]) -> dict[str, Any]:
+    """繼續拷問：body={"session_id": "...", "answer": "<使用者回答>"}。"""
+    from backend.linkin import grill_me
+
+    session_id = str((body or {}).get("session_id") or "").strip()
+    answer = str((body or {}).get("answer") or "").strip()
+    try:
+        return {"status": "ok", **grill_me.grill_turn(session_id, answer)}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("grill_me 回合失敗：%s", exc)
+        raise HTTPException(status_code=503, detail={"message": f"grill-me 不可用：{exc}"}) from exc
+
+
+@linkin_router.post("/grill/summary")
+def grill_summary(body: dict[str, Any]) -> dict[str, Any]:
+    """強制收尾：body={"session_id": "..."} → 🟢🟡🔴 總結 + GO/NO-GO 裁決。"""
+    from backend.linkin import grill_me
+
+    session_id = str((body or {}).get("session_id") or "").strip()
+    try:
+        return {"status": "ok", **grill_me.grill_summary(session_id)}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("grill_me 總結失敗：%s", exc)
+        raise HTTPException(status_code=503, detail={"message": f"grill-me 不可用：{exc}"}) from exc
+
+
+@linkin_router.get("/grill/status")
+def grill_status() -> dict[str, Any]:
+    from backend.linkin import grill_me
+
+    return grill_me.grill_status()

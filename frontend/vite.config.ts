@@ -12,7 +12,6 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       'react-is',
-      '@lightningchart/lcjs',
       'three',
       'three/examples/jsm/controls/OrbitControls.js',
       'mermaid',

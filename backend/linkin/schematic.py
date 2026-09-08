@@ -660,6 +660,40 @@ def preview_payload(schematic: Schematic, *, building_id: str = "") -> dict[str,
     }
 
 
+def attach_model(
+    building: dict[str, Any],
+    model: Schematic,
+    *,
+    generator: str = "procedural",
+    design: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """把已生成的 Schematic 寫盤並將摘要併入建築紀錄。（本地定制，恢復自舊版）
+
+    ``generator``：``"procedural"``（程序化）或 ``"llm"``（LLM 設計）；
+    ``design`` 為 LLM 設計的 DSL payload（op 序列），僅 LLM 路徑附帶。
+    """
+    rec_id = str(building.get("id") or "building")
+    write_schematic_file(rec_id, model)
+    summary = model.summary()
+    origin = "由 LLM 設計" if generator == "llm" else "生成"
+    note = (
+        f"已{origin} Sponge Schematic v{model.version}（{summary['voxel_count']} 方塊，"
+        f"{summary['width']}×{summary['height']}×{summary['length']}）。"
+    )
+    record = {
+        **building,
+        **summary,
+        "block_count": summary["voxel_count"],
+        "block_budget": int(building.get("block_count") or summary["voxel_count"]),
+        "schematic_file": schematic_path(rec_id).name,
+        "generator": generator,
+        "note": note,
+    }
+    if design is not None:
+        record["design"] = design
+    return record
+
+
 def attach_schematic(building: dict[str, Any]) -> dict[str, Any]:
     rec_id = str(building.get("id") or "building")
     model = generate_structure(
