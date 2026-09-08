@@ -37,20 +37,35 @@ MODEL_TOKEN_HINTS: dict[str, dict[str, int]] = {
     "qwen-plus": {"max_context": 131072, "max_output": 16384},
     "qwen-max": {"max_context": 131072, "max_output": 16384},
     "qwen-long": {"max_context": 1_000_000, "max_output": 32768},
+    "qwen3.8-max": {"max_context": 1_000_000, "max_output": 65536},
+    "qwen3.8-flash": {"max_context": 1_000_000, "max_output": 65536},
+    "qwen3.7-plus": {"max_context": 1_000_000, "max_output": 32768},
+    "qwen3.7-flash": {"max_context": 1_000_000, "max_output": 32768},
     "qwen3.5-max": {"max_context": 131072, "max_output": 16384},
     "qwen3-coder-plus": {"max_context": 131072, "max_output": 16384},
     "deepseek-v4-flash": {"max_context": 128000, "max_output": 8192},
     "deepseek-v4-pro": {"max_context": 128000, "max_output": 8192},
     "deepseek-v4-flash-vision-exp": {"max_context": 128000, "max_output": 8192},
     "kimi-k2": {"max_context": 128000, "max_output": 8192},
-    "kimi-k3": {"max_context": 256000, "max_output": 16384},
+    "kimi-k3": {"max_context": 1_000_000, "max_output": 16384},
+    "kimi-k2.7-code": {"max_context": 256000, "max_output": 16384},
+    "kimi-k2.6": {"max_context": 256000, "max_output": 16384},
     "moonshot-v1-8k": {"max_context": 8192, "max_output": 4096},
     "moonshot-v1-32k": {"max_context": 32768, "max_output": 8192},
     "moonshot-v1-128k": {"max_context": 128000, "max_output": 8192},
     "gpt-4o": {"max_context": 128000, "max_output": 16384},
     "gpt-4o-mini": {"max_context": 128000, "max_output": 16384},
+    "gpt-6-astra": {"max_context": 1_050_000, "max_output": 128000},
+    "gpt-5.6-sol": {"max_context": 1_050_000, "max_output": 128000},
+    "gpt-5.6-terra": {"max_context": 1_050_000, "max_output": 128000},
+    "gpt-5.6-luna": {"max_context": 1_050_000, "max_output": 128000},
     "glm-4-flash": {"max_context": 128000, "max_output": 8192},
     "glm-4-plus": {"max_context": 128000, "max_output": 16384},
+    "glm-5": {"max_context": 200000, "max_output": 128000},
+    "glm-5.1": {"max_context": 200000, "max_output": 128000},
+    "glm-5.2": {"max_context": 1_000_000, "max_output": 128000},
+    "glm-5.3": {"max_context": 1_000_000, "max_output": 128000},
+    "glm-5.3-flash": {"max_context": 1_000_000, "max_output": 128000},
 }
 
 
@@ -66,7 +81,7 @@ PROVIDER_PRESETS: dict[str, dict[str, str]] = {
     "qwen": {
         "name": "通義千問 Qwen",
         "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "model": "qwen-plus",
+        "model": "qwen3.8-flash",
     },
     "deepseek": {
         "name": "DeepSeek",
@@ -76,7 +91,7 @@ PROVIDER_PRESETS: dict[str, dict[str, str]] = {
     "moonshot": {
         "name": "Moonshot / Kimi",
         "api_base": "https://api.moonshot.cn/v1",
-        "model": "kimi-k2",
+        "model": "kimi-k3",
     },
     "openrouter": {
         "name": "OpenRouter",
@@ -86,12 +101,12 @@ PROVIDER_PRESETS: dict[str, dict[str, str]] = {
     "openai": {
         "name": "OpenAI",
         "api_base": "https://api.openai.com/v1",
-        "model": "gpt-4o",
+        "model": "gpt-5.6-terra",
     },
     "zhipu": {
         "name": "智譜 GLM",
         "api_base": "https://open.bigmodel.cn/api/paas/v4",
-        "model": "glm-4-flash",
+        "model": "glm-5.2",
     },
     "ollama": {
         "name": "Ollama（本地）",

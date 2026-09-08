@@ -51,6 +51,13 @@ _DEFAULT_MODEL_COST: dict[str, tuple[float, float]] = {
     "nemotron-3.5-lightning": (0.00, 0.00),
     "glm-5.2": (0.10, 0.40),
     "kimi-k3": (0.40, 1.50),
+    # OpenAI 現行旗艦（官方價，USD/MTok）
+    "gpt-6-astra": (10.00, 50.00),
+    "gpt-5.6-terra": (2.00, 12.00),
+    "gpt-5.6-luna": (0.20, 1.20),
+    # Kimi 現行（¥20/¥100 概估匯率換算）
+    "kimi-k2.7-code": (0.90, 3.80),
+    "kimi-k2.6": (0.90, 3.80),
 }
 
 
