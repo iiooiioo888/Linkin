@@ -48,7 +48,19 @@ VENDOR_STATIC: dict[str, tuple[str, ...]] = {
     ),
     "zhipu": ("glm-5.3", "glm-5.3-flash", "glm-5.2", "glm-5.1", "glm-5"),
     "mimo": ("mimo-v2.5-pro",),
-    "openai": ("gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"),
+    # 新模型在前（static_ids[0] 為未知模型的 fallback）；已退役的 gpt-4o/4.1
+    # 保留在尾端，供舊配置 clamp 相容（上游測試契約仍引用 gpt-4o-mini）
+    "openai": (
+        "gpt-6-astra",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+    ),
 }
 
 VENDOR_HOSTS: tuple[tuple[str, str], ...] = (
