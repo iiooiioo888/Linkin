@@ -52,6 +52,7 @@ class GrillTree:
     goal: str
     nodes: list[GrillNode] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
+    campaign: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         open_nodes = [n for n in self.nodes if n.status in {"open", "blocked"}]
@@ -63,6 +64,7 @@ class GrillTree:
             "nodes": [n.to_dict() for n in self.nodes],
             "open_count": len(open_nodes),
             "blocked": [n.to_dict() for n in open_nodes],
+            "campaign": self.campaign,
         }
 
 
@@ -85,6 +87,7 @@ class UserGrillSession:
     ticket: dict[str, Any] | None = None
     asked_ids: list[int] = field(default_factory=list)
     user_rounds: int = 0
+    planner: dict[str, Any] | None = None
 
 
 @dataclass
@@ -130,6 +133,9 @@ class RahoStore:
         self.user_sessions: dict[str, UserGrillSession] = {}
         self.trees: dict[str, GrillTree] = {}
         self.pending: dict[str, PendingDecision] = {}
+        self.battle_plans: dict[str, dict[str, Any]] = {}
+        self.grill_rounds: dict[str, int] = {}
+        self.shared_memory: dict[str, dict[str, Any]] = {}
 
     def _trim(self, mapping: dict, limit: int) -> None:
         while len(mapping) > limit:
@@ -160,6 +166,11 @@ class RahoStore:
             elif goal and not tree.goal:
                 tree.goal = goal
             return tree
+
+    def set_campaign(self, run_id: str, campaign: dict[str, Any], goal: str = "") -> None:
+        tree = self.ensure_tree(run_id, goal)
+        with self._lock:
+            tree.campaign = campaign or {}
 
     def add_node(
         self,
@@ -230,6 +241,86 @@ class RahoStore:
         pending.event.set()
         return pending
 
+    def put_battle_plan(self, plan_id: str, plan: dict[str, Any]) -> None:
+        with self._lock:
+            self.battle_plans[plan_id] = plan
+            self._trim(self.battle_plans, _MAX_TREES)
+
+    def get_battle_plan(self, plan_id: str) -> dict[str, Any] | None:
+        return self.battle_plans.get(plan_id)
+
+    def user_grill_run_id(self, session_id: str) -> str:
+        return f"grill:{(session_id or '').strip()}"
+
+    def record_user_grill(
+        self,
+        session_id: str,
+        query: str,
+        *,
+        summary: str,
+        status: str,
+        from_layer: int,
+        to_layer: int,
+        payload: dict[str, Any] | None = None,
+    ) -> GrillNode:
+        """把 L5↔L4 用戶審計寫進質詢樹，讓監控中心看得到烤問鏈。"""
+        return self.add_node(
+            self.user_grill_run_id(session_id),
+            from_layer=from_layer,
+            to_layer=to_layer,
+            kind="user_grill",
+            summary=summary,
+            status=status,
+            payload=payload or {},
+            goal=query,
+        )
+
+    def resolve_user_grill(self, session_id: str, status: str = "resolved") -> None:
+        tree = self.trees.get(self.user_grill_run_id(session_id))
+        if not tree:
+            return
+        now = time.time()
+        with self._lock:
+            for node in tree.nodes:
+                if node.kind == "user_grill" and node.status in {"open", "blocked"}:
+                    node.status = status
+                    node.resolved_at = now
+
+    def bump_grill_round(self, item_id: str) -> int:
+        key = (item_id or "").strip() or "_"
+        with self._lock:
+            self.grill_rounds[key] = int(self.grill_rounds.get(key) or 0) + 1
+            self._trim(self.grill_rounds, _MAX_PENDING * 4)
+            return self.grill_rounds[key]
+
+    def grill_round(self, item_id: str) -> int:
+        return int(self.grill_rounds.get((item_id or "").strip() or "_") or 0)
+
+    def write_signed(self, node_id: str, record: dict[str, Any]) -> dict[str, Any]:
+        key = (node_id or "").strip()
+        if not key:
+            return record
+        with self._lock:
+            self.shared_memory[key] = record
+            self._trim(self.shared_memory, _MAX_TREES * 4)
+        return record
+
+    def read_signed(self, node_id: str) -> dict[str, Any] | None:
+        key = (node_id or "").strip()
+        if not key:
+            return None
+        record = self.shared_memory.get(key)
+        if not record or not record.get("signed"):
+            return None
+        return record
+
+    def revoke_signed(self, node_id: str) -> None:
+        key = (node_id or "").strip()
+        with self._lock:
+            record = self.shared_memory.get(key)
+            if record:
+                record["signed"] = False
+
     def snapshot(self) -> dict[str, Any]:
         trees = [t.to_dict() for t in self.list_trees()]
         pending = [p.to_dict() for p in self.list_pending() if p.resolution is None]
@@ -253,6 +344,8 @@ class RahoStore:
             "pending_decisions": pending,
             "blocked": blocked,
             "user_sessions": len(self.user_sessions),
+            "battle_plans": len(self.battle_plans),
+            "signed_memory": sum(1 for r in self.shared_memory.values() if r.get("signed")),
         }
 
 

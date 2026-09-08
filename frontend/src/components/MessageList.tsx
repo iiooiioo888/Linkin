@@ -14,6 +14,7 @@ interface MessageListProps {
   onOpenTrace?: (taskId: string) => void;
   onSuggest?: (text: string, companyMode: boolean) => void;
   onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
+  onBattlePick?: (messageId: string, choice: string) => void;
 }
 
 const SUGGESTIONS: { text: string; company: boolean }[] = [
@@ -29,6 +30,7 @@ export default function MessageList({
   onOpenTrace,
   onSuggest,
   onGrillAnswer,
+  onBattlePick,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +82,7 @@ export default function MessageList({
             onOpenTask={msg.taskState ? () => onOpenTask?.(msg.id) : undefined}
             onOpenTrace={onOpenTrace}
             onGrillAnswer={onGrillAnswer}
+            onBattlePick={onBattlePick}
           />
         ))}
         <div ref={bottomRef} />

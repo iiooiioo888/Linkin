@@ -175,6 +175,27 @@ class TaskRecord:
         return record
 
 
+def _task_ticket(record: TaskRecord) -> dict[str, Any] | None:
+    ticket = (record.options or {}).get("auditor_ticket")
+    return ticket if isinstance(ticket, dict) else None
+
+
+def _apply_commander_result(record: TaskRecord, result: dict[str, Any]) -> None:
+    commander = result.get("commander")
+    battle = result.get("battle_plan")
+    if commander:
+        record.raho = {**(record.raho or {}), "commander": commander, **(result.get("raho") or {})}
+    if battle:
+        record.plan = {
+            **(record.plan or {}),
+            "strategy": "commander",
+            "subtask_count": len(battle.get("dag_nodes") or []),
+            "execution_plan": battle.get("plan_id"),
+            "battle_plan": battle,
+            "commander": commander,
+        }
+
+
 class TaskManager:
     """任務管理器（進程內單例，任務記錄持久化到 Redis）。"""
 
@@ -628,7 +649,21 @@ class TaskManager:
                     "subtask_count": data.get("subtask_count"),
                     "strategy": data.get("strategy"),
                     "execution_plan": data.get("execution_plan"),
+                    "campaign": data.get("campaign") or getattr(orchestrator, "_campaign", {}),
                 }
+            if event in {
+                CompanyEvent.CAMPAIGN_PLANNED,
+                CompanyEvent.BATTLE_PLANNED,
+                CompanyEvent.GRILL_RAISED,
+                CompanyEvent.GRILL_RESOLVED,
+                CompanyEvent.USER_DECISION_NEEDED,
+                CompanyEvent.RAHO_TIMEOUT,
+                CompanyEvent.INSPECTOR_VERDICT,
+            }:
+                try:
+                    record.raho = orchestrator._raho_snapshot()
+                except Exception:  # noqa: BLE001
+                    pass
             # 每次事件都刷新看板與預算快照
             try:
                 record.kanban = {
@@ -671,7 +706,7 @@ class TaskManager:
         self._orchestrators[record.task_id] = orchestrator
 
         try:
-            result = await orchestrator.execute(record.query)
+            result = await orchestrator.execute(record.query, ticket=_task_ticket(record))
         except Exception as exc:  # noqa: BLE001
             logger.error("公司任務 %s 恢復執行失敗：%s", record.task_id, exc)
             record.status = "failed"
@@ -750,7 +785,7 @@ class TaskManager:
         self._orchestrators[record.task_id] = orchestrator
 
         try:
-            result = await orchestrator.execute(company_query)
+            result = await orchestrator.execute(company_query, ticket=_task_ticket(record))
         except Exception as exc:  # noqa: BLE001
             logger.error("公司任務 %s 執行失敗：%s", record.task_id, exc)
             record.status = "failed"
@@ -765,6 +800,7 @@ class TaskManager:
             # 無論成功失敗，清理 orchestrator 引用
             self._orchestrators.pop(record.task_id, None)
 
+        _apply_commander_result(record, result)
         if not result.get("success"):
             error_msg = result.get("error") or result.get("final_output") or "公司運行時執行失敗"
             # 判斷是否為使用者取消

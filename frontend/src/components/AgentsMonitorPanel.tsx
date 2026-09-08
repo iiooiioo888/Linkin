@@ -145,6 +145,7 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
           { label: '預算告警', value: String(m.budget_alerts) },
           { label: '被質詢率', value: `${Math.round((m.grill_rate ?? 0) * 100)}%` },
           { label: '決策清晰', value: `${Math.round((m.decision_clarity ?? 1) * 100)}%` },
+          { label: 'RAHO 職級', value: m.demoted ? '已降級' : m.raho_rank === 'watch' ? '觀察' : '正常' },
         ]}
       />
     );

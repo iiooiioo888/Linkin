@@ -216,6 +216,14 @@ def reflect(state: EvoLoopState) -> dict:
     score = state.get("score", 0.0)
     multi_dim = state.get("multi_dim_evaluation", {})
     reflection_hints = _search_reflection_hints(state.get("query", ""))
+    try:
+        from backend.company.raho.scorecard import reflection_notes
+
+        grill_notes = reflection_notes(state.get("company_result") or {})
+        if grill_notes:
+            reflection_hints = (reflection_hints or "") + grill_notes + "\n"
+    except Exception:  # noqa: BLE001
+        pass
 
     # 分層反思：根據分數選擇反思深度
     if score < 5.0:

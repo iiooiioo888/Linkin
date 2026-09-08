@@ -142,6 +142,42 @@ data: {"error": "錯誤訊息"}
 
 ---
 
+## RAHO 質詢與裁決
+
+### POST /raho/grill/start
+
+啟動 L5→L4 用戶 Grill-Me。簡單閒聊可回 `should_grill: false`。
+
+### POST /raho/grill/turn
+
+回答一輪審計。`force_lock: true` 視同過度授權，五維未達標會終止而非放行。
+
+### GET /raho/grill/status
+
+審計閘門狀態與鎖定門檻。
+
+### GET /raho/tree
+
+遞歸質詢樹、戰役 DAG、待決決策與阻塞點。可帶 `run_id`。
+
+### POST /raho/decide
+
+L5 用戶點選熱馬桶圈方案。
+
+### GET /raho/scorecard
+
+角色被質詢率與決策清晰度。
+
+### POST /raho/commander/plan
+
+L3 戰術指揮官：把 L4 門票 JSON（或鎖定簡報）拆成原子作戰地圖。可能回 `PLAN_READY`、`REJECT_TO_L4` 或 `ESCALATE_TO_USER`。
+
+### POST /raho/commander/grill
+
+L3 回應 L2 `[GRILL]`（資料缺失／工具不足／邏輯矛盾／單純確認）。3 輪無解自動 `[ESCALATE]`。
+
+---
+
 ## 配置
 
 ### GET /config

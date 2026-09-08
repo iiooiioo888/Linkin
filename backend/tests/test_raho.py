@@ -25,6 +25,7 @@ from backend.company.raho.scorecard import (
     record_execution,
     record_grill,
     reset_scorecard,
+    should_demote,
 )
 from backend.company.raho.store import STORE
 from backend.company.state import RoleType, WorkItem, WorkItemStatus
@@ -39,11 +40,17 @@ def _reset_raho(monkeypatch):
     STORE.user_sessions.clear()
     STORE.trees.clear()
     STORE.pending.clear()
+    STORE.battle_plans.clear()
+    STORE.grill_rounds.clear()
+    STORE.shared_memory.clear()
     reset_scorecard()
     yield
     STORE.user_sessions.clear()
     STORE.trees.clear()
     STORE.pending.clear()
+    STORE.battle_plans.clear()
+    STORE.grill_rounds.clear()
+    STORE.shared_memory.clear()
     reset_scorecard()
 
 
@@ -85,6 +92,11 @@ class TestSemanticLock:
         assert locked["terminated"] is True
         assert locked["locked"] is False
         assert "無法為我無法理解的目標負責" in (locked.get("termination_reason") or "")
+        tree = STORE.get_tree(STORE.user_grill_run_id(sid))
+        assert tree is not None
+        kinds = {n.kind for n in tree.nodes}
+        assert "user_grill" in kinds
+        assert any(n.from_layer == 4 and n.to_layer == 5 for n in tree.nodes)
 
 
 class TestMgp:
@@ -130,6 +142,17 @@ class TestAtomicAndBus:
         assert "前置交付" in ctx
         assert len(ctx) < 1200
 
+    def test_downward_context_prefers_input_ref(self):
+        parent = WorkItem(title="調研", description="d")
+        parent.status = WorkItemStatus.DONE
+        parent.artifacts["output"] = "不該灌進 L2 的長文" * 40
+        child = WorkItem(title="分析", description="d", depends_on=[parent.id])
+        child.artifacts["input_ref"] = "shared_memory://results/N1_output.json"
+        child.artifacts["allowed_tools"] = ["read_memory"]
+        ctx = downward_context(child, [parent])
+        assert "shared_memory://results/N1_output.json" in ctx
+        assert "不該灌進 L2 的長文" not in ctx
+
     def test_upward_brief_and_compress(self):
         brief = upward_brief(title="T", description="D" * 400, issues=["缺欄位"])
         assert "缺欄位" in brief
@@ -145,6 +168,14 @@ class TestScorecardAndTree:
         assert card["grill_count"] == 1
         assert card["grill_rate"] == 0.5
         assert card["decision_clarity"] < 1.0
+        assert card["rank"] in {"ok", "watch", "demoted"}
+        record_execution("manager")
+        record_grill("manager")
+        record_grill("manager")
+        assert should_demote("manager") is True
+        demoted = metrics_for("manager")
+        assert demoted["demoted"] is True
+        assert demoted["rank"] == "demoted"
 
     def test_tree_records_nodes(self):
         node = STORE.add_node(
@@ -220,6 +251,37 @@ class TestRahoApi:
             assert "trees" in tree.json()
             status = client.get("/raho/grill/status")
             assert status.json()["enabled"] is True
+            assert status.json()["lock_threshold"] == 0.92
+
+
+class TestCampaignPlanner:
+    def test_rule_plan_growth_goal(self):
+        from backend.company.raho.planner import plan_campaign_rule, tag_work_items
+
+        cmap = plan_campaign_rule("把現有用戶復購率從 12% 提升到 18%，並做促銷頁")
+        assert len(cmap.nodes) >= 3
+        assert cmap.nodes[0].node_id == "A"
+        assert any(n.depends_on for n in cmap.nodes[1:])
+        assert cmap.success_criteria
+        item = WorkItem(title="撰寫競品 SWOT", description="四象限", assignee=RoleType.ANALYST)
+        tag_work_items([item], cmap)
+        assert item.artifacts["campaign_node"]["node_id"]
+
+    def test_choice_parse_and_superior_scorecard(self):
+        from backend.company.raho.mgp import parse_choices, parse_grill_output
+        from backend.company.raho.protocol import CHOICE_MARK, GRILL_MARK
+
+        kind, issues = parse_grill_output(
+            f"{CHOICE_MARK} 競品 B 發布新產品\nA: 改打差異化\nB: 暫緩等數據\nC: 轉向競品 A"
+        )
+        assert kind == "escalate"
+        assert issues
+        choices = parse_choices(f"{CHOICE_MARK}\nA: 改打差異化\nB: 暫緩等數據")
+        assert [c.key for c in choices] == ["a", "b"]
+        record_grill("manager")
+        card = metrics_for("manager")
+        assert card["grill_count"] >= 1
+        assert GRILL_MARK
 
 
 class TestOrchestratorCompatible:
@@ -244,3 +306,20 @@ class TestOrchestratorCompatible:
         assert kind == "clear"
         assert raw == "交付物正文"
         assert prompt == "prompt"
+
+    def test_escalation_patch_writes_tools_and_budget(self):
+        from backend.company.orchestrator import CompanyOrchestrator
+
+        orch = CompanyOrchestrator()
+        item = WorkItem(title="t", description="enough text here")
+        item.artifacts["atomic_role"] = {"task_layer": {}, "allowed_tools": []}
+        orch._apply_escalation_patch(
+            item,
+            {
+                "reissued_tools": ["web_search"],
+                "reissued_budget": {"max_iterations": 3, "token_budget": 800},
+            },
+        )
+        assert item.artifacts["allowed_tools"] == ["web_search"]
+        assert item.artifacts["max_iterations"] == 3
+        assert item.artifacts["atomic_role"]["allowed_tools"] == ["web_search"]

@@ -10,9 +10,11 @@ import re
 from typing import Any
 
 from backend.company.raho.protocol import (
+    CHOICE_MARK,
     CLEAR_MARK,
     ESCALATE_MARK,
     GRILL_MARK,
+    EscalationChoice,
     GrillIssue,
     MGP_EXECUTOR_PREAMBLE,
     MGP_SUPERIOR_PREAMBLE,
@@ -20,16 +22,29 @@ from backend.company.raho.protocol import (
 )
 
 _GRILL_LINE = re.compile(
-    rf"(?:{re.escape(GRILL_MARK)}|{re.escape(ESCALATE_MARK)})\s*[:：]?\s*(.+)",
+    rf"(?:{re.escape(GRILL_MARK)}|{re.escape(ESCALATE_MARK)}|{re.escape(CHOICE_MARK)})\s*[:：]?\s*(.+)",
+)
+_CHOICE_LINE = re.compile(
+    r"^\s*(?:[-*]\s*)?([A-Ca-c])[:：.、)\]]\s*(.+)$",
+    re.MULTILINE,
 )
 
 
 def apply_mgp_system(system_prompt: str, *, superior: bool = False) -> str:
-    """將 MGP 硬編碼到 System Prompt 最前方。"""
+    """將 MGP 硬編碼到 System Prompt 最前方。
+
+    L2 若已由 AtomicExecutorFactory 鎖定憲法層，不再疊加短前言，避免雙重協議。
+    """
     if not mgp_enabled():
         return system_prompt
-    preamble = MGP_SUPERIOR_PREAMBLE if superior else MGP_EXECUTOR_PREAMBLE
     body = (system_prompt or "").strip()
+    if not superior:
+        from backend.company.raho.atomic_executor import has_constitution
+        from backend.company.raho.inspector import has_inspector_constitution
+
+        if has_constitution(body) or has_inspector_constitution(body):
+            return body
+    preamble = MGP_SUPERIOR_PREAMBLE if superior else MGP_EXECUTOR_PREAMBLE
     if preamble in body:
         return body
     return f"{preamble}\n\n{body}".strip()
@@ -39,12 +54,30 @@ def parse_grill_output(text: str) -> tuple[str, list[GrillIssue]]:
     """解析執行產出。回傳 (kind, issues)。
 
     kind: clear | grill | escalate
-    無標記 → clear（向後相容）。
+    優先解析結構化 JSON；無標記 → clear（向後相容）。
     """
     raw = text or ""
     stripped = raw.lstrip()
+    from backend.company.raho.atomic_executor import parse_structured_protocol
+    from backend.company.raho.inspector import parse_inspector_grill
+
+    inspector = parse_inspector_grill(raw)
+    if inspector is not None:
+        kind = "escalate" if inspector.type == "ESCALATE" else "grill"
+        return kind, [inspector.to_issue()]
+
+    structured = parse_structured_protocol(raw)
+    if structured is not None:
+        kind = "escalate" if structured.type == "ESCALATE" else "grill"
+        return kind, [structured.to_issue()]
+
     issues: list[GrillIssue] = []
-    if stripped.startswith(ESCALATE_MARK) or f"\n{ESCALATE_MARK}" in raw:
+    if (
+        stripped.startswith(ESCALATE_MARK)
+        or stripped.startswith(CHOICE_MARK)
+        or f"\n{ESCALATE_MARK}" in raw
+        or f"\n{CHOICE_MARK}" in raw
+    ):
         kind = "escalate"
     elif stripped.startswith(GRILL_MARK) or f"\n{GRILL_MARK}" in raw:
         kind = "grill"
@@ -63,9 +96,25 @@ def parse_grill_output(text: str) -> tuple[str, list[GrillIssue]]:
 def strip_protocol_marks(text: str) -> str:
     """移除協議標記，留下交付物本文。"""
     cleaned = text or ""
-    for mark in (CLEAR_MARK, GRILL_MARK, ESCALATE_MARK):
+    for mark in (CLEAR_MARK, GRILL_MARK, ESCALATE_MARK, CHOICE_MARK):
         cleaned = cleaned.replace(mark, "")
     return cleaned.strip()
+
+
+def parse_choices(text: str) -> list[EscalationChoice]:
+    """從上交正文抽出 A/B/C 方案。"""
+    choices: list[EscalationChoice] = []
+    seen: set[str] = set()
+    for match in _CHOICE_LINE.finditer(text or ""):
+        key = match.group(1).lower()
+        label = match.group(2).strip()[:160]
+        if key in seen or not label:
+            continue
+        seen.add(key)
+        choices.append(EscalationChoice(key=key, label=label))
+        if len(choices) >= 3:
+            break
+    return choices
 
 
 def rule_inspect_instruction(
@@ -73,8 +122,17 @@ def rule_inspect_instruction(
     description: str,
     tools_allowed: list[str] | None = None,
     requested_tools: list[str] | None = None,
+    task_spec: dict[str, Any] | None = None,
 ) -> list[GrillIssue]:
-    """執行前規則檢查（不呼叫 LLM）。空描述等硬缺陷才攔截。"""
+    """執行前規則檢查（不呼叫 LLM）。空描述等硬缺陷才攔截。
+
+    若提供 L3 任務層 `task_spec`，改走戰前檢查清單五問。
+    """
+    if task_spec:
+        from backend.company.raho.atomic_executor import preflight_issues
+
+        return preflight_issues(task_spec)
+
     issues: list[GrillIssue] = []
     desc = (description or "").strip()
     if not desc or len(desc) < 8:

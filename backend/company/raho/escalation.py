@@ -27,9 +27,13 @@ logger = logging.getLogger(__name__)
 
 L3_SYSTEM = (
     MGP_SUPERIOR_PREAMBLE
-    + "你是 L3 戰術指揮官。下層原子執行者對你的指令提出質詢。"
-    "請用繁體中文明確補充缺失規格、放寬限制或改派工具。"
-    f"無法決策時第一行輸出 {ESCALATE_MARK}，並列 2~3 個方案。"
+    + "你是 L3 戰術指揮官。下層原子執行者對你的指令提出質詢。嚴禁敷衍。"
+    "決策樹："
+    "資料缺失→先找替代欄；無替代則暫停並交 L4 補數據源；"
+    "工具不足→檢查白名單，系統有工具則重發權限，無則標記基礎設施缺失並交 L5；"
+    "邏輯矛盾→必須給優先級裁定，自己無法裁定則交 L4；"
+    "單純確認→一輪內給量化定義（例如語法錯誤 < 1 處，觀點至少 2 個來源）。"
+    f"3 輪無解必須第一行輸出 {ESCALATE_MARK}，並列 2~3 個方案。"
 )
 
 L4_SYSTEM = (
@@ -159,12 +163,21 @@ async def resolve_grill(
     description: str,
     issues: list[GrillIssue],
     assignee: str = "",
+    choices: list[EscalationChoice] | None = None,
+    superior: str = "manager",
 ) -> dict[str, Any]:
-    """L2 質詢的熱馬桶圈：L3 → L4 → L5。"""
+    """L2 質詢的熱馬桶圈：L3 → L4 → L5。
+
+    被質詢率記在下指令的上層（預設 manager），不是執行者。
+    """
     if not mgp_enabled():
         return {"action": "resolve", "reply": "MGP 已關閉，按原指令執行。", "layer": 0}
 
-    record_grill(assignee or "executor")
+    record_grill(superior or "manager")
+    from backend.services.commander import increment_grill_round, respond_to_grill
+
+    rounds_used = increment_grill_round(item_id)
+    sop = respond_to_grill(issues, rounds_used=max(0, rounds_used - 1))
     node = STORE.add_node(
         run_id,
         from_layer=int(RahoLayer.L2_EXECUTOR),
@@ -172,20 +185,51 @@ async def resolve_grill(
         kind="mgp",
         summary=_issue_text(issues)[:240],
         status="open",
-        payload={"item_id": item_id, "issues": [i.to_dict() for i in issues]},
+        payload={"item_id": item_id, "issues": [i.to_dict() for i in issues], "sop": sop},
         goal=goal,
     )
 
+    if sop.get("action") == "resolve" and sop.get("reply") and not sop.get("escalate"):
+        STORE.resolve_node(run_id, node.node_id, "resolved")
+        STORE.add_node(
+            run_id,
+            from_layer=int(RahoLayer.L3_DECOMPOSER),
+            to_layer=int(RahoLayer.L2_EXECUTOR),
+            kind="resolve",
+            summary=str(sop["reply"])[:240],
+            status="resolved",
+            parent_id=node.node_id,
+        )
+        record_resolution(assignee or "executor", clear=True)
+        return {**sop, "layer": int(RahoLayer.L3_DECOMPOSER), "node_id": node.node_id}
+
     current = RahoLayer.L3_DECOMPOSER
     prior = ""
+    if sop.get("escalate"):
+        prior = str(sop.get("reply") or "L3 SOP 無法裁決")
+        current = (
+            RahoLayer.L5_USER
+            if sop.get("escalate_to") == "L5"
+            else RahoLayer.L4_PLANNER
+        )
+        STORE.add_node(
+            run_id,
+            from_layer=int(RahoLayer.L3_DECOMPOSER),
+            to_layer=int(current),
+            kind="escalate",
+            summary=prior[:240],
+            status="escalated",
+            parent_id=node.node_id,
+        )
+        record_escalation(assignee or "executor", to_user=current == RahoLayer.L5_USER)
     for _round in range(MAX_SUPERIOR_ROUNDS + 1):
         if current == RahoLayer.L5_USER:
-            choices = _default_choices(issues)
+            user_choices = choices if choices else _default_choices(issues)
             result = await wait_user_decision(
                 run_id=run_id,
                 item_id=item_id,
                 question=_issue_text(issues),
-                choices=choices,
+                choices=user_choices,
             )
             STORE.resolve_node(run_id, node.node_id, "escalated")
             record_escalation(assignee or "executor", to_user=True)

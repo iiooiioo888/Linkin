@@ -803,6 +803,10 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
             int(agent["metrics"]["human_escalations"]),
             int(card.get("user_escalations") or 0),
         )
+        agent["metrics"]["demoted"] = bool(card.get("demoted"))
+        agent["metrics"]["raho_rank"] = card.get("rank") or "ok"
+        agent["demoted"] = bool(card.get("demoted"))
+        agent["raho_rank"] = card.get("rank") or "ok"
     except Exception:  # noqa: BLE001
         pass
     alerts: list[dict[str, str]] = []
@@ -818,7 +822,14 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
     if cap_pct >= 80:
         alerts.append({"level": "warning", "message": f"並行容量已用 {cap_pct:.0f}%"})
     grill_rate = float(agent["metrics"].get("grill_rate") or 0)
-    if grill_rate >= 0.4:
+    if agent.get("demoted") or agent["metrics"].get("demoted"):
+        alerts.append(
+            {
+                "level": "critical",
+                "message": f"規劃能力已降級：被質詢率 {grill_rate:.0%}，改走規則骨架",
+            }
+        )
+    elif grill_rate >= 0.4:
         alerts.append(
             {"level": "warning", "message": f"被質詢率 {grill_rate:.0%}，規劃清晰度偏低"}
         )

@@ -16,16 +16,19 @@ from backend.company.raho.protocol import (
     lock_threshold,
     user_grill_enabled,
 )
-from backend.services.auditor import (
-    auditor_lock,
-    auditor_start,
-    auditor_status,
-    auditor_turn,
-    should_grill_user,
-)
-from backend.services.auditor import _llm_question as _auditor_llm_question
 
 logger = logging.getLogger(__name__)
+
+
+def _auditor():
+    """延後匯入，避免 raho/__init__ → grill_user → auditor → raho 循環。"""
+    from backend.services import auditor
+
+    return auditor
+
+
+def should_grill_user(query: str, execution_strategy: str = "auto") -> bool:
+    return _auditor().should_grill_user(query, execution_strategy)
 
 _QUANT = re.compile(
     r"(\d+(\.\d+)?\s*%|\d+|gmv|kpi|roi|轉化|复购|復購|淨利|净利|營收|营收|"
@@ -74,25 +77,25 @@ def score_requirement(query: str, answers: list[str] | None = None) -> tuple[flo
 
 def _llm_question(query: str, transcript: str, gaps: list[str], phase: int = 1):
     """測試可 monkeypatch 的 LLM 追問入口。"""
-    return _auditor_llm_question(query, transcript, gaps, phase)
+    return _auditor()._llm_question(query, transcript, gaps, phase)
 
 
 def grill_user_start(query: str) -> dict[str, Any]:
     """開一場需求審計。第一次絕不放行。"""
-    return auditor_start(query)
+    return _auditor().auditor_start(query)
 
 
 def grill_user_turn(session_id: str, answer: str) -> dict[str, Any]:
-    return auditor_turn(session_id, answer)
+    return _auditor().auditor_turn(session_id, answer)
 
 
 def grill_user_lock(session_id: str, note: str = "") -> dict[str, Any]:
     """『直接執行』視同過度授權，不得繞過五維門檻。"""
-    return auditor_lock(session_id, note)
+    return _auditor().auditor_lock(session_id, note)
 
 
 def grill_user_status() -> dict[str, Any]:
-    status = auditor_status()
+    status = _auditor().auditor_status()
     status.setdefault("lock_threshold", lock_threshold())
     status.setdefault("enabled", user_grill_enabled())
     status.setdefault("max_turns", MAX_USER_GRILL_TURNS)

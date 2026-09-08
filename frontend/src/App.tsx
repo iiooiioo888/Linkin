@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChatMessage, ChatSession, TaskProgress } from './types';
-import { createTask, fetchConfig, fetchMemories, fetchTask, sendChatStream, startUserGrill, turnUserGrill, TaskWebSocket } from './api/client';
+import { createTask, fetchConfig, fetchMemories, fetchTask, planBattle, sendChatStream, startUserGrill, streamAuditor, TaskWebSocket } from './api/client';
 import type { TaskWsMessage } from './api/client';
 import {
   appRouteFromState,
@@ -316,6 +316,41 @@ export default function App() {
               locked_brief: grill.locked_brief,
               ticket: grill.ticket ?? null,
             };
+            try {
+              const battle = await planBattle(
+                (grill.ticket ?? undefined) as Record<string, unknown> | undefined,
+                grill.locked_brief,
+              );
+              updateSession(sessionId, (s) => ({
+                ...s,
+                updatedAt: Date.now(),
+                messages: s.messages.map((m) =>
+                  m.id === assistantId ? { ...m, battle, grill: { ...grill, originalQuery: query } } : m,
+                ),
+              }));
+              if (battle.status === 'REJECT_TO_L4' || battle.status === 'ESCALATE_TO_USER') {
+                updateSession(sessionId, (s) => ({
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === assistantId
+                      ? {
+                          ...m,
+                          streaming: false,
+                          content:
+                            battle.status === 'REJECT_TO_L4'
+                              ? 'L3 退回 L4：門票缺件，拒絕拆解。'
+                              : 'L3 上交用戶：約束內不可行。',
+                          battle,
+                        }
+                      : m,
+                  ),
+                }));
+                setSending(false);
+                return;
+              }
+            } catch {
+              // L3 不可用時仍帶門票進入公司運行時
+            }
           }
         } catch {
           // Grill 不可用時降級直通執行
@@ -556,7 +591,14 @@ export default function App() {
                 });
               }
             });
-          } else if (msg.event === 'phase_change' || msg.event === 'evaluation') {
+          } else if (
+            msg.event === 'phase_change' ||
+            msg.event === 'evaluation' ||
+            msg.event === 'grill_raised' ||
+            msg.event === 'user_decision_needed' ||
+            msg.event === 'campaign_planned' ||
+            msg.event === 'inspector_verdict'
+          ) {
             // 增量更新：获取最新状态
             fetchTask(task_id).then(applyProgress).catch(() => {});
           }
@@ -608,7 +650,11 @@ export default function App() {
       setSending(true);
       setError(null);
       try {
-        const next = await turnUserGrill(grill.session_id, answer, forceLock);
+        const next = await streamAuditor({
+          sessionId: grill.session_id,
+          answer,
+          forceLock,
+        });
         const history = [
           ...(grill.history ?? []),
           { role: 'user' as const, content: answer },
@@ -640,6 +686,27 @@ export default function App() {
             executionStrategy: (msg.executionStrategy ?? 'auto') as SendOptions['executionStrategy'],
             companyTemplate: 'quick_task' as const,
           };
+          let battleBlocked = false;
+          try {
+            const battle = await planBattle(
+              (next.ticket ?? undefined) as Record<string, unknown> | undefined,
+              next.locked_brief || '',
+            );
+            updateSession(sessionId, (s) => ({
+              ...s,
+              messages: s.messages.map((m) =>
+                m.id === messageId ? { ...m, battle } : m,
+              ),
+            }));
+            if (battle.status === 'REJECT_TO_L4' || battle.status === 'ESCALATE_TO_USER') {
+              battleBlocked = true;
+            }
+          } catch {
+            // L3 不可用時仍進入公司運行時
+          }
+          if (battleBlocked) {
+            return;
+          }
           void sendQuery(next.locked_brief || grill.originalQuery || answer, {
             executionStrategy: opts.executionStrategy,
             companyTemplate: (opts.companyTemplate as SendOptions['companyTemplate']) || 'quick_task',
@@ -656,6 +723,43 @@ export default function App() {
       } finally {
         setSending(false);
       }
+    },
+    [activeSession, sendQuery, updateSession],
+  );
+
+  const handleBattlePick = useCallback(
+    (messageId: string, choice: string) => {
+      const msg = activeSession?.messages.find((m) => m.id === messageId);
+      const grill = msg?.grill;
+      const opts = grill?.sendOptions ?? {
+        executionStrategy: (msg?.executionStrategy ?? 'auto') as SendOptions['executionStrategy'],
+        companyTemplate: 'quick_task' as const,
+      };
+      const baseTicket = (grill?.ticket ?? opts.taskOptions?.auditor_ticket ?? {}) as Record<string, unknown>;
+      const ticket = { ...baseTicket, user_override: choice };
+      updateSession(activeSession?.id ?? '', (s) => ({
+        ...s,
+        messages: s.messages.map((m) =>
+          m.id === messageId
+            ? {
+                ...m,
+                battle: m.battle
+                  ? { ...m.battle, waiting_for_user_decision: false, status: 'PLAN_READY' }
+                  : m.battle,
+              }
+            : m,
+        ),
+      }));
+      void sendQuery(grill?.locked_brief || grill?.originalQuery || choice, {
+        executionStrategy: opts.executionStrategy,
+        companyTemplate: (opts.companyTemplate as SendOptions['companyTemplate']) || 'quick_task',
+        skipGrill: true,
+        taskOptions: {
+          ...opts.taskOptions,
+          semantic_brief: grill?.locked_brief || grill?.originalQuery,
+          auditor_ticket: ticket,
+        },
+      });
     },
     [activeSession, sendQuery, updateSession],
   );
@@ -847,6 +951,7 @@ export default function App() {
             onOpenTrace={handleOpenTrace}
             onSuggest={handleSuggest}
             onGrillAnswer={handleGrillAnswer}
+            onBattlePick={handleBattlePick}
           />
         )}
 

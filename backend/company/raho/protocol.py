@@ -1,8 +1,8 @@
 """RAHO 共用協議：層級、標記、設定與資料結構。
 
 遞歸對抗式分層組織（Recursive Adversarial Hierarchical Organization）：
-  L5 用戶 → L4 元規劃官 → L3 戰術指揮官 → L2 原子執行者
-  L1 為內建於每個 L2 的憲兵反射（Grill-Trigger），不是獨立角色。
+  L5 用戶 → L4 元規劃官 → L3 戰術指揮官 → L2 原子執行者 → L1 憲兵審查官
+  L1 為獨立審查閘門：四維度驗收、雙向 Grill（L2 重做／L3 改指令），簽核後才寫入共享記憶。
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ ESCALATE_MARK = "[ESCALATE]"
 CLEAR_MARK = "[CLEAR]"
 CHOICE_MARK = "[ESCALATE_CHOICE]"
 
-LOCK_THRESHOLD = 0.90
+LOCK_THRESHOLD = 0.92
 MAX_USER_GRILL_TURNS = 10
 MAX_SUPERIOR_ROUNDS = 3
 MAX_PHASE_ROUNDS = 3
@@ -42,7 +42,7 @@ LAYER_LABELS: dict[int, str] = {
     RahoLayer.L1_GRILL: "L1 憲兵審查",
     RahoLayer.L2_EXECUTOR: "L2 原子執行",
     RahoLayer.L3_DECOMPOSER: "L3 戰術指揮",
-    RahoLayer.L4_PLANNER: "L4 元規劃",
+    RahoLayer.L4_PLANNER: "L4 需求審計／元規劃",
     RahoLayer.L5_USER: "L5 用戶",
 }
 
@@ -91,11 +91,14 @@ def role_to_raho_layer(role: RoleType | str | None) -> RahoLayer:
     value = role.value if isinstance(role, RoleType) else str(role)
     if value in {"manager", "requirement_auditor"}:
         return RahoLayer.L4_PLANNER
+    if value in {"reviewer", "constitutional_inspector"}:
+        return RahoLayer.L1_GRILL
     if value.endswith("_lead") or value in {
         "architect",
         "coordinator",
         "product_lead",
         "tech_lead",
+        "tactical_commander",
     }:
         return RahoLayer.L3_DECOMPOSER
     return RahoLayer.L2_EXECUTOR
@@ -114,6 +117,8 @@ MGP_EXECUTOR_PREAMBLE = (
     f"必須先以 {GRILL_MARK} 提出質疑（每條一行），待上級回覆確認後方可執行。"
     "禁止盲目執行。若指令完整可執行，直接產出交付物"
     f"（可選於首行標 {CLEAR_MARK}）。"
+    "執行中若遇非預期分支，暫停並以 "
+    f"{ESCALATE_MARK} 或 {CHOICE_MARK} 上交 2~3 個方案（A/B/C），禁止自行亂選。"
 )
 
 MGP_SUPERIOR_PREAMBLE = (
@@ -142,11 +147,21 @@ class GrillIssue:
     """L2 對 L3 指令的一條質詢。"""
 
     message: str
-    kind: str = "gap"  # gap | contradiction | tool | spec
+    kind: str = "gap"  # gap | contradiction | tool | spec | constraint
     field: str = ""
+    blocker_type: str = ""
+    suggested_fix: str = ""
+    target: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {"message": self.message, "kind": self.kind, "field": self.field}
+        payload = {"message": self.message, "kind": self.kind, "field": self.field}
+        if self.blocker_type:
+            payload["blocker_type"] = self.blocker_type
+        if self.suggested_fix:
+            payload["suggested_fix"] = self.suggested_fix
+        if self.target:
+            payload["target"] = self.target
+        return payload
 
 
 @dataclass

@@ -15,6 +15,7 @@ from backend.services.auditor import (
     extract_json,
     score_dimensions,
     should_grill_user,
+    trigger_planner,
 )
 
 
@@ -24,8 +25,10 @@ def _reset_auditor(monkeypatch):
     monkeypatch.setenv("EVOL_RAHO_USER_GRILL", "true")
     monkeypatch.setattr("backend.services.auditor._llm_question", lambda *a, **k: None)
     STORE.user_sessions.clear()
+    STORE.trees.clear()
     yield
     STORE.user_sessions.clear()
+    STORE.trees.clear()
 
 
 RICH_A1 = (
@@ -55,6 +58,9 @@ class TestAuditorRole:
         role = STANDARD_ROLES[RoleType.REQUIREMENT_AUDITOR]
         assert role.level == 4
         assert role.name == "需求審計官"
+        assert RoleType.TACTICAL_COMMANDER in STANDARD_ROLES
+        commander = STANDARD_ROLES[RoleType.TACTICAL_COMMANDER]
+        assert commander.name == "戰術指揮官"
 
 
 class TestScoring:
@@ -75,6 +81,31 @@ class TestGateway:
         assert started["status"] == "AUDITING"
         assert started["phase"] == 1
         assert "最終用戶" in started["question"]["question"]
+        assert "Phase 1" in started["question"]["question"]
+        assert "收到需求" in started["question"]["question"]
+
+    def test_opening_rejects_vague_verb(self):
+        started = auditor_start("我想做一個能幫我自動管粉絲的 AI。")
+        question = started["question"]["question"]
+        assert "管粉" in question
+        assert "最終用戶" in question
+        assert started["role"] == "requirement_auditor"
+        assert "介入前" in question
+        assert "介入後" in question
+        assert "Phase 1" in question
+        tree = STORE.get_tree(STORE.user_grill_run_id(started["session_id"]))
+        assert tree is not None
+        assert tree.nodes
+        assert tree.nodes[0].kind == "user_grill"
+        assert tree.nodes[0].from_layer == 4
+
+    def test_role_uses_gateway_system_prompt(self):
+        from backend.services.auditor import SYSTEM_PROMPT
+
+        role = STANDARD_ROLES[RoleType.REQUIREMENT_AUDITOR]
+        assert role.system_prompt == SYSTEM_PROMPT
+        assert "禁止確認偏誤" in role.system_prompt
+        assert "APPROVED_FOR_PLANNING" in role.system_prompt
 
     def test_vague_answer_rejected(self):
         started = auditor_start("我想做一個能幫我自動管粉絲的 AI。")
@@ -142,3 +173,63 @@ class TestGateway:
         assert should_grill_user("隨便", "company") is True
         assert should_grill_user("你好", "simple") is False
         assert should_grill_user("開發一個完整登入系統", "auto") is True
+
+    def test_process_user_request_terminates_over_auth(self):
+        auditor = RequirementAuditor()
+        gen = auditor.process_user_request("打造完整成長策略")
+        first = next(gen)
+        assert first["status"] == "AUDITING"
+        assert first["question"]["question"]
+        try:
+            gen.send("你看著辦吧")
+            raise AssertionError("產生器應以終止協議結束")
+        except StopIteration as stop:
+            failed = stop.value
+        assert failed["terminated"] is True
+        assert failed["status"] == "FAILED"
+        assert "無法為我無法理解的目標負責" in failed["termination_reason"]
+
+    def test_process_user_request_issues_ticket(self):
+        auditor = RequirementAuditor()
+        gen = auditor.process_user_request("我想做一個能幫我自動管粉絲的 AI。")
+        next(gen)
+        result = None
+        for reply in (RICH_A1, RICH_A2, RICH_A3, RICH_A4, RICH_A5):
+            try:
+                result = gen.send(reply)
+            except StopIteration as stop:
+                result = stop.value
+                break
+        assert result is not None
+        assert result["locked"] is True
+        assert result["status"] == "APPROVED_FOR_PLANNING"
+        assert result["ticket"]["status"] == "APPROVED_FOR_PLANNING"
+        assert result["planner"]["status"] == "PLANNER_TRIGGERED"
+
+    def test_trigger_planner_rejects_low_score(self):
+        rejected = trigger_planner({"status": "APPROVED_FOR_PLANNING", "confidence_score": 70})
+        assert rejected["status"] == "REJECTED"
+
+    def test_auditor_http_and_sse(self):
+        from fastapi.testclient import TestClient
+
+        from backend.main import app
+
+        with TestClient(app) as client:
+            started = client.post("/auditor/start", json={"query": "開發一個完整登入系統"})
+            assert started.status_code == 200
+            body = started.json()
+            assert body["status"] == "AUDITING"
+            assert body["role"] == "requirement_auditor"
+            sid = body["session_id"]
+            failed = client.post(
+                "/auditor/turn",
+                json={"session_id": sid, "answer": "你是 AI 你應該比我懂"},
+            )
+            assert failed.json()["terminated"] is True
+            status = client.get("/auditor/status")
+            assert status.json()["role"] == "requirement_auditor"
+            stream = client.post("/auditor/stream", json={"query": "打造完整成長策略"})
+            assert stream.status_code == 200
+            assert "event: question" in stream.text
+            assert "event: done" in stream.text

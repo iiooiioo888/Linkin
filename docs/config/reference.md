@@ -61,6 +61,19 @@
 | `EVOL_MIN_SCORE_IMPROVEMENT` | `0.5` | 最小分數提升（低於此值提前終止） |
 | `EVOL_CROSS_EVAL_MODEL` | — | 交叉評估模型（不設置則跳過） |
 
+### RAHO 遞歸對抗分層
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `EVOL_RAHO_ENABLED` | `true` | 總開關 |
+| `EVOL_RAHO_USER_GRILL` | `true` | L5→L4 用戶 Grill-Me／需求審計 |
+| `EVOL_RAHO_MGP` | `true` | 強制質詢協議 |
+| `EVOL_RAHO_LOCK_THRESHOLD` | `0.92` | 語意鎖定綜合置信度（需求審計官五維皆 > 90，總分 > 0.92 才進 Planner） |
+| `EVOL_RAHO_DECISION_TTL` | `60` | 熱馬桶圈決策逾時（秒；`0` = 立即自動裁決） |
+| `EVOL_RAHO_PLANNER_LLM` | `false` | L4 戰役 DAG 是否呼叫 LLM（關閉則純規則） |
+| `EVOL_RAHO_COMMANDER_LLM` | `false` | L3 原子 DAG 是否呼叫 LLM（關閉則純規則） |
+| `EVOL_RAHO_L1_LLM` | `false` | L1 憲兵是否在規則通過後再呼叫 LLM 覆核（關閉則純規則） |
+
 ### LLM 快取
 
 | 變數 | 預設值 | 說明 |

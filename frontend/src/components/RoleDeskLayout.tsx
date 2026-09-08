@@ -67,6 +67,11 @@ export function RoleDeskHeader({
             {modelLabel ? <span className="rd-tag rd-tag--muted">{modelLabel}</span> : null}
             {agent.on_call ? <span className="rd-tag">值班</span> : null}
             {agent.enabled === false ? <span className="rd-tag rd-tag--err">停用</span> : null}
+            {agent.demoted || agent.metrics?.demoted ? (
+              <span className="rd-tag rd-tag--err">規劃已降級</span>
+            ) : agent.raho_rank === 'watch' || agent.metrics?.raho_rank === 'watch' ? (
+              <span className="rd-tag">被質詢偏高</span>
+            ) : null}
           </div>
         </div>
       </div>

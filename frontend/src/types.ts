@@ -160,12 +160,14 @@ export interface GrillUserState {
   phase_rounds?: number;
   scores?: AuditorScores;
   ticket?: AuditorTicket | null;
+  planner?: Record<string, unknown> | null;
   terminated?: boolean;
   termination_reason?: string;
   termination_report?: string;
   status?: 'AUDITING' | 'APPROVED_FOR_PLANNING' | 'FAILED' | string;
   role?: string;
   role_label?: string;
+  user_rounds?: number;
 }
 
 export interface GrillTreeNode {
@@ -182,6 +184,121 @@ export interface GrillTreeNode {
   payload?: Record<string, unknown>;
 }
 
+export interface CampaignNode {
+  node_id: string;
+  title: string;
+  outcome?: string;
+  success_criteria?: string;
+  depends_on?: string[];
+  parallel_ok?: boolean;
+}
+
+export interface CampaignMap {
+  goal?: string;
+  nodes?: CampaignNode[];
+  success_criteria?: string[];
+  source?: string;
+}
+
+export interface BattleDagNode {
+  node_id: string;
+  description: string;
+  depends_on?: string[];
+  assigned_role_template?: string;
+  parallel_ok?: boolean;
+}
+
+export interface AtomicRoleInstance {
+  instance_id: string;
+  node_id: string;
+  template_id?: string;
+  name?: string;
+  trait?: string;
+  system_prompt: string;
+  allowed_tools?: string[];
+  input_ref?: string | string[];
+  output_schema?: string;
+  success_criteria?: string;
+  max_iterations?: number;
+  token_budget?: number;
+  failure_fallback?: string;
+}
+
+export interface BattlePlan {
+  plan_id?: string;
+  based_on_l4_json?: string;
+  rush_mode?: boolean;
+  serial_depth?: number;
+  parallel_roots?: string[];
+  global_settings?: {
+    default_model?: string;
+    max_parallel_workers?: number;
+    global_timeout_minutes?: number;
+  };
+  dag_nodes?: BattleDagNode[];
+  atomic_role_instances?: AtomicRoleInstance[];
+  reasoning?: BattleReasoning;
+}
+
+export interface BattleReasoning {
+  parsing?: {
+    core_action?: string;
+    quantified_success?: string;
+    deadline?: string;
+    absolute_exclusions?: string[];
+    identified_risks?: string[];
+  };
+  topology?: {
+    parallel?: string[];
+    sequential?: string[];
+    serial_depth?: number;
+    rush_mode?: boolean;
+  };
+  templating?: Array<{
+    node_id?: string;
+    template?: string;
+    name?: string;
+    trait?: string;
+    fallback?: string;
+  }>;
+  budgeting?: Array<{
+    instance_id?: string;
+    max_iterations?: number;
+    token_budget?: number;
+  }>;
+}
+
+export interface BattleChecklistItem {
+  id: string;
+  label: string;
+  pass: boolean;
+  rush_mode?: boolean;
+  hours_until_deadline?: number | null;
+}
+
+export interface BattlePlanState {
+  status: 'PLAN_READY' | 'REJECT_TO_L4' | 'ESCALATE_TO_USER' | string;
+  role_label?: string;
+  rush_mode?: boolean;
+  reason?: string;
+  defects?: string[];
+  details?: string;
+  suggested_alternatives?: string[];
+  waiting_for_user_decision?: boolean;
+  waiting_for_l4?: boolean;
+  battle_plan?: BattlePlan | null;
+  battle_plan_yaml?: string;
+  reasoning?: BattleReasoning;
+  node_count?: number;
+  serial_depth?: number;
+  checklist?: {
+    ok?: boolean;
+    defects?: string[];
+    items?: BattleChecklistItem[];
+    rush_mode?: boolean;
+  };
+}
+
 export interface GrillTree {
   tree_id: string;
   run_id: string;
@@ -190,6 +307,7 @@ export interface GrillTree {
   nodes: GrillTreeNode[];
   open_count: number;
   blocked: GrillTreeNode[];
+  campaign?: CampaignMap;
 }
 
 export interface RahoPendingDecision {
@@ -210,6 +328,7 @@ export interface RahoSnapshot {
   blocked?: GrillTreeNode[];
   tree?: GrillTree | null;
   run_id?: string;
+  campaign?: CampaignMap;
 }
 
 // ==================== 思考過程軌跡 ====================
@@ -304,6 +423,8 @@ export interface ChatMessage {
   taskState?: TaskProgress;
   /** RAHO 用戶 Grill-Me 語意鎖定 */
   grill?: GrillUserState;
+  /** L3 戰術指揮官作戰地圖 */
+  battle?: BattlePlanState;
   /** 後端回傳的 metadata */
   meta?: {
     score?: number | null;
@@ -878,6 +999,8 @@ export interface AgentMetrics {
   grill_count?: number;
   grill_rate?: number;
   decision_clarity?: number;
+  demoted?: boolean;
+  raho_rank?: 'ok' | 'watch' | 'demoted' | string;
 }
 
 export interface AgentAlert {
@@ -1238,6 +1361,8 @@ export interface RoleAgent {
   cloud_budget_remaining_usd?: number | null;
   cloud_budget_over?: boolean;
   metrics: AgentMetrics;
+  demoted?: boolean;
+  raho_rank?: 'ok' | 'watch' | 'demoted' | string;
 }
 
 export interface AgentMonitorData {

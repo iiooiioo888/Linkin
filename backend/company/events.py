@@ -32,6 +32,8 @@ class CompanyEvent(str, Enum):
     COMPANY_DONE = "company_done"            # 公司執行完成
     PHASE_CHANGE = "phase_change"            # 階段切換（decompose/execute/synthesize/final_review）
     DECOMPOSE_DONE = "decompose_done"        # 任務分解完成（含策略與執行計劃）
+    CAMPAIGN_PLANNED = "campaign_planned"    # L4 戰役 DAG 已產出
+    BATTLE_PLANNED = "battle_planned"        # L3 原子作戰地圖已產出
 
     # ── 工作項層級 ──
     WORK_ITEM_START = "work_item_start"      # 工作項開始執行
@@ -52,6 +54,7 @@ class CompanyEvent(str, Enum):
     REVIEW_PASS = "review_pass"              # 審查通過
     REVIEW_REWORK = "review_rework"          # 審查不通過，退回修改
     REVIEW_FORCE_DONE = "review_force_done"  # 達到最大審查輪數，強制完成（降級）
+    INSPECTOR_VERDICT = "inspector_verdict"  # L1 憲兵裁決（APPROVED / REWORK / ESCALATE）
     FINAL_REVIEW_DEGRADED = "final_review_degraded"  # 最終審查異常，自動通過（降級）
 
     # ── 預算層級 ──

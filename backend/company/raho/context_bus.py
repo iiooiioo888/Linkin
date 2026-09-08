@@ -14,6 +14,7 @@ from backend.company.state import WorkItem, WorkItemStatus
 
 DOWN_LIMIT = 720
 UP_LIMIT = 480
+L2_POINTER_LIMIT = 280
 
 
 def compress(text: str, limit: int = DOWN_LIMIT) -> str:
@@ -23,8 +24,41 @@ def compress(text: str, limit: int = DOWN_LIMIT) -> str:
     return raw[: limit - 16].rstrip() + "\n…(已壓縮)"
 
 
+def _format_input_ref(ref: Any) -> str:
+    if isinstance(ref, list):
+        return "、".join(str(x) for x in ref if str(x).strip())
+    return str(ref or "").strip()
+
+
 def downward_context(item: WorkItem, dependencies: list[WorkItem]) -> str:
-    """上層 → 下層：MVC，避免把整份戰役上下文灌進原子角色。"""
+    """上層 → 下層：優先傳共享記憶體指標，避免把整份戰役上下文灌進原子角色。"""
+    artifacts = item.artifacts if isinstance(item.artifacts, dict) else {}
+    atomic = artifacts.get("atomic_role") if isinstance(artifacts.get("atomic_role"), dict) else {}
+    pointer = _format_input_ref(atomic.get("input_ref") or artifacts.get("input_ref"))
+    if pointer:
+        schema = atomic.get("output_schema") or artifacts.get("output_schema") or ""
+        tools = atomic.get("allowed_tools") or artifacts.get("allowed_tools") or []
+        tool_line = "、".join(str(t) for t in tools) if isinstance(tools, list) else str(tools)
+        unsigned = ""
+        if str(pointer).startswith("shared_memory://"):
+            try:
+                from backend.company.raho.blackboard import UNSIGNED_WARNING
+                from backend.company.raho.inspector import resolve_input_ref
+
+                signed = resolve_input_ref(pointer)
+            except Exception:  # noqa: BLE001
+                signed = None
+                UNSIGNED_WARNING = "警告：此指標尚未經 L1 簽核，禁止引用為已核准數據。"
+            if signed is None:
+                unsigned = f"\n{UNSIGNED_WARNING}"
+        brief = (
+            f"輸入指標：{pointer}\n"
+            f"輸出：{schema or '依 output_schema'}\n"
+            f"工具白名單：{tool_line or '無（純推理）'}\n"
+            "只讀 input_ref，禁止繼承戰役對話或編造。"
+            f"{unsigned}"
+        )
+        return compress(brief, L2_POINTER_LIMIT + (80 if unsigned else 0))
     if not dependencies:
         return "（無依賴上下文）"
     parts: list[str] = []

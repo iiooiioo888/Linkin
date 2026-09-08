@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import type { TaskProgress, KanbanItem } from '../types';
 import { OPC_PHASES } from '../types';
 import { WORK_ITEM_COLUMNS, workItemColumnKey } from '../lib/agentUi';
+import RahoDecisionBar from './RahoDecisionBar';
 import { StatusColumnBoard } from './StatusColumnBoard';
 
 interface TaskPanelProps {
@@ -34,7 +35,8 @@ export const STANDARD_PHASES: { key: string; label: string }[] = [
 ];
 
 export const COMPANY_PHASES: { key: string; label: string }[] = [
-  { key: 'decompose', label: '任務分解' },
+  { key: 'campaign_plan', label: '戰役規劃' },
+  { key: 'decompose', label: '原子拆解' },
   { key: 'execute_review', label: '執行與審查' },
   { key: 'synthesize', label: '整合交付' },
   { key: 'final_review', label: '最終審查' },
@@ -316,6 +318,8 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
           </button>
         )}
       </div>
+
+      <RahoDecisionBar pending={task.raho?.pending_decisions ?? []} />
 
       {/* ── 階段進度條（執行中帶流光） ── */}
       <div className="mt-2.5 flex items-center gap-1">

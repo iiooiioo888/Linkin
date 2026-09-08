@@ -48,6 +48,8 @@ export function blankMetrics() {
     grill_count: 0,
     grill_rate: 0,
     decision_clarity: 1,
+    demoted: false,
+    raho_rank: 'ok',
   };
 }
 

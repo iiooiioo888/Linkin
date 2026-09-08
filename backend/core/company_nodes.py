@@ -214,6 +214,8 @@ def run_company(state: EvoLoopState) -> dict[str, Any]:
         config = BUILTIN_TEMPLATES["quick_task"]
 
     orchestrator = CompanyOrchestrator(config)
+    ticket = lock.get("ticket") if isinstance(lock, dict) else None
+    ticket = ticket if isinstance(ticket, dict) else None
 
     try:
         # 在同步節點中執行非同步協調器
@@ -221,11 +223,11 @@ def run_company(state: EvoLoopState) -> dict[str, Any]:
             loop = asyncio.get_running_loop()
             # 已有事件迴圈，建立新任務
             result = asyncio.run_coroutine_threadsafe(
-                orchestrator.execute(query), loop
+                orchestrator.execute(query, ticket=ticket), loop
             ).result(timeout=300)
         except RuntimeError:
             # 無事件迴圈，使用 asyncio.run
-            result = asyncio.run(orchestrator.execute(query))
+            result = asyncio.run(orchestrator.execute(query, ticket=ticket))
 
         final_output = result.get("final_output", "")
 

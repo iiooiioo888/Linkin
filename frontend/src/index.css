@@ -2865,6 +2865,63 @@ body {
   font-weight: 600;
 }
 
+.raho-phase-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 10px 0 6px;
+}
+
+.raho-phase-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #636366;
+  font-size: 10px;
+}
+
+.raho-phase-step i {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  font-style: normal;
+  font-size: 9px;
+}
+
+.raho-phase-step.is-active {
+  background: rgba(255, 159, 10, 0.16);
+  color: #ffd60a;
+}
+
+.raho-phase-step.is-active i,
+.raho-phase-step.is-done i {
+  background: #ff9f0a;
+  color: #1c1c1e;
+}
+
+.raho-phase-step.is-done {
+  color: #30d158;
+}
+
+.raho-phase-step.is-done i {
+  background: #30d158;
+}
+
+.raho-grill-meta {
+  margin: 0 0 4px;
+  font-size: 10px;
+  color: #8e8e93;
+}
+
 .raho-grill-lead {
   margin: 8px 0 10px;
   font-size: 12px;
@@ -2983,6 +3040,113 @@ body {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 8px;
+}
+
+.raho-battle-card {
+  border: 1px solid rgba(10, 132, 255, 0.32);
+  background: rgba(10, 132, 255, 0.06);
+  border-radius: 14px;
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.raho-battle-card.is-ready {
+  border-color: rgba(10, 132, 255, 0.4);
+}
+
+.raho-battle-card.is-failed {
+  border-color: rgba(255, 69, 58, 0.4);
+  background: rgba(255, 69, 58, 0.06);
+}
+
+.raho-battle-card.is-escalate {
+  border-color: rgba(191, 90, 242, 0.4);
+  background: rgba(191, 90, 242, 0.07);
+}
+
+.raho-battle-kicker {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0a84ff;
+  font-weight: 600;
+}
+
+.raho-battle-defects,
+.raho-battle-dag,
+.raho-battle-checks,
+.raho-battle-cot {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #f5f5f7;
+}
+
+.raho-battle-checks li.is-pass {
+  color: #64d2ff;
+}
+
+.raho-battle-checks li.is-fail {
+  color: #ff453a;
+}
+
+.raho-battle-cot {
+  color: #a1a1aa;
+}
+
+.raho-battle-cot li {
+  margin-bottom: 4px;
+}
+
+.raho-battle-dag li {
+  margin-bottom: 10px;
+}
+
+.raho-battle-dag span,
+.raho-battle-dag em,
+.raho-battle-dag code {
+  display: block;
+  font-size: 11px;
+  color: #8e8e93;
+  font-style: normal;
+}
+
+.raho-battle-dag code {
+  color: #64d2ff;
+  margin-top: 2px;
+}
+
+.raho-battle-details {
+  font-size: 12px;
+  color: #e9d5ff;
+  line-height: 1.5;
+}
+
+.raho-battle-prompt,
+.raho-battle-yaml {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #8e8e93;
+}
+
+.raho-battle-prompt summary,
+.raho-battle-yaml summary {
+  cursor: pointer;
+  color: #64d2ff;
+}
+
+.raho-battle-prompt pre,
+.raho-battle-yaml pre {
+  margin: 6px 0 0;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #f5f5f7;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 8px;
+  padding: 8px;
 }
 
 .raho-btn {

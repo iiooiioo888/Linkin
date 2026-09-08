@@ -2,8 +2,9 @@
  * GrillTreePanel — 遞歸質詢樹：L5→L2 質詢鏈與決策阻塞點。
  */
 import { useCallback, useEffect, useState } from 'react';
-import { decideRaho, fetchRahoTree } from '../api/client';
+import { fetchRahoTree } from '../api/client';
 import type { GrillTree, RahoPendingDecision, RahoSnapshot } from '../types';
+import RahoDecisionBar from './RahoDecisionBar';
 
 const LAYER: Record<number, string> = {
   1: 'L1 憲兵',
@@ -23,8 +24,6 @@ function statusTone(status: string): string {
 export default function GrillTreePanel() {
   const [snap, setSnap] = useState<RahoSnapshot>({ trees: [], pending_decisions: [], blocked: [] });
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-
   const reload = useCallback(async () => {
     try {
       setSnap(await fetchRahoTree());
@@ -59,40 +58,7 @@ export default function GrillTreePanel() {
       </div>
       {error && <p className="mb-3 text-[12px] text-[#FF453A]">{error}</p>}
 
-      {pending.length > 0 && (
-        <section className="mb-5 rounded-xl border border-[#FF453A]/30 bg-[#FF453A]/8 p-4">
-          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[#FF453A]">決策阻塞點</div>
-          {pending.map((p) => (
-            <div key={p.decision_id} className="mb-3 last:mb-0">
-              <p className="text-[13px] text-[#F5F5F7]">{p.question}</p>
-              <p className="mt-1 text-[11px] text-[#8E8E93]">
-                {LAYER[p.layer] ?? `L${p.layer}`} · 剩餘 {Math.round(p.remaining_sec ?? 0)}s
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {p.choices.map((c) => (
-                  <button
-                    key={c.key}
-                    type="button"
-                    disabled={busy === p.decision_id}
-                    className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-[#EBEBF5] hover:bg-white/[0.08]"
-                    onClick={async () => {
-                      setBusy(p.decision_id);
-                      try {
-                        await decideRaho(p.decision_id, c.key);
-                        await reload();
-                      } finally {
-                        setBusy(null);
-                      }
-                    }}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
+      <RahoDecisionBar pending={pending} onResolved={() => void reload()} />
 
       {trees.length === 0 && blocked.length === 0 && pending.length === 0 && (
         <p className="py-16 text-center text-[13px] text-[#636366]">尚無質詢鏈。複雜任務啟動後會在此展開。</p>
@@ -112,6 +78,20 @@ export default function GrillTreePanel() {
                 </span>
               )}
             </div>
+            {(tree.campaign?.nodes?.length ?? 0) > 0 && (
+              <ol className="mb-3 flex flex-wrap gap-1.5">
+                {tree.campaign!.nodes!.map((node) => (
+                  <li
+                    key={node.node_id}
+                    className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-[#AEAEB2]"
+                    title={node.success_criteria}
+                  >
+                    {node.node_id} {node.title}
+                    {node.depends_on?.length ? ` ← ${node.depends_on.join(',')}` : ''}
+                  </li>
+                ))}
+              </ol>
+            )}
             <ol className="space-y-2">
               {tree.nodes.map((node) => (
                 <li key={node.node_id} className="flex gap-3">

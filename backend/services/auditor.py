@@ -16,17 +16,19 @@ from typing import Any
 
 from backend.company.raho.protocol import (
     GrillQuestion,
+    RahoLayer,
     SemanticLock,
     user_grill_enabled,
 )
 from backend.company.raho.store import STORE, UserGrillSession
+from backend.services.auditor_prompt import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
 AUDITOR_DIM_THRESHOLD = 90.0
 MAX_PHASE_ROUNDS = 3
 MAX_AUDITOR_ROUNDS = 10
-CONFIDENCE_THRESHOLD = 0.90
+CONFIDENCE_THRESHOLD = 0.92
 
 DIM_KEYS = ("specificity", "boundary", "constraints", "risk", "success")
 DIM_LABELS = {
@@ -42,31 +44,6 @@ PHASE_LABELS = {
     3: "Phase 3 對抗性壓力測試",
     4: "Phase 4 語義鎖定",
 }
-
-SYSTEM_PROMPT = """# 系統指令：需求審計官（Requirement Auditor）
-
-## 角色定位
-你是一名「零信任架構」的資深需求審計官。你的天職不是「幫助」用戶，而是「審查」用戶。你預設用戶的需求是模糊、矛盾、且缺乏實操性的。你必須透過極具侵略性的結構化追問，將需求拆解至原子級別的可執行單元。
-
-## 最高鐵律（不可違反）
-1. **禁止確認偏誤**：絕不能在用戶第一次解釋時就說「明白了」。你必須假設自己完全不懂，直到用戶補齊所有缺失維度。
-2. **禁止模糊妥協**：若用戶回答「大概」、「盡量」、「好一點」，視為無效回答，必須要求量化（數字、時間、具體案例）。
-3. **置信度閾值（Locking Condition）**：只有當以下 5 個維度的內部評分皆 > 90 分時，你才能輸出最終的「需求確認書」。否則，必須繼續追問或直接宣告需求不可行。
-
-## 思維框架（5 維度評分表）
-每一輪對話結束後，你必須在內部（隱式）為以下維度打分，決定是否放行：
-- **目標具體性（Specificity）**：是否包含明確的「主語 + 謂語 + 受詞 + 量化結果」？
-- **邊界清晰度（Boundary）**：是否明確指出「做什麼」與「絕對不做什麼」？
-- **約束量化度（Constraints）**：時間、預算、人力、既有資源是否為具體數字？
-- **風險感知度（Risk）**：用戶是否承認並預判了主要失敗模式？
-- **成功定義（Success Definition）**：是否有脫離「主觀感受」的客觀判定標準？
-
-## 追問策略（分層攻堅）
-遵循 4 個階段進行攻防。若該階段任一核心問題回答不完整，不得進入下一階段。
-同一階段內可追問 3 輪，若用戶仍在繞圈子，立即觸發「終止協議」。
-
-使用繁體中文。一次只問一個問題。禁止在五維未達標時輸出 APPROVED_FOR_PLANNING。
-"""
 
 _VAGUE = re.compile(r"(大概|盡量|尽量|好一點|好一点|隨便|随便|看看|差不多|或許|或许|可能吧)")
 _OVER_AUTH_PHRASE = re.compile(
@@ -104,6 +81,22 @@ _COMPLEX = re.compile(
     r"多步|架構|架构|提升|優化|优化|策略|報告|报告|develop|build|implement|"
     r"design|create|project|system|管粉|自動|自动)",
     re.IGNORECASE,
+)
+_VAGUE_VERB_PRIORITY = (
+    "管粉絲",
+    "管粉丝",
+    "自動管",
+    "自动管",
+    "幫我管",
+    "帮我管",
+    "管粉",
+    "提升效率",
+    "優化一下",
+    "优化一下",
+    "弄一個",
+    "弄一个",
+    "搞一個",
+    "搞一个",
 )
 
 # 4 階段 16 題（1–11 一字不改；12–16 補齊攻擊角度）
@@ -223,6 +216,41 @@ QUESTION_BANK: list[dict[str, Any]] = [
 ]
 
 OVER_AUTH_REPLY = "我無法為我無法理解的目標負責，請重新填寫 Phase 2 的量化指標。"
+
+
+def _opening_hook(query: str) -> str:
+    """第一問開場：拒絕模糊動詞，對齊規格中的「被烤」體驗。"""
+    text = (query or "").strip()
+    for verb in _VAGUE_VERB_PRIORITY:
+        if verb in text:
+            return f"收到需求。我不接受「{verb}」這個模糊動詞。"
+    return "收到需求。"
+
+
+def _contextual_first_question(query: str) -> GrillQuestion | None:
+    """粉絲／管粉類模糊需求：第一問直接用規格範例話術，不先丟題庫 Q1。"""
+    text = (query or "").strip()
+    if any(verb in text for verb in ("管粉絲", "管粉丝", "管粉", "自動管", "自动管", "幫我管", "帮我管")):
+        return GrillQuestion(
+            "收到需求。我不接受「管粉絲」這個模糊動詞。請用「最終用戶（粉絲）」的視角描述：在你介入前他們得不到什麼？在你介入後他們獲得了什麼具體好處？",
+            why="沒有前後對照，目標只是口號。",
+            dimension="specificity",
+        )
+    return None
+
+
+def _vague_prefix(phase: int) -> str:
+    if int(phase or 1) >= 2:
+        return "量化失敗。請填入數字："
+    return "量化失敗。我不接受『大概／盡量／好一點』。"
+
+
+def _with_phase_tag(question: str, phase: int) -> str:
+    tag = f"（Phase {int(phase or 1)}）"
+    raw = (question or "").rstrip()
+    if re.search(r"（Phase [1-4]）|\(Phase [1-4]\)", raw):
+        return raw
+    return f"{raw}{tag}"
 
 
 def should_grill_user(query: str, execution_strategy: str = "auto") -> bool:
@@ -528,7 +556,7 @@ def build_ticket(sess: UserGrillSession) -> dict[str, Any]:
             "deadline": deadline,
             "budget_range": budget,
             "must_use_tech": techs or ["依現有技術棧"],
-            "absolute_exclusions": exclusions[:6] or ["未明示絕對排除項，Planner 不得自行擴 scope"],
+            "absolute_exclusions": exclusions[:6],
         },
         "risk_register": {
             "identified_risks": risks[:6],
@@ -594,6 +622,43 @@ def _append_assistant(sess: UserGrillSession, question: GrillQuestion) -> None:
     )
 
 
+def _trace_l4_question(sess: UserGrillSession, question: GrillQuestion) -> None:
+    STORE.record_user_grill(
+        sess.session_id,
+        sess.query,
+        summary=(question.question or "")[:240],
+        status="open",
+        from_layer=int(RahoLayer.L4_PLANNER),
+        to_layer=int(RahoLayer.L5_USER),
+        payload={"phase": sess.phase, "dimension": question.dimension},
+    )
+
+
+def _trace_l5_answer(sess: UserGrillSession, text: str) -> None:
+    STORE.resolve_user_grill(sess.session_id)
+    STORE.record_user_grill(
+        sess.session_id,
+        sess.query,
+        summary=(text or "")[:240],
+        status="resolved",
+        from_layer=int(RahoLayer.L5_USER),
+        to_layer=int(RahoLayer.L4_PLANNER),
+    )
+
+
+def _trace_close(sess: UserGrillSession, summary: str, status: str) -> None:
+    STORE.resolve_user_grill(sess.session_id, "resolved" if status == "resolved" else status)
+    STORE.record_user_grill(
+        sess.session_id,
+        sess.query,
+        summary=summary[:240],
+        status=status,
+        from_layer=int(RahoLayer.L4_PLANNER),
+        to_layer=int(RahoLayer.L5_USER),
+        payload={"locked": sess.locked, "terminated": sess.terminated},
+    )
+
+
 def _failure_report(sess: UserGrillSession, reason: str) -> str:
     scores = sess.scores or {}
     lines = [
@@ -644,12 +709,14 @@ def _pack(
             "phase_rounds": sess.phase_rounds,
             "scores": dict(sess.scores or {}),
             "ticket": sess.ticket,
+            "planner": sess.planner,
             "terminated": terminated,
             "termination_reason": reason,
             "termination_report": _failure_report(sess, reason) if terminated else "",
             "status": status,
             "role": "requirement_auditor",
             "role_label": "L4 需求審計官",
+            "user_rounds": sess.user_rounds,
         }
     )
     return payload
@@ -661,7 +728,52 @@ def _terminate(sess: UserGrillSession, reason: str) -> dict[str, Any]:
     report = _failure_report(sess, reason)
     sess.turns.append({"role": "assistant", "content": report, "dimension": "terminate", "why": reason})
     question = GrillQuestion(report, why=reason, dimension="terminate")
+    _trace_close(sess, reason or "需求審計失敗", "blocked")
     return _pack(sess, question, closed=True, terminated=True, reason=reason)
+
+
+def trigger_planner(final_plan: dict[str, Any]) -> dict[str, Any]:
+    """五維達標後自動觸發 Dynamic Planner（L4 戰役 DAG + L3 原子拆解）。"""
+    ticket = dict(final_plan or {})
+    if ticket.get("status") != "APPROVED_FOR_PLANNING":
+        return {"status": "REJECTED", "reason": "缺少 status=APPROVED_FOR_PLANNING 的門票"}
+    try:
+        score = float(ticket.get("confidence_score") or 0)
+    except (TypeError, ValueError):
+        score = 0.0
+    if score < AUDITOR_DIM_THRESHOLD:
+        return {"status": "REJECTED", "reason": f"confidence_score {score} < {AUDITOR_DIM_THRESHOLD}"}
+
+    goal = ""
+    clarified = ticket.get("clarified_goal") or {}
+    if isinstance(clarified, dict):
+        goal = str(clarified.get("core_action") or clarified.get("quantified_success") or "").strip()
+    if not goal:
+        goal = str(ticket.get("clarified_goal") or "")[:240]
+
+    try:
+        from backend.company.raho.planner import plan_campaign
+
+        campaign = plan_campaign(goal or "已鎖定需求")
+        campaign_data = campaign.to_dict() if hasattr(campaign, "to_dict") else campaign
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("L4 戰役規劃失敗，仍保留門票：%s", exc)
+        campaign_data = {"status": "PLANNER_DEFERRED", "error": str(exc)}
+
+    try:
+        from backend.company.raho.commander import command_from_ticket
+
+        commander = command_from_ticket(ticket, use_llm=False)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("L3 戰術拆解失敗，仍保留門票：%s", exc)
+        commander = {"status": "COMMANDER_DEFERRED", "error": str(exc)}
+
+    return {
+        "status": "PLANNER_TRIGGERED",
+        "ticket": ticket,
+        "campaign": campaign_data,
+        "commander": commander,
+    }
 
 
 def _approve(sess: UserGrillSession) -> dict[str, Any]:
@@ -670,20 +782,44 @@ def _approve(sess: UserGrillSession) -> dict[str, Any]:
     sess.locked = True
     sess.brief = format_locked_brief(sess, ticket)
     sess.confidence = min(float(sess.scores.get(k, 0)) for k in DIM_KEYS) / 100.0
+    try:
+        sess.planner = trigger_planner(ticket)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("自動觸發 Planner 失敗：%s", exc)
+        sess.planner = {"status": "PLANNER_DEFERRED", "error": str(exc)}
+    _trace_close(sess, "五維達標，門票已核發", "resolved")
     return _pack(sess, None, closed=True)
 
 
 def _ask_next(sess: UserGrillSession, *, prefix: str = "") -> dict[str, Any]:
     gaps = [k for k, v in (sess.scores or {}).items() if float(v) <= AUDITOR_DIM_THRESHOLD]
-    question = _llm_question(sess.query, _transcript(sess), gaps, int(sess.phase or 1))
+    phase = int(sess.phase or 1)
+    if not sess.user_rounds and not prefix:
+        contextual = _contextual_first_question(sess.query)
+        if contextual:
+            if 1 not in sess.asked_ids:
+                sess.asked_ids.append(1)
+            text = _with_phase_tag(contextual.question, phase)
+            question = GrillQuestion(text, why=contextual.why, dimension=contextual.dimension)
+            sess.phase_rounds = int(sess.phase_rounds or 0) + 1
+            _append_assistant(sess, question)
+            _trace_l4_question(sess, question)
+            return _pack(sess, question)
+    question = _llm_question(sess.query, _transcript(sess), gaps, phase)
     if question is None:
         question = _next_question(sess)
     elif not sess.asked_ids:
         sess.asked_ids.append(0)
-    if prefix:
-        question = GrillQuestion(prefix + question.question, why=question.why, dimension=question.dimension)
+    text = f"{prefix}{question.question}" if prefix else question.question
+    if not sess.asked_ids or (len(sess.asked_ids) == 1 and not sess.user_rounds):
+        hook = _opening_hook(sess.query)
+        if hook and hook not in text:
+            text = f"{hook}{text}"
+    text = _with_phase_tag(text, phase)
+    question = GrillQuestion(text, why=question.why, dimension=question.dimension)
     sess.phase_rounds = int(sess.phase_rounds or 0) + 1
     _append_assistant(sess, question)
+    _trace_l4_question(sess, question)
     return _pack(sess, question)
 
 
@@ -714,15 +850,18 @@ def auditor_turn(session_id: str, answer: str, *, force_lock: bool = False) -> d
         raise ValueError("answer 不可為空")
 
     if force_lock or _is_over_auth(text):
+        _trace_l5_answer(sess, text)
         return _terminate(sess, OVER_AUTH_REPLY)
 
     joined_so_far = _joined(sess.query, _user_answers(sess) + [text])
     if _is_contradiction(joined_so_far) or _is_contradiction(text):
+        _trace_l5_answer(sess, text)
         return _terminate(sess, "明顯矛盾：預算無限卻要求開源免費方案。需求不可行。")
 
     if sess.last_user_text and sess.last_user_text == text:
         sess.repeat_count = int(sess.repeat_count or 0) + 1
         if sess.repeat_count >= 1:
+            _trace_l5_answer(sess, text)
             return _terminate(sess, "重複跳針：連續 2 輪重複相同句子並拒絕量化。")
     else:
         sess.repeat_count = 0
@@ -730,6 +869,7 @@ def auditor_turn(session_id: str, answer: str, *, force_lock: bool = False) -> d
 
     sess.turns.append({"role": "user", "content": text})
     sess.user_rounds = int(sess.user_rounds or 0) + 1
+    _trace_l5_answer(sess, text)
     answers = _user_answers(sess)
     sess.scores = score_dimensions(sess.query, answers)
 
@@ -741,7 +881,7 @@ def auditor_turn(session_id: str, answer: str, *, force_lock: bool = False) -> d
     if _is_vague(text):
         if int(sess.phase_rounds or 0) >= MAX_PHASE_ROUNDS:
             return _terminate(sess, f"{PHASE_LABELS.get(sess.phase)} 連續 {MAX_PHASE_ROUNDS} 輪仍在繞圈子（含無效模糊回答）。")
-        return _ask_next(sess, prefix="量化失敗。我不接受『大概／盡量／好一點』。")
+        return _ask_next(sess, prefix=_vague_prefix(int(sess.phase or 1)))
 
     target_phase = _infer_phase(sess.scores)
     if all_dims_locked(sess.scores):
@@ -792,7 +932,7 @@ def auditor_status() -> dict[str, Any]:
 
 
 class RequirementAuditor:
-    """強制前置閘門。會話由 RAHO STORE 持有，供 HTTP 多輪餵入。"""
+    """強制前置閘門。會話由 RAHO STORE 持有，供 HTTP／SSE／產生器多輪餵入。"""
 
     def __init__(self) -> None:
         self.system_prompt = SYSTEM_PROMPT
@@ -809,10 +949,39 @@ class RequirementAuditor:
         return extract_json(response)
 
     def trigger_planner(self, final_plan: dict[str, Any]) -> dict[str, Any]:
-        return dict(final_plan or {})
+        return trigger_planner(final_plan)
 
     def force_termination(self, session_id: str, reason: str = "") -> dict[str, Any]:
         sess = STORE.get_user_session(session_id)
         if sess is None:
             raise KeyError(f"審計會話不存在或已過期：{session_id}")
         return _terminate(sess, reason or f"超過 {self.max_rounds} 輪仍未達標")
+
+    def process_user_request(self, initial_input: str):
+        """強制前置閘門產生器（規格第 5 節）。
+
+        用法::
+            gen = auditor.process_user_request(query)
+            payload = next(gen)          # 第一問
+            payload = gen.send(reply)    # 後續輪
+            # 終態以 return 結束：APPROVED_FOR_PLANNING 或 FAILED
+        """
+        result = auditor_start(initial_input)
+        if result.get("status") in {"APPROVED_FOR_PLANNING", "FAILED"}:
+            return result
+        user_reply = yield result
+        session_id = str(result.get("session_id") or "")
+        rounds = 0
+        while rounds < self.max_rounds:
+            if user_reply is None:
+                user_reply = yield result
+                continue
+            result = auditor_turn(session_id, str(user_reply))
+            session_id = str(result.get("session_id") or session_id)
+            if result.get("status") in {"APPROVED_FOR_PLANNING", "FAILED"}:
+                return result
+            user_reply = yield result
+            rounds += 1
+        if session_id:
+            return self.force_termination(session_id)
+        return result
