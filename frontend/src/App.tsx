@@ -312,7 +312,10 @@ export default function App() {
             setSending(false);
             return;
           }
-          if (grill.locked && grill.locked_brief) {
+          // 僅當真的有 L4 門票（經過完整審計並 APPROVED_FOR_PLANNING）才要 L3 拆解；
+          // grill 直通（寒暄／簡單 query，無門票）時直接執行，
+          // 否則 planBattle 會以「缺少 APPROVED_FOR_PLANNING」硬擋下所有任務。
+          if (grill.locked && grill.locked_brief && grill.ticket) {
             workQuery = grill.locked_brief;
             semanticLock = {
               locked: true,
