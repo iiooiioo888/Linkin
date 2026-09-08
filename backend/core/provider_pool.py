@@ -35,6 +35,8 @@ VENDOR_STATIC: dict[str, tuple[str, ...]] = {
         "qwen-long",
         "qwen3.5-max",
         "qwen3-coder-plus",
+        "qwen-vl-plus",
+        "qwen-vl-max",
     ),
     "moonshot": (
         "kimi-k2",
@@ -45,7 +47,7 @@ VENDOR_STATIC: dict[str, tuple[str, ...]] = {
     ),
     "zhipu": ("glm-4", "glm-4-flash", "glm-4-plus", "glm-5.2"),
     "mimo": ("mimo-v2.5-pro",),
-    "openai": ("gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-5.6-sol"),
+    "openai": ("gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-5.6-sol"),
 }
 
 VENDOR_HOSTS: tuple[tuple[str, str], ...] = (
@@ -588,6 +590,8 @@ def public_pool(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
         "models_by_provider": router_state.get("models_by_provider") or [],
         "route_strategies": router_state.get("strategies") or [],
         "provider_presets": router_state.get("presets") or [],
+        "model_token_hints": router_state.get("model_token_hints") or {},
+        "model_rate_cards": router_state.get("model_rate_cards") or {},
         "catalog": models,
         "catalog_source": runtime.get("catalog_source") or "",
         "catalog_url": runtime.get("catalog_url") or "",

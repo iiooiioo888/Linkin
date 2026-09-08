@@ -120,6 +120,38 @@ class TestCostTracker:
         cost = CostTracker.estimate_cost("unknown-model", input_tokens=1000, output_tokens=1000)
         assert cost > 0
 
+    def test_estimate_extra_billable_items(self):
+        from backend.company.rate_card import public_rate_cards, rate_card_for
+
+        card = rate_card_for("deepseek-v4-flash")
+        assert card["cached_input"] > 0
+        assert card["reasoning"] > 0
+        cached = CostTracker.estimate_cost(
+            "deepseek-v4-flash",
+            cached_input_tokens=1_000_000,
+        )
+        assert cached == pytest.approx(card["cached_input"])
+        payload = public_rate_cards()
+        assert payload["fields"]
+        assert {row["id"] for row in payload["fields"]} >= {
+            "input",
+            "output",
+            "cached_input",
+            "cache_write",
+            "reasoning",
+            "image",
+            "audio",
+            "embedding",
+        }
+        flash = payload["by_id"]["deepseek-v4-flash"]
+        ids = {item["id"] for item in flash["items"]}
+        assert {"input", "output", "cached_input", "reasoning"} <= ids
+        gemini = payload["by_id"]["gemini-3.1-pro"]
+        assert gemini["image"] > 0
+        assert gemini["audio"] > 0
+        embed = payload["by_id"]["text-embedding-3-small"]
+        assert embed["embedding"] > 0
+
     def test_estimate_cost_rough(self):
         cost = CostTracker.estimate_cost_rough("gpt-4o-mini", "medium")
         # gpt-4o-mini: (0.15 + 0.60) / 1M * 2000 ≈ 0.0015

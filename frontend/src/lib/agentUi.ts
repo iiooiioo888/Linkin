@@ -1,7 +1,7 @@
 /**
  * 角色 Agent 監控共用顯示邏輯。
  */
-import type { AgentWorkItem, RoleAgent } from '../types';
+import type { AgentWorkItem, ModelRateCard, ModelRateCatalog, RoleAgent } from '../types';
 
 export const AGENT_STATUS_META: Record<string, { label: string; dot: string; text: string }> = {
   busy: { label: '執行中', dot: 'bg-[#4cc38a] animate-pulse', text: 'text-[#4cc38a]' },
@@ -190,6 +190,37 @@ export function fmtUsd(n: number): string {
   return `$${n.toFixed(3)}`;
 }
 
+export function lookupRateCard(
+  modelId: string | undefined,
+  catalog?: ModelRateCatalog | null,
+): ModelRateCard | undefined {
+  if (!modelId || !catalog?.by_id) return undefined;
+  const bare = modelId.split('/').pop() || modelId;
+  return catalog.by_id[modelId] || catalog.by_id[bare];
+}
+
+export function fmtPerMillion(n: number | undefined | null): string {
+  if (n == null || Number.isNaN(Number(n))) return '—';
+  const v = Number(n);
+  if (v === 0) return '$0';
+  if (Math.abs(v) < 0.01) return `$${v.toFixed(4)}`;
+  if (Math.abs(v) < 1) return `$${v.toFixed(3)}`;
+  return `$${v.toFixed(2)}`;
+}
+
+export function extraRateItems(card?: ModelRateCard | null): Array<{ id: string; label: string; usd_per_1m: number }> {
+  return (card?.items ?? []).filter((item) => item.id !== 'input' && item.id !== 'output' && item.usd_per_1m);
+}
+
+export function rateOptionLabel(modelId: string, catalog?: ModelRateCatalog | null): string {
+  const card = lookupRateCard(modelId, catalog);
+  if (!card) return modelId;
+  const extra = extraRateItems(card);
+  const bits = [`${fmtPerMillion(card.input)} / ${fmtPerMillion(card.output)}`];
+  if (extra.length) bits.push(`+${extra.length} 項`);
+  return `${modelId} · ${bits.join(' · ')}`;
+}
+
 export function fmtWhen(iso: string | null | undefined): string {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -221,15 +252,24 @@ export function isQuantDeskRole(id: string | null | undefined): boolean {
   return Boolean(id && QUANT_DESK_ROLE_IDS.has(id));
 }
 
-export type AgentDeskTab = 'tasks' | 'monitor' | 'settings' | 'quant' | 'overview' | 'org';
+export type AgentDeskTab = 'tasks' | 'monitor' | 'settings' | 'quant' | 'grill' | 'overview' | 'org';
 export type JumpAgentDetail = { id?: string; level?: number; rahoLayer?: number; deskTab?: AgentDeskTab };
 
 /** 控制台跨頁：角色面板尚未掛載時先記下要開的工作台分頁。 */
 let pendingDeskTab: AgentDeskTab | null = null;
 
+export function setPendingDeskTab(tab: AgentDeskTab | null) {
+  pendingDeskTab = tab;
+}
+
 export function requestRoleSettingsDesk(agentId?: string) {
   pendingDeskTab = 'settings';
   dispatchJumpAgent({ id: agentId, deskTab: 'settings' });
+}
+
+export function requestRoleGrillDesk(agentId?: string) {
+  pendingDeskTab = 'grill';
+  dispatchJumpAgent({ id: agentId, deskTab: 'grill' });
 }
 
 export function consumePendingDeskTab(): AgentDeskTab | null {

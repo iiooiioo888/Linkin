@@ -1059,6 +1059,11 @@ export interface HubModelInfo {
   intelligence: number;
   price_in_per_1m: number;
   price_out_per_1m: number;
+  price_cached_in_per_1m?: number | null;
+  price_cache_write_per_1m?: number | null;
+  price_reasoning_per_1m?: number | null;
+  price_image_per_1m?: number | null;
+  price_audio_per_1m?: number | null;
   cn_allowed: boolean;
   available_in_pool?: boolean;
 }

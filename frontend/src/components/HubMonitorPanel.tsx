@@ -20,6 +20,24 @@ function statusTone(status: string): string {
   return 'text-red-300';
 }
 
+function extraPriceBits(m: {
+  price_cached_in_per_1m?: number | null;
+  price_cache_write_per_1m?: number | null;
+  price_reasoning_per_1m?: number | null;
+  price_image_per_1m?: number | null;
+  price_audio_per_1m?: number | null;
+}): string {
+  return [
+    m.price_cached_in_per_1m ? `快取 $${Number(m.price_cached_in_per_1m).toFixed(3)}` : '',
+    m.price_cache_write_per_1m ? `寫入 $${Number(m.price_cache_write_per_1m).toFixed(3)}` : '',
+    m.price_reasoning_per_1m ? `推理 $${Number(m.price_reasoning_per_1m).toFixed(3)}` : '',
+    m.price_image_per_1m ? `視覺 $${Number(m.price_image_per_1m).toFixed(3)}` : '',
+    m.price_audio_per_1m ? `音訊 $${Number(m.price_audio_per_1m).toFixed(3)}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 function fmtUsd(n: number | undefined): string {
   const v = n ?? 0;
   if (v < 0.01) return `$${v.toFixed(4)}`;
@@ -148,7 +166,7 @@ export default function HubMonitorPanel() {
       </section>
 
       <div className="mb-4 overflow-x-auto apple-card apple-card--tight !p-0">
-        <table className="w-full min-w-[880px] text-left">
+        <table className="w-full min-w-[1040px] text-left">
           <thead>
             <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[#62666d]">
               <th className="px-3 py-2 font-medium">模型</th>
@@ -156,7 +174,8 @@ export default function HubMonitorPanel() {
               <th className="px-3 py-2 font-medium">智能分</th>
               <th className="px-3 py-2 font-medium">延遲 EWMA</th>
               <th className="px-3 py-2 font-medium">TTFB</th>
-              <th className="px-3 py-2 font-medium">輸出單價</th>
+              <th className="px-3 py-2 font-medium">輸入 / 輸出</th>
+              <th className="px-3 py-2 font-medium">其他收費</th>
               <th className="px-3 py-2 font-medium">連續失敗</th>
               <th className="px-3 py-2 font-medium">錯誤率</th>
               <th className="px-3 py-2 font-medium">熔斷</th>
@@ -201,8 +220,9 @@ export default function HubMonitorPanel() {
                   {m.ttfb_ms != null ? `${Math.round(Number(m.ttfb_ms))} ms` : '—'}
                 </td>
                 <td className="px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
-                  ${Number(m.price_out_per_1m ?? 0).toFixed(3)}/M
+                  ${Number(m.price_in_per_1m ?? 0).toFixed(3)} / ${Number(m.price_out_per_1m ?? 0).toFixed(3)}
                 </td>
+                <td className="px-3 py-2 text-[11px] text-[#8a8f98]">{extraPriceBits(m) || '—'}</td>
                 <td className="px-3 py-2 font-mono text-[11px]">{m.consecutive_fail}</td>
                 <td className="px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
                   {m.circuit.fail_ratio != null

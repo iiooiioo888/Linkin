@@ -142,8 +142,8 @@ export default function L0Panel({
               ))}
             </ol>
           )}
-          <button type="button" className="l0-link" onClick={jumpToGrillTree}>
-            對照質詢樹
+          <button type="button" className="l0-link" onClick={() => jumpToGrillTree()}>
+            對照質詢
           </button>
         </div>
       )}

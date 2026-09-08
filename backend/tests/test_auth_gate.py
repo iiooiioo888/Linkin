@@ -81,3 +81,25 @@ def test_default_digests_reject_garbage(monkeypatch):
     with TestClient(app) as client:
         resp = client.post("/auth/login", json={"username": "nope", "password": "nope"})
         assert resp.status_code == 401
+
+
+def test_default_credentials_unlock(monkeypatch):
+    """預設閘門身分為 ieong / LFH@Pa$$w0rd（環境變數未覆寫時）。"""
+    monkeypatch.setenv("LINKIN_AUTH_FORCE", "1")
+    monkeypatch.delenv("LINKIN_GATE_ID", raising=False)
+    monkeypatch.delenv("LINKIN_GATE_SECRET", raising=False)
+    from backend.auth.gate import issue_login, session_user
+    from backend.main import app
+
+    token = issue_login("ieong", "LFH@Pa$$w0rd", identity="unit")
+    assert token
+    assert session_user(token) == "ieong"
+    assert issue_login("ieong", "wrong", identity="unit-bad") is None
+
+    with TestClient(app) as client:
+        resp = client.post(
+            "/auth/login", json={"username": "ieong", "password": "LFH@Pa$$w0rd"}
+        )
+        assert resp.status_code == 200
+        assert resp.json()["user"] == "ieong"
+        assert client.get("/dashboard").status_code == 200

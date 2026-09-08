@@ -70,6 +70,12 @@ def collect_hub_monitor() -> dict[str, Any]:
 
     for model in sorted(HUB_CATALOG):
         row = dict(metrics.get(model) or {})
+        try:
+            from backend.company.rate_card import rate_card_for
+
+            extra = rate_card_for(model)
+        except Exception:  # noqa: BLE001
+            extra = {}
         models.append(
             {
                 "id": model,
@@ -79,6 +85,11 @@ def collect_hub_monitor() -> dict[str, Any]:
                 "ttfb_ms": row.get("ttfb_ms"),
                 "price_in_per_1m": row.get("price_in_per_1m"),
                 "price_out_per_1m": row.get("price_out_per_1m"),
+                "price_cached_in_per_1m": extra.get("cached_input") or None,
+                "price_cache_write_per_1m": extra.get("cache_write") or None,
+                "price_reasoning_per_1m": extra.get("reasoning") or None,
+                "price_image_per_1m": extra.get("image") or None,
+                "price_audio_per_1m": extra.get("audio") or None,
                 "consecutive_fail": int(row.get("consecutive_fail") or 0),
                 "ts": row.get("ts"),
                 "circuit": circuits.get(model) or {"state": "CLOSED"},

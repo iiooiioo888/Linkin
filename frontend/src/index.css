@@ -2930,6 +2930,10 @@ body {
   color: #64d2ff;
 }
 
+.raho-legend-edge.on {
+  color: #64d2ff;
+}
+
 .raho-legend-k {
   color: #636366;
 }
@@ -3021,6 +3025,11 @@ body {
   background: rgba(255, 255, 255, 0.07);
 }
 
+.raho-pyr-item.on {
+  border-color: rgba(10, 132, 255, 0.45);
+  background: rgba(10, 132, 255, 0.12);
+}
+
 .raho-pyr-item.is-static {
   opacity: 0.7;
   cursor: default;
@@ -3091,6 +3100,13 @@ body {
 .raho-edge {
   display: flex;
   gap: 10px;
+  border-radius: 8px;
+  padding: 4px 6px;
+}
+
+.raho-edge.on {
+  background: rgba(10, 132, 255, 0.08);
+  outline: 1px solid rgba(10, 132, 255, 0.22);
 }
 
 .raho-edge-dot {

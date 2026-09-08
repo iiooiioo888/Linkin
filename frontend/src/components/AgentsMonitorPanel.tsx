@@ -35,8 +35,9 @@ import {
   type WorkItemColumnKey,
 } from '../lib/agentUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
-import { jumpToGrillTree, nodesForRole } from '../lib/rahoUi';
+import { nodesForRole } from '../lib/rahoUi';
 import type { AgentMonitorData, AgentWorkItem, GrillTree, L0Snapshot, RoleAgent } from '../types';
+import GrillTreePanel from './GrillTreePanel';
 import RoleSettingsPanel, { CreateRoleModal, draftToPayload, type RoleSettingsDraft } from './RoleSettingsPanel';
 import { RdCell, RoleDeskHeader, RoleRightPanel, RoleStatsStrip, type RoleDeskTab } from './RoleDeskLayout';
 import { StatusColumnBoard } from './StatusColumnBoard';
@@ -48,7 +49,7 @@ function itemStatus(status: string): { label: string; cls: string } {
 }
 
 function toDeskTab(tab?: string | null): RoleDeskTab {
-  if (tab === 'monitor' || tab === 'settings' || tab === 'quant') return tab;
+  if (tab === 'monitor' || tab === 'settings' || tab === 'quant' || tab === 'grill') return tab;
   return 'tasks';
 }
 
@@ -109,7 +110,7 @@ function ExtraGrid({ cells }: { cells: Array<{ label: string; value: string; col
   );
 }
 
-function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQuant?: () => void }) {
+function RoleMonitorExtras({ agent, onOpenQuant, onOpenGrill }: { agent: RoleAgent; onOpenQuant?: () => void; onOpenGrill?: () => void }) {
   const m = agent.metrics ?? blankMetrics();
   if (isQuantDeskRole(agent.id)) {
     return (
@@ -151,8 +152,8 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
             { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
           ]}
         />
-        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={jumpToGrillTree}>
-          查看質詢樹
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={onOpenGrill}>
+          查看質詢
         </button>
       </div>
     );
@@ -168,8 +169,8 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
             { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
           ]}
         />
-        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={jumpToGrillTree}>
-          查看質詢樹
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={onOpenGrill}>
+          查看質詢
         </button>
       </div>
     );
@@ -185,8 +186,8 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
             { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
           ]}
         />
-        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={jumpToGrillTree}>
-          查看質詢樹
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={onOpenGrill}>
+          查看質詢
         </button>
       </div>
     );
@@ -427,7 +428,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   useEffect(() => {
     if (appliedDefaultTab) return;
     const tab = data?.monitor_prefs?.default_desk_tab;
-    if (tab === 'tasks' || tab === 'monitor' || tab === 'settings' || tab === 'org' || tab === 'overview') {
+    if (tab === 'tasks' || tab === 'monitor' || tab === 'settings' || tab === 'org' || tab === 'overview' || tab === 'grill') {
       setDeskTab(toDeskTab(tab));
       setAppliedDefaultTab(true);
     }
@@ -582,6 +583,19 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                     <StrategyCatalogPanel embedded />
                   </div>
                 </>
+              ) : deskTab === 'grill' ? (
+                <>
+                  <div className="rd-th">
+                    <h2>質詢鏈 — {selected.name}</h2>
+                  </div>
+                  <div className="rd-pane">
+                    <GrillTreePanel
+                      embedded
+                      focusRoleId={selected.id}
+                      onSelectRole={(id) => openDesk(id, 'grill')}
+                    />
+                  </div>
+                </>
               ) : deskTab === 'monitor' ? (
                 <>
                   <div className="rd-th"><h2>角色監控</h2></div>
@@ -589,7 +603,11 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                     <RoleDeepMonitor agent={selected} />
                     <section className="rd-sec">
                       <div className="rd-tt">角色專屬</div>
-                      <RoleMonitorExtras agent={selected} onOpenQuant={() => setDeskTab('quant')} />
+                      <RoleMonitorExtras
+                        agent={selected}
+                        onOpenQuant={() => setDeskTab('quant')}
+                        onOpenGrill={() => setDeskTab('grill')}
+                      />
                     </section>
                     <section className="rd-sec">
                       <div className="rd-tt">監控偏好</div>
@@ -701,6 +719,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                 }}
                 grillNodes={selectedGrill}
                 l0={l0}
+                onOpenGrill={() => setDeskTab('grill')}
               />
             ) : null}
           </div>

@@ -16,7 +16,7 @@ import {
   routesEqual,
   syncAppRouteHash,
 } from './lib/appRoute';
-import { isLinkinStudioAgent } from './lib/agentUi';
+import { isLinkinStudioAgent, requestRoleGrillDesk } from './lib/agentUi';
 import {
   loadActiveSessionId,
   loadSessions,
@@ -834,15 +834,19 @@ export default function App() {
 
   const handleMonitorTabChange = useCallback(
     (tab: MonitorTab) => {
+      if (tab === 'grill') {
+        requestRoleGrillDesk(focusAgentId && !isLinkinStudioAgent(focusAgentId) ? focusAgentId : undefined);
+      }
+      const resolved = tab === 'grill' ? 'agents' : tab;
       const keepAgent =
-        (tab === 'agents' && !isLinkinStudioAgent(focusAgentId)) ||
-        (tab === 'studio' && isLinkinStudioAgent(focusAgentId));
+        (resolved === 'agents' && !isLinkinStudioAgent(focusAgentId)) ||
+        (resolved === 'studio' && isLinkinStudioAgent(focusAgentId));
       navigateRoute({
         view: 'monitor',
-        monitorTab: tab,
+        monitorTab: resolved,
         focusAgentId: keepAgent ? focusAgentId : null,
-        focusTaskId: tab === 'tasks' ? focusTaskId : null,
-        labSubTab: tab === 'lab' ? labSubTab : 'prompt',
+        focusTaskId: resolved === 'tasks' ? focusTaskId : null,
+        labSubTab: resolved === 'lab' ? labSubTab : 'prompt',
       });
     },
     [navigateRoute, focusAgentId, focusTaskId, labSubTab],

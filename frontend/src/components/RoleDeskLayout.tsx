@@ -52,7 +52,7 @@ function eventLabel(event: string): string {
   return EVENT_LABELS[event] ?? event.replace(/_/g, ' ');
 }
 
-export type RoleDeskTab = 'tasks' | 'monitor' | 'settings' | 'quant';
+export type RoleDeskTab = 'tasks' | 'monitor' | 'settings' | 'quant' | 'grill';
 
 export function RoleDeskHeader({
   agent,
@@ -106,6 +106,13 @@ export function RoleDeskHeader({
             策略庫
           </button>
         ) : null}
+        <button
+          type="button"
+          className={`rd-btn ${deskTab === 'grill' ? 'on' : ''}`}
+          onClick={() => onDeskTab('grill')}
+        >
+          質詢
+        </button>
         <button
           type="button"
           className={`rd-btn ${deskTab === 'monitor' ? 'on' : ''}`}
@@ -614,7 +621,7 @@ export function EventTimelineBlock({ events }: { events: AgentEvent[] }) {
   );
 }
 
-export function RahoChainBlock({ agent }: { agent: RoleAgent }) {
+export function RahoChainBlock({ agent, onOpenGrill }: { agent: RoleAgent; onOpenGrill?: () => void }) {
   const current = agent.raho_layer ?? 2;
   const targets = agent.grill_targets ?? [];
   const labels = agent.grill_target_labels ?? targets.map(grillTargetLabel);
@@ -632,8 +639,8 @@ export function RahoChainBlock({ agent }: { agent: RoleAgent }) {
     <div className="rd-sec">
       <div className="rd-tt">
         質詢鏈
-        <button type="button" className="rd-link" onClick={jumpToGrillTree}>
-          開質詢樹
+        <button type="button" className="rd-link" onClick={() => (onOpenGrill ? onOpenGrill() : jumpToGrillTree(agent.id))}>
+          開質詢
         </button>
       </div>
       <div className="raho-desk-lanes">
@@ -727,7 +734,13 @@ export function RahoChainBlock({ agent }: { agent: RoleAgent }) {
   );
 }
 
-export function GrillFeedBlock({ nodes }: { nodes: GrillTreeNode[] }) {
+export function GrillFeedBlock({
+  nodes,
+  onOpenGrill,
+}: {
+  nodes: GrillTreeNode[];
+  onOpenGrill?: () => void;
+}) {
   return (
     <div className="rd-sec">
       <div className="rd-tt">此角色質詢</div>
@@ -740,7 +753,7 @@ export function GrillFeedBlock({ nodes }: { nodes: GrillTreeNode[] }) {
               key={node.node_id}
               type="button"
               className="rd-ev-row raho-feed-row"
-              onClick={jumpToGrillTree}
+              onClick={() => (onOpenGrill ? onOpenGrill() : jumpToGrillTree())}
             >
               <span className="rd-ev-dot" style={{ background: rahoTone(node.status) }} />
               <div className="min-w-0 flex-1">
@@ -794,6 +807,7 @@ export function RoleRightPanel({
   onOpenItem,
   grillNodes,
   l0,
+  onOpenGrill,
 }: {
   agent: RoleAgent;
   agents: RoleAgent[];
@@ -803,12 +817,13 @@ export function RoleRightPanel({
   onOpenItem?: (item: AgentWorkItem) => void;
   grillNodes?: GrillTreeNode[];
   l0?: L0Snapshot | null;
+  onOpenGrill?: () => void;
 }) {
   return (
     <aside className="rd-rp">
-      <RahoChainBlock agent={agent} />
+      <RahoChainBlock agent={agent} onOpenGrill={onOpenGrill} />
       <L0ContextBlock snapshot={l0} />
-      <GrillFeedBlock nodes={grillNodes ?? []} />
+      <GrillFeedBlock nodes={grillNodes ?? []} onOpenGrill={onOpenGrill} />
       <OrgReportTree agent={agent} agents={agents} onOpen={onOpen} />
       <TaskStatusBlock agent={agent} filter={filter} onFilter={onFilter} onOpenItem={onOpenItem} />
       <TokenUsageBlock agent={agent} />

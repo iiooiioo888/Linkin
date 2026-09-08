@@ -11,7 +11,7 @@ import {
   hubGetAgentTask,
   HUB_DEV_API_KEY,
 } from '../api/client';
-import type { HubCatalog, HubChatResult, HubAgentTask } from '../api/client';
+import type { HubCatalog, HubChatResult, HubAgentTask, HubModelInfo } from '../api/client';
 
 const STRATEGIES = [
   { value: 'quality_first', label: '品質優先（GPT-5.6 Sol）' },
@@ -28,6 +28,19 @@ const REGIONS = [
 
 const SAMPLE_CHAT = '用三句話說明動態權重路由與競速的差異';
 const SAMPLE_AGENT = '分析茅台當前估值';
+
+function hubPriceLine(m: HubModelInfo): string {
+  if (m.available_in_pool === false) return '鎖定外';
+  const extras = [
+    m.price_cached_in_per_1m ? `快取 $${m.price_cached_in_per_1m}` : '',
+    m.price_cache_write_per_1m ? `寫入 $${m.price_cache_write_per_1m}` : '',
+    m.price_reasoning_per_1m ? `推理 $${m.price_reasoning_per_1m}` : '',
+    m.price_image_per_1m ? `視覺 $${m.price_image_per_1m}` : '',
+    m.price_audio_per_1m ? `音訊 $${m.price_audio_per_1m}` : '',
+  ].filter(Boolean);
+  const base = `${m.provider} · $${m.price_in_per_1m}/$${m.price_out_per_1m}`;
+  return extras.length ? `${base} · ${extras.join(' · ')}` : `${base}/M`;
+}
 
 const TOOL_OPTIONS = [
   { id: 'StocksX_get_price', label: 'StocksX 行情' },
@@ -257,8 +270,8 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
                     }`}
                   >
                     <span className="text-[#d0d6e0]">{m.id}</span>
-                    <span className="text-[#62666d]">
-                      {m.available_in_pool === false ? '鎖定外' : `${m.provider} · $${m.price_out_per_1m}/M`}
+                    <span className="max-w-[220px] truncate text-right text-[#62666d]" title={hubPriceLine(m)}>
+                      {hubPriceLine(m)}
                     </span>
                   </li>
                 ))}

@@ -551,7 +551,7 @@ def update_monitor_prefs(patch: dict[str, Any]) -> dict[str, Any]:
             current["group_by"] = group if group in {"level", "category"} else "level"
         if "default_desk_tab" in patch:
             tab = str(patch.get("default_desk_tab") or "tasks").strip().lower()
-            current["default_desk_tab"] = tab if tab in {"tasks", "monitor", "settings", "org"} else "tasks"
+            current["default_desk_tab"] = tab if tab in {"tasks", "monitor", "settings", "org", "grill"} else "tasks"
         if "sort_by" in patch:
             sort_by = str(patch.get("sort_by") or "level").strip().lower()
             current["sort_by"] = sort_by if sort_by in {"level", "name", "status", "cost", "queue"} else "level"
@@ -879,6 +879,15 @@ def _model_token_hints() -> dict[str, dict[str, int]]:
         return {}
 
 
+def _model_rate_cards() -> dict[str, Any]:
+    try:
+        from backend.company.rate_card import public_rate_cards
+
+        return public_rate_cards()
+    except Exception:  # noqa: BLE001
+        return {"models": [], "by_id": {}, "fields": []}
+
+
 def catalog_meta() -> dict[str, Any]:
     tool_names: list[str] = []
     try:
@@ -902,6 +911,7 @@ def catalog_meta() -> dict[str, Any]:
         "api_routes": _api_routes_meta(),
         "models_by_provider": _models_by_provider(),
         "model_token_hints": _model_token_hints(),
+        "model_rate_cards": _model_rate_cards(),
         "routing_strategies": [
             {"id": "quality_first", "label": "品質優先"},
             {"id": "cost_first", "label": "成本優先"},

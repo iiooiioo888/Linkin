@@ -966,6 +966,11 @@ export interface HubMonitorModel {
   ttfb_ms: number | null;
   price_in_per_1m: number | null;
   price_out_per_1m: number | null;
+  price_cached_in_per_1m?: number | null;
+  price_cache_write_per_1m?: number | null;
+  price_reasoning_per_1m?: number | null;
+  price_image_per_1m?: number | null;
+  price_audio_per_1m?: number | null;
   consecutive_fail: number;
   ts?: number;
   available_in_pool?: boolean;
@@ -1131,6 +1136,35 @@ export interface RolePreset {
   responsibilities: string[];
   default_tier: string;
   hint?: string;
+}
+
+export interface ModelRateItem {
+  id: string;
+  label: string;
+  usd_per_1m: number;
+}
+
+export interface ModelRateCard {
+  id: string;
+  input: number;
+  output: number;
+  cached_input?: number;
+  cache_write?: number;
+  reasoning?: number;
+  image?: number;
+  audio?: number;
+  embedding?: number;
+  items: ModelRateItem[];
+  currency?: string;
+  unit?: string;
+}
+
+export interface ModelRateCatalog {
+  currency?: string;
+  unit?: string;
+  fields?: Array<{ id: string; label: string }>;
+  models?: ModelRateCard[];
+  by_id?: Record<string, ModelRateCard>;
 }
 
 export interface LlmCatalogModel {
@@ -1322,6 +1356,8 @@ export interface LlmOpsData {
   default_route_id?: string;
   api_routes?: ApiRoutePublic[];
   models_by_provider?: ModelsByProvider[];
+  model_rate_cards?: ModelRateCatalog;
+  model_token_hints?: Record<string, { max_context: number; max_output: number }>;
   route_strategies?: Array<{ id: string; label: string }>;
   provider_presets?: Array<{
     id: string;
@@ -1363,6 +1399,7 @@ export interface AgentCatalogMeta {
   }>;
   models_by_provider?: ModelsByProvider[];
   model_token_hints?: Record<string, { max_context: number; max_output: number }>;
+  model_rate_cards?: ModelRateCatalog;
   routing_strategies?: Array<{ id: string; label: string }>;
   role_presets?: RolePreset[];
   org_templates?: Array<{ id: string; name: string; description: string; role_count: number }>;

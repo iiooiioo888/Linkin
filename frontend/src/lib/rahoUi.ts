@@ -4,6 +4,7 @@
  * 質詢樹、角色名冊、工作台必須走這份資料，禁止各面板自寫 L0–L5 名稱。
  */
 import type { GrillTree, GrillTreeNode, RahoDirectoryEntry, RahoGrillEdge, RoleAgent } from '../types';
+import { requestRoleGrillDesk } from './agentUi';
 
 export const RAHO_CHAIN = [5, 4, 3, 2, 1, 0] as const;
 export const COMMAND_CHAIN = [5, 4, 3, 2] as const;
@@ -365,8 +366,18 @@ export function jumpToRoleDesk(roleId: string) {
   window.location.hash = `#/monitor/agents/${encodeURIComponent(roleId)}`;
 }
 
-export function jumpToGrillTree() {
-  window.location.hash = '#/monitor/grill';
+export function jumpToGrillTree(roleId?: string) {
+  const target = roleId && roleId !== 'user' ? roleId : undefined;
+  if (target === 'environment_kernel') {
+    jumpToL0Kernel();
+    return;
+  }
+  requestRoleGrillDesk(target);
+  if (target) {
+    window.location.hash = `#/monitor/agents/${encodeURIComponent(target)}`;
+    return;
+  }
+  window.location.hash = '#/monitor/agents';
 }
 
 export function jumpToL0Kernel() {
