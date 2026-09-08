@@ -3,6 +3,7 @@
  */
 import { useState } from 'react';
 import type { AuditorScores, GrillUserState } from '../types';
+import { L0BiasHint } from './L0BiasHint';
 
 interface GrillUserCardProps {
   grill: GrillUserState;
@@ -94,12 +95,7 @@ export default function GrillUserCard({ grill, disabled, onAnswer }: GrillUserCa
               '五維達標。戰術指令已核發，即將交給 Dynamic Planner 與 L3 戰術指揮官。'
             : `${grill.phase_label || 'Phase 1 基礎錨定'} · 模糊回答（大概／盡量／好一點）視為無效。`}
       </p>
-      {grill.l0?.knowledge?.[0] ? (
-        <p className="raho-grill-meta">L0 知識：{grill.l0.knowledge[0].content}</p>
-      ) : null}
-      {grill.l0?.radar?.bias_instructions ? (
-        <p className="raho-grill-meta">L0 態勢：{grill.l0.radar.bias_instructions}</p>
-      ) : null}
+      <L0BiasHint snapshot={grill.l0} compact />
       <div className="raho-grill-dims">
         {DIM_ROWS.map((row) => {
           const val = dimValue(grill.scores, row.key);

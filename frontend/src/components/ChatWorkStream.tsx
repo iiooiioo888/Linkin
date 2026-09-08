@@ -10,6 +10,8 @@ import { MonitorSection } from './ChatMonitorCards';
 import MarkdownBody from './media/MarkdownBody';
 import { StatusColumnBoard } from './StatusColumnBoard';
 import RahoDecisionBar from './RahoDecisionBar';
+import { L0BiasHint } from './L0BiasHint';
+import { jumpToGrillTree } from '../lib/rahoUi';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, ITEM_STATUS_META, roleLabel } from './TaskPanel';
 
 interface ChatWorkStreamProps {
@@ -69,6 +71,12 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
       </div>
 
       <RahoDecisionBar pending={task.raho?.pending_decisions ?? []} />
+      <L0BiasHint snapshot={task.raho?.l0} compact />
+      {(task.raho?.trees?.length ?? 0) > 0 ? (
+        <button type="button" className="l0-link mb-3" onClick={jumpToGrillTree}>
+          對照質詢樹 · {task.raho!.trees!.length} 條鏈
+        </button>
+      ) : null}
 
       <MonitorSection title="當前階段" hint={phaseLabel} badge={running ? 'LIVE' : undefined}>
         <p className="text-[12px] leading-relaxed text-[#AEAEB2]">{task.query.slice(0, 120)}</p>

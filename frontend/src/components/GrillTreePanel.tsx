@@ -17,6 +17,7 @@ import {
   statusLabel,
 } from '../lib/rahoUi';
 import L0Panel from './L0Panel';
+import { L0BiasHint } from './L0BiasHint';
 import RahoDecisionBar from './RahoDecisionBar';
 
 function Pyramid({
@@ -67,9 +68,11 @@ function RoleJump({ roleId, label }: { roleId: string; label: string }) {
 function GrillEdge({
   node,
   kindLabels,
+  onFocus,
 }: {
   node: GrillTreeNode;
   kindLabels?: Record<string, string>;
+  onFocus?: (nodeId: string) => void;
 }) {
   const fromId = nodeRoleId(node, 'from');
   const toId = nodeRoleId(node, 'to');
@@ -85,7 +88,15 @@ function GrillEdge({
             {kindLabel(node.kind, kindLabels)} · {statusLabel(node.status)}
           </span>
         </div>
-        <p className="raho-edge-sum">{node.summary}</p>
+        <button
+          type="button"
+          className="raho-edge-sum"
+          onClick={() => {
+            onFocus?.(node.node_id);
+          }}
+        >
+          {node.summary}
+        </button>
       </div>
     </li>
   );
@@ -139,6 +150,7 @@ export default function GrillTreePanel() {
       {error && <p className="mb-3 text-[12px] text-[#FF453A]">{error}</p>}
 
       <Pyramid trees={trees} directory={directory} />
+      <L0BiasHint snapshot={l0} compact />
       <RahoDecisionBar pending={pending} onResolved={() => void reload()} />
 
       <div className="l0-tabs mb-3" role="tablist">
@@ -198,7 +210,15 @@ export default function GrillTreePanel() {
             )}
             <ol className="space-y-2">
               {tree.nodes.map((node) => (
-                <GrillEdge key={node.node_id} node={node} kindLabels={snap.kind_labels} />
+                <GrillEdge
+                  key={node.node_id}
+                  node={node}
+                  kindLabels={snap.kind_labels}
+                  onFocus={(id) => {
+                    setFocusNodeId(id);
+                    setDetailTab('l0');
+                  }}
+                />
               ))}
             </ol>
           </article>

@@ -394,7 +394,6 @@ def _builtin_snapshot(role: RoleType) -> dict[str, Any]:
             "templates": _templates_for(role.value),
         }
     )
-    return attach_raho_fields(out)
 
 
 def _custom_snapshot(raw: dict[str, Any]) -> dict[str, Any]:
@@ -941,7 +940,10 @@ def _role_presets() -> list[dict[str, Any]]:
         RoleType.ROUTER_ENG,
         RoleType.CUSTOMER_SUCCESS,
         RoleType.REQUIREMENT_AUDITOR,
+        RoleType.TACTICAL_COMMANDER,
         RoleType.CONSTITUTIONAL_INSPECTOR,
+        RoleType.ATOMIC_EXECUTOR,
+        RoleType.ENVIRONMENT_KERNEL,
     ):
         snap = _builtin_snapshot(role)
         presets.append(

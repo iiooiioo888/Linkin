@@ -2,6 +2,7 @@
  * BattlePlanCard — L3 戰術指揮官：原子作戰地圖 / 退回 / 上交。
  */
 import type { AtomicRoleInstance, BattlePlanState } from '../types';
+import { L0BiasHint } from './L0BiasHint';
 
 interface BattlePlanCardProps {
   battle: BattlePlanState;
@@ -22,6 +23,7 @@ function RoleBrief({ role }: { role: AtomicRoleInstance }) {
         {role.max_iterations}
         {role.output_schema ? ` · ${role.output_schema}` : ''}
         {role.success_criteria ? ` · 成敗：${role.success_criteria}` : ''}
+        {role.l0_bias ? `\nL0：${role.l0_bias}` : ''}
         {ref ? `\nref: ${ref}` : ''}
       </code>
       {role.system_prompt ? (
@@ -80,6 +82,7 @@ export default function BattlePlanCard({ battle, onPickAlternative }: BattlePlan
             ? '約束內不可行，禁止硬拆。請選擇替代方案。'
             : `${battle.node_count ?? nodes.length} 個原子節點 · 並行根 ${parallelRoots} · 串行深度 ${serial ?? '—'} · L2 簡報 < 200 Token · 微雕與偏執`}
       </p>
+      <L0BiasHint snapshot={battle.l0} compact />
 
       {checks.length > 0 && (
         <ul className="raho-battle-checks">

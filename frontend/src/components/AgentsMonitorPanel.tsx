@@ -140,6 +140,23 @@ function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQua
       />
     );
   }
+  if (agent.id === 'atomic_executor') {
+    return (
+      <div className="space-y-2">
+        <ExtraGrid
+          cells={[
+            { label: '戰前質詢', value: String(m.grill_count) },
+            { label: '被質詢率', value: `${Math.round((m.grill_rate ?? 0) * 100)}%` },
+            { label: '重試', value: String(m.retries) },
+            { label: '質詢層', value: agent.raho_short || 'L2 執行' },
+          ]}
+        />
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={jumpToGrillTree}>
+          查看質詢樹
+        </button>
+      </div>
+    );
+  }
   if (agent.id === 'tactical_commander') {
     return (
       <div className="space-y-2">

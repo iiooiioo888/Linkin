@@ -303,11 +303,13 @@ function CompanyCard({
   dock,
   onOpen,
   onOpenAgent,
+  onOpenTab,
 }: {
   feed: AnimLiveFeed;
   dock?: boolean;
   onOpen?: () => void;
   onOpenAgent?: (id: string) => void;
+  onOpenTab?: (tab: MonitorTab) => void;
 }) {
   const busy = useMemo(() => pickBusyAgents(feed.agents, dock ? 4 : 5), [feed.agents, dock]);
   const active = useMemo(() => pickActiveAgents(feed.agents, 6), [feed.agents]);
@@ -322,6 +324,8 @@ function CompanyCard({
             label={active.length ? `${active.length} 執行` : busy.length ? `${busy.length} 佇列` : '空閒'}
           />
           {onOpen ? <GoBtn onClick={onOpen} label="角色" /> : null}
+          {onOpenTab ? <GoBtn onClick={() => onOpenTab('grill')} label="質詢樹" /> : null}
+          {onOpenTab ? <GoBtn onClick={() => onOpenTab('memory')} label="L0" /> : null}
         </span>
       }
       className={dock ? 'max-h-[180px]' : 'max-h-[240px]'}
@@ -736,6 +740,7 @@ export default function LiveBoard({
               dock
               onOpen={() => onOpenTab?.('agents')}
               onOpenAgent={onOpenAgent}
+              onOpenTab={onOpenTab}
             />
             <div className="lb-span-2">
               <PipelineCard feed={feed} dock onOpen={() => onOpenTab?.('pipeline')} />
@@ -756,6 +761,7 @@ export default function LiveBoard({
               feed={consoleFeed}
               onOpen={() => onOpenTab?.('agents')}
               onOpenAgent={onOpenAgent}
+              onOpenTab={onOpenTab}
             />
             <div className="lb-span-2">
               <PipelineCard feed={feed} onOpen={() => onOpenTab?.('pipeline')} />

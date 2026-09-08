@@ -65,6 +65,21 @@ def collect_metrics(overrides: dict[str, Any] | None = None) -> dict[str, Any]:
         ]
         if repeats and max(repeats) >= 2:
             urgency = "high"
+        latencies = [
+            float(card.get("avg_latency_ms") or 0)
+            for card in (cards.values() if isinstance(cards, dict) else [])
+            if isinstance(card, dict)
+        ]
+        if latency_ms <= 0 and latencies:
+            latency_ms = sum(latencies) / len(latencies)
+        tokens = [
+            float(card.get("tokens_in") or 0) + float(card.get("tokens_out") or 0)
+            for card in (cards.values() if isinstance(cards, dict) else [])
+            if isinstance(card, dict)
+        ]
+        if token_ratio <= 0 and tokens:
+            total = sum(tokens)
+            token_ratio = min(1.2, total / 80_000.0) if total else 0.0
     except Exception:  # noqa: BLE001
         pass
 

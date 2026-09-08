@@ -50,6 +50,12 @@ class TestIdentity:
         from backend.company.raho.protocol import canonical_role_id
 
         assert canonical_role_id(2) == "atomic_executor"
+        from backend.company.state import RoleType
+        from backend.company.roles import STANDARD_ROLES
+
+        assert RoleType.ATOMIC_EXECUTOR in STANDARD_ROLES
+        assert RoleType.ENVIRONMENT_KERNEL in STANDARD_ROLES
+        assert STANDARD_ROLES[RoleType.ATOMIC_EXECUTOR].reporting_to == RoleType.TACTICAL_COMMANDER
 
 
 class TestThreeKernels:
@@ -69,6 +75,21 @@ class TestThreeKernels:
         remember_query("請給我簡潔報告，不要大表格")
         assert STORE.l0_prefs.get("style") == "concise"
         assert STORE.l0_traces
+
+    def test_grill_node_writes_memory_trace(self):
+        node = STORE.add_node(
+            "run_l0",
+            from_layer=2,
+            to_layer=3,
+            kind="mgp",
+            summary="INPUT_REF 為空，無法找到 sales.csv",
+            from_role="atomic_executor",
+            to_role="tactical_commander",
+        )
+        assert node.node_id
+        assert any(row.get("node_id") == node.node_id for row in STORE.l0_traces)
+        snap = STORE.snapshot()
+        assert snap["l0"]["traces"]
 
     def test_radar_energy_save(self):
         bias, energy, pressure = compute_bias(

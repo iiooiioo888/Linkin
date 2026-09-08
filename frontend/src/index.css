@@ -2970,9 +2970,20 @@ body {
 }
 
 .raho-edge-sum {
+  display: block;
+  width: 100%;
   margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   font-size: 12px;
   color: #ebebf5;
+  text-align: left;
+  cursor: pointer;
+}
+
+.raho-edge-sum:hover {
+  color: #64d2ff;
 }
 
 .raho-desk-chain {
@@ -3486,11 +3497,19 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
   margin: 0 0 12px;
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(100, 210, 255, 0.18);
   background: rgba(100, 210, 255, 0.06);
+  text-align: left;
+  cursor: pointer;
+}
+
+.l0-live.is-compact {
+  margin: 0 0 10px;
+  padding: 8px 10px;
 }
 
 .l0-live p {

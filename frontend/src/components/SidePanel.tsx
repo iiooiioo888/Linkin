@@ -185,17 +185,9 @@ function AgentRoster({
       for (const layer of RAHO_CHAIN) {
         const meta = RAHO_LAYERS[layer];
         if (!meta || layer === 5) continue;
-        if (layer === 0 || layer === 2) {
-          spineRows.push({
-            kind: 'kernel',
-            key: meta.role_id,
-            label: meta.full,
-            short: meta.short,
-            layer,
-          });
-          continue;
-        }
-        const hit = filtered.find((a) => a.id === meta.role_id);
+        const hit =
+          filtered.find((a) => a.id === meta.role_id) ||
+          filtered.find((a) => a.raho_spine && a.raho_layer === layer);
         if (hit) {
           spineRows.push({ kind: 'agent', key: `spine-${hit.id}`, agent: hit });
         } else {
@@ -304,7 +296,6 @@ function AgentRoster({
                 type="button"
                 onClick={() => {
                   if (row.layer === 0) jumpToL0Kernel();
-                  else if (row.layer === 2) onPick('atomic_executor');
                   else onPick(row.key);
                 }}
                 className="ar-ri"
@@ -655,7 +646,9 @@ function MonitorSidebar({
   const navGroups = navGroupsForActivity(activity);
   const onAgentsTab = activeView === 'monitor' && monitorTab === 'agents';
   const onStudioTab = activeView === 'monitor' && monitorTab === 'studio';
-  const onRoleDesk = onAgentsTab || onStudioTab;
+  const onGrillTab = activeView === 'monitor' && monitorTab === 'grill';
+  const onMemoryTab = activeView === 'monitor' && monitorTab === 'memory';
+  const onRoleDesk = onAgentsTab || onStudioTab || onGrillTab || onMemoryTab;
   const onTasksTab = activeView === 'monitor' && monitorTab === 'tasks';
   const onLlmTab = activeView === 'monitor' && monitorTab === 'llm';
   const onTraces = activeView === 'traces';
@@ -667,9 +660,9 @@ function MonitorSidebar({
       return;
     }
     onMonitorTabChange(key);
-    if (key !== 'agents' && key !== 'studio' && focusAgentId) onFocusAgent(null);
+    if (key !== 'agents' && key !== 'studio' && key !== 'grill' && key !== 'memory' && focusAgentId) onFocusAgent(null);
     if (key !== 'tasks' && focusTaskId) onFocusTask(null);
-    if (key !== 'agents' && key !== 'studio' && key !== 'tasks' && key !== 'llm') onClose();
+    if (key !== 'agents' && key !== 'studio' && key !== 'grill' && key !== 'memory' && key !== 'tasks' && key !== 'llm') onClose();
   };
 
   if (onLab) {
@@ -704,8 +697,12 @@ function MonitorSidebar({
       {onRoleDesk ? (
         <AgentRoster
           deskScope={onStudioTab ? 'linkin' : 'console'}
-          focusAgentId={focusAgentId}
+          focusAgentId={onMemoryTab ? 'environment_kernel' : focusAgentId}
           onPick={(id) => {
+            if (id === 'environment_kernel') {
+              jumpToL0Kernel();
+              return;
+            }
             onFocusAgent(id);
             onMonitorTabChange(onStudioTab ? 'studio' : 'agents');
           }}

@@ -236,6 +236,20 @@ class RahoStore:
         tree = self.ensure_tree(run_id, goal)
         with self._lock:
             tree.nodes.append(node)
+        try:
+            from backend.company.raho.l0 import record_trace
+
+            fail = summary if kind in {"mgp", "inspect", "rework", "escalate"} else ""
+            record_trace(
+                task_id=run_id,
+                layer=f"L{from_layer}",
+                node_id=node.node_id,
+                summary=summary,
+                failure_reason=fail,
+                horizon="stm" if status in {"open", "blocked"} else "mtm",
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return node
 
     def resolve_node(self, run_id: str, node_id: str, status: str = "resolved") -> GrillNode | None:

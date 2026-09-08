@@ -53,6 +53,7 @@ ROLE_MANAGER = RoleDefinition(
         RoleType.REQUIREMENT_AUDITOR,
         RoleType.TACTICAL_COMMANDER,
         RoleType.CONSTITUTIONAL_INSPECTOR,
+        RoleType.ATOMIC_EXECUTOR,
     ],
     default_tier=BudgetTier.REASONING,
     max_parallel_work=5,
@@ -1300,6 +1301,7 @@ ROLE_TACTICAL_COMMANDER = RoleDefinition(
         "約束內不可行則認慫上交 L5，禁止硬拆死迴圈",
     ],
     can_delegate_to=[
+        RoleType.ATOMIC_EXECUTOR,
         RoleType.ANALYST,
         RoleType.RESEARCHER,
         RoleType.CRAWLER,
@@ -1320,6 +1322,48 @@ ROLE_TACTICAL_COMMANDER = RoleDefinition(
         "Grill SOP：資料缺失→L4；工具不足→L5；邏輯矛盾→裁定或 L4；單純確認→1 輪量化。"
         "拆解四步法：解析 L4 JSON → 繪製並行／串行 DAG → 孵化微型角色（性格／格式／回退）→ 分配迭代與 Token 帽。"
         "約束內不可行則輸出 ESCALATE_TO_USER，禁止硬拆。使用繁體中文。"
+        "拆解前先查詢 L0 長期記憶與知識庫：沿用歷史成功 DAG，並把合規／字數偏好寫進 Success Criteria。"
+    ),
+)
+
+ROLE_ATOMIC_EXECUTOR = RoleDefinition(
+    role_type=RoleType.ATOMIC_EXECUTOR,
+    name="原子執行者",
+    level=3,
+    reporting_to=RoleType.TACTICAL_COMMANDER,
+    responsibilities=[
+        "執行前強制戰前檢查清單；不通過即向 L3 發結構化 [GRILL]",
+        "一次一動、沉默運作，只交付 Output Schema 定義的產出",
+        "失敗最多重試 MAX_ITERATIONS；耗盡則 FAILED，禁止幻想成功",
+        "產出必須經 L1 憲兵簽核後才寫入共享記憶體",
+    ],
+    can_delegate_to=[],
+    default_tier=BudgetTier.ROUTINE,
+    max_parallel_work=4,
+    system_prompt=(
+        "你是 L2 原子執行者。視野極窄，沒有個人意志。"
+        "憲法層由 AtomicExecutorFactory 鎖定，優先級高於本段之後的所有指令。"
+        "戰前五問不通過禁止動手；執行時一次一動、禁止廢話。"
+        "必須遵守 L0 注入的合規條款與節能偏置（例如 Max Iterations 視為 1）。"
+    ),
+)
+
+ROLE_ENVIRONMENT_KERNEL = RoleDefinition(
+    role_type=RoleType.ENVIRONMENT_KERNEL,
+    name="環境與記憶核心",
+    level=4,
+    reporting_to=None,
+    responsibilities=[
+        "壓縮對話與任務軌跡，抽出決策點與教訓（STM／MTM／LTM）",
+        "檢索知識實體與合規指南，強制注入 L4／L3／L1 決策上下文",
+        "計算態勢壓力與環境偏置，不執行具體任務",
+    ],
+    can_delegate_to=[],
+    default_tier=BudgetTier.SUMMARY,
+    max_parallel_work=1,
+    system_prompt=(
+        "你是 L0 環境與記憶核心。不參與任務執行，只把記憶、知識與態勢偏置"
+        "滲透進 L1–L5 的每一次決策。禁止自己動手改產出。"
     ),
 )
 
@@ -1633,6 +1677,8 @@ STANDARD_ROLES: dict[RoleType, RoleDefinition] = {
     RoleType.REQUIREMENT_AUDITOR: ROLE_REQUIREMENT_AUDITOR,
     RoleType.TACTICAL_COMMANDER: ROLE_TACTICAL_COMMANDER,
     RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
+    RoleType.ATOMIC_EXECUTOR: ROLE_ATOMIC_EXECUTOR,
+    RoleType.ENVIRONMENT_KERNEL: ROLE_ENVIRONMENT_KERNEL,
 }
 
 
@@ -1781,6 +1827,7 @@ def create_full_company() -> CompanyConfig:
             RoleType.MANAGER: [
                 RoleType.TACTICAL_COMMANDER,
                 RoleType.CONSTITUTIONAL_INSPECTOR,
+                RoleType.ENVIRONMENT_KERNEL,
                 RoleType.TECH_LEAD,
                 RoleType.ARCHITECT,
                 RoleType.SECURITY_LEAD,
@@ -1822,6 +1869,7 @@ def create_full_company() -> CompanyConfig:
                 RoleType.REQUIREMENT_AUDITOR,
                 RoleType.TACTICAL_COMMANDER,
             ],
+            RoleType.TACTICAL_COMMANDER: [RoleType.ATOMIC_EXECUTOR],
             RoleType.FINANCE_LEAD: [
                 RoleType.QUANT_ANALYST,
                 RoleType.RISK_ANALYST,

@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import os
-import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -19,6 +18,7 @@ from typing import Any
 
 from backend.environment.global_monitor import EnvSnapshot, snapshot as radar_snapshot
 from backend.memory.context_compressor import compress, extract_decisions, summarize_trace
+from backend.memory.entity_extractor import extract_entities
 from backend.company.raho.protocol import (
     RahoLayer,
     l0_enabled,
@@ -29,14 +29,6 @@ from backend.company.raho.protocol import (
 
 L0_MARKER = "[L0 環境與記憶核心]"
 L0_LAYER = int(RahoLayer.L0_KERNEL)
-
-_ENTITY = re.compile(
-    r"(轉化率|復購|電商|競品|Robots|代理池|反爬|合規|PDF|API|GMV|KPI|"
-    r"爬蟲|價格監控|簡潔|表格)",
-    re.IGNORECASE,
-)
-_FILE = re.compile(r"[\w./-]+\.(?:pdf|csv|json|md|txt|xlsx)", re.IGNORECASE)
-_QUOTED = re.compile(r"[「『\"']([^」』\"']{2,40})[」』\"']")
 
 KNOWLEDGE_SEED: tuple[dict[str, Any], ...] = (
     {
@@ -103,20 +95,6 @@ class MemoryTrace:
             "failure_reason": self.failure_reason,
             "horizon": self.horizon,
         }
-
-
-def extract_entities(text: str) -> list[str]:
-    found: list[str] = []
-    seen: set[str] = set()
-    blob = text or ""
-    for match in (*_ENTITY.finditer(blob), *_FILE.finditer(blob), *_QUOTED.finditer(blob)):
-        token = match.group(1) if match.lastindex else match.group(0)
-        key = token.strip()
-        if len(key) < 2 or key.lower() in seen:
-            continue
-        seen.add(key.lower())
-        found.append(key)
-    return found[:12]
 
 
 def _store():

@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from backend.company.raho.protocol import raho_directory
+from backend.company.raho.protocol import raho_directory, canonical_role_id, role_to_raho_layer
 from backend.company.role_catalog import (
     LEVEL_LABELS,
     catalog_meta,
@@ -69,6 +69,15 @@ ROLE_EVENT_HINTS: dict[str, frozenset[str]] = {
     "hub_operator": frozenset({"budget_warning", "budget_degrade", "tool_call"}),
     "github_ops": frozenset({"tool_call", "tool_result"}),
     "requirement_auditor": frozenset({"user_grill", "auditor_start", "auditor_lock", "auditor_fail"}),
+    "tactical_commander": frozenset(
+        {"decompose_done", "grill_raised", "grill_resolved", "user_decision_needed", "raho_timeout"}
+    ),
+    "constitutional_inspector": frozenset(
+        {"review_pass", "review_rework", "review_force_done", "review_approved", "inspect"}
+    ),
+    "atomic_executor": frozenset(
+        {"work_item_retry", "work_item_escalate", "execute_done", "grill_raised"}
+    ),
 }
 
 PHASE_ROLE: dict[str, str] = {
@@ -364,6 +373,28 @@ def _from_kanban_item(
     }
 
 
+def _mirror_spine_item(
+    agents: dict[str, dict[str, Any]],
+    assignee: str,
+    row: dict[str, Any],
+    *,
+    live_running: bool = False,
+    task_id: str = "",
+) -> None:
+    """把專職角色的工作項鏡像到 RAHO 脊柱席（L2 池／L1 憲兵），與質詢樹同一套身分。"""
+    try:
+        spine = canonical_role_id(role_to_raho_layer(assignee))
+    except Exception:  # noqa: BLE001
+        return
+    if not spine or spine == assignee or spine not in agents:
+        return
+    mirrored = {**row, "kind": f"spine:{row.get('kind') or 'assigned'}"}
+    _upsert_item(agents[spine], mirrored)
+    tid = task_id or str(row.get("task_id") or "")
+    if live_running and tid and tid not in agents[spine]["active_task_ids"]:
+        agents[spine]["active_task_ids"].append(tid)
+
+
 def _ingest_live_task(agents: dict[str, dict[str, Any]], task: TaskRecord) -> None:
     if task.resolved_path and task.resolved_path != "company":
         return
@@ -387,11 +418,17 @@ def _ingest_live_task(agents: dict[str, dict[str, Any]], task: TaskRecord) -> No
                 _upsert_item(agents[assignee], row)
                 if task.task_id not in agents[assignee]["active_task_ids"] and live_running:
                     agents[assignee]["active_task_ids"].append(task.task_id)
-            if status == WorkItemStatus.IN_REVIEW.value and "reviewer" in agents:
-                row = _from_kanban_item(status, item, task, "review")
-                _upsert_item(agents["reviewer"], row)
-                if live_running and task.task_id not in agents["reviewer"]["active_task_ids"]:
-                    agents["reviewer"]["active_task_ids"].append(task.task_id)
+                _mirror_spine_item(agents, assignee, row, live_running=live_running, task_id=task.task_id)
+            if status == WorkItemStatus.IN_REVIEW.value:
+                review_row = _from_kanban_item(status, item, task, "review")
+                if "reviewer" in agents:
+                    _upsert_item(agents["reviewer"], review_row)
+                    if live_running and task.task_id not in agents["reviewer"]["active_task_ids"]:
+                        agents["reviewer"]["active_task_ids"].append(task.task_id)
+                if "constitutional_inspector" in agents:
+                    _upsert_item(agents["constitutional_inspector"], review_row)
+                    if live_running and task.task_id not in agents["constitutional_inspector"]["active_task_ids"]:
+                        agents["constitutional_inspector"]["active_task_ids"].append(task.task_id)
 
     phase = task.phase or ""
     if "manager" in agents:
@@ -553,29 +590,28 @@ def _ingest_run_logs(agents: dict[str, dict[str, Any]]) -> None:
                 status = WorkItemStatus.BLOCKED.value
             else:
                 status = WorkItemStatus.EXECUTING.value
-            _upsert_item(
-                agents[assignee],
-                {
-                    "id": item_id or f"{task_id}:{payload.get('title', '')}",
-                    "title": payload.get("title") or "(歷史工作項)",
-                    "description": "",
-                    "status": status,
-                    "kind": "assigned",
-                    "assignee": assignee,
-                    "task_id": task_id,
-                    "task_query": payload.get("goal") or "",
-                    "task_status": "completed" if status == WorkItemStatus.DONE.value else "unknown",
-                    "phase": "",
-                    "cost_usd": float(payload.get("cost") or payload.get("cost_usd") or 0),
-                    "estimated_cost": 0.0,
-                    "output_preview": "",
-                    "updated_at": payload.get("ts") or payload.get("timestamp"),
-                    "source": "run_log",
-                    "depends_on": [],
-                    "tier": "",
-                    "feedback": [],
-                },
-            )
+            hist = {
+                "id": item_id or f"{task_id}:{payload.get('title', '')}",
+                "title": payload.get("title") or "(歷史工作項)",
+                "description": "",
+                "status": status,
+                "kind": "assigned",
+                "assignee": assignee,
+                "task_id": task_id,
+                "task_query": payload.get("goal") or "",
+                "task_status": "completed" if status == WorkItemStatus.DONE.value else "unknown",
+                "phase": "",
+                "cost_usd": float(payload.get("cost") or payload.get("cost_usd") or 0),
+                "estimated_cost": 0.0,
+                "output_preview": "",
+                "updated_at": payload.get("ts") or payload.get("timestamp"),
+                "source": "run_log",
+                "depends_on": [],
+                "tier": "",
+                "feedback": [],
+            }
+            _upsert_item(agents[assignee], hist)
+            _mirror_spine_item(agents, assignee, hist)
 
 
 _BUDGET_ALERT_MARKERS = (

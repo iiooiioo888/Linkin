@@ -290,6 +290,7 @@ export interface AtomicRoleInstance {
   max_iterations?: number;
   token_budget?: number;
   failure_fallback?: string;
+  l0_bias?: string;
 }
 
 export interface BattlePlan {
@@ -353,6 +354,7 @@ export interface BattlePlanState {
   details?: string;
   suggested_alternatives?: string[];
   waiting_for_user_decision?: boolean;
+  l0?: L0Snapshot;
   waiting_for_l4?: boolean;
   battle_plan?: BattlePlan | null;
   battle_plan_yaml?: string;
