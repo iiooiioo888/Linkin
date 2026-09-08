@@ -1,8 +1,8 @@
 """遞歸對抗式分層組織（RAHO）—— EvoLoop 公司運行時進化層。
 
-L0 環境與記憶核心（記憶／知識／態勢）滲透 L1–L5。
-L5 用戶 Grill-Me → L4 需求審計官 → L3 戰術指揮官 → L2 原子執行者
-L1 憲兵審查官獨立驗收：四維度壓力測試、雙向 Grill、簽核後才寫入共享記憶。
+L0 環境與記憶核心滲透 L1–L5。
+指揮鏈：L5 用戶 → L4 需求審計官 → L3 戰術指揮官 → L2 原子執行者
+獨立審查：L1 憲兵驗收 L2、可質詢 L3，不隸屬指揮鏈。
 L2 執行前仍強制戰前檢查；無法決策則熱馬桶圈上交。
 質詢樹與角色名冊共用 protocol.raho_identity。
 """
@@ -38,9 +38,11 @@ from backend.company.raho.protocol import (
     RahoLayer,
     attach_raho_fields,
     canonical_role_id,
+    grill_edges,
     l0_enabled,
     raho_directory,
     raho_enabled,
+    raho_graph,
     raho_identity,
     user_grill_enabled,
 )
@@ -58,11 +60,13 @@ __all__ = [
     "apply_mgp_system",
     "attach_raho_fields",
     "canonical_role_id",
+    "grill_edges",
     "inject_l0",
     "kernel_snapshot",
     "l0_brief_for",
     "l0_enabled",
     "raho_directory",
+    "raho_graph",
     "raho_identity",
     "remember_query",
     "assemble_atomic",

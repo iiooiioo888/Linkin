@@ -9,6 +9,7 @@
  */
 
 import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
+import { appendGateQuery } from '../lib/auth';
 
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -602,13 +603,16 @@ export interface TaskWsMessage {
 /** 取得 WebSocket URL（適配 Vite 代理與生產環境）。 */
 function wsUrl(path: string): string {
   const base = import.meta.env.VITE_API_URL ?? '/api';
+  let url: string;
   // 生產環境或完整 URL：轉換 http(s) → ws(s)
   if (base.startsWith('http')) {
-    return base.replace(/^http/, 'ws') + path;
+    url = base.replace(/^http/, 'ws') + path;
+  } else {
+    // 開發環境 Vite 代理：使用當前 host
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    url = `${proto}://${window.location.host}${base}${path}`;
   }
-  // 開發環境 Vite 代理：使用當前 host
-  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${proto}://${window.location.host}${base}${path}`;
+  return appendGateQuery(url);
 }
 
 /**
@@ -1055,6 +1059,11 @@ export interface HubModelInfo {
   intelligence: number;
   price_in_per_1m: number;
   price_out_per_1m: number;
+  price_cached_in_per_1m?: number | null;
+  price_cache_write_per_1m?: number | null;
+  price_reasoning_per_1m?: number | null;
+  price_image_per_1m?: number | null;
+  price_audio_per_1m?: number | null;
   cn_allowed: boolean;
   available_in_pool?: boolean;
 }

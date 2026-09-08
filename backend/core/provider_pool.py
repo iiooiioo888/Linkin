@@ -38,6 +38,8 @@ VENDOR_STATIC: dict[str, tuple[str, ...]] = {
         "qwen-plus",
         "qwen-max",
         "qwen-turbo",
+        "qwen-vl-plus",
+        "qwen-vl-max",
     ),
     "moonshot": (
         "kimi-k3",
@@ -589,6 +591,8 @@ def public_pool(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
         "models_by_provider": router_state.get("models_by_provider") or [],
         "route_strategies": router_state.get("strategies") or [],
         "provider_presets": router_state.get("presets") or [],
+        "model_token_hints": router_state.get("model_token_hints") or {},
+        "model_rate_cards": router_state.get("model_rate_cards") or {},
         "catalog": models,
         "catalog_source": runtime.get("catalog_source") or "",
         "catalog_url": runtime.get("catalog_url") or "",

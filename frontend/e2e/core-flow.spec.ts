@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { passGate } from './gate';
 
 test.describe('EvoLoop 核心 UI', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await passGate(page);
+  });
   test('首頁載入並可切換控制台即時動態', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('body')).toBeVisible();
@@ -90,6 +95,16 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
     await expect(page.locator('.rd-col-h', { hasText: '執行中' })).toBeVisible();
     await expect(page.locator('.rd-col-h', { hasText: '已完成' })).toBeVisible();
+  });
+
+  test('舊質詢樹路徑會開角色工作台質詢分頁', async ({ page }) => {
+    await page.goto('/#/monitor/grill');
+    await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.rd-header .rd-acts').getByRole('button', { name: '質詢' })).toBeVisible();
+    await expect(page.getByText(/點層級即可切到對應角色工作台|此角色相關的指揮/)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /質詢樹/ })).toHaveCount(0);
   });
 
   test('Hash 路由：#/monitor/tasks 可書籤與刷新還原', async ({ page }) => {

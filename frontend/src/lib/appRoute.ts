@@ -11,6 +11,7 @@
  *   #/traces | #/traces/{taskId}
  */
 import type { MonitorTab, ViewKey } from '../components/AppShell';
+import { setPendingDeskTab } from './agentUi';
 import { normalizeLabSubTab, type LabSubTab } from './labTabs';
 import { normalizeMonitorTab } from './monitorTabs';
 
@@ -50,7 +51,9 @@ export function parseAppRoute(hash: string): AppRoute {
   }
 
   if (head === 'monitor') {
-    const tab = normalizeMonitorTab(parts[1] ?? 'live');
+    const rawTab = parts[1] ?? 'live';
+    if (rawTab === 'grill') setPendingDeskTab('grill');
+    const tab = normalizeMonitorTab(rawTab);
     const focusRaw = parts[2] ? decodeURIComponent(parts[2]) : null;
     const labSubTab = tab === 'lab' ? normalizeLabSubTab(focusRaw) : 'prompt';
     return {

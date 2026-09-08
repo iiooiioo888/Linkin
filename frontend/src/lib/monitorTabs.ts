@@ -45,7 +45,6 @@ export const MONITOR_WORK_TABS: MonitorTabItem[] = [
   { key: 'live', icon: '◎', label: '即時' },
   { key: 'tasks', icon: '▣', label: '任務' },
   { key: 'agents', icon: '◈', label: '角色' },
-  { key: 'grill', icon: '⚡', label: '質詢樹' },
   { key: 'pipeline', icon: '⬡', label: '管線' },
 ];
 
@@ -96,8 +95,7 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     items: [
       { key: 'live', icon: '◎', label: '即時', hint: '總覽，點卡片跳轉' },
       { key: 'tasks', icon: '▣', label: '任務', hint: '隊列／執行中／已完成' },
-      { key: 'agents', icon: '◈', label: '角色', hint: 'RAHO 層級／模型／工作台' },
-      { key: 'grill', icon: '⚡', label: '質詢樹', hint: 'L0–L5 質詢鏈，與角色／記憶核心互通' },
+      { key: 'agents', icon: '◈', label: '角色', hint: '質詢鏈／指揮層／工作台' },
       { key: 'pipeline', icon: '⬡', label: '管線', hint: '反思閉環階段' },
       TRACES_NAV_ITEM,
     ],
@@ -199,6 +197,7 @@ export const MONITOR_TAB_ALIASES: Record<string, MonitorTab> = {
   studio_roles: 'studio',
   linkin_roles: 'studio',
   l0: 'memory',
+  grill: 'agents',
 };
 
 const WORK_TAB_KEYS = new Set<string>(MONITOR_WORK_TABS.map((t) => t.key));
@@ -214,10 +213,10 @@ const CONSOLE_TAB_KEYS = new Set<string>([
 /** 控制台頂欄五個主入口（靈境／Minecraft 不進此列）。 */
 export const CONSOLE_CHROME_TABS: Array<{ key: MonitorTab; label: string; match: MonitorTab[] }> = [
   { key: 'live', label: '總覽', match: ['live', 'pipeline'] },
-  { key: 'tasks', label: '新項', match: ['tasks', 'grill'] },
+  { key: 'tasks', label: '新項', match: ['tasks'] },
   { key: 'models', label: '使用', match: ['models', 'metrics', 'feedback'] },
   { key: 'llm', label: '權限', match: ['llm', 'ops', 'memory'] },
-  { key: 'agents', label: '角色', match: ['agents'] },
+  { key: 'agents', label: '角色', match: ['agents', 'grill'] },
 ];
 
 export function consoleChromeTabKey(tab: MonitorTab | 'traces'): MonitorTab | null {

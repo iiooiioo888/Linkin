@@ -1,20 +1,264 @@
 {
-  "gpt-4o": [2.50, 10.00],
-  "gpt-4o-mini": [0.15, 0.60],
-  "gpt-4-turbo": [10.00, 30.00],
-  "gpt-3.5-turbo": [0.50, 1.50],
-  "deepseek-v4-flash": [0.22, 0.66],
-  "deepseek-v4-pro": [0.66, 1.98],
-  "deepseek-v4-flash-vision-exp": [0.22, 0.66],
-  "qwen-turbo": [0.05, 0.10],
-  "qwen-plus": [0.25, 1.00],
-  "qwen-max": [0.60, 2.40],
-  "gpt-5.6-sol": [3.00, 30.00],
-  "gemini-3.1-pro": [1.25, 12.00],
-  "mimo-v2.5-pro": [0.21, 0.83],
-  "qwen3.5-max": [0.30, 1.20],
-  "mercury-2": [0.50, 2.00],
-  "nemotron-3.5-lightning": [0.00, 0.00],
-  "glm-5.2": [0.10, 0.40],
-  "kimi-k3": [0.40, 1.50]
+  "gpt-4o": {
+    "input": 2.5,
+    "output": 10.0,
+    "cached_input": 1.25,
+    "cache_write": 2.5,
+    "image": 3.75,
+    "audio": 40.0
+  },
+  "gpt-4o-mini": {
+    "input": 0.15,
+    "output": 0.6,
+    "cached_input": 0.075,
+    "cache_write": 0.15,
+    "image": 0.25,
+    "audio": 10.0
+  },
+  "gpt-4-turbo": {
+    "input": 10.0,
+    "output": 30.0,
+    "image": 10.0
+  },
+  "gpt-3.5-turbo": {
+    "input": 0.5,
+    "output": 1.5
+  },
+  "gpt-4.1": {
+    "input": 2.0,
+    "output": 8.0,
+    "cached_input": 0.5,
+    "cache_write": 2.0,
+    "image": 2.0
+  },
+  "gpt-4.1-mini": {
+    "input": 0.4,
+    "output": 1.6,
+    "cached_input": 0.1,
+    "cache_write": 0.4,
+    "image": 0.4
+  },
+  "gpt-4.1-nano": {
+    "input": 0.1,
+    "output": 0.4,
+    "cached_input": 0.025,
+    "cache_write": 0.1
+  },
+  "gpt-5.6-sol": {
+    "input": 3.0,
+    "output": 30.0,
+    "cached_input": 0.75,
+    "cache_write": 3.75,
+    "reasoning": 30.0,
+    "image": 4.5
+  },
+  "deepseek-v4-flash": {
+    "input": 0.22,
+    "output": 0.66,
+    "cached_input": 0.022,
+    "cache_write": 0.28,
+    "reasoning": 0.66
+  },
+  "deepseek-v4-pro": {
+    "input": 0.66,
+    "output": 1.98,
+    "cached_input": 0.066,
+    "cache_write": 0.83,
+    "reasoning": 1.98
+  },
+  "deepseek-v4-flash-vision-exp": {
+    "input": 0.22,
+    "output": 0.66,
+    "cached_input": 0.022,
+    "image": 0.8
+  },
+  "qwen-turbo": {
+    "input": 0.05,
+    "output": 0.2,
+    "cached_input": 0.02,
+    "cache_write": 0.08
+  },
+  "qwen-plus": {
+    "input": 0.4,
+    "output": 1.2,
+    "cached_input": 0.08,
+    "cache_write": 0.5,
+    "reasoning": 1.2
+  },
+  "qwen-max": {
+    "input": 1.6,
+    "output": 6.4,
+    "cached_input": 0.32,
+    "cache_write": 2.0,
+    "reasoning": 6.4,
+    "image": 2.4
+  },
+  "qwen-long": {
+    "input": 0.5,
+    "output": 2.0,
+    "cached_input": 0.1,
+    "cache_write": 0.6
+  },
+  "qwen3.5-max": {
+    "input": 0.3,
+    "output": 1.2,
+    "cached_input": 0.06,
+    "cache_write": 0.38,
+    "reasoning": 2.4,
+    "image": 1.2
+  },
+  "qwen3-coder-plus": {
+    "input": 1.0,
+    "output": 4.0,
+    "cached_input": 0.2,
+    "cache_write": 1.25,
+    "reasoning": 4.0
+  },
+  "qwen-vl-plus": {
+    "input": 0.4,
+    "output": 1.2,
+    "image": 1.2
+  },
+  "qwen-vl-max": {
+    "input": 0.8,
+    "output": 3.2,
+    "image": 2.4
+  },
+  "kimi-k2": {
+    "input": 0.6,
+    "output": 2.5,
+    "cached_input": 0.15,
+    "cache_write": 0.75,
+    "reasoning": 2.5
+  },
+  "kimi-k3": {
+    "input": 0.4,
+    "output": 1.5,
+    "cached_input": 0.1,
+    "cache_write": 0.5,
+    "reasoning": 3.0
+  },
+  "moonshot-v1-8k": {
+    "input": 1.2,
+    "output": 1.2
+  },
+  "moonshot-v1-32k": {
+    "input": 2.4,
+    "output": 2.4
+  },
+  "moonshot-v1-128k": {
+    "input": 6.0,
+    "output": 6.0
+  },
+  "glm-4-flash": {
+    "input": 0.01,
+    "output": 0.01
+  },
+  "glm-4": {
+    "input": 0.1,
+    "output": 0.1
+  },
+  "glm-4-plus": {
+    "input": 0.5,
+    "output": 0.5,
+    "image": 0.8
+  },
+  "glm-5.2": {
+    "input": 0.1,
+    "output": 0.4,
+    "cached_input": 0.02,
+    "cache_write": 0.12,
+    "reasoning": 0.8
+  },
+  "gemini-3.1-pro": {
+    "input": 1.25,
+    "output": 12.0,
+    "cached_input": 0.31,
+    "reasoning": 12.0,
+    "image": 1.25,
+    "audio": 3.0
+  },
+  "mimo-v2.5-pro": {
+    "input": 0.21,
+    "output": 0.83,
+    "cached_input": 0.05,
+    "reasoning": 0.83
+  },
+  "mercury-2": {
+    "input": 0.5,
+    "output": 2.0
+  },
+  "nemotron-3.5-lightning": {
+    "input": 0.0,
+    "output": 0.0
+  },
+  "text-embedding-3-small": {
+    "input": 0.02,
+    "output": 0.0,
+    "embedding": 0.02
+  },
+  "text-embedding-3-large": {
+    "input": 0.13,
+    "output": 0.0,
+    "embedding": 0.13
+  },
+  "qwen-embedding-v3": {
+    "input": 0.03,
+    "output": 0.0,
+    "embedding": 0.03
+  },
+  "qwen3.8-max": {
+    "input": 1.65,
+    "output": 4.95
+  },
+  "qwen3.8-flash": {
+    "input": 0.15,
+    "output": 0.6
+  },
+  "qwen3.7-plus": {
+    "input": 0.4,
+    "output": 1.2
+  },
+  "qwen3.7-flash": {
+    "input": 0.1,
+    "output": 0.4
+  },
+  "gpt-6-astra": {
+    "input": 10.0,
+    "output": 50.0
+  },
+  "gpt-5.6-terra": {
+    "input": 2.0,
+    "output": 12.0,
+    "cached_input": 0.5
+  },
+  "gpt-5.6-luna": {
+    "input": 0.2,
+    "output": 1.2,
+    "cached_input": 0.05
+  },
+  "kimi-k2.7-code": {
+    "input": 0.9,
+    "output": 3.8
+  },
+  "kimi-k2.6": {
+    "input": 0.9,
+    "output": 3.8
+  },
+  "glm-5": {
+    "input": 0.6,
+    "output": 2.2
+  },
+  "glm-5.1": {
+    "input": 0.6,
+    "output": 2.2
+  },
+  "glm-5.3": {
+    "input": 1.0,
+    "output": 3.2
+  },
+  "glm-5.3-flash": {
+    "input": 0.1,
+    "output": 0.4
+  }
 }

@@ -10,132 +10,60 @@
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
+from backend.company.rate_card import (
+    estimate_usage_cost,
+    get_model_costs,
+    get_model_rate_cards,
+    public_rate_cards,
+    rate_card_for,
+    reload_model_costs,
+)
 from backend.company.state import BudgetConfig, BudgetTier
 
 logger = logging.getLogger(__name__)
 
 # ── 預算預測配置 ──
-# 預設歷史窗口大小（天數）
 DEFAULT_HISTORY_WINDOW_DAYS = 7
-# 預設預測窗口大小（天數）
 DEFAULT_FORECAST_WINDOW_DAYS = 30
-# 最低數據點數量（用於可靠的預測）
 MIN_DATA_POINTS_FOR_FORECAST = 3
-
-# ── 模型每百萬 token 成本（USD） ──
-# 實際價格請以供應商為準，此處為概估
-_DEFAULT_MODEL_COST: dict[str, tuple[float, float]] = {
-    # (input_cost, output_cost) per 1M tokens
-    # LangGraph 公司運行時現用模型
-    "gpt-4o": (2.50, 10.00),
-    "gpt-4o-mini": (0.15, 0.60),
-    "gpt-4-turbo": (10.00, 30.00),
-    "gpt-3.5-turbo": (0.50, 1.50),
-    # DeepSeek V4（官方 off-peak / cache-miss 概估）
-    "deepseek-v4-flash": (0.22, 0.66),
-    "deepseek-v4-pro": (0.66, 1.98),
-    "deepseek-v4-flash-vision-exp": (0.22, 0.66),
-    # AI Hub 九模型目錄（與 docs/AI_HUB_DETAILED_DESIGN.md §1.6 對齊）
-    "gpt-5.6-sol": (3.00, 30.00),
-    "gemini-3.1-pro": (1.25, 12.00),
-    "mimo-v2.5-pro": (0.21, 0.83),
-    "qwen3.5-max": (0.30, 1.20),
-    "mercury-2": (0.50, 2.00),
-    "nemotron-3.5-lightning": (0.00, 0.00),
-    "glm-5.2": (0.10, 0.40),
-    "kimi-k3": (0.40, 1.50),
-    # OpenAI 現行旗艦（官方價，USD/MTok）
-    "gpt-6-astra": (10.00, 50.00),
-    "gpt-5.6-terra": (2.00, 12.00),
-    "gpt-5.6-luna": (0.20, 1.20),
-    # Kimi 現行（¥20/¥100 概估匯率換算）
-    "kimi-k2.7-code": (0.90, 3.80),
-    "kimi-k2.6": (0.90, 3.80),
-}
-
-
-def _load_model_costs() -> dict[str, tuple[float, float]]:
-    """載入模型價格配置（優化 #9：配置文件驅動）。
-
-    優先級：
-    1. 環境變數 EVOL_MODEL_COSTS_PATH 指定的 JSON 文件
-    2. backend/config/model_costs.json
-    3. 內建預設值
-    """
-    costs = dict(_DEFAULT_MODEL_COST)
-
-    # 嘗試從配置文件載入
-    config_path = os.getenv("EVOL_MODEL_COSTS_PATH")
-    if not config_path:
-        default_path = Path(__file__).resolve().parent.parent / "config" / "model_costs.json"
-        if default_path.exists():
-            config_path = str(default_path)
-
-    if config_path:
-        try:
-            with open(config_path, encoding="utf-8") as f:
-                loaded = json.load(f)
-            for model, prices in loaded.items():
-                if isinstance(prices, list) and len(prices) == 2:
-                    costs[model] = (float(prices[0]), float(prices[1]))
-            logger.info("從配置文件載入 %d 個模型價格：%s", len(loaded), config_path)
-        except Exception as exc:
-            logger.warning("載入模型價格配置失敗（使用預設值）：%s", exc)
-
-    return costs
-
-
-# 模組級價格表（啟動時載入，可透過 reload 動態更新）
-_MODEL_COST_PER_1M_TOKENS: dict[str, tuple[float, float]] | None = None
-
-
-def get_model_costs() -> dict[str, tuple[float, float]]:
-    """取得當前模型價格表（惰性載入）。"""
-    global _MODEL_COST_PER_1M_TOKENS
-    if _MODEL_COST_PER_1M_TOKENS is None:
-        _MODEL_COST_PER_1M_TOKENS = _load_model_costs()
-    return _MODEL_COST_PER_1M_TOKENS
-
-
-def reload_model_costs() -> None:
-    """重新載入模型價格配置（支援運行時熱更新）。"""
-    global _MODEL_COST_PER_1M_TOKENS
-    _MODEL_COST_PER_1M_TOKENS = _load_model_costs()
-    logger.info("模型價格配置已重新載入")
 
 
 class CostTracker:
-    """估算 LLM 呼叫成本。"""
+    """估算 LLM 呼叫成本（含快取／推理／多模態收費項）。"""
 
     @staticmethod
     def estimate_cost(
         model: str,
         input_tokens: int = 0,
         output_tokens: int = 0,
+        *,
+        cached_input_tokens: int = 0,
+        cache_write_tokens: int = 0,
+        reasoning_tokens: int = 0,
+        image_tokens: int = 0,
+        audio_tokens: int = 0,
+        embedding_tokens: int = 0,
     ) -> float:
-        """根據 token 數估算成本（USD）（優化 #9：動態價格）。"""
-        costs = get_model_costs().get(model)
-        if costs is None:
-            # 未知模型，使用保守估計
-            costs = (1.0, 4.0)
-        input_cost, output_cost = costs
-        return (input_tokens / 1_000_000) * input_cost + (
-            output_tokens / 1_000_000
-        ) * output_cost
+        """根據各收費項 token 數估算成本（USD）。"""
+        return estimate_usage_cost(
+            model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cached_input_tokens=cached_input_tokens,
+            cache_write_tokens=cache_write_tokens,
+            reasoning_tokens=reasoning_tokens,
+            image_tokens=image_tokens,
+            audio_tokens=audio_tokens,
+            embedding_tokens=embedding_tokens,
+        )
 
     @staticmethod
     def estimate_cost_rough(model: str, complexity: str = "medium") -> float:
-        """粗略估算（無 token 計數時使用）。
-
-        complexity: "low" | "medium" | "high"
-        """
+        """粗略估算（無 token 計數時使用）。"""
         base_tokens = {"low": 500, "medium": 2000, "high": 8000}
         tokens = base_tokens.get(complexity, 2000)
         return CostTracker.estimate_cost(model, input_tokens=tokens, output_tokens=tokens)

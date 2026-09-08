@@ -89,13 +89,17 @@ class Priority(int, Enum):
 class RoleType(str, Enum):
     """預定義角色類型，含層級關係。
 
-    層級結構（從上到下）：
+    組織職級（RoleDefinition.level，數字越小越高層）：
       Level 0: MANAGER
       Level 1: TECH/ARCHITECT/SECURITY/PRODUCT/FINANCE/INDUSTRIAL/CREATIVE/PLATFORM/AI/GROWTH LEAD
       Level 2: FRONTEND/BACKEND/TEST/DATA LEAD
       Level 3: 執行層（開發、量化、爬蟲、OPC、故事、GitHub、Hub、行情等）
-      Level 4: REVIEWER, SYNTHESIZER, ANALYST, COORDINATOR, RESEARCHER, PROMPT_ENGINEER, LEGAL, CONTENT_WRITER, SUPPORT, MEMORY, KNOWLEDGE, REQUIREMENT_AUDITOR, TACTICAL_COMMANDER, CONSTITUTIONAL_INSPECTOR, ENVIRONMENT_KERNEL
-      RAHO 脊柱另含 ATOMIC_EXECUTOR（L2 執行池，組織層級 3）
+      Level 4: REVIEWER, SYNTHESIZER, ANALYST, COORDINATOR, RESEARCHER, PROMPT_ENGINEER, LEGAL, CONTENT_WRITER, SUPPORT, MEMORY, KNOWLEDGE
+
+    RAHO 三條線（與組織職級分開，見 company/raho/protocol.py）：
+      指揮鏈 L5 用戶 → L4 需求審計官 → L3 戰術指揮官 → L2 原子執行者
+      獨立審查 L1 憲兵審查官（不隸屬 L3，驗收 L2、可質詢 L3）
+      環境核心 L0 滲透每一層，不參與質詢
     """
 
     # ── Level 0：最高決策層 ──

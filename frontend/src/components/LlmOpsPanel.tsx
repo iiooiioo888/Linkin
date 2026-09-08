@@ -4,8 +4,9 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchLlmOps, refreshLlmModels, updateLlmOpsPrefs } from '../api/client';
+import { fmtPerMillion, lookupRateCard } from '../lib/agentUi';
 import { navPathForTab } from '../lib/monitorTabs';
-import type { LlmOpsData } from '../types';
+import type { LlmOpsData, ModelRateCard } from '../types';
 import ApiRoutesEditor from './ApiRoutesEditor';
 
 function fmtWhen(iso: string | undefined): string {
@@ -19,6 +20,13 @@ function fmtWhen(iso: string | undefined): string {
     minute: '2-digit',
     hour12: false,
   });
+}
+
+function rateField(data: LlmOpsData | null, modelId: string, field: keyof ModelRateCard): string {
+  const card = lookupRateCard(modelId, data?.model_rate_cards);
+  const n = card?.[field];
+  if (typeof n !== 'number' || !n) return '—';
+  return fmtPerMillion(n);
 }
 
 function healthLabel(data: LlmOpsData | null): { text: string; tone: string } {
@@ -203,19 +211,24 @@ export default function LlmOpsPanel() {
                 className="w-56 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#d0d6e0] placeholder:text-[#62666d]"
               />
             </div>
-            <div className="overflow-hidden rounded-lg border border-white/[0.08]">
+            <div className="overflow-x-auto rounded-lg border border-white/[0.08]">
               <table className="w-full text-left text-[12px]">
                 <thead className="bg-[#1C1C1E] text-[10px] uppercase tracking-wider text-[#62666d]">
                   <tr>
                     <th className="px-3 py-2 font-medium">模型 ID</th>
                     <th className="px-3 py-2 font-medium">名稱</th>
                     <th className="px-3 py-2 font-medium">API</th>
+                    <th className="px-3 py-2 font-medium">輸入</th>
+                    <th className="px-3 py-2 font-medium">輸出</th>
+                    <th className="px-3 py-2 font-medium">快取</th>
+                    <th className="px-3 py-2 font-medium">推理</th>
+                    <th className="px-3 py-2 font-medium">視覺</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-3 py-8 text-center text-[#62666d]">
+                      <td colSpan={8} className="px-3 py-8 text-center text-[#62666d]">
                         {models.length === 0
                           ? '尚無目錄。在左側加入千問／DeepSeek／Kimi／OpenRouter 後按「立刻檢查目錄」。'
                           : '沒有符合搜尋的模型'}
@@ -235,6 +248,15 @@ export default function LlmOpsPanel() {
                           <td className="px-3 py-1.5 text-[#8a8f98]">
                             {idx === 0 || rows[idx - 1]?.route_name !== m.route_name ? group : ''}
                           </td>
+                          <td className="px-3 py-1.5 font-mono text-[#8a8f98]">{rateField(data, m.id, 'input')}</td>
+                          <td className="px-3 py-1.5 font-mono text-[#8a8f98]">{rateField(data, m.id, 'output')}</td>
+                          <td className="px-3 py-1.5 font-mono text-[#8a8f98]">
+                            {rateField(data, m.id, 'cached_input')}
+                          </td>
+                          <td className="px-3 py-1.5 font-mono text-[#8a8f98]">
+                            {rateField(data, m.id, 'reasoning')}
+                          </td>
+                          <td className="px-3 py-1.5 font-mono text-[#8a8f98]">{rateField(data, m.id, 'image')}</td>
                         </tr>
                       )),
                     )

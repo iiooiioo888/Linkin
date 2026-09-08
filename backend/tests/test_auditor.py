@@ -62,6 +62,7 @@ class TestAuditorRole:
         assert RoleType.TACTICAL_COMMANDER in STANDARD_ROLES
         commander = STANDARD_ROLES[RoleType.TACTICAL_COMMANDER]
         assert commander.name == "戰術指揮官"
+        assert commander.reporting_to == RoleType.REQUIREMENT_AUDITOR
 
 
 SPEC_QUESTIONS = {

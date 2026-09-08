@@ -1,10 +1,35 @@
 /**
  * RAHO 層級／角色統一顯示（與 backend/company/raho/protocol.py 對齊）。
+ * 三條線：指揮鏈 L5→L4→L3→L2、獨立審查 L1、環境核心 L0。
  * 質詢樹、角色名冊、工作台必須走這份資料，禁止各面板自寫 L0–L5 名稱。
  */
-import type { GrillTree, GrillTreeNode, RahoDirectoryEntry, RoleAgent } from '../types';
+import type { GrillTree, GrillTreeNode, RahoDirectoryEntry, RahoGrillEdge, RoleAgent } from '../types';
+import { requestRoleGrillDesk } from './agentUi';
 
 export const RAHO_CHAIN = [5, 4, 3, 2, 1, 0] as const;
+export const COMMAND_CHAIN = [5, 4, 3, 2] as const;
+export const INSPECT_CHAIN = [1] as const;
+export const KERNEL_CHAIN = [0] as const;
+
+export const LANE_LABELS: Record<string, string> = {
+  kernel: '環境核心',
+  command: '指揮鏈',
+  inspect: '獨立審查',
+};
+
+export const DIRECTION_LABELS: Record<string, string> = {
+  up: '質詢上拋',
+  down: '任務下達',
+  inspect: '獨立審查',
+  inject: '環境注入',
+};
+
+export const DIRECTION_GLYPH: Record<string, string> = {
+  up: '↑',
+  down: '↓',
+  inspect: '⇄',
+  inject: '⇢',
+};
 
 export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
   0: {
@@ -14,7 +39,13 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
     title: '環境與記憶核心',
     short: 'L0 核心',
     full: 'L0 環境與記憶核心',
+    lane: 'kernel',
+    lane_label: '環境核心',
     grill_targets: [],
+    escalate_targets: [],
+    submit_targets: [],
+    reports_to: null,
+    independent: true,
   },
   1: {
     layer: 1,
@@ -23,7 +54,14 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
     title: '憲兵審查官',
     short: 'L1 憲兵',
     full: 'L1 憲兵審查官',
-    grill_targets: ['L2 原子執行者', 'L3 戰術指揮官'],
+    lane: 'inspect',
+    lane_label: '獨立審查',
+    grill_targets: ['atomic_executor', 'tactical_commander'],
+    grill_target_labels: ['L2 原子執行者', 'L3 戰術指揮官'],
+    escalate_targets: ['requirement_auditor', 'user'],
+    submit_targets: [],
+    reports_to: null,
+    independent: true,
   },
   2: {
     layer: 2,
@@ -32,7 +70,15 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
     title: '原子執行者',
     short: 'L2 執行',
     full: 'L2 原子執行者',
-    grill_targets: ['L3 戰術指揮官'],
+    lane: 'command',
+    lane_label: '指揮鏈',
+    grill_targets: ['tactical_commander'],
+    grill_target_labels: ['L3 戰術指揮官'],
+    escalate_targets: ['tactical_commander', 'requirement_auditor', 'user'],
+    submit_targets: ['constitutional_inspector'],
+    submit_target_labels: ['L1 憲兵審查官'],
+    reports_to: 'tactical_commander',
+    independent: false,
   },
   3: {
     layer: 3,
@@ -41,7 +87,15 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
     title: '戰術指揮官',
     short: 'L3 指揮',
     full: 'L3 戰術指揮官',
-    grill_targets: ['L4 需求審計官', 'L5 用戶'],
+    lane: 'command',
+    lane_label: '指揮鏈',
+    grill_targets: ['requirement_auditor'],
+    grill_target_labels: ['L4 需求審計官'],
+    escalate_targets: ['requirement_auditor', 'user'],
+    submit_targets: ['atomic_executor'],
+    submit_target_labels: ['L2 原子執行者'],
+    reports_to: 'requirement_auditor',
+    independent: false,
   },
   4: {
     layer: 4,
@@ -50,7 +104,15 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
     title: '需求審計官',
     short: 'L4 審計',
     full: 'L4 需求審計官',
-    grill_targets: ['L5 用戶'],
+    lane: 'command',
+    lane_label: '指揮鏈',
+    grill_targets: ['user'],
+    grill_target_labels: ['L5 用戶'],
+    escalate_targets: ['user'],
+    submit_targets: ['tactical_commander'],
+    submit_target_labels: ['L3 戰術指揮官'],
+    reports_to: 'user',
+    independent: false,
   },
   5: {
     layer: 5,
@@ -59,9 +121,59 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
     title: '用戶',
     short: 'L5 用戶',
     full: 'L5 用戶',
+    lane: 'command',
+    lane_label: '指揮鏈',
     grill_targets: [],
+    escalate_targets: [],
+    submit_targets: ['requirement_auditor'],
+    submit_target_labels: ['L4 需求審計官'],
+    reports_to: null,
+    independent: true,
   },
 };
+
+function edge(
+  fromLayer: number,
+  toLayer: number,
+  kind: string,
+  label: string,
+  direction: RahoGrillEdge['direction'],
+): RahoGrillEdge {
+  const src = RAHO_LAYERS[fromLayer];
+  const dst = RAHO_LAYERS[toLayer];
+  return {
+    from_layer: fromLayer,
+    to_layer: toLayer,
+    from_role: src.role_id,
+    to_role: dst.role_id,
+    from_label: src.full,
+    to_label: dst.full,
+    kind,
+    label,
+    direction,
+    lane: direction === 'inject' ? 'kernel' : direction === 'inspect' ? 'inspect' : 'command',
+  };
+}
+
+export const GRILL_EDGES: RahoGrillEdge[] = [
+  edge(5, 4, 'mandate', '提交需求', 'down'),
+  edge(4, 3, 'campaign', '戰術指令下達', 'down'),
+  edge(3, 2, 'campaign', '孵化原子任務', 'down'),
+  edge(2, 1, 'submit', '提交產出驗收', 'inspect'),
+  edge(4, 5, 'user_grill', '需求審計', 'up'),
+  edge(3, 4, 'escalate', '戰略不可行', 'up'),
+  edge(3, 5, 'escalate', '基礎設施缺失', 'up'),
+  edge(2, 3, 'mgp', '戰前質詢', 'up'),
+  edge(2, 4, 'escalate', '戰前逾時跳級', 'up'),
+  edge(1, 2, 'rework', '退回重做', 'inspect'),
+  edge(1, 3, 'inspect', '質疑規劃', 'inspect'),
+  edge(1, 4, 'escalate', '標準爭議', 'up'),
+  edge(1, 5, 'escalate', '最終裁定', 'up'),
+  edge(0, 4, 'l0', '滲透決策層', 'inject'),
+  edge(0, 3, 'l0', '滲透規劃層', 'inject'),
+  edge(0, 2, 'l0', '滲透執行層', 'inject'),
+  edge(0, 1, 'l0', '滲透審查層', 'inject'),
+];
 
 export const RAHO_SPINE_ROLE_IDS = [
   'environment_kernel',
@@ -73,6 +185,7 @@ export const RAHO_SPINE_ROLE_IDS = [
 ] as const;
 
 export const RAHO_KIND_LABELS: Record<string, string> = {
+  mandate: '需求下達',
   user_grill: '用戶審計',
   mgp: '戰前質詢',
   escalate: '向上呈報',
@@ -80,6 +193,7 @@ export const RAHO_KIND_LABELS: Record<string, string> = {
   timeout: '決策逾時',
   user_decide: '用戶裁決',
   inspect: '憲兵審查',
+  submit: '提交驗收',
   campaign: '戰役下達',
   rework: '退回重做',
   l0: '環境注入',
@@ -140,6 +254,21 @@ export function kindLabel(kind?: string | null, catalog?: Record<string, string>
   return catalog?.[key] || RAHO_KIND_LABELS[key] || key || '質詢';
 }
 
+export function directionLabel(direction?: string | null): string {
+  const key = direction || '';
+  return DIRECTION_LABELS[key] || key || '質詢';
+}
+
+export function directionGlyph(direction?: string | null): string {
+  const key = direction || '';
+  return DIRECTION_GLYPH[key] || '→';
+}
+
+export function laneLabel(lane?: string | null): string {
+  const key = lane || '';
+  return LANE_LABELS[key] || key || '指揮鏈';
+}
+
 export function statusLabel(status?: string | null): string {
   const key = status || '';
   return RAHO_STATUS_LABELS[key] || key;
@@ -182,8 +311,27 @@ export function agentRahoLabel(
   return agent.name ? `L${layer} ${agent.name}` : rahoLayerLabel(layer);
 }
 
-export function orgLevelCaption(agent: Pick<RoleAgent, 'level' | 'level_label'>): string {
+export function grillTargetLabel(roleId?: string | null): string {
+  if (!roleId) return '';
+  const layer = ROLE_LAYER[roleId];
+  if (layer != null) return RAHO_LAYERS[layer]?.full || roleId;
+  return rahoRoleLabel(roleId);
+}
+
+export function orgLevelCaption(
+  agent: Pick<RoleAgent, 'level' | 'level_label' | 'raho_spine' | 'raho_independent' | 'raho_lane' | 'raho_lane_label' | 'reporting_to'>,
+): string {
+  if (agent.raho_spine) {
+    const lane = agent.raho_lane_label || laneLabel(agent.raho_lane);
+    if (agent.raho_independent || !agent.reporting_to) return `${lane} · 獨立`;
+    return `${lane} · 上報 ${grillTargetLabel(agent.reporting_to)}`;
+  }
   return `組織 · ${agent.level_label || `職級 ${agent.level}`}`;
+}
+
+export function edgesForRole(roleId: string, edges?: RahoGrillEdge[] | null): RahoGrillEdge[] {
+  const list = edges && edges.length ? edges : GRILL_EDGES;
+  return list.filter((edge) => edge.from_role === roleId || edge.to_role === roleId);
 }
 
 export function nodesForRole(trees: GrillTree[], roleId: string): GrillTreeNode[] {
@@ -218,8 +366,18 @@ export function jumpToRoleDesk(roleId: string) {
   window.location.hash = `#/monitor/agents/${encodeURIComponent(roleId)}`;
 }
 
-export function jumpToGrillTree() {
-  window.location.hash = '#/monitor/grill';
+export function jumpToGrillTree(roleId?: string) {
+  const target = roleId && roleId !== 'user' ? roleId : undefined;
+  if (target === 'environment_kernel') {
+    jumpToL0Kernel();
+    return;
+  }
+  requestRoleGrillDesk(target);
+  if (target) {
+    window.location.hash = `#/monitor/agents/${encodeURIComponent(target)}`;
+    return;
+  }
+  window.location.hash = '#/monitor/agents';
 }
 
 export function jumpToL0Kernel() {

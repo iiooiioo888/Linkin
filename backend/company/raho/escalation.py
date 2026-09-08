@@ -38,7 +38,7 @@ L3_SYSTEM = (
 
 L4_SYSTEM = (
     MGP_SUPERIOR_PREAMBLE
-    + "你是 L4 元規劃官。L3 無法回答下層質詢，請從戰役目標裁決。"
+    + "你是 L4 需求審計官。L3 無法回答下層質詢，請從戰術指令與戰役目標裁決。"
     f"仍無法裁決則輸出 {ESCALATE_MARK} 交由 L5 用戶。"
 )
 
@@ -69,7 +69,7 @@ async def _ask_layer(
     issues: list[GrillIssue],
     prior: str = "",
 ) -> dict[str, Any]:
-    system = L3_SYSTEM if layer == RahoLayer.L3_DECOMPOSER else L4_SYSTEM
+    system = L3_SYSTEM if layer == RahoLayer.L3_COMMANDER else L4_SYSTEM
     prompt = (
         f"【戰役目標】{goal}\n"
         f"【原子任務】{title}\n{description}\n\n"
@@ -109,7 +109,7 @@ async def wait_user_decision(
     STORE.add_pending(pending)
     STORE.add_node(
         run_id,
-        from_layer=int(RahoLayer.L4_PLANNER),
+        from_layer=int(RahoLayer.L4_AUDITOR),
         to_layer=int(RahoLayer.L5_USER),
         kind="escalate",
         summary=question[:240],
@@ -181,7 +181,7 @@ async def resolve_grill(
     node = STORE.add_node(
         run_id,
         from_layer=int(RahoLayer.L2_EXECUTOR),
-        to_layer=int(RahoLayer.L3_DECOMPOSER),
+        to_layer=int(RahoLayer.L3_COMMANDER),
         kind="mgp",
         summary=_issue_text(issues)[:240],
         status="open",
@@ -193,7 +193,7 @@ async def resolve_grill(
         STORE.resolve_node(run_id, node.node_id, "resolved")
         STORE.add_node(
             run_id,
-            from_layer=int(RahoLayer.L3_DECOMPOSER),
+            from_layer=int(RahoLayer.L3_COMMANDER),
             to_layer=int(RahoLayer.L2_EXECUTOR),
             kind="resolve",
             summary=str(sop["reply"])[:240],
@@ -201,20 +201,20 @@ async def resolve_grill(
             parent_id=node.node_id,
         )
         record_resolution(assignee or "executor", clear=True)
-        return {**sop, "layer": int(RahoLayer.L3_DECOMPOSER), "node_id": node.node_id}
+        return {**sop, "layer": int(RahoLayer.L3_COMMANDER), "node_id": node.node_id}
 
-    current = RahoLayer.L3_DECOMPOSER
+    current = RahoLayer.L3_COMMANDER
     prior = ""
     if sop.get("escalate"):
         prior = str(sop.get("reply") or "L3 SOP 無法裁決")
         current = (
             RahoLayer.L5_USER
             if sop.get("escalate_to") == "L5"
-            else RahoLayer.L4_PLANNER
+            else RahoLayer.L4_AUDITOR
         )
         STORE.add_node(
             run_id,
-            from_layer=int(RahoLayer.L3_DECOMPOSER),
+            from_layer=int(RahoLayer.L3_COMMANDER),
             to_layer=int(current),
             kind="escalate",
             summary=prior[:240],

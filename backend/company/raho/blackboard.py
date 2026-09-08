@@ -34,7 +34,7 @@ class BlackboardEntry:
     quality_score: float = 0.0
     test_results: dict[str, str] = field(default_factory=dict)
     signed: bool = False
-    layer: int = int(RahoLayer.L1_GRILL)
+    layer: int = int(RahoLayer.L1_INSPECTOR)
     title: str = ""
     created_at: float = 0.0
     verdict: str = ""
@@ -62,7 +62,7 @@ class BlackboardEntry:
             quality_score=score,
             test_results={str(k): str(v) for k, v in tests.items()},
             signed=bool(raw.get("signed")),
-            layer=int(raw.get("layer") or RahoLayer.L1_GRILL),
+            layer=int(raw.get("layer") or RahoLayer.L1_INSPECTOR),
             title=str(raw.get("title") or ""),
             created_at=float(raw.get("created_at") or 0),
             verdict=str(raw.get("verdict") or ""),
@@ -118,7 +118,7 @@ def signed_entry(
         quality_score=quality_score,
         test_results=dict(test_results or {}),
         signed=True,
-        layer=int(RahoLayer.L1_GRILL),
+        layer=int(RahoLayer.L1_INSPECTOR),
         title=title,
         created_at=time.time(),
         verdict=verdict,

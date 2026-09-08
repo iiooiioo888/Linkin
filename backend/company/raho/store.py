@@ -13,9 +13,11 @@ from backend.company.raho.protocol import (
     KIND_LABELS,
     RahoLayer,
     annotate_edge,
+    grill_edges,
     kind_label,
     layer_label,
     raho_directory,
+    raho_graph,
     raho_identity,
 )
 
@@ -385,8 +387,8 @@ class RahoStore:
                         "kind": "user_decide",
                         "status": "blocked",
                         "summary": p.get("question", ""),
-                        "from_layer": RahoLayer.L2_EXECUTOR,
-                        "to_layer": RahoLayer.L5_USER,
+                        "from_layer": int(RahoLayer.L4_AUDITOR),
+                        "to_layer": int(RahoLayer.L5_USER),
                         **p,
                     }
                 )
@@ -398,6 +400,8 @@ class RahoStore:
             "battle_plans": len(self.battle_plans),
             "signed_memory": sum(1 for r in self.shared_memory.values() if r.get("signed")),
             "directory": raho_directory(),
+            "grill_chain": grill_edges(),
+            "raho_graph": raho_graph(),
             "kind_labels": dict(KIND_LABELS),
         }
         try:

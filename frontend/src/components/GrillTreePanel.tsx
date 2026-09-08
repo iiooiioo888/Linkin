@@ -1,12 +1,17 @@
 /**
- * GrillTreePanel — 遞歸質詢樹：與角色名冊共用 L0–L5 身分。
+ * GrillTreePanel — 遞歸質詢樹：指揮鏈 / 獨立審查 / L0 三條線。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchRahoTree } from '../api/client';
-import type { GrillTree, GrillTreeNode, L0Snapshot, RahoPendingDecision, RahoSnapshot } from '../types';
+import type { GrillTree, GrillTreeNode, L0Snapshot, RahoGrillEdge, RahoPendingDecision, RahoSnapshot } from '../types';
 import {
-  RAHO_CHAIN,
+  COMMAND_CHAIN,
+  DIRECTION_LABELS,
+  GRILL_EDGES,
+  INSPECT_CHAIN,
+  KERNEL_CHAIN,
   RAHO_LAYERS,
+  directionLabel,
   jumpLayer,
   jumpToRoleDesk,
   kindLabel,
@@ -20,46 +25,202 @@ import L0Panel from './L0Panel';
 import { L0BiasHint } from './L0BiasHint';
 import RahoDecisionBar from './RahoDecisionBar';
 
-function Pyramid({
-  trees,
+function LayerChip({
+  layer,
   directory,
+  trees,
+  onSelectRole,
+  activeRoleId,
 }: {
-  trees: GrillTree[];
+  layer: number;
   directory: typeof RAHO_LAYERS;
+  trees: GrillTree[];
+  onSelectRole?: (roleId: string) => void;
+  activeRoleId?: string;
 }) {
+  const meta = directory[layer] ?? RAHO_LAYERS[layer];
+  const roleId = meta.role_id;
+  const open = roleId ? openCountForRole(trees, roleId) : 0;
+  const clickable = Boolean(roleId && roleId !== 'user');
+  const active = Boolean(roleId && activeRoleId && roleId === activeRoleId);
   return (
-    <ol className="raho-pyramid">
-      {RAHO_CHAIN.map((layer) => {
-        const meta = directory[layer] ?? RAHO_LAYERS[layer];
-        const roleId = meta.role_id;
-        const open = roleId ? openCountForRole(trees, roleId) : 0;
-        const clickable = Boolean(roleId && roleId !== 'user');
-        return (
-          <li key={layer}>
-            <button
-              type="button"
-              className={`raho-pyr-item${layer === 0 ? ' is-l0' : ''}${clickable ? '' : ' is-static'}`}
-              disabled={!clickable}
-              onClick={() => clickable && jumpLayer(layer, roleId)}
-              title={clickable ? `開啟 ${meta.full}` : meta.full}
-            >
-              <span className="raho-pyr-k">{meta.short}</span>
-              <span className="raho-pyr-t">{meta.title}</span>
-              {open > 0 ? <span className="raho-pyr-n">{open}</span> : null}
-            </button>
-          </li>
-        );
-      })}
-    </ol>
+    <button
+      type="button"
+      className={`raho-pyr-item${layer === 0 ? ' is-l0' : ''}${layer === 1 ? ' is-l1' : ''}${active ? ' on' : ''}${clickable ? '' : ' is-static'}`}
+      disabled={!clickable}
+      onClick={() => {
+        if (!clickable || !roleId) return;
+        if (onSelectRole && roleId !== 'environment_kernel') {
+          onSelectRole(roleId);
+          return;
+        }
+        jumpLayer(layer, roleId);
+      }}
+      title={clickable ? `開啟 ${meta.full}` : meta.full}
+    >
+      <span className="raho-pyr-k">{meta.short}</span>
+      <span className="raho-pyr-t">{meta.title}</span>
+      {open > 0 ? <span className="raho-pyr-n">{open}</span> : null}
+    </button>
   );
 }
 
-function RoleJump({ roleId, label }: { roleId: string; label: string }) {
+function OrgMap({
+  trees,
+  directory,
+  onSelectRole,
+  activeRoleId,
+}: {
+  trees: GrillTree[];
+  directory: typeof RAHO_LAYERS;
+  onSelectRole?: (roleId: string) => void;
+  activeRoleId?: string;
+}) {
+  return (
+    <div className="raho-org">
+      <div className="raho-org-kernel">
+        {KERNEL_CHAIN.map((layer) => (
+          <LayerChip
+            key={layer}
+            layer={layer}
+            directory={directory}
+            trees={trees}
+            onSelectRole={onSelectRole}
+            activeRoleId={activeRoleId}
+          />
+        ))}
+        <span className="raho-org-hint">滲透 L1–L5，不參與質詢</span>
+      </div>
+      <div className="raho-org-cols">
+        <div className="raho-org-col">
+          <div className="raho-org-h">指揮鏈</div>
+          <ol className="raho-org-list">
+            {COMMAND_CHAIN.map((layer) => (
+              <li key={layer}>
+                <LayerChip
+                  layer={layer}
+                  directory={directory}
+                  trees={trees}
+                  onSelectRole={onSelectRole}
+                  activeRoleId={activeRoleId}
+                />
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="raho-org-col is-inspect">
+          <div className="raho-org-h">獨立審查</div>
+          <ol className="raho-org-list">
+            {INSPECT_CHAIN.map((layer) => (
+              <li key={layer}>
+                <LayerChip
+                  layer={layer}
+                  directory={directory}
+                  trees={trees}
+                  onSelectRole={onSelectRole}
+                  activeRoleId={activeRoleId}
+                />
+              </li>
+            ))}
+          </ol>
+          <p className="raho-org-note">不隸屬 L3。驗收 L2，規劃缺陷質詢 L3，標準爭議上呈 L4／L5。</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const LEGEND_ORDER: Array<keyof typeof DIRECTION_LABELS> = ['down', 'up', 'inspect', 'inject'];
+
+function ChainLegend({
+  edges,
+  onSelectRole,
+  focusRoleId,
+}: {
+  edges: RahoGrillEdge[];
+  onSelectRole?: (roleId: string) => void;
+  focusRoleId?: string;
+}) {
+  const pick = (roleId: string) => {
+    if (!roleId || roleId === 'user') return;
+    if (onSelectRole && roleId !== 'environment_kernel') {
+      onSelectRole(roleId);
+      return;
+    }
+    jumpToRoleDesk(roleId);
+  };
+  return (
+    <div className="raho-legend raho-legend--4">
+      {LEGEND_ORDER.map((direction) => {
+        const group = edges.filter((e) => e.direction === direction);
+        if (!group.length) return null;
+        return (
+          <div key={direction} className="raho-legend-col">
+            <div className="raho-legend-h">{directionLabel(direction)}</div>
+            <ul>
+              {group.map((edge) => (
+                <li
+                  key={`${edge.from_role}-${edge.to_role}-${edge.kind}-${edge.label}`}
+                  className={
+                    focusRoleId && (edge.from_role === focusRoleId || edge.to_role === focusRoleId)
+                      ? 'on'
+                      : undefined
+                  }
+                >
+                  <button
+                    type="button"
+                    className={`raho-legend-edge${focusRoleId === edge.from_role ? ' on' : ''}`}
+                    onClick={() => pick(edge.from_role)}
+                  >
+                    {edge.from_label}
+                  </button>
+                  <span>→</span>
+                  <button
+                    type="button"
+                    className={`raho-legend-edge${focusRoleId === edge.to_role ? ' on' : ''}`}
+                    onClick={() => pick(edge.to_role)}
+                  >
+                    {edge.to_label}
+                  </button>
+                  <span className="raho-legend-k">{edge.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RoleJump({
+  roleId,
+  label,
+  onSelectRole,
+}: {
+  roleId: string;
+  label: string;
+  onSelectRole?: (roleId: string) => void;
+}) {
   if (!roleId || roleId === 'user') {
     return <span>{label}</span>;
   }
   return (
-    <button type="button" className="raho-edge-role" onClick={() => jumpToRoleDesk(roleId)}>
+    <button
+      type="button"
+      className="raho-edge-role"
+      onClick={() => {
+        if (roleId === 'environment_kernel') {
+          jumpLayer(0, roleId);
+          return;
+        }
+        if (onSelectRole) {
+          onSelectRole(roleId);
+          return;
+        }
+        jumpToRoleDesk(roleId);
+      }}
+    >
       {label}
     </button>
   );
@@ -69,21 +230,25 @@ function GrillEdge({
   node,
   kindLabels,
   onFocus,
+  onSelectRole,
+  active,
 }: {
   node: GrillTreeNode;
   kindLabels?: Record<string, string>;
   onFocus?: (nodeId: string) => void;
+  onSelectRole?: (roleId: string) => void;
+  active?: boolean;
 }) {
   const fromId = nodeRoleId(node, 'from');
   const toId = nodeRoleId(node, 'to');
   return (
-    <li className="raho-edge">
+    <li className={`raho-edge${active ? ' on' : ''}`}>
       <span className="raho-edge-dot" style={{ background: rahoTone(node.status) }} />
       <div className="min-w-0 flex-1">
         <div className="raho-edge-path">
-          <RoleJump roleId={fromId} label={nodeRoleLabel(node, 'from')} />
+          <RoleJump roleId={fromId} label={nodeRoleLabel(node, 'from')} onSelectRole={onSelectRole} />
           <span aria-hidden>→</span>
-          <RoleJump roleId={toId} label={nodeRoleLabel(node, 'to')} />
+          <RoleJump roleId={toId} label={nodeRoleLabel(node, 'to')} onSelectRole={onSelectRole} />
           <span className="raho-edge-kind">
             {kindLabel(node.kind, kindLabels)} · {statusLabel(node.status)}
           </span>
@@ -102,7 +267,15 @@ function GrillEdge({
   );
 }
 
-export default function GrillTreePanel() {
+export default function GrillTreePanel({
+  embedded = false,
+  focusRoleId = '',
+  onSelectRole,
+}: {
+  embedded?: boolean;
+  focusRoleId?: string;
+  onSelectRole?: (roleId: string) => void;
+} = {}) {
   const [snap, setSnap] = useState<RahoSnapshot>({ trees: [], pending_decisions: [], blocked: [] });
   const [error, setError] = useState<string | null>(null);
   const reload = useCallback(async () => {
@@ -135,21 +308,37 @@ export default function GrillTreePanel() {
   }, [snap.directory]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4">
-      <div className="mb-4 flex items-end justify-between gap-3">
-        <div>
-          <h2 className="text-[15px] font-semibold text-[#F5F5F7]">遞歸質詢樹</h2>
-          <p className="mt-1 text-[12px] text-[#8E8E93]">
-            與角色工作台同一套 L0–L5 身分。點層級或邊即可跳到對應角色／L0 核心。
+    <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${embedded ? 'px-0 py-0' : 'px-5 py-4'}`}>
+      {embedded ? (
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <p className="text-[12px] text-[#8E8E93]">
+            {focusRoleId ? '此角色相關的指揮／審查邊會反白。點層級可切換角色。' : '點層級即可切到對應角色工作台。'}
           </p>
+          <button type="button" className="rd-btn text-[11px] text-[#0A84FF]" onClick={() => void reload()}>
+            重新整理
+          </button>
         </div>
-        <button type="button" className="rd-btn text-[11px] text-[#0A84FF]" onClick={() => void reload()}>
-          重新整理
-        </button>
-      </div>
+      ) : (
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-[15px] font-semibold text-[#F5F5F7]">遞歸質詢樹</h2>
+            <p className="mt-1 text-[12px] text-[#8E8E93]">
+              指揮鏈 L5→L4→L3→L2；L1 獨立驗收；L0 滲透。點層級或邊即可跳到對應角色／核心。
+            </p>
+          </div>
+          <button type="button" className="rd-btn text-[11px] text-[#0A84FF]" onClick={() => void reload()}>
+            重新整理
+          </button>
+        </div>
+      )}
       {error && <p className="mb-3 text-[12px] text-[#FF453A]">{error}</p>}
 
-      <Pyramid trees={trees} directory={directory} />
+      <OrgMap trees={trees} directory={directory} onSelectRole={onSelectRole} activeRoleId={focusRoleId} />
+      <ChainLegend
+        edges={snap.grill_chain?.length ? snap.grill_chain : GRILL_EDGES}
+        onSelectRole={onSelectRole}
+        focusRoleId={focusRoleId}
+      />
       <L0BiasHint snapshot={l0} compact />
       <RahoDecisionBar pending={pending} onResolved={() => void reload()} />
 
@@ -214,6 +403,11 @@ export default function GrillTreePanel() {
                   key={node.node_id}
                   node={node}
                   kindLabels={snap.kind_labels}
+                  onSelectRole={onSelectRole}
+                  active={
+                    Boolean(focusRoleId) &&
+                    (nodeRoleId(node, 'from') === focusRoleId || nodeRoleId(node, 'to') === focusRoleId)
+                  }
                   onFocus={(id) => {
                     setFocusNodeId(id);
                     setDetailTab('l0');
@@ -225,9 +419,11 @@ export default function GrillTreePanel() {
         ))}
       </div> : null}
 
-      <p className="mt-6 text-center text-[11px] text-[#636366]">
-        點金字塔或質詢邊，即可開啟對應角色工作台；L0 開啟環境與記憶核心。
-      </p>
+      {embedded ? null : (
+        <p className="mt-6 text-center text-[11px] text-[#636366]">
+          指揮鏈點層級開工作台；L1 開憲兵；L0 開環境與記憶核心。
+        </p>
+      )}
     </div>
   );
 }

@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from backend.company.raho.protocol import raho_directory, canonical_role_id, role_to_raho_layer
+from backend.company.raho.protocol import raho_directory, canonical_role_id, grill_edges, role_to_raho_layer
 from backend.company.role_catalog import (
     LEVEL_LABELS,
     catalog_meta,
@@ -135,6 +135,11 @@ def _blank_agent(snapshot: dict[str, Any]) -> dict[str, Any]:
         "raho_title": snapshot.get("raho_title") or "",
         "raho_spine": bool(snapshot.get("raho_spine")),
         "grill_targets": list(snapshot.get("grill_targets") or []),
+        "grill_target_labels": list(snapshot.get("grill_target_labels") or []),
+        "reports_to": snapshot.get("reports_to"),
+        "escalate_targets": list(snapshot.get("escalate_targets") or []),
+        "escalate_target_labels": list(snapshot.get("escalate_target_labels") or []),
+        "raho_independent": bool(snapshot.get("raho_independent")),
         "category": snapshot["category"],
         "reporting_to": snapshot.get("reporting_to"),
         "can_delegate_to": list(snapshot.get("can_delegate_to") or []),
@@ -1126,6 +1131,7 @@ def collect_agent_monitor() -> dict[str, Any]:
             for level, label in LEVEL_LABELS.items()
         ],
         "raho_layers": raho_directory(),
+        "grill_chain": grill_edges(),
         "catalog_meta": catalog_meta(),
         "monitor_prefs": get_monitor_prefs(),
         "agents": finalized,

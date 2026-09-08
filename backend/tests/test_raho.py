@@ -243,9 +243,11 @@ class TestRahoIdentity:
         kernel = raho_identity("environment_kernel")
         assert kernel["full"] == "L0 環境與記憶核心"
         assert kernel["spine"] is True
+        assert kernel["lane"] == "kernel"
         l2 = raho_identity(layer=2)
         assert l2["role_id"] == "atomic_executor"
         assert l2["full"] == "L2 原子執行者"
+        assert l2["lane"] == "command"
         assert canonical_role_id(2) == "atomic_executor"
         assert [row["full"] for row in raho_directory()] == [
             "L0 環境與記憶核心",
@@ -269,6 +271,63 @@ class TestRahoIdentity:
         l2_edge = annotate_edge(2, 3)
         assert l2_edge["from_role"] == "atomic_executor"
         assert l2_edge["from_label"] == "L2 原子執行者"
+
+    def test_grill_chain_and_reports(self):
+        from backend.company.raho.protocol import (
+            COMMAND_CHAIN,
+            GRILL_EDGES,
+            INSPECT_CHAIN,
+            KERNEL_CHAIN,
+            grill_edges,
+            raho_graph,
+            superior_layer,
+        )
+        from backend.company.roles import STANDARD_ROLES
+
+        inspector = raho_identity("constitutional_inspector")
+        assert inspector["grill_targets"] == ["atomic_executor", "tactical_commander"]
+        assert inspector["independent"] is True
+        assert inspector["reports_to"] is None
+        assert inspector["lane"] == "inspect"
+        commander = STANDARD_ROLES[RoleType.TACTICAL_COMMANDER]
+        assert commander.reporting_to == RoleType.REQUIREMENT_AUDITOR
+        executor = STANDARD_ROLES[RoleType.ATOMIC_EXECUTOR]
+        assert executor.reporting_to == RoleType.TACTICAL_COMMANDER
+        l2 = raho_identity("atomic_executor")
+        assert l2["grill_targets"] == ["tactical_commander"]
+        assert l2["escalate_targets"] == [
+            "tactical_commander",
+            "requirement_auditor",
+            "user",
+        ]
+        assert l2["submit_targets"] == ["constitutional_inspector"]
+        l3 = raho_identity("tactical_commander")
+        assert l3["grill_targets"] == ["requirement_auditor"]
+        assert "user" not in l3["grill_targets"]
+        assert "user" in l3["escalate_targets"]
+        edges = grill_edges()
+        assert len(edges) == len(GRILL_EDGES)
+        assert any(e["from_role"] == "atomic_executor" and e["to_role"] == "tactical_commander" for e in edges)
+        assert any(e["kind"] == "campaign" and e["direction"] == "down" for e in edges)
+        rework = next(e for e in edges if e["kind"] == "rework")
+        assert rework["direction"] == "inspect"
+        assert rework["from_role"] == "constitutional_inspector"
+        submit = next(e for e in edges if e["kind"] == "submit")
+        assert submit["from_role"] == "atomic_executor"
+        assert submit["to_role"] == "constitutional_inspector"
+        assert submit["direction"] == "inspect"
+        assert any(e["kind"] == "l0" and e["direction"] == "inject" for e in edges)
+        assert superior_layer(RahoLayer.L1_INSPECTOR) == RahoLayer.L4_AUDITOR
+        assert superior_layer(RahoLayer.L2_EXECUTOR) == RahoLayer.L3_COMMANDER
+        assert superior_layer(RahoLayer.L0_KERNEL) == RahoLayer.L0_KERNEL
+        directory = raho_directory()
+        assert directory[1]["grill_targets"] == ["atomic_executor", "tactical_commander"]
+        assert "L2 原子執行者" in directory[1]["grill_target_labels"]
+        graph = raho_graph()
+        assert graph["command_chain"] == list(COMMAND_CHAIN)
+        assert graph["inspect_chain"] == list(INSPECT_CHAIN)
+        assert graph["kernel_chain"] == list(KERNEL_CHAIN)
+        assert graph["lanes"]["inspect"]["layers"] == [1]
 
 
 class TestEscalationTtl:

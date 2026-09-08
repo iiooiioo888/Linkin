@@ -3,6 +3,7 @@
  */
 import { useTranslation } from 'react-i18next';
 import { setLocale } from '../i18n';
+import { getGateUser, logoutGate } from '../lib/auth';
 import { consoleChromeLabel, consoleChromeTabKey, CONSOLE_CHROME_TABS, resolveActivity } from '../lib/monitorTabs';
 import { labSubTabLabel, type LabSubTab } from '../lib/labTabs';
 import type { MonitorTab, ViewKey } from './AppShell';
@@ -97,6 +98,21 @@ export default function TopBar({
             未配置
           </button>
         )}
+
+        {getGateUser() ? (
+          <span className="hidden max-w-[88px] truncate px-1 text-[10px] text-[#636366] sm:inline" title={getGateUser() ?? ''}>
+            {getGateUser()}
+          </span>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => void logoutGate()}
+          className="apple-icon-btn text-[10px] font-semibold"
+          title={t('gate.signOut')}
+        >
+          {t('gate.signOut')}
+        </button>
 
         <button
           type="button"

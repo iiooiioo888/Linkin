@@ -218,7 +218,7 @@ class CompanyOrchestrator:
                 "pressure": round(self.budget.budget_pressure, 2),
             }, degraded=True, level=logging.WARNING)
 
-        # ── 階段 1a：L4 元規劃官產出戰役 DAG ──
+        # ── 階段 1a：L4 需求審計官譯製戰役 DAG ──
         self._log("phase", {"phase": "campaign_plan", "module": "RahoPlanner"})
         self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "campaign_plan"})
         try:
@@ -233,8 +233,8 @@ class CompanyOrchestrator:
                     _RAHO_STORE.set_campaign(self._run_id, self._campaign, goal)
                     _RAHO_STORE.add_node(
                         self._run_id,
-                        from_layer=int(RahoLayer.L4_PLANNER),
-                        to_layer=int(RahoLayer.L3_DECOMPOSER),
+                        from_layer=int(RahoLayer.L4_AUDITOR),
+                        to_layer=int(RahoLayer.L3_COMMANDER),
                         kind="campaign",
                         summary=campaign.brief(240),
                         status="resolved",
@@ -1280,11 +1280,11 @@ class CompanyOrchestrator:
             target_layer = (
                 int(RahoLayer.L2_EXECUTOR)
                 if verdict.grill and verdict.grill.target.endswith("Executor")
-                else int(RahoLayer.L3_DECOMPOSER)
+                else int(RahoLayer.L3_COMMANDER)
             )
             node = _RAHO_STORE.add_node(
                 self._run_id,
-                from_layer=int(RahoLayer.L1_GRILL),
+                from_layer=int(RahoLayer.L1_INSPECTOR),
                 to_layer=target_layer if verdict.verdict != VERDICT_APPROVED else int(RahoLayer.L2_EXECUTOR),
                 kind="inspect",
                 summary=(verdict.details or verdict.verdict)[:240],
@@ -1294,7 +1294,7 @@ class CompanyOrchestrator:
                 from_role="constitutional_inspector",
                 to_role=(
                     "tactical_commander"
-                    if target_layer == int(RahoLayer.L3_DECOMPOSER) and verdict.verdict != VERDICT_APPROVED
+                    if target_layer == int(RahoLayer.L3_COMMANDER) and verdict.verdict != VERDICT_APPROVED
                     else "atomic_executor"
                 ),
             )

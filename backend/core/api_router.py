@@ -43,6 +43,8 @@ MODEL_TOKEN_HINTS: dict[str, dict[str, int]] = {
     "qwen3.7-flash": {"max_context": 1_000_000, "max_output": 32768},
     "qwen3.5-max": {"max_context": 131072, "max_output": 16384},
     "qwen3-coder-plus": {"max_context": 131072, "max_output": 16384},
+    "qwen-vl-plus": {"max_context": 131072, "max_output": 8192},
+    "qwen-vl-max": {"max_context": 131072, "max_output": 8192},
     "deepseek-v4-flash": {"max_context": 128000, "max_output": 8192},
     "deepseek-v4-pro": {"max_context": 128000, "max_output": 8192},
     "deepseek-v4-flash-vision-exp": {"max_context": 128000, "max_output": 8192},
@@ -55,17 +57,25 @@ MODEL_TOKEN_HINTS: dict[str, dict[str, int]] = {
     "moonshot-v1-128k": {"max_context": 128000, "max_output": 8192},
     "gpt-4o": {"max_context": 128000, "max_output": 16384},
     "gpt-4o-mini": {"max_context": 128000, "max_output": 16384},
+    "gpt-4.1": {"max_context": 1047576, "max_output": 32768},
+    "gpt-4.1-mini": {"max_context": 1047576, "max_output": 32768},
+    "gpt-4.1-nano": {"max_context": 1047576, "max_output": 16384},
+    "gemini-3.1-pro": {"max_context": 1048576, "max_output": 65536},
     "gpt-6-astra": {"max_context": 1_050_000, "max_output": 128000},
     "gpt-5.6-sol": {"max_context": 1_050_000, "max_output": 128000},
     "gpt-5.6-terra": {"max_context": 1_050_000, "max_output": 128000},
     "gpt-5.6-luna": {"max_context": 1_050_000, "max_output": 128000},
     "glm-4-flash": {"max_context": 128000, "max_output": 8192},
+    "glm-4": {"max_context": 128000, "max_output": 8192},
     "glm-4-plus": {"max_context": 128000, "max_output": 16384},
     "glm-5": {"max_context": 200000, "max_output": 128000},
     "glm-5.1": {"max_context": 200000, "max_output": 128000},
     "glm-5.2": {"max_context": 1_000_000, "max_output": 128000},
     "glm-5.3": {"max_context": 1_000_000, "max_output": 128000},
     "glm-5.3-flash": {"max_context": 1_000_000, "max_output": 128000},
+    "mimo-v2.5-pro": {"max_context": 128000, "max_output": 8192},
+    "mercury-2": {"max_context": 128000, "max_output": 8192},
+    "nemotron-3.5-lightning": {"max_context": 128000, "max_output": 8192},
 }
 
 
@@ -801,6 +811,15 @@ def public_route(route: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _public_rate_cards() -> dict[str, Any]:
+    try:
+        from backend.company.rate_card import public_rate_cards
+
+        return public_rate_cards()
+    except Exception:  # noqa: BLE001
+        return {"models": [], "by_id": {}, "fields": []}
+
+
 def public_router_state(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
     runtime = cfg or get_runtime_config()
     routes = list_routes(runtime)
@@ -819,6 +838,7 @@ def public_router_state(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
         "api_routes": [public_route(r) for r in routes],
         "allowed_models": union_allowed_models(runtime),
         "model_token_hints": dict(MODEL_TOKEN_HINTS),
+        "model_rate_cards": _public_rate_cards(),
         "models_by_provider": [
             {
                 "route_id": r["id"],

@@ -56,6 +56,7 @@ class TestIdentity:
         assert RoleType.ATOMIC_EXECUTOR in STANDARD_ROLES
         assert RoleType.ENVIRONMENT_KERNEL in STANDARD_ROLES
         assert STANDARD_ROLES[RoleType.ATOMIC_EXECUTOR].reporting_to == RoleType.TACTICAL_COMMANDER
+        assert STANDARD_ROLES[RoleType.TACTICAL_COMMANDER].reporting_to == RoleType.REQUIREMENT_AUDITOR
 
 
 class TestThreeKernels:

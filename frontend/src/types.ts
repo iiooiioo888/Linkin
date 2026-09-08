@@ -199,7 +199,29 @@ export interface RahoDirectoryEntry {
   title: string;
   short: string;
   full: string;
+  lane?: 'command' | 'inspect' | 'kernel' | string;
+  lane_label?: string;
+  reports_to?: string | null;
   grill_targets?: string[];
+  grill_target_labels?: string[];
+  escalate_targets?: string[];
+  escalate_target_labels?: string[];
+  submit_targets?: string[];
+  submit_target_labels?: string[];
+  independent?: boolean;
+}
+
+export interface RahoGrillEdge {
+  from_layer: number;
+  to_layer: number;
+  from_role: string;
+  to_role: string;
+  from_label?: string;
+  to_label?: string;
+  kind: string;
+  label: string;
+  direction: 'up' | 'down' | 'inspect' | 'inject' | string;
+  lane?: string;
 }
 
 export interface L0KnowledgeEntity {
@@ -403,7 +425,22 @@ export interface RahoSnapshot {
   run_id?: string;
   campaign?: CampaignMap;
   directory?: RahoDirectoryEntry[];
+  grill_chain?: RahoGrillEdge[];
   kind_labels?: Record<string, string>;
+  direction_labels?: Record<string, string>;
+  lane_labels?: Record<string, string>;
+  raho_graph?: {
+    chain?: number[];
+    command_chain?: number[];
+    inspect_chain?: number[];
+    kernel_chain?: number[];
+    lanes?: Record<string, { id: string; label: string; layers: number[] }>;
+    layers?: RahoDirectoryEntry[];
+    edges?: RahoGrillEdge[];
+    kind_labels?: Record<string, string>;
+    direction_labels?: Record<string, string>;
+    lane_labels?: Record<string, string>;
+  };
   l0?: L0Snapshot;
 }
 
@@ -929,6 +966,11 @@ export interface HubMonitorModel {
   ttfb_ms: number | null;
   price_in_per_1m: number | null;
   price_out_per_1m: number | null;
+  price_cached_in_per_1m?: number | null;
+  price_cache_write_per_1m?: number | null;
+  price_reasoning_per_1m?: number | null;
+  price_image_per_1m?: number | null;
+  price_audio_per_1m?: number | null;
   consecutive_fail: number;
   ts?: number;
   available_in_pool?: boolean;
@@ -1094,6 +1136,35 @@ export interface RolePreset {
   responsibilities: string[];
   default_tier: string;
   hint?: string;
+}
+
+export interface ModelRateItem {
+  id: string;
+  label: string;
+  usd_per_1m: number;
+}
+
+export interface ModelRateCard {
+  id: string;
+  input: number;
+  output: number;
+  cached_input?: number;
+  cache_write?: number;
+  reasoning?: number;
+  image?: number;
+  audio?: number;
+  embedding?: number;
+  items: ModelRateItem[];
+  currency?: string;
+  unit?: string;
+}
+
+export interface ModelRateCatalog {
+  currency?: string;
+  unit?: string;
+  fields?: Array<{ id: string; label: string }>;
+  models?: ModelRateCard[];
+  by_id?: Record<string, ModelRateCard>;
 }
 
 export interface LlmCatalogModel {
@@ -1285,6 +1356,8 @@ export interface LlmOpsData {
   default_route_id?: string;
   api_routes?: ApiRoutePublic[];
   models_by_provider?: ModelsByProvider[];
+  model_rate_cards?: ModelRateCatalog;
+  model_token_hints?: Record<string, { max_context: number; max_output: number }>;
   route_strategies?: Array<{ id: string; label: string }>;
   provider_presets?: Array<{
     id: string;
@@ -1326,6 +1399,7 @@ export interface AgentCatalogMeta {
   }>;
   models_by_provider?: ModelsByProvider[];
   model_token_hints?: Record<string, { max_context: number; max_output: number }>;
+  model_rate_cards?: ModelRateCatalog;
   routing_strategies?: Array<{ id: string; label: string }>;
   role_presets?: RolePreset[];
   org_templates?: Array<{ id: string; name: string; description: string; role_count: number }>;
@@ -1364,7 +1438,16 @@ export interface RoleAgent {
   raho_short?: string;
   raho_title?: string;
   raho_spine?: boolean;
+  raho_lane?: string;
+  raho_lane_label?: string;
   grill_targets?: string[];
+  grill_target_labels?: string[];
+  reports_to?: string | null;
+  escalate_targets?: string[];
+  escalate_target_labels?: string[];
+  submit_targets?: string[];
+  submit_target_labels?: string[];
+  raho_independent?: boolean;
   category: string;
   reporting_to: string | null;
   can_delegate_to: string[];
@@ -1473,6 +1556,7 @@ export interface AgentMonitorData {
   };
   levels: Array<{ level: number; label: string }>;
   raho_layers?: RahoDirectoryEntry[];
+  grill_chain?: RahoGrillEdge[];
   catalog_meta?: AgentCatalogMeta;
   monitor_prefs?: AgentMonitorPrefs;
   agents: RoleAgent[];

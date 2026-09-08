@@ -152,6 +152,12 @@ def catalog_payload() -> dict[str, Any]:
     models = []
     for model in sorted(HUB_CATALOG):
         in_p, out_p = PRICE_PER_1M[model]
+        try:
+            from backend.company.rate_card import rate_card_for
+
+            extra = rate_card_for(model)
+        except Exception:  # noqa: BLE001
+            extra = {}
         models.append(
             {
                 "id": model,
@@ -159,6 +165,11 @@ def catalog_payload() -> dict[str, Any]:
                 "intelligence": INTEL[model],
                 "price_in_per_1m": in_p,
                 "price_out_per_1m": out_p,
+                "price_cached_in_per_1m": extra.get("cached_input") or None,
+                "price_cache_write_per_1m": extra.get("cache_write") or None,
+                "price_reasoning_per_1m": extra.get("reasoning") or None,
+                "price_image_per_1m": extra.get("image") or None,
+                "price_audio_per_1m": extra.get("audio") or None,
                 "cn_allowed": model in CN_SET,
                 "available_in_pool": model in available,
             }

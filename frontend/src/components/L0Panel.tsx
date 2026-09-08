@@ -1,6 +1,6 @@
 /**
  * L0 環境與記憶核心：記憶瀏覽器／知識圖譜／態勢雷達。
- * 與質詢樹、角色名冊共用同一套 L0–L5 身分。
+ * 與質詢樹、角色名冊共用同一套指揮／審查／核心身分。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchL0Kernel } from '../api/client';
@@ -142,8 +142,8 @@ export default function L0Panel({
               ))}
             </ol>
           )}
-          <button type="button" className="l0-link" onClick={jumpToGrillTree}>
-            對照質詢樹
+          <button type="button" className="l0-link" onClick={() => jumpToGrillTree()}>
+            對照質詢
           </button>
         </div>
       )}

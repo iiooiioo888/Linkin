@@ -834,7 +834,7 @@ def _trace_l4_question(sess: UserGrillSession, question: GrillQuestion) -> None:
         sess.query,
         summary=(question.question or "")[:240],
         status="open",
-        from_layer=int(RahoLayer.L4_PLANNER),
+        from_layer=int(RahoLayer.L4_AUDITOR),
         to_layer=int(RahoLayer.L5_USER),
         payload={"phase": sess.phase, "dimension": question.dimension},
     )
@@ -848,7 +848,7 @@ def _trace_l5_answer(sess: UserGrillSession, text: str) -> None:
         summary=(text or "")[:240],
         status="resolved",
         from_layer=int(RahoLayer.L5_USER),
-        to_layer=int(RahoLayer.L4_PLANNER),
+        to_layer=int(RahoLayer.L4_AUDITOR),
     )
 
 
@@ -859,7 +859,7 @@ def _trace_close(sess: UserGrillSession, summary: str, status: str) -> None:
         sess.query,
         summary=summary[:240],
         status=status,
-        from_layer=int(RahoLayer.L4_PLANNER),
+        from_layer=int(RahoLayer.L4_AUDITOR),
         to_layer=int(RahoLayer.L5_USER),
         payload={"locked": sess.locked, "terminated": sess.terminated},
     )

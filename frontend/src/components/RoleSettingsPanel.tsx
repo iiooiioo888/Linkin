@@ -3,7 +3,16 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AgentCatalogMeta, RoleAgent, RolePreset } from '../types';
-import { CATEGORY_LABEL, ROUTING_LABEL, TIER_LABEL, fmtUsd, routeDisplayName } from '../lib/agentUi';
+import {
+  CATEGORY_LABEL,
+  ROUTING_LABEL,
+  TIER_LABEL,
+  fmtPerMillion,
+  fmtUsd,
+  lookupRateCard,
+  rateOptionLabel,
+  routeDisplayName,
+} from '../lib/agentUi';
 import { agentRahoLabel } from '../lib/rahoUi';
 import { navPathForTab } from '../lib/monitorTabs';
 import PromptEditor from './PromptEditor';
@@ -321,14 +330,23 @@ export default function RoleSettingsPanel({
     (catalog?.api_routes ?? []).find((r) => r.id === draft.preferred_provider) ||
     catalog?.api_routes?.find((r) => r.is_default);
   const defaultRoute = catalog?.api_routes?.find((r) => r.is_default);
+  const selectedRate = lookupRateCard(
+    draft.preferred_model || activeRoute?.model,
+    catalog?.model_rate_cards,
+  );
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(draftFromAgent(agent)), [agent, draft]);
   const modelStatus = [
     routeDisplayName(activeRoute) || '全域預設',
     draft.preferred_model || 'API 預設模型',
+    selectedRate
+      ? `USD/1M ${fmtPerMillion(selectedRate.input)} / ${fmtPerMillion(selectedRate.output)}`
+      : null,
     `輸出 ${draft.max_output_tokens.toLocaleString()}`,
     draft.context_window > 0 ? `上下文 ${draft.context_window.toLocaleString()}` : '上下文不截斷',
-  ].join(' · ');
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <div className="rs-wrap">
@@ -402,7 +420,7 @@ export default function RoleSettingsPanel({
       <section id="rs-identity" className="rs-sec">
         <div className="rs-sec-h">
           <h3 className="rs-sec-t">身分／組織</h3>
-          <span className="rs-sec-hint">質詢層由 RAHO 決定；組織職級只管匯報鏈</span>
+          <span className="rs-sec-hint">質詢層走指揮／審查／核心三條線；組織職級只管公司匯報鏈</span>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           <Field label="顯示名稱">
@@ -574,7 +592,14 @@ export default function RoleSettingsPanel({
               ))}
             </select>
           </Field>
-          <Field label="指定模型" hint="依上方供應商列出可用模型；空白=該 API 預設">
+          <Field
+            label="指定模型"
+            hint={
+              selectedRate
+                ? `USD/1M · 輸入 ${fmtPerMillion(selectedRate.input)} · 輸出 ${fmtPerMillion(selectedRate.output)}`
+                : '依上方供應商列出可用模型；空白=該 API 預設'
+            }
+          >
             <select
               className={inputCls}
               value={draft.preferred_model}
@@ -588,18 +613,33 @@ export default function RoleSettingsPanel({
                       <optgroup key={g.route_id} label={routeDisplayName(g) || g.name}>
                         {g.models.map((id) => (
                           <option key={`${g.route_id}-${id}`} value={id}>
-                            {id}
+                            {rateOptionLabel(id, catalog?.model_rate_cards)}
                           </option>
                         ))}
                       </optgroup>
                     ))
                 : (catalog?.allowed_models ?? []).map((id) => (
                     <option key={id} value={id}>
-                      {id}
+                      {rateOptionLabel(id, catalog?.model_rate_cards)}
                     </option>
                   ))}
             </select>
           </Field>
+          {selectedRate ? (
+            <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-[#62666d]">價目 USD / 1M tokens</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {(selectedRate.items ?? []).map((item) => (
+                  <span
+                    key={item.id}
+                    className="rounded-md bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-[#d0d6e0]"
+                  >
+                    {item.label} {fmtPerMillion(item.usd_per_1m)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <Field label="路由策略">
             <select
               className={inputCls}
@@ -1064,7 +1104,7 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
                 .flatMap((g) => g.models.map((mid) => ({ group: g.name, mid })))
                 .map((row) => (
                   <option key={`${row.group}-${row.mid}`} value={row.mid}>
-                    {row.mid}
+                    {rateOptionLabel(row.mid, catalog?.model_rate_cards)}
                   </option>
                 ))}
             </select>

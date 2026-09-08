@@ -5,8 +5,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
-import { agentRahoLabel, jumpToL0Kernel, RAHO_CHAIN, RAHO_LAYERS, isRahoSpineRole } from '../lib/rahoUi';
+import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, requestRoleGrillDesk, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
+import { agentRahoLabel, jumpToL0Kernel, COMMAND_CHAIN, INSPECT_CHAIN, KERNEL_CHAIN, RAHO_LAYERS, isRahoSpineRole } from '../lib/rahoUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { fetchLlmOps } from '../api/client';
 import type { ApiRoutePublic, ChatSession, RoleAgent, TaskSummary } from '../types';
@@ -181,29 +181,44 @@ function AgentRoster({
   const rows: RosterRow[] = useMemo(() => {
     const out: RosterRow[] = [];
     if (deskScope === 'console') {
-      const spineRows: RosterRow[] = [];
-      for (const layer of RAHO_CHAIN) {
-        const meta = RAHO_LAYERS[layer];
-        if (!meta || layer === 5) continue;
-        const hit =
-          filtered.find((a) => a.id === meta.role_id) ||
-          filtered.find((a) => a.raho_spine && a.raho_layer === layer);
-        if (hit) {
-          spineRows.push({ kind: 'agent', key: `spine-${hit.id}`, agent: hit });
-        } else {
-          spineRows.push({
-            kind: 'kernel',
-            key: meta.role_id || `layer-${layer}`,
-            label: meta.full,
-            short: meta.short,
-            layer,
-          });
+      const pushLane = (key: string, label: string, layers: readonly number[]) => {
+        const laneRows: RosterRow[] = [];
+        for (const layer of layers) {
+          const meta = RAHO_LAYERS[layer];
+          if (!meta) continue;
+          if (layer === 5) {
+            laneRows.push({
+              kind: 'kernel',
+              key: 'user',
+              label: meta.full,
+              short: meta.short,
+              layer,
+            });
+            continue;
+          }
+          const hit =
+            filtered.find((a) => a.id === meta.role_id) ||
+            filtered.find((a) => a.raho_spine && a.raho_layer === layer);
+          if (hit) {
+            laneRows.push({ kind: 'agent', key: `spine-${hit.id}`, agent: hit });
+          } else {
+            laneRows.push({
+              kind: 'kernel',
+              key: meta.role_id || `layer-${layer}`,
+              label: meta.full,
+              short: meta.short,
+              layer,
+            });
+          }
         }
-      }
-      if (spineRows.length) {
-        out.push({ kind: 'header', key: 'h-raho', label: '質詢鏈 L0–L5', count: spineRows.length });
-        out.push(...spineRows);
-      }
+        if (laneRows.length) {
+          out.push({ kind: 'header', key, label, count: laneRows.length });
+          out.push(...laneRows);
+        }
+      };
+      pushLane('h-command', '指揮鏈 L5–L2', COMMAND_CHAIN);
+      pushLane('h-inspect', '獨立審查 L1', INSPECT_CHAIN);
+      pushLane('h-kernel', '環境核心 L0', KERNEL_CHAIN);
     }
     for (const lv of ORG_LEVELS) {
       const list = filtered.filter((a) => a.level === lv.level && !isRahoSpineRole(a.id));
@@ -236,7 +251,7 @@ function AgentRoster({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="ar-h">
-        <span className="ar-ht">{deskScope === 'linkin' ? '工作室' : '質詢鏈／組織'}</span>
+        <span className="ar-ht">{deskScope === 'linkin' ? '工作室' : '指揮／審查／組織'}</span>
         <span className="ar-hc">{agents.length}</span>
       </div>
       <div className="ar-flt" role="tablist" aria-label="角色篩選">
@@ -291,12 +306,14 @@ function AgentRoster({
             );
           }
           if (row.kind === 'kernel') {
+            const staticRow = row.layer === 5;
             return (
               <button
                 type="button"
+                disabled={staticRow}
                 onClick={() => {
                   if (row.layer === 0) jumpToL0Kernel();
-                  else onPick(row.key);
+                  else if (!staticRow) onPick(row.key);
                 }}
                 className="ar-ri"
               >
@@ -705,6 +722,7 @@ function MonitorSidebar({
             }
             onFocusAgent(id);
             onMonitorTabChange(onStudioTab ? 'studio' : 'agents');
+            if (onGrillTab) requestRoleGrillDesk(id);
           }}
         />
       ) : onTasksTab ? (
