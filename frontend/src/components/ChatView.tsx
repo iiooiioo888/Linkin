@@ -23,6 +23,7 @@ interface ChatViewProps {
   onOpenTask: (messageId: string) => void;
   onOpenTrace?: (taskId: string) => void;
   onSuggest: (text: string, company: boolean) => void;
+  onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
 }
 
 function activeTaskMessage(messages: ChatMessage[]) {
@@ -51,11 +52,13 @@ export default function ChatView({
   onOpenTask,
   onOpenTrace,
   onSuggest,
+  onGrillAnswer,
 }: ChatViewProps) {
   const live = activeTaskMessage(messages);
   const showStream = Boolean(
     live?.taskState || live?.streaming || live?.thinking || live?.content,
   );
+  const grilling = messages.some((m) => Boolean(m.grill && !m.grill.locked));
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -94,8 +97,9 @@ export default function ChatView({
           onOpenTrace={onOpenTrace}
           onSuggest={onSuggest}
           sending={sending}
+          onGrillAnswer={onGrillAnswer}
         />
-        <InputBar disabled={sending} onSend={onSend} />
+        <InputBar disabled={sending || grilling} onSend={onSend} />
       </div>
       {showStream && live && (
         <ChatWorkStream

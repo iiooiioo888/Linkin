@@ -153,6 +153,9 @@ class ChatRequest(BaseModel):
     company_template: str = "quick_task"
     # 多輪對話歷史：[{"role": "user"|"assistant", "content": "..."}, ...]
     history: list[dict[str, str]] = []
+    # RAHO：用戶 Grill-Me 鎖定後的戰役簡報
+    semantic_lock: dict[str, Any] | None = None
+    skip_user_grill: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -160,6 +163,8 @@ class ChatResponse(BaseModel):
     answer: str
     score: float | None = None
     iteration: int = 0
+    status: str = "ok"
+    grill: dict[str, Any] | None = None
 
 
 class LlmConfigRequest(BaseModel):
@@ -218,6 +223,109 @@ class FeedbackRequest(BaseModel):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+class RahoGrillStartBody(BaseModel):
+    query: str
+    execution_strategy: str = "auto"
+
+
+class RahoGrillTurnBody(BaseModel):
+    session_id: str
+    answer: str = ""
+    force_lock: bool = False
+
+
+class RahoDecideBody(BaseModel):
+    decision_id: str
+    choice: str
+    note: str = ""
+
+
+@app.post("/raho/grill/start")
+def raho_grill_start(body: RahoGrillStartBody) -> dict[str, Any]:
+    """L5→L4 用戶需求審計官：五維鎖定第一問。"""
+    from backend.company.raho.grill_user import grill_user_start, should_grill_user
+
+    query = (body.query or "").strip()
+    if not query:
+        raise HTTPException(status_code=422, detail="query 不可為空")
+    if not should_grill_user(query, body.execution_strategy):
+        return {
+            "should_grill": False,
+            "locked": True,
+            "confidence": 1.0,
+            "locked_brief": query,
+            "session_id": "",
+            "question": None,
+        }
+    try:
+        return grill_user_start(query)
+    except Exception as exc:
+        logger.warning("RAHO grill_start 失敗，降級直通：%s", exc)
+        return {
+            "should_grill": False,
+            "locked": True,
+            "confidence": 0.5,
+            "locked_brief": query,
+            "session_id": "",
+            "question": None,
+            "degraded": True,
+        }
+
+
+@app.post("/raho/grill/turn")
+def raho_grill_turn(body: RahoGrillTurnBody) -> dict[str, Any]:
+    """繼續需求審計，或將『直接執行』視為過度授權。"""
+    from backend.company.raho.grill_user import grill_user_lock, grill_user_turn
+
+    try:
+        if body.force_lock:
+            return grill_user_lock(body.session_id, body.answer)
+        return grill_user_turn(body.session_id, body.answer)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/raho/grill/status")
+def raho_grill_status() -> dict[str, Any]:
+    from backend.company.raho.grill_user import grill_user_status
+
+    return grill_user_status()
+
+
+@app.get("/raho/tree")
+def raho_tree(run_id: str | None = None) -> dict[str, Any]:
+    """遞歸質詢樹與決策阻塞點。"""
+    from backend.company.raho.store import STORE
+
+    if run_id:
+        tree = STORE.get_tree(run_id)
+        return {
+            "tree": tree.to_dict() if tree else None,
+            "pending_decisions": [p.to_dict() for p in STORE.list_pending(run_id)],
+        }
+    return STORE.snapshot()
+
+
+@app.post("/raho/decide")
+def raho_decide(body: RahoDecideBody) -> dict[str, Any]:
+    """L5 用戶介入熱馬桶圈裁決。"""
+    from backend.company.raho.escalation import decide as decide_escalation
+
+    try:
+        return decide_escalation(body.decision_id, body.choice, body.note)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/raho/scorecard")
+def raho_scorecard() -> dict[str, Any]:
+    from backend.company.raho.scorecard import all_metrics
+
+    return {"roles": all_metrics()}
 
 
 @app.get("/config")
@@ -411,8 +519,12 @@ async def test_config():
 async def chat(req: ChatRequest):
     """执行 EvoLoop 统一模式图（支援多輪對話歷史）。"""
     session_id = req.session_id or uuid.uuid4().hex[:12]
+    query = req.query
+    lock = req.semantic_lock or {}
+    if isinstance(lock, dict) and lock.get("locked_brief"):
+        query = str(lock["locked_brief"])
     initial_state = {
-        "query": req.query,
+        "query": query,
         "session_id": session_id,
         "iteration": 0,
         "score": 0.0,
@@ -422,11 +534,12 @@ async def chat(req: ChatRequest):
         "history": req.history or [],
         "execution_strategy": req.execution_strategy,
         "company_template": req.company_template,
+        "semantic_lock": lock if isinstance(lock, dict) else {},
     }
     result = await evoloop_graph.ainvoke(initial_state)
     return ChatResponse(
         session_id=session_id,
-        answer=result.get("current_answer", ""),
+        answer=result.get("current_answer", "") or result.get("final_answer", ""),
         score=result.get("score"),
         iteration=result.get("iteration", 0),
     )
@@ -446,7 +559,10 @@ async def _company_stream(req: ChatRequest):
     from backend.company.events import CompanyEvent
 
     session_id = req.session_id or uuid.uuid4().hex[:12]
+    lock = req.semantic_lock or {}
     query = req.query
+    if isinstance(lock, dict) and lock.get("locked_brief"):
+        query = str(lock["locked_brief"])
     template_name = req.company_template or "quick_task"
 
     # 選擇組織模板
@@ -607,7 +723,11 @@ async def chat_stream(req: ChatRequest):
             "query": req.query,
             "session_id": session_id,
             "history": req.history or [],
+            "semantic_lock": req.semantic_lock or {},
         }
+        lock = req.semantic_lock or {}
+        if isinstance(lock, dict) and lock.get("locked_brief"):
+            state["query"] = str(lock["locked_brief"])
         try:
             # 階段 1：記憶檢索
             yield f"event: phase\ndata: {json_mod.dumps({'phase': 'retrieve_memories'})}\n\n"
@@ -999,6 +1119,11 @@ class RoleSettingsBody(BaseModel):
     preferred_model: str | None = None
     preferred_provider: str | None = None
     daily_budget_usd: float | None = None
+    weekly_budget_usd: float | None = None
+    monthly_budget_usd: float | None = None
+    cloud_daily_budget_usd: float | None = None
+    cloud_weekly_budget_usd: float | None = None
+    cloud_monthly_budget_usd: float | None = None
     tools_allowed: list[str] | None = None
     notes: str | None = None
     reporting_to: str | None = None
@@ -1019,8 +1144,6 @@ class RoleSettingsBody(BaseModel):
     always_require_review: bool | None = None
     priority: int | None = None
     description: str | None = None
-    weekly_budget_usd: float | None = None
-    monthly_budget_usd: float | None = None
     max_daily_items: int | None = None
     require_human_approval: bool | None = None
     stream_enabled: bool | None = None
@@ -1052,6 +1175,11 @@ class CustomRoleBody(BaseModel):
     preferred_model: str = ""
     preferred_provider: str = ""
     daily_budget_usd: float = 0
+    weekly_budget_usd: float = 0
+    monthly_budget_usd: float = 0
+    cloud_daily_budget_usd: float = 0
+    cloud_weekly_budget_usd: float = 0
+    cloud_monthly_budget_usd: float = 0
     tools_allowed: list[str] = []
     notes: str = ""
     enabled: bool = True
@@ -1069,8 +1197,6 @@ class CustomRoleBody(BaseModel):
     always_require_review: bool = False
     priority: int = 3
     description: str = ""
-    weekly_budget_usd: float = 0
-    monthly_budget_usd: float = 0
     max_daily_items: int = 0
     require_human_approval: bool = False
     stream_enabled: bool = True
@@ -1138,7 +1264,7 @@ async def monitor_agent_settings(role_id: str, body: RoleSettingsBody):
 
 @app.post("/monitor/agents/{role_id}/reset")
 async def monitor_agent_reset(role_id: str):
-    """還原內建角色設定為 STANDARD_ROLES 預設。"""
+    """還原內建角色設定為系統預設。"""
     try:
         return reset_role_settings(role_id)
     except KeyError as exc:

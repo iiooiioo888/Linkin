@@ -177,6 +177,14 @@ class CompanyOrchestrator:
             level=logging.INFO,
         )
         self.events.emit(CompanyEvent.COMPANY_START, {"goal": goal, "config": self.config.name})
+        try:
+            from backend.company.raho.protocol import raho_enabled
+            from backend.company.raho.store import STORE as _RAHO_STORE
+
+            if raho_enabled() and self._run_id:
+                _RAHO_STORE.ensure_tree(self._run_id, goal)
+        except Exception:  # noqa: BLE001
+            pass
 
         # ── 階段 0：雲資源預算檢查（Docker + 阿里雲 BSS）──
         docker_snapshot = self.budget.record_docker_runtime()
@@ -218,6 +226,15 @@ class CompanyOrchestrator:
             decompose_result,
             created_by=RoleType.MANAGER,
         )
+        try:
+            from backend.company.raho.atomic_pool import assemble as assemble_atomic
+            from backend.company.raho.protocol import raho_enabled
+
+            if raho_enabled():
+                for _item in work_items:
+                    assemble_atomic(_item)
+        except Exception:  # noqa: BLE001
+            logger.debug("原子角色組裝略過", exc_info=True)
         self._log("decompose_done", {
             "subtask_count": len(work_items),
             "strategy": decompose_result.strategy.value,
@@ -326,6 +343,7 @@ class CompanyOrchestrator:
                 "auto_optimized": docker_auto_optimized,
             },
             "run_log": self._run_log,
+            "raho": self._raho_snapshot(),
         }
 
     def get_kanban(self) -> dict:
@@ -335,6 +353,103 @@ class CompanyOrchestrator:
     def get_budget_status(self) -> dict:
         """取得預算狀態。"""
         return self.budget.to_dict()
+
+    def _raho_snapshot(self) -> dict[str, Any]:
+        try:
+            from backend.company.raho.store import STORE
+
+            run_id = self._run_id or ""
+            tree = STORE.get_tree(run_id)
+            pending = [p.to_dict() for p in STORE.list_pending(run_id)]
+            return {
+                "run_id": run_id,
+                "tree": tree.to_dict() if tree else None,
+                "pending_decisions": pending,
+            }
+        except Exception:  # noqa: BLE001
+            return {}
+
+    async def _maybe_resolve_mgp(
+        self,
+        goal: str,
+        item,
+        role_type: RoleType,
+        raw: str,
+        prompt: str,
+        system_prompt: str,
+        model: str,
+        llm_opts: dict | None,
+        timeout_s: float,
+    ) -> tuple[str, str]:
+        """若產出含 [GRILL]，走熱馬桶圈後重試一次執行。無標記則原樣返回。"""
+        try:
+            from backend.company.raho.escalation import resolve_grill
+            from backend.company.raho.mgp import parse_grill_output, strip_protocol_marks
+            from backend.company.raho.protocol import mgp_enabled
+        except Exception:  # noqa: BLE001
+            return raw, prompt
+        if not mgp_enabled():
+            return raw, prompt
+        kind, issues = parse_grill_output(raw)
+        if kind == "clear":
+            return raw, prompt
+        self.events.emit(CompanyEvent.GRILL_RAISED, {
+            "item_id": item.id,
+            "title": item.title,
+            "role": role_type.value,
+            "issues": [i.to_dict() for i in issues],
+        })
+        resolved = await resolve_grill(
+            run_id=self._run_id or item.id,
+            item_id=item.id,
+            goal=goal,
+            title=item.title,
+            description=item.description,
+            issues=issues,
+            assignee=role_type.value,
+        )
+        if resolved.get("layer") == 5:
+            self.events.emit(CompanyEvent.USER_DECISION_NEEDED, {
+                "item_id": item.id,
+                "title": item.title,
+                "question": "\n".join(i.message for i in issues)[:500],
+                "resolution": resolved,
+            })
+        reply = str(resolved.get("reply") or "").strip()
+        self.events.emit(CompanyEvent.GRILL_RESOLVED, {
+            "item_id": item.id,
+            "layer": resolved.get("layer"),
+            "action": resolved.get("action"),
+            "timeout": bool(resolved.get("timeout")),
+        })
+        if resolved.get("timeout"):
+            self.events.emit(CompanyEvent.RAHO_TIMEOUT, {
+                "item_id": item.id, "choice": resolved.get("choice"),
+            })
+        if not reply:
+            return strip_protocol_marks(raw) or raw, prompt
+        next_prompt = prompt + f"\n\n【上級對質詢的裁決】\n{reply}\n請依裁決產出交付物，不要再重複質詢。"
+        try:
+            if timeout_s > 0:
+                retried = await asyncio.wait_for(
+                    self._execute_with_tool_loop(
+                        next_prompt, system_prompt, model, role_type.value, item,
+                        llm_kwargs=llm_opts,
+                    ),
+                    timeout=timeout_s,
+                )
+            else:
+                retried = await self._execute_with_tool_loop(
+                    next_prompt, system_prompt, model, role_type.value, item,
+                    llm_kwargs=llm_opts,
+                )
+            kind2, _ = parse_grill_output(retried)
+            if kind2 == "clear":
+                return retried, next_prompt
+            return strip_protocol_marks(retried) or reply, next_prompt
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("MGP 重試執行失敗，使用裁決原文：%s", exc)
+            return reply, next_prompt
 
     # ═══════════════════════════════════════════════════════════
     # 檢查點（Save / Resume）
@@ -655,6 +770,12 @@ class CompanyOrchestrator:
             model = runtime["preferred_model"]
         llm_opts = llm_kwargs_for_role(runtime)
         context = self._build_context(item)
+        try:
+            from backend.company.raho.scorecard import record_execution
+
+            record_execution(role_type.value)
+        except Exception:  # noqa: BLE001
+            pass
 
         # 使用角色專用執行提示（若有）
         role_specific_prompt = self.prompt_config.role_execute_prompts.get(role_type.value, "")
@@ -711,6 +832,17 @@ class CompanyOrchestrator:
                     or role_def.system_prompt
                     or self.prompt_config.developer_execute_system
                 )
+                try:
+                    from backend.company.raho.mgp import apply_mgp_system
+                    from backend.company.raho.protocol import mgp_enabled
+
+                    if mgp_enabled():
+                        atomic = item.artifacts.get("atomic_role") or {}
+                        if atomic.get("system_prompt"):
+                            system_prompt = atomic["system_prompt"]
+                        system_prompt = apply_mgp_system(system_prompt)
+                except Exception:  # noqa: BLE001
+                    pass
                 if timeout_s > 0:
                     raw = await asyncio.wait_for(
                         self._execute_with_tool_loop(
@@ -724,6 +856,9 @@ class CompanyOrchestrator:
                         prompt, system_prompt, model, role_type.value, item,
                         llm_kwargs=llm_opts,
                     )
+                raw, prompt = await self._maybe_resolve_mgp(
+                    goal, item, role_type, raw, prompt, system_prompt, model, llm_opts, timeout_s,
+                )
 
                 # 記錄成功響應時間（優化 #6）
                 elapsed = _time.monotonic() - _start_time
@@ -762,6 +897,22 @@ class CompanyOrchestrator:
                         True,
                     )
                 except Exception:  # noqa: BLE001 - 記憶保存失敗不阻斷流程
+                    pass
+                try:
+                    from backend.company.raho.atomic_pool import recycle as recycle_atomic
+                    from backend.company.raho.context_bus import blackboard_record
+                    from backend.company.raho.protocol import RahoLayer, raho_enabled
+
+                    if raho_enabled():
+                        recycle_atomic(item)
+                        blackboard_record(
+                            task_id=self._run_id or item.id,
+                            layer=RahoLayer.L2_EXECUTOR,
+                            title=item.title,
+                            content=str(item.artifacts.get("output") or "")[:800],
+                            role=role_type.value,
+                        )
+                except Exception:  # noqa: BLE001
                     pass
 
                 return  # 成功，退出
@@ -1130,17 +1281,27 @@ class CompanyOrchestrator:
     # ═══════════════════════════════════════════════════════════
 
     def _build_context(self, item) -> str:
-        """收集依賴工作項的交付物作為上下文。"""
-        if not item.depends_on:
+        """收集依賴工作項的交付物作為上下文（RAHO：最小可行上下文）。"""
+        deps = []
+        for dep_id in item.depends_on or []:
+            dep = self.work_items.get(dep_id)
+            if dep:
+                deps.append(dep)
+        try:
+            from backend.company.raho.context_bus import downward_context
+            from backend.company.raho.protocol import raho_enabled
+
+            if raho_enabled():
+                return downward_context(item, deps)
+        except Exception:  # noqa: BLE001
+            pass
+        if not deps:
             return "（無依賴上下文）"
         parts = []
-        for dep_id in item.depends_on:
-            dep = self.work_items.get(dep_id)
-            if dep and dep.status == WorkItemStatus.DONE:
+        for dep in deps:
+            if dep.status == WorkItemStatus.DONE:
                 output = dep.artifacts.get("output", "")
-                parts.append(
-                    f"【依賴工作項：{dep.title}】\n{output[:1000]}"
-                )
+                parts.append(f"【依賴工作項：{dep.title}】\n{output[:1000]}")
         return "\n\n".join(parts) if parts else "（無依賴上下文）"
 
     def _collect_artifacts(self) -> str:
@@ -1286,6 +1447,7 @@ class CompanyOrchestrator:
             "kanban": self.work_items.get_kanban(),
             "budget": self.budget.to_dict(),
             "run_log": self._run_log,
+            "raho": self._raho_snapshot(),
         }
 
     # ═══════════════════════════════════════════════════════════

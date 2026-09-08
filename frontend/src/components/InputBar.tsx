@@ -8,6 +8,8 @@ export interface SendOptions {
   executionStrategy: 'auto' | 'simple' | 'company';
   companyTemplate: CompanyTemplate;
   taskOptions?: TaskOptions;
+  /** 已通過需求審計官，跳過前置閘門 */
+  skipGrill?: boolean;
 }
 
 interface InputBarProps {

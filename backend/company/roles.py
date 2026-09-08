@@ -49,6 +49,7 @@ ROLE_MANAGER = RoleDefinition(
         RoleType.PROMPT_ENGINEER,
         RoleType.COORDINATOR,
         RoleType.SUPPORT,
+        RoleType.REQUIREMENT_AUDITOR,
     ],
     default_tier=BudgetTier.REASONING,
     max_parallel_work=5,
@@ -412,12 +413,14 @@ ROLE_PRODUCT_LEAD = RoleDefinition(
         RoleType.KNOWLEDGE_MGR,
         RoleType.CUSTOMER_SUCCESS,
         RoleType.CONVERSATION_DESIGNER,
+        RoleType.REQUIREMENT_AUDITOR,
     ],
     default_tier=BudgetTier.REASONING,
     max_parallel_work=3,
     system_prompt=(
         "你是一位產品主管，擅長把模糊目標變成可驗收的需求。"
         "你注重範圍控制、優先序與使用者價值。"
+        "重大需求必須先經需求審計官五維鎖定，才能交給規劃器。"
     ),
 )
 
@@ -1239,6 +1242,28 @@ ROLE_KNOWLEDGE_MGR = RoleDefinition(
     ),
 )
 
+ROLE_REQUIREMENT_AUDITOR = RoleDefinition(
+    role_type=RoleType.REQUIREMENT_AUDITOR,
+    name="需求審計官",
+    level=4,
+    reporting_to=RoleType.PRODUCT_LEAD,
+    responsibilities=[
+        "以零信任審查使用者需求，禁止確認偏誤與模糊妥協",
+        "依五維評分（具體性／邊界／約束／風險／成功定義）決定是否放行",
+        "分階段追問至原子級可執行單元，達標後核發戰術指令 JSON",
+        "觸發終止協議時產出需求審計失敗報告，禁止進入 Planner",
+    ],
+    can_delegate_to=[],
+    default_tier=BudgetTier.REASONING,
+    max_parallel_work=1,
+    system_prompt=(
+        "你是零信任架構的資深需求審計官。你的天職不是幫助用戶，而是審查用戶。"
+        "禁止在第一次解釋時說明白了；『大概／盡量／好一點』視為無效。"
+        "五維評分皆 > 90 才能輸出 APPROVED_FOR_PLANNING 戰術指令；"
+        "否則繼續追問或宣告需求不可行。使用繁體中文。"
+    ),
+)
+
 
 def _exec_role(
     role_type: RoleType,
@@ -1546,6 +1571,7 @@ STANDARD_ROLES: dict[RoleType, RoleDefinition] = {
     RoleType.SUPPORT: ROLE_SUPPORT,
     RoleType.MEMORY_CURATOR: ROLE_MEMORY_CURATOR,
     RoleType.KNOWLEDGE_MGR: ROLE_KNOWLEDGE_MGR,
+    RoleType.REQUIREMENT_AUDITOR: ROLE_REQUIREMENT_AUDITOR,
 }
 
 
@@ -1728,6 +1754,7 @@ def create_full_company() -> CompanyConfig:
                 RoleType.KNOWLEDGE_MGR,
                 RoleType.CUSTOMER_SUCCESS,
                 RoleType.CONVERSATION_DESIGNER,
+                RoleType.REQUIREMENT_AUDITOR,
             ],
             RoleType.FINANCE_LEAD: [
                 RoleType.QUANT_ANALYST,

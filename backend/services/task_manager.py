@@ -109,6 +109,7 @@ class TaskRecord:
         # 控制細項（進階參數）
         self.options: dict[str, Any] = {}
         self.created_at = time.time()
+        self.raho: dict[str, Any] = {}
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -134,6 +135,7 @@ class TaskRecord:
             "resumable": self.resumable,
             "options": self.options,
             "created_at": self.created_at,
+            "raho": self.raho,
         }
 
     def to_snapshot(self) -> dict[str, Any]:
@@ -169,6 +171,7 @@ class TaskRecord:
         record.resumable = data.get("resumable", False)
         record.options = data.get("options", {})
         record.created_at = data.get("created_at", time.time())
+        record.raho = data.get("raho") or {}
         return record
 
 
@@ -245,6 +248,12 @@ class TaskManager:
         task_id = uuid.uuid4().hex[:12]
         record = TaskRecord(task_id, query, strategy, template)
         record.options = options or {}
+        brief = record.options.get("semantic_brief") or record.options.get("locked_brief")
+        ticket = record.options.get("auditor_ticket")
+        if isinstance(brief, str) and brief.strip():
+            record.query = brief.strip()
+        elif isinstance(ticket, dict) and ticket.get("status") == "APPROVED_FOR_PLANNING":
+            record.query = json.dumps(ticket, ensure_ascii=False)
         self.tasks[task_id] = record
         self._persist(record)
         # 簡單淘汰：超出上限時刪除最舊的已完成任務
@@ -688,6 +697,7 @@ class TaskManager:
 
         record.review = result.get("review")
         record.stats = result.get("stats")
+        record.raho = result.get("raho") or record.raho
         self._persist(record)
 
         # 公司產出進入評估/反思/改進迭代迴圈
@@ -771,6 +781,7 @@ class TaskManager:
         # ── 提取公司運行細節（供任務頁展示） ──
         record.review = result.get("review")
         record.stats = result.get("stats")
+        record.raho = result.get("raho") or record.raho
         for entry in result.get("run_log", []):
             if entry.get("event") == "decompose_done":
                 record.plan = {

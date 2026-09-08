@@ -8,4 +8,5 @@
 - 工作項狀態機（Planning → Execution → Review → Done）
 - 依賴 DAG 平行執行與審查閘
 - 組織記憶（per-role 經驗設定檔、共享 playbook）
+- RAHO 遞歸對抗分層（用戶 Grill-Me、強制質詢協議、熱馬桶圈上交）
 """

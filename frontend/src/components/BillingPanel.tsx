@@ -194,7 +194,7 @@ export default function BillingPanel() {
         />
       </div>
 
-      <SectionCard title="費用組成" hint="Agent 預算會計入 API（另計）＋下列雲資源">
+      <SectionCard title="費用組成" hint="雲服務預算只計下列資源；AI 使用預算另計 LLM API">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatCard
             label="Docker"

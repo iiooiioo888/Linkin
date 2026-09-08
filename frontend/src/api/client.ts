@@ -8,7 +8,7 @@
  * 生產環境可設定 VITE_API_URL 環境變數指向後端位址。
  */
 
-import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, HubMonitorData, LlmOpsData, OpcMonitorData, OptimizationMonitorData, RoleAgent, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
+import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
 
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -23,6 +23,8 @@ export interface ChatOptions {
   companyTemplate?: string;
   /** 多輪對話歷史：[{"role": "user"|"assistant", "content": "..."}] */
   history?: Array<{ role: string; content: string }>;
+  /** 需求審計官核發的戰術指令 */
+  semantic_lock?: Record<string, unknown>;
 }
 
 export interface ChatResult {
@@ -53,6 +55,7 @@ export function sendChatStream(
   sessionId: string,
   callbacks: StreamCallbacks,
   history?: Array<{ role: string; content: string }>,
+  extra?: { semantic_lock?: Record<string, unknown> },
 ): AbortController {
   const controller = new AbortController();
 
@@ -61,7 +64,12 @@ export function sendChatStream(
       const resp = await fetch(apiUrl('/chat/stream'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, session_id: sessionId, history: history ?? [] }),
+        body: JSON.stringify({
+          query,
+          session_id: sessionId,
+          history: history ?? [],
+          semantic_lock: extra?.semantic_lock ?? {},
+        }),
         signal: controller.signal,
       });
 
@@ -332,6 +340,54 @@ export async function updateRouteStrategy(routeStrategy: string, defaultRouteId?
     body: JSON.stringify({ route_strategy: routeStrategy, default_route_id: defaultRouteId }),
   });
   if (!resp.ok) throw new Error(`更新路由策略失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+/** RAHO：需求審計官開場。 */
+export async function startUserGrill(
+  query: string,
+  executionStrategy: 'auto' | 'simple' | 'company' = 'auto',
+): Promise<GrillUserState> {
+  const resp = await fetch(apiUrl('/raho/grill/start'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, execution_strategy: executionStrategy }),
+  });
+  if (!resp.ok) throw new Error(`需求審計啟動失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+/** RAHO：回答審計追問。forceLock 視同過度授權，不會繞過五維門檻。 */
+export async function turnUserGrill(
+  sessionId: string,
+  answer: string,
+  forceLock = false,
+): Promise<GrillUserState> {
+  const resp = await fetch(apiUrl('/raho/grill/turn'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, answer, force_lock: forceLock }),
+  });
+  if (!resp.ok) throw new Error(`需求審計回合失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+/** RAHO：質詢樹與決策阻塞點。 */
+export async function fetchRahoTree(runId?: string): Promise<RahoSnapshot> {
+  const q = runId ? `?run_id=${encodeURIComponent(runId)}` : '';
+  const resp = await fetch(apiUrl(`/raho/tree${q}`));
+  if (!resp.ok) throw new Error(`讀取質詢樹失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+/** RAHO：用戶裁決熱馬桶圈。 */
+export async function decideRaho(decisionId: string, choice: string, note = ''): Promise<RahoSnapshot> {
+  const resp = await fetch(apiUrl('/raho/decide'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ decision_id: decisionId, choice, note }),
+  });
+  if (!resp.ok) throw new Error(`裁決失敗（HTTP ${resp.status}）`);
   return resp.json();
 }
 

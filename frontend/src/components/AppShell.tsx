@@ -42,7 +42,8 @@ export type MonitorTab =
   | 'building'
   | 'items'
   | 'studio'
-  | 'minecraft';
+  | 'minecraft'
+  | 'grill';
 
 export interface AppShellProps {
   /** 当前活跃视图 */

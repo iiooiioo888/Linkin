@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 from typing import Any
@@ -188,6 +189,12 @@ def run_company(state: EvoLoopState) -> dict[str, Any]:
     這是同步包裝器，內部使用 asyncio.run 呼叫非同步協調器。
     """
     query = state.get("query", "")
+    lock = state.get("semantic_lock") or {}
+    if isinstance(lock, dict):
+        if lock.get("locked_brief"):
+            query = str(lock["locked_brief"])
+        elif isinstance(lock.get("ticket"), dict):
+            query = json.dumps(lock["ticket"], ensure_ascii=False)
     template_name = state.get("company_template", "quick_task")
 
     try:

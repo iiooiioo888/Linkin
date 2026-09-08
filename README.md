@@ -59,7 +59,7 @@ EvoLoop 不是普通的 AI 助手——它是具備**自我反思閉環**的**�
 | 🏢 **公司運行時** | 複雜任務自動觸發：Manager 分解 → 多角色並行 → Reviewer 審查 → Synthesizer 整合 |
 | 🏭 **OPC 整合** | 工業任務注入感測上下文，6 級閉環（感知→預處理→分析→診斷→決策→執行） |
 | 🖥️ **監控中心** | 活動欄五層：對話 · 控制台（EvoLoop）· 靈境（世界）· Minecraft · 實驗室 |
-| 🎭 **角色目錄** | **80** 個內建角色（Level 0–4）+ 自定義角色 CRUD + 執行期設定覆蓋 |
+| 🎭 **角色目錄** | **81** 個內建角色（Level 0–4，含需求審計官）+ 自定義角色 CRUD + 執行期設定覆蓋 |
 | 🔌 **模型池鎖定** | 依已存 API 鎖定可用模型；單一廠商只准該廠商；OpenRouter 等通用端點爬取 `/models` |
 | ☁️ **雲控制台** | 費用帳單、資源監控、告警中心、Docker 實例管理 |
 | 🧠 **語義記憶** | 向量記憶庫 + LLM 語義快取，成功經驗沉澱為 few-shot |
@@ -179,7 +179,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 │   │   ├── evaluation.py        #     4 維評估引擎
 │   │   └── llm_cache.py         #     精確 + 語義快取
 │   ├── company/
-│   │   ├── roles.py             #     80 個內建角色 + 組織模板
+│   │   ├── roles.py             #     81 個內建角色 + 組織模板
 │   │   ├── role_catalog.py      #     角色設定覆蓋 + 自定義角色持久化
 │   │   ├── orchestrator.py      #     公司協調器
 │   │   ├── tools.py             #     公司工具註冊（實驗室／Minecraft／量化）
@@ -252,7 +252,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 
 | 特性 | 說明 |
 |------|------|
-| **內建角色** | **80** 席，Level 0–4 |
+| **內建角色** | **81** 席，Level 0–4 |
 | **角色目錄** | `role_catalog`：內建設定覆蓋 + 自定義角色 CRUD |
 | **角色設定** | Prompt、職責、偏好模型、日／週／月預算、工具、路由、告警、SLA…（見下表） |
 | 組織模板 | `page_dev` / `fullstack_app` / `research_report` / `quick_task` / `full_company` 等 |
@@ -694,7 +694,7 @@ pytest backend/tests/test_architecture.py
 |------|------|
 | [架構總覽](docs/architecture/overview.md) | 統一管線、資料流 |
 | [反思閉環](docs/architecture/reflection-loop.md) | 多維評估、快取 |
-| [公司運行時](docs/architecture/company-runtime.md) | 多代理人、80 席角色、預算 |
+| [公司運行時](docs/architecture/company-runtime.md) | 多代理人、81 席角色、預算 |
 | [量化行情工具](docs/company/quant-tools.md) | 角色可呼叫的 Yahoo／東方財富／Frankfurter 行情、回測與資金流 |
 | [OPC 整合](docs/architecture/opc-integration.md) | 6 級閉環、護欄 |
 | [REST API](docs/api/reference.md) | 端點與 SSE |
@@ -749,7 +749,7 @@ Windows 暫存目錄權限問題。`pyproject.toml` 已設 `--basetemp=.pytest_t
 <details>
 <summary><b>Q: 內建有多少角色？設定能改哪些？</b></summary>
 
-`STANDARD_ROLES` 目前為 **80** 席（Level 0–4）。監控中心可覆寫 Prompt、模型、預算、工具、告警、SLA、路由策略等，或再疊加自定義角色。
+`STANDARD_ROLES` 目前為 **81** 席（Level 0–4，含 L4 需求審計官）。監控中心可覆寫 Prompt、模型、預算、工具、告警、SLA、路由策略等，或再疊加自定義角色。
 </details>
 
 <details>

@@ -3,7 +3,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AgentCatalogMeta, RoleAgent, RolePreset } from '../types';
-import { CATEGORY_LABEL, ROUTING_LABEL, TIER_LABEL } from '../lib/agentUi';
+import { CATEGORY_LABEL, ROUTING_LABEL, TIER_LABEL, fmtUsd, routeDisplayName } from '../lib/agentUi';
 import { navPathForTab } from '../lib/monitorTabs';
 import PromptEditor from './PromptEditor';
 
@@ -17,6 +17,11 @@ export interface RoleSettingsDraft {
   preferred_model: string;
   preferred_provider: string;
   daily_budget_usd: number;
+  weekly_budget_usd: number;
+  monthly_budget_usd: number;
+  cloud_daily_budget_usd: number;
+  cloud_weekly_budget_usd: number;
+  cloud_monthly_budget_usd: number;
   toolsText: string;
   notes: string;
   reporting_to: string;
@@ -37,8 +42,6 @@ export interface RoleSettingsDraft {
   always_require_review: boolean;
   priority: number;
   description: string;
-  weekly_budget_usd: number;
-  monthly_budget_usd: number;
   max_daily_items: number;
   require_human_approval: boolean;
   stream_enabled: boolean;
@@ -66,6 +69,11 @@ export function draftFromAgent(agent: RoleAgent): RoleSettingsDraft {
     preferred_model: agent.preferred_model ?? '',
     preferred_provider: agent.preferred_provider ?? '',
     daily_budget_usd: agent.daily_budget_usd ?? 0,
+    weekly_budget_usd: agent.weekly_budget_usd ?? 0,
+    monthly_budget_usd: agent.monthly_budget_usd ?? 0,
+    cloud_daily_budget_usd: agent.cloud_daily_budget_usd ?? 0,
+    cloud_weekly_budget_usd: agent.cloud_weekly_budget_usd ?? 0,
+    cloud_monthly_budget_usd: agent.cloud_monthly_budget_usd ?? 0,
     toolsText: (agent.tools_allowed ?? []).join(', '),
     notes: agent.notes ?? '',
     reporting_to: agent.reporting_to ?? '',
@@ -86,8 +94,6 @@ export function draftFromAgent(agent: RoleAgent): RoleSettingsDraft {
     always_require_review: agent.always_require_review === true,
     priority: agent.priority ?? 3,
     description: agent.description ?? '',
-    weekly_budget_usd: agent.weekly_budget_usd ?? 0,
-    monthly_budget_usd: agent.monthly_budget_usd ?? 0,
     max_daily_items: agent.max_daily_items ?? 0,
     require_human_approval: agent.require_human_approval === true,
     stream_enabled: agent.stream_enabled !== false,
@@ -116,6 +122,11 @@ export function draftToPayload(draft: RoleSettingsDraft): Record<string, unknown
     preferred_model: draft.preferred_model,
     preferred_provider: draft.preferred_provider,
     daily_budget_usd: draft.daily_budget_usd,
+    weekly_budget_usd: draft.weekly_budget_usd,
+    monthly_budget_usd: draft.monthly_budget_usd,
+    cloud_daily_budget_usd: draft.cloud_daily_budget_usd,
+    cloud_weekly_budget_usd: draft.cloud_weekly_budget_usd,
+    cloud_monthly_budget_usd: draft.cloud_monthly_budget_usd,
     tools_allowed: draft.toolsText.split(',').map((s) => s.trim()).filter(Boolean),
     notes: draft.notes,
     reporting_to: draft.reporting_to || null,
@@ -136,8 +147,6 @@ export function draftToPayload(draft: RoleSettingsDraft): Record<string, unknown
     always_require_review: draft.always_require_review,
     priority: draft.priority,
     description: draft.description,
-    weekly_budget_usd: draft.weekly_budget_usd,
-    monthly_budget_usd: draft.monthly_budget_usd,
     max_daily_items: draft.max_daily_items,
     require_human_approval: draft.require_human_approval,
     stream_enabled: draft.stream_enabled,
@@ -185,6 +194,20 @@ function tokenHint(
   return hints[model] || hints[bare];
 }
 
+function routeOptionLabel(route: {
+  name?: string;
+  provider_label?: string;
+  provider?: string;
+  is_default?: boolean;
+  enabled?: boolean;
+}): string {
+  const base = routeDisplayName(route) || '未命名 API';
+  const bits = [base];
+  if (route.is_default) bits.push('預設');
+  if (route.enabled === false) bits.push('停用');
+  return bits.join(' · ');
+}
+
 function TokenSlider({
   label,
   hint,
@@ -227,17 +250,33 @@ function TokenSlider({
   );
 }
 
+type RoleSettingsSection = 'identity' | 'model' | 'prompt' | 'runtime' | 'alerts';
+
+const SETTINGS_SECTIONS: Array<{
+  id: RoleSettingsSection;
+  icon: string;
+  label: string;
+  hint: string;
+}> = [
+  { id: 'identity', icon: '◈', label: '身分／組織', hint: '層級、匯報與指派' },
+  { id: 'model', icon: '◉', label: '模型／Token', hint: '供應商、模型與輸出上限' },
+  { id: 'prompt', icon: '✎', label: '提示詞／職責', hint: '系統提示詞與職責清單' },
+  { id: 'runtime', icon: '⚙', label: '執行／合規', hint: '通知、上限與護欄' },
+  { id: 'alerts', icon: '◇', label: '預算／告警／監控', hint: 'AI 與雲服務分開控管' },
+];
+
 interface RoleSettingsPanelProps {
   agent: RoleAgent;
   catalog: AgentCatalogMeta | undefined;
   agents: RoleAgent[];
   saving: boolean;
   error: string | null;
-  initialSection?: 'identity' | 'model' | 'prompt' | 'alerts' | 'runtime';
+  initialSection?: RoleSettingsSection;
   onSave: (draft: RoleSettingsDraft) => Promise<void>;
   onReset?: () => Promise<void>;
   onDelete?: () => Promise<void>;
   onClone?: (agent: RoleAgent) => void;
+  onCreate?: () => void;
 }
 
 export default function RoleSettingsPanel({
@@ -251,14 +290,23 @@ export default function RoleSettingsPanel({
   onReset,
   onDelete,
   onClone,
+  onCreate,
 }: RoleSettingsPanelProps) {
   const [draft, setDraft] = useState<RoleSettingsDraft>(() => draftFromAgent(agent));
-  const [section, setSection] = useState<'identity' | 'model' | 'prompt' | 'alerts' | 'runtime'>(initialSection);
+  const [section, setSection] = useState<RoleSettingsSection>(initialSection);
 
   useEffect(() => {
     setDraft(draftFromAgent(agent));
+  }, [agent]);
+
+  useEffect(() => {
     setSection(initialSection);
-  }, [agent, initialSection]);
+  }, [agent.id, initialSection]);
+
+  const goSection = (id: RoleSettingsSection) => {
+    setSection(id);
+    document.getElementById(`rs-${id}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
 
   const categories = catalog?.categories ?? Object.entries(CATEGORY_LABEL).map(([id, label]) => ({ id, label }));
   const tiers = catalog?.tiers ?? Object.entries(TIER_LABEL).map(([id, label]) => ({ id, label }));
@@ -268,82 +316,94 @@ export default function RoleSettingsPanel({
   const selectedHint = tokenHint(draft.preferred_model, catalog?.model_token_hints);
   const outputMax = selectedHint?.max_output ?? 32768;
   const contextMax = selectedHint?.max_context ?? 2_000_000;
+  const activeRoute =
+    (catalog?.api_routes ?? []).find((r) => r.id === draft.preferred_provider) ||
+    catalog?.api_routes?.find((r) => r.is_default);
+  const defaultRoute = catalog?.api_routes?.find((r) => r.is_default);
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(draftFromAgent(agent)), [agent, draft]);
+  const modelStatus = [
+    routeDisplayName(activeRoute) || '全域預設',
+    draft.preferred_model || 'API 預設模型',
+    `輸出 ${draft.max_output_tokens.toLocaleString()}`,
+    draft.context_window > 0 ? `上下文 ${draft.context_window.toLocaleString()}` : '上下文不截斷',
+  ].join(' · ');
 
   return (
-    <div className="space-y-3">
+    <div className="rs-wrap">
       {error && (
         <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-200">{error}</p>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] text-[#8a8f98]">
-          {agent.is_custom ? '自定義角色 · 可刪除' : '內建角色 · 可覆蓋設定，還原後回到 STANDARD_ROLES'}
-        </p>
-        <div className="flex flex-wrap gap-1">
-          {onClone && (
+      <div className="rs-toolbar">
+        <div className="rs-head">
+          <div className="rs-head-l">
+            <h2 className="rs-title">角色設定</h2>
+            <p className="rs-sub">
+              {agent.is_custom
+                ? '自定義角色，可刪除'
+                : '內建角色 · 可覆蓋設定，還原後回到內建預設'}
+            </p>
+          </div>
+          <div className="rs-actions">
+            {onCreate && (
+              <button type="button" onClick={onCreate} className="rs-act">
+                新增角色
+              </button>
+            )}
+            {onClone && (
+              <button type="button" onClick={() => onClone(agent)} className="rs-act">
+                複製為自定義
+              </button>
+            )}
+            {onReset && !agent.is_custom && (
+              <button type="button" onClick={() => void onReset()} className="rs-act">
+                還原預設
+              </button>
+            )}
+            {onDelete && agent.is_custom && (
+              <button type="button" onClick={() => void onDelete()} className="rs-act rs-act--danger">
+                刪除角色
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => onClone(agent)}
-              className="rounded border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]"
+              disabled={saving || !dirty}
+              onClick={() => void onSave(draft)}
+              className="rs-act rs-act--primary"
             >
-              複製為自定義
+              {saving ? '儲存中…' : '儲存設定'}
             </button>
-          )}
-          {onReset && !agent.is_custom && (
-            <button
-              type="button"
-              onClick={() => void onReset()}
-              className="rounded border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]"
-            >
-              還原預設
-            </button>
-          )}
-          {onDelete && agent.is_custom && (
-            <button
-              type="button"
-              onClick={() => void onDelete()}
-              className="rounded border border-red-500/30 px-2 py-1 text-[11px] text-red-300"
-            >
-              刪除角色
-            </button>
-          )}
-          <button
-            type="button"
-            disabled={saving || !dirty}
-            onClick={() => void onSave(draft)}
-            className="rounded border border-[#007AFF]/40 bg-[#007AFF]/15 px-2 py-1 text-[11px] text-[#64D2FF] disabled:opacity-40"
-          >
-            {saving ? '儲存中…' : '儲存設定'}
-          </button>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1">
-        {(
-          [
-            ['identity', '身分／組織'],
-            ['model', '模型／Token'],
-            ['prompt', '角色設定'],
-            ['runtime', '執行／合規'],
-            ['alerts', '預算／告警／監控'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setSection(key)}
-            className={`rounded px-2 py-1 text-[11px] ${
-              section === key ? 'bg-[#007AFF]/20 text-[#64D2FF]' : 'text-[#8a8f98]'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {section === 'identity' && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="rs-body">
+      <nav className="sp-nav rs-nav" aria-label="角色設定分區">
+        <div className="sp-group">設定</div>
+        <div className="sp-list">
+          {SETTINGS_SECTIONS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`sp-item ${section === item.id ? 'on' : ''}`}
+              onClick={() => goSection(item.id)}
+            >
+              <span className="sp-item-ic">{item.icon}</span>
+              <span className="sp-item-txt">
+                <span className="sp-item-l">{item.label}</span>
+                <span className="sp-item-h">{item.hint}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </nav>
+      <div className="min-w-0 space-y-3.5">
+      <section id="rs-identity" className="rs-sec">
+        <div className="rs-sec-h">
+          <h3 className="rs-sec-t">身分／組織</h3>
+          <span className="rs-sec-hint">層級、匯報與指派</span>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           <Field label="顯示名稱">
             <input className={inputCls} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </Field>
@@ -455,12 +515,19 @@ export default function RoleSettingsPanel({
             />
           </Field>
         </div>
-      )}
+      </section>
 
-      {section === 'model' && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <section id="rs-model" className="rs-sec">
+        <div className="rs-sec-h">
+          <h3 className="rs-sec-t">模型／Token</h3>
+          <span className="rs-sec-hint">供應商、模型與輸出上限</span>
+        </div>
+        <p className="rs-status" title={modelStatus}>
+          {modelStatus}
+        </p>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {(catalog?.api_routes?.length ?? 0) === 0 && catalog != null && (
-            <p className="md:col-span-2 rounded-xl border border-[#FF9F0A]/25 bg-[#FF9F0A]/8 px-3 py-2 text-[12px] text-[#FF9F0A]">
+            <p className="md:col-span-2 lg:col-span-3 rounded-xl border border-[#FF9F0A]/25 bg-[#FF9F0A]/8 px-3 py-2 text-[12px] text-[#FF9F0A]">
               尚未配置 API。請先到{' '}
               <a href="#/monitor/llm" className="font-medium underline">
                 {navPathForTab('llm')}
@@ -468,19 +535,6 @@ export default function RoleSettingsPanel({
               加入千問／DeepSeek／Kimi／OpenRouter。
             </p>
           )}
-          <div className="md:col-span-2 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[12px] text-[#AEAEB2]">
-            目前生效：
-            <span className="ml-1 font-medium text-[#F5F5F7]">
-              {(catalog?.api_routes ?? []).find((r) => r.id === draft.preferred_provider)?.name
-                || catalog?.api_routes?.find((r) => r.is_default)?.name
-                || '全域預設'}
-            </span>
-            {' · '}
-            <span className="font-mono text-[#F5F5F7]">{draft.preferred_model || '該 API 預設模型'}</span>
-            {' · 輸出 '}
-            <span className="font-mono text-[#F5F5F7]">{draft.max_output_tokens.toLocaleString()}</span>
-            {draft.context_window > 0 ? ` · 上下文 ${draft.context_window.toLocaleString()}` : ' · 上下文不截斷'}
-          </div>
           <Field label="模型層級">
             <select
               className={inputCls}
@@ -508,11 +562,10 @@ export default function RoleSettingsPanel({
                 setDraft({ ...draft, preferred_provider: next, preferred_model: nextModel });
               }}
             >
-              <option value="">全域預設（{catalog?.api_routes?.find((r) => r.is_default)?.name || '目前 API'}）</option>
+              <option value="">全域預設（{routeDisplayName(defaultRoute) || '目前 API'}）</option>
               {(catalog?.api_routes ?? []).map((route) => (
                 <option key={route.id} value={route.id} disabled={route.enabled === false}>
-                  {route.name}（{route.provider_label || route.provider}）
-                  {route.is_default ? ' · 預設' : ''}
+                  {routeOptionLabel(route)}
                 </option>
               ))}
             </select>
@@ -528,7 +581,7 @@ export default function RoleSettingsPanel({
                 ? (catalog?.models_by_provider ?? [])
                     .filter((g) => !draft.preferred_provider || g.route_id === draft.preferred_provider)
                     .map((g) => (
-                      <optgroup key={g.route_id} label={`${g.name} · ${g.provider_label || g.provider}`}>
+                      <optgroup key={g.route_id} label={routeDisplayName(g) || g.name}>
                         {g.models.map((id) => (
                           <option key={`${g.route_id}-${id}`} value={id}>
                             {id}
@@ -622,11 +675,15 @@ export default function RoleSettingsPanel({
             />
           </Field>
         </div>
-      )}
+      </section>
 
-      {section === 'prompt' && (
+      <section id="rs-prompt" className="rs-sec">
+        <div className="rs-sec-h">
+          <h3 className="rs-sec-t">提示詞／職責</h3>
+          <span className="rs-sec-hint">系統提示詞與職責清單</span>
+        </div>
         <div className="space-y-3">
-          <Field label="系統提示詞（角色設定）" hint="Monaco · 語法高亮">
+          <Field label="系統提示詞" hint="Monaco · 語法高亮">
             <PromptEditor
               value={draft.system_prompt}
               onChange={(v) => setDraft({ ...draft, system_prompt: v })}
@@ -650,10 +707,14 @@ export default function RoleSettingsPanel({
             />
           </Field>
         </div>
-      )}
+      </section>
 
-      {section === 'runtime' && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <section id="rs-runtime" className="rs-sec">
+        <div className="rs-sec-h">
+          <h3 className="rs-sec-t">執行／合規</h3>
+          <span className="rs-sec-hint">通知、上限與護欄</span>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           <Field label="標籤" hint="逗號分隔">
             <input className={inputCls} value={draft.tagsText} onChange={(e) => setDraft({ ...draft, tagsText: e.target.value })} />
           </Field>
@@ -691,64 +752,95 @@ export default function RoleSettingsPanel({
             ))}
           </div>
         </div>
-      )}
+      </section>
 
-      {section === 'alerts' && (
+      <section id="rs-alerts" className="rs-sec">
+        <div className="rs-sec-h">
+          <h3 className="rs-sec-t">預算／告警／監控</h3>
+          <span className="rs-sec-hint">AI 與雲服務分開控管 · 0=不限</span>
+        </div>
         <div className="space-y-3">
-          <div className="apple-card p-3">
-            <div className="mb-2 flex items-baseline justify-between gap-2">
-              <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#8a8f98]">預算上限</h4>
-              <span className="text-[10px] text-[#62666d]">合計 = API＋Docker＋阿里雲 · 0=不限</span>
+          <div className="rs-budget-grid">
+            <div className="rs-budget">
+              <div className="rs-budget-h">
+                <h4>AI 使用預算</h4>
+                <span>今日已用 {fmtUsd(agent.api_cost_usd ?? agent.metrics?.api_spent_usd ?? 0)} · 只計 LLM</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Field label="每日 USD">
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    className={inputCls}
+                    value={draft.daily_budget_usd}
+                    onChange={(e) => setDraft({ ...draft, daily_budget_usd: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+                <Field label="每週 USD">
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    className={inputCls}
+                    value={draft.weekly_budget_usd}
+                    onChange={(e) => setDraft({ ...draft, weekly_budget_usd: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+                <Field label="每月 USD">
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    className={inputCls}
+                    value={draft.monthly_budget_usd}
+                    onChange={(e) => setDraft({ ...draft, monthly_budget_usd: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+              </div>
             </div>
-            <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="rounded-lg border border-white/[0.08]/80 bg-[#141516] px-3 py-2">
-                <p className="text-[10px] text-[#62666d]">API 用量</p>
-                <p className="mt-0.5 text-[12px] text-[#64D2FF]">LLM token 花費</p>
+
+            <div className="rs-budget">
+              <div className="rs-budget-h">
+                <h4>雲服務預算</h4>
+                <span>今日已用 {fmtUsd(agent.cloud_cost_usd ?? agent.metrics?.cloud_spent_usd ?? 0)} · Docker＋阿里雲</span>
               </div>
-              <div className="rounded-lg border border-white/[0.08]/80 bg-[#141516] px-3 py-2">
-                <p className="text-[10px] text-[#62666d]">Docker</p>
-                <p className="mt-0.5 text-[12px] text-sky-300">本地容器分攤</p>
+              <div className="grid grid-cols-3 gap-2">
+                <Field label="每日 USD">
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    className={inputCls}
+                    value={draft.cloud_daily_budget_usd}
+                    onChange={(e) => setDraft({ ...draft, cloud_daily_budget_usd: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+                <Field label="每週 USD">
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    className={inputCls}
+                    value={draft.cloud_weekly_budget_usd}
+                    onChange={(e) => setDraft({ ...draft, cloud_weekly_budget_usd: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+                <Field label="每月 USD">
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    className={inputCls}
+                    value={draft.cloud_monthly_budget_usd}
+                    onChange={(e) => setDraft({ ...draft, cloud_monthly_budget_usd: Number(e.target.value) || 0 })}
+                  />
+                </Field>
               </div>
-              <div className="rounded-lg border border-white/[0.08]/80 bg-[#141516] px-3 py-2">
-                <p className="text-[10px] text-[#62666d]">阿里雲</p>
-                <p className="mt-0.5 text-[12px] text-orange-300">BSS 帳目分攤</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <Field label="每日預算 USD" hint="含 API＋雲資源">
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  className={inputCls}
-                  value={draft.daily_budget_usd}
-                  onChange={(e) => setDraft({ ...draft, daily_budget_usd: Number(e.target.value) || 0 })}
-                />
-              </Field>
-              <Field label="週預算 USD" hint="含 API＋雲資源">
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  className={inputCls}
-                  value={draft.weekly_budget_usd}
-                  onChange={(e) => setDraft({ ...draft, weekly_budget_usd: Number(e.target.value) || 0 })}
-                />
-              </Field>
-              <Field label="月預算 USD" hint="含 API＋雲資源">
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  className={inputCls}
-                  value={draft.monthly_budget_usd}
-                  onChange={(e) => setDraft({ ...draft, monthly_budget_usd: Number(e.target.value) || 0 })}
-                />
-              </Field>
             </div>
           </div>
 
-          <div className="apple-card p-3">
+          <div className="rounded-xl border border-white/[0.08] bg-[#141416] p-3">
             <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#8a8f98]">SLA／告警</h4>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Field label="SLA 延遲 ms" hint="0=不檢查">
@@ -797,7 +889,9 @@ export default function RoleSettingsPanel({
             </div>
           </div>
         </div>
-      )}
+      </section>
+      </div>
+      </div>
     </div>
   );
 }
@@ -826,6 +920,7 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
   const [maxOutput, setMaxOutput] = useState(cloneFrom?.max_output_tokens ?? 4096);
   const [contextWindow, setContextWindow] = useState(cloneFrom?.context_window ?? 0);
   const [budget, setBudget] = useState(cloneFrom?.daily_budget_usd ?? 0);
+  const [cloudBudget, setCloudBudget] = useState(cloneFrom?.cloud_daily_budget_usd ?? 0);
   const [routing, setRouting] = useState(cloneFrom?.routing_strategy || 'quality_first');
   const [parallel, setParallel] = useState(cloneFrom?.max_parallel_work ?? 2);
   const [language, setLanguage] = useState(cloneFrom?.language || 'zh-TW');
@@ -954,7 +1049,7 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
               <option value="">API：全域預設</option>
               {(catalog?.api_routes ?? []).map((route) => (
                 <option key={route.id} value={route.id}>
-                  {route.name}
+                  {routeOptionLabel(route)}
                 </option>
               ))}
             </select>
@@ -999,9 +1094,18 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
               type="number"
               min={0}
               step={0.1}
-              placeholder="日預算 USD"
+              placeholder="AI 日預算 USD"
               value={budget}
               onChange={(e) => setBudget(Number(e.target.value) || 0)}
+            />
+            <input
+              className={inputCls}
+              type="number"
+              min={0}
+              step={0.1}
+              placeholder="雲服務日預算 USD"
+              value={cloudBudget}
+              onChange={(e) => setCloudBudget(Number(e.target.value) || 0)}
             />
             <input
               className={inputCls}
@@ -1073,6 +1177,11 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
                   max_output_tokens: maxOutput,
                   context_window: contextWindow,
                   daily_budget_usd: budget,
+                  weekly_budget_usd: cloneFrom?.weekly_budget_usd ?? 0,
+                  monthly_budget_usd: cloneFrom?.monthly_budget_usd ?? 0,
+                  cloud_daily_budget_usd: cloudBudget,
+                  cloud_weekly_budget_usd: cloneFrom?.cloud_weekly_budget_usd ?? 0,
+                  cloud_monthly_budget_usd: cloneFrom?.cloud_monthly_budget_usd ?? 0,
                   routing_strategy: routing,
                   max_parallel_work: parallel,
                   language,

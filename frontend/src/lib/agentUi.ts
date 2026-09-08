@@ -44,6 +44,10 @@ export function blankMetrics() {
     human_escalations: 0,
     p95_latency_ms: 0,
     weekly_spent_usd: 0,
+    weekly_cloud_spent_usd: 0,
+    grill_count: 0,
+    grill_rate: 0,
+    decision_clarity: 1,
   };
 }
 
@@ -166,8 +170,16 @@ export function isLiveAgent(agent: Pick<RoleAgent, 'status'>): boolean {
   return agent.status === 'busy' || agent.status === 'waiting';
 }
 
-export function isAlertAgent(agent: Pick<RoleAgent, 'status' | 'alerts' | 'budget_over'>): boolean {
-  return (agent.alerts?.length ?? 0) > 0 || agent.status === 'error' || !!agent.budget_over;
+export function isAlertAgent(
+  agent: Pick<RoleAgent, 'status' | 'alerts' | 'budget_over' | 'ai_budget_over' | 'cloud_budget_over'>,
+): boolean {
+  return (
+    (agent.alerts?.length ?? 0) > 0 ||
+    agent.status === 'error' ||
+    !!agent.budget_over ||
+    !!agent.ai_budget_over ||
+    !!agent.cloud_budget_over
+  );
 }
 
 export function fmtUsd(n: number): string {
@@ -258,4 +270,25 @@ export function pickDefaultAgentId(agents: RoleAgent[], preferred?: string | nul
   const busy = agents.find((a) => a.status === 'busy') ?? agents.find((a) => a.status === 'waiting' || a.status === 'error');
   if (busy) return busy.id;
   return agents.find((a) => a.id === 'manager')?.id ?? agents[0]?.id ?? '';
+}
+
+export function cleanRouteLabel(value: string): string {
+  return value
+    .replace(/[（(]單一廠商[)）]/g, '')
+    .replace(/[（(]單一供應商[)）]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function routeDisplayName(route?: { name?: string; provider_label?: string; provider?: string } | null): string {
+  if (!route) return '';
+  const name = cleanRouteLabel(route.name || '');
+  const provider = cleanRouteLabel(route.provider_label || route.provider || '');
+  if (name && provider && name !== provider) {
+    if (name.includes(provider) || provider.includes(name)) {
+      return name.length >= provider.length ? name : provider;
+    }
+    return `${name} · ${provider}`;
+  }
+  return name || provider;
 }

@@ -15,6 +15,7 @@ import ErrorState from './ui/ErrorState';
 
 const AgentsMonitorPanel = lazy(() => import('./AgentsMonitorPanel'));
 const TasksMonitorPanel = lazy(() => import('./TasksMonitorPanel'));
+const GrillTreePanel = lazy(() => import('./GrillTreePanel'));
 const PipelineView = lazy(() => import('./PipelineView'));
 const SystemMetricsPanel = lazy(() => import('./SystemMetricsPanel'));
 const ModelCallPanel = lazy(() => import('./ModelCallPanel'));
@@ -143,6 +144,7 @@ export default function MonitorView({
         {tab === 'agents' && (
           <AgentsMonitorPanel focusAgentId={focusAgentId} onFocusAgent={onFocusAgent} deskScope="console" />
         )}
+        {tab === 'grill' && <GrillTreePanel />}
         {tab === 'pipeline' && <PipelineView onGoTasks={() => onTabChange('tasks')} />}
         {tab === 'metrics' && <SystemMetricsPanel />}
         {tab === 'models' && <ModelCallPanel />}

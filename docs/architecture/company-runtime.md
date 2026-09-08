@@ -12,7 +12,7 @@
 
 ## 角色體系
 
-內建 `STANDARD_ROLES` 共 **80** 席（Level 0–4）。監控中心可覆寫角色設定，或透過 `role_catalog` 新增自定義角色。
+內建 `STANDARD_ROLES` 共 **81** 席（Level 0–4，含 L4 需求審計官）。監控中心可覆寫角色設定，或透過 `role_catalog` 新增自定義角色。
 
 ```
 Level 0: Manager（1）           — 目標分解、最終審查

@@ -13,6 +13,7 @@ interface MessageListProps {
   onOpenTask?: (messageId: string) => void;
   onOpenTrace?: (taskId: string) => void;
   onSuggest?: (text: string, companyMode: boolean) => void;
+  onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
 }
 
 const SUGGESTIONS: { text: string; company: boolean }[] = [
@@ -27,6 +28,7 @@ export default function MessageList({
   onOpenTask,
   onOpenTrace,
   onSuggest,
+  onGrillAnswer,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -77,6 +79,7 @@ export default function MessageList({
             sessionId={sessionId}
             onOpenTask={msg.taskState ? () => onOpenTask?.(msg.id) : undefined}
             onOpenTrace={onOpenTrace}
+            onGrillAnswer={onGrillAnswer}
           />
         ))}
         <div ref={bottomRef} />

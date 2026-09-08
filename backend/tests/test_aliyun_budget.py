@@ -158,6 +158,7 @@ def test_agent_monitor_allocates_cloud_into_budget(monkeypatch):
                 "level_label": "執行層",
                 "category": "backend",
                 "daily_budget_usd": 1.0,
+                "cloud_daily_budget_usd": 2.0,
                 "alert_on_budget": True,
                 "enabled": True,
             },
@@ -168,6 +169,7 @@ def test_agent_monitor_allocates_cloud_into_budget(monkeypatch):
                 "level_label": "決策層",
                 "category": "management",
                 "daily_budget_usd": 0,
+                "cloud_daily_budget_usd": 0,
                 "enabled": True,
             },
         ],
@@ -214,4 +216,36 @@ def test_agent_monitor_allocates_cloud_into_budget(monkeypatch):
     assert by_id["developer"]["api_cost_usd"] == 0.5
     assert by_id["developer"]["cloud_cost_usd"] == 10.0
     assert by_id["developer"]["cost_usd"] == 10.5
+    assert by_id["developer"]["ai_budget_over"] is False
+    assert by_id["developer"]["cloud_budget_over"] is True
     assert by_id["developer"]["budget_over"] is True
+    messages = [x["message"] for x in by_id["developer"]["alerts"]]
+    assert any("雲服務" in m for m in messages)
+    assert not any("AI 使用已超過日預算" in m for m in messages)
+
+
+def test_apply_split_budgets_independent():
+    from backend.services.agent_monitor import _apply_split_budgets
+
+    agent = {
+        "api_cost_usd": 2.0,
+        "cloud_cost_usd": 0.4,
+        "daily_budget_usd": 1.0,
+        "cloud_daily_budget_usd": 5.0,
+        "weekly_budget_usd": 0,
+        "monthly_budget_usd": 0,
+        "cloud_weekly_budget_usd": 0,
+        "cloud_monthly_budget_usd": 0,
+        "alert_on_budget": True,
+        "alerts": [{"level": "info", "message": "目前值班中"}],
+    }
+    _apply_split_budgets(agent)
+    assert agent["ai_budget_over"] is True
+    assert agent["cloud_budget_over"] is False
+    assert agent["budget_over"] is True
+    assert agent["ai_budget_remaining_usd"] == 0.0
+    assert agent["cloud_budget_remaining_usd"] == 4.6
+    messages = [x["message"] for x in agent["alerts"]]
+    assert "目前值班中" in messages
+    assert any("AI 使用已超過日預算" in m for m in messages)
+    assert not any("雲服務" in m for m in messages)

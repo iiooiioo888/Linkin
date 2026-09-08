@@ -6,6 +6,7 @@ import { splitThink } from '../lib/splitThink';
 import { ReflectionRadar } from './ReflectionCharts';
 import MarkdownBody from './media/MarkdownBody';
 import TaskPanel from './TaskPanel';
+import GrillUserCard from './GrillUserCard';
 import ErrorState from './ui/ErrorState';
 
 
@@ -14,6 +15,7 @@ interface MessageBubbleProps {
   sessionId: string;
   onOpenTask?: () => void;
   onOpenTrace?: (taskId: string) => void;
+  onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
 }
 
 function formatTime(ts: number): string {
@@ -28,6 +30,7 @@ export default function MessageBubble({
   sessionId,
   onOpenTask,
   onOpenTrace,
+  onGrillAnswer,
 }: MessageBubbleProps) {
   const [feedbackSent, setFeedbackSent] = useState<1 | 2 | undefined>(message.feedback);
   const [copied, setCopied] = useState(false);
@@ -97,7 +100,17 @@ export default function MessageBubble({
         </div>
       )}
 
-      {(thinking || visible || (message.streaming && !message.taskState)) && (
+      {message.grill && (
+        <div className="w-full max-w-[min(100%,720px)]">
+          <GrillUserCard
+            grill={message.grill}
+            disabled={message.streaming}
+            onAnswer={(answer, force) => onGrillAnswer?.(message.id, answer, force)}
+          />
+        </div>
+      )}
+
+      {(thinking || visible || (message.streaming && !message.taskState)) && !message.grill && (
         <div className={`max-w-[min(92%,720px)] min-w-0 ${isUser ? '' : 'w-full'}`}>
           {isUser ? (
             <div className="evo-msg-user whitespace-pre-wrap">{message.content}</div>

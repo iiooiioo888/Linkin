@@ -450,7 +450,8 @@ def test_custom_role_crud_and_settings_overlay(tmp_path, monkeypatch):
         }
     )
     assert cloned["id"] == "custom_desk_b"
-    assert "StocksX" in cloned["system_prompt"]
+    assert "量化分析師" in cloned["system_prompt"]
+    assert "market_strategy_catalog" in cloned["system_prompt"]
     assert cloned["timeout_ms"] == 90000
     assert cloned["routing_strategy"] == "cost_first"
 
@@ -460,12 +461,16 @@ def test_custom_role_crud_and_settings_overlay(tmp_path, monkeypatch):
             "on_call": True,
             "mainland_only": True,
             "weekly_budget_usd": 4.0,
+            "cloud_daily_budget_usd": 3.5,
+            "cloud_weekly_budget_usd": 12.0,
             "tags": ["quant", "b-desk"],
         },
     )
     assert overlayed["on_call"] is True
     assert overlayed["mainland_only"] is True
     assert overlayed["weekly_budget_usd"] == 4.0
+    assert overlayed["cloud_daily_budget_usd"] == 3.5
+    assert overlayed["cloud_weekly_budget_usd"] == 12.0
     assert "quant" in overlayed["tags"] 
 
 
@@ -497,10 +502,17 @@ def test_monitor_agents_custom_role_http(tmp_path, monkeypatch):
 
         patched = client.put(
             "/monitor/agents/custom_opc_specialist/settings",
-            json={"daily_budget_usd": 2, "alert_on_error": False, "on_call": True, "mainland_only": True},
+            json={
+                "daily_budget_usd": 2,
+                "cloud_daily_budget_usd": 8,
+                "alert_on_error": False,
+                "on_call": True,
+                "mainland_only": True,
+            },
         )
         assert patched.status_code == 200
         assert patched.json()["daily_budget_usd"] == 2
+        assert patched.json()["cloud_daily_budget_usd"] == 8
         assert patched.json()["on_call"] is True
         assert patched.json()["mainland_only"] is True
 

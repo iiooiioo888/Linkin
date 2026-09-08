@@ -72,12 +72,24 @@ TIER_VALUES = {t.value for t in BudgetTier}
 CATEGORY_VALUES = {c.value for c in RoleCategory}
 ROUTING_STRATEGIES = {"cost_first", "speed_first", "quality_first", "manual"}
 
+# AI 使用預算（LLM API）與雲服務預算（Docker + 阿里雲）分開，0=不限
+AI_BUDGET_FIELDS = ("daily_budget_usd", "weekly_budget_usd", "monthly_budget_usd")
+CLOUD_BUDGET_FIELDS = (
+    "cloud_daily_budget_usd",
+    "cloud_weekly_budget_usd",
+    "cloud_monthly_budget_usd",
+)
+BUDGET_USD_FIELDS = AI_BUDGET_FIELDS + CLOUD_BUDGET_FIELDS
+
 DEFAULT_RUNTIME: dict[str, Any] = {
     "preferred_model": "",
     "preferred_provider": "",
     "daily_budget_usd": 0.0,
     "weekly_budget_usd": 0.0,
     "monthly_budget_usd": 0.0,
+    "cloud_daily_budget_usd": 0.0,
+    "cloud_weekly_budget_usd": 0.0,
+    "cloud_monthly_budget_usd": 0.0,
     "tools_allowed": [],
     "notes": "",
     "enabled": True,
@@ -291,8 +303,9 @@ def _merge_runtime(target: dict[str, Any], source: dict[str, Any] | None) -> dic
         target["preferred_model"] = str(source.get("preferred_model") or "").strip()
     if source.get("preferred_provider") is not None:
         target["preferred_provider"] = str(source.get("preferred_provider") or "").strip().lower()
-    if source.get("daily_budget_usd") is not None:
-        target["daily_budget_usd"] = max(0.0, float(source["daily_budget_usd"] or 0))
+    for field in BUDGET_USD_FIELDS:
+        if source.get(field) is not None:
+            target[field] = max(0.0, float(source[field] or 0))
     if source.get("tools_allowed") is not None:
         target["tools_allowed"] = _as_str_list(source.get("tools_allowed"))
     if source.get("notes") is not None:
@@ -330,10 +343,6 @@ def _merge_runtime(target: dict[str, Any], source: dict[str, Any] | None) -> dic
         target["priority"] = _clamp_int(source.get("priority"), 3, 1, 5)
     if source.get("description") is not None:
         target["description"] = str(source.get("description") or "")[:240]
-    if source.get("weekly_budget_usd") is not None:
-        target["weekly_budget_usd"] = max(0.0, float(source["weekly_budget_usd"] or 0))
-    if source.get("monthly_budget_usd") is not None:
-        target["monthly_budget_usd"] = max(0.0, float(source["monthly_budget_usd"] or 0))
     if source.get("max_daily_items") is not None:
         target["max_daily_items"] = _clamp_int(source.get("max_daily_items"), 0, 0, 500)
     for flag in (
@@ -577,8 +586,9 @@ def _settings_payload(data: dict[str, Any]) -> dict[str, Any]:
         payload["preferred_model"] = str(data.get("preferred_model") or "").strip()
     if "preferred_provider" in data:
         payload["preferred_provider"] = str(data.get("preferred_provider") or "").strip().lower()
-    if "daily_budget_usd" in data:
-        payload["daily_budget_usd"] = max(0.0, float(data.get("daily_budget_usd") or 0))
+    for field in BUDGET_USD_FIELDS:
+        if field in data:
+            payload[field] = max(0.0, float(data.get(field) or 0))
     if "tools_allowed" in data:
         payload["tools_allowed"] = _as_str_list(data.get("tools_allowed"))
     if "notes" in data:
@@ -616,10 +626,6 @@ def _settings_payload(data: dict[str, Any]) -> dict[str, Any]:
         payload["priority"] = _clamp_int(data.get("priority"), 3, 1, 5)
     if "description" in data:
         payload["description"] = str(data.get("description") or "")[:240]
-    if "weekly_budget_usd" in data:
-        payload["weekly_budget_usd"] = max(0.0, float(data.get("weekly_budget_usd") or 0))
-    if "monthly_budget_usd" in data:
-        payload["monthly_budget_usd"] = max(0.0, float(data.get("monthly_budget_usd") or 0))
     if "max_daily_items" in data:
         payload["max_daily_items"] = _clamp_int(data.get("max_daily_items"), 0, 0, 500)
     for flag in (
@@ -714,6 +720,11 @@ def create_custom_role(data: dict[str, Any]) -> dict[str, Any]:
             "preferred_model": src.get("preferred_model"),
             "preferred_provider": src.get("preferred_provider"),
             "daily_budget_usd": src.get("daily_budget_usd"),
+            "weekly_budget_usd": src.get("weekly_budget_usd"),
+            "monthly_budget_usd": src.get("monthly_budget_usd"),
+            "cloud_daily_budget_usd": src.get("cloud_daily_budget_usd"),
+            "cloud_weekly_budget_usd": src.get("cloud_weekly_budget_usd"),
+            "cloud_monthly_budget_usd": src.get("cloud_monthly_budget_usd"),
             "tools_allowed": src.get("tools_allowed"),
             "notes": src.get("notes"),
             "alert_on_error": src.get("alert_on_error"),
@@ -730,8 +741,6 @@ def create_custom_role(data: dict[str, Any]) -> dict[str, Any]:
             "always_require_review": src.get("always_require_review"),
             "priority": src.get("priority"),
             "description": src.get("description"),
-            "weekly_budget_usd": src.get("weekly_budget_usd"),
-            "monthly_budget_usd": src.get("monthly_budget_usd"),
             "max_daily_items": src.get("max_daily_items"),
             "require_human_approval": src.get("require_human_approval"),
             "stream_enabled": src.get("stream_enabled"),

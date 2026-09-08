@@ -39,6 +39,10 @@ class CompanyEvent(str, Enum):
     WORK_ITEM_ERROR = "work_item_error"      # 工作項執行失敗
     WORK_ITEM_RETRY = "work_item_retry"      # 工作項重試中
     WORK_ITEM_ESCALATE = "work_item_escalate"  # 工作項升級到上級角色
+    GRILL_RAISED = "grill_raised"              # L2 對上級發起強制質詢
+    GRILL_RESOLVED = "grill_resolved"          # 質詢已由上層裁決
+    USER_DECISION_NEEDED = "user_decision_needed"  # 熱馬桶圈到達 L5，等待用戶
+    RAHO_TIMEOUT = "raho_timeout"              # 決策 TTL 到期自動裁決
 
     # ── 工具調用層級（Agent 工具閉環）──
     TOOL_CALL = "tool_call"                  # Agent 發起工具調用

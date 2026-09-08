@@ -1,6 +1,6 @@
 /**
  * SidePanel — 左側上下文面板。
- * Chat → 會話；Monitor → 精簡分頁 + 虛擬滾動名冊。
+ * Chat → 會話；Monitor → 完整導航（標題＋說明＋金邊）+ 虛擬滾動名冊。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -14,9 +14,7 @@ import {
   type LabSubTab,
 } from '../lib/labTabs';
 import {
-  CONSOLE_NAV_GROUPS,
   activityTitle,
-  navGroupForTab,
   navGroupsForActivity,
   resolveActivity,
   type ConsoleNavItem,
@@ -162,20 +160,7 @@ function AgentRoster({
   const agents = filterAgentsByDesk(storeAgents?.length ? storeAgents : AGENT_FALLBACK_ROSTER, deskScope);
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<'all' | 'live' | 'alert'>('all');
-  const [openLevels, setOpenLevels] = useState<Set<number>>(() => new Set([0, 1]));
   const listRef = useRef<VirtuosoHandle>(null);
-
-  useEffect(() => {
-    if (!focusAgentId) return;
-    const agent = agents.find((a) => a.id === focusAgentId);
-    if (!agent) return;
-    setOpenLevels((cur) => {
-      if (cur.has(agent.level)) return cur;
-      const next = new Set(cur);
-      next.add(agent.level);
-      return next;
-    });
-  }, [agents, focusAgentId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -193,18 +178,16 @@ function AgentRoster({
 
   const rows: RosterRow[] = useMemo(() => {
     const out: RosterRow[] = [];
-    const searchingNow = query.trim().length > 0;
     for (const lv of ROSTER_LEVELS) {
       const list = filtered.filter((a) => a.level === lv.level);
       if (!list.length) continue;
       out.push({ kind: 'header', key: `h-${lv.level}`, label: `${lv.short} ${lv.label}`, count: list.length });
-      if (!searchingNow && !openLevels.has(lv.level)) continue;
       for (const agent of list) {
         out.push({ kind: 'agent', key: agent.id, agent });
       }
     }
     return out;
-  }, [filtered, openLevels, query]);
+  }, [filtered]);
 
   const searching = query.trim().length > 0;
 
@@ -273,25 +256,11 @@ function AgentRoster({
         data={rows}
         itemContent={(_i, row) => {
           if (row.kind === 'header') {
-            const level = Number(row.key.slice(2));
-            const open = openLevels.has(level);
             return (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpenLevels((cur) => {
-                    const next = new Set(cur);
-                    if (next.has(level)) next.delete(level);
-                    else next.add(level);
-                    return next;
-                  });
-                }}
-                className="ar-rg"
-              >
-                <span className={`ar-ch ${open ? 'open' : ''}`}>▶</span>
+              <div className="ar-rg">
                 <span>{row.label}</span>
                 <span className="ar-rc">{row.count}</span>
-              </button>
+              </div>
             );
           }
           const agent = row.agent;
@@ -548,32 +517,22 @@ function TabBtn({
   item,
   active,
   onClick,
-  compact = false,
 }: {
   item: ConsoleNavItem | { key: string; icon: string; label: string; hint?: string };
   active: boolean;
   onClick: () => void;
-  compact?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       title={item.hint}
-      className={`relative flex w-full items-center gap-2 rounded-lg text-left transition-colors ${
-        compact ? 'px-2 py-1' : 'px-2.5 py-1.5'
-      } ${
-        active
-          ? 'bg-white/[0.06] text-[#F5F5F7]'
-          : 'text-[#98989D] hover:bg-white/[0.03] hover:text-[#F5F5F7]'
-      }`}
+      className={`sp-item ${active ? 'on' : ''}`}
     >
-      <span className="w-4 shrink-0 text-center text-[12px] leading-none opacity-70">{item.icon}</span>
-      <span className="min-w-0 flex-1">
-        <span className={`block truncate text-[12px] ${active ? 'font-medium' : ''}`}>{item.label}</span>
-        {!compact && item.hint && (
-          <span className="block truncate text-[10px] text-[#636366]">{item.hint}</span>
-        )}
+      <span className="sp-item-ic">{item.icon}</span>
+      <span className="sp-item-txt">
+        <span className="sp-item-l">{item.label}</span>
+        {item.hint ? <span className="sp-item-h">{item.hint}</span> : null}
       </span>
     </button>
   );
@@ -586,66 +545,26 @@ function LabSidebar({
   labSubTab: LabSubTab;
   onLabSubTabChange: (tab: LabSubTab) => void;
 }) {
-  const activeGroup = LAB_NAV_GROUPS.find((g) => g.items.some((i) => i.key === labSubTab))?.id ?? 'integrate';
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
-    integrate: true,
-    experiment: activeGroup === 'experiment',
-  }));
-
-  useEffect(() => {
-    setOpenGroups((prev) => (prev[activeGroup] ? prev : { ...prev, [activeGroup]: true }));
-  }, [activeGroup]);
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <nav className="min-h-0 flex-1 overflow-y-auto pb-3" aria-label="實驗室">
-        {LAB_NAV_GROUPS.map((group) => {
-          const open = openGroups[group.id] ?? group.id === 'integrate';
-          return (
-            <div key={group.id}>
-              <GroupToggle
-                label={group.label}
-                open={open}
-                onToggle={() => setOpenGroups((prev) => ({ ...prev, [group.id]: !open }))}
-              />
-              {open && (
-                <div className="space-y-0.5 px-2 pb-1">
-                  {group.items.map((item) => (
-                    <TabBtn
-                      key={item.key}
-                      item={item}
-                      active={labSubTab === item.key}
-                      onClick={() => onLabSubTabChange(item.key)}
-                    />
-                  ))}
-                </div>
-              )}
+      <nav className="sp-nav pb-3" aria-label="實驗室">
+        {LAB_NAV_GROUPS.map((group) => (
+          <div key={group.id}>
+            <div className="sp-group">{group.label}</div>
+            <div className="sp-list">
+              {group.items.map((item) => (
+                <TabBtn
+                  key={item.key}
+                  item={item}
+                  active={labSubTab === item.key}
+                  onClick={() => onLabSubTabChange(item.key)}
+                />
+              ))}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </nav>
     </div>
-  );
-}
-
-function GroupToggle({
-  label,
-  open,
-  onToggle,
-}: {
-  label: string;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex w-full items-center gap-1.5 px-3 pb-1 pt-2.5 text-[10px] font-bold uppercase tracking-wider text-[#636366] hover:text-[#AEAEB2]"
-    >
-      <span className="inline-block w-2 font-mono text-[#48484A]">{open ? '▾' : '▸'}</span>
-      <span>{label}</span>
-    </button>
   );
 }
 
@@ -686,26 +605,6 @@ function MonitorSidebar({
   const onLlmTab = activeView === 'monitor' && monitorTab === 'llm';
   const onTraces = activeView === 'traces';
   const currentKey: ConsoleNavKey = onTraces ? 'traces' : monitorTab;
-  const activeGroup = navGroupForTab(currentKey);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
-    setup: true,
-    execute: true,
-    observe: activeGroup === 'observe',
-    system: activeGroup === 'system',
-    world: true,
-    studio: true,
-    minecraft: activeGroup === 'minecraft',
-  }));
-  const [allNav, setAllNav] = useState(false);
-
-  useEffect(() => {
-    if (!activeGroup) return;
-    setOpenGroups((prev) => (prev[activeGroup] ? prev : { ...prev, [activeGroup]: true }));
-  }, [activeGroup]);
-
-  useEffect(() => {
-    setAllNav(false);
-  }, [currentKey]);
 
   const pick = (key: ConsoleNavKey) => {
     if (key === 'traces') {
@@ -723,69 +622,28 @@ function MonitorSidebar({
   }
 
   const showRoster = onRoleDesk || onTasksTab || onTraces || onLlmTab;
-  const activeGroupDef = navGroups.find((g) => g.id === activeGroup) ?? CONSOLE_NAV_GROUPS.find((g) => g.id === activeGroup);
-  const currentItem = activeGroupDef?.items.find((i) => i.key === currentKey);
 
-  const renderGroups = (compact: boolean) =>
-    (compact ? navGroups.filter((g) => g.id === activeGroup) : navGroups).map((group) => {
-      const open =
-        compact ||
-        (openGroups[group.id] ??
-          (group.id === 'execute' || group.id === 'setup' || group.id === 'world' || group.id === 'studio' || group.id === 'minecraft'));
-      return (
-        <div key={group.id}>
-          {!compact && (
-            <GroupToggle
-              label={group.label}
-              open={open}
-              onToggle={() => setOpenGroups((prev) => ({ ...prev, [group.id]: !open }))}
-            />
-          )}
-          {open && (
-            <div className={`space-y-0.5 px-2 ${compact ? 'pb-2' : 'pb-1'}`}>
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <nav
+        className={showRoster ? 'sp-nav sp-nav--roster' : 'sp-nav'}
+        aria-label={activityTitle(activity)}
+      >
+        {navGroups.map((group) => (
+          <div key={group.id}>
+            <div className="sp-group">{group.label}</div>
+            <div className="sp-list">
               {group.items.map((item) => (
                 <TabBtn
                   key={item.key}
                   item={item}
-                  compact={compact}
                   active={currentKey === item.key}
                   onClick={() => pick(item.key)}
                 />
               ))}
             </div>
-          )}
-        </div>
-      );
-    });
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <nav
-        className={`shrink-0 overflow-y-auto ${
-          showRoster
-            ? `border-b border-white/[0.06] ${
-                onRoleDesk && !allNav ? 'max-h-11 overflow-hidden' : allNav ? 'max-h-[46%]' : ''
-              }`
-            : 'min-h-0 flex-1'
-        }`}
-        aria-label={activityTitle(activity)}
-      >
-        {showRoster && (
-          <div className="flex items-center justify-between gap-2 px-3 pb-1 pt-2">
-            <p className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wider text-[#636366]">
-              {activeGroupDef?.label}
-              {currentItem ? ` · ${currentItem.label}` : ''}
-            </p>
-            <button
-              type="button"
-              onClick={() => setAllNav((v) => !v)}
-              className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] text-[#64D2FF] hover:bg-white/[0.06]"
-            >
-              {allNav ? '收起' : '全部功能'}
-            </button>
           </div>
-        )}
-        {onRoleDesk && !allNav ? null : showRoster && !allNav ? renderGroups(true) : renderGroups(false)}
+        ))}
       </nav>
 
       {onRoleDesk ? (

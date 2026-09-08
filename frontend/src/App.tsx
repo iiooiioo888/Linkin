@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChatMessage, ChatSession, TaskProgress } from './types';
-import { createTask, fetchConfig, fetchMemories, fetchTask, sendChatStream, TaskWebSocket } from './api/client';
+import { createTask, fetchConfig, fetchMemories, fetchTask, sendChatStream, startUserGrill, turnUserGrill, TaskWebSocket } from './api/client';
 import type { TaskWsMessage } from './api/client';
 import {
   appRouteFromState,
@@ -257,6 +257,78 @@ export default function App() {
         messages: [...s.messages, userMsg, placeholder],
       }));
 
+      let workQuery = query;
+      let semanticLock: Record<string, unknown> = {};
+      if (!options.skipGrill && options.executionStrategy !== 'simple') {
+        try {
+          const grill = await startUserGrill(query, options.executionStrategy);
+          if (grill.should_grill && !grill.locked && !grill.terminated) {
+            updateSession(sessionId, (s) => ({
+              ...s,
+              updatedAt: Date.now(),
+              messages: s.messages.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      streaming: false,
+                      content: grill.question?.question || '請先接受需求審計',
+                      grill: {
+                        ...grill,
+                        originalQuery: query,
+                        history: grill.question
+                          ? [{ role: 'assistant', content: grill.question.question, why: grill.question.why }]
+                          : [],
+                        sendOptions: {
+                          executionStrategy: options.executionStrategy,
+                          companyTemplate: options.companyTemplate,
+                          taskOptions: options.taskOptions,
+                        },
+                      },
+                    }
+                  : m,
+              ),
+            }));
+            setSending(false);
+            return;
+          }
+          if (grill.terminated) {
+            updateSession(sessionId, (s) => ({
+              ...s,
+              updatedAt: Date.now(),
+              messages: s.messages.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      streaming: false,
+                      content: grill.termination_report || '需求審計失敗',
+                      grill: { ...grill, originalQuery: query, history: [] },
+                    }
+                  : m,
+              ),
+            }));
+            setSending(false);
+            return;
+          }
+          if (grill.locked && grill.locked_brief) {
+            workQuery = grill.locked_brief;
+            semanticLock = {
+              locked: true,
+              locked_brief: grill.locked_brief,
+              ticket: grill.ticket ?? null,
+            };
+          }
+        } catch {
+          // Grill 不可用時降級直通執行
+        }
+      }
+      if (options.taskOptions?.semantic_brief || options.taskOptions?.auditor_ticket) {
+        semanticLock = {
+          locked: true,
+          locked_brief: options.taskOptions.semantic_brief || workQuery,
+          ticket: options.taskOptions.auditor_ticket ?? null,
+        };
+      }
+
       // ── 統一模式：簡單任務走 SSE 串流打字機效果 ──
       if (options.executionStrategy !== 'company') {
         setSending(false);
@@ -270,7 +342,7 @@ export default function App() {
           content: m.content,
         }));
 
-        sendChatStream(query, sessionId, {
+        sendChatStream(workQuery, sessionId, {
           onPhase: (phase) => {
             updateSession(sessionId, (s) => ({
               ...s,
@@ -345,17 +417,21 @@ export default function App() {
               ),
             }));
           },
-        }, history);
+        }, history, { semantic_lock: semanticLock });
         return;
       }
 
       // ── 統一模式：公司運行時路徑走任務 API + WebSocket ──
       try {
         const { task_id } = await createTask(
-          query,
+          workQuery,
           options.executionStrategy,
           options.companyTemplate,
-          options.taskOptions,
+          {
+            ...options.taskOptions,
+            semantic_brief: workQuery !== query ? workQuery : options.taskOptions?.semantic_brief,
+            auditor_ticket: options.taskOptions?.auditor_ticket,
+          },
         );
         updateSession(sessionId, (s) => ({
           ...s,
@@ -520,6 +596,68 @@ export default function App() {
       }
     },
     [activeSession, updateSession],
+  );
+
+  const handleGrillAnswer = useCallback(
+    async (messageId: string, answer: string, forceLock = false) => {
+      if (!activeSession) return;
+      const sessionId = activeSession.id;
+      const msg = activeSession.messages.find((m) => m.id === messageId);
+      const grill = msg?.grill;
+      if (!msg || !grill?.session_id) return;
+      setSending(true);
+      setError(null);
+      try {
+        const next = await turnUserGrill(grill.session_id, answer, forceLock);
+        const history = [
+          ...(grill.history ?? []),
+          { role: 'user' as const, content: answer },
+          ...(next.question
+            ? [{ role: 'assistant' as const, content: next.question.question, why: next.question.why }]
+            : []),
+        ];
+        updateSession(sessionId, (s) => ({
+          ...s,
+          updatedAt: Date.now(),
+          messages: s.messages.map((m) =>
+            m.id === messageId
+              ? {
+                  ...m,
+                  content:
+                    next.termination_report
+                    || next.question?.question
+                    || (next.locked ? '需求已鎖定，開始規劃。' : m.content),
+                  grill: { ...grill, ...next, history, originalQuery: grill.originalQuery, sendOptions: grill.sendOptions },
+                }
+              : m,
+          ),
+        }));
+        if (next.terminated) {
+          return;
+        }
+        if (next.locked) {
+          const opts = grill.sendOptions ?? {
+            executionStrategy: (msg.executionStrategy ?? 'auto') as SendOptions['executionStrategy'],
+            companyTemplate: 'quick_task' as const,
+          };
+          void sendQuery(next.locked_brief || grill.originalQuery || answer, {
+            executionStrategy: opts.executionStrategy,
+            companyTemplate: (opts.companyTemplate as SendOptions['companyTemplate']) || 'quick_task',
+            skipGrill: true,
+            taskOptions: {
+              ...opts.taskOptions,
+              semantic_brief: next.locked_brief || grill.originalQuery,
+              auditor_ticket: (next.ticket ?? undefined) as Record<string, unknown> | undefined,
+            },
+          });
+        }
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setSending(false);
+      }
+    },
+    [activeSession, sendQuery, updateSession],
   );
 
   const handleRetry = useCallback(() => {
@@ -708,6 +846,7 @@ export default function App() {
             onOpenTask={handleOpenTask}
             onOpenTrace={handleOpenTrace}
             onSuggest={handleSuggest}
+            onGrillAnswer={handleGrillAnswer}
           />
         )}
 
