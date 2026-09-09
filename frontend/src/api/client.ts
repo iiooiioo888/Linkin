@@ -545,13 +545,25 @@ export async function resumeTask(taskId: string): Promise<{ success: boolean; me
   return resp.json();
 }
 
-/** 獲取任務的思考過程記錄（分頁）。 */
+/** 獲取任務的思考過程記錄（分頁 + 可篩選；event/role 逗號分隔多值）。 */
 export async function fetchTaskTrace(
   taskId: string,
   limit: number = 100,
   offset: number = 0,
-): Promise<{ task_id: string; offset: number; limit: number; events: TraceEntry[] }> {
-  const resp = await fetch(apiUrl(`/tasks/${encodeURIComponent(taskId)}/trace?limit=${limit}&offset=${offset}`));
+  filters?: { event?: string; role?: string; itemId?: string; withCounts?: boolean },
+): Promise<{
+  task_id: string;
+  offset: number;
+  limit: number;
+  events: TraceEntry[];
+  event_counts?: Record<string, number>;
+}> {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (filters?.event) params.set('event', filters.event);
+  if (filters?.role) params.set('role', filters.role);
+  if (filters?.itemId) params.set('item_id', filters.itemId);
+  if (filters?.withCounts) params.set('with_counts', 'true');
+  const resp = await fetch(apiUrl(`/tasks/${encodeURIComponent(taskId)}/trace?${params}`));
   if (!resp.ok) throw new Error(`讀取軌跡失敗（HTTP ${resp.status}）`);
   return resp.json();
 }

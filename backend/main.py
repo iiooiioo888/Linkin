@@ -1229,17 +1229,34 @@ from backend.services.trace_logger import (
     list_traces,
     load_checkpoint,
     read_trace,
+    trace_event_counts,
 )
 
 
 @app.get("/tasks/{task_id}/trace")
-async def get_task_trace(task_id: str, limit: int = 100, offset: int = 0):
-    """獲取任務的思考過程記錄（分頁）。
+async def get_task_trace(
+    task_id: str,
+    limit: int = 100,
+    offset: int = 0,
+    event: str | None = None,
+    role: str | None = None,
+    item_id: str | None = None,
+    with_counts: bool = False,
+):
+    """獲取任務的思考過程記錄（分頁 + 可篩選）。
 
-    記錄內容：LLM 調用、上下文注入、評估、反思、改進、階段切換等。
+    記錄內容：LLM 調用、上下文注入、評估、反思、改進、階段切換，
+    以及公司模式鏡像的全部角色事件（work_item_*/tool_*/review_*/grill_* 等）。
+    event/role 支援逗號分隔多值；with_counts=true 附帶各事件型條數統計。
     """
-    events = await asyncio.to_thread(read_trace, task_id, limit, offset)
-    return {"task_id": task_id, "offset": offset, "limit": limit, "events": events}
+    events = await asyncio.to_thread(
+        read_trace, task_id, limit, offset,
+        event=event, role=role, item_id=item_id,
+    )
+    result: dict = {"task_id": task_id, "offset": offset, "limit": limit, "events": events}
+    if with_counts:
+        result["event_counts"] = await asyncio.to_thread(trace_event_counts, task_id)
+    return result
 
 
 @app.get("/tasks/{task_id}/checkpoint")
