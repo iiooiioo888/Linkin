@@ -13,6 +13,7 @@ import RahoDecisionBar from './RahoDecisionBar';
 import { L0BiasHint } from './L0BiasHint';
 import { jumpToGrillTree } from '../lib/rahoUi';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, ITEM_STATUS_META, roleLabel } from './TaskPanel';
+import { eventClock } from '../lib/taskTiming';
 
 interface ChatWorkStreamProps {
   task: TaskProgress;
@@ -57,6 +58,7 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
           <p className="mt-1 text-[10px] text-[#636366]">
             {pathLabel}
             {running ? ' · 進行中' : ` · ${task.status}`}
+            {(task.created_at ?? 0) > 0 && ` · ${eventClock(task.created_at as number)} 開始`}
           </p>
         </div>
         {onOpenTrace && (
@@ -159,7 +161,10 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
               const body = eventText(ev);
               return (
                 <div key={`${ev.ts}-${ev.event}-${i}`} className="border-b border-white/[0.06] pb-2 last:border-0">
-                  <p className="text-[11px] font-bold text-[#F5F5F7]">{ev.event.replace(/_/g, ' ')}</p>
+                  <p className="flex items-baseline justify-between gap-2 text-[11px] font-bold text-[#F5F5F7]">
+                    <span className="min-w-0 truncate">{ev.event.replace(/_/g, ' ')}</span>
+                    <span className="shrink-0 font-mono text-[9px] font-normal text-[#636366]">{eventClock(ev.ts)}</span>
+                  </p>
                   {body && (
                     <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[#AEAEB2]">
                       {body}
