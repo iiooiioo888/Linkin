@@ -10,7 +10,7 @@
  * 靈境                 = 世界內容（憲法／NPC／任務／道具），不連遊戲伺服器
  * Minecraft            = 建築方案與 MineMCP 橋接
  */
-import type { MonitorTab } from '../components/AppShell';
+import type { MonitorTab, ViewKey } from '../components/AppShell';
 
 export type ActivityKey = 'chat' | 'console' | 'linkin' | 'minecraft' | 'lab';
 
@@ -257,7 +257,7 @@ export function isConsoleTab(tab: MonitorTab | string | null | undefined): boole
 }
 
 export function resolveActivity(
-  view: 'chat' | 'monitor' | 'traces',
+  view: ViewKey,
   monitorTab: MonitorTab,
 ): ActivityKey {
   if (view === 'chat') return 'chat';
@@ -268,7 +268,7 @@ export function resolveActivity(
   return 'console';
 }
 export function isWorkActivity(
-  view: 'chat' | 'monitor' | 'traces',
+  view: ViewKey,
   monitorTab: MonitorTab,
 ): boolean {
   return resolveActivity(view, monitorTab) === 'console';
@@ -320,12 +320,15 @@ export function activityNavPath(tab: ConsoleNavKey): string {
 }
 /** 頂欄路徑：配置 → API 路由（不含活動名前綴）。 */
 export function consoleChromeLabel(
-  view: 'chat' | 'monitor' | 'traces',
+  view: ViewKey,
   monitorTab: MonitorTab,
   _labLabel?: string,
   traceTaskId?: string | null,
 ): string {
   if (view === 'chat') return '';
+  if (view === 'task') {
+    return traceTaskId ? `任務 · ${traceTaskId.slice(0, 8)}…` : '任務';
+  }
   if (view === 'traces') {
     const path = navPathForTab('traces');
     return traceTaskId ? `${path} · ${traceTaskId.slice(0, 8)}…` : path;

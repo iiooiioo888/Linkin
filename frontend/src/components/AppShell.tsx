@@ -22,7 +22,7 @@ import SidePanel from './SidePanel';
 import StatusBar from './StatusBar';
 import TopBar from './TopBar';
 
-export type ViewKey = 'chat' | 'monitor' | 'traces';
+export type ViewKey = 'chat' | 'monitor' | 'traces' | 'task';
 /** 精簡後的監控主分頁（次要功能收入 ops / lab）。 */
 export type MonitorTab =
   | 'live'
