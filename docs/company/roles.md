@@ -58,7 +58,7 @@ RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
 
 | ID | 名稱 | 分類 | 預算層 | 主要職責 |
 |----|------|------|--------|----------|
-| `manager` | 專案經理 | 管理 | `reasoning` | 接收使用者目標，將其分解為可執行的工作項；根據角色能力與層級指派工作項給合適的執行者 |
+| `manager` | 專案經理 | 管理 | `reasoning` | 接收使用者目標，經 decomposer 分解為原子工作項 DAG（含依賴拓撲與並發分組）；根據角色能力與層級指派工作項給合適的執行者 |
 
 ## Level 1：技術領導層（10）
 
@@ -82,7 +82,7 @@ RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
 | `backend_lead` | 後端主管 | 後端 | `reasoning` | 設計 API 架構與資料庫模型；審查後端程式碼品質 |
 | `data_lead` | 資料主管 | 資料 | `reasoning` | 制定資料資產與分析策略；審查管線品質、指標定義與倉儲設計 |
 | `frontend_lead` | 前端主管 | 前端邏輯 | `reasoning` | 制定前端架構與技術選型（React/Vue/框架選擇）；審查 UI/JS/CSS 交付物品質 |
-| `tactical_commander` | 戰術指揮官 | 管理 | `reasoning` | 把 L4 戰術指令 JSON 拆成原子級 DAG，禁止模糊節點；為每個原子任務親手孵化 <200 Token 的 L2 執行者 |
+| `tactical_commander` | 戰術指揮官 | 管理 | `reasoning` | 承接 L4 門票 JSON（clarified_goal／hard_constraints／risk_register），拆成原子級 DAG 戰鬥指令（battle_plan YAML），禁止模糊節點；鐵律四條：Atomic SRP（… |
 | `test_lead` | 測試主管 | 測試 | `routine` | 制定測試策略（單元/整合/E2E）；審查測試案例覆蓋率 |
 
 ## Level 3：執行層（55）
@@ -91,7 +91,7 @@ RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
 |----|------|------|--------|----------|
 | `accessibility_eng` | 無障礙工程師 | UI 設計 | `routine` | 檢查對比、鍵盤操作與讀屏標籤；產出 WCAG 修復清單 |
 | `api_engineer` | API 契約工程師 | 後端 | `reasoning` | 維護 OpenAPI 欄位、錯誤碼與相容性；檢查 Request/Response Header 與邊界條件 |
-| `atomic_executor` | 原子執行者 | 管理 | `routine` | 執行前強制戰前檢查清單；不通過即向 L3 發結構化 [GRILL]；一次一動、沉默運作，只交付 Output Schema 定義的產出 |
+| `atomic_executor` | 原子執行者 | 管理 | `routine` | 戰前檢查清單必答 5 問：輸入完整性／工具可用性／成功標準明確性／邏輯一致性／約束合理性；任一未過禁止動手，立即向 L3 發結構化 [GRILL]（blocker_type ∈ 資料缺失／工具不足／標準模糊／容量矛盾／約束衝突，附 s… |
 | `backend_dev` | 後端開發者 | 後端 | `routine` | 實作 RESTful API 端點與業務邏輯；設計資料庫 schema 與查詢優化 |
 | `billing_ops` | 計費運維 | AI Hub | `routine` | 核對用量、發票與異常扣款；對齊角色日預算與 Hub 攔截 |
 | `cache_engineer` | 快取工程師 | 維運 | `reasoning` | 設計 Key、TTL 與失效；追蹤命中率與雪崩 |
@@ -150,17 +150,17 @@ RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
 | ID | 名稱 | 分類 | 預算層 | 主要職責 |
 |----|------|------|--------|----------|
 | `analyst` | 分析師 | 資料 | `routine` | 研究、分析與收集資料；提供數據驅動的見解與建議 |
-| `constitutional_inspector` | 憲兵審查官 | 審查 | `reasoning` | 獨立四維度驗收 L2 產出（結構合規／語義完整／事實一致／極限邊界）；禁止同理心與跨級代勞：只指出錯誤並要求重做，不得幫忙改完 |
+| `constitutional_inspector` | 憲兵審查官 | 審查 | `reasoning` | 按序執行四維度壓力測試：結構合規性 → 語義完整性 → 事實一致性（semantic_similarity／exact_match 交叉比對 INPUT_REF）→ 極限邊界檢驗；任一失敗立即中斷後續測試；雙向質詢權：測試 1/2 失… |
 | `content_writer` | 內容撰寫 | 文件 | `summary` | 撰寫對外文案、報告敘事與摘要；統一語氣與讀者對象 |
 | `coordinator` | 協調者 | 管理 | `routine` | 跨角色溝通，解決協作瓶頸；處理工作項阻塞，協調解除依賴 |
-| `environment_kernel` | 環境與記憶核心 | 記憶／知識庫 | `summary` | 壓縮對話與任務軌跡，抽出決策點與教訓（STM／MTM／LTM）；檢索知識實體與合規指南，強制注入 L4／L3／L1 決策上下文 |
+| `environment_kernel` | 環境與記憶核心 | 記憶／知識庫 | `summary` | 軌跡壓縮與回放：record_trace／traces_from_trees 抽取質詢與簽核決策點（STM／MTM／LTM）；知識實體檢索：remember_query 沉澱名詞定義，match_knowledge 關鍵詞＋Chrom… |
 | `knowledge_mgr` | 知識庫管理員 | 記憶／知識庫 | `summary` | 維護 runbook、FAQ 與術語表；把完成的工作項沉澱成可重用知識 |
 | `legal` | 合規審查 | 合規 | `reasoning` | 檢查個資、授權與敏感內容；標示資料出境與留存風險 |
 | `memory_curator` | 記憶庫策展 | 記憶／知識庫 | `routine` | 整理向量記憶、去重與過期策略；檢查檢索命中是否與任務相關 |
 | `prompt_engineer` | Prompt 工程師 | AI / Prompt | `reasoning` | 設計角色系統提示與評估標準；規劃模型路由、故障轉移與成本權衡 |
-| `requirement_auditor` | 需求審計官 | 審查 | `reasoning` | 以零信任審查使用者需求，禁止確認偏誤與模糊妥協；依五維評分（具體性／邊界／約束／風險／成功定義）決定是否放行 |
+| `requirement_auditor` | 需求審計官 | 審查 | `reasoning` | 零信任審查使用者需求：禁止確認偏誤與模糊妥協，簡單查詢自動短路放行（should_grill=false，ticket:null）；五維評分（目標具體性／邊界清晰度／約束量化度／風險感知度／成功定義），各維 >90 才鎖定放行（AUD… |
 | `researcher` | 研究員 | 研究 | `reasoning` | 蒐集文獻、競品與領域背景；提出可驗證的假設與實驗設計 |
-| `reviewer` | 審查者 | 審查 | `reasoning` | 在 L1 憲兵簽核之後做第二道品質審查；提供具體、可執行的回饋 |
+| `reviewer` | 審查者 | 審查 | `reasoning` | RAHO 任務：在 L1 憲兵簽核之後做第二道交付品質審查（公司管線 review 階段的最後一輪）；非 RAHO 模板：擔任主審查席，決定通過或退回修改；回饋必須具體、可執行並附改進建議；退回計入重做輪次（orchestrator … |
 | `support` | 支援專員 | 產品 | `summary` | 整理工單、FAQ 與使用者回饋；把問題轉成可指派的缺陷或需求 |
 | `synthesizer` | 整合者 | 審查 | `reasoning` | 合併多個工作項的交付物為統一的最終產出；解決不同交付物之間的矛盾與重複 |
 
