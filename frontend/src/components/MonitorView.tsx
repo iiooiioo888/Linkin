@@ -31,6 +31,7 @@ const QuestPanel = lazy(() => import('./linkin/QuestPanel'));
 const BuildPanel = lazy(() => import('./linkin/BuildPanel'));
 const ItemPanel = lazy(() => import('./linkin/ItemPanel'));
 const MinecraftBridgePanel = lazy(() => import('./linkin/MinecraftBridgePanel'));
+const SkillsMcpPanel = lazy(() => import('./linkin/SkillsMcpPanel'));
 
 interface MonitorViewProps {
   onOpenTask: (task: TaskProgress) => void;
@@ -186,6 +187,7 @@ export default function MonitorView({
             <L0Panel />
           </div>
         )}
+        {tab === 'skills' && <SkillsMcpPanel />}
         {tab === 'world' && <WorldConstitutionPanel />}
         {tab === 'npcs' && <NpcManagerPanel />}
         {tab === 'quests' && <QuestPanel />}

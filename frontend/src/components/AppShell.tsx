@@ -36,6 +36,7 @@ export type MonitorTab =
   | 'llm'
   | 'ops'
   | 'memory'
+  | 'skills'
   | 'world'
   | 'npcs'
   | 'quests'

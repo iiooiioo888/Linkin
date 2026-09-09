@@ -1709,3 +1709,166 @@ export async function labQuantCapitalFlow(
   if (!resp.ok) throw new Error(await readApiError(resp));
   return resp.json();
 }
+
+
+// ═══════════════════════════════════════════════════════════
+// 技能庫 API（Skills）
+// ═══════════════════════════════════════════════════════════
+
+export interface SkillRecord {
+  id: string;
+  name: string;
+  content: string;
+  description: string;
+  trigger: string;
+  enabled: boolean;
+  roles: string[];
+  skill_budget: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SkillSaveBody {
+  id?: string | null;
+  name: string;
+  content: string;
+  description?: string;
+  trigger?: string;
+  enabled?: boolean;
+  roles?: string[];
+  skill_budget?: number;
+}
+
+export async function fetchSkills(): Promise<SkillRecord[]> {
+  const resp = await fetch(apiUrl('/skills'));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  const data = (await resp.json()) as { skills: SkillRecord[] };
+  return data.skills ?? [];
+}
+
+export async function saveSkill(body: SkillSaveBody): Promise<SkillRecord> {
+  const resp = await fetch(apiUrl('/skills'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  const data = (await resp.json()) as { skill: SkillRecord };
+  return data.skill;
+}
+
+export async function toggleSkill(id: string): Promise<SkillRecord> {
+  const resp = await fetch(apiUrl(`/skills/${encodeURIComponent(id)}/toggle`), { method: 'POST' });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  const data = (await resp.json()) as { skill: SkillRecord };
+  return data.skill;
+}
+
+export async function deleteSkill(id: string): Promise<void> {
+  const resp = await fetch(apiUrl(`/skills/${encodeURIComponent(id)}`), { method: 'DELETE' });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+}
+
+export async function previewSkillPrompt(role?: string): Promise<{ role: string; prompt: string }> {
+  const params = role ? `?role=${encodeURIComponent(role)}` : '';
+  const resp = await fetch(apiUrl(`/skills/preview${params}`));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MCP 連線管理 API
+// ═══════════════════════════════════════════════════════════
+
+export interface McpServerRecord {
+  id: string;
+  name: string;
+  transport: 'stdio' | 'sse' | 'http';
+  command: string;
+  env: Record<string, string>;
+  url: string;
+  headers: Record<string, string>;
+  enabled: boolean;
+  allowed_tools: string[];
+  readonly: boolean;
+  timeout: number;
+  created_at: string;
+  updated_at: string;
+  last_probe: McpProbeResult | Record<string, never>;
+}
+
+export interface McpProbeResult {
+  ok: boolean;
+  tool_count: number;
+  tools: string[];
+  latency_ms: number;
+  probed_at: string;
+  error: string;
+}
+
+export interface McpServerSaveBody {
+  id?: string | null;
+  name: string;
+  transport: 'stdio' | 'sse' | 'http';
+  command?: string;
+  env?: Record<string, string>;
+  url?: string;
+  headers?: Record<string, string>;
+  enabled?: boolean;
+  allowed_tools?: string[];
+  readonly?: boolean;
+  timeout?: number;
+}
+
+export async function fetchMcpServers(): Promise<McpServerRecord[]> {
+  const resp = await fetch(apiUrl('/mcp/servers'));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  const data = (await resp.json()) as { servers: McpServerRecord[] };
+  return data.servers ?? [];
+}
+
+export async function saveMcpServer(body: McpServerSaveBody): Promise<McpServerRecord> {
+  const resp = await fetch(apiUrl('/mcp/servers'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  const data = (await resp.json()) as { server: McpServerRecord };
+  return data.server;
+}
+
+export async function toggleMcpServer(id: string): Promise<McpServerRecord> {
+  const resp = await fetch(apiUrl(`/mcp/servers/${encodeURIComponent(id)}/toggle`), { method: 'POST' });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  const data = (await resp.json()) as { server: McpServerRecord };
+  return data.server;
+}
+
+export async function deleteMcpServer(id: string): Promise<void> {
+  const resp = await fetch(apiUrl(`/mcp/servers/${encodeURIComponent(id)}`), { method: 'DELETE' });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+}
+
+export async function probeMcpServer(id: string): Promise<McpProbeResult> {
+  const resp = await fetch(apiUrl(`/mcp/servers/${encodeURIComponent(id)}/probe`), { method: 'POST' });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+export async function callMcpTool(id: string, tool: string, args: Record<string, unknown>): Promise<string> {
+  const resp = await fetch(apiUrl(`/mcp/servers/${encodeURIComponent(id)}/call`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool, args }),
+  });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  const data = (await resp.json()) as { result: string };
+  return data.result;
+}
+
+export async function mountMcpTools(): Promise<{ mounted: string[]; count: number }> {
+  const resp = await fetch(apiUrl('/mcp/mount'), { method: 'POST' });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}

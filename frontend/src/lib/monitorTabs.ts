@@ -60,6 +60,7 @@ export const MONITOR_SETUP_TABS: MonitorTabItem[] = [
 
 export const MONITOR_SYSTEM_TABS: MonitorTabItem[] = [
   { key: 'memory', icon: '◌', label: 'L0 核心' },
+  { key: 'skills', icon: '⚡', label: '技能與 MCP' },
   { key: 'ops', icon: '⚙', label: '基礎設施' },
 ];
 
@@ -114,6 +115,7 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     label: '系統',
     items: [
       { key: 'memory', icon: '◌', label: 'L0 核心', hint: '記憶／知識／態勢雷達' },
+      { key: 'skills', icon: '⚡', label: '技能與 MCP', hint: '技能庫／MCP 連線' },
       { key: 'ops', icon: '⚙', label: '基礎設施', hint: 'Hub／雲／檢查點／連線池' },
     ],
   },
@@ -215,7 +217,7 @@ export const CONSOLE_CHROME_TABS: Array<{ key: MonitorTab; label: string; match:
   { key: 'live', label: '總覽', match: ['live', 'pipeline'] },
   { key: 'tasks', label: '新項', match: ['tasks'] },
   { key: 'models', label: '使用', match: ['models', 'metrics', 'feedback'] },
-  { key: 'llm', label: '權限', match: ['llm', 'ops', 'memory'] },
+  { key: 'llm', label: '權限', match: ['llm', 'ops', 'memory', 'skills'] },
   { key: 'agents', label: '角色', match: ['agents'] },
 ];
 

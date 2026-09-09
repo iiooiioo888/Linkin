@@ -1372,6 +1372,16 @@ class CompanyOrchestrator:
                         task_id=item.id,
                     )
                     system_origin += " ＋ L0 環境與記憶核心注入"
+                    # 技能庫注入（角色可用技能 → 提示詞尾部；空庫零開銷）
+                    try:
+                        from backend.company.skills import inject_skills
+
+                        before_len = len(system_prompt)
+                        system_prompt = inject_skills(system_prompt, role_type.value)
+                        if len(system_prompt) > before_len:
+                            system_origin += " ＋ 技能庫"
+                    except Exception:  # noqa: BLE001
+                        pass
                 except Exception:  # noqa: BLE001
                     pass
                 seat_ctx["attempt"] = attempt
@@ -1709,6 +1719,12 @@ class CompanyOrchestrator:
                 or role_def.system_prompt
                 or self.prompt_config.reviewer_system
             )
+            try:
+                from backend.company.skills import inject_skills
+
+                system_prompt = inject_skills(system_prompt, RoleType.REVIEWER.value)
+            except Exception:  # noqa: BLE001
+                pass
             _review_start = time.monotonic()
             try:
                 raw = call_llm(

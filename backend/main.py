@@ -109,6 +109,18 @@ async def _lifespan(_app: FastAPI):
         await asyncio.to_thread(task_manager.rehydrate)
     except Exception as exc:  # noqa: BLE001
         logger.warning("任務 rehydrate 失敗（降級為記憶體）：%s", exc)
+    # 技能庫與 MCP：載入設定並把啟用 server 的工具掛進 tool_registry
+    try:
+        from backend.company.mcp_clients import mcp_registry
+        from backend.company.skills import skills_store
+        from backend.company.tools import tool_registry
+
+        skills_store.load()
+        mounted = await asyncio.to_thread(mcp_registry.mount_tools, tool_registry)
+        if mounted:
+            logger.info("啟動掛載 MCP 工具 %d 個", len(mounted))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("技能／MCP 啟動掛載失敗（降級為無）：%s", exc)
     task = asyncio.create_task(llm_ops_loop())
     try:
         yield
@@ -2170,6 +2182,189 @@ async def close_db_connection(connection_id: str):
 async def run_db_health_check():
     """執行數據庫健康檢查。"""
     return Database.run_health_check()
+
+
+# ═══════════════════════════════════════════════════════════
+# 技能庫 API（Skills）— 注入角色提示詞的可重用知識
+# ═══════════════════════════════════════════════════════════
+
+from backend.company.skills import skills_store
+
+
+class SkillBody(BaseModel):
+    id: str | None = None
+    name: str
+    content: str
+    description: str = ""
+    trigger: str = ""
+    enabled: bool = True
+    roles: list[str] = []
+    skill_budget: int = 2400
+
+
+@app.get("/skills")
+async def list_skills():
+    """列出全部技能。"""
+    return {"skills": [s.to_dict() for s in skills_store.list()]}
+
+
+@app.post("/skills")
+async def save_skill(body: SkillBody):
+    """新增／更新技能（upsert）。"""
+    try:
+        skill = skills_store.upsert(
+            body.name,
+            body.content,
+            skill_id=body.id,
+            description=body.description,
+            trigger=body.trigger,
+            enabled=body.enabled,
+            roles=body.roles,
+            skill_budget=body.skill_budget,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "skill": skill.to_dict()}
+
+
+@app.post("/skills/{skill_id}/toggle")
+async def toggle_skill(skill_id: str):
+    """啟用／停用技能。"""
+    skill = skills_store.get(skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail="技能不存在")
+    updated = skills_store.set_enabled(skill_id, not skill.enabled)
+    return {"ok": True, "skill": updated.to_dict()}
+
+
+@app.delete("/skills/{skill_id}")
+async def delete_skill(skill_id: str):
+    """刪除技能。"""
+    if not skills_store.delete(skill_id):
+        raise HTTPException(status_code=404, detail="技能不存在")
+    return {"ok": True, "deleted": skill_id}
+
+
+@app.get("/skills/preview")
+async def preview_skill_prompt(role: str | None = None):
+    """預覽某角色實際會被注入的技能區塊（除錯用）。"""
+    return {"role": role or "*", "prompt": skills_store.render_prompt(role)}
+
+
+# ═══════════════════════════════════════════════════════════
+# MCP 連線管理 API — 通用 MCP server 註冊／探測／工具掛載
+# ═══════════════════════════════════════════════════════════
+
+from backend.company.mcp_clients import mcp_registry
+
+
+class McpServerBody(BaseModel):
+    id: str | None = None
+    name: str
+    transport: str = "stdio"
+    command: str = ""
+    env: dict[str, str] = {}
+    url: str = ""
+    headers: dict[str, str] = {}
+    enabled: bool = True
+    allowed_tools: list[str] = []
+    readonly: bool = True
+    timeout: float = 20.0
+
+
+class McpCallBody(BaseModel):
+    tool: str
+    args: dict[str, Any] = {}
+
+
+@app.get("/mcp/servers")
+async def list_mcp_servers():
+    """列出全部 MCP server 與最近探測結果。"""
+    return {"servers": [s.to_dict() for s in mcp_registry.list()]}
+
+
+@app.post("/mcp/servers")
+async def save_mcp_server(body: McpServerBody):
+    """新增／更新 MCP server（upsert）。"""
+    try:
+        srv = mcp_registry.upsert(
+            body.name,
+            body.transport,
+            server_id=body.id,
+            command=body.command,
+            env=body.env,
+            url=body.url,
+            headers=body.headers,
+            enabled=body.enabled,
+            allowed_tools=body.allowed_tools,
+            readonly=body.readonly,
+            timeout=body.timeout,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "server": srv.to_dict()}
+
+
+@app.post("/mcp/servers/{server_id}/toggle")
+async def toggle_mcp_server(server_id: str):
+    """啟用／停用 server。"""
+    srv = mcp_registry.get(server_id)
+    if not srv:
+        raise HTTPException(status_code=404, detail="server 不存在")
+    updated = mcp_registry.set_enabled(server_id, not srv.enabled)
+    return {"ok": True, "server": updated.to_dict()}
+
+
+@app.delete("/mcp/servers/{server_id}")
+async def delete_mcp_server(server_id: str):
+    """刪除 server。"""
+    if not mcp_registry.delete(server_id):
+        raise HTTPException(status_code=404, detail="server 不存在")
+    return {"ok": True, "deleted": server_id}
+
+
+@app.post("/mcp/servers/{server_id}/probe")
+async def probe_mcp_server(server_id: str):
+    """探測連線並回傳工具清單。"""
+    try:
+        result = await asyncio.to_thread(mcp_registry.probe, server_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="server 不存在") from None
+    return result
+
+
+@app.post("/mcp/servers/{server_id}/call")
+async def call_mcp_tool(server_id: str, body: McpCallBody):
+    """手動呼叫工具（測試用；角色執行走 tool_registry 閉環）。"""
+    try:
+        result = await asyncio.to_thread(mcp_registry.call, server_id, body.tool, body.args)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="server 不存在")
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=str(exc)[:400]) from exc
+    return {"ok": True, "result": str(result)[:8000]}
+
+
+@app.post("/mcp/mount")
+async def mount_mcp_tools():
+    """把啟用 server 的工具掛進公司工具註冊表（啟動時也會自動跑）。"""
+    from backend.company.tools import tool_registry
+
+    mounted = await asyncio.to_thread(mcp_registry.mount_tools, tool_registry, force=True)
+    return {"ok": True, "mounted": mounted, "count": len(mounted)}
+
+
+@app.get("/mcp/tools")
+async def list_mcp_tools():
+    """列出目前已掛載的 MCP 工具（含內建總數）。"""
+    from backend.company.tools import tool_registry
+
+    rows = [
+        {"name": t.name, "description": t.description, "readonly": t.readonly}
+        for t in tool_registry.list_tools()
+        if t.name.startswith(tuple(f"{s.id}__" for s in mcp_registry.list()))
+    ] if mcp_registry.list() else []
+    return {"tools": rows, "total_registry": len(tool_registry.list_tools())}
 
 
 if __name__ == "__main__":
