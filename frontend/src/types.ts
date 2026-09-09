@@ -37,6 +37,7 @@ export interface KanbanItem {
   thinking?: string;
   created_at?: string;
   updated_at?: string;
+  completed_at?: string | null;
   tags?: string[];
   progress?: number;
   current_action?: string;

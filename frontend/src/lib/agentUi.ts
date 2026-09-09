@@ -158,7 +158,7 @@ export function pipelineStageColumn(index: number, activeIndex: number | null): 
 export const TRACE_EVENT_COLUMNS: Record<WorkItemColumnKey, readonly string[]> = {
   queue: ['context_injection', 'phase_change', 'state_snapshot', 'memory_operation'],
   executing: ['llm_call', 'tool_call'],
-  done: ['evaluation', 'reflection', 'improvement', 'error'],
+  done: ['evaluation', 'reflection', 'improvement', 'pipeline_node', 'error'],
 };
 
 export function traceEventColumn(event: string): WorkItemColumnKey {

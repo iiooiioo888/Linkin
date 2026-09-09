@@ -55,6 +55,33 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def eval_trace_kwargs(multi_dim: Any) -> dict[str, str]:
+    """多維評估 → log_evaluation 欄位（feedback/strengths/weaknesses/raw_response）。
+
+    chat 流與後台任務管線共用，確保兩條路徑的軌跡評估明細一致。
+    """
+    if not isinstance(multi_dim, dict) or not multi_dim:
+        return {}
+    dims = ("accuracy", "completeness", "clarity", "relevance")
+    labels = {"accuracy": "準確", "completeness": "完整", "clarity": "清晰", "relevance": "相關"}
+
+    def _fmt(dim: str) -> str:
+        d = multi_dim.get(dim) or {}
+        if not isinstance(d, dict):
+            return ""
+        score = d.get("score")
+        reason = str(d.get("reason") or "").strip()
+        return f"{labels[dim]}{score}：{reason[:120]}" if reason else f"{labels[dim]}{score}"
+
+    parts = [p for p in (_fmt(x) for x in dims) if p]
+    return {
+        "feedback": f"來源 {multi_dim.get('source', '?')} · " + " / ".join(parts),
+        "strengths": " / ".join(parts[:2]),
+        "weaknesses": " / ".join(parts[2:]),
+        "raw_response": json.dumps(multi_dim, ensure_ascii=False)[:3000],
+    }
+
+
 class TraceLogger:
     """任務思考過程記錄器。
 
@@ -108,17 +135,23 @@ class TraceLogger:
         item_id: str = "",
         iteration: int = 0,
         truncated: bool = False,
+        full: bool = False,
     ) -> None:
-        """記錄一次完整的 LLM 調用（prompt + response）。"""
+        """記錄一次完整的 LLM 調用（prompt + response）。
+
+        full=True 時不截斷（角色 I/O 監察用；前端負責分塊渲染）。
+        """
+        cap = 10 ** 9 if full else 8000
+        sys_cap = 10 ** 9 if full else 2000
         self._write("llm_call", {
             "phase": phase,
             "role": role,
             "item_id": item_id,
             "iteration": iteration,
             "model": model,
-            "system": system[:2000] if system else None,
-            "prompt": prompt[:8000] if not truncated else prompt[:8000] + "...[truncated]",
-            "response": response[:8000] if not truncated else response[:8000] + "...[truncated]",
+            "system": (system[:sys_cap] if system else None),
+            "prompt": prompt[:cap] if not truncated else prompt[:cap] + "...[truncated]",
+            "response": response[:cap] if not truncated else response[:cap] + "...[truncated]",
             "prompt_length": len(prompt),
             "response_length": len(response),
             "cost": cost,
@@ -322,6 +355,36 @@ class TraceLogger:
         """記錄自定義事件。"""
         self._write(event_type, data)
 
+    # ── 公司事件鏡像 ──
+
+    def log_company_event(self, event_name: str, data: dict[str, Any]) -> None:
+        """把一條 CompanyEvent 鏡像為軌跡事件（角色 I/O 監察資料源）。
+
+        事件名原樣保留（work_item_done / tool_call / review_pass ...），
+        並把 item_id/title/role 等欄位提升到頂層，前端按角色與
+        工作項聚合時不必理解每種事件的負載結構。
+        """
+        role = data.get("role") or data.get("assignee") or ""
+        if not role and event_name in {"review_pass", "review_rework", "review_force_done", "inspector_verdict"}:
+            role = "reviewer"
+        elif not role and event_name in {"campaign_planned", "grill_raised", "grill_resolved"}:
+            role = "requirement_auditor"
+        payload: dict[str, Any] = {
+            "phase": data.get("phase", ""),
+            "role": str(role or ""),
+            "item_id": str(data.get("item_id", "") or ""),
+            "title": str(data.get("title", "") or ""),
+        }
+        for key, value in data.items():
+            if key in payload:
+                continue
+            try:
+                json.dumps(value, ensure_ascii=False, default=str)
+                payload[key] = value
+            except (TypeError, ValueError):
+                payload[key] = str(value)[:500]
+        self._write(event_name, payload)
+
 
 # ═══════════════════════════════════════════════════════════
 # 檢查點管理
@@ -417,13 +480,24 @@ def list_checkpoints() -> list[dict[str, Any]]:
     return results
 
 
-def read_trace(task_id: str, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
+def read_trace(
+    task_id: str,
+    limit: int = 100,
+    offset: int = 0,
+    *,
+    event: str | None = None,
+    role: str | None = None,
+    item_id: str | None = None,
+) -> list[dict[str, Any]]:
     """讀取任務軌跡記錄。
 
     Args:
         task_id: 任務 ID
         limit: 返回條數上限
-        offset: 跳過前 N 條
+        offset: 跳過前 N 條（篩選後再分頁）
+        event: 事件名篩選（逗號分隔多值，如 work_item_done,llm_call）
+        role: 角色篩選（逗號分隔多值）
+        item_id: 工作項篩選
 
     Returns:
         事件記錄列表（按時間順序）
@@ -443,7 +517,39 @@ def read_trace(task_id: str, limit: int = 100, offset: int = 0) -> list[dict[str
                         continue
     except OSError:
         return []
+    if event:
+        wanted = {e.strip() for e in event.split(",") if e.strip()}
+        if wanted:
+            events = [ev for ev in events if ev.get("event") in wanted]
+    if role:
+        wanted_roles = {r.strip() for r in role.split(",") if r.strip()}
+        if wanted_roles:
+            events = [ev for ev in events if ev.get("role") in wanted_roles]
+    if item_id:
+        events = [ev for ev in events if ev.get("item_id") == item_id]
     return events[offset:offset + limit]
+
+
+def trace_event_counts(task_id: str) -> dict[str, int]:
+    """統計任務軌跡中各事件型的條數（前端篩選器計數用）。"""
+    path = trace_path(task_id)
+    counts: dict[str, int] = {}
+    if not path.exists():
+        return counts
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    ev = json.loads(line).get("event", "?")
+                except json.JSONDecodeError:
+                    continue
+                counts[ev] = counts.get(ev, 0) + 1
+    except OSError:
+        return {}
+    return counts
 
 
 def aggregate_llm_call_stats(*, max_files: int = 80, max_events: int = 5000) -> dict[str, Any]:

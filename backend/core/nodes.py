@@ -142,7 +142,15 @@ def generate_initial_answer(state: EvoLoopState) -> dict:
     )
     answer = call_llm(prompt, system=_generate_system_prompt(state), model=model)
     log_node(state, "generate_initial_answer", model=model)
-    return {"initial_answer": answer, "current_answer": answer, "iteration": 0}
+    return {
+        "initial_answer": answer,
+        "current_answer": answer,
+        "iteration": 0,
+        # 軌跡回填用：實際使用的模型、系統提示詞與完整生成 prompt
+        "generate_model": model,
+        "generate_system": _generate_system_prompt(state),
+        "generate_prompt": prompt,
+    }
 
 
 def evaluate_answer(state: EvoLoopState) -> dict:

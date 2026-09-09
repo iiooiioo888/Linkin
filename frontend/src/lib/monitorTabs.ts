@@ -320,7 +320,7 @@ export function activityNavPath(tab: ConsoleNavKey): string {
 }
 /** 頂欄路徑：配置 → API 路由（不含活動名前綴）。 */
 export function consoleChromeLabel(
-  view: 'chat' | 'monitor' | 'traces',
+  view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho',
   monitorTab: MonitorTab,
   _labLabel?: string,
   traceTaskId?: string | null,
@@ -330,6 +330,7 @@ export function consoleChromeLabel(
     const path = navPathForTab('traces');
     return traceTaskId ? `${path} · ${traceTaskId.slice(0, 8)}…` : path;
   }
+  if (view === 'task' || view === 'raho') return `詳情 · ${traceTaskId ? traceTaskId.slice(0, 8) + '…' : ''}`.trimEnd();
   if (monitorTab === 'lab') return _labLabel ? `實驗室 · ${_labLabel}` : '實驗室';
   if (isMinecraftTab(monitorTab)) {
     return MONITOR_MINECRAFT_TABS.find((item) => item.key === monitorTab)?.label ?? monitorTab;

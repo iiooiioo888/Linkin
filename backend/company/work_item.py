@@ -345,6 +345,7 @@ class WorkItemManager:
                 "thinking": thinking[:12000],
                 "created_at": item.created_at,
                 "updated_at": item.updated_at,
+                "completed_at": item.completed_at,
                 "tags": _item_tags(item),
                 "progress": _item_progress(item),
                 "current_action": _item_action(item),

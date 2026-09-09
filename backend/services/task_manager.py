@@ -54,6 +54,7 @@ from backend.services.task_broadcaster import task_broadcaster
 from backend.services.trace_logger import (
     TraceLogger,
     delete_checkpoint,
+    eval_trace_kwargs,
     load_checkpoint,
     save_checkpoint,
 )
@@ -270,6 +271,39 @@ class TaskManager:
         except Exception as exc:  # noqa: BLE001
             logger.warning("任務記錄讀取失敗：%s", exc)
             return None
+
+    def rehydrate(self) -> int:
+        """啟動時從 Redis 載回任務記錄（修復：重啟後任務列表／管線清空）。
+
+        掃描 evoloop:task:* 全部快照還原進記憶體；殘留的 pending/running
+        標記為中斷失敗（與 _load_from_redis 同一語意）。
+        """
+        client = self._get_redis()
+        if client is None:
+            return 0
+        loaded = 0
+        try:
+            keys = list(client.scan_iter(match=TASK_KEY_PREFIX + "*", count=500))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("任務 rehydrate 掃描失敗：%s", exc)
+            return 0
+        for key in keys:
+            try:
+                raw = client.get(key)
+                if not raw:
+                    continue
+                record = TaskRecord.from_snapshot(json.loads(raw))
+                if record.status in ("pending", "running"):
+                    record.status = "failed"
+                    record.error = record.error or "後端服務重啟，任務中斷"
+                    self._persist(record)
+                self.tasks.setdefault(record.task_id, record)
+                loaded += 1
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("任務 rehydrate 跳過 %s：%s", key, exc)
+        if loaded:
+            logger.info("任務 rehydrate：自 Redis 載回 %d 筆記錄", loaded)
+        return loaded
 
     # ── 公開 API ──
 
@@ -553,8 +587,10 @@ class TaskManager:
             tracer.log_phase_change("generate")
             state.update(await asyncio.to_thread(nodes.generate_initial_answer, state))
             tracer.log_llm_call(
-                prompt=f"[generate] query={record.query}",
-                response=state.get("initial_answer", "")[:2000],
+                prompt=state.get("generate_prompt") or f"[generate] query={record.query}",
+                response=state.get("initial_answer", "")[:8000],
+                model=state.get("generate_model"),
+                system=state.get("generate_system"),
                 phase="generate",
             )
             if self._check_cancelled(record):
@@ -587,13 +623,10 @@ class TaskManager:
         self._set_phase(record, "evaluate")
         tracer.log_phase_change("evaluate")
         state.update(await asyncio.to_thread(nodes.evaluate_answer, state))
-        evaluation = state.get("evaluation", {})
         tracer.log_evaluation(
             score=state.get("score"),
-            feedback=evaluation.get("weaknesses", "") if isinstance(evaluation, dict) else str(evaluation),
             iteration=0,
-            strengths=evaluation.get("strengths", "") if isinstance(evaluation, dict) else "",
-            weaknesses=evaluation.get("weaknesses", "") if isinstance(evaluation, dict) else "",
+            **eval_trace_kwargs(state.get("multi_dim_evaluation")),
         )
         self._add_event(record, "evaluation", {
             "score": state.get("score"),
@@ -629,11 +662,10 @@ class TaskManager:
 
             self._set_phase(record, "evaluate")
             state.update(await asyncio.to_thread(nodes.evaluate_answer, state))
-            evaluation = state.get("evaluation", {})
             tracer.log_evaluation(
                 score=state.get("score"),
-                feedback=evaluation.get("weaknesses", "") if isinstance(evaluation, dict) else str(evaluation),
                 iteration=state.get("iteration", 0),
+                **eval_trace_kwargs(state.get("multi_dim_evaluation")),
             )
             self._add_event(record, "evaluation", {
                 "score": state.get("score"),
@@ -646,12 +678,19 @@ class TaskManager:
     def _attach_company_listener(
         self, record: TaskRecord, orchestrator: CompanyOrchestrator
     ) -> None:
-        """掛載事件監聽器：收集事件並更新看板快照。"""
+        """掛載事件監聽器：收集事件並更新看板快照。
+
+        seat_io 倉只落 llm_call 全文；這裡把 CompanyEvent 生命週期事件
+        （work_item_*/tool_*/review_*/grill_*/inspector_verdict…）同步鏡像進
+        trace_<task_id>.jsonl，執行軌跡頁與角色 I/O 回放才有完整鏈路。
+        """
         # 席位 I/O 歸屬：run_id ≠ task_id，需顯式注入任務座標與軌跡寫入器
         orchestrator.task_id = record.task_id
         try:
-            orchestrator.tracer = TraceLogger(record.task_id)
+            tracer = TraceLogger(record.task_id)
+            orchestrator.tracer = tracer
         except Exception as exc:  # noqa: BLE001 - 軌跡注入失敗不阻斷執行
+            tracer = None
             logger.warning("公司任務軌跡注入失敗（不影響執行）：%s", exc)
 
         def listener(event: CompanyEvent, data: dict[str, Any]) -> None:
@@ -660,6 +699,20 @@ class TaskManager:
             if event == CompanyEvent.DECOMPOSE_DONE:
                 event_data.pop("execution_plan", None)
             self._add_event(record, event.value, event_data)
+            # ── 軌跡鏡像（寫入失敗不影響執行）：發出協程的 llm_trace 上下文補 role/item ──
+            if tracer is not None:
+                try:
+                    from backend.core import llm_trace as _lt
+
+                    mirror = dict(event_data)
+                    ctx = _lt.current_context()
+                    if ctx["task_id"] == record.task_id or not ctx["task_id"]:
+                        mirror.setdefault("role", ctx["role"])
+                        mirror.setdefault("item_id", ctx["item_id"])
+                        mirror.setdefault("phase", ctx["phase"])
+                    tracer.log_company_event(event.value, mirror)
+                except Exception:  # noqa: BLE001
+                    logger.debug("公司事件軌跡鏡像失敗：%s", event)
             if event == CompanyEvent.PHASE_CHANGE:
                 record.phase = str(data.get("phase", ""))
             # 分解完成：即時記錄規劃（供任務頁執行中展示）
@@ -780,6 +833,10 @@ class TaskManager:
         """公司運行時路徑：多角色分工 → 反思迴圈。"""
         tracer = TraceLogger(record.task_id)
         tracer.log_phase_change("starting", data={"template": record.template})
+        # 角色 I/O 上下文：綁定 task_id 供事件鏡像/席位軌跡歸屬（公司協程內自動繼承）
+        from backend.core import llm_trace
+
+        llm_trace.trace_task_id.set(record.task_id)
 
         config = BUILTIN_TEMPLATES.get(record.template)
         if config is None:

@@ -1,2 +1,0 @@
-{"timestamp": "2026-08-07T01:00:00Z", "operation": "write", "tag_name": "Temperature", "value": 80.0, "result": "success"}
-{"timestamp": "2026-08-07T02:00:00Z", "operation": "write", "tag_name": "FlowRate", "value": 50.0, "result": "blocked"}

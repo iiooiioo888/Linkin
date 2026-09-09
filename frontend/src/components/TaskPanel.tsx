@@ -314,7 +314,7 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
               ? '已取消'
               : failed
                 ? '執行失敗'
-                : `評分 ${task.score ?? '-'} · 迭代 ${task.iteration}`}
+                : `評分 ${task.score != null ? Math.round(task.score * 100) / 100 : '-'} · 迭代 ${task.iteration}`}
         </span>
         {/* 取消按鈕：執行中且未請求取消時顯示 */}
         {running && !task.cancel_requested && onCancel && (

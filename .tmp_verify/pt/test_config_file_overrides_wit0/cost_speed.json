@@ -1,1 +1,0 @@
-{"enabled": true, "complexity": {"simple": {"max_output_chars": 123}, "medium": {"max_query_length": 200, "path": "simple"}}, "stage_models": {}, "models": {}}

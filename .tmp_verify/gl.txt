@@ -1,8 +1,0 @@
-10b7de5 feat: Add additional event logs for task processing
-a927134 feat: Enhance decision-making process and monitoring capabilities
-934dc4d docs(角色): roles.md 生成器同步 v2.0 — 四部門學派標識與領域工具白名單
-?? .tmp_verify/gl.txt
-?? .tmp_verify/head_ctx.txt
-?? .tmp_verify/head_orch.py
-
----------- .TMP_VERIFY\HEAD_ORCH.PY: 3
