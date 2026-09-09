@@ -853,6 +853,9 @@ async def _company_stream(req: ChatRequest):
                     "company_result": company_result,
                 }
 
+                # 輸出長度守門：超標時把「精簡」當成額外一輪改進目標（預算由節點控管）
+                eval_state.update(await asyncio.to_thread(nodes.enforce_output_length, eval_state))
+
                 yield f"event: phase\ndata: {json_mod.dumps({'phase': 'evaluate'})}\n\n"
                 eval_state.update(await asyncio.to_thread(nodes.evaluate_answer, eval_state))
                 eval_data = {
@@ -867,10 +870,10 @@ async def _company_stream(req: ChatRequest):
                 while (
                     eval_state.get('score', 0.0) < PASS_THRESHOLD
                     and eval_state.get('iteration', 0) < MAX_ITERATIONS
-                ):
+                ) or eval_state.get("length_directive"):
                     cur = eval_state.get('score', 0.0)
                     if eval_state.get('iteration', 0) >= 1:
-                        if cur - prev_score < 0.5:
+                        if cur - prev_score < 0.5 and not eval_state.get("length_directive"):
                             yield f"event: phase\ndata: {json_mod.dumps({'phase': 'early_stop', 'reason': '分數提升不足'}, ensure_ascii=False)}\n\n"
                             break
                     prev_score = cur
@@ -889,6 +892,7 @@ async def _company_stream(req: ChatRequest):
                         'multi_dim': eval_state.get('multi_dim_evaluation', {}),
                     }
                     yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
+                    eval_state.update(await asyncio.to_thread(nodes.enforce_output_length, eval_state))
 
                 final_answer = eval_state.get('current_answer', final_output)
                 eval_state['final_answer'] = final_answer
@@ -995,6 +999,9 @@ async def chat_stream(req: ChatRequest):
                 "thinking": gen_thinking,
             })
 
+            # 輸出長度守門：超標時把「精簡」當成額外一輪改進目標（預算由節點控管）
+            state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
+
             # 階段 3：多維度評估（優化 #1 + #4）
             yield f"event: phase\ndata: {json_mod.dumps({'phase': 'evaluate'})}\n\n"
             state.update(await asyncio.to_thread(nodes.evaluate_answer, state))
@@ -1005,17 +1012,17 @@ async def chat_stream(req: ChatRequest):
             }
             yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
 
-            # 反思/改進迴圈（動態迭代：帶分數變化率檢測）
+            # 反思/改進迴圈（動態迭代：帶分數變化率檢測；長度指令未消化時強制多跑一輪）
             prev_score = state.get('score', 0.0)
             while (
                 state.get("score", 0.0) < PASS_THRESHOLD
                 and state.get("iteration", 0) < MAX_ITERATIONS
-            ):
+            ) or state.get("length_directive"):
                 current_score = state.get('score', 0.0)
                 # 動態迭代檢查：分數變化率過低時提前終止（優化 #4）
                 if state.get('iteration', 0) >= 1:
                     improvement = current_score - prev_score
-                    if improvement < 0.5:  # MIN_SCORE_IMPROVEMENT
+                    if improvement < 0.5 and not state.get("length_directive"):  # MIN_SCORE_IMPROVEMENT
                         yield f"event: phase\ndata: {json_mod.dumps({'phase': 'early_stop', 'reason': f'分數提升不足 ({improvement:.1f})', 'iteration': state.get('iteration', 0)})}\n\n"
                         break
                 prev_score = current_score
@@ -1058,6 +1065,7 @@ async def chat_stream(req: ChatRequest):
                     'multi_dim': state.get('multi_dim_evaluation', {}),
                 }
                 yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
+                state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
 
             final_answer = state.get("current_answer", "")
             # 儲存記憶（盡力而為）

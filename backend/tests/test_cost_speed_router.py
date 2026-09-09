@@ -10,6 +10,7 @@ from backend.core.company_nodes import route_by_complexity
 from backend.core.cost_speed_router import (
     classify_task_complexity,
     cost_speed_enabled,
+    max_output_chars_for_complexity,
     reload_cost_speed,
     resolve_cost_speed_model,
     resolve_path_for_complexity,
@@ -117,3 +118,37 @@ class TestCostSpeedHotReload:
         status = reload_cost_speed()
         assert status["enabled"] is True
         assert cost_speed_enabled()
+
+
+class TestMaxOutputCharsByComplexity:
+    def test_defaults_follow_complexity(self):
+        assert max_output_chars_for_complexity("simple") == 800
+        assert max_output_chars_for_complexity("medium") == 2000
+        assert max_output_chars_for_complexity("complex") == 4000
+
+    def test_config_file_overrides_with_fallback(self, tmp_path, monkeypatch):
+        cfg = tmp_path / "cost_speed.json"
+        cfg.write_text(
+            json.dumps(
+                {
+                    "enabled": True,
+                    "complexity": {
+                        "simple": {"max_output_chars": 123},
+                        "medium": {"max_query_length": 200, "path": "simple"},
+                    },
+                    "stage_models": {},
+                    "models": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("EVOL_COST_SPEED_PATH", str(cfg))
+        reload_cost_speed()
+        try:
+            assert max_output_chars_for_complexity("simple") == 123
+            # 未寫 max_output_chars 的等級退回內建兜底值
+            assert max_output_chars_for_complexity("medium") == 2000
+            assert max_output_chars_for_complexity("complex") == 4000
+        finally:
+            monkeypatch.delenv("EVOL_COST_SPEED_PATH", raising=False)
+            reload_cost_speed()

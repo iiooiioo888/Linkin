@@ -6,6 +6,7 @@
 import asyncio
 import json
 import logging
+import os
 
 from backend.core.evaluation import CrossModelEvaluator, get_evaluator
 from backend.core.llm import call_llm, parse_json_response
@@ -18,6 +19,9 @@ from backend.prompts.templates import truncate
 from backend.services.archiver import save_session_archive, save_session_archive_sync
 
 logger = logging.getLogger(__name__)
+
+# 超長回答最多丢回反思閉環重寫的次數（用盡後交付最短版本並記警告）
+MAX_LENGTH_REWRITES = int(os.getenv("EVOL_MAX_LENGTH_REWRITES", "2"))
 
 # Phase 2：使用 ChromaDB 向量記憶庫
 _memory_store = VectorMemoryStore()
@@ -184,6 +188,12 @@ def evaluate_answer(state: EvoLoopState) -> dict:
     }
 
 
+def _length_requirement(state: EvoLoopState) -> str:
+    """長度守門節點尚未消化的硬性要求，注入反思與改進 prompt。"""
+    directive = state.get("length_directive", "")
+    return f"{directive}\n" if directive else ""
+
+
 def _search_reflection_hints(query: str) -> str:
     """從向量記憶庫檢索相似問題的歷史反思，供復用。"""
     if not query:
@@ -229,12 +239,6 @@ def reflect(state: EvoLoopState) -> dict:
     if score < 5.0:
         # 深度反思：傳入完整多維度評估細節
         eval_detail = json.dumps(multi_dim, ensure_ascii=False) if multi_dim else json.dumps(state.get("evaluation", {}), ensure_ascii=False)
-        prompt = reflection_hints + templates.REFLECT.format(
-            query=state["query"],
-            answer=state["current_answer"],
-            score=score,
-            evaluation=eval_detail,
-        )
     else:
         # 表面修正：只傳入摘要，節省 token
         if multi_dim:
@@ -248,12 +252,12 @@ def reflect(state: EvoLoopState) -> dict:
             eval_detail = json.dumps(eval_summary, ensure_ascii=False)
         else:
             eval_detail = json.dumps(state.get("evaluation", {}), ensure_ascii=False)
-        prompt = reflection_hints + templates.REFLECT.format(
-            query=state["query"],
-            answer=state["current_answer"],
-            score=score,
-            evaluation=eval_detail,
-        )
+    prompt = _length_requirement(state) + reflection_hints + templates.REFLECT.format(
+        query=state["query"],
+        answer=state["current_answer"],
+        score=score,
+        evaluation=eval_detail,
+    )
 
     model = resolve_stage_model(
         "reflect",
@@ -275,7 +279,7 @@ def reflect(state: EvoLoopState) -> dict:
 
 def improve_answer(state: EvoLoopState) -> dict:
     """節點 4：根據反思結果優化回答，並累加迭代計數與反思紀錄。"""
-    prompt = templates.IMPROVE_ANSWER.format(
+    prompt = _length_requirement(state) + templates.IMPROVE_ANSWER.format(
         query=state["query"],
         answer=state["current_answer"],
         critique=state.get("critique", ""),
@@ -299,6 +303,95 @@ def improve_answer(state: EvoLoopState) -> dict:
         }
     )
     return {"current_answer": improved, "iteration": iteration, "reflections": reflections}
+
+
+def _resolve_output_limit(state: EvoLoopState) -> int:
+    """解析本次任務的輸出長度上限（依複雜度動態，可由配置熱重載覆寫）。"""
+    from backend.core.cost_speed_router import (
+        classify_task_complexity,
+        max_output_chars_for_complexity,
+    )
+
+    complexity = state.get("task_complexity") or classify_task_complexity(state.get("query", ""))
+    return max_output_chars_for_complexity(complexity)  # type: ignore[arg-type]
+
+
+def _enforce_output_length(state: EvoLoopState, field: str) -> dict:
+    answer = state.get(field) or ""
+    limit = _resolve_output_limit(state)
+    if len(answer) <= limit:
+        if not state.get("length_directive"):
+            return {}
+        return {"length_directive": "", "max_output_chars": limit}
+
+    best = state.get("length_best_answer") or ""
+    if not best or len(answer) < len(best):
+        best = answer
+
+    used = state.get("length_rewrites", 0)
+    if used >= MAX_LENGTH_REWRITES:
+        # 預算用盡：改交付歷次最短的一版並記警告，不再回環（保證閉環終止）
+        warnings = list(state.get("length_warnings", []))
+        warnings.append(
+            f"已重寫 {used} 次仍有 {len(answer)} 字，超過 {limit} 字上限，"
+            f"改交付最短版本（{len(best)} 字）。"
+        )
+        log_node(
+            state, "enforce_output_length",
+            gate=field, length=len(answer), limit=limit, exhausted=True,
+        )
+        exhausted: dict = {
+            "length_directive": "",
+            "length_warnings": warnings,
+            "length_best_answer": best,
+            "max_output_chars": limit,
+            field: best,
+        }
+        if field == "final_answer":
+            exhausted["current_answer"] = best
+        return exhausted
+
+    directive = templates.LENGTH_DIRECTIVE.format(
+        max_chars=limit,
+        actual_chars=len(answer),
+        excess_chars=len(answer) - limit,
+    )
+    log_node(
+        state,
+        "enforce_output_length",
+        gate=field,
+        length=len(answer),
+        limit=limit,
+        length_rewrites=used + 1,
+    )
+    rewrite: dict = {
+        "length_directive": directive,
+        "length_rewrites": used + 1,
+        "length_best_answer": best,
+        "max_output_chars": limit,
+    }
+    if field == "final_answer":
+        # 閉環要壓縮的是真正會交付的那份（可能是降級而來的 initial_answer）
+        rewrite["current_answer"] = answer
+    return rewrite
+
+
+def enforce_output_length(state: EvoLoopState) -> dict:
+    """節點 4.5：評估前的長度守門（看 current_answer）。
+
+    未超限 → 放行且不消耗 LLM 呼叫（並清掉已消化的長度指令）；
+    超限 → 寫入長度硬性要求與重寫計數，由圖路由丢回 reflect 重寫；
+    重寫預算用盡仍超限 → 改交付歷次最短的一版並記警告，不再回環。
+    """
+    return _enforce_output_length(state, "current_answer")
+
+
+def enforce_final_length(state: EvoLoopState) -> dict:
+    """節點 5.5：交付端的長度守門（看 final_answer）。
+
+    攔下 decide_final_answer 因空回答降級使用 initial_answer 造成的超長交付。
+    """
+    return _enforce_output_length(state, "final_answer")
 
 
 def decide_final_answer(state: EvoLoopState) -> dict:

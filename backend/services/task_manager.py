@@ -571,7 +571,9 @@ class TaskManager:
     async def _run_reflection_loop(
         self, record: TaskRecord, state: dict[str, Any], tracer: TraceLogger
     ) -> None:
-        """評估 → 反思 → 改進迭代迴圈（直到達標或達最大迭代）。"""
+        """評估 → 反思 → 改進迭代迴圈（直到達標或達最大迭代；長度指令未消化時多跑一輪）。"""
+        # 輸出長度守門：超標時把「精簡」當成額外一輪改進目標（預算由節點控管）
+        state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
         self._set_phase(record, "evaluate")
         tracer.log_phase_change("evaluate")
         state.update(await asyncio.to_thread(nodes.evaluate_answer, state))
@@ -593,7 +595,7 @@ class TaskManager:
         while (
             state.get("score", 0.0) < PASS_THRESHOLD
             and state.get("iteration", 0) < MAX_ITERATIONS
-        ):
+        ) or state.get("length_directive"):
             if self._check_cancelled(record):
                 return
 
@@ -627,6 +629,7 @@ class TaskManager:
                 "score": state.get("score"),
                 "iteration": state.get("iteration", 0),
             })
+            state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
 
     # ── 公司運行時執行 ──
 

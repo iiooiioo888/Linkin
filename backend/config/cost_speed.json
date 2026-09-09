@@ -3,15 +3,18 @@
   "complexity": {
     "simple": {
       "max_query_length": 80,
-      "path": "simple"
+      "path": "simple",
+      "max_output_chars": 800
     },
     "medium": {
       "max_query_length": 200,
-      "path": "simple"
+      "path": "simple",
+      "max_output_chars": 2000
     },
     "complex": {
       "min_query_length": 200,
       "path": "company",
+      "max_output_chars": 4000,
       "keywords": [
         "开发", "设计", "构建", "实现", "建立", "完整", "系统", "项目",
         "架构", "重构", "迁移", "deploy", "develop", "build", "implement",
