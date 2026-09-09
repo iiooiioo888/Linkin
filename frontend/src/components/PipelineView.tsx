@@ -35,7 +35,15 @@ export default function PipelineView({ onGoTasks }: PipelineViewProps) {
     [agents, optimization, billing, llmOps],
   );
 
-  const phase = feed.streamPhase || feed.taskPhase;
+  // 對話區沒有串流任務時，退回監控快照裡執行中／佇列中的後台任務階段
+  const dashboard = useMonitorStore((s) => s.dashboard);
+  const backgroundPhase = useMemo(() => {
+    const tasks = dashboard?.tasks ?? [];
+    const live = tasks.find((t) => t.status === 'running' || t.status === 'pending');
+    return live?.phase ?? null;
+  }, [dashboard]);
+
+  const phase = feed.streamPhase || feed.taskPhase || backgroundPhase;
   const activeIndex = mapPhaseToPipelineIndex(phase);
   const currentLabel =
     activeIndex != null ? PIPELINE_STAGES[activeIndex]?.label : '待命';

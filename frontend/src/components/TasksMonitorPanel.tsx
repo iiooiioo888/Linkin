@@ -122,7 +122,7 @@ function TaskCard({
       <div className="rd-tc-m">
         <span className={`rd-badge ${running ? 'run' : ''}`}>{meta.label}</span>
         <span className="rd-tc-meta">{path.icon}</span>
-        {task.score != null ? <span className="rd-tc-cost">{task.score} 分</span> : null}
+        {task.score != null ? <span className="rd-tc-cost">{Math.round(task.score * 100) / 100} 分</span> : null}
       </div>
       <PhaseStrip task={task} />
     </button>

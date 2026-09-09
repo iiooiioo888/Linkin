@@ -12,15 +12,26 @@ const EVENT_META: Record<string, { label: string; color: string }> = {
   reflection: { label: '反思', color: '#bf5af2' },
   improvement: { label: '改進', color: 'var(--apple-green)' },
   phase_change: { label: '階段切換', color: 'var(--apple-tertiary)' },
+  pipeline_node: { label: '管線節點', color: 'var(--apple-teal, #30b0c7)' },
   tool_call: { label: '工具調用', color: 'var(--apple-orange)' },
   state_snapshot: { label: '狀態快照', color: 'var(--apple-blue-soft)' },
   memory_operation: { label: '記憶操作', color: '#bf5af2' },
   error: { label: '錯誤', color: 'var(--apple-red)' },
 };
 
+const NODE_LABELS: Record<string, string> = {
+  generate_initial_answer: '生成',
+  evaluate_answer: '評估',
+  reflect: '反思',
+  improve_answer: '改進',
+  enforce_output_length: '長度守門',
+  decide_final_answer: '最終裁決',
+};
+
 const FILTER_OPTIONS = [
   { value: 'all', label: '全部' },
   { value: 'llm_call', label: 'LLM' },
+  { value: 'pipeline_node', label: '節點' },
   { value: 'tool_call', label: '工具' },
   { value: 'evaluation', label: '評估' },
   { value: 'reflection', label: '反思' },
@@ -31,7 +42,20 @@ function eventSummary(entry: TraceEntry): string {
   if (entry.event === 'llm_call') {
     return `${entry.model ? `[${entry.model}] ` : ''}${String(entry.prompt ?? '').slice(0, 80)}`;
   }
-  if (entry.event === 'evaluation') return `分數 ${entry.score ?? '—'} ${String(entry.feedback ?? '').slice(0, 60)}`;
+  if (entry.event === 'pipeline_node') {
+    const node = String(entry.node ?? '');
+    const label = NODE_LABELS[node] || node;
+    const bits = [
+      entry.score != null ? `分 ${Math.round(Number(entry.score) * 100) / 100}` : '',
+      entry.model ? `[${entry.model}]` : '',
+      entry.source ? `來源 ${entry.source}` : '',
+    ].filter(Boolean);
+    return bits.length ? `${label} · ${bits.join(' · ')}` : label;
+  }
+  if (entry.event === 'evaluation') {
+    const score = entry.score != null ? Math.round(Number(entry.score) * 100) / 100 : '—';
+    return `分數 ${score} ${String(entry.feedback ?? '').slice(0, 60)}`;
+  }
   if (entry.event === 'reflection') return String(entry.reflection ?? '').slice(0, 80);
   if (entry.event === 'context_injection') return `來源 ${entry.source ?? '—'} · ${entry.count ?? 0} 條`;
   if (entry.event === 'tool_call') return `${entry.success ? '✓' : '✗'} ${entry.tool ?? ''}`;
@@ -53,7 +77,9 @@ function TraceEventCard({ entry, expanded, onToggle }: { entry: TraceEntry; expa
       </div>
       <p className="rd-tc-d">{eventSummary(entry) || entry.phase || '—'}</p>
       <div className="rd-tc-m">
-        <span className={`rd-badge ${col === 'executing' ? 'run' : ''}`}>{entry.phase || col}</span>
+        <span className={`rd-badge ${col === 'executing' ? 'run' : ''}`}>
+          {entry.phase || (entry.event === 'pipeline_node' ? (NODE_LABELS[String(entry.node ?? '')] || String(entry.node ?? '')) : col)}
+        </span>
         {entry.iteration != null && entry.iteration > 0 ? (
           <span className="rd-tc-meta">迭代 {entry.iteration}</span>
         ) : null}
@@ -80,7 +106,31 @@ function TraceEventCard({ entry, expanded, onToggle }: { entry: TraceEntry; expa
               {entry.result}
             </pre>
           ) : null}
+          {entry.raw_response ? (
+            <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+              {entry.raw_response}
+            </pre>
+          ) : null}
+          {entry.items?.length ? (
+            <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+              {entry.items.join('\n')}
+            </pre>
+          ) : null}
           {entry.error ? <p className="text-[11px] text-[#FF453A]">{entry.error}</p> : null}
+          {entry.event === 'pipeline_node' ? (
+            <p className="font-mono text-[10px] text-[#AEAEB2]">
+              {[
+                `node=${String(entry.node ?? '')}`,
+                entry.model ? `model=${entry.model}` : '',
+                entry.score != null ? `score=${entry.score}` : '',
+                entry.source ? `source=${entry.source}` : '',
+                entry.route ? `route=${entry.route}` : '',
+                entry.iteration != null ? `iteration=${entry.iteration}` : '',
+              ]
+                .filter(Boolean)
+                .join('  ')}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </button>

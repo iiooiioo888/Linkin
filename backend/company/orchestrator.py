@@ -174,6 +174,13 @@ class CompanyOrchestrator:
         self.work_items = WorkItemManager()
         self.decomposer.work_items = self.work_items
 
+        # LLM 軌跡上下文：主協程階段（戰役規劃/拆解/整合/終審）逐段標註
+        from backend.core import llm_trace
+
+        llm_trace.trace_phase.set("campaign_plan")
+        llm_trace.trace_role.set("requirement_auditor")
+        llm_trace.trace_item_id.set("")
+
         self._log(
             "company_start",
             {"goal": goal, "config": self.config.name},
@@ -256,6 +263,8 @@ class CompanyOrchestrator:
             logger.debug("L4 戰役規劃略過", exc_info=True)
 
         # ── 階段 1b：L3 戰術指揮官把 L4 門票拆成原子作戰地圖 ──
+        llm_trace.trace_phase.set("decompose")
+        llm_trace.trace_role.set("manager")
         self._log("phase", {"phase": "decompose", "module": "TacticalCommander"})
         self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "decompose"})
         work_items: list = []
@@ -353,6 +362,8 @@ class CompanyOrchestrator:
         })
 
         # ── 階段 2：執行-審查迴圈 ──
+        llm_trace.trace_phase.set("execute_review")
+        llm_trace.trace_role.set("")
         self._log("phase", {"phase": "execute_review", "work_items": len(work_items)})
         self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "execute_review", "work_items": len(work_items)})
         await self._execute_review_loop(goal)
@@ -363,6 +374,9 @@ class CompanyOrchestrator:
             return self._error_result("任務已被使用者取消")
 
         # ── 階段 3：Synthesizer 整合（P1：可合併 Reviewer+Synthesizer）──
+        llm_trace.trace_role.set("synthesizer")
+        llm_trace.trace_item_id.set("")
+        llm_trace.trace_phase.set("synthesize")
         self._log("phase", {"phase": "synthesize"})
         self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "synthesize"})
         merge_enabled = os.getenv("EVOL_MERGE_REVIEW_SYNTH", "true").lower() == "true"
@@ -379,6 +393,8 @@ class CompanyOrchestrator:
             return self._error_result("任務已被使用者取消")
 
         # ── 階段 4：Manager 最終審查 ──
+        llm_trace.trace_role.set("manager")
+        llm_trace.trace_phase.set("final_review")
         self._log("phase", {"phase": "final_review"})
         self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "final_review"})
         review_result = await self._manager_final_review(goal, final_output)
@@ -896,6 +912,8 @@ class CompanyOrchestrator:
 
     async def _execute_single_item(self, goal: str, item) -> None:
         """根據指派角色執行單一工作項（含重試、超時、角色升級）。"""
+        from backend.core import llm_trace
+
         self.work_items.transition(item.id, WorkItemStatus.EXECUTING)
         self.events.emit(CompanyEvent.WORK_ITEM_START, {
             "item_id": item.id, "title": item.title, "assignee": item.assignee.value if item.assignee else None,
@@ -903,6 +921,10 @@ class CompanyOrchestrator:
 
         # 取得角色定義
         role_type = item.assignee or RoleType.DEVELOPER
+        # LLM 軌跡上下文：本協程內的所有 call_llm 自動帶 role/item/phase
+        llm_trace.trace_role.set(role_type.value)
+        llm_trace.trace_item_id.set(item.id)
+        llm_trace.trace_phase.set("execute")
         role_def = self.config.roles.get(role_type)
         if role_def is None:
             role_def = STANDARD_ROLES.get(role_type, STANDARD_ROLES[RoleType.DEVELOPER])
@@ -1341,6 +1363,11 @@ class CompanyOrchestrator:
 
     async def _review_item(self, goal: str, item, max_rounds: int) -> None:
         """L1 憲兵閘門 → Reviewer 審查工作項交付物。"""
+        from backend.core import llm_trace
+
+        llm_trace.trace_role.set("reviewer")
+        llm_trace.trace_item_id.set(item.id)
+        llm_trace.trace_phase.set("review")
         review_round = 0
 
         while review_round < max_rounds:
@@ -1479,9 +1506,14 @@ class CompanyOrchestrator:
 
     async def _rework_item(self, goal: str, item, feedback: str) -> None:
         """讓 Developer 根據審查回饋修改交付物（含重試）。"""
+        from backend.core import llm_trace
+
         self.work_items.transition(item.id, WorkItemStatus.EXECUTING)
 
         role_type = item.assignee or RoleType.DEVELOPER
+        llm_trace.trace_role.set(role_type.value)
+        llm_trace.trace_item_id.set(item.id)
+        llm_trace.trace_phase.set("rework")
         role_def = self.config.roles.get(role_type)
         if role_def is None:
             role_def = STANDARD_ROLES.get(role_type, STANDARD_ROLES[RoleType.DEVELOPER])

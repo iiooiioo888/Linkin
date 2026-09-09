@@ -231,6 +231,62 @@ def call_llm(
     route_id: str | None = None,
     max_context_tokens: int | None = None,
     role_failover_models: list[str] | None = None,
+    trace_label: str = "",
+    **kwargs,
+) -> str:
+    """呼叫 LLM 並回傳回應文字（統一軌跡鉤子點）。
+
+    若處於任務上下文（llm_trace.trace_task_id 已綁定），自動記錄本調用的
+    prompt/system/response/耗時 進任務軌跡，供角色 I/O 全監使用；
+    trace_label 可附加語義標籤（如 execute/review/grill）。
+    """
+    from backend.core import llm_trace
+
+    started = time.monotonic()
+    try:
+        result = _call_llm_core(
+            prompt,
+            system=system,
+            model=model,
+            max_retries=max_retries,
+            route_id=route_id,
+            max_context_tokens=max_context_tokens,
+            role_failover_models=role_failover_models,
+            **kwargs,
+        )
+    except Exception as exc:  # noqa: BLE001
+        if llm_trace.current_context()["task_id"]:
+            llm_trace.emit({
+                "label": trace_label,
+                "prompt": prompt,
+                "system": system,
+                "model": model,
+                "response": "",
+                "error": str(exc),
+                "duration_ms": round((time.monotonic() - started) * 1000, 1),
+            })
+        raise
+    if llm_trace.current_context()["task_id"]:
+        llm_trace.emit({
+            "label": trace_label,
+            "prompt": prompt,
+            "system": system,
+            "model": model,
+            "response": result,
+            "duration_ms": round((time.monotonic() - started) * 1000, 1),
+        })
+    return result
+
+
+def _call_llm_core(
+    prompt: str,
+    system: str | None = None,
+    model: str | None = None,
+    max_retries: int | None = None,
+    *,
+    route_id: str | None = None,
+    max_context_tokens: int | None = None,
+    role_failover_models: list[str] | None = None,
     **kwargs,
 ) -> str:
     """呼叫 LLM 並回傳回應文字。
