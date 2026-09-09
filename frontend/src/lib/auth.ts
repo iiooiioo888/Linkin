@@ -144,25 +144,30 @@ async function unlockLocal(username: string, password: string): Promise<{ ok: tr
 }
 
 export async function loginGate(username: string, password: string): Promise<{ ok: true; user: string } | { ok: false; error: string }> {
-  // GitHub Pages 沒有後端：必須先走本機摘要，否則 /api/auth/login 的 401 HTML
-  // 會被當成「密碼錯誤」。有後端時本機通過同樣放行（與預設摘要對相同）。
-  const local = await unlockLocal(username, password);
-  if (local.ok) return local;
-  if (isStaticHost()) return local;
-
-  const remote = await tryRemoteLogin(username, password);
-  if (remote.kind === 'ok') {
-    writeRecord({ t: remote.token, u: remote.user, exp: Date.now() + 12 * 3600 * 1000 });
-    return { ok: true, user: remote.user };
+  // 有後端時必須以後端會話為準：本機 lg1. 偽票後端不認，直接採信會造成
+  // 「登入成功但所有 API 401」。本機摘要僅供 GitHub Pages／後端離線降級用，
+  // 且 tryRemoteLogin 對非 JSON 回應（靜態站 404/401 HTML）回傳 offline 自動落到本機核對。
+  if (!isStaticHost()) {
+    const remote = await tryRemoteLogin(username, password);
+    if (remote.kind === 'ok') {
+      writeRecord({ t: remote.token, u: remote.user, exp: Date.now() + 12 * 3600 * 1000 });
+      return { ok: true, user: remote.user };
+    }
+    if (remote.kind === 'denied') return { ok: false, error: remote.error };
+    // offline → 本機摘要降級
   }
-  if (remote.kind === 'denied') return { ok: false, error: remote.error };
-  return local;
+  return unlockLocal(username, password);
 }
 
 export async function verifyGate(): Promise<boolean> {
   const token = getGateToken();
   if (!token) return false;
-  if (isLocalToken(token) || isStaticHost()) return true;
+  // 本機偽票只在靜態站可信；有後端時一律以後端 /auth/me 為準
+  if (isStaticHost()) return true;
+  if (isLocalToken(token)) {
+    clearGate();
+    return false;
+  }
   try {
     const resp = await fetch(apiUrl('/auth/me'), {
       credentials: 'include',

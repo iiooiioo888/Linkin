@@ -798,14 +798,35 @@ async def _company_stream(req: ChatRequest):
 
     orchestrator = CompanyOrchestrator(config)
 
+    # 公司模式思考軌跡：session_id 即軌跡檔名
+    from backend.services.trace_logger import TraceLogger
+
+    company_tracer = TraceLogger(session_id)
+
     # 用 Queue 橋接 EventBus → SSE
     event_queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
 
     def _on_company_event(event: CompanyEvent, data: dict[str, Any]) -> None:
-        """EventBus 監聽器：將事件推入 Queue。"""
+        """EventBus 監聽器：將事件推入 Queue，並回填思考軌跡。"""
         try:
             event_queue.put_nowait({"event": event.value, "data": data})
         except Exception:
+            pass
+        try:
+            et = event.value
+            if et == "phase_change":
+                company_tracer.log_phase_change(str(data.get("phase", "")), data={k: v for k, v in data.items() if k != "phase"})
+            elif et == "work_item_done":
+                company_tracer.log_llm_call(
+                    prompt=f"[{data.get('assignee', data.get('role', 'role'))}] {str(data.get('title', ''))[:200]}",
+                    response=str(data.get("output") or data.get("result") or "")[:8000],
+                    phase="execute_review",
+                    role=str(data.get("assignee") or data.get("role") or ""),
+                    item_id=str(data.get("item_id") or data.get("id") or ""),
+                )
+            elif et in ("work_item_error", "review_rework", "work_item_escalate"):
+                company_tracer.log_custom(et, {k: (str(v)[:500]) for k, v in data.items()})
+        except Exception:  # noqa: BLE001
             pass
 
     orchestrator.events.on(_on_company_event)
@@ -944,10 +965,16 @@ async def chat_stream(req: ChatRequest):
 
     session_id = req.session_id or uuid.uuid4().hex[:12]
 
+    # 思考軌跡回填（session_id 即軌跡檔名；前端「軌跡」按鈕以此查詢）
+    from backend.services.trace_logger import TraceLogger
+
+    chat_tracer = TraceLogger(session_id)
+
     async def event_stream():
         state: dict[str, Any] = {
             "query": req.query,
             "session_id": session_id,
+            "task_id": session_id,
             "history": req.history or [],
             "semantic_lock": req.semantic_lock or {},
         }
@@ -957,10 +984,17 @@ async def chat_stream(req: ChatRequest):
         try:
             # 階段 1：記憶檢索
             yield f"event: phase\ndata: {json_mod.dumps({'phase': 'retrieve_memories'})}\n\n"
+            chat_tracer.log_phase_change("retrieve_memories")
             state.update(await asyncio.to_thread(nodes.retrieve_memories, state))
+            _mems = state.get("retrieved_memories") or []
+            if _mems:
+                chat_tracer.log_context_injection(
+                    source="memory", items=_mems, phase="retrieve_memories", query=state["query"],
+                )
 
             # 階段 2：生成回答（串流 token，Queue 橋接同步生成器與非同步迴圈）
             yield f"event: phase\ndata: {json_mod.dumps({'phase': 'generate'})}\n\n"
+            chat_tracer.log_phase_change("generate")
             from backend.prompts import templates
             gen_prompt = templates.GENERATE_INITIAL_ANSWER.format(
                 query=state["query"],
@@ -994,15 +1028,21 @@ async def chat_stream(req: ChatRequest):
                 "iteration": 0,
                 "thinking": gen_thinking,
             })
+            chat_tracer.log_llm_call(
+                prompt=state["query"], response=(visible or answer)[:8000],
+                phase="generate",
+            )
 
             # 階段 3：多維度評估（優化 #1 + #4）
             yield f"event: phase\ndata: {json_mod.dumps({'phase': 'evaluate'})}\n\n"
+            chat_tracer.log_phase_change("evaluate")
             state.update(await asyncio.to_thread(nodes.evaluate_answer, state))
             eval_data = {
                 'score': state.get('score'),
                 'iteration': 0,
                 'multi_dim': state.get('multi_dim_evaluation', {}),
             }
+            chat_tracer.log_evaluation(state.get('score'), iteration=0)
             yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
 
             # 反思/改進迴圈（動態迭代：帶分數變化率檢測）
@@ -1021,9 +1061,15 @@ async def chat_stream(req: ChatRequest):
                 prev_score = current_score
 
                 yield f"event: phase\ndata: {json_mod.dumps({'phase': 'reflect', 'iteration': state.get('iteration', 0), 'score': current_score})}\n\n"
+                chat_tracer.log_phase_change("reflect", data={"iteration": state.get("iteration", 0), "score": current_score})
                 state.update(await asyncio.to_thread(nodes.reflect, state))
                 critique = str(state.get("critique") or "")
                 suggestion = str(state.get("suggestion") or "")
+                if critique or suggestion:
+                    chat_tracer.log_reflection(
+                        "\n".join(x for x in (f"反思：{critique}", f"改進建議：{suggestion}") if x),
+                        iteration=state.get("iteration", 0),
+                    )
                 reflect_text = "\n".join(
                     p for p in (
                         f"反思：{critique}" if critique else "",
@@ -1038,8 +1084,11 @@ async def chat_stream(req: ChatRequest):
                     )
 
                 yield f"event: phase\ndata: {json_mod.dumps({'phase': 'improve', 'iteration': state.get('iteration', 0)})}\n\n"
+                chat_tracer.log_phase_change("improve", data={"iteration": state.get("iteration", 0)})
                 state.update(await asyncio.to_thread(nodes.improve_answer, state))
                 improved = str(state.get("current_answer") or "")
+                if improved:
+                    chat_tracer.log_improvement(improved, iteration=state.get("iteration", 0))
                 imp_think, imp_vis = split_thinking(improved)
                 if imp_think:
                     state["thinking"] = "\n\n".join(
@@ -1052,6 +1101,7 @@ async def chat_stream(req: ChatRequest):
 
                 yield f"event: phase\ndata: {json_mod.dumps({'phase': 'evaluate'})}\n\n"
                 state.update(await asyncio.to_thread(nodes.evaluate_answer, state))
+                chat_tracer.log_evaluation(state.get('score'), iteration=state.get('iteration', 0))
                 eval_data = {
                     'score': state.get('score'),
                     'iteration': state.get('iteration', 0),
@@ -1060,6 +1110,7 @@ async def chat_stream(req: ChatRequest):
                 yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
 
             final_answer = state.get("current_answer", "")
+            chat_tracer.log_phase_change("done", data={"score": state.get("score"), "iteration": state.get("iteration", 0)})
             # 儲存記憶（盡力而為）
             state["final_answer"] = final_answer
             await asyncio.to_thread(nodes.save_memory, state)

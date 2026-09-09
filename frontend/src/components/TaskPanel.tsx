@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import type { TaskProgress, KanbanItem } from '../types';
 import { OPC_PHASES } from '../types';
 import { WORK_ITEM_COLUMNS, workItemColumnKey } from '../lib/agentUi';
+import { eventClock, formatDuration, lastEventTsOf, taskEta, useNowTick } from '../lib/taskTiming';
 import RahoDecisionBar from './RahoDecisionBar';
 import { StatusColumnBoard } from './StatusColumnBoard';
 
@@ -271,6 +272,27 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
   // 判斷最近調用是否仍在進行中（無對應結果）
   const toolPending = lastToolCall && (!lastToolResult || lastToolResult.ts < lastToolCall.ts);
 
+  // ── 耗時／ETA 估算（執行中每秒刷新）──
+  const nowMs = useNowTick(running);
+  const eta = useMemo(() => taskEta(task, nowMs), [task, nowMs]);
+  const etaTip = eta
+    ? eta.method === 'insufficient'
+      ? '各階段樣本累積中，跑過第一個階段後即給出剩餘時間估算'
+      : `估算依據：${
+          eta.method === 'items'
+            ? '看板工作項完成率＋階段均值'
+            : eta.method === 'loops+phase'
+              ? '反思閉環剩餘迭代 × 階段均值'
+              : '已完成階段的歷史均值'
+        }${
+          Object.keys(eta.phaseAvg).length
+            ? `（${Object.entries(eta.phaseAvg)
+                .map(([k, v]) => `${k} ≈ ${Math.round(v)}s`)
+                .join('、')}）`
+            : ''
+        }`
+    : '';
+
   return (
     <div className="evo-task-card mb-2 w-full min-w-[240px] p-3 text-xs">
       {/* ── 標題列 ── */}
@@ -349,6 +371,38 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
           );
         })}
       </div>
+
+      {/* ── 耗時／預計剩餘 ── */}
+      {eta && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px]" title={etaTip}>
+          <span className="text-gray-400">
+            已耗 <span className="font-medium text-gray-200">{formatDuration(eta.elapsedSec)}</span>
+          </span>
+          {running ? (
+            eta.remainingSec != null ? (
+              <>
+                <span className="text-gray-600">|</span>
+                <span className="text-gray-400">
+                  預計剩餘{' '}
+                  <span className="font-medium text-blue-300">≈ {formatDuration(eta.remainingSec)}</span>
+                </span>
+                {eta.totalSec != null && (
+                  <span className="text-gray-500">（全程 ≈ {formatDuration(eta.totalSec)}）</span>
+                )}
+                {eta.curPhaseSec != null && (
+                  <span className="text-gray-500">本階段已 {formatDuration(eta.curPhaseSec)}</span>
+                )}
+              </>
+            ) : (
+              <span className="text-gray-500">剩餘時間估算中…</span>
+            )
+          ) : (
+            <span className="text-gray-500">
+              {task.status === 'completed' ? '完成於' : '結束於'} {eventClock(lastEventTsOf(task))}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ── 錯誤訊息 ── */}
       {failed && task.error && (
@@ -487,7 +541,7 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
                       ? String(e.data.tool ?? '')
                       : String(e.data.title ?? e.data.phase ?? '')}
                   </span>
-                  <span className="shrink-0 text-gray-600">{elapsed(e.ts)}</span>
+                  <span className="shrink-0 text-gray-600" title={eventClock(e.ts)}>{elapsed(e.ts)}</span>
                 </div>
               ))}
             </div>
