@@ -98,6 +98,7 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `roles.py` · `role_catalog.py` · `role_memory.py` | 85 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
 | `raho/` | RAHO L5–L1 |
 | `budget.py` · `rate_card.py` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
+| `seat_io.py` | 席位投遞 I/O 軌跡（prompt／system／response 全文＋來源分解）；前端席位監察頁資料源，契約見 [api/reference.md](api/reference.md) |
 | `decomposer.py` · `react_loop.py` · `tools.py` | 拆解、ReAct、工具 |
 | `quant_*.py` · `docker_tools.py` · `archify_compile.py` | 量化、Docker、策略圖 |
 

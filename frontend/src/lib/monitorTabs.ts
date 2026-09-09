@@ -257,18 +257,18 @@ export function isConsoleTab(tab: MonitorTab | string | null | undefined): boole
 }
 
 export function resolveActivity(
-  view: 'chat' | 'monitor' | 'traces',
+  view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho',
   monitorTab: MonitorTab,
 ): ActivityKey {
   if (view === 'chat') return 'chat';
-  if (view === 'traces') return 'console';
+  if (view === 'traces' || view === 'task' || view === 'raho') return 'console';
   if (monitorTab === 'lab') return 'lab';
   if (isMinecraftTab(monitorTab)) return 'minecraft';
   if (isLinkinTab(monitorTab)) return 'linkin';
   return 'console';
 }
 export function isWorkActivity(
-  view: 'chat' | 'monitor' | 'traces',
+  view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho',
   monitorTab: MonitorTab,
 ): boolean {
   return resolveActivity(view, monitorTab) === 'console';

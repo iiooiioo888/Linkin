@@ -9,6 +9,8 @@
  *   #/monitor/world | #/monitor/npcs | #/monitor/quests | #/monitor/items | #/monitor/studio
  *   #/monitor/building | #/monitor/minecraft
  *   #/traces | #/traces/{taskId}
+ *   #/task/{taskId}                 任務詳情整頁（需求分析與一切分析產物）
+ *   #/raho | #/raho/{runId|taskId}  公司運行時席位 I/O 監察整頁
  */
 import type { MonitorTab, ViewKey } from '../components/AppShell';
 import { markGrillReveal, setPendingDeskTab } from './agentUi';
@@ -21,6 +23,8 @@ export interface AppRoute {
   focusAgentId: string | null;
   focusTaskId: string | null;
   traceTaskId: string | null;
+  /** 監察頁聚焦對象：raho run_id 或 task_id（兩者可互查） */
+  rahoFocus: string | null;
   labSubTab: LabSubTab;
 }
 
@@ -35,6 +39,7 @@ export function getDefaultRoute(): AppRoute {
     focusAgentId: null,
     focusTaskId: null,
     traceTaskId: null,
+    rahoFocus: null,
     labSubTab: 'prompt',
   };
 }
@@ -65,6 +70,7 @@ export function parseAppRoute(hash: string): AppRoute {
       focusAgentId: (tab === 'agents' || tab === 'studio') && focusRaw ? focusRaw : null,
       focusTaskId: tab === 'tasks' && focusRaw ? focusRaw : null,
       traceTaskId: null,
+      rahoFocus: null,
       labSubTab,
     };
   }
@@ -75,6 +81,24 @@ export function parseAppRoute(hash: string): AppRoute {
       ...getDefaultRoute(),
       view: 'traces',
       traceTaskId,
+    };
+  }
+
+  // 任務詳情整頁：#/task/{taskId}
+  if (head === 'task') {
+    return {
+      ...getDefaultRoute(),
+      view: 'task',
+      focusTaskId: parts[1] ? decodeURIComponent(parts[1]) : null,
+    };
+  }
+
+  // 公司運行時席位 I/O 監察整頁：#/raho | #/raho/{runId|taskId}
+  if (head === 'raho') {
+    return {
+      ...getDefaultRoute(),
+      view: 'raho',
+      rahoFocus: parts[1] ? decodeURIComponent(parts[1]) : null,
     };
   }
 
@@ -107,6 +131,16 @@ export function buildAppRouteHash(route: AppRoute): string {
       : '#/traces';
   }
 
+  if (route.view === 'task') {
+    return route.focusTaskId
+      ? `#/task/${encodeURIComponent(route.focusTaskId)}`
+      : '#/chat';
+  }
+
+  if (route.view === 'raho') {
+    return route.rahoFocus ? `#/raho/${encodeURIComponent(route.rahoFocus)}` : '#/raho';
+  }
+
   return '#/chat';
 }
 
@@ -116,6 +150,7 @@ export function appRouteFromState(params: {
   focusAgentId: string | null;
   focusTaskId: string | null;
   traceTaskId: string | null;
+  rahoFocus: string | null;
   labSubTab: LabSubTab;
 }): AppRoute {
   return {
@@ -124,6 +159,7 @@ export function appRouteFromState(params: {
     focusAgentId: params.focusAgentId,
     focusTaskId: params.focusTaskId,
     traceTaskId: params.traceTaskId,
+    rahoFocus: params.rahoFocus,
     labSubTab: params.labSubTab,
   };
 }
@@ -142,6 +178,7 @@ export function routesEqual(a: AppRoute, b: AppRoute): boolean {
     a.focusAgentId === b.focusAgentId &&
     a.focusTaskId === b.focusTaskId &&
     a.traceTaskId === b.traceTaskId &&
+    a.rahoFocus === b.rahoFocus &&
     a.labSubTab === b.labSubTab
   );
 }
@@ -152,6 +189,7 @@ export function applyAppRoute(route: AppRoute): {
   focusAgentId: string | null;
   focusTaskId: string | null;
   traceTaskId: string | null;
+  rahoFocus: string | null;
   labSubTab: LabSubTab;
 } {
   return {
@@ -160,6 +198,7 @@ export function applyAppRoute(route: AppRoute): {
     focusAgentId: route.focusAgentId,
     focusTaskId: route.focusTaskId,
     traceTaskId: route.traceTaskId,
+    rahoFocus: route.rahoFocus,
     labSubTab: route.labSubTab,
   };
 }

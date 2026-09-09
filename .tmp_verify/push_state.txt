@@ -1,0 +1,81 @@
+linkin	https://github.com/iiooiioo888/Linkin.git (fetch)
+linkin	https://github.com/iiooiioo888/Linkin.git (push)
+origin	https://github.com/iiooiioo888/Evoloop.git (fetch)
+origin	https://github.com/iiooiioo888/Evoloop.git (push)
+---BRANCH--- 
+master
+---AHEAD--- 
+10b7de5 feat: Add additional event logs for task processing
+a927134 feat: Enhance decision-making process and monitoring capabilities
+934dc4d docs(角色): roles.md 生成器同步 v2.0 — 四部門學派標識與領域工具白名單
+d049531 Merge remote-tracking branch 'origin/master'
+8c2d2cf refactor: 更新專案結構與文檔，強調靈境·Linkin 的功能與角色
+b71d11e Merge remote-tracking branch 'origin/master'
+65b66bf feat(角色): 靈境16席角色 v2.0 全面迭代 — 頂層提示詞重寫對齊真實運行時（RAHO/MCP/Chroma/質量門），特化段落細化職責與紅線，seed 幂等刷新名稱/職責/委派鏈/溫度/並發/工具白名單（部門領域工具入白名單）
+8943d27 Merge branch 'master' of https://github.com/iiooiioo888/Linkin
+9353158 chore: 更新文檔與配置，增強專案結構
+bd1fc64 feat(反思閉環)：輸出長度超限改為丢回閉環重寫，不再硬截斷
+9877b8e feat: 任務耗時+ETA 估算與事件時間戳（TaskPanel/ChatWorkStream）；fix: 登入以遠端會話為準防 lg1. 偽票全域 401；fix: /chat/stream 與公司模式回填思考軌跡（執行軌跡面板有內容）
+fab9eb1 Merge remote-tracking branch 'origin/master'
+6f737c1 fix(前端)：http://IP 非安全上下文補 crypto.randomUUID polyfill（發送鍵崩潰）；neiki-gallery UMD 改掛 globalThis 修「未載入」
+6759154 fix(前端)：grill 直通(無 L4 門票)時跳過 planBattle，任務不再被 L3「缺少 APPROVED_FOR_PLANNING」硬擋
+f4f52b4 feat: 更新登入閘門與角色系統
+5d80c77 test_hub_catalog: 現行世代模型列入 LEGACY_RUNTIME_MODELS 白名單（配合 model_costs.json 2026-09 更新）
+0f14e81 Merge remote-tracking branch 'origin/master'
+8025d31 provider_pool: 舊 OpenAI 模型 ID 保留尾端供舊配置 clamp 相容（新模型在前作 fallback）
+cdbb94f feat: 增強登入閘門功能與模型成本配置
+0cb0a2e Merge remote-tracking branch 'origin/master'
+d33d0f2 feat: 更新模型成本與計費邏輯
+ecb0d77 更新 API 預設模型清單至 2026-09 現行模型（qwen3.8/3.7、kimi-k3 系、glm-5.x、GPT-5.6/6；移除已下線 kimi-k2/moonshot-v1/glm-4/gpt-4o）
+dc99786 feat: 新增身份驗證功能與前端登入界面
+34876e8 feat: 更新RAHO架構與角色整合
+a427969 Merge remote-tracking branch 'origin/master'
+b948d1c feat: 新增原子執行者與環境與記憶核心角色
+e6e44f5 feat: 整合L0環境與記憶核心功能
+376dcdf feat: 整合RAHO功能與角色標籤
+c560391 Merge remote-tracking branch 'origin/master'
+61d7681 chore: archify.mjs 加執行權限 (755)
+64890ec feat: 增強RAHO功能與角色整合
+183287c feat: 增加需求審計官角色與RAHO功能整合
+f23aca6 fix: 清除合併留下的 requirements.txt 重複依賴。
+f4d9bae Merge remote master: 保留 Archify／ECharts，納入 server_admin 與 grill-me。
+75047e6 feat: 整合 Archify CLI 以生成策略圖 HTML
+976b622 feat: server_admin AIOps + grill-me stress-test agent; replace LightningChart with pure-SVG charts
+8af5866 feat: 新增資金流三視圖 API 及前端整合
+f550690 feat: 新增量化策略預覽功能與圖表支持
+55be790 feat: 增強量化行情工具與策略管理功能
+f1091e0 feat: 更新前端界面與功能，增強任務與角色管理
+8f21b16 feat: 更新靈境與監控中心功能，增強角色管理與界面
+fe9069e feat: 增強前端功能與整合 LightningChart JS
+a3cc5cf feat: 更新控制台 API 路由管理與用量顯示
+1fd9542 feat: 增強 API 路由管理與模型池鎖定功能
+d6b6f33 feat: 更新建筑数据，新增月光庭园小桥方案
+42235f8 fix: 補建築匯入 405 測試並同步種子
+f400e65 fix: 建築 ID 路由避免匯入 schematic 被 405
+c829301 feat: 新增 Sponge schematic 編解碼與建築 3D 預覽
+44033a0 chore: 移除未使用監控元件並修正建築面板忙碌狀態
+0aaf16c feat: 靈境·Linkin 世界觀與監控中心整合
+89bf9f3 fix: Minecraft 控制查詢改走 story_studio 並注入 MCP 摘要
+672ce48 feat: 整合 Minecraft MCP 橋接與監控中心頁籤
+b5057e6 chore: remove obsolete files and directories from the project
+4789d69 feat: 靈境·Linkin 世界觀與監控中心整合
+64a058c docs: 把靈境 API 與知識庫索引接到主文件
+6842196 docs: 補上靈境架構與世界觀說明
+1b96ff9 fix: 強化靈境 LLM 降級、角色種子與建築面板一致性
+df76b8e chore: 停止追蹤 runtime 快取與稽核日誌
+e14cdd5 feat: 靈境·Linkin 世界觀與監控中心整合
+---DIRTY--- 
+ M docs/api/reference.md
+ M frontend/src/api/client.ts
+ M frontend/src/components/AppShell.tsx
+ M frontend/src/lib/appRoute.ts
+ M frontend/src/types.ts
+?? .tmp_verify/gl.txt
+?? .tmp_verify/head_ctx.txt
+?? .tmp_verify/head_orch.py
+?? .tmp_verify/opts.txt
+?? .tmp_verify/pt2/
+?? .tmp_verify/pt3/
+?? .tmp_verify/push_state.txt
+?? .tmp_verify/wt.txt
+?? .tmp_verify/wt_rm.txt

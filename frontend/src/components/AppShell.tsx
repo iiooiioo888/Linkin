@@ -22,7 +22,7 @@ import SidePanel from './SidePanel';
 import StatusBar from './StatusBar';
 import TopBar from './TopBar';
 
-export type ViewKey = 'chat' | 'monitor' | 'traces';
+export type ViewKey = 'chat' | 'monitor' | 'traces' | 'task' | 'raho';
 /** 精簡後的監控主分頁（次要功能收入 ops / lab）。 */
 export type MonitorTab =
   | 'live'
@@ -138,7 +138,9 @@ export default function AppShell({
   const lastTabByActivity = useRef<Partial<Record<ActivityKey, MonitorTab>>>({});
 
   useEffect(() => {
-    if (activeView === 'traces') {
+    // 二級整頁（軌跡／任務詳情／席位監察）不參與「上次分頁」記憶，
+    // 否則會把它們帶進來的 monitorTab 預設值寫回控制台記憶
+    if (activeView === 'traces' || activeView === 'task' || activeView === 'raho') {
       lastTabByActivity.current.console = lastTabByActivity.current.console ?? 'live';
       return;
     }

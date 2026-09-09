@@ -122,6 +122,10 @@ data: {"error": "錯誤訊息"}
 
 **status：** `pending` | `running` | `completed` | `failed` | `cancelled` | `interrupted`
 
+**參數：** `events_limit`（預設 50；`0` 或負值回傳全部事件）。回應另帶 `events_total` 與 `events_truncated`，供前端提示事件流是否被截斷。
+
+回應另含公司運行時的完整分析產物：`plan`（L4 戰役 DAG 與執行計劃）、`review`（Manager 最終審查）、`stats`（工作項統計）、`kanban`（各狀態工作項，含 `output`／`thinking`／`feedback`）、`raho`（質詢樹與待決決策）、`options.auditor_ticket`（L4 需求審計門票：五維評分、量化目標、硬約束、風險登記、審計留痕）。
+
 ### POST /tasks/{task_id}/cancel
 
 取消執行中的任務。
@@ -175,6 +179,22 @@ L3 戰術指揮官：把 L4 門票 JSON（或鎖定簡報）拆成原子作戰�
 ### POST /raho/commander/grill
 
 L3 回應 L2 `[GRILL]`（資料缺失／工具不足／邏輯矛盾／單純確認）。3 輪無解自動 `[ESCALATE]`。
+
+### GET /monitor/raho/feed
+
+席位投遞餵給：公司模式監察頁的單一資料源。每一筆＝一次真正投遞給模型的調用（含重試與工具閉環的逐輪）。
+
+**參數：** `task_id`、`run_id`、`role`、`layer`、`item_id`、`kind`、`limit`（預設 120）、`full`（預設 `false`）
+
+`kind` 取值：`decompose`（L1 Manager 拆分）、`execute`（L2 執行）、`rework`（審查退回重做）、`review`（Reviewer 審查）、`synthesize`（Synthesizer 整合）、`final_review`（Manager 終審）、`inspect`（L1 憲兵裁決）。
+
+預設回輕量投影（`system`／`prompt`／`response` 換成 `*_preview` 前 320 字＋`*_length`）；`full=true` 含正文。環形緩衝查不到時自動回退讀持久 `seat_<run_id>.jsonl`（`source: "disk"`），跨進程重啟可查。
+
+### GET /monitor/raho/seat/{io_id}
+
+單次席位投遞全文：系統提示詞、組裝後的 prompt 全文、模型回應原文，以及 `context_sources` 來源分解（上游依賴產物、角色記憶、工具白名單、戰役簡報、執行前質詢裁決、MGP／L0 注入）。
+
+> 持久軌跡與 `run_<run_id>.jsonl` 分開存放（`seat_<run_id>.jsonl`，目錄同 `EVOL_COMPANY_RUN_LOG_DIR`），避免逐次模型調用混入 `agent_monitor` 的席位事件流。
 
 ---
 
