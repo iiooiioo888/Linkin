@@ -7,6 +7,7 @@ import type { SendOptions } from './InputBar';
 import ChatWorkStream from './ChatWorkStream';
 import MessageList from './MessageList';
 import ErrorState from './ui/ErrorState';
+import RahoDecisionBar from './RahoDecisionBar';
 
 interface ChatViewProps {
   messages: ChatMessage[];
@@ -25,6 +26,10 @@ interface ChatViewProps {
   onSuggest: (text: string, company: boolean) => void;
   onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
   onBattlePick?: (messageId: string, choice: string) => void;
+  /** 有 L5 待決時關閉側欄，避免手機遮罩擋決策列 */
+  onDecisionPending?: (hasPending: boolean) => void;
+  /** 裁決後清掉訊息上的幽靈 pending */
+  onDecisionResolved?: (decisionId?: string) => void;
 }
 
 function activeTaskMessage(messages: ChatMessage[]) {
@@ -33,7 +38,8 @@ function activeTaskMessage(messages: ChatMessage[]) {
       (m) =>
         m.streaming ||
         m.taskState?.status === 'running' ||
-        m.taskState?.status === 'pending',
+        m.taskState?.status === 'pending' ||
+        (m.taskState?.raho?.pending_decisions?.length ?? 0) > 0,
     ) ?? null
   );
 }
@@ -55,6 +61,8 @@ export default function ChatView({
   onSuggest,
   onGrillAnswer,
   onBattlePick,
+  onDecisionPending,
+  onDecisionResolved,
 }: ChatViewProps) {
   const live = activeTaskMessage(messages);
   const showStream = Boolean(
@@ -105,6 +113,17 @@ export default function ChatView({
           onGrillAnswer={onGrillAnswer}
           onBattlePick={onBattlePick}
         />
+        {/* 決策列改 portal 到 body；此處僅掛載以綁定任務 pending */}
+        {live?.taskState && (
+          <RahoDecisionBar
+            pending={live.taskState.raho?.pending_decisions ?? []}
+            runId={live.taskState.raho?.run_id}
+            poll
+            variant="chat"
+            onPendingChange={onDecisionPending}
+            onResolved={onDecisionResolved}
+          />
+        )}
         <InputBar disabled={sending || grilling || waitingBattle} onSend={onSend} />
       </div>
       {showStream && live && (

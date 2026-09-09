@@ -76,6 +76,7 @@ export default function App() {
   const [rightPanelTask, setRightPanelTask] = useState<TaskProgress | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [memoryCount, setMemoryCount] = useState(0);
+  const [decisionPending, setDecisionPending] = useState(false);
 
   // ── LLM 配置 ──
   const [llmConfigured, setLlmConfigured] = useState<boolean | null>(null);
@@ -490,14 +491,29 @@ export default function App() {
         let lastProgress: TaskProgress | null = null;
 
         const applyProgress = (progress: TaskProgress) => {
-          lastProgress = progress;
-          const liveDraft = progress.answer?.trim() ?? '';
-          const roleThink = Object.values(progress.kanban ?? {})
+          // 執行中若新快照缺 raho／pending 欄位，保留上一幀待決，避免決策列被輪詢冲掉
+          const running =
+            progress.status === 'running' || progress.status === 'pending';
+          let mergedProgress = progress;
+          if (running && lastProgress?.raho) {
+            const prevPending = lastProgress.raho.pending_decisions ?? [];
+            if (!progress.raho) {
+              mergedProgress = { ...progress, raho: { ...lastProgress.raho } };
+            } else if (!Array.isArray(progress.raho.pending_decisions) && prevPending.length > 0) {
+              mergedProgress = {
+                ...progress,
+                raho: { ...progress.raho, pending_decisions: prevPending },
+              };
+            }
+          }
+          lastProgress = mergedProgress;
+          const liveDraft = mergedProgress.answer?.trim() ?? '';
+          const roleThink = Object.values(mergedProgress.kanban ?? {})
             .flat()
             .map((it) => String(it.thinking ?? '').trim())
             .filter(Boolean)
             .join('\n\n');
-          const eventThink = (progress.events ?? [])
+          const eventThink = (mergedProgress.events ?? [])
             .map((e) => String(e.data.thinking ?? '').trim())
             .filter(Boolean)
             .join('\n\n');
@@ -508,10 +524,10 @@ export default function App() {
               m.id === assistantId
                 ? {
                     ...m,
-                    taskState: progress,
+                    taskState: mergedProgress,
                     content: liveDraft || m.content,
                     thinking: roleThink || eventThink || m.thinking,
-                    streaming: progress.status === 'running' || progress.status === 'pending',
+                    streaming: running,
                   }
                 : m,
             ),
@@ -597,11 +613,43 @@ export default function App() {
                 });
               }
             });
+          } else if (msg.event === 'user_decision_needed') {
+            const data = msg.data as Record<string, unknown>;
+            if (lastProgress && data.decision_id) {
+              const incoming = {
+                decision_id: String(data.decision_id),
+                run_id: String(data.run_id || lastProgress.raho?.run_id || ''),
+                item_id: String(data.item_id || ''),
+                layer: 5,
+                layer_label: 'L5 用戶',
+                role_id: 'user',
+                role_label: 'L5 用戶',
+                question: String(data.question || ''),
+                choices: Array.isArray(data.choices) ? (data.choices as Array<{ key: string; label: string }>) : [],
+                ttl: typeof data.ttl === 'number' ? data.ttl : undefined,
+                created_at: typeof data.created_at === 'number' ? data.created_at : Date.now() / 1000,
+                remaining_sec: typeof data.remaining_sec === 'number' ? data.remaining_sec : undefined,
+                blocked: true,
+              };
+              const prev = lastProgress.raho?.pending_decisions ?? [];
+              const merged = [
+                ...prev.filter((p) => p.decision_id !== incoming.decision_id),
+                incoming,
+              ];
+              applyProgress({
+                ...lastProgress,
+                raho: {
+                  ...(lastProgress.raho ?? {}),
+                  run_id: incoming.run_id || lastProgress.raho?.run_id,
+                  pending_decisions: merged,
+                },
+              });
+            }
+            fetchTask(task_id).then(applyProgress).catch(() => {});
           } else if (
             msg.event === 'phase_change' ||
             msg.event === 'evaluation' ||
             msg.event === 'grill_raised' ||
-            msg.event === 'user_decision_needed' ||
             msg.event === 'campaign_planned' ||
             msg.event === 'inspector_verdict'
           ) {
@@ -909,6 +957,36 @@ export default function App() {
     [navigateRoute],
   );
 
+  const handleDecisionPending = useCallback((hasPending: boolean) => {
+    setDecisionPending(hasPending);
+  }, []);
+
+  const handleDecisionResolved = useCallback(
+    (decisionId?: string) => {
+      setDecisionPending(false);
+      if (!activeSession?.id) return;
+      const sid = activeSession.id;
+      updateSession(sid, (s) => ({
+        ...s,
+        messages: s.messages.map((m) => {
+          const pending = m.taskState?.raho?.pending_decisions;
+          if (!pending?.length) return m;
+          const next = decisionId
+            ? pending.filter((p) => p.decision_id !== decisionId)
+            : [];
+          return {
+            ...m,
+            taskState: {
+              ...m.taskState!,
+              raho: { ...m.taskState!.raho, pending_decisions: next },
+            },
+          };
+        }),
+      }));
+    },
+    [activeSession?.id, updateSession],
+  );
+
   // ── 状态栏信息 ──
   const statusInfo = useMemo(
     () => ({
@@ -943,6 +1021,7 @@ export default function App() {
         labSubTab={labSubTab}
         onLabSubTabChange={handleLabSubTabChange}
         statusInfo={statusInfo}
+        forceCloseSidebar={decisionPending}
       >
         {activeView === 'chat' && (
           <ChatView
@@ -962,6 +1041,8 @@ export default function App() {
             onSuggest={handleSuggest}
             onGrillAnswer={handleGrillAnswer}
             onBattlePick={handleBattlePick}
+            onDecisionPending={handleDecisionPending}
+            onDecisionResolved={handleDecisionResolved}
           />
         )}
 

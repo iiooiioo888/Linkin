@@ -1,5 +1,6 @@
 /**
  * 訊息列表：居中窄欄，空態極簡。
+ * 僅在新訊息／串流正文變化且貼近底部時自動捲動，避免決策列被進度輪詢搶點擊。
  */
 import { useEffect, useRef } from 'react';
 import type { ChatMessage } from '../types';
@@ -33,10 +34,30 @@ export default function MessageList({
   onBattlePick,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
+  const prevLen = useRef(messages.length);
+  const lastMsg = messages[messages.length - 1];
+  const scrollKey = `${messages.length}:${lastMsg?.id ?? ''}:${lastMsg?.content?.length ?? 0}:${lastMsg?.streaming ? 1 : 0}`;
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const el = scrollerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 96;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const grew = messages.length > prevLen.current;
+    prevLen.current = messages.length;
+    if (!stickToBottom.current) return;
+    if (grew || lastMsg?.streaming) {
+      bottomRef.current?.scrollIntoView({ behavior: grew ? 'smooth' : 'auto' });
+    }
+  }, [scrollKey, messages.length, lastMsg?.streaming]);
 
   if (loading) {
     return (
@@ -47,7 +68,7 @@ export default function MessageList({
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+    <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center gap-8 py-20 text-center sm:py-28">
@@ -90,3 +111,4 @@ export default function MessageList({
     </div>
   );
 }
+

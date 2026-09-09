@@ -22,6 +22,8 @@ interface TaskPanelProps {
   onResume?: (taskId: string) => void;
   /** 查看執行軌跡回調 */
   onOpenTrace?: (taskId: string) => void;
+  /** 對話流已由 ChatView portal 決策列接管時隱藏，避免重複 */
+  hideDecision?: boolean;
 }
 
 // ── 階段定義（匯出供整頁視圖复用） ──
@@ -196,7 +198,7 @@ export function elapsed(ts: number): string {
   return `${Math.floor(min / 60)} 小時前`;
 }
 
-export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpenTrace }: TaskPanelProps) {
+export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpenTrace, hideDecision = false }: TaskPanelProps) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [resuming, setResuming] = useState(false);
   const isCompany = task.resolved_path === 'company';
@@ -341,7 +343,14 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
         )}
       </div>
 
-      <RahoDecisionBar pending={task.raho?.pending_decisions ?? []} />
+      {!hideDecision && (
+        <RahoDecisionBar
+          pending={task.raho?.pending_decisions ?? []}
+          runId={task.raho?.run_id}
+          poll={running || (task.raho?.pending_decisions?.length ?? 0) > 0}
+          variant="embed"
+        />
+      )}
 
       {/* ── 階段進度條（執行中帶流光） ── */}
       <div className="mt-2.5 flex items-center gap-1">

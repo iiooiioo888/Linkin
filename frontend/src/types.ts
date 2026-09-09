@@ -412,6 +412,8 @@ export interface RahoPendingDecision {
   role_label?: string;
   question: string;
   choices: Array<{ key: string; label: string; rationale?: string }>;
+  created_at?: number;
+  ttl?: number;
   remaining_sec?: number;
   blocked?: boolean;
   resolved?: boolean;

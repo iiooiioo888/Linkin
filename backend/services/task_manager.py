@@ -111,7 +111,13 @@ class TaskRecord:
         self.created_at = time.time()
         self.raho: dict[str, Any] = {}
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, events_limit: int | None = 50) -> dict[str, Any]:
+        """任務快照。events_limit=None 或 0 表示回傳全部事件。"""
+        total_events = len(self.events)
+        if events_limit is None or events_limit <= 0:
+            visible_events = list(self.events)
+        else:
+            visible_events = self.events[-events_limit:]
         return {
             "task_id": self.task_id,
             "status": self.status,
@@ -120,7 +126,9 @@ class TaskRecord:
             "query": self.query,
             "template": self.template,
             "phase": self.phase,
-            "events": self.events[-50:],  # API 回傳最近 50 條
+            "events": visible_events,
+            "events_total": total_events,
+            "events_truncated": total_events > len(visible_events),
             "kanban": self.kanban,
             "budget": self.budget,
             "answer": self.answer,
@@ -142,6 +150,8 @@ class TaskRecord:
         """完整快照（供持久化，含全部事件）。"""
         data = self.to_dict()
         data["events"] = self.events
+        data["events_total"] = len(self.events)
+        data["events_truncated"] = False
         data["created_at"] = self.created_at
         return data
 
@@ -637,6 +647,12 @@ class TaskManager:
         self, record: TaskRecord, orchestrator: CompanyOrchestrator
     ) -> None:
         """掛載事件監聽器：收集事件並更新看板快照。"""
+        # 席位 I/O 歸屬：run_id ≠ task_id，需顯式注入任務座標與軌跡寫入器
+        orchestrator.task_id = record.task_id
+        try:
+            orchestrator.tracer = TraceLogger(record.task_id)
+        except Exception as exc:  # noqa: BLE001 - 軌跡注入失敗不阻斷執行
+            logger.warning("公司任務軌跡注入失敗（不影響執行）：%s", exc)
 
         def listener(event: CompanyEvent, data: dict[str, Any]) -> None:
             event_data = {k: v for k, v in data.items() if k != "config"}

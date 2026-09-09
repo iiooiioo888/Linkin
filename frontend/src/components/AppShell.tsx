@@ -91,6 +91,9 @@ export interface AppShellProps {
 
   /** 主内容区 */
   children: ReactNode;
+
+  /** 有 L5 決策待決時強制收起側欄（避開手機 fixed 遮罩搶點擊） */
+  forceCloseSidebar?: boolean;
 }
 
 export default function AppShell({
@@ -117,6 +120,7 @@ export default function AppShell({
   onLabSubTabChange,
   statusInfo,
   children,
+  forceCloseSidebar = false,
 }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -124,6 +128,11 @@ export default function AppShell({
   useEffect(() => {
     setSidebarOpen(true);
   }, [activeView]);
+
+  // L5 決策列出現時關閉側欄，否則手機遮罩會蓋住 portal 以外的點擊目標
+  useEffect(() => {
+    if (forceCloseSidebar) setSidebarOpen(false);
+  }, [forceCloseSidebar]);
 
   const activity = resolveActivity(activeView, monitorTab);
   const lastTabByActivity = useRef<Partial<Record<ActivityKey, MonitorTab>>>({});

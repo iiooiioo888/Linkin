@@ -9,11 +9,11 @@ import { eventBody, splitThink } from '../lib/splitThink';
 import { MonitorSection } from './ChatMonitorCards';
 import MarkdownBody from './media/MarkdownBody';
 import { StatusColumnBoard } from './StatusColumnBoard';
-import RahoDecisionBar from './RahoDecisionBar';
 import { L0BiasHint } from './L0BiasHint';
 import { jumpToGrillTree } from '../lib/rahoUi';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, ITEM_STATUS_META, roleLabel } from './TaskPanel';
 import { eventClock } from '../lib/taskTiming';
+
 
 interface ChatWorkStreamProps {
   task: TaskProgress;
@@ -72,7 +72,7 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
         )}
       </div>
 
-      <RahoDecisionBar pending={task.raho?.pending_decisions ?? []} />
+      {/* 決策阻塞點改由 ChatView 輸入列上方呈現，避免側欄 hidden／overflow 擋點擊 */}
       <L0BiasHint snapshot={task.raho?.l0} compact />
       {(task.raho?.trees?.length ?? 0) > 0 ? (
         <button type="button" className="l0-link mb-3" onClick={() => jumpToGrillTree()}>

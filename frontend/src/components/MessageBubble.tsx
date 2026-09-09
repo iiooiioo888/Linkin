@@ -90,6 +90,7 @@ export default function MessageBubble({
         <div className="w-full max-w-[min(100%,720px)]">
           <TaskPanel
             task={message.taskState}
+            hideDecision
             onOpenFull={onOpenTask}
             onCancel={(taskId) => void handleCancelTask(taskId)}
             onResume={(taskId) => void handleResumeTask(taskId)}

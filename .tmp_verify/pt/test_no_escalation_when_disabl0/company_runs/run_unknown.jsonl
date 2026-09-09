@@ -1,0 +1,2 @@
+{"ts": "2026-09-09T07:46:55.726604+00:00", "run_id": null, "source": "eventbus", "event": "work_item_start", "degraded": false, "item_id": "677e05110bae", "title": "測試任務", "assignee": "js_dev"}
+{"ts": "2026-09-09T07:47:02.536027+00:00", "run_id": null, "source": "eventbus", "event": "grill_raised", "degraded": false, "item_id": "677e05110bae", "title": "測試任務", "role": "js_dev", "phase": "preflight", "issues": [{"message": "工作項描述過短或缺失，無法確認交付物規格。", "kind": "spec", "field": "description"}]}

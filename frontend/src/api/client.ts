@@ -492,7 +492,16 @@ export async function decideRaho(decisionId: string, choice: string, note = ''):
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ decision_id: decisionId, choice, note }),
   });
-  if (!resp.ok) throw new Error(`裁決失敗（HTTP ${resp.status}）`);
+  if (!resp.ok) {
+    let detail = `裁決失敗（HTTP ${resp.status}）`;
+    try {
+      const body = await resp.json();
+      if (body?.detail) detail = String(body.detail);
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
   return resp.json();
 }
 

@@ -461,7 +461,9 @@ def raho_tree(run_id: str | None = None) -> dict[str, Any]:
 
         return {
             "tree": tree.to_dict() if tree else None,
-            "pending_decisions": [p.to_dict() for p in STORE.list_pending(run_id)],
+            "pending_decisions": [
+                p.to_dict() for p in STORE.list_pending(run_id) if p.resolution is None
+            ],
             "l0": kernel_snapshot(query=str(getattr(tree, "goal", "") or "")),
         }
     return STORE.snapshot()
@@ -1156,12 +1158,16 @@ async def create_task(req: TaskRequest):
 
 
 @app.get("/tasks/{task_id}")
-async def get_task(task_id: str):
-    """查詢任務進度：狀態、階段、事件流、看板、預算與結果。"""
+async def get_task(task_id: str, events_limit: int = 50):
+    """查詢任務進度：狀態、階段、事件流、看板、預算與結果。
+
+    events_limit：回傳最近 N 條事件（0 或負值＝全部）。
+    回應另帶 events_total 與 events_truncated 供前端提示截斷。
+    """
     record = task_manager.get_task(task_id)
     if record is None:
         raise HTTPException(status_code=404, detail="任務不存在")
-    return record.to_dict()
+    return record.to_dict(events_limit=events_limit)
 
 
 @app.post("/tasks/{task_id}/cancel")
@@ -1585,6 +1591,73 @@ async def monitor_agents_delete(role_id: str):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"ok": True, "id": role_id}
+
+
+# ==================== 公司運行時：席位 I/O 監察餵給 API ====================
+
+_SEAT_TEXT_FIELDS = ("system", "prompt", "response")
+
+
+def _seat_row_light(row: dict) -> dict:
+    """列表用輕量投影：正文換成預覽＋長度，單條全文另取。"""
+    light = {k: v for k, v in row.items() if k not in _SEAT_TEXT_FIELDS}
+    for field in _SEAT_TEXT_FIELDS:
+        text = str(row.get(field) or "")
+        light[f"{field}_preview"] = text[:320]
+        light[f"{field}_length"] = int(row.get(f"{field}_length") or len(text))
+    return light
+
+
+@app.get("/monitor/raho/feed")
+def raho_seat_feed(
+    task_id: str = "",
+    run_id: str = "",
+    role: str = "",
+    layer: int | None = None,
+    item_id: str = "",
+    kind: str = "",
+    limit: int = 120,
+    full: bool = False,
+):
+    """席位投遞餵給：公司模式監察頁的單一資料源。
+
+    每一筆 = 一次真正投遞給模型的調用（含重試與工具閉環的逐輪）。
+    預設回傳輕量投影（正文僅預覽）；full=true 或走單條端點取全文。
+    環形緩衝查不到時，自動回退到持久 seat_<run_id>.jsonl（跨重啟可查）。
+    """
+    from backend.company.seat_io import STORE
+
+    rows = STORE.list(
+        run_id=run_id,
+        task_id=task_id,
+        role=role,
+        layer=layer,
+        item_id=item_id,
+        limit=limit,
+    )
+    source = "memory"
+    if not rows and run_id:
+        rows = STORE.load_run(run_id, limit=limit)
+        source = "disk"
+    if kind:
+        rows = [r for r in rows if r.get("kind") == kind]
+    return {
+        "items": rows if full else [_seat_row_light(r) for r in rows],
+        "source": source,
+        "runs": STORE.recent_runs(limit=20),
+        "total_roles": len({r.get("role") for r in rows if r.get("role")}),
+    }
+
+
+@app.get("/monitor/raho/seat/{io_id}")
+def raho_seat_detail(io_id: str):
+    """單次席位投遞全文（系統提示詞／組裝 prompt／模型回應／來源分解）。"""
+    from backend.company.seat_io import STORE
+
+    row = STORE.get(io_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="投遞軌跡不存在")
+    return row
 
 
 # ==================== Docker 容器管理 API ====================

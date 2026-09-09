@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 import uuid
 from datetime import datetime
 from typing import Any
@@ -98,6 +99,10 @@ class CompanyOrchestrator:
         self._campaign: dict[str, Any] = {}
         self._battle_plan: dict[str, Any] = {}
         self._commander: dict[str, Any] = {}
+        # 思考過程軌跡掛勾：由 task_manager 注入 TraceLogger(task_id)，
+        # 使公司模式的逐次模型調用也進 /tasks/{id}/trace（run_id ≠ task_id）
+        self.tracer: Any = None
+        self.task_id: str = ""
 
     def request_cancel(self) -> None:
         """請求取消公司任務（執行迴圈會在下一個檢查點中止）。"""
@@ -170,6 +175,14 @@ class CompanyOrchestrator:
         """
         self._run_log = []
         self._run_id = uuid.uuid4().hex
+        # 綁定 run 上下文：decomposer／inspector 等 orchestrator 之外的席位
+        # 投遞也能落到正確的 run 上（asyncio 每個任務各持一份上下文，互不污染）
+        try:
+            from backend.company.seat_io import bind_run
+
+            bind_run(self._run_id, self.task_id)
+        except Exception:  # noqa: BLE001 - 監察綁定失敗不得阻斷執行
+            logger.debug("席位 I/O run 綁定失敗（已忽略）", exc_info=True)
         self.budget.reset_task()
         self.work_items = WorkItemManager()
         self.decomposer.work_items = self.work_items
@@ -469,7 +482,11 @@ class CompanyOrchestrator:
 
             run_id = self._run_id or ""
             tree = STORE.get_tree(run_id)
-            pending = [p.to_dict() for p in STORE.list_pending(run_id)]
+            pending = [
+                p.to_dict()
+                for p in STORE.list_pending(run_id)
+                if p.resolution is None
+            ]
             return {
                 "run_id": run_id,
                 "tree": tree.to_dict() if tree else None,
@@ -480,6 +497,34 @@ class CompanyOrchestrator:
             }
         except Exception:  # noqa: BLE001
             return {}
+
+    def _emit_user_pending(self, pending, *, title: str = "", phase: str = "") -> None:
+        """pending 寫入後立刻通知前端，讓 L5 決策列可點。"""
+        remaining = max(0.0, float(pending.ttl) - (time.time() - float(pending.created_at)))
+        self.events.emit(CompanyEvent.USER_DECISION_NEEDED, {
+            "decision_id": pending.decision_id,
+            "item_id": pending.item_id,
+            "run_id": getattr(pending, "run_id", "") or self._run_id,
+            "title": title,
+            "question": pending.question,
+            "choices": pending.choices,
+            "ttl": pending.ttl,
+            "created_at": pending.created_at,
+            "remaining_sec": round(remaining, 1),
+            "blocked": True,
+            "phase": phase,
+        })
+
+    def _allowed_tools_for(self, item) -> list[str] | None:
+        artifacts = item.artifacts if isinstance(getattr(item, "artifacts", None), dict) else {}
+        tools = artifacts.get("allowed_tools")
+        if isinstance(tools, list) and tools:
+            return [str(t) for t in tools]
+        atomic = artifacts.get("atomic_role") if isinstance(artifacts.get("atomic_role"), dict) else {}
+        nested = atomic.get("allowed_tools") if isinstance(atomic, dict) else None
+        if isinstance(nested, list) and nested:
+            return [str(t) for t in nested]
+        return None
 
     async def _maybe_resolve_mgp(
         self,
@@ -492,6 +537,7 @@ class CompanyOrchestrator:
         model: str,
         llm_opts: dict | None,
         timeout_s: float,
+        seat: dict | None = None,
     ) -> tuple[str, str]:
         """若產出含 [GRILL]，走熱馬桶圈後重試一次執行。無標記則原樣返回。"""
         try:
@@ -522,14 +568,9 @@ class CompanyOrchestrator:
             assignee=role_type.value,
             choices=extra_choices or None,
             superior="manager",
+            allowed_tools=self._allowed_tools_for(item),
+            on_user_pending=lambda p: self._emit_user_pending(p, title=item.title),
         )
-        if resolved.get("layer") == 5:
-            self.events.emit(CompanyEvent.USER_DECISION_NEEDED, {
-                "item_id": item.id,
-                "title": item.title,
-                "question": "\n".join(i.message for i in issues)[:500],
-                "resolution": resolved,
-            })
         self._apply_escalation_patch(item, resolved)
         reply = str(resolved.get("reply") or "").strip()
         self.events.emit(CompanyEvent.GRILL_RESOLVED, {
@@ -545,19 +586,25 @@ class CompanyOrchestrator:
         if not reply:
             return strip_protocol_marks(raw) or raw, prompt
         next_prompt = prompt + f"\n\n【上級對質詢的裁決】\n{reply}\n請依裁決產出交付物，不要再重複質詢。"
+        if isinstance(seat, dict):
+            seat["context_sources"] = list(seat.get("context_sources") or []) + [{
+                "kind": "grill_ruling",
+                "label": f"產後質詢裁決（上級 layer={resolved.get('layer')}）",
+                "text": reply,
+            }]
         try:
             if timeout_s > 0:
                 retried = await asyncio.wait_for(
                     self._execute_with_tool_loop(
                         next_prompt, system_prompt, model, role_type.value, item,
-                        llm_kwargs=llm_opts,
+                        llm_kwargs=llm_opts, seat=seat,
                     ),
                     timeout=timeout_s,
                 )
             else:
                 retried = await self._execute_with_tool_loop(
                     next_prompt, system_prompt, model, role_type.value, item,
-                    llm_kwargs=llm_opts,
+                    llm_kwargs=llm_opts, seat=seat,
                 )
             kind2, _ = parse_grill_output(retried)
             if kind2 == "clear":
@@ -787,6 +834,7 @@ class CompanyOrchestrator:
         item,
         max_tool_steps: int = 3,
         llm_kwargs: dict | None = None,
+        seat: dict | None = None,
     ) -> str:
         """執行 LLM 調用並處理工具調用閉環。
 
@@ -801,6 +849,7 @@ class CompanyOrchestrator:
             role_value: 角色名稱（用於工具權限）
             item: 工作項（用於事件與日誌）
             max_tool_steps: 最大工具調用步數
+            seat: 席位投遞脈絡（監察軌跡用，含 context_sources 分解）
 
         Returns:
             最終交付物文字
@@ -814,15 +863,40 @@ class CompanyOrchestrator:
             if conversation_suffix:
                 full_prompt = current_prompt + "\n\n" + "\n\n".join(conversation_suffix)
 
-            raw = await asyncio.to_thread(
-                call_llm, full_prompt, system=system, model=model, **(llm_kwargs or {})
-            )
+            _call_start = time.monotonic()
+            try:
+                raw = await asyncio.to_thread(
+                    call_llm, full_prompt, system=system, model=model, **(llm_kwargs or {})
+                )
+            except Exception as exc:  # noqa: BLE001 - 失敗投遞同樣要留痕
+                self._record_seat_io(
+                    seat, item, role_value,
+                    prompt=full_prompt, system=system, model=model,
+                    response="", step=step, llm_kwargs=llm_kwargs,
+                    duration_ms=(time.monotonic() - _call_start) * 1000.0,
+                    error=str(exc), degraded=True, final=False,
+                )
+                raise
 
-            # 解析工具調用
             tool_request = tool_registry.parse_tool_call(raw)
             if tool_request is None:
                 # 無工具調用 → 這是最終交付物
+                self._record_seat_io(
+                    seat, item, role_value,
+                    prompt=full_prompt, system=system, model=model,
+                    response=raw, step=step, llm_kwargs=llm_kwargs,
+                    duration_ms=(time.monotonic() - _call_start) * 1000.0,
+                    tool_steps=step, final=True,
+                )
                 return raw
+
+            self._record_seat_io(
+                seat, item, role_value,
+                prompt=full_prompt, system=system, model=model,
+                response=raw, step=step, llm_kwargs=llm_kwargs,
+                duration_ms=(time.monotonic() - _call_start) * 1000.0,
+                tool_steps=step, final=False,
+            )
 
             # ── 執行工具 ──
             self._log("tool_call", {
@@ -890,9 +964,122 @@ class CompanyOrchestrator:
             current_prompt + "\n\n" + "\n\n".join(conversation_suffix)
             + "\n\n（已達到最大工具調用次數，請根據目前所有資訊，直接給出最終交付物。）"
         )
-        return await asyncio.to_thread(
+        _call_start = time.monotonic()
+        final_raw = await asyncio.to_thread(
             call_llm, final_prompt, system=system, model=model, **(llm_kwargs or {})
         )
+        self._record_seat_io(
+            seat, item, role_value,
+            prompt=final_prompt, system=system, model=model, response=final_raw,
+            step=max_tool_steps + 1, llm_kwargs=llm_kwargs,
+            duration_ms=(time.monotonic() - _call_start) * 1000.0,
+            tool_steps=max_tool_steps, final=True,
+        )
+        return final_raw
+
+    def _record_seat_io(
+        self,
+        seat: dict | None,
+        item,
+        role_value: str,
+        *,
+        prompt: str,
+        system: str,
+        model: str | None,
+        response: str,
+        step: int,
+        llm_kwargs: dict | None = None,
+        duration_ms: float | None = None,
+        tool_steps: int = 0,
+        final: bool = True,
+        error: str = "",
+        degraded: bool = False,
+        cost_usd: float | None = None,
+    ) -> None:
+        """落一筆席位投遞軌跡（全文 prompt/system/response + 來源分解）。
+
+        同時寫入 seat_io 倉（監察餵給）與 tracer（/tasks/{id}/trace）；
+        任何失敗都不得影響公司主流程。
+        """
+        meta = seat or {}
+        record = {
+            "run_id": self._run_id or "",
+            "task_id": self.task_id or "",
+            "item_id": getattr(item, "id", "") or "",
+            "title": getattr(item, "title", "") or "",
+            "role": role_value,
+            "role_label": meta.get("role_label") or "",
+            "layer": meta.get("layer"),
+            "layer_label": meta.get("layer_label") or "",
+            "lane": meta.get("lane") or "",
+            "kind": meta.get("kind") or "execute",
+            "attempt": meta.get("attempt", 0),
+            "step": step,
+            "tool_steps": tool_steps,
+            "final": final,
+            "model": model or "",
+            "tier": meta.get("tier") or "",
+            "temperature": (llm_kwargs or {}).get("temperature", meta.get("temperature")),
+            "prompt": prompt,
+            "system": system,
+            "response": response,
+            "duration_ms": round(float(duration_ms), 1) if duration_ms is not None else None,
+            "cost_usd": round(float(cost_usd), 6) if cost_usd is not None else None,
+            "error": error,
+            "degraded": degraded,
+            "allowed_tools": meta.get("allowed_tools") or [],
+            "input_ref": meta.get("input_ref"),
+            "output_schema": meta.get("output_schema") or "",
+            "success_criteria": meta.get("success_criteria") or "",
+            "context_sources": meta.get("context_sources") or [],
+        }
+        try:
+            from backend.company.seat_io import record_seat_io
+
+            record_seat_io(record)
+        except Exception:  # noqa: BLE001 - 監察軌跡不得中斷執行
+            logger.debug("席位 I/O 軌跡記錄異常（已忽略）", exc_info=True)
+        try:
+            if self.tracer is not None:
+                self.tracer.log_llm_call(
+                    prompt,
+                    response,
+                    model=model,
+                    system=system,
+                    duration_ms=duration_ms,
+                    phase=str(meta.get("phase") or "execute"),
+                    role=role_value,
+                    item_id=str(record["item_id"]),
+                    iteration=int(meta.get("attempt") or 0),
+                )
+        except Exception:  # noqa: BLE001
+            logger.debug("席位 LLM 調用寫入 trace 異常（已忽略）", exc_info=True)
+
+    def _seat_meta(
+        self,
+        role_type: RoleType,
+        *,
+        kind: str,
+        phase: str,
+        role_label: str = "",
+        attempt: int = 0,
+    ) -> dict[str, Any]:
+        """非執行席位（審查／整合／終審）的投遞脈絡，無工具閉環故無來源分解。"""
+        meta: dict[str, Any] = {
+            "kind": kind,
+            "phase": phase,
+            "attempt": attempt,
+            "role_label": role_label,
+        }
+        try:
+            from backend.company.raho.protocol import layer_label, role_to_raho_layer
+
+            layer = int(role_to_raho_layer(role_type))
+            meta["layer"] = layer
+            meta["layer_label"] = layer_label(layer)
+        except Exception:  # noqa: BLE001
+            meta["layer"] = None
+        return meta
 
     async def _execute_single_item(self, goal: str, item) -> None:
         """根據指派角色執行單一工作項（含重試、超時、角色升級）。"""
@@ -913,6 +1100,39 @@ class CompanyOrchestrator:
             model = runtime["preferred_model"]
         llm_opts = llm_kwargs_for_role(runtime)
         context = self._build_context(item)
+        atomic = item.artifacts.get("atomic_role") or {}
+        # 席位投遞脈絡：記錄 prompt 由哪些部分拼成，供監察頁展開「輸入」明細
+        seat_ctx: dict[str, Any] = {
+            "kind": "execute",
+            "phase": "execute",
+            "role_label": role_def.name,
+            "tier": item.tier.value if item.tier else "",
+            "temperature": runtime.get("temperature"),
+            "allowed_tools": self._allowed_tools_for(item) or [],
+            "input_ref": atomic.get("input_ref") or item.artifacts.get("input_ref"),
+            "output_schema": str(atomic.get("output_schema") or item.artifacts.get("output_schema") or ""),
+            "success_criteria": str(
+                atomic.get("kpi") or atomic.get("success_criteria")
+                or item.artifacts.get("success_criteria") or ""
+            ),
+            "context_sources": [],
+        }
+        try:
+            from backend.company.raho.protocol import layer_label, role_to_raho_layer
+
+            _layer = int(role_to_raho_layer(role_type))
+            seat_ctx["layer"] = _layer
+            seat_ctx["layer_label"] = layer_label(_layer)
+        except Exception:  # noqa: BLE001 - 層級資訊缺失不影響執行
+            seat_ctx["layer"] = None
+        sources: list[dict[str, Any]] = seat_ctx["context_sources"]
+        sources.append({
+            "kind": "role_brief",
+            "label": f"角色職責：{role_def.name}",
+            "text": "；".join(role_def.responsibilities or []),
+        })
+        if context:
+            sources.append({"kind": "dependency", "label": "上游依賴產物（上下文匯流排）", "text": context})
         try:
             from backend.company.raho.scorecard import record_execution
 
@@ -923,7 +1143,6 @@ class CompanyOrchestrator:
         # 使用角色專用執行提示（若有）
         role_specific_prompt = self.prompt_config.role_execute_prompts.get(role_type.value, "")
 
-        atomic = item.artifacts.get("atomic_role") or {}
         if atomic.get("system_prompt") or atomic.get("input_ref"):
             from backend.services.commander import l2_task_brief
 
@@ -936,6 +1155,7 @@ class CompanyOrchestrator:
             )
             if context and "輸入指標" not in context:
                 prompt = f"{prompt}\n{context}"
+            sources.append({"kind": "task_brief", "label": "L3 原子任務簡報（l2_task_brief）", "text": prompt})
         else:
             prompt = self.prompt_config.developer_execute.format(
                 goal=goal,
@@ -944,13 +1164,21 @@ class CompanyOrchestrator:
                 description=item.description,
                 context=context,
             )
+            sources.append({
+                "kind": "template",
+                "label": "通用執行模板（developer_execute）＋任務描述",
+                "text": prompt,
+            })
             if role_specific_prompt:
                 prompt = prompt + "\n\n" + role_specific_prompt
+                sources.append({"kind": "role_prompt", "label": "角色專用執行提示", "text": role_specific_prompt})
         if self._campaign and not atomic.get("input_ref"):
             try:
                 from backend.company.raho.planner import CampaignMap
 
-                prompt = prompt + "\n\n" + CampaignMap.from_dict(self._campaign, goal).brief()
+                campaign_brief = CampaignMap.from_dict(self._campaign, goal).brief()
+                prompt = prompt + "\n\n" + campaign_brief
+                sources.append({"kind": "campaign", "label": "L4 戰役簡報（CampaignMap）", "text": campaign_brief})
             except Exception:  # noqa: BLE001
                 pass
 
@@ -963,6 +1191,7 @@ class CompanyOrchestrator:
                 )
                 if memory_context:
                     prompt = prompt + "\n\n" + memory_context
+                    sources.append({"kind": "role_memory", "label": "角色記憶注入（Chroma）", "text": memory_context})
                     self._log("role_memory_injected", {
                         "item_id": item.id, "role": role_type.value,
                     }, level=logging.DEBUG)
@@ -973,6 +1202,7 @@ class CompanyOrchestrator:
         tools_text = self._get_docker_tools_for_role(role_type, item)
         if tools_text:
             prompt = prompt + "\n\n" + tools_text
+            sources.append({"kind": "tools", "label": "工具白名單與用法", "text": tools_text})
 
         # ── 執行前憲兵檢查：走熱馬桶圈 L3→L4→L5，禁止就地吞掉上交 ──
         try:
@@ -1006,6 +1236,10 @@ class CompanyOrchestrator:
                         issues=pre_issues,
                         assignee=role_type.value,
                         superior="manager",
+                        allowed_tools=self._allowed_tools_for(item),
+                        on_user_pending=lambda p: self._emit_user_pending(
+                            p, title=item.title, phase="preflight",
+                        ),
                     )
                     self._apply_escalation_patch(item, resolved)
                     reply = str(resolved.get("reply") or "").strip()
@@ -1016,14 +1250,11 @@ class CompanyOrchestrator:
                         )
                     prompt = prompt + f"\n\n【上級對執行前質詢的裁決】\n{reply}"
                     item.description = (item.description or "") + f"\n【上級補件】{reply}"
-                    if resolved.get("layer") == 5:
-                        self.events.emit(CompanyEvent.USER_DECISION_NEEDED, {
-                            "item_id": item.id,
-                            "title": item.title,
-                            "question": "\n".join(i.message for i in pre_issues)[:500],
-                            "resolution": resolved,
-                            "phase": "preflight",
-                        })
+                    sources.append({
+                        "kind": "preflight_ruling",
+                        "label": f"執行前質詢裁決（上級 layer={resolved.get('layer')}）",
+                        "text": reply,
+                    })
                     if resolved.get("timeout"):
                         self.events.emit(CompanyEvent.RAHO_TIMEOUT, {
                             "item_id": item.id, "choice": resolved.get("choice"),
@@ -1056,6 +1287,9 @@ class CompanyOrchestrator:
             except (TypeError, ValueError):
                 pass
 
+        # 每次重試都會重算 system_prompt：先快照 user 側來源，避免跨 attempt 累積
+        base_sources = list(sources)
+
         for attempt in range(max_retries + 1):
             import time as _time
             _start_time = _time.monotonic()
@@ -1066,6 +1300,7 @@ class CompanyOrchestrator:
                     or role_def.system_prompt
                     or self.prompt_config.developer_execute_system
                 )
+                system_origin = "席位 system_prompt（角色定義／運行時覆寫）"
                 try:
                     from backend.company.raho.mgp import apply_mgp_system
                     from backend.company.raho.protocol import mgp_enabled
@@ -1075,13 +1310,16 @@ class CompanyOrchestrator:
                         from backend.services.commander import apply_commander_system
 
                         system_prompt = apply_commander_system(system_prompt)
+                        system_origin = "指揮官系統提示（apply_commander_system）"
                     if mgp_enabled():
                         if atomic.get("system_prompt"):
                             system_prompt = atomic["system_prompt"]
+                            system_origin = "L3 原子角色實例 system_prompt"
                         system_prompt = apply_mgp_system(
                             system_prompt,
                             superior=role_type == RoleType.TACTICAL_COMMANDER,
                         )
+                        system_origin += " ＋ MGP 憲法前導"
                     from backend.company.raho.l0 import inject_l0
                     from backend.company.raho.protocol import role_to_raho_layer
 
@@ -1091,23 +1329,29 @@ class CompanyOrchestrator:
                         goal,
                         task_id=item.id,
                     )
+                    system_origin += " ＋ L0 環境與記憶核心注入"
                 except Exception:  # noqa: BLE001
                     pass
+                seat_ctx["attempt"] = attempt
+                seat_ctx["context_sources"] = base_sources + [
+                    {"kind": "system", "label": f"系統提示詞：{system_origin}", "text": system_prompt}
+                ]
                 if timeout_s > 0:
                     raw = await asyncio.wait_for(
                         self._execute_with_tool_loop(
                             prompt, system_prompt, model, role_type.value, item,
-                            llm_kwargs=llm_opts,
+                            llm_kwargs=llm_opts, seat=seat_ctx,
                         ),
                         timeout=timeout_s,
                     )
                 else:
                     raw = await self._execute_with_tool_loop(
                         prompt, system_prompt, model, role_type.value, item,
-                        llm_kwargs=llm_opts,
+                        llm_kwargs=llm_opts, seat=seat_ctx,
                     )
                 raw, prompt = await self._maybe_resolve_mgp(
                     goal, item, role_type, raw, prompt, system_prompt, model, llm_opts, timeout_s,
+                    seat=seat_ctx,
                 )
                 try:
                     from backend.company.raho.atomic_executor import parse_failed_output
@@ -1329,6 +1573,10 @@ class CompanyOrchestrator:
                         issues=issues,
                         assignee=item.assignee.value if item.assignee else "",
                         superior="tactical_commander",
+                        allowed_tools=self._allowed_tools_for(item),
+                        on_user_pending=lambda p: self._emit_user_pending(
+                            p, title=item.title, phase="inspect",
+                        ),
                     )
                     item.artifacts["l1_escalation"] = result
                     reply = str(result.get("reply") or "").strip()
@@ -1407,16 +1655,33 @@ class CompanyOrchestrator:
                 artifact=artifact_text[:8000],  # 限制長度
             )
 
+            system_prompt = (
+                runtime.get("system_prompt")
+                or role_def.system_prompt
+                or self.prompt_config.reviewer_system
+            )
+            _review_start = time.monotonic()
             try:
                 raw = call_llm(
                     prompt,
-                    system=runtime.get("system_prompt") or role_def.system_prompt or self.prompt_config.reviewer_system,
+                    system=system_prompt,
                     model=model,
                     **llm_opts,
                 )
                 cost = CostTracker.estimate_cost_rough(model, "medium")
                 self.budget.record_cost(cost)
                 current.actual_cost += cost
+                self._record_seat_io(
+                    self._seat_meta(
+                        RoleType.REVIEWER, kind="review", phase="review",
+                        role_label=role_def.name, attempt=review_round,
+                    ),
+                    current, RoleType.REVIEWER.value,
+                    prompt=prompt, system=system_prompt, model=model, response=raw,
+                    step=0, llm_kwargs=llm_opts,
+                    duration_ms=(time.monotonic() - _review_start) * 1000.0,
+                    cost_usd=cost, final=True,
+                )
 
                 result = parse_json_response(raw)
 
@@ -1506,20 +1771,34 @@ class CompanyOrchestrator:
 
 請直接給出修改後的交付物："""
 
+        rework_system = (
+            runtime.get("system_prompt")
+            or role_def.system_prompt
+            or self.prompt_config.developer_execute_system
+        )
+        rework_seat = self._seat_meta(
+            role_type, kind="rework", phase="rework", role_label=role_def.name
+        )
+        rework_seat["allowed_tools"] = self._allowed_tools_for(item) or []
+        rework_seat["context_sources"] = [
+            {"kind": "review_feedback", "label": "審查退回意見（重做依據）", "text": feedback},
+            {"kind": "dependency", "label": "上游依賴產物（上下文匯流排）", "text": context},
+        ]
+
         # ── 重試迴圈 ──
         retry_cfg = self.config.retry_config
         last_error = None
 
         for attempt in range(retry_cfg.max_retries + 1):
+            rework_seat["attempt"] = attempt
+            _rework_start = time.monotonic()
             try:
                 if retry_cfg.deadline_seconds > 0:
                     raw = await asyncio.wait_for(
                         asyncio.to_thread(
                             call_llm,
                             prompt,
-                            system=runtime.get("system_prompt")
-                            or role_def.system_prompt
-                            or self.prompt_config.developer_execute_system,
+                            system=rework_system,
                             model=model,
                             **llm_opts,
                         ),
@@ -1528,15 +1807,20 @@ class CompanyOrchestrator:
                 else:
                     raw = call_llm(
                         prompt,
-                        system=runtime.get("system_prompt")
-                        or role_def.system_prompt
-                        or self.prompt_config.developer_execute_system,
+                        system=rework_system,
                         model=model,
                         **llm_opts,
                     )
                 cost = CostTracker.estimate_cost_rough(model, "high")
                 self.budget.record_cost(cost)
                 item.actual_cost += cost
+                self._record_seat_io(
+                    rework_seat, item, role_type.value,
+                    prompt=prompt, system=rework_system, model=model, response=raw,
+                    step=0, llm_kwargs=llm_opts,
+                    duration_ms=(time.monotonic() - _rework_start) * 1000.0,
+                    cost_usd=cost, final=True,
+                )
 
                 thinking, visible = split_thinking(raw)
                 item.artifacts["output"] = visible or raw
@@ -1588,15 +1872,33 @@ class CompanyOrchestrator:
             review_rounds=self._count_review_rounds(),
         )
 
+        synth_system = self.prompt_config.review_synth_merge_system
+        merge_seat = self._seat_meta(
+            RoleType.SYNTHESIZER, kind="synthesize", phase="synthesize",
+            role_label="Reviewer＋Synthesizer 合併",
+        )
+        merge_seat["context_sources"] = [
+            {
+                "kind": "artifacts",
+                "label": f"全數交付物（{stats['done']}/{stats['total']} 完成）",
+                "text": artifacts_text,
+            }
+        ]
+        _merge_start = time.monotonic()
         try:
             raw = call_llm(
                 prompt,
-                system=self.prompt_config.review_synth_merge_system,
+                system=synth_system,
                 model=model,
                 **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "high")
             self.budget.record_cost(cost)
+            self._record_seat_io(merge_seat, None, RoleType.SYNTHESIZER.value,
+                                 prompt=prompt, system=synth_system, model=model, response=raw,
+                                 step=0, llm_kwargs=llm_opts,
+                                 duration_ms=(time.monotonic() - _merge_start) * 1000.0,
+                                 cost_usd=cost, final=True)
 
             result = parse_json_response(raw)
             final_output = str(result.get("final_output") or raw)
@@ -1637,17 +1939,38 @@ class CompanyOrchestrator:
             review_rounds=self._count_review_rounds(),
         )
 
+        synth_system = (
+            runtime.get("system_prompt")
+            or role_def.system_prompt
+            or self.prompt_config.synthesizer_system
+        )
+        synth_seat = self._seat_meta(
+            RoleType.SYNTHESIZER, kind="synthesize", phase="synthesize", role_label=role_def.name
+        )
+        synth_seat["context_sources"] = [
+            {
+                "kind": "artifacts",
+                "label": f"全數交付物（{stats['done']}/{stats['total']} 完成）",
+                "text": artifacts_text,
+            }
+        ]
+        _synth_start = time.monotonic()
         try:
             raw = call_llm(
                 prompt,
-                system=runtime.get("system_prompt")
-                or role_def.system_prompt
-                or self.prompt_config.synthesizer_system,
+                system=synth_system,
                 model=model,
                 **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "high")
             self.budget.record_cost(cost)
+            self._record_seat_io(
+                synth_seat, None, RoleType.SYNTHESIZER.value,
+                prompt=prompt, system=synth_system, model=model, response=raw,
+                step=0, llm_kwargs=llm_opts,
+                duration_ms=(time.monotonic() - _synth_start) * 1000.0,
+                cost_usd=cost, final=True,
+            )
 
             self._log("synthesize_done", {"cost": round(cost, 4)})
             return raw
@@ -1677,15 +2000,37 @@ class CompanyOrchestrator:
             total_cost=round(self.budget.task_spent, 4),
         )
 
+        manager_system = self.prompt_config.manager_decompose_system
+        final_seat = self._seat_meta(
+            RoleType.MANAGER, kind="final_review", phase="final_review",
+            role_label=getattr(self.config, "name", "") or "Manager",
+        )
+        final_seat["context_sources"] = [
+            {"kind": "deliverable", "label": "待終審的整合交付物", "text": final_output[:8000]},
+            {
+                "kind": "stats",
+                "label": f"工作項 {stats['total']} / 審查輪數 {self._count_review_rounds()}"
+                f" / 已花費 ${self.budget.task_spent:.4f}",
+                "text": "",
+            },
+        ]
+        _final_start = time.monotonic()
         try:
             raw = call_llm(
                 prompt,
-                system=self.prompt_config.manager_decompose_system,
+                system=manager_system,
                 model=model,
                 **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "medium")
             self.budget.record_cost(cost)
+            self._record_seat_io(
+                final_seat, None, RoleType.MANAGER.value,
+                prompt=prompt, system=manager_system, model=model, response=raw,
+                step=0, llm_kwargs=llm_opts,
+                duration_ms=(time.monotonic() - _final_start) * 1000.0,
+                cost_usd=cost, final=True,
+            )
 
             result = parse_json_response(raw)
             self._log("final_review_done", result)
