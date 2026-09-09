@@ -71,6 +71,9 @@ logger = logging.getLogger(__name__)
 MAX_TASKS = 100
 MAX_EVENTS_PER_TASK = 200
 
+# 取消寬限期（秒）：協作式取消（檢查點）失效後強制中斷 asyncio 任務
+CANCEL_GRACE_SECONDS = 45
+
 # Redis 持久化參數
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 TASK_KEY_PREFIX = "evoloop:task:"
@@ -216,6 +219,8 @@ class TaskManager:
         self._redis_failed = False
         # 執行中的公司 orchestrator 引用（task_id → orchestrator），供取消使用
         self._orchestrators: dict[str, CompanyOrchestrator] = {}
+        # 執行中的 asyncio.Task 引用（task_id → Task）：取消時寬限期後強制中斷
+        self._running_tasks: dict[str, asyncio.Task] = {}
 
     # ── Redis 持久化 ──
 
@@ -262,10 +267,12 @@ class TaskManager:
             if not raw:
                 return None
             record = TaskRecord.from_snapshot(json.loads(raw))
-            # 服務重啟後仍在運行的任務不可能繼續，標記為失敗
+            # 服務重啟後仍在運行的任務不可能繼續：公司路徑保留檢查點供續跑
             if record.status in ("pending", "running"):
-                record.status = "failed"
+                record.status = "interrupted"
                 record.error = record.error or "後端服務重啟，任務中斷"
+                if record.resolved_path == "company":
+                    record.resumable = load_checkpoint(task_id) is not None
                 self._persist(record)
             return record
         except Exception as exc:  # noqa: BLE001
@@ -294,8 +301,10 @@ class TaskManager:
                     continue
                 record = TaskRecord.from_snapshot(json.loads(raw))
                 if record.status in ("pending", "running"):
-                    record.status = "failed"
+                    record.status = "interrupted"
                     record.error = record.error or "後端服務重啟，任務中斷"
+                    if record.resolved_path == "company":
+                        record.resumable = load_checkpoint(record.task_id) is not None
                     self._persist(record)
                 self.tasks.setdefault(record.task_id, record)
                 loaded += 1
@@ -348,6 +357,8 @@ class TaskManager:
             return False, "任務已完成，無需恢復"
         if record.resolved_path != "company":
             return False, "僅公司運行時路徑的任務支持斷點續跑"
+        if not record.resumable:
+            return False, "此任務沒有可用檢查點，無法恢復"
 
         # 檢查是否有檢查點
         checkpoint = load_checkpoint(task_id)
@@ -379,13 +390,17 @@ class TaskManager:
 
     def start_task(self, record: TaskRecord) -> None:
         """以背景任務方式啟動（統一管線）。"""
-        asyncio.create_task(self._run_unified_task(record))
+        task = asyncio.create_task(self._run_unified_task(record))
+        self._running_tasks[record.task_id] = task
 
     def cancel_task(self, task_id: str) -> tuple[bool, str]:
         """請求取消任務。
 
-        設置取消標誌，執行迴圈會在下一個檢查點中止。
-        已完成/已失敗的任務無法取消。
+        設置取消標誌，執行迴圈會在下一個檢查點中止；公司路徑同時把
+        未完成工作項標記為 CANCELLED 終態。若寬限期（CANCEL_GRACE_SECONDS）
+        內執行迴圈仍未結束（例如卡在長時間 LLM 呼叫），強制中斷 asyncio
+        任務，避免「取消中…」永久卡住。
+        已完成/已失敗/已取消的任務無法取消。
 
         Returns:
             (success, message)
@@ -393,17 +408,37 @@ class TaskManager:
         record = self.get_task(task_id)
         if record is None:
             return False, "任務不存在"
-        if record.status in ("completed", "failed", "cancelled"):
+        if record.status in ("completed", "failed", "cancelled", "interrupted"):
             return False, f"任務已結束（{record.status}），無法取消"
         record.cancel_requested = True
         self._add_event(record, "cancel_requested", {})
         self._persist(record)
-        # 公司運行時：傳遞取消請求到 orchestrator
+        # 公司運行時：傳遞取消請求到 orchestrator（會同時終結未完成工作項）
         orchestrator = self._orchestrators.get(task_id)
         if orchestrator is not None:
             orchestrator.request_cancel()
+        # 寬限期後強制中斷（協作式取消失敗時的保險絲）
+        running = self._running_tasks.get(task_id)
+        if running is not None and not running.done():
+            asyncio.get_running_loop().call_later(
+                CANCEL_GRACE_SECONDS, self._force_cancel_if_still_running, task_id,
+            )
         logger.info("任務 %s 已請求取消", task_id)
         return True, "已請求取消，任務將在下一個檢查點中止"
+
+    def _force_cancel_if_still_running(self, task_id: str) -> None:
+        """寬限期保險絲：任務仍在跑就強制 cancel 其 asyncio Task。
+
+        _run_unified_task 的 CancelledError 分支會把狀態收尾為 cancelled。
+        """
+        record = self.tasks.get(task_id)
+        running = self._running_tasks.get(task_id)
+        if record is None or running is None or running.done():
+            return
+        if not record.cancel_requested or record.status not in ("running", "pending"):
+            return
+        logger.warning("任務 %s 取消寬限期（%ds）已過，強制中斷", task_id, CANCEL_GRACE_SECONDS)
+        running.cancel()
 
     def _check_cancelled(self, record: TaskRecord) -> bool:
         """檢查任務是否已被請求取消，若是則標記為 cancelled。"""
@@ -526,12 +561,24 @@ class TaskManager:
         self._add_event(record, "path_resolved", {"path": path, "strategy": record.strategy})
         logger.info("任務 %s 解析執行路徑：%s（策略：%s）", record.task_id, path, record.strategy)
 
-        if path == "opc":
-            await self._run_opc_task(record)
-        elif path == "company":
-            await self._run_company_task(record)
-        else:
-            await self._run_simple_task(record)
+        try:
+            if path == "opc":
+                await self._run_opc_task(record)
+            elif path == "company":
+                await self._run_company_task(record)
+            else:
+                await self._run_simple_task(record)
+        except asyncio.CancelledError:
+            # 強制中斷（取消寬限期保險絲）：收尾為 cancelled，不讓任務懸在 running
+            if record.status in ("running", "pending"):
+                record.status = "cancelled"
+                record.error = record.error or "任務已被使用者取消（強制中斷）"
+                record.resumable = record.resolved_path == "company"
+                self._set_phase(record, "cancelled")
+                self._finish(record)
+            raise
+        finally:
+            self._running_tasks.pop(record.task_id, None)
 
     # ── 簡單任務執行（單次生成 + 反思迴圈） ──
 
@@ -602,9 +649,10 @@ class TaskManager:
             record.answer = state.get("current_answer", "")
             record.score = state.get("score")
             record.iteration = state.get("iteration", 0)
-            record.status = "completed"
-            tracer.log_phase_change("done")
-            self._set_phase(record, "done")
+            if record.status != "cancelled" and not record.cancel_requested:
+                record.status = "completed"
+                tracer.log_phase_change("done")
+                self._set_phase(record, "done")
         except Exception as exc:  # noqa: BLE001
             logger.error("簡單任務 %s 執行失敗：%s", record.task_id, exc)
             record.status = "failed"
@@ -765,6 +813,9 @@ class TaskManager:
         record.status = "running"
         record.phase = "resuming"
         self._persist(record)
+        resume_task_handle = asyncio.current_task()
+        if resume_task_handle is not None:
+            self._running_tasks[record.task_id] = resume_task_handle
         tracer = TraceLogger(record.task_id)
         tracer.log_phase_change("resume", data={"checkpoint_phase": checkpoint.get("phase", "")})
 
@@ -779,25 +830,38 @@ class TaskManager:
 
         try:
             result = await orchestrator.execute(record.query, ticket=_task_ticket(record))
+        except asyncio.CancelledError:
+            if record.status in ("running", "pending"):
+                record.status = "cancelled"
+                record.error = record.error or "任務已被使用者取消（強制中斷）"
+                record.resumable = True
+                self._set_phase(record, "cancelled")
+                self._finish(record)
+            raise
         except Exception as exc:  # noqa: BLE001
             logger.error("公司任務 %s 恢復執行失敗：%s", record.task_id, exc)
             record.status = "failed"
             record.error = str(exc)
             tracer.log_error(str(exc), phase="resume", recoverable=False)
+            # 檢查點仍在：允許再次續跑
+            record.resumable = load_checkpoint(record.task_id) is not None
             self._orchestrators.pop(record.task_id, None)
             self._finish(record)
             return
         finally:
             self._orchestrators.pop(record.task_id, None)
+            self._running_tasks.pop(record.task_id, None)
 
         if not result.get("success"):
             error_msg = result.get("error") or result.get("final_output") or "公司運行時恢復執行失敗"
             if record.cancel_requested or "取消" in error_msg:
                 record.status = "cancelled"
                 record.error = "任務已被使用者取消"
+                self._save_company_checkpoint(record, orchestrator, record.phase)
             else:
                 record.status = "failed"
                 record.error = error_msg
+                record.resumable = load_checkpoint(record.task_id) is not None
             self._set_phase(record, "cancelled" if record.status == "cancelled" else "failed")
             self._finish(record)
             return
@@ -823,10 +887,11 @@ class TaskManager:
         record.answer = state.get("current_answer", "")
         record.score = state.get("score")
         record.iteration = state.get("iteration", 0)
-        record.status = "completed"
-        record.resumable = False
-        delete_checkpoint(record.task_id)  # 完成後清理檢查點
-        self._set_phase(record, "done")
+        if record.status != "cancelled" and not record.cancel_requested:
+            record.status = "completed"
+            record.resumable = False
+            delete_checkpoint(record.task_id)  # 完成後清理檢查點
+            self._set_phase(record, "done")
         self._finish(record)
 
     async def _run_company_task(self, record: TaskRecord) -> None:
@@ -862,6 +927,10 @@ class TaskManager:
 
         try:
             result = await orchestrator.execute(company_query, ticket=_task_ticket(record))
+        except asyncio.CancelledError:
+            # 強制中斷：保存檢查點供斷點續跑，狀態收尾交給 _run_unified_task
+            self._save_company_checkpoint(record, orchestrator, record.phase)
+            raise
         except Exception as exc:  # noqa: BLE001
             logger.error("公司任務 %s 執行失敗：%s", record.task_id, exc)
             record.status = "failed"
@@ -883,6 +952,8 @@ class TaskManager:
             if record.cancel_requested or "取消" in error_msg:
                 record.status = "cancelled"
                 record.error = "任務已被使用者取消"
+                # 保留檢查點：取消的公司任務可斷點續跑
+                self._save_company_checkpoint(record, orchestrator, record.phase)
             else:
                 record.status = "failed"
                 record.error = error_msg
@@ -920,8 +991,9 @@ class TaskManager:
         record.answer = state.get("current_answer", "")
         record.score = state.get("score")
         record.iteration = state.get("iteration", 0)
-        record.status = "completed"
-        self._set_phase(record, "done")
+        if record.status != "cancelled" and not record.cancel_requested:
+            record.status = "completed"
+            self._set_phase(record, "done")
         self._finish(record)
 
     # ── OPC 6 級閉環執行 ──
@@ -1070,7 +1142,8 @@ class TaskManager:
             record.answer = state.get("current_answer", "")
             record.score = state.get("score")
             record.iteration = state.get("iteration", 0)
-            record.status = "completed"
+            if record.status != "cancelled" and not record.cancel_requested:
+                record.status = "completed"
 
         except Exception as exc:  # noqa: BLE001
             logger.error("OPC 任務 %s 執行失敗：%s", record.task_id, exc)
@@ -1078,7 +1151,10 @@ class TaskManager:
             record.error = str(exc)
             tracer.log_error(str(exc), phase=record.phase, recoverable=False)
 
-        self._set_phase(record, "done")
+        if record.status == "cancelled":
+            self._set_phase(record, "cancelled")
+        else:
+            self._set_phase(record, "done")
         self._finish(record)
 
 

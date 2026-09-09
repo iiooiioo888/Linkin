@@ -158,6 +158,7 @@ export const ITEM_STATUS_META: Record<string, { label: string; cls: string; bar:
   rework: { label: '修改中', cls: 'bg-orange-500/15 text-orange-300', bar: 'bg-orange-400' },
   done: { label: '已完成', cls: 'bg-green-500/15 text-green-300', bar: 'bg-green-400' },
   blocked: { label: '阻塞', cls: 'bg-red-500/15 text-red-300', bar: 'bg-red-400' },
+  cancelled: { label: '已取消', cls: 'bg-gray-600/40 text-gray-400 line-through', bar: 'bg-gray-500' },
 };
 
 export const EVENT_LABELS: Record<string, string> = {
@@ -204,9 +205,10 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
   const isCompany = task.resolved_path === 'company';
   const isOPC = task.resolved_path === 'opc';
   const isCancelled = task.status === 'cancelled';
+  const isInterrupted = task.status === 'interrupted';
   const phases = isOPC ? OPC_PHASES : isCompany ? COMPANY_PHASES : STANDARD_PHASES;
   const running = task.status === 'running' || task.status === 'pending';
-  const failed = task.status === 'failed' || isCancelled;
+  const failed = task.status === 'failed' || isCancelled || isInterrupted;
   const currentIdx = phaseIndex(phases, task.phase);
   const phasePassed = (i: number) => (failed ? i < currentIdx : i < currentIdx || (!running && i <= currentIdx));
 
@@ -302,7 +304,7 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
         {running && (
           <span className="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
         )}
-        {failed && <span>{isCancelled ? '🚫' : '❌'}</span>}
+        {failed && <span>{isCancelled ? '🚫' : isInterrupted ? '🔌' : '❌'}</span>}
         {task.status === 'completed' && <span>✅</span>}
         <span className="font-medium text-gray-100">
           {isOPC ? '🏭 OPC 診斷' : isCompany ? '🏢 公司任務' : '⚙️ 反思任務'}
@@ -312,9 +314,11 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
             ? `${phases[currentIdx]?.label ?? task.phase}${totalCount > 0 ? ` · ${doneCount}/${totalCount} 工作項` : ''}`
             : isCancelled
               ? '已取消'
-              : failed
-                ? '執行失敗'
-                : `評分 ${task.score != null ? Math.round(task.score * 100) / 100 : '-'} · 迭代 ${task.iteration}`}
+              : isInterrupted
+                ? '已中斷（服務重啟）'
+                : failed
+                  ? '執行失敗'
+                  : `評分 ${task.score != null ? Math.round(task.score * 100) / 100 : '-'} · 迭代 ${task.iteration}`}
         </span>
         {/* 取消按鈕：執行中且未請求取消時顯示 */}
         {running && !task.cancel_requested && onCancel && (

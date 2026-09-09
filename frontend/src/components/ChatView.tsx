@@ -76,7 +76,9 @@ function statusMeta(status: string, pending: boolean): { label: string; cls: str
   if (pending) return { label: '等待裁決', cls: 'is-run' };
   if (status === 'running' || status === 'pending') return { label: '執行中', cls: 'is-run' };
   if (status === 'completed') return { label: '已完成', cls: 'is-ok' };
-  if (status === 'failed' || status === 'cancelled') return { label: status === 'failed' ? '失敗' : '已暫停', cls: 'is-err' };
+  if (status === 'cancelled') return { label: '已取消', cls: 'is-idle' };
+  if (status === 'interrupted') return { label: '已中斷', cls: 'is-err' };
+  if (status === 'failed') return { label: '失敗', cls: 'is-err' };
   return { label: '待命', cls: 'is-idle' };
 }
 

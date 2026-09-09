@@ -5,7 +5,7 @@ import type { KanbanItem, RahoPendingDecision, TaskEvent, TaskProgress } from '.
 import { eventBody } from './splitThink';
 
 export const WS_KANBAN_COLUMNS = [
-  { key: 'queue', label: '隊列', statuses: ['planning', 'ready', 'blocked'] },
+  { key: 'queue', label: '隊列', statuses: ['planning', 'ready', 'blocked', 'cancelled'] },
   { key: 'executing', label: '執行中', statuses: ['executing', 'rework'] },
   { key: 'review', label: '審查中', statuses: ['in_review', 'done'] },
 ] as const;

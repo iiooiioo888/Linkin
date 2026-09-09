@@ -21,7 +21,7 @@ export default function OverviewSection({ task, eta }: { task: TaskProgress; eta
       ? COMPANY_PHASES
       : STANDARD_PHASES;
   const running = task.status === 'running' || task.status === 'pending';
-  const failed = task.status === 'failed' || task.status === 'cancelled';
+  const failed = task.status === 'failed' || task.status === 'cancelled' || task.status === 'interrupted';
   const idx = phaseIndex(phases, task.phase);
   const items = allKanbanItems(task);
   const doneIds = new Set((task.kanban?.done ?? []).map((i) => i.id));

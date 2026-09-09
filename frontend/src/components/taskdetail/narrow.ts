@@ -51,6 +51,7 @@ export const KANBAN_STATUS_ORDER = [
   'rework',
   'done',
   'blocked',
+  'cancelled',
 ] as const;
 
 export function planOf(task: TaskProgress | null): PlanPayload | null {

@@ -35,18 +35,26 @@ class WorkItemStatus(str, Enum):
     REWORK = "rework"            # 需修改：審查不通過，退回重做
     DONE = "done"                # 已完成
     BLOCKED = "blocked"          # 阻塞：等待外部依賴或決策
+    CANCELLED = "cancelled"      # 已取消：使用者中止任務時未完成的項目（終態）
 
 
 # 合法的狀態轉換
 VALID_TRANSITIONS: dict[WorkItemStatus, set[WorkItemStatus]] = {
-    WorkItemStatus.PLANNING:   {WorkItemStatus.READY, WorkItemStatus.BLOCKED},
-    WorkItemStatus.READY:      {WorkItemStatus.EXECUTING, WorkItemStatus.BLOCKED},
-    WorkItemStatus.EXECUTING:  {WorkItemStatus.IN_REVIEW, WorkItemStatus.BLOCKED},
-    WorkItemStatus.IN_REVIEW:  {WorkItemStatus.DONE, WorkItemStatus.REWORK, WorkItemStatus.BLOCKED},
-    WorkItemStatus.REWORK:     {WorkItemStatus.EXECUTING, WorkItemStatus.BLOCKED},
+    WorkItemStatus.PLANNING:   {WorkItemStatus.READY, WorkItemStatus.BLOCKED,
+                                WorkItemStatus.CANCELLED},
+    WorkItemStatus.READY:      {WorkItemStatus.EXECUTING, WorkItemStatus.BLOCKED,
+                                WorkItemStatus.CANCELLED},
+    WorkItemStatus.EXECUTING:  {WorkItemStatus.IN_REVIEW, WorkItemStatus.BLOCKED,
+                                WorkItemStatus.CANCELLED},
+    WorkItemStatus.IN_REVIEW:  {WorkItemStatus.DONE, WorkItemStatus.REWORK,
+                                WorkItemStatus.BLOCKED, WorkItemStatus.CANCELLED},
+    WorkItemStatus.REWORK:     {WorkItemStatus.EXECUTING, WorkItemStatus.BLOCKED,
+                                WorkItemStatus.CANCELLED},
     WorkItemStatus.DONE:       set(),  # 終態
     WorkItemStatus.BLOCKED:    {WorkItemStatus.READY, WorkItemStatus.EXECUTING,
-                                WorkItemStatus.IN_REVIEW, WorkItemStatus.REWORK},
+                                WorkItemStatus.IN_REVIEW, WorkItemStatus.REWORK,
+                                WorkItemStatus.CANCELLED},
+    WorkItemStatus.CANCELLED:  set(),  # 終態
 }
 
 

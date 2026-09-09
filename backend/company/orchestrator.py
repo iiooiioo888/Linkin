@@ -56,6 +56,21 @@ from backend.services.docker_manager import DockerManager, get_docker_manager
 logger = logging.getLogger(__name__)
 
 
+async def _llm_thread(fn, *args, **kwargs):
+    """在 worker 執行緒跑同步 LLM 呼叫（不凍結 event loop）。
+
+    StopIteration 不得進入 Future（asyncio 會炸掉 callback 並讓等待方
+    永久懸掛）：mock side_effect 耗盡等場景統一轉成 RuntimeError。
+    """
+    def _run():
+        try:
+            return fn(*args, **kwargs)
+        except StopIteration as exc:  # noqa: PERF203
+            raise RuntimeError(f"LLM 呼叫序列耗盡（StopIteration）：{exc}") from exc
+
+    return await asyncio.to_thread(_run)
+
+
 class CompanyOrchestrator:
     """公司協調器：管理多角色分工執行流程。
 
@@ -105,8 +120,17 @@ class CompanyOrchestrator:
         self.task_id: str = ""
 
     def request_cancel(self) -> None:
-        """請求取消公司任務（執行迴圈會在下一個檢查點中止）。"""
+        """請求取消公司任務（執行迴圈會在下一個檢查點中止）。
+
+        同時把尚未完成的工作項標記為 CANCELLED 終態：在飛協程的結果
+        會被丟棄（其後續 transition 因終態而失敗，安全無害），看板與
+        任務頁不會再出現「任務已取消但工作項還在執行中」的錯位狀態。
+        """
         self.cancel_requested = True
+        try:
+            self.work_items.cancel_all_pending("任務已被使用者取消")
+        except Exception:  # noqa: BLE001
+            logger.warning("取消時標記工作項失敗（不影響取消）", exc_info=True)
         logger.info("公司任務已請求取消（run_id=%s）", self._run_id)
 
     def _check_cancel(self) -> bool:
@@ -247,7 +271,7 @@ class CompanyOrchestrator:
             from backend.company.raho.store import STORE as _RAHO_STORE
 
             if raho_enabled():
-                campaign = plan_campaign(goal)
+                campaign = await asyncio.to_thread(plan_campaign, goal)
                 self._campaign = campaign.to_dict()
                 if self._run_id:
                     _RAHO_STORE.set_campaign(self._run_id, self._campaign, goal)
@@ -291,7 +315,7 @@ class CompanyOrchestrator:
             if l4_ticket is None:
                 l4_ticket = extract_ticket(goal)
             if raho_enabled() and l4_ticket:
-                pack = command_from_ticket(l4_ticket)
+                pack = await asyncio.to_thread(command_from_ticket, l4_ticket)
                 self._commander = pack
                 if pack.get("status") == "REJECT_TO_L4":
                     defects = "；".join(pack.get("defects") or ["門票檢查未過"])
@@ -844,6 +868,11 @@ class CompanyOrchestrator:
             ]
             await asyncio.gather(*tasks)
 
+            # 取消檢查點：gather 返回後立即早退，不再審查剛完成的項目
+            if self._check_cancel():
+                logger.info("執行迴圈偵測到取消請求（gather 後），中止")
+                return
+
             # 審查每個剛完成的工作項
             for item in ready_items:
                 # 重新取得最新狀態
@@ -896,7 +925,7 @@ class CompanyOrchestrator:
 
             _call_start = time.monotonic()
             try:
-                raw = await asyncio.to_thread(
+                raw = await _llm_thread(
                     call_llm, full_prompt, system=system, model=model, **(llm_kwargs or {})
                 )
             except Exception as exc:  # noqa: BLE001 - 失敗投遞同樣要留痕
@@ -1555,7 +1584,8 @@ class CompanyOrchestrator:
         spec = self._task_spec_from_item(item)
         source = source_for_artifacts(artifacts, output)
         gate = InspectorGate()
-        verdict = gate.inspect(
+        verdict = await asyncio.to_thread(
+            gate.inspect,
             spec,
             output,
             source_data=source,
@@ -1727,7 +1757,8 @@ class CompanyOrchestrator:
                 pass
             _review_start = time.monotonic()
             try:
-                raw = call_llm(
+                raw = await _llm_thread(
+                    call_llm,
                     prompt,
                     system=system_prompt,
                     model=model,
@@ -1875,7 +1906,8 @@ class CompanyOrchestrator:
                         timeout=retry_cfg.deadline_seconds,
                     )
                 else:
-                    raw = call_llm(
+                    raw = await asyncio.to_thread(
+                        call_llm,
                         prompt,
                         system=rework_system,
                         model=model,
@@ -1956,7 +1988,8 @@ class CompanyOrchestrator:
         ]
         _merge_start = time.monotonic()
         try:
-            raw = call_llm(
+            raw = await _llm_thread(
+                call_llm,
                 prompt,
                 system=synth_system,
                 model=model,
@@ -2026,7 +2059,8 @@ class CompanyOrchestrator:
         ]
         _synth_start = time.monotonic()
         try:
-            raw = call_llm(
+            raw = await _llm_thread(
+                call_llm,
                 prompt,
                 system=synth_system,
                 model=model,
@@ -2086,7 +2120,8 @@ class CompanyOrchestrator:
         ]
         _final_start = time.monotonic()
         try:
-            raw = call_llm(
+            raw = await _llm_thread(
+                call_llm,
                 prompt,
                 system=manager_system,
                 model=model,

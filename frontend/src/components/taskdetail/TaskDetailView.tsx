@@ -44,6 +44,7 @@ const KANBAN_LABEL: Record<string, { label: string; tone: string }> = {
   rework: { label: '退回重修', tone: '#bf5af2' },
   done: { label: '已完成', tone: 'var(--apple-green)' },
   blocked: { label: '阻塞', tone: 'var(--apple-red)' },
+  cancelled: { label: '已取消', tone: 'var(--apple-gray)' },
 };
 
 interface TaskDetailViewProps {

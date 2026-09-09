@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
@@ -37,6 +38,17 @@ from backend.company.work_item import WorkItemManager
 from backend.core.llm import call_llm, llm_kwargs_for_role, parse_json_response
 
 logger = logging.getLogger(__name__)
+
+
+async def _llm_thread(fn, *args, **kwargs):
+    """worker 執行緒跑同步 LLM；StopIteration 轉 RuntimeError（不得進 Future）。"""
+    def _run():
+        try:
+            return fn(*args, **kwargs)
+        except StopIteration as exc:  # noqa: PERF203
+            raise RuntimeError(f"LLM 呼叫序列耗盡（StopIteration）：{exc}") from exc
+
+    return await asyncio.to_thread(_run)
 
 # ── 拆分結果快取（優化 #13）──
 _DECOMPOSE_CACHE_SIZE = int(os.getenv("EVOL_DECOMPOSE_CACHE_SIZE", "64")) if 'os' in dir() else 64
@@ -362,7 +374,10 @@ class TaskDecomposer:
 
         _dec_start = time.monotonic()
         try:
-            raw = call_llm(
+            # 同步 LLM 呼叫必須離開 event loop：否則逾時重試期間整個服務
+            # （含 /tasks/*/cancel）都會被凍結（2026-09-10 取消失靈根因）
+            raw = await _llm_thread(
+                call_llm,
                 prompt,
                 system=self.prompt_config.manager_decompose_system,
                 model=model,

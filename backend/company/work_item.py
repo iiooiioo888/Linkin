@@ -305,11 +305,31 @@ class WorkItemManager:
         return blocked
 
     def has_work_remaining(self) -> bool:
-        """檢查是否還有未完成的工作。"""
+        """檢查是否還有未完成的工作（CANCELLED 視為終態，不再計入）。"""
         return any(
-            item.status != WorkItemStatus.DONE
+            item.status not in (WorkItemStatus.DONE, WorkItemStatus.CANCELLED)
             for item in self._items.values()
         )
+
+    def cancel_all_pending(self, reason: str = "任務已取消") -> int:
+        """把所有未完成的工作項標記為 CANCELLED（終態）。
+
+        使用者取消任務時調用：在飛的工作項其協程結果會被丟棄，
+        尚未開始／阻塞／審查中的項目直接轉終態，看板語義正確。
+
+        Returns:
+            被標記的項目數。
+        """
+        count = 0
+        for item in list(self._items.values()):
+            if item.status in (WorkItemStatus.DONE, WorkItemStatus.CANCELLED):
+                continue
+            if item.transition_to(WorkItemStatus.CANCELLED):
+                item.artifacts["cancel_reason"] = reason
+                count += 1
+        if count:
+            logger.info("已將 %d 個未完成工作項標記為取消：%s", count, reason)
+        return count
 
     def is_all_done(self) -> bool:
         """檢查是否所有工作項已完成。"""

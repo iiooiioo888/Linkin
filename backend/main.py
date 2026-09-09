@@ -658,7 +658,7 @@ async def refresh_config_route(route_id: str):
 async def test_config_route(route_id: str):
     """以指定路由實際呼叫 LLM 驗證連線。"""
     try:
-        reply = call_llm("請用兩個字回覆：成功。", temperature=0, route_id=route_id)
+        reply = await asyncio.to_thread(call_llm, "請用兩個字回覆：成功。", temperature=0, route_id=route_id)
         return {"ok": True, "reply": reply.strip(), "route_id": route_id}
     except Exception as exc:
         logger.warning("路由 %s 連線測試失敗：%s", route_id, exc)
@@ -754,7 +754,7 @@ async def monitor_hub_snapshot():
 async def test_config():
     """以当前配置實際呼叫 LLM 驗證連線。"""
     try:
-        reply = call_llm("請用兩個字回覆：成功。", temperature=0)
+        reply = await asyncio.to_thread(call_llm, "請用兩個字回覆：成功。", temperature=0)
         return {"ok": True, "reply": reply.strip()}
     except Exception as exc:
         logger.warning("LLM 連線測試失敗：%s", exc)
