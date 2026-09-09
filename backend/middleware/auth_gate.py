@@ -17,6 +17,8 @@ _OPEN_EXACT = {
     "/favicon.ico",
     "/auth/login",
     "/auth/logout",
+    # 對外 MCP server：自帶 Bearer EVOL_MCP_SERVER_TOKEN 驗證（fail-closed）
+    "/mcp-server",
 }
 _OPEN_PREFIX = ("/docs", "/redoc")
 

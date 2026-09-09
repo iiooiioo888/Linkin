@@ -221,6 +221,8 @@ class TaskManager:
         self._orchestrators: dict[str, CompanyOrchestrator] = {}
         # 執行中的 asyncio.Task 引用（task_id → Task）：取消時寬限期後強制中斷
         self._running_tasks: dict[str, asyncio.Task] = {}
+        # 主 event loop（lifespan 設定）：供 worker 執行緒／外部行程安全派發任務
+        self._loop: asyncio.AbstractEventLoop | None = None
 
     # ── Redis 持久化 ──
 
@@ -267,13 +269,9 @@ class TaskManager:
             if not raw:
                 return None
             record = TaskRecord.from_snapshot(json.loads(raw))
-            # 服務重啟後仍在運行的任務不可能繼續：公司路徑保留檢查點供續跑
-            if record.status in ("pending", "running"):
-                record.status = "interrupted"
-                record.error = record.error or "後端服務重啟，任務中斷"
-                if record.resolved_path == "company":
-                    record.resumable = load_checkpoint(task_id) is not None
-                self._persist(record)
+            # 唯讀回傳：interrupted 標記只由啟動時 rehydrate 負責。
+            # 這裡若改狀態，跨行程讀取（MCP stdio 子行程讀主服務正在跑的
+            # 任務）會把活任務誤標中斷並持久化。
             return record
         except Exception as exc:  # noqa: BLE001
             logger.warning("任務記錄讀取失敗：%s", exc)
@@ -392,6 +390,21 @@ class TaskManager:
         """以背景任務方式啟動（統一管線）。"""
         task = asyncio.create_task(self._run_unified_task(record))
         self._running_tasks[record.task_id] = task
+
+    def start_task_from_thread(self, record: TaskRecord) -> None:
+        """從無 event loop 的執行緒／行程啟動任務（MCP server 用）。
+
+        當前執行緒有 loop 就直接啟動；否則交給主 loop（lifespan 註冊）。
+        """
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            loop = self._loop
+            if loop is not None and loop.is_running():
+                loop.call_soon_threadsafe(self.start_task, record)
+                return
+            raise
+        self.start_task(record)
 
     def cancel_task(self, task_id: str) -> tuple[bool, str]:
         """請求取消任務。

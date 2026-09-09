@@ -109,6 +109,8 @@ async def _lifespan(_app: FastAPI):
         await asyncio.to_thread(task_manager.rehydrate)
     except Exception as exc:  # noqa: BLE001
         logger.warning("任務 rehydrate 失敗（降級為記憶體）：%s", exc)
+    # 主 loop 註冊：供 MCP server 等無 loop 執行緒安全派發任務
+    task_manager._loop = asyncio.get_running_loop()
     # 技能庫與 MCP：載入設定並把啟用 server 的工具掛進 tool_registry
     try:
         from backend.company.mcp_clients import mcp_registry
@@ -2365,6 +2367,44 @@ async def list_mcp_tools():
         if t.name.startswith(tuple(f"{s.id}__" for s in mcp_registry.list()))
     ] if mcp_registry.list() else []
     return {"tools": rows, "total_registry": len(tool_registry.list_tools())}
+
+
+# ═══════════════════════════════════════════════════════════
+# 對外 MCP Server：把 Linkin 暴露成 MCP 工具集（Claude/Cursor 等）
+# ═══════════════════════════════════════════════════════════
+
+
+@app.post("/mcp-server")
+async def mcp_server_endpoint(request: Request):
+    """MCP streamable-HTTP 端點（JSON-RPC）。
+
+    驗證：Bearer EVOL_MCP_SERVER_TOKEN；未設定 token 時 fail-closed 拒絕。
+    接受單條訊息或批次陣列；notification 不佔回應位。
+    """
+    from backend.mcp_server import check_http_token, handle_message
+
+    auth = request.headers.get("authorization", "")
+    provided = auth[7:].strip() if auth.lower().startswith("bearer ") else None
+    if not check_http_token(provided):
+        raise HTTPException(
+            status_code=401,
+            detail="MCP server 需要 Bearer token（.env 的 EVOL_MCP_SERVER_TOKEN）",
+        )
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail="body 需為 JSON") from None
+    messages = body if isinstance(body, list) else [body]
+    replies = []
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+        reply = await asyncio.to_thread(handle_message, msg)
+        if reply is not None:
+            replies.append(reply)
+    if isinstance(body, list):
+        return replies
+    return replies[0] if replies else {}
 
 
 if __name__ == "__main__":
