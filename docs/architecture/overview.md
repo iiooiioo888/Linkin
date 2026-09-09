@@ -1,6 +1,8 @@
 # 架構總覽
 
-EvoLoop 是一個**統一模式** AI 系統，所有任務進入同一條管線，由系統自動判斷執行策略。
+> 對齊日期：2026-09-09 · 倉庫產品名：**靈境·Linkin**（EvoLoop 運行時）
+
+Linkin／EvoLoop 是一個**統一模式** AI 系統，所有任務進入同一條管線，由系統自動判斷執行策略。
 
 ## 核心理念
 
@@ -67,7 +69,7 @@ graph LR
 | 向量資料庫 | ChromaDB | 記憶存儲與相似檢索 |
 | 快取 | Redis | 任務持久化 · 會話狀態 |
 | 工業協議 | OPC UA (asyncua) | 工業數據讀寫與訂閱 |
-| 靈境世界觀 | `backend/linkin/` | 憲法、工具鐵律、RAG 四庫、16 席子角色 |
+| 靈境世界觀 | `backend/linkin/` | 憲法、工具鐵律、RAG 四庫；**16** 席靈境子角色（另：公司 `STANDARD_ROLES` **85** 席） |
 | 前端 | React 19 + Vite + TypeScript | IDE 風格 UI · Tailwind CSS v4 |
 | 測試 | pytest + pytest-asyncio | Mock 隔離 LLM／Chroma／OPC |
 | 部署 | Docker Compose | Backend、Frontend、Redis、Chroma、OPC、Nginx |
@@ -92,42 +94,30 @@ graph LR
 
 ## 目錄結構
 
+完整套件表與維護規則見 **[目錄地圖](../structure.md)**。精簡樹：
+
 ```
-evoloop/
-├── backend/                     # FastAPI 後端 + LangGraph 核心
-│   ├── core/                    #   圖定義、狀態、LLM 調用層
-│   │   ├── graph.py             #     統一模式圖（複雜度路由 + 反思迴圈）
-│   │   ├── nodes.py             #     核心節點（生成/評估/反思/改進）
-│   │   ├── company_nodes.py     #     公司運行時節點
-│   │   ├── evaluation.py        #     多維度評估引擎
-│   │   ├── llm_cache.py         #     LLM 語義快取
-│   │   ├── llm.py               #     LiteLLM 統一調用層
-│   │   └── state.py             #     EvoLoopState 狀態模型
-│   ├── company/                 #   多代理人公司運行時
-│   │   ├── orchestrator.py      #     公司協調器
-│   │   ├── decomposer.py        #     任務拆分器
-│   │   ├── budget.py            #     預算控制 + 模型路由
-│   │   ├── work_item.py         #     工作項狀態機 + 依賴 DAG
-│   │   ├── roles.py             #     角色定義 + 組織模板
-│   │   └── events.py            #     EventBus 生命週期事件
-│   ├── memory/                  #   向量記憶庫 (ChromaDB)
-│   ├── services/                #   營運服務
-│   │   ├── state_store.py       #     統一狀態存儲接口
-│   │   ├── task_manager.py      #     後台任務管理器
-│   │   ├── trace_logger.py      #     執行軌跡記錄器
-│   │   └── archiver.py          #     文本化存檔 (JSONL)
-│   ├── config/                  #   配置文件
-│   │   └── model_costs.json     #     模型價格表
-│   ├── prompts/                 #   Prompt 模板
-│   └── tests/                   #   185+ 測試案例
-├── opc_service/                 # OPC UA 工業微服務
-│   ├── graph.py                 #   6 級閉環圖（帶超時降級）
-│   ├── guard.py                 #   安全護欄
-│   └── simulator/               #   模擬 OPC 伺服器
-├── frontend/                    # React + Vite + TypeScript
-│   └── src/
-│       ├── components/          #   UI 組件（IDE 風格佈局）
-│       ├── api/client.ts        #   API 客戶端
-│       └── types.ts             #   TypeScript 型別
-└── docker-compose.yml           # 五服務編排
+Linkin/
+├── backend/                     # FastAPI + LangGraph（見 backend/README.md）
+│   ├── main.py                  #   REST / SSE / WebSocket 入口
+│   ├── auth/ · middleware/ · environment/ · prompts/
+│   ├── core/                    #   圖、節點、LLM、評估、模型池
+│   │   ├── graph.py             #     build_graph()、複雜度路由
+│   │   ├── nodes.py / company_nodes.py
+│   │   ├── llm.py               #     call_llm（唯一 LLM 出口）
+│   │   ├── provider_pool.py     #     模型池鎖定
+│   │   └── evaluation.py        #     多維評估
+│   ├── company/                 #   多代理人 + raho/ + 量化（85 席）
+│   ├── linkin/                  #   靈境／Minecraft 護欄（16 席子角色）
+│   ├── tools/ · hub/ · memory/ · services/
+│   ├── config/                  #   執行期 JSON（價卡等）
+│   ├── data/ · scripts/
+│   └── tests/                   #   pytest（約 639 筆收錄）
+├── opc_service/                 # OPC UA + guard（見 opc_service/README.md）
+├── frontend/                    # React 19 + Vite（預設 :3001）
+├── vendor/archify/              # 策略圖 CLI
+├── docs/                        # 知識庫（詳文唯一來源）
+└── docker-compose.yml
 ```
+
+新人導覽：[docs/onboarding.md](../onboarding.md) · 知識庫索引：[docs/README.md](../README.md) · 目錄地圖：[structure.md](../structure.md)

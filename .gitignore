@@ -69,6 +69,7 @@ target/
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 .pytest_tmp/
 .pytest_tmp*/
 
@@ -83,6 +84,7 @@ htmlcov/
 
 # IDE harness / screenshots (not product assets)
 .qoder/
+.qwen/
 
 # Nested leftover clone of upstream EvoLoop (this repo is Linkin)
 /Evoloop/
