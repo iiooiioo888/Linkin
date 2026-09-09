@@ -165,10 +165,10 @@ def main() -> None:
         "|------|---------|--------|--------|--------|----------|",
     ]
     depts = [
-        ("build", "建築", "可 `place/fill/break`；總監另可 `execute_command`"),
-        ("narrative", "敘事", "讀玩家狀態為主"),
-        ("npc", "NPC", "讀玩家狀態為主"),
-        ("item", "道具", "無 Minecraft 寫入工具"),
+        ("build", "建築（塑形）", "`BuilderAI.generate`＋MCP 建造；總監另可 `execute_command`"),
+        ("narrative", "敘事（言靈）", "`Quest.generate`＋讀玩家狀態"),
+        ("npc", "NPC（共鳴）", "`NPC.create/dialogue`＋讀玩家狀態"),
+        ("item", "道具（賦形）", "`Item.create`；無 Minecraft 寫入工具"),
     ]
     for slug, title, tools in depts:
         lines.append(

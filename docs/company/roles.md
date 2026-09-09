@@ -186,10 +186,10 @@ RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
 
 | 部門 | 總監 ID | 執行者 | 審查員 | 記錄員 | 工具重點 |
 |------|---------|--------|--------|--------|----------|
-| 建築 | `custom_linkin_build_director` | `…_build_executor` | `…_build_reviewer` | `…_build_scribe` | 可 `place/fill/break`；總監另可 `execute_command` |
-| 敘事 | `custom_linkin_narrative_director` | `…_narrative_executor` | `…_narrative_reviewer` | `…_narrative_scribe` | 讀玩家狀態為主 |
-| NPC | `custom_linkin_npc_director` | `…_npc_executor` | `…_npc_reviewer` | `…_npc_scribe` | 讀玩家狀態為主 |
-| 道具 | `custom_linkin_item_director` | `…_item_executor` | `…_item_reviewer` | `…_item_scribe` | 無 Minecraft 寫入工具 |
+| 建築（塑形） | `custom_linkin_build_director` | `…_build_executor` | `…_build_reviewer` | `…_build_scribe` | `BuilderAI.generate`＋MCP 建造；總監另可 `execute_command` |
+| 敘事（言靈） | `custom_linkin_narrative_director` | `…_narrative_executor` | `…_narrative_reviewer` | `…_narrative_scribe` | `Quest.generate`＋讀玩家狀態 |
+| NPC（共鳴） | `custom_linkin_npc_director` | `…_npc_executor` | `…_npc_reviewer` | `…_npc_scribe` | `NPC.create/dialogue`＋讀玩家狀態 |
+| 道具（賦形） | `custom_linkin_item_director` | `…_item_executor` | `…_item_reviewer` | `…_item_scribe` | `Item.create`；無 Minecraft 寫入工具 |
 
 世界觀憲法為最高裁決；工具鐵律見 [Minecraft MCP](../linkin/minecraft-mcp.md) · [世界觀](../linkin/worldview.md)。
 
