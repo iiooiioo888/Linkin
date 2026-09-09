@@ -76,4 +76,10 @@ Pages 僅靜態前端預覽；登入閘門可在無後端時本機核對。聊�
 
 ## 開發埠是 5173 還是 3001？
 
-前端開發預設 **http://localhost:3001**（避開 Windows 上 5173 常被占用）。可用 `VITE_DEV_PORT` 覆寫。後端仍是 **8000**。
+前端一律用 **http://localhost:3001**：
+
+- 本機 `npm run dev`：Vite 預設 3001（`VITE_DEV_PORT` 可覆寫）
+- Docker Compose prod：宿主 **3001** → 容器 nginx 80
+- Docker Compose dev（HMR）：宿主／容器皆 **3001**
+
+舊文件若寫 5173 已過時。後端仍是 **8000**，OPC **8001**，MineMCP 預設 **3000**。速查：[glossary.md](glossary.md)。

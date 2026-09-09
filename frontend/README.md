@@ -38,6 +38,7 @@ npm run dev
 
 - [新人導覽](../docs/onboarding.md)
 - [目錄地圖](../docs/structure.md)
+- [術語表](../docs/glossary.md)
 - [開發指南](../docs/development/guide.md)
 - [根 README](../README.md)
 - 前端視覺 Token：根目錄 [`DESIGN.md`](../DESIGN.md)（非系統架構）

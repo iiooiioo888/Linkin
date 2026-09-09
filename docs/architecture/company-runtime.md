@@ -14,6 +14,8 @@
 
 內建 `STANDARD_ROLES` 共 **85** 席（組織職級 0–4，含 RAHO 脊柱：需求審計官、戰術指揮官、原子執行者、憲兵審查官、環境與記憶核心）。監控中心可覆寫角色設定，或透過 `role_catalog` 新增自定義角色。
 
+**完整席位表（職責／分類／模板／靈境 16 席）→ [角色介紹](../company/roles.md)。** 改內建角色後請執行 `python -m backend.scripts.export_roles_doc` 同步該文件。
+
 ```
 Level 0: Manager（1）           — 目標分解、最終審查
 Level 1: Lead（10）             — 技術／架構／資安／產品／財務／工業／創意／平台／AI／成長

@@ -7,7 +7,7 @@
 
 | 工具 | 版本 | 說明 |
 |------|------|------|
-| Python | 3.10–3.12 | 後端 |
+| Python | **3.12+** | 後端（`pyproject.toml` `requires-python`） |
 | Node.js | 20+ | 前端 |
 | Docker | 可選 | Redis／Chroma／一鍵編排 |
 
@@ -40,6 +40,19 @@ docker compose up -d redis chroma
 python -m backend.scripts.seed_demo_content
 python -m backend.scripts.seed_linkin_world
 ```
+
+## 腳本速查
+
+| 命令 | 用途 |
+|------|------|
+| `python -m backend.scripts.seed_demo_content` | 示範記憶／任務／軌跡 |
+| `python -m backend.scripts.seed_linkin_world` | 靈境世界種子 |
+| `python -m backend.scripts.smoke_test` | 向量記憶冒煙 |
+| `python backend/scripts/test_llm_connection.py` | LLM 連線 |
+| `python -m backend.scripts.export_openapi` | 匯出 OpenAPI |
+| `python -m backend.scripts.export_monitor_fallback` | Pages 監控降級資料 |
+
+完整表見 [目錄地圖 · scripts](../structure.md#backendscripts)。
 
 ## 測試
 
@@ -112,7 +125,7 @@ Linkin/
 
 ### 新組織模板
 
-在 `backend/company/roles.py` 的 `BUILTIN_TEMPLATES` 新增角色與預算。
+在 `backend/company/roles.py` 的 `BUILTIN_TEMPLATES` 新增角色與預算。席位職責表見 [角色介紹](../company/roles.md)；改完後執行 `python -m backend.scripts.export_roles_doc` 同步文件。
 
 ### 新 OPC 感測器
 
@@ -161,6 +174,7 @@ python backend/scripts/test_llm_connection.py
 ## 相關文件
 
 - [常見問題](../faq.md)  
+- [術語表](../glossary.md)  
 - [部署指南](../deployment/guide.md)  
 - [REST API](../api/reference.md)  
 - [前端 README](../../frontend/README.md)

@@ -1,21 +1,17 @@
-# EvoLoop 開發模式覆蓋配置
+# 靈境·Linkin 開發模式覆蓋配置
 #
 # 用法（已透過 .env 的 COMPOSE_FILE 設為預設，直接執行即可）：
 #   docker compose up -d
 #
 # 效果：
-#   - 後端 / OPC：原始碼卷掛載 + uvicorn --reload，改 Python 碼秒級熱重載
-#   - 前端：frontend-dev 服務跑 vite dev（HMR），改 TSX 即時更新
-#   ⇒ 更新代碼不再需要重建鏡像
+#   - 後端 / OPC：原始碼卷掛載 + uvicorn --reload
+#   - 前端：frontend-dev 跑 vite（HMR），宿主埠 **3001**
 #
-# 注意：開發模式不包含生產版前端（nginx），如需生產前端：
-#   COMPOSE_PROFILES=prod docker compose -f docker-compose.yml up -d --build
-#
-# 若要完整「生產模式」部署：
+# 若要生產前端（nginx）：
 #   COMPOSE_PROFILES=prod docker compose -f docker-compose.yml up -d --build
 
 services:
-  # 禁用生产版前端（开发模式使用 vite HMR）
+  # 停用生產版前端（開發模式改用 vite HMR）
   frontend:
     profiles: ["disabled"]
 
@@ -30,21 +26,22 @@ services:
       - ./opc_service:/app/opc_service
     command: ["uvicorn", "opc_service.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
 
-  # 开发版前端：vite dev server + HMR（默认启动）
+  # 開發版前端：vite dev server + HMR（預設啟動；埠與本機一致 3001）
   frontend-dev:
     image: node:20-alpine
     container_name: evoloop-frontend-dev
     working_dir: /app
     ports:
-      - "5173:5173"
+      - "3001:3001"
     environment:
       # vite 代理指向 compose 網路內的後端服務名
       - VITE_PROXY_TARGET=http://backend:8000
+      - VITE_DEV_PORT=3001
     volumes:
       - ./frontend:/app
       # 以具名卷隔離 node_modules（容器為 alpine，不污染主機依賴）
       - frontend_node_modules:/app/node_modules
-    command: ["sh", "-c", "npm install --no-audit --no-fund && npm run dev"]
+    command: ["sh", "-c", "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0 --port 3001"]
     depends_on:
       backend:
         condition: service_healthy

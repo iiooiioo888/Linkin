@@ -1,9 +1,10 @@
-# EvoLoop Docker Compose（Phase 8.3）
-# 服务：frontend / backend / opc_service / redis / chroma
+# 靈境·Linkin Docker Compose
+# 服務：frontend / backend / opc_service / redis / chroma
 #
-# 启动：docker compose up -d
-# 构建：docker compose build --no-cache
-# 查看日志：docker compose logs -f
+# 啟動：docker compose up -d
+# 建置：docker compose build --no-cache
+# 日誌：docker compose logs -f
+# 開發熱重載：見 docker-compose.dev.yml（前端宿主埠 3001）
 
 services:
   backend:
@@ -75,7 +76,8 @@ services:
       dockerfile: ./frontend/Dockerfile
     container_name: evoloop-frontend
     ports:
-      - "5173:80"
+      # 與本機 Vite 預設對齊；容器內 nginx 仍聽 80
+      - "3001:80"
     depends_on:
       backend:
         condition: service_healthy

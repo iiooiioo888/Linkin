@@ -6,7 +6,7 @@
 
 本倉庫基於 [EvoLoop](https://github.com/iiooiioo888/Evoloop)（MIT）衍生，保留自我反思閉環、多代理人公司與工業 OPC，並整合靈境世界觀與監控中心。
 
-[![Python](https://img.shields.io/badge/Python-3.10–3.12-3776ab?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.12+-3776ab?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-1c3d5a?logo=langchain&logoColor=white)](https://github.com/langchain-ai/langgraph)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)](https://react.dev/)
@@ -26,9 +26,10 @@
 
 | 你是… | 先讀 |
 |--------|------|
-| 第一次打開倉庫 | [新人導覽](docs/onboarding.md) → [目錄地圖](docs/structure.md) → [快速開始](#-快速開始) |
+| 第一次打開倉庫 | [新人導覽](docs/onboarding.md) → [目錄地圖](docs/structure.md) → [角色介紹](docs/company/roles.md) → [快速開始](#-快速開始) |
 | 要改後端／前端 | [開發指南](docs/development/guide.md) · [貢獻指南](CONTRIBUTING.md) |
 | 要查 API／環境變數 | [REST API](docs/api/reference.md) · [配置參考](docs/config/reference.md) |
+| 術語／埠號搞混 | [術語表](docs/glossary.md) |
 | Agent／自動化協作 | [AGENTS.md](AGENTS.md) |
 | 卡住了 | [常見問題](docs/faq.md) |
 
@@ -103,7 +104,7 @@ Linkin/
 
 | 工具 | 版本 |
 |------|------|
-| Python | 3.10–3.12 |
+| Python | **3.12+**（`pyproject.toml`） |
 | Node.js | 20+ |
 | Docker | 可選 |
 
@@ -143,7 +144,7 @@ docker compose up -d redis chroma   # 僅基礎設施
 | 服務 | 端口 |
 |------|------|
 | backend | 8000 |
-| frontend | 3001（dev）／80（prod） |
+| frontend | **3001**（本機 Vite／Compose 宿主埠；prod 容器內 nginx 為 80） |
 | opc_service | 8001 |
 | redis | 6379 |
 | chroma | 8100 |
@@ -158,10 +159,12 @@ docker compose up -d redis chroma   # 僅基礎設施
 |------|------|
 | [新人導覽](docs/onboarding.md) | 閱讀順序、目錄心智模型、第一個 PR |
 | [目錄地圖](docs/structure.md) | 套件／路徑單一來源 |
+| [術語表](docs/glossary.md) | RAHO／L0–L5／埠號速查 |
 | [知識庫索引](docs/README.md) | 全部文件目錄 |
 | [架構總覽](docs/architecture/overview.md) | 統一管線、資料流 |
 | [反思閉環](docs/architecture/reflection-loop.md) | 評分／反思／快取 |
 | [公司運行時](docs/architecture/company-runtime.md) | RAHO、角色、預算 |
+| [角色介紹](docs/company/roles.md) | 85 席＋16 靈境＋8 模板 |
 | [OPC 整合](docs/architecture/opc-integration.md) | 6 級閉環、護欄 |
 | [AI Hub 設計](docs/AI_HUB_DETAILED_DESIGN.md) | Hub 契約（探針／熔斷／目錄） |
 | [量化工具](docs/company/quant-tools.md) | 行情／回測／組合 |

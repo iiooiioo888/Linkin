@@ -10,7 +10,7 @@
 
 | 角色 | 入口 |
 |------|------|
-| 新加入的開發者 | [新人導覽](onboarding.md) → [目錄地圖](structure.md) |
+| 新加入的開發者 | [新人導覽](onboarding.md) → [目錄地圖](structure.md) → [角色介紹](company/roles.md) → [術語表](glossary.md) |
 | 要動手改程式 | [開發指南](development/guide.md) · [貢獻指南](../CONTRIBUTING.md) |
 | Agent／自動化 | [AGENTS.md](../AGENTS.md) |
 | 卡住了 | [常見問題](faq.md) |
@@ -21,6 +21,7 @@
 
 - [新人導覽](onboarding.md) — 閱讀順序、第一個 PR
 - [目錄地圖](structure.md) — **套件／路徑單一來源**（改目錄先改此文）
+- [術語表](glossary.md) — RAHO、L0–L5、角色數字、埠號速查
 
 ### 架構
 
@@ -36,8 +37,9 @@
 - [REST API 參考](api/reference.md) — 端點、SSE、WebSocket
 - [配置參考](config/reference.md) — 環境變數、模型池、RAHO、價卡
 
-### 公司工具
+### 公司 · 角色
 
+- [角色介紹](company/roles.md) — **85 席＋16 靈境＋8 模板**（職責／層級／RAHO 脊柱）
 - [量化行情工具](company/quant-tools.md) — 行情、回測、組合、資金流
 
 ### 靈境·Linkin
@@ -89,13 +91,14 @@
 |--------|--------|
 | 第一次上手 | [新人導覽](onboarding.md) |
 | 找目錄／改哪個套件 | [目錄地圖](structure.md) |
+| 查術語／埠號 | [術語表](glossary.md) |
 | 了解整體架構 | [架構總覽](architecture/overview.md) |
 | 查 API | [REST API](api/reference.md) |
 | 配 LLM／模型池 | [配置參考](config/reference.md) |
 | 本地開發 | [開發指南](development/guide.md) |
 | 部署 | [部署指南](deployment/guide.md) |
 | 反思閉環 | [reflection-loop](architecture/reflection-loop.md) |
-| 多代理人 | [company-runtime](architecture/company-runtime.md) |
+| 多代理人／角色一覽 | [company-runtime](architecture/company-runtime.md) · [角色介紹](company/roles.md) |
 | OPC | [opc-integration](architecture/opc-integration.md) |
 | 靈境／Minecraft | [worldview](linkin/worldview.md) · [minecraft-mcp](linkin/minecraft-mcp.md) |
 | 量化工具 | [quant-tools](company/quant-tools.md) |
