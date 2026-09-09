@@ -106,10 +106,36 @@ class TestCompanyEventMirror:
 
 
 class TestTaskManagerWiring:
-    def test_company_tracers_registered_and_released(self):
-        """_attach_company_listener 建立鏡像器、_finish 釋放（不測執行，測生命週期掛鉤）。"""
-        from backend.services.task_manager import TaskManager
+    def test_listener_mirrors_company_events_to_trace(self, trace_env, monkeypatch):
+        """_attach_company_listener 把 CompanyEvent 鏡像進 trace_<task_id>.jsonl。"""
+        import asyncio
 
+        from backend.company.events import CompanyEvent, EventBus
+        from backend.company.orchestrator import CompanyOrchestrator
+        from backend.company.roles import BUILTIN_TEMPLATES
+        from backend.services.task_manager import TaskManager, TaskRecord
+        from backend.services.trace_logger import read_trace
+
+        # 隔離持久化與 WS 廣播
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:1/15")
         mgr = TaskManager()
-        assert mgr._company_tracers == {}
-        assert hasattr(mgr, "_ensure_llm_trace_hook")
+        monkeypatch.setattr(mgr, "_persist", lambda record: None)
+        monkeypatch.setattr(mgr, "_broadcast_event", lambda *a, **k: None)
+
+        record = TaskRecord("t_wire", "做個網站", "company", "quick_task")
+        orch = CompanyOrchestrator(BUILTIN_TEMPLATES["quick_task"])
+        mgr._attach_company_listener(record, orch)
+
+        orch.events.emit(CompanyEvent.WORK_ITEM_START, {
+            "item_id": "i1", "title": "首頁", "assignee": "js_dev",
+        })
+        orch.events.emit(CompanyEvent.REVIEW_PASS, {"item_id": "i1", "rounds": 1, "score": 9})
+
+        events = read_trace("t_wire", 100)
+        names = [e["event"] for e in events]
+        assert "work_item_start" in names and "review_pass" in names
+        start = next(e for e in events if e["event"] == "work_item_start")
+        assert start["role"] == "js_dev"
+        assert start["item_id"] == "i1"
+        # tracer 注入到 orchestrator（seat_io 全文軌跡用）
+        assert orch.tracer is not None

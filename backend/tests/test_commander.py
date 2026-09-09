@@ -284,6 +284,43 @@ class TestGrillSop:
         assert sop["escalate"] is False
         assert "web_fetch" in sop["reply"]
 
+    def test_empty_allowed_tools_reissued_instead_of_l5(self):
+        from backend.company.raho.atomic_executor import BLOCKER_TOOL, GrillMessage
+        from backend.services.commander import infer_tools_from_text
+
+        issue = GrillMessage(
+            blocker_type=BLOCKER_TOOL,
+            details="ALLOWED_TOOLS 為空，但任務描述需要讀檔／擷取／解析類工具。",
+            suggested_fix="請重發工具白名單",
+        ).to_issue()
+        sop = respond_to_grill([issue])
+        assert sop["escalate"] is False
+        assert sop.get("reissued_tools")
+        assert "read_file" in sop["reissued_tools"]
+        inferred = infer_tools_from_text(issue.message)
+        assert "read_file" in inferred
+
+    def test_tool_gap_preferred_when_mixed_with_data(self):
+        from backend.company.raho.atomic_executor import BLOCKER_INPUT, BLOCKER_TOOL, GrillMessage
+
+        issues = [
+            GrillMessage(
+                blocker_type=BLOCKER_INPUT,
+                details="INPUT_REF 為空值或占位符，無法定位任何輸入資料。",
+                suggested_fix="請提供路徑",
+            ).to_issue(),
+            GrillMessage(
+                blocker_type=BLOCKER_TOOL,
+                details="ALLOWED_TOOLS 為空，但任務描述需要讀檔／擷取／解析類工具。",
+                suggested_fix="請重發工具白名單",
+            ).to_issue(),
+        ]
+        sop = respond_to_grill(issues)
+        # 資料仍上交 L4，但工具必須一併重發，避免只丟 L5 決策列
+        assert sop.get("reissued_tools")
+        assert "read_file" in sop["reissued_tools"]
+        assert sop.get("escalate_to") == "L4"
+
     def test_logic_conflict_rules_when_nodes_named(self):
         sop = respond_to_grill("你的 A 節點要求保守估值，但 B 節點要求激進擴張，我無法同時滿足")
         assert sop["kind"] == "logic_conflict"

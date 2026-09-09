@@ -6,7 +6,6 @@
 """
 
 import logging
-import time
 from contextlib import asynccontextmanager
 import os
 import uuid
@@ -104,11 +103,6 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
-    # 重啟回灌：從 Redis 載回任務記錄，修復任務列表／管線重啟後清空
-    try:
-        await asyncio.to_thread(task_manager.rehydrate)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("任務 rehydrate 失敗（降級為記憶體）：%s", exc)
     task = asyncio.create_task(llm_ops_loop())
     try:
         yield
@@ -467,7 +461,9 @@ def raho_tree(run_id: str | None = None) -> dict[str, Any]:
 
         return {
             "tree": tree.to_dict() if tree else None,
-            "pending_decisions": [p.to_dict() for p in STORE.list_pending(run_id)],
+            "pending_decisions": [
+                p.to_dict() for p in STORE.list_pending(run_id) if p.resolution is None
+            ],
             "l0": kernel_snapshot(query=str(getattr(tree, "goal", "") or "")),
         }
     return STORE.snapshot()
@@ -976,7 +972,7 @@ async def chat_stream(req: ChatRequest):
     session_id = req.session_id or uuid.uuid4().hex[:12]
 
     # 思考軌跡回填（session_id 即軌跡檔名；前端「軌跡」按鈕以此查詢）
-    from backend.services.trace_logger import TraceLogger, eval_trace_kwargs as _eval_trace_kwargs
+    from backend.services.trace_logger import TraceLogger
 
     chat_tracer = TraceLogger(session_id)
 
@@ -1011,21 +1007,12 @@ async def chat_stream(req: ChatRequest):
                 history_context=nodes._format_history(state.get("history", [])),
                 memory_context=nodes._format_memories(state.get("retrieved_memories", [])),
             )
-            # 與管線節點同一套環節路由，軌跡才能記到真實模型
-            from backend.core.stage_router import resolve_stage_model
-
-            gen_model = resolve_stage_model(
-                "generate",
-                query=state["query"],
-                complexity=state.get("task_complexity"),
-            )
             loop = asyncio.get_running_loop()
             token_queue: asyncio.Queue[str | None] = asyncio.Queue()
-            gen_started = time.monotonic()
 
             def _produce_tokens() -> None:
                 try:
-                    for token in call_llm_stream(gen_prompt, system=templates.GENERATE_INITIAL_ANSWER_SYSTEM, model=gen_model):
+                    for token in call_llm_stream(gen_prompt, system=templates.GENERATE_INITIAL_ANSWER_SYSTEM):
                         loop.call_soon_threadsafe(token_queue.put_nowait, token)
                 finally:
                     loop.call_soon_threadsafe(token_queue.put_nowait, None)
@@ -1048,10 +1035,7 @@ async def chat_stream(req: ChatRequest):
                 "thinking": gen_thinking,
             })
             chat_tracer.log_llm_call(
-                prompt=gen_prompt, response=(visible or answer)[:8000],
-                model=gen_model,
-                system=templates.GENERATE_INITIAL_ANSWER_SYSTEM,
-                duration_ms=round((time.monotonic() - gen_started) * 1000, 1),
+                prompt=state["query"], response=(visible or answer)[:8000],
                 phase="generate",
             )
 
@@ -1067,10 +1051,7 @@ async def chat_stream(req: ChatRequest):
                 'iteration': 0,
                 'multi_dim': state.get('multi_dim_evaluation', {}),
             }
-            chat_tracer.log_evaluation(
-                state.get('score'), iteration=0,
-                **_eval_trace_kwargs(state.get('multi_dim_evaluation')),
-            )
+            chat_tracer.log_evaluation(state.get('score'), iteration=0)
             yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
 
             # 反思/改進迴圈（動態迭代：帶分數變化率檢測；長度指令未消化時強制多跑一輪）
@@ -1116,10 +1097,7 @@ async def chat_stream(req: ChatRequest):
                 state.update(await asyncio.to_thread(nodes.improve_answer, state))
                 improved = str(state.get("current_answer") or "")
                 if improved:
-                    chat_tracer.log_improvement(
-                        improved, iteration=state.get("iteration", 0),
-                        based_on_reflection=critique or suggestion,
-                    )
+                    chat_tracer.log_improvement(improved, iteration=state.get("iteration", 0))
                 imp_think, imp_vis = split_thinking(improved)
                 if imp_think:
                     state["thinking"] = "\n\n".join(
@@ -1132,10 +1110,7 @@ async def chat_stream(req: ChatRequest):
 
                 yield f"event: phase\ndata: {json_mod.dumps({'phase': 'evaluate'})}\n\n"
                 state.update(await asyncio.to_thread(nodes.evaluate_answer, state))
-                chat_tracer.log_evaluation(
-                    state.get('score'), iteration=state.get('iteration', 0),
-                    **_eval_trace_kwargs(state.get('multi_dim_evaluation')),
-                )
+                chat_tracer.log_evaluation(state.get('score'), iteration=state.get('iteration', 0))
                 eval_data = {
                     'score': state.get('score'),
                     'iteration': state.get('iteration', 0),
@@ -1183,15 +1158,16 @@ async def create_task(req: TaskRequest):
 
 
 @app.get("/tasks/{task_id}")
-async def get_task(task_id: str, events: str | None = None):
+async def get_task(task_id: str, events_limit: int = 50):
     """查詢任務進度：狀態、階段、事件流、看板、預算與結果。
 
-    events=all 時回傳完整事件流（默認最近 50 條），供任務整頁時間軸。
+    events_limit：回傳最近 N 條事件（0 或負值＝全部）。
+    回應另帶 events_total 與 events_truncated 供前端提示截斷。
     """
     record = task_manager.get_task(task_id)
     if record is None:
         raise HTTPException(status_code=404, detail="任務不存在")
-    return record.to_dict(full_events=(events == "all"))
+    return record.to_dict(events_limit=events_limit)
 
 
 @app.post("/tasks/{task_id}/cancel")
@@ -1226,34 +1202,17 @@ from backend.services.trace_logger import (
     list_traces,
     load_checkpoint,
     read_trace,
-    trace_event_counts,
 )
 
 
 @app.get("/tasks/{task_id}/trace")
-async def get_task_trace(
-    task_id: str,
-    limit: int = 100,
-    offset: int = 0,
-    event: str | None = None,
-    role: str | None = None,
-    item_id: str | None = None,
-    with_counts: bool = False,
-):
-    """獲取任務的思考過程記錄（分頁 + 可篩選）。
+async def get_task_trace(task_id: str, limit: int = 100, offset: int = 0):
+    """獲取任務的思考過程記錄（分頁）。
 
-    記錄內容：LLM 調用、上下文注入、評估、反思、改進、階段切換，
-    以及公司模式鏡像的全部角色事件（work_item_*/tool_*/review_*/grill_* 等）。
-    event/role 支援逗號分隔多值；with_counts=true 附帶各事件型條數統計。
+    記錄內容：LLM 調用、上下文注入、評估、反思、改進、階段切換等。
     """
-    events = await asyncio.to_thread(
-        read_trace, task_id, limit, offset,
-        event=event, role=role, item_id=item_id,
-    )
-    result: dict = {"task_id": task_id, "offset": offset, "limit": limit, "events": events}
-    if with_counts:
-        result["event_counts"] = await asyncio.to_thread(trace_event_counts, task_id)
-    return result
+    events = await asyncio.to_thread(read_trace, task_id, limit, offset)
+    return {"task_id": task_id, "offset": offset, "limit": limit, "events": events}
 
 
 @app.get("/tasks/{task_id}/checkpoint")
@@ -1632,6 +1591,73 @@ async def monitor_agents_delete(role_id: str):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"ok": True, "id": role_id}
+
+
+# ==================== 公司運行時：席位 I/O 監察餵給 API ====================
+
+_SEAT_TEXT_FIELDS = ("system", "prompt", "response")
+
+
+def _seat_row_light(row: dict) -> dict:
+    """列表用輕量投影：正文換成預覽＋長度，單條全文另取。"""
+    light = {k: v for k, v in row.items() if k not in _SEAT_TEXT_FIELDS}
+    for field in _SEAT_TEXT_FIELDS:
+        text = str(row.get(field) or "")
+        light[f"{field}_preview"] = text[:320]
+        light[f"{field}_length"] = int(row.get(f"{field}_length") or len(text))
+    return light
+
+
+@app.get("/monitor/raho/feed")
+def raho_seat_feed(
+    task_id: str = "",
+    run_id: str = "",
+    role: str = "",
+    layer: int | None = None,
+    item_id: str = "",
+    kind: str = "",
+    limit: int = 120,
+    full: bool = False,
+):
+    """席位投遞餵給：公司模式監察頁的單一資料源。
+
+    每一筆 = 一次真正投遞給模型的調用（含重試與工具閉環的逐輪）。
+    預設回傳輕量投影（正文僅預覽）；full=true 或走單條端點取全文。
+    環形緩衝查不到時，自動回退到持久 seat_<run_id>.jsonl（跨重啟可查）。
+    """
+    from backend.company.seat_io import STORE
+
+    rows = STORE.list(
+        run_id=run_id,
+        task_id=task_id,
+        role=role,
+        layer=layer,
+        item_id=item_id,
+        limit=limit,
+    )
+    source = "memory"
+    if not rows and run_id:
+        rows = STORE.load_run(run_id, limit=limit)
+        source = "disk"
+    if kind:
+        rows = [r for r in rows if r.get("kind") == kind]
+    return {
+        "items": rows if full else [_seat_row_light(r) for r in rows],
+        "source": source,
+        "runs": STORE.recent_runs(limit=20),
+        "total_roles": len({r.get("role") for r in rows if r.get("role")}),
+    }
+
+
+@app.get("/monitor/raho/seat/{io_id}")
+def raho_seat_detail(io_id: str):
+    """單次席位投遞全文（系統提示詞／組裝 prompt／模型回應／來源分解）。"""
+    from backend.company.seat_io import STORE
+
+    row = STORE.get(io_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="投遞軌跡不存在")
+    return row
 
 
 # ==================== Docker 容器管理 API ====================

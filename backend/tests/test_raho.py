@@ -346,6 +346,51 @@ class TestEscalationTtl:
         assert result["timeout"] is True
         assert result["choice"] == "assume"
 
+    def test_decide_idempotent_after_timeout(self):
+        """逾時後再點選應回傳既有結果，勿 404。"""
+        from backend.company.raho.escalation import decide
+        from backend.company.raho.protocol import EscalationChoice, RahoLayer
+        from backend.company.raho.store import STORE, PendingDecision
+        import time
+
+        pending = PendingDecision(
+            decision_id="idem01",
+            run_id="r-idem",
+            item_id="i1",
+            layer=int(RahoLayer.L5_USER),
+            question="ALLOWED_TOOLS 為空，但任務描述需要讀檔／擷取／解析類工具。",
+            choices=[c.to_dict() for c in [
+                EscalationChoice("assume", "標註合理假設後繼續執行"),
+                EscalationChoice("narrow", "縮小輸出規格，先交付最小可用版本"),
+            ]],
+            created_at=time.time() - 120,
+            ttl=60,
+            resolution={
+                "action": "auto",
+                "choice": "assume",
+                "reply": "標註合理假設後繼續執行（決策逾時自動裁決）",
+                "timeout": True,
+            },
+        )
+        STORE.add_pending(pending)
+        out = decide("idem01", "narrow")
+        assert out.get("idempotent") is True
+        assert out["resolution"]["choice"] == "assume"
+
+    def test_auto_reissue_tools_for_allowed_tools_gap(self):
+        from backend.company.raho.atomic_executor import BLOCKER_TOOL, GrillMessage
+        from backend.company.raho.escalation import _auto_reissue_tools, _tool_only_issues
+
+        issue = GrillMessage(
+            blocker_type=BLOCKER_TOOL,
+            details="ALLOWED_TOOLS 為空，但任務描述需要讀檔／擷取／解析類工具。",
+            suggested_fix="請重發工具白名單",
+        ).to_issue()
+        assert _tool_only_issues([issue]) is True
+        tools = _auto_reissue_tools([issue], None)
+        assert tools
+        assert "read_file" in tools
+
 
 class TestRahoApi:
     def test_grill_and_tree_endpoints(self, monkeypatch):

@@ -56,7 +56,7 @@ export interface TaskOptions {
   semantic_brief?: string;
   locked_brief?: string;
   /** 需求審計官核發的戰術指令 JSON */
-  auditor_ticket?: Record<string, unknown>;
+  auditor_ticket?: AuditorTicket;
 }
 
 /** 任務即時狀態（POST /tasks + GET /tasks/{id}） */
@@ -71,6 +71,10 @@ export interface TaskProgress {
   template: string;
   phase: string;
   events: TaskEvent[];
+  /** 事件總數（後端可能因 events_limit 截斷） */
+  events_total?: number;
+  /** events 是否已被截斷 */
+  events_truncated?: boolean;
   kanban: Record<string, KanbanItem[]>;
   budget: Record<string, unknown>;
   answer: string;
@@ -136,6 +140,8 @@ export interface AuditorTicket {
   };
   audit_trail?: string[];
   dimension_scores?: AuditorScores;
+  /** 後端門票為 JSON 字典，允許擴充欄位（前端 user_override 等）並與 Record<string, unknown> 互換 */
+  [key: string]: unknown;
 }
 
 export interface GrillUserState {
@@ -412,6 +418,8 @@ export interface RahoPendingDecision {
   role_label?: string;
   question: string;
   choices: Array<{ key: string; label: string; rationale?: string }>;
+  created_at?: number;
+  ttl?: number;
   remaining_sec?: number;
   blocked?: boolean;
   resolved?: boolean;
@@ -1576,4 +1584,105 @@ export interface AgentMonitorData {
   catalog_meta?: AgentCatalogMeta;
   monitor_prefs?: AgentMonitorPrefs;
   agents: RoleAgent[];
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 席位投遞 I/O（公司運行時監察頁）
+// ═══════════════════════════════════════════════════════════════
+
+/** 席位投遞種類：decompose／execute／rework／review／synthesize／final_review／inspect */
+export type SeatIOKind =
+  | 'decompose'
+  | 'execute'
+  | 'rework'
+  | 'review'
+  | 'synthesize'
+  | 'final_review'
+  | 'inspect'
+  | string;
+
+/** 一次投遞的輸入來源分解（回答「這段 prompt 是哪些部分拼起來的」） */
+export interface SeatIOContextSource {
+  kind: string;
+  label: string;
+  chars: number;
+  preview: string;
+}
+
+/** 單次席位投遞全文（GET /monitor/raho/seat/{io_id}、feed?full=true） */
+export interface SeatIORecord {
+  io_id: string;
+  ts: string;
+  epoch: number;
+  run_id: string;
+  task_id: string;
+  item_id: string;
+  title: string;
+  role: string;
+  role_label: string;
+  layer: number | null;
+  layer_label: string;
+  lane: string;
+  kind: SeatIOKind;
+  attempt: number;
+  step: number;
+  tool_steps: number;
+  final: boolean;
+  model: string;
+  tier: string;
+  temperature?: number | null;
+  system: string;
+  prompt: string;
+  response: string;
+  system_length: number;
+  prompt_length: number;
+  response_length: number;
+  truncated: boolean;
+  cost_usd: number | null;
+  duration_ms: number | null;
+  error: string;
+  degraded: boolean;
+  allowed_tools: string[];
+  input_ref?: string | string[] | null;
+  output_schema: string;
+  success_criteria: string;
+  context_sources: SeatIOContextSource[];
+}
+
+/** 列表用輕量投影：正文換成預覽＋長度 */
+export type SeatIOFeedRow = Omit<SeatIORecord, 'system' | 'prompt' | 'response'> & {
+  system_preview?: string;
+  prompt_preview?: string;
+  response_preview?: string;
+};
+
+/** GET /monitor/raho/feed 回應 */
+export interface SeatIOFeed {
+  items: SeatIOFeedRow[];
+  /** memory＝環形緩衝；disk＝持久 seat_*.jsonl（進程重啟後） */
+  source: 'memory' | 'disk' | string;
+  runs: Array<{
+    run_id: string;
+    task_id: string;
+    invocations: number;
+    roles: string[];
+    items: string[];
+    first_ts: string;
+    last_ts: string;
+    total_cost_usd: number;
+    role_count: number;
+    item_count: number;
+  }>;
+  total_roles: number;
+}
+
+export interface SeatFeedQuery {
+  task_id?: string;
+  run_id?: string;
+  role?: string;
+  layer?: number;
+  item_id?: string;
+  kind?: SeatIOKind;
+  limit?: number;
+  full?: boolean;
 }

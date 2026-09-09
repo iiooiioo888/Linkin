@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -873,6 +874,7 @@ class InspectorGate:
         source_data: Any,
     ) -> InspectorVerdict | None:
         prompt = self.compose(task_spec, l2_output, source_preview=_as_text(source_data)[:2000])
+        started = time.monotonic()
         try:
             if self.llm is not None:
                 raw = self.llm(prompt)
@@ -882,6 +884,31 @@ class InspectorGate:
                 raw = call_llm(prompt, system=self.system_prompt)
         except Exception:  # noqa: BLE001
             return None
+        try:
+            from backend.company.raho.protocol import RahoLayer, layer_label
+            from backend.company.seat_io import record_seat_io
+
+            spec = task_spec if isinstance(task_spec, dict) else getattr(task_spec, "__dict__", {})
+            record_seat_io({
+                "item_id": str(spec.get("node_id") or spec.get("item_id") or ""),
+                "title": str(spec.get("title") or "")[:80],
+                "role": "constitutional_inspector",
+                "role_label": "L1 憲兵（獨立審查）",
+                "layer": int(RahoLayer.L1_INSPECTOR),
+                "layer_label": layer_label(int(RahoLayer.L1_INSPECTOR)),
+                "lane": "inspect",
+                "kind": "inspect",
+                "system": self.system_prompt,
+                "prompt": prompt,
+                "response": raw,
+                "duration_ms": round((time.monotonic() - started) * 1000.0, 1),
+                "context_sources": [
+                    {"kind": "constitution", "label": "憲法層唯讀區塊（L3 規格＋L2 產出動態注入）", "text": self.system_prompt},
+                    {"kind": "deliverable", "label": "被審查的 L2 產出", "text": _as_text(l2_output)[:4000]},
+                ],
+            })
+        except Exception:  # noqa: BLE001 - 監察軌跡不得影響裁決
+            pass
         return parse_verdict(raw)
 
 

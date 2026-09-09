@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 import uuid
 from typing import Any
@@ -93,8 +94,12 @@ async def wait_user_decision(
     question: str,
     choices: list[EscalationChoice],
     ttl: float | None = None,
+    on_created: Any | None = None,
 ) -> dict[str, Any]:
-    """等待 L5 用戶裁決；逾時自動採用第一案。"""
+    """等待 L5 用戶裁決；逾時自動採用第一案。
+
+    on_created 在寫入 pending 後、阻塞等待前呼叫，讓前端能即時顯示可點選的決策列。
+    """
     timeout = decision_ttl_seconds() if ttl is None else ttl
     pending = PendingDecision(
         decision_id=uuid.uuid4().hex[:12],
@@ -116,6 +121,11 @@ async def wait_user_decision(
         status="blocked",
         payload={"decision_id": pending.decision_id, "item_id": item_id},
     )
+    if on_created is not None and timeout > 0:
+        try:
+            on_created(pending)
+        except Exception:  # noqa: BLE001
+            logger.debug("pending on_created hook 失敗", exc_info=True)
     if timeout <= 0:
         resolution = {
             "action": "auto",
@@ -141,7 +151,8 @@ async def wait_user_decision(
             "reply": (choices[0].label if choices else "標註假設後繼續") + "（決策逾時自動裁決）",
             "timeout": True,
         }
-        pending.resolution = resolution
+        # 經 STORE.decide 寫入，與用戶點選路徑一致；後續 /raho/decide 可冪等
+        STORE.decide(pending.decision_id, resolution)
         STORE.add_node(
             run_id,
             from_layer=int(RahoLayer.L5_USER),
@@ -165,6 +176,8 @@ async def resolve_grill(
     assignee: str = "",
     choices: list[EscalationChoice] | None = None,
     superior: str = "manager",
+    allowed_tools: list[str] | None = None,
+    on_user_pending: Any | None = None,
 ) -> dict[str, Any]:
     """L2 質詢的熱馬桶圈：L3 → L4 → L5。
 
@@ -177,7 +190,11 @@ async def resolve_grill(
     from backend.services.commander import increment_grill_round, respond_to_grill
 
     rounds_used = increment_grill_round(item_id)
-    sop = respond_to_grill(issues, rounds_used=max(0, rounds_used - 1))
+    sop = respond_to_grill(
+        issues,
+        allowed_tools=allowed_tools,
+        rounds_used=max(0, rounds_used - 1),
+    )
     node = STORE.add_node(
         run_id,
         from_layer=int(RahoLayer.L2_EXECUTOR),
@@ -224,13 +241,63 @@ async def resolve_grill(
         record_escalation(assignee or "executor", to_user=current == RahoLayer.L5_USER)
     for _round in range(MAX_SUPERIOR_ROUNDS + 1):
         if current == RahoLayer.L5_USER:
+            # 最後防線：已知工具缺口不要真的卡住用戶
+            allow = _auto_reissue_tools(issues, allowed_tools)
+            if allow and _tool_only_issues(issues):
+                STORE.resolve_node(run_id, node.node_id, "resolved")
+                STORE.add_node(
+                    run_id,
+                    from_layer=int(RahoLayer.L3_COMMANDER),
+                    to_layer=int(RahoLayer.L2_EXECUTOR),
+                    kind="resolve",
+                    summary=f"L5 前自動重發工具：{', '.join(allow)}"[:240],
+                    status="resolved",
+                    parent_id=node.node_id,
+                )
+                record_resolution(assignee or "executor", clear=True)
+                return {
+                    "action": "resolve",
+                    "reply": f"白名單已重發，僅允許：{', '.join(allow)}。依任務需求重試一次。",
+                    "reissued_tools": allow,
+                    "layer": int(RahoLayer.L3_COMMANDER),
+                    "node_id": node.node_id,
+                }
+            if allow:
+                # 混有其他問題：仍重發工具，並把工具缺口從提問中摘掉，減少噪音
+                issues = [
+                    i
+                    for i in issues
+                    if not (
+                        i.blocker_type == "工具不足"
+                        or i.kind == "tool"
+                        or re.search(
+                            r"allowed_tools|工具白名單|工具不足|ALLOWED_TOOLS",
+                            i.message or "",
+                            re.I,
+                        )
+                    )
+                ]
+                if not issues:
+                    STORE.resolve_node(run_id, node.node_id, "resolved")
+                    record_resolution(assignee or "executor", clear=True)
+                    return {
+                        "action": "resolve",
+                        "reply": f"白名單已重發，僅允許：{', '.join(allow)}。依任務需求重試一次。",
+                        "reissued_tools": allow,
+                        "layer": int(RahoLayer.L3_COMMANDER),
+                        "node_id": node.node_id,
+                    }
+                allowed_tools = allow
             user_choices = choices if choices else _default_choices(issues)
             result = await wait_user_decision(
                 run_id=run_id,
                 item_id=item_id,
                 question=_issue_text(issues),
                 choices=user_choices,
+                on_created=on_user_pending,
             )
+            if allow:
+                result = {**result, "reissued_tools": allow}
             STORE.resolve_node(run_id, node.node_id, "escalated")
             record_escalation(assignee or "executor", to_user=True)
             record_resolution("user", clear=not result.get("timeout"))
@@ -277,6 +344,11 @@ def decide(decision_id: str, choice: str, note: str = "") -> dict[str, Any]:
     pending = STORE.get_pending(decision_id)
     if pending is None:
         raise KeyError(f"待決決策不存在：{decision_id}")
+    # 逾時／重複點選：回傳既有結果，讓前端可清掉幽靈列（勿 404 卡死）
+    if pending.resolution is not None:
+        prev = dict(pending.to_dict())
+        prev["idempotent"] = True
+        return prev
     labels = {c.get("key"): c.get("label") for c in pending.choices}
     resolution = {
         "action": "user",
@@ -296,3 +368,35 @@ def decide(decision_id: str, choice: str, note: str = "") -> dict[str, Any]:
     )
     record_resolution("user", clear=True)
     return pending.to_dict()
+
+
+def _auto_reissue_tools(
+    issues: list[GrillIssue],
+    allowed_tools: list[str] | None,
+) -> list[str] | None:
+    """已知工具缺口 → 重發白名單；缺基礎設施（ffmpeg 等）則不處理。"""
+    blob = _issue_text(issues).lower()
+    if any(x in blob for x in ("ffmpeg", "whisper", "opencv")):
+        return None
+    try:
+        from backend.services.commander import infer_tools_from_text, normalize_tools
+
+        inferred = infer_tools_from_text(_issue_text(issues))
+        if not inferred:
+            return None
+        return normalize_tools(list(allowed_tools or []) + inferred)
+    except Exception:  # noqa: BLE001
+        logger.debug("工具自動重發推斷失敗", exc_info=True)
+        return None
+
+
+def _tool_only_issues(issues: list[GrillIssue]) -> bool:
+    if not issues:
+        return False
+    for issue in issues:
+        if issue.blocker_type == "工具不足" or issue.kind == "tool":
+            continue
+        if re.search(r"allowed_tools|工具白名單|工具不足|ALLOWED_TOOLS", issue.message or "", re.I):
+            continue
+        return False
+    return True

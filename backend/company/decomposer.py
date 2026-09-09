@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -359,6 +360,7 @@ class TaskDecomposer:
         except Exception:  # noqa: BLE001
             pass
 
+        _dec_start = time.monotonic()
         try:
             raw = call_llm(
                 prompt,
@@ -368,6 +370,36 @@ class TaskDecomposer:
             )
             cost = CostTracker.estimate_cost_rough(model, "high")
             self.budget.record_cost(cost)
+            try:
+                from backend.company.raho.protocol import layer_label, role_to_raho_layer
+                from backend.company.seat_io import record_seat_io
+
+                _layer = int(role_to_raho_layer(RoleType.MANAGER))
+                record_seat_io({
+                    "item_id": "",
+                    "title": goal[:80],
+                    "role": RoleType.MANAGER.value,
+                    "role_label": "Manager（任務分解）",
+                    "layer": _layer,
+                    "layer_label": layer_label(_layer),
+                    "kind": "decompose",
+                    "model": model or "",
+                    "tier": BudgetTier.CRITICAL.value,
+                    "system": self.prompt_config.manager_decompose_system,
+                    "prompt": prompt,
+                    "response": raw,
+                    "duration_ms": round((time.monotonic() - _dec_start) * 1000.0, 1),
+                    "cost_usd": round(cost, 6),
+                    "context_sources": [
+                        {
+                            "kind": "org_chart",
+                            "label": f"組織圖與 {len(valid_roles)} 個可指派角色",
+                            "text": f"{org_chart_str}\n{role_descriptions}",
+                        }
+                    ],
+                })
+            except Exception:  # noqa: BLE001 - 監察軌跡不得影響拆分
+                logger.debug("分解席位投遞軌跡異常（已忽略）", exc_info=True)
 
             result = parse_json_response(raw)
             subtasks = result.get("subtasks", [])

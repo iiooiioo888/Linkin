@@ -22,7 +22,7 @@ import SidePanel from './SidePanel';
 import StatusBar from './StatusBar';
 import TopBar from './TopBar';
 
-export type ViewKey = 'chat' | 'monitor' | 'traces' | 'task';
+export type ViewKey = 'chat' | 'monitor' | 'traces' | 'task' | 'raho';
 /** 精簡後的監控主分頁（次要功能收入 ops / lab）。 */
 export type MonitorTab =
   | 'live'
@@ -91,6 +91,9 @@ export interface AppShellProps {
 
   /** 主内容区 */
   children: ReactNode;
+
+  /** 有 L5 決策待決時強制收起側欄（避開手機 fixed 遮罩搶點擊） */
+  forceCloseSidebar?: boolean;
 }
 
 export default function AppShell({
@@ -117,6 +120,7 @@ export default function AppShell({
   onLabSubTabChange,
   statusInfo,
   children,
+  forceCloseSidebar = false,
 }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -125,11 +129,18 @@ export default function AppShell({
     setSidebarOpen(true);
   }, [activeView]);
 
+  // L5 決策列出現時關閉側欄，否則手機遮罩會蓋住 portal 以外的點擊目標
+  useEffect(() => {
+    if (forceCloseSidebar) setSidebarOpen(false);
+  }, [forceCloseSidebar]);
+
   const activity = resolveActivity(activeView, monitorTab);
   const lastTabByActivity = useRef<Partial<Record<ActivityKey, MonitorTab>>>({});
 
   useEffect(() => {
-    if (activeView === 'traces') {
+    // 二級整頁（軌跡／任務詳情／席位監察）不參與「上次分頁」記憶，
+    // 否則會把它們帶進來的 monitorTab 預設值寫回控制台記憶
+    if (activeView === 'traces' || activeView === 'task' || activeView === 'raho') {
       lastTabByActivity.current.console = lastTabByActivity.current.console ?? 'live';
       return;
     }

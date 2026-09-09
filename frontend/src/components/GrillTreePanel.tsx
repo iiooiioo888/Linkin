@@ -356,7 +356,7 @@ export default function GrillTreePanel({
         focusRoleId={focusRoleId}
       />
       {compact ? null : <L0BiasHint snapshot={l0} compact />}
-      <RahoDecisionBar pending={pending} onResolved={() => void reload()} />
+      <RahoDecisionBar pending={pending} poll variant="embed" onResolved={() => void reload()} />
 
       {compact ? null : (
         <div className="l0-tabs mb-3" role="tablist">

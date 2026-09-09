@@ -54,7 +54,6 @@ from backend.services.task_broadcaster import task_broadcaster
 from backend.services.trace_logger import (
     TraceLogger,
     delete_checkpoint,
-    eval_trace_kwargs,
     load_checkpoint,
     save_checkpoint,
 )
@@ -112,7 +111,13 @@ class TaskRecord:
         self.created_at = time.time()
         self.raho: dict[str, Any] = {}
 
-    def to_dict(self, full_events: bool = False) -> dict[str, Any]:
+    def to_dict(self, events_limit: int | None = 50) -> dict[str, Any]:
+        """任務快照。events_limit=None 或 0 表示回傳全部事件。"""
+        total_events = len(self.events)
+        if events_limit is None or events_limit <= 0:
+            visible_events = list(self.events)
+        else:
+            visible_events = self.events[-events_limit:]
         return {
             "task_id": self.task_id,
             "status": self.status,
@@ -121,7 +126,9 @@ class TaskRecord:
             "query": self.query,
             "template": self.template,
             "phase": self.phase,
-            "events": self.events if full_events else self.events[-50:],  # API 默認回最近 50 條
+            "events": visible_events,
+            "events_total": total_events,
+            "events_truncated": total_events > len(visible_events),
             "kanban": self.kanban,
             "budget": self.budget,
             "answer": self.answer,
@@ -143,6 +150,8 @@ class TaskRecord:
         """完整快照（供持久化，含全部事件）。"""
         data = self.to_dict()
         data["events"] = self.events
+        data["events_total"] = len(self.events)
+        data["events_truncated"] = False
         data["created_at"] = self.created_at
         return data
 
@@ -206,8 +215,6 @@ class TaskManager:
         self._redis_failed = False
         # 執行中的公司 orchestrator 引用（task_id → orchestrator），供取消使用
         self._orchestrators: dict[str, CompanyOrchestrator] = {}
-        # 公司任務的事件軌跡鏡像器（task_id → TraceLogger，保序號連續）
-        self._company_tracers: dict[str, TraceLogger] = {}
 
     # ── Redis 持久化 ──
 
@@ -263,39 +270,6 @@ class TaskManager:
         except Exception as exc:  # noqa: BLE001
             logger.warning("任務記錄讀取失敗：%s", exc)
             return None
-
-    def rehydrate(self) -> int:
-        """啟動時從 Redis 載回任務記錄（修復：重啟後任務列表／管線清空）。
-
-        掃描 evoloop:task:* 全部快照還原進記憶體；殘留的 pending/running
-        標記為中斷失敗（與 _load_from_redis 同一語意）。
-        """
-        client = self._get_redis()
-        if client is None:
-            return 0
-        loaded = 0
-        try:
-            keys = list(client.scan_iter(match=TASK_KEY_PREFIX + "*", count=500))
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("任務 rehydrate 掃描失敗：%s", exc)
-            return 0
-        for key in keys:
-            try:
-                raw = client.get(key)
-                if not raw:
-                    continue
-                record = TaskRecord.from_snapshot(json.loads(raw))
-                if record.status in ("pending", "running"):
-                    record.status = "failed"
-                    record.error = record.error or "後端服務重啟，任務中斷"
-                    self._persist(record)
-                self.tasks.setdefault(record.task_id, record)
-                loaded += 1
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("任務 rehydrate 跳過 %s：%s", key, exc)
-        if loaded:
-            logger.info("任務 rehydrate：自 Redis 載回 %d 筆記錄", loaded)
-        return loaded
 
     # ── 公開 API ──
 
@@ -439,8 +413,6 @@ class TaskManager:
     def _finish(self, record: TaskRecord) -> None:
         """任務結束（完成/失敗）：持久化並寫入 JSONL 存檔。"""
         self._persist(record)
-        # 公司軌跡鏡像收尾：釋放鏡像器（事件不再到來）
-        self._company_tracers.pop(record.task_id, None)
         # WebSocket 推送任务完成/失败事件
         self._broadcast_event(record.task_id, "task_finished", {
             "status": record.status,
@@ -581,10 +553,8 @@ class TaskManager:
             tracer.log_phase_change("generate")
             state.update(await asyncio.to_thread(nodes.generate_initial_answer, state))
             tracer.log_llm_call(
-                prompt=state.get("generate_prompt") or f"[generate] query={record.query}",
-                response=state.get("initial_answer", "")[:8000],
-                model=state.get("generate_model"),
-                system=state.get("generate_system"),
+                prompt=f"[generate] query={record.query}",
+                response=state.get("initial_answer", "")[:2000],
                 phase="generate",
             )
             if self._check_cancelled(record):
@@ -617,10 +587,13 @@ class TaskManager:
         self._set_phase(record, "evaluate")
         tracer.log_phase_change("evaluate")
         state.update(await asyncio.to_thread(nodes.evaluate_answer, state))
+        evaluation = state.get("evaluation", {})
         tracer.log_evaluation(
             score=state.get("score"),
+            feedback=evaluation.get("weaknesses", "") if isinstance(evaluation, dict) else str(evaluation),
             iteration=0,
-            **eval_trace_kwargs(state.get("multi_dim_evaluation")),
+            strengths=evaluation.get("strengths", "") if isinstance(evaluation, dict) else "",
+            weaknesses=evaluation.get("weaknesses", "") if isinstance(evaluation, dict) else "",
         )
         self._add_event(record, "evaluation", {
             "score": state.get("score"),
@@ -656,10 +629,11 @@ class TaskManager:
 
             self._set_phase(record, "evaluate")
             state.update(await asyncio.to_thread(nodes.evaluate_answer, state))
+            evaluation = state.get("evaluation", {})
             tracer.log_evaluation(
                 score=state.get("score"),
+                feedback=evaluation.get("weaknesses", "") if isinstance(evaluation, dict) else str(evaluation),
                 iteration=state.get("iteration", 0),
-                **eval_trace_kwargs(state.get("multi_dim_evaluation")),
             )
             self._add_event(record, "evaluation", {
                 "score": state.get("score"),
@@ -669,53 +643,23 @@ class TaskManager:
 
     # ── 公司運行時執行 ──
 
-    def _ensure_llm_trace_hook(self) -> None:
-        """註冊全域 llm_trace 鉤子（冪等）：按 entry.task_id 路由到任務軌跡。"""
-        from backend.core import llm_trace
-
-        if getattr(self, "_llm_hook_registered", False):
-            return
-
-        def hook(entry: dict[str, Any]) -> None:
-            task_id = entry.get("task_id") or ""
-            # 只鏡像公司任務（simple/chat 路徑不進 _company_tracers，避免重複）
-            tracer = self._company_tracers.get(task_id)
-            if tracer is None:
-                return
-            prompt = str(entry.get("prompt") or "")
-            response = str(entry.get("response") or "")
-            if entry.get("error"):
-                tracer.log_error(
-                    str(entry["error"]),
-                    phase=str(entry.get("phase") or ""),
-                    context=f"role={entry.get('role') or ''} item={entry.get('item_id') or ''}",
-                )
-                return
-            tracer.log_llm_call(
-                prompt=prompt,
-                response=response,
-                model=entry.get("model"),
-                system=entry.get("system"),
-                duration_ms=entry.get("duration_ms"),
-                phase=str(entry.get("phase") or ""),
-                role=str(entry.get("role") or ""),
-                item_id=str(entry.get("item_id") or ""),
-                full=True,
-            )
-
-        llm_trace.register_hook(hook)
-        self._llm_hook_registered = True
-
     def _attach_company_listener(
         self, record: TaskRecord, orchestrator: CompanyOrchestrator
     ) -> None:
         """掛載事件監聽器：收集事件並更新看板快照。
 
-        同時把全部 CompanyEvent 鏡像進任務軌跡（trace_<task_id>.jsonl），
-        供公司模式「角色 I/O 監察」頁按角色／事件回放每一次輸入輸出。
+        seat_io 倉只落 llm_call 全文；這裡把 CompanyEvent 生命週期事件
+        （work_item_*/tool_*/review_*/grill_*/inspector_verdict…）同步鏡像進
+        trace_<task_id>.jsonl，執行軌跡頁與角色 I/O 回放才有完整鏈路。
         """
-        tracer = self._company_tracers.get(record.task_id) or TraceLogger(record.task_id)
-        self._company_tracers[record.task_id] = tracer
+        # 席位 I/O 歸屬：run_id ≠ task_id，需顯式注入任務座標與軌跡寫入器
+        orchestrator.task_id = record.task_id
+        try:
+            tracer = TraceLogger(record.task_id)
+            orchestrator.tracer = tracer
+        except Exception as exc:  # noqa: BLE001 - 軌跡注入失敗不阻斷執行
+            tracer = None
+            logger.warning("公司任務軌跡注入失敗（不影響執行）：%s", exc)
 
         def listener(event: CompanyEvent, data: dict[str, Any]) -> None:
             event_data = {k: v for k, v in data.items() if k != "config"}
@@ -723,20 +667,20 @@ class TaskManager:
             if event == CompanyEvent.DECOMPOSE_DONE:
                 event_data.pop("execution_plan", None)
             self._add_event(record, event.value, event_data)
-            # ── 軌跡鏡像：角色 I/O 全監資料源（寫入失敗不影響執行）──
-            try:
-                mirror = dict(event_data)
-                # 事件负载常缺 role/item_id：用发出协程的 llm_trace 上下文补全
-                from backend.core import llm_trace as _lt
+            # ── 軌跡鏡像（寫入失敗不影響執行）：發出協程的 llm_trace 上下文補 role/item ──
+            if tracer is not None:
+                try:
+                    from backend.core import llm_trace as _lt
 
-                ctx = _lt.current_context()
-                if ctx["task_id"] == record.task_id:
-                    mirror.setdefault("role", ctx["role"])
-                    mirror.setdefault("item_id", ctx["item_id"])
-                    mirror.setdefault("phase", ctx["phase"])
-                tracer.log_company_event(event.value, mirror)
-            except Exception:  # noqa: BLE001
-                logger.debug("公司事件軌跡鏡像失敗：%s", event)
+                    mirror = dict(event_data)
+                    ctx = _lt.current_context()
+                    if ctx["task_id"] == record.task_id or not ctx["task_id"]:
+                        mirror.setdefault("role", ctx["role"])
+                        mirror.setdefault("item_id", ctx["item_id"])
+                        mirror.setdefault("phase", ctx["phase"])
+                    tracer.log_company_event(event.value, mirror)
+                except Exception:  # noqa: BLE001
+                    logger.debug("公司事件軌跡鏡像失敗：%s", event)
             if event == CompanyEvent.PHASE_CHANGE:
                 record.phase = str(data.get("phase", ""))
             # 分解完成：即時記錄規劃（供任務頁執行中展示）
@@ -790,12 +734,6 @@ class TaskManager:
         record.phase = "resuming"
         self._persist(record)
         tracer = TraceLogger(record.task_id)
-        self._company_tracers[record.task_id] = tracer
-        from backend.core import llm_trace
-
-        llm_trace.trace_task_id.set(record.task_id)
-        llm_trace.trace_enabled.set(True)
-        self._ensure_llm_trace_hook()
         tracer.log_phase_change("resume", data={"checkpoint_phase": checkpoint.get("phase", "")})
 
         config = BUILTIN_TEMPLATES.get(record.template)
@@ -862,15 +800,11 @@ class TaskManager:
     async def _run_company_task(self, record: TaskRecord) -> None:
         """公司運行時路徑：多角色分工 → 反思迴圈。"""
         tracer = TraceLogger(record.task_id)
-        self._company_tracers[record.task_id] = tracer
-        # 角色 I/O 全監：綁定任務級 llm_trace 上下文，
-        # 公司管線內所有 call_llm 自動帶完整 prompt/system/response 進軌跡
+        tracer.log_phase_change("starting", data={"template": record.template})
+        # 角色 I/O 上下文：綁定 task_id 供事件鏡像/席位軌跡歸屬（公司協程內自動繼承）
         from backend.core import llm_trace
 
         llm_trace.trace_task_id.set(record.task_id)
-        llm_trace.trace_enabled.set(True)
-        self._ensure_llm_trace_hook()
-        tracer.log_phase_change("starting", data={"template": record.template})
 
         config = BUILTIN_TEMPLATES.get(record.template)
         if config is None:

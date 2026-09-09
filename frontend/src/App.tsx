@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChatMessage, ChatSession, TaskProgress } from './types';
-import { createTask, fetchConfig, fetchMemories, fetchTask, planBattle, sendChatStream, startUserGrill, streamAuditor, TaskWebSocket } from './api/client';
+import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, startUserGrill, streamAuditor, TaskWebSocket } from './api/client';
 import type { TaskWsMessage } from './api/client';
 import {
   appRouteFromState,
@@ -33,6 +33,8 @@ import type { SendOptions } from './components/InputBar';
 import MonitorView from './components/MonitorView';
 import SettingsModal from './components/SettingsModal';
 import TraceView from './components/TraceView';
+import TaskDetailView from './components/taskdetail/TaskDetailView';
+import RahoOpsView from './components/rahoops/RahoOpsView';
 
 function createSession(): ChatSession {
   const now = Date.now();
@@ -72,10 +74,13 @@ export default function App() {
   const [focusAgentId, setFocusAgentId] = useState<string | null>(initialRoute.focusAgentId);
   const [focusTaskId, setFocusTaskId] = useState<string | null>(initialRoute.focusTaskId);
   const [traceTaskId, setTraceTaskId] = useState<string | null>(initialRoute.traceTaskId);
+  /** 公司運行時席位 I/O 監察整頁的聚焦對象（raho run_id 或 task_id） */
+  const [rahoFocus, setRahoFocus] = useState<string | null>(initialRoute.rahoFocus);
   const [labSubTab, setLabSubTab] = useState<LabSubTab>(initialRoute.labSubTab);
   const [rightPanelTask, setRightPanelTask] = useState<TaskProgress | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [memoryCount, setMemoryCount] = useState(0);
+  const [decisionPending, setDecisionPending] = useState(false);
 
   // ── LLM 配置 ──
   const [llmConfigured, setLlmConfigured] = useState<boolean | null>(null);
@@ -106,10 +111,11 @@ export default function App() {
         focusAgentId,
         focusTaskId,
         traceTaskId,
+        rahoFocus,
         labSubTab,
       }),
     );
-  }, [routeReady, activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, labSubTab]);
+  }, [routeReady, activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -120,6 +126,7 @@ export default function App() {
         focusAgentId,
         focusTaskId,
         traceTaskId,
+        rahoFocus,
         labSubTab,
       });
       if (routesEqual(current, parsed)) return;
@@ -129,11 +136,12 @@ export default function App() {
       setFocusAgentId(next.focusAgentId);
       setFocusTaskId(next.focusTaskId);
       setTraceTaskId(next.traceTaskId);
+      setRahoFocus(next.rahoFocus);
       setLabSubTab(next.labSubTab);
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, [activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, labSubTab]);
+  }, [activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
 
   const navigateRoute = useCallback(
     (patch: Partial<ReturnType<typeof getDefaultRoute>>) => {
@@ -143,6 +151,7 @@ export default function App() {
         focusAgentId: patch.focusAgentId !== undefined ? patch.focusAgentId : focusAgentId,
         focusTaskId: patch.focusTaskId !== undefined ? patch.focusTaskId : focusTaskId,
         traceTaskId: patch.traceTaskId !== undefined ? patch.traceTaskId : traceTaskId,
+        rahoFocus: patch.rahoFocus !== undefined ? patch.rahoFocus : rahoFocus,
         labSubTab: patch.labSubTab ?? labSubTab,
       });
       const applied = applyAppRoute(route);
@@ -151,9 +160,10 @@ export default function App() {
       setFocusAgentId(applied.focusAgentId);
       setFocusTaskId(applied.focusTaskId);
       setTraceTaskId(applied.traceTaskId);
+      setRahoFocus(applied.rahoFocus);
       setLabSubTab(applied.labSubTab);
     },
-    [activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, labSubTab],
+    [activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab],
   );
 
   useEffect(() => {
@@ -490,14 +500,29 @@ export default function App() {
         let lastProgress: TaskProgress | null = null;
 
         const applyProgress = (progress: TaskProgress) => {
-          lastProgress = progress;
-          const liveDraft = progress.answer?.trim() ?? '';
-          const roleThink = Object.values(progress.kanban ?? {})
+          // 執行中若新快照缺 raho／pending 欄位，保留上一幀待決，避免決策列被輪詢冲掉
+          const running =
+            progress.status === 'running' || progress.status === 'pending';
+          let mergedProgress = progress;
+          if (running && lastProgress?.raho) {
+            const prevPending = lastProgress.raho.pending_decisions ?? [];
+            if (!progress.raho) {
+              mergedProgress = { ...progress, raho: { ...lastProgress.raho } };
+            } else if (!Array.isArray(progress.raho.pending_decisions) && prevPending.length > 0) {
+              mergedProgress = {
+                ...progress,
+                raho: { ...progress.raho, pending_decisions: prevPending },
+              };
+            }
+          }
+          lastProgress = mergedProgress;
+          const liveDraft = mergedProgress.answer?.trim() ?? '';
+          const roleThink = Object.values(mergedProgress.kanban ?? {})
             .flat()
             .map((it) => String(it.thinking ?? '').trim())
             .filter(Boolean)
             .join('\n\n');
-          const eventThink = (progress.events ?? [])
+          const eventThink = (mergedProgress.events ?? [])
             .map((e) => String(e.data.thinking ?? '').trim())
             .filter(Boolean)
             .join('\n\n');
@@ -508,10 +533,10 @@ export default function App() {
               m.id === assistantId
                 ? {
                     ...m,
-                    taskState: progress,
+                    taskState: mergedProgress,
                     content: liveDraft || m.content,
                     thinking: roleThink || eventThink || m.thinking,
-                    streaming: progress.status === 'running' || progress.status === 'pending',
+                    streaming: running,
                   }
                 : m,
             ),
@@ -597,11 +622,43 @@ export default function App() {
                 });
               }
             });
+          } else if (msg.event === 'user_decision_needed') {
+            const data = msg.data as Record<string, unknown>;
+            if (lastProgress && data.decision_id) {
+              const incoming = {
+                decision_id: String(data.decision_id),
+                run_id: String(data.run_id || lastProgress.raho?.run_id || ''),
+                item_id: String(data.item_id || ''),
+                layer: 5,
+                layer_label: 'L5 用戶',
+                role_id: 'user',
+                role_label: 'L5 用戶',
+                question: String(data.question || ''),
+                choices: Array.isArray(data.choices) ? (data.choices as Array<{ key: string; label: string }>) : [],
+                ttl: typeof data.ttl === 'number' ? data.ttl : undefined,
+                created_at: typeof data.created_at === 'number' ? data.created_at : Date.now() / 1000,
+                remaining_sec: typeof data.remaining_sec === 'number' ? data.remaining_sec : undefined,
+                blocked: true,
+              };
+              const prev = lastProgress.raho?.pending_decisions ?? [];
+              const merged = [
+                ...prev.filter((p) => p.decision_id !== incoming.decision_id),
+                incoming,
+              ];
+              applyProgress({
+                ...lastProgress,
+                raho: {
+                  ...(lastProgress.raho ?? {}),
+                  run_id: incoming.run_id || lastProgress.raho?.run_id,
+                  pending_decisions: merged,
+                },
+              });
+            }
+            fetchTask(task_id).then(applyProgress).catch(() => {});
           } else if (
             msg.event === 'phase_change' ||
             msg.event === 'evaluation' ||
             msg.event === 'grill_raised' ||
-            msg.event === 'user_decision_needed' ||
             msg.event === 'campaign_planned' ||
             msg.event === 'inspector_verdict'
           ) {
@@ -720,7 +777,7 @@ export default function App() {
             taskOptions: {
               ...opts.taskOptions,
               semantic_brief: next.locked_brief || grill.originalQuery,
-              auditor_ticket: (next.ticket ?? undefined) as Record<string, unknown> | undefined,
+              auditor_ticket: next.ticket ?? undefined,
             },
           });
         }
@@ -741,7 +798,7 @@ export default function App() {
         executionStrategy: (msg?.executionStrategy ?? 'auto') as SendOptions['executionStrategy'],
         companyTemplate: 'quick_task' as const,
       };
-      const baseTicket = (grill?.ticket ?? opts.taskOptions?.auditor_ticket ?? {}) as Record<string, unknown>;
+      const baseTicket = grill?.ticket ?? opts.taskOptions?.auditor_ticket ?? {};
       const ticket = { ...baseTicket, user_override: choice };
       updateSession(activeSession?.id ?? '', (s) => ({
         ...s,
@@ -778,15 +835,81 @@ export default function App() {
       });
   }, [lastQuery, sendQuery]);
 
+  // ── 任務詳情整頁（#/task/{taskId}）──
+  const [taskDetail, setTaskDetail] = useState<TaskProgress | null>(null);
+  const [taskDetailLoading, setTaskDetailLoading] = useState(false);
+  const [taskDetailError, setTaskDetailError] = useState<string | null>(null);
+
+  const loadTaskDetail = useCallback(async (taskId: string) => {
+    setTaskDetailLoading(true);
+    try {
+      // events_limit=0：詳情頁要完整事件流，不受列表頁 50 條截斷限制
+      const fresh = await fetchTask(taskId, 0);
+      setTaskDetail(fresh);
+      setTaskDetailError(null);
+    } catch (err) {
+      setTaskDetailError((err as Error).message || '讀取任務詳情失敗');
+    } finally {
+      setTaskDetailLoading(false);
+    }
+  }, []);
+
+  const openTaskDetail = useCallback(
+    (task: TaskProgress) => {
+      if (!task?.task_id) return;
+      setTaskDetail(task);
+      setTaskDetailError(null);
+      navigateRoute({ view: 'task', focusTaskId: task.task_id });
+    },
+    [navigateRoute],
+  );
+
+  // OPC 任務保留右側六級診斷面板；公司／簡單任務進詳情整頁
+  const openTaskOrPanel = useCallback(
+    (task: TaskProgress) => {
+      if (task.resolved_path === 'opc') {
+        setRightPanelTask(task);
+        return;
+      }
+      openTaskDetail(task);
+    },
+    [openTaskDetail],
+  );
+
+  const handleOpenRaho = useCallback(
+    (focus: string) => {
+      navigateRoute({ view: 'raho', rahoFocus: focus || null });
+    },
+    [navigateRoute],
+  );
+
+  useEffect(() => {
+    if (activeView !== 'task' || !focusTaskId) return;
+    void loadTaskDetail(focusTaskId);
+  }, [activeView, focusTaskId, loadTaskDetail]);
+
+  const handleTaskCancel = useCallback(() => {
+    if (!focusTaskId) return;
+    void cancelTask(focusTaskId)
+      .then(() => loadTaskDetail(focusTaskId))
+      .catch((err: Error) => setTaskDetailError(err.message || '請求取消失敗'));
+  }, [focusTaskId, loadTaskDetail]);
+
+  const handleTaskResume = useCallback(() => {
+    if (!focusTaskId) return;
+    void resumeTask(focusTaskId)
+      .then(() => loadTaskDetail(focusTaskId))
+      .catch((err: Error) => setTaskDetailError(err.message || '斷點續跑失敗'));
+  }, [focusTaskId, loadTaskDetail]);
+
   // ── 从消息打开任务详情 ──
   const handleOpenTask = useCallback(
     (messageId: string) => {
       const msg = activeSession?.messages.find((m) => m.id === messageId);
-      if (msg?.taskState) {
-        setRightPanelTask(msg.taskState);
-      }
+      if (!msg?.taskState) return;
+      openTaskOrPanel(msg.taskState);
     },
-    [activeSession],
+    [activeSession, openTaskOrPanel],
   );
 
   // ── 快捷建议 ──
@@ -802,8 +925,8 @@ export default function App() {
 
   // ── Dashboard 任务打开 ──
   const handleDashboardOpenTask = useCallback((task: TaskProgress) => {
-    setRightPanelTask(task);
-  }, []);
+    openTaskOrPanel(task);
+  }, [openTaskOrPanel]);
 
   // ── 打開執行軌跡視圖 ──
   const handleOpenTrace = useCallback(
@@ -909,6 +1032,36 @@ export default function App() {
     [navigateRoute],
   );
 
+  const handleDecisionPending = useCallback((hasPending: boolean) => {
+    setDecisionPending(hasPending);
+  }, []);
+
+  const handleDecisionResolved = useCallback(
+    (decisionId?: string) => {
+      setDecisionPending(false);
+      if (!activeSession?.id) return;
+      const sid = activeSession.id;
+      updateSession(sid, (s) => ({
+        ...s,
+        messages: s.messages.map((m) => {
+          const pending = m.taskState?.raho?.pending_decisions;
+          if (!pending?.length) return m;
+          const next = decisionId
+            ? pending.filter((p) => p.decision_id !== decisionId)
+            : [];
+          return {
+            ...m,
+            taskState: {
+              ...m.taskState!,
+              raho: { ...m.taskState!.raho, pending_decisions: next },
+            },
+          };
+        }),
+      }));
+    },
+    [activeSession?.id, updateSession],
+  );
+
   // ── 状态栏信息 ──
   const statusInfo = useMemo(
     () => ({
@@ -943,6 +1096,7 @@ export default function App() {
         labSubTab={labSubTab}
         onLabSubTabChange={handleLabSubTabChange}
         statusInfo={statusInfo}
+        forceCloseSidebar={decisionPending}
       >
         {activeView === 'chat' && (
           <ChatView
@@ -962,6 +1116,8 @@ export default function App() {
             onSuggest={handleSuggest}
             onGrillAnswer={handleGrillAnswer}
             onBattlePick={handleBattlePick}
+            onDecisionPending={handleDecisionPending}
+            onDecisionResolved={handleDecisionResolved}
           />
         )}
 
@@ -983,6 +1139,31 @@ export default function App() {
           <TraceView
             taskId={traceTaskId}
             onTaskIdChange={handleTraceTaskChange}
+          />
+        )}
+
+        {activeView === 'task' && (
+          <TaskDetailView
+            task={taskDetail}
+            loading={taskDetailLoading}
+            error={taskDetailError}
+            onRefresh={() => {
+              if (focusTaskId) void loadTaskDetail(focusTaskId);
+            }}
+            onBack={() => navigateRoute({ view: 'monitor', monitorTab: 'tasks' })}
+            onOpenTrace={handleOpenTrace}
+            onOpenRaho={handleOpenRaho}
+            onCancel={handleTaskCancel}
+            onResume={handleTaskResume}
+          />
+        )}
+
+        {activeView === 'raho' && (
+          <RahoOpsView
+            focus={rahoFocus}
+            onFocusChange={(focus) => navigateRoute({ view: 'raho', rahoFocus: focus })}
+            onOpenTask={(taskId) => navigateRoute({ view: 'task', focusTaskId: taskId })}
+            onBack={() => navigateRoute({ view: 'monitor', monitorTab: 'agents' })}
           />
         )}
       </AppShell>

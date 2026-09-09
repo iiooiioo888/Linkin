@@ -1236,6 +1236,35 @@ def _requested_tool(text: str) -> str:
     return match.group(1) if match else ""
 
 
+def infer_tools_from_text(text: str) -> list[str]:
+    """從質詢文推斷可重發的已知工具（空白名單時用）。"""
+    raw = (text or "").lower()
+    found: list[str] = []
+
+    def add(name: str) -> None:
+        if name not in found:
+            found.append(name)
+
+    if re.search(r"pdf|csv|檔案|文件|讀檔|read_file|\.txt|\.md|xlsx|寫入", raw):
+        add("read_file")
+    if re.search(r"url|http|爬取|擷取|下載|web_fetch|官網|頁面", raw):
+        add("web_fetch")
+    if re.search(r"搜尋|search|web_search", raw):
+        add("web_search")
+    if re.search(r"解析|python|統計|計算|python_exec", raw):
+        add("python_exec")
+    if re.search(r"摘要|分析|text_analyzer|語意", raw):
+        add("text_analyzer")
+    if re.search(r"json|json_formatter|schema", raw):
+        add("json_formatter")
+    if re.search(r"記憶|memory|read_memory", raw):
+        add("read_memory")
+    # ALLOWED_TOOLS 為空但任務需要工具：給最小可用組合
+    if not found and re.search(r"allowed_tools|工具白名單|工具不足|需要讀檔|擷取|解析", raw):
+        found.extend(["read_file", "web_fetch", "json_formatter"])
+    return normalize_tools(found)
+
+
 def respond_to_grill(
     issues: list[GrillIssue] | list[str] | str,
     *,
@@ -1247,13 +1276,69 @@ def respond_to_grill(
     """L2 → L3 Grill SOP。3 輪無解即 [ESCALATE]。"""
     if isinstance(issues, str):
         messages = [issues]
+        issue_list: list[Any] = [issues]
     else:
+        issue_list = list(issues)
         messages = [
-            item.message if isinstance(item, GrillIssue) else str(item) for item in issues
+            item.message if isinstance(item, GrillIssue) else str(item) for item in issue_list
         ]
     text = "\n".join(messages)
     kind = classify_grill(issues)
     escalate_forced = rounds_used >= MAX_SUPERIOR_ROUNDS
+
+    def _try_reissue_tools() -> dict[str, Any] | None:
+        """空白名單／已知工具缺口：優先重發，避免無謂上交 L5。"""
+        if escalate_forced:
+            return None
+        has_tool_blocker = False
+        for item in issue_list:
+            if isinstance(item, GrillIssue) and (
+                item.blocker_type == "工具不足" or item.kind == "tool"
+            ):
+                has_tool_blocker = True
+                break
+        if not has_tool_blocker and kind != GRILL_TOOL:
+            if not re.search(r"allowed_tools|工具白名單|工具不足|ALLOWED_TOOLS", text, re.I):
+                return None
+        requested = _requested_tool(text)
+        if requested and requested not in KNOWN_TOOLS:
+            return None
+        allow = normalize_tools(
+            list(allowed_tools or []) + ([requested] if requested in KNOWN_TOOLS else [])
+        )
+        if requested in KNOWN_TOOLS:
+            return {
+                "action": "resolve",
+                "kind": GRILL_TOOL,
+                "escalate": False,
+                "escalate_to": "",
+                "reply": f"白名單已重發，僅允許：{', '.join(allow)}。用 {requested} 重試一次。",
+                "reissued_tools": allow,
+                "rounds_used": rounds_used + 1,
+            }
+        inferred = infer_tools_from_text(text)
+        if not inferred:
+            return None
+        allow = normalize_tools(list(allow) + inferred)
+        return {
+            "action": "resolve",
+            "kind": GRILL_TOOL,
+            "escalate": False,
+            "escalate_to": "",
+            "reply": f"白名單已重發，僅允許：{', '.join(allow)}。依任務需求重試一次。",
+            "reissued_tools": allow,
+            "rounds_used": rounds_used + 1,
+        }
+
+    # 工具缺口可本地修復時，即使同時有資料缺失也先重發工具（下一輪再處理資料）
+    tool_fix = _try_reissue_tools()
+    if tool_fix is not None and (
+        kind == GRILL_TOOL
+        or not any(
+            isinstance(i, GrillIssue) and i.blocker_type == "資料缺失" for i in issue_list
+        )
+    ):
+        return tool_fix
 
     if kind == GRILL_CLARIFY and not escalate_forced:
         if re.search(r"高品質|品質|质量|深刻|語法", text):
@@ -1286,6 +1371,19 @@ def respond_to_grill(
                 "reply": f"來源缺欄時改用替代欄位：{', '.join(alts)}。取得到的值原樣輸出，缺則留空。",
                 "rounds_used": rounds_used + 1,
             }
+        # 混有工具缺口時一併重發，減少 L5 決策阻塞
+        if tool_fix is not None:
+            patched = dict(tool_fix)
+            patched["reply"] = (
+                f"{ESCALATE_MARK} 資料源缺失，L2 已暫停。請 L4 補充替代數據源。"
+                f"同時已重發工具：{', '.join(tool_fix.get('reissued_tools') or [])}。"
+                f"原文：{text[:140]}"
+            )
+            patched["action"] = "escalate"
+            patched["escalate"] = True
+            patched["escalate_to"] = "L4"
+            patched["kind"] = kind
+            return patched
         return {
             "action": "escalate",
             "kind": kind,
@@ -1296,18 +1394,9 @@ def respond_to_grill(
         }
 
     if kind == GRILL_TOOL:
+        if tool_fix is not None:
+            return tool_fix
         requested = _requested_tool(text)
-        allow = normalize_tools(list(allowed_tools or []) + ([requested] if requested in KNOWN_TOOLS else []))
-        if requested in KNOWN_TOOLS and not escalate_forced:
-            return {
-                "action": "resolve",
-                "kind": kind,
-                "escalate": False,
-                "escalate_to": "",
-                "reply": f"白名單已重發，僅允許：{', '.join(allow)}。用 {requested} 重試一次。",
-                "reissued_tools": allow,
-                "rounds_used": rounds_used + 1,
-            }
         return {
             "action": "escalate",
             "kind": kind,
@@ -1446,6 +1535,7 @@ __all__ = [
     "has_concrete_object",
     "hours_until_deadline",
     "increment_grill_round",
+    "infer_tools_from_text",
     "l2_brief_ok",
     "l2_task_brief",
     "normalize_tools",

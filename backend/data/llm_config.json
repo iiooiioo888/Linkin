@@ -1,0 +1,188 @@
+{
+  "model": "qwen3.8-flash",
+  "provider_kind": "qwen",
+  "allowed_models": [
+    "qwen3.7-max",
+    "qwen3.7-plus",
+    "qwen3.6-flash",
+    "glm-5.2",
+    "deepseek-v4-pro",
+    "wan2.7-image",
+    "wan2.7-image-pro",
+    "qwen-audio-3.0-tts-plus",
+    "deepseek-v4-flash-0731",
+    "qwen3.8-max",
+    "qwen-audio-3.0-realtime-plus",
+    "qwen3.8-flash"
+  ],
+  "catalog_models": [
+    {
+      "id": "qwen3.7-max",
+      "name": "qwen3.7-max",
+      "owned_by": "system"
+    },
+    {
+      "id": "qwen3.7-plus",
+      "name": "qwen3.7-plus",
+      "owned_by": "system"
+    },
+    {
+      "id": "qwen3.6-flash",
+      "name": "qwen3.6-flash",
+      "owned_by": "system"
+    },
+    {
+      "id": "glm-5.2",
+      "name": "glm-5.2",
+      "owned_by": "system"
+    },
+    {
+      "id": "deepseek-v4-pro",
+      "name": "deepseek-v4-pro",
+      "owned_by": "system"
+    },
+    {
+      "id": "wan2.7-image",
+      "name": "wan2.7-image",
+      "owned_by": "system"
+    },
+    {
+      "id": "wan2.7-image-pro",
+      "name": "wan2.7-image-pro",
+      "owned_by": "system"
+    },
+    {
+      "id": "qwen-audio-3.0-tts-plus",
+      "name": "qwen-audio-3.0-tts-plus",
+      "owned_by": "system"
+    },
+    {
+      "id": "deepseek-v4-flash-0731",
+      "name": "deepseek-v4-flash-0731",
+      "owned_by": "system"
+    },
+    {
+      "id": "qwen3.8-max",
+      "name": "qwen3.8-max",
+      "owned_by": "system"
+    },
+    {
+      "id": "qwen-audio-3.0-realtime-plus",
+      "name": "qwen-audio-3.0-realtime-plus",
+      "owned_by": "system"
+    },
+    {
+      "id": "qwen3.8-flash",
+      "name": "qwen3.8-flash",
+      "owned_by": "system"
+    }
+  ],
+  "catalog_source": "crawl",
+  "catalog_fetched_at": "2026-09-09T09:06:50.359523+00:00",
+  "catalog_error": "",
+  "catalog_url": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/models",
+  "ops_last_reason": "schedule",
+  "ops_last_ok_at": "2026-09-09T09:06:50.359551+00:00",
+  "ops_last_error": "",
+  "ops_last_latency_ms": 1015,
+  "ops_consecutive_fail": 0,
+  "api_routes": [
+    {
+      "id": "qwen",
+      "name": "通義千問 Qwen",
+      "provider": "qwen",
+      "api_key": "sk-sp-H.EPIMR.0C3r.MEUCICDz1FUWnMRYqlf5W3tN1eIc7Y1nLpaa9L2ODJrDcRitAiEAjIaEsEjQnMWFAjPt6A0_rwdfwdtTs6-ahbV25vpd7t4",
+      "api_base": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+      "model": "qwen3.8-flash",
+      "allowed_models": [
+        "qwen3.7-max",
+        "qwen3.7-plus",
+        "qwen3.6-flash",
+        "glm-5.2",
+        "deepseek-v4-pro",
+        "wan2.7-image",
+        "wan2.7-image-pro",
+        "qwen-audio-3.0-tts-plus",
+        "deepseek-v4-flash-0731",
+        "qwen3.8-max",
+        "qwen-audio-3.0-realtime-plus",
+        "qwen3.8-flash"
+      ],
+      "catalog_models": [
+        {
+          "id": "qwen3.7-max",
+          "name": "qwen3.7-max",
+          "owned_by": "system"
+        },
+        {
+          "id": "qwen3.7-plus",
+          "name": "qwen3.7-plus",
+          "owned_by": "system"
+        },
+        {
+          "id": "qwen3.6-flash",
+          "name": "qwen3.6-flash",
+          "owned_by": "system"
+        },
+        {
+          "id": "glm-5.2",
+          "name": "glm-5.2",
+          "owned_by": "system"
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "name": "deepseek-v4-pro",
+          "owned_by": "system"
+        },
+        {
+          "id": "wan2.7-image",
+          "name": "wan2.7-image",
+          "owned_by": "system"
+        },
+        {
+          "id": "wan2.7-image-pro",
+          "name": "wan2.7-image-pro",
+          "owned_by": "system"
+        },
+        {
+          "id": "qwen-audio-3.0-tts-plus",
+          "name": "qwen-audio-3.0-tts-plus",
+          "owned_by": "system"
+        },
+        {
+          "id": "deepseek-v4-flash-0731",
+          "name": "deepseek-v4-flash-0731",
+          "owned_by": "system"
+        },
+        {
+          "id": "qwen3.8-max",
+          "name": "qwen3.8-max",
+          "owned_by": "system"
+        },
+        {
+          "id": "qwen-audio-3.0-realtime-plus",
+          "name": "qwen-audio-3.0-realtime-plus",
+          "owned_by": "system"
+        },
+        {
+          "id": "qwen3.8-flash",
+          "name": "qwen3.8-flash",
+          "owned_by": "system"
+        }
+      ],
+      "catalog_source": "crawl",
+      "catalog_error": "",
+      "catalog_fetched_at": "2026-09-09T09:06:50.359523+00:00",
+      "catalog_url": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/models",
+      "weight": 10,
+      "enabled": true,
+      "fallback": false,
+      "is_default": true,
+      "models_locked": true,
+      "provider_routing": null
+    }
+  ],
+  "default_route_id": "qwen",
+  "api_key": "sk-sp-H.EPIMR.0C3r.MEUCICDz1FUWnMRYqlf5W3tN1eIc7Y1nLpaa9L2ODJrDcRitAiEAjIaEsEjQnMWFAjPt6A0_rwdfwdtTs6-ahbV25vpd7t4",
+  "api_base": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+}

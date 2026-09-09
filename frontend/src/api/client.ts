@@ -8,7 +8,7 @@
  * 生產環境可設定 VITE_API_URL 環境變數指向後端位址。
  */
 
-import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
+import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, SeatFeedQuery, SeatIOFeed, SeatIORecord, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
 import { appendGateQuery } from '../lib/auth';
 
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
@@ -492,7 +492,16 @@ export async function decideRaho(decisionId: string, choice: string, note = ''):
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ decision_id: decisionId, choice, note }),
   });
-  if (!resp.ok) throw new Error(`裁決失敗（HTTP ${resp.status}）`);
+  if (!resp.ok) {
+    let detail = `裁決失敗（HTTP ${resp.status}）`;
+    try {
+      const body = await resp.json();
+      if (body?.detail) detail = String(body.detail);
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
   return resp.json();
 }
 
@@ -536,25 +545,13 @@ export async function resumeTask(taskId: string): Promise<{ success: boolean; me
   return resp.json();
 }
 
-/** 獲取任務的思考過程記錄（分頁 + 可篩選）。 */
+/** 獲取任務的思考過程記錄（分頁）。 */
 export async function fetchTaskTrace(
   taskId: string,
   limit: number = 100,
   offset: number = 0,
-  filters?: { event?: string; role?: string; itemId?: string; withCounts?: boolean },
-): Promise<{
-  task_id: string;
-  offset: number;
-  limit: number;
-  events: TraceEntry[];
-  event_counts?: Record<string, number>;
-}> {
-  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-  if (filters?.event) params.set('event', filters.event);
-  if (filters?.role) params.set('role', filters.role);
-  if (filters?.itemId) params.set('item_id', filters.itemId);
-  if (filters?.withCounts) params.set('with_counts', 'true');
-  const resp = await fetch(apiUrl(`/tasks/${encodeURIComponent(taskId)}/trace?${params}`));
+): Promise<{ task_id: string; offset: number; limit: number; events: TraceEntry[] }> {
+  const resp = await fetch(apiUrl(`/tasks/${encodeURIComponent(taskId)}/trace?limit=${limit}&offset=${offset}`));
   if (!resp.ok) throw new Error(`讀取軌跡失敗（HTTP ${resp.status}）`);
   return resp.json();
 }
@@ -584,11 +581,34 @@ export async function fetchCheckpoints(): Promise<{ checkpoints: CheckpointSumma
   return resp.json();
 }
 
-/** 查詢任務進度（events=all 時回傳完整事件流，供任務整頁）。 */
-export async function fetchTask(taskId: string, fullEvents = false): Promise<TaskProgress> {
-  const suffix = fullEvents ? '?events=all' : '';
-  const resp = await fetch(apiUrl(`/tasks/${encodeURIComponent(taskId)}${suffix}`));
+/** 查詢任務進度。eventsLimit=0 表示向後端索取全部事件（預設 50）。 */
+export async function fetchTask(taskId: string, eventsLimit?: number): Promise<TaskProgress> {
+  const q = eventsLimit === undefined ? '' : `?events_limit=${eventsLimit}`;
+  const resp = await fetch(apiUrl(`/tasks/${encodeURIComponent(taskId)}${q}`));
   if (!resp.ok) throw new Error(`查詢任務失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+/** 席位投遞餵給（公司模式監察頁資料源）。 */
+export async function fetchSeatFeed(params: SeatFeedQuery = {}): Promise<SeatIOFeed> {
+  const q = new URLSearchParams();
+  if (params.task_id) q.set('task_id', params.task_id);
+  if (params.run_id) q.set('run_id', params.run_id);
+  if (params.role) q.set('role', params.role);
+  if (params.layer !== undefined) q.set('layer', String(params.layer));
+  if (params.item_id) q.set('item_id', params.item_id);
+  if (params.kind) q.set('kind', params.kind);
+  q.set('limit', String(params.limit ?? 120));
+  if (params.full) q.set('full', 'true');
+  const resp = await fetch(apiUrl(`/monitor/raho/feed?${q.toString()}`));
+  if (!resp.ok) throw new Error(`讀取席位投遞失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+/** 單次席位投遞全文（系統提示詞／prompt／回應／來源分解）。 */
+export async function fetchSeatDetail(ioId: string): Promise<SeatIORecord> {
+  const resp = await fetch(apiUrl(`/monitor/raho/seat/${encodeURIComponent(ioId)}`));
+  if (!resp.ok) throw new Error(`讀取投遞全文失敗（HTTP ${resp.status}）`);
   return resp.json();
 }
 
