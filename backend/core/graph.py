@@ -6,13 +6,18 @@
 流程：
   START → retrieve_memories → enhance_with_opc_context → enhance_with_linkin_context → route_by_complexity
     → 複雜任務：run_company → should_evaluate_company
-        → 成功：evaluate_answer → should_improve
-            → (score < 門檻 且 未達最大迭代) → reflect → improve_answer → evaluate_answer（迴圈）
-            → 否則 → decide_final_answer → save_memory → archive_state → END
+        → 成功：enforce_output_length → evaluate_answer → should_improve
+            → (score < 門檻 且 未達最大迭代) → reflect → improve_answer → enforce_output_length（迴圈）
+            → 否則 → decide_final_answer → enforce_final_length → save_memory → archive_state → END
         → 失敗：archive_state → END
-    → 簡單任務：generate_initial_answer → evaluate_answer → should_improve
-        → (score < 門檻 且 未達最大迭代) → reflect → improve_answer → evaluate_answer（迴圈）
-        → 否則 → decide_final_answer → save_memory → archive_state → END
+    → 簡單任務：generate_initial_answer → enforce_output_length → evaluate_answer → should_improve
+        → (score < 門檻 且 未達最大迭代) → reflect → improve_answer → enforce_output_length（迴圈）
+        → 否則 → decide_final_answer → enforce_final_length → save_memory → archive_state → END
+
+長度守門（enforce_output_length / enforce_final_length，同一實作的兩個地點）：
+  超過依任務複雜度解析出的輸出上限時寫入 length_directive，
+  由 should_rewrite_length 路由回 reflect，讓閉環把「精簡」當成一項改進目標；
+  重寫預算（EVOL_MAX_LENGTH_REWRITES，預設 2 次）用盡後改交付歷次最短的一版並記警告。
 
 執行策略（execution_strategy）：
   - "auto"（預設）: 依規則自動判斷複雜度
@@ -81,6 +86,11 @@ def should_improve(state: EvoLoopState) -> str:
     return "reflect"
 
 
+def should_rewrite_length(state: EvoLoopState) -> str:
+    """條件路由：長度守門節點仍留有未消化的指令 → 丢回 reflect 重寫。"""
+    return "rewrite" if state.get("length_directive") else "ok"
+
+
 def build_graph():
     """組裝並編譯 EvoLoop 統一模式圖。"""
     graph = StateGraph(EvoLoopState)
@@ -98,7 +108,9 @@ def build_graph():
     graph.add_node("evaluate_answer", nodes.evaluate_answer)
     graph.add_node("reflect", nodes.reflect)
     graph.add_node("improve_answer", nodes.improve_answer)
+    graph.add_node("enforce_output_length", nodes.enforce_output_length)
     graph.add_node("decide_final_answer", nodes.decide_final_answer)
+    graph.add_node("enforce_final_length", nodes.enforce_final_length)
     graph.add_node("save_memory", nodes.save_memory)
     graph.add_node("archive_state", nodes.archive_state)
 
@@ -118,16 +130,24 @@ def build_graph():
 
     # ── 公司運行時路徑 ──
     # run_company → should_evaluate_company
-    #   成功 → evaluate_answer（進入評估/反思/改進迭代迴圈）
+    #   成功 → enforce_output_length（長度合規後進入評估/反思/改進迭代迴圈）
     #   失敗 → archive_state → END（跳過迭代）
     graph.add_conditional_edges(
         "run_company",
         should_evaluate_company,
-        {"evaluate_answer": "evaluate_answer", "archive_state": "archive_state"},
+        {"evaluate_answer": "enforce_output_length", "archive_state": "archive_state"},
     )
 
     # ── 簡單任務路徑 ──
-    graph.add_edge("generate_initial_answer", "evaluate_answer")
+    graph.add_edge("generate_initial_answer", "enforce_output_length")
+
+    # ── 輸出長度守門（所有生成出口共用地點） ──
+    # 超標 → 回到 reflect，由閉環把精簡當成一項改進目標；合規 → 進入評估
+    graph.add_conditional_edges(
+        "enforce_output_length",
+        should_rewrite_length,
+        {"rewrite": "reflect", "ok": "evaluate_answer"},
+    )
 
     # ── 反思迭代迴圈（兩條路徑共用） ──
     graph.add_conditional_edges(
@@ -136,8 +156,13 @@ def build_graph():
         {"reflect": "reflect", "finalize": "decide_final_answer"},
     )
     graph.add_edge("reflect", "improve_answer")
-    graph.add_edge("improve_answer", "evaluate_answer")
-    graph.add_edge("decide_final_answer", "save_memory")
+    graph.add_edge("improve_answer", "enforce_output_length")
+    graph.add_edge("decide_final_answer", "enforce_final_length")
+    graph.add_conditional_edges(
+        "enforce_final_length",
+        should_rewrite_length,
+        {"rewrite": "reflect", "ok": "save_memory"},
+    )
     graph.add_edge("save_memory", "archive_state")
     graph.add_edge("archive_state", END)
 

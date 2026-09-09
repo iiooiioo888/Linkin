@@ -70,6 +70,18 @@ class EvoLoopState(OPCStateFields, total=False):
     iteration: int
     max_iterations: int
 
+    # ---- 輸出長度守門 ----
+    # 依任務複雜度解析出的上限（字符數），由長度守門節點寫入
+    max_output_chars: int
+    # 已因超長而丢回反思閉環重寫的次數
+    length_rewrites: int
+    # 歷次候選中最短的一版（預算用盡時改交付此版）
+    length_best_answer: str
+    # 尚未消化的長度硬性要求；非空時圖會路由回 reflect
+    length_directive: str
+    # 重寫預算用盡仍超標時的說明（不阻斷交付）
+    length_warnings: list[str]
+
     # ---- 輸出 ----
     final_answer: str
     memory_saved: bool

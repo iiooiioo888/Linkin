@@ -4,4 +4,4 @@
 
 **[docs/deployment/guide.md](docs/deployment/guide.md)**
 
-線上預覽：https://iiooiioo888.github.io/Evoloop/
+線上預覽：https://iiooiioo888.github.io/Linkin/

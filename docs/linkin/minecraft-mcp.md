@@ -27,7 +27,7 @@ MineMCP 給編輯器的 MCP 連線 URL 是 `http://localhost:3000/sse?token=…`
 3. 修改 `plugins/MineMCP/config.yml` 的 token（不要用預設值）
 4. 控制台出現 `MCP server started on port 3000`
 
-端口 3000 與本專案前端預設 3001 / 5173 錯開。後端 API 仍是 8000。
+MineMCP 預設埠 3000，與本專案前端預設 **3001**、後端 **8000** 錯開。
 
 ## Linkin 環境變數
 

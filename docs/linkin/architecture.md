@@ -46,7 +46,7 @@ backend/tools/minecraft_mcp.py     JSON-RPC 客戶端（Token／乾跑／審計�
 |------|------|------|
 | FastAPI 入口 | `backend/main.py` | 已掛載 `/linkin/*` |
 | 統一圖 / 節點 / LLM | `backend/core/` | EvoLoop 既有 |
-| 公司協調器與 80 席角色 | `backend/company/` | 既有；靈境加 16 席 custom |
+| 公司協調器與 **85** 席 `STANDARD_ROLES` | `backend/company/` | 既有；靈境另加 **16** 席 custom 子角色 |
 | AI Hub | `backend/hub/` | 既有 |
 | 監控／雲／Docker | `backend/services/` | 既有 |
 | 靈境憲法／API／工具 | `backend/linkin/` | 已落地（含管線注入 `pipeline.py`、Minecraft 護欄 `minecraft.py`、Sponge Schematic v3 `schematic.py`） |
@@ -56,4 +56,5 @@ backend/tools/minecraft_mcp.py     JSON-RPC 客戶端（Token／乾跑／審計�
 | 前端監控與靈境面板 | `frontend/src/` | 已落地 |
 | Docker Compose / CI / LICENSE | 倉庫根目錄 | 既有 |
 
-> 上列路徑**已經存在**。請勿平行再寫一套 `backend/main.py`、`backend/core/graph.py` 或第二套監控前端。缺口應補在既有模組上（本文件對齊 2026-09-04）。
+> 上列路徑**已經存在**。請勿平行再寫一套 `backend/main.py`、`backend/core/graph.py` 或第二套監控前端。缺口應補在既有模組上（本文件對齊 2026-09-09）。  
+> 倉庫目錄總表：[docs/structure.md](../structure.md)。

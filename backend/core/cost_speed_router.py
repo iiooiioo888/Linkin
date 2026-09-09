@@ -25,6 +25,14 @@ TaskComplexity = Literal["simple", "medium", "complex"]
 RoutePath = Literal["simple", "company"]
 
 _DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "cost_speed.json"
+
+# 各複雜度的輸出長度上限（字符數）兜底值
+_DEFAULT_MAX_OUTPUT_CHARS: dict[str, int] = {
+    "simple": 800,
+    "medium": 2000,
+    "complex": 4000,
+}
+
 _config_cache: dict[str, Any] | None = None
 _config_mtime: float = 0.0
 
@@ -63,9 +71,14 @@ def _builtin_defaults() -> dict[str, Any]:
     return {
         "enabled": True,
         "complexity": {
-            "simple": {"max_query_length": 80, "path": "simple"},
-            "medium": {"max_query_length": 200, "path": "simple"},
-            "complex": {"min_query_length": 200, "path": "company", "keywords": []},
+            "simple": {"max_query_length": 80, "path": "simple", "max_output_chars": 800},
+            "medium": {"max_query_length": 200, "path": "simple", "max_output_chars": 2000},
+            "complex": {
+                "min_query_length": 200,
+                "path": "company",
+                "keywords": [],
+                "max_output_chars": 4000,
+            },
         },
         "stage_models": {
             "simple": {"generate": "qwen-turbo", "evaluate": "qwen-turbo", "reflect": "deepseek-v4-flash"},
@@ -145,6 +158,17 @@ def resolve_path_for_complexity(complexity: TaskComplexity) -> RoutePath:
     cfg = _load_raw_config().get("complexity", {}).get(complexity, {})
     path = str(cfg.get("path") or ("company" if complexity == "complex" else "simple"))
     return "company" if path == "company" else "simple"
+
+
+def max_output_chars_for_complexity(complexity: TaskComplexity) -> int:
+    """依複雜度解析輸出長度上限（字符數），供長度守門節點使用。"""
+    cfg = _load_raw_config().get("complexity", {}).get(complexity, {})
+    fallback = _DEFAULT_MAX_OUTPUT_CHARS.get(complexity, 4000)
+    try:
+        value = int(cfg.get("max_output_chars") or 0)
+    except (TypeError, ValueError):
+        return fallback
+    return value if value > 0 else fallback
 
 
 def resolve_cost_speed_model(

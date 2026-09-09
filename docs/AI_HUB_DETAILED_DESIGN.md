@@ -1,5 +1,10 @@
 # AI Hub 多模型編排系統 — 系統詳細設計說明書
 
+> **文件定位：** Hub 專用契約（探針／熔斷／目錄／`/api/v1/*`）。  
+> **路徑請勿隨意搬移**——`backend/hub/`、`backend/tests/test_hub_catalog.py` 會依此路徑對齊。  
+> 產品總覽請看 [架構總覽](architecture/overview.md)；前端視覺 Token 在根目錄 `DESIGN.md`（非本文件）。  
+> 知識庫索引：[README.md](README.md)
+
 | 項目 | 內容 |
 | :--- | :--- |
 | 文件版本 | 1.5.0 |

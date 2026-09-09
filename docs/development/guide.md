@@ -1,131 +1,166 @@
 # 開發指南
 
+> 新人請先讀 [onboarding.md](../onboarding.md)、[目錄地圖](../structure.md) 與根目錄 [CONTRIBUTING.md](../../CONTRIBUTING.md)。  
+> 對齊日期：2026-09-09
+
 ## 環境需求
 
 | 工具 | 版本 | 說明 |
 |------|------|------|
-| Python | 3.10-3.12 | 後端運行時 |
-| Node.js | 20+ | 前端構建 |
-| Docker | 可選 | 容器化部署 |
+| Python | 3.10–3.12 | 後端 |
+| Node.js | 20+ | 前端 |
+| Docker | 可選 | Redis／Chroma／一鍵編排 |
 
 ## 本地開發
 
-```bash
-# 克隆倉庫
-git clone https://github.com/iiooiioo888/Evoloop.git
-cd Evoloop
+```powershell
+git clone https://github.com/iiooiioo888/Linkin.git
+cd Linkin
 
-# 虛擬環境
 python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\Activate.ps1  # Windows
+.venv\Scripts\Activate.ps1          # Linux/Mac: source .venv/bin/activate
 
-# 安裝依賴
 pip install -r requirements.txt
+copy .env.example .env              # Linux/Mac: cp .env.example .env
+# 編輯 .env：API 金鑰、可選 api_base／模型
 
-# 設定環境變數
-cp .env.example .env
-# 編輯 .env 填入你的 API 金鑰
-
-# 啟動後端
+# 後端 http://localhost:8000
 python -m backend.main
 
-# 啟動前端
-cd frontend && npm install && npm run dev
+# 前端 http://localhost:3001
+cd frontend
+npm install
+npm run dev
+```
+
+可選基礎設施：
+
+```powershell
+docker compose up -d redis chroma
+python -m backend.scripts.seed_demo_content
+python -m backend.scripts.seed_linkin_world
 ```
 
 ## 測試
 
-```bash
-# 全部測試（185+ 案例，無需 API 金鑰）
+單元測試以 `monkeypatch` 隔離 LLM／Redis／OPC／MineMCP，**無需真實 API 金鑰**。目前約 **639** 筆收錄（以 `pytest --collect-only -q` 為準）。
+
+```powershell
 pytest backend/tests/ -q
 
-# 分類測試
-pytest backend/tests/test_company.py         # 公司運行時
-pytest backend/tests/test_opc_service.py     # OPC 工業閉環
-pytest backend/tests/test_reflection_loop.py # 反思迴圈
-pytest backend/tests/test_architecture.py    # 架構約束
+# 依領域
+pytest backend/tests/test_company.py -q
+pytest backend/tests/test_raho.py -q
+pytest backend/tests/test_reflection_loop.py -q
+pytest backend/tests/test_linkin_api.py -q
+pytest backend/tests/test_minecraft_mcp.py -q
+pytest backend/tests/test_opc_service.py -q
+pytest backend/tests/test_provider_pool.py -q
+pytest backend/tests/test_architecture.py -q
 
-# 指定臨時目錄（Windows 權限問題時）
+# Windows 暫存目錄權限
 pytest backend/tests/ --basetemp=.pytest_tmp
 ```
 
 ## 專案結構
 
+完整表見 **[目錄地圖](../structure.md)**。精簡樹：
+
 ```
-backend/
-├── core/               # 核心模組
-│   ├── graph.py        #   統一模式圖定義
-│   ├── nodes.py        #   核心節點實現
-│   ├── company_nodes.py#   公司運行時節點
-│   ├── evaluation.py   #   多維度評估引擎
-│   ├── llm_cache.py    #   LLM 語義快取
-│   ├── llm.py          #   LiteLLM 統一調用層
-│   └── state.py        #   狀態模型
-├── company/            # 公司運行時
-├── memory/             # 向量記憶庫
-├── services/           # 營運服務
-├── prompts/            # Prompt 模板
-├── config/             # 配置文件
-└── tests/              # 測試
+Linkin/
+├── backend/                    # 見 backend/README.md
+│   ├── main.py                 # FastAPI 入口
+│   ├── auth/ · middleware/ · environment/ · prompts/
+│   ├── core/                   # 圖、節點、LLM、評估、模型池
+│   │   ├── graph.py            #   build_graph()、複雜度路由
+│   │   ├── nodes.py            #   生成／評估／反思／改進
+│   │   ├── company_nodes.py    #   公司運行時節點
+│   │   ├── llm.py              #   call_llm（唯一允許的 LLM 出口）
+│   │   ├── provider_pool.py    #   模型池鎖定
+│   │   └── evaluation.py       #   多維評估
+│   ├── company/                # 協調器、角色（85）、raho/、量化
+│   ├── linkin/                 # 靈境＋16 席子角色＋Minecraft 業務護欄
+│   ├── tools/ · hub/ · memory/ · services/
+│   ├── config/                 # 執行期 JSON（價卡等）
+│   ├── data/ · scripts/
+│   └── tests/
+├── opc_service/                # 見 opc_service/README.md
+├── frontend/                   # 見 frontend/README.md（預設 :3001）
+├── docs/                       # 知識庫
+└── docker-compose.yml
 ```
+
+更完整說明：[架構總覽](../architecture/overview.md) · [目錄地圖](../structure.md) · 根 [README](../../README.md)。
 
 ## 關鍵約束
 
-1. **LLM 調用**：統一使用 `backend.core.llm.call_llm`，禁止直接調用 SDK
-2. **測試隔離**：使用 `monkeypatch` 隔離外部依賴，無需真實 API 金鑰
-3. **圖狀態**：禁止直接修改編譯後的 LangGraph 圖，所有變更通過 `build_graph()`
-4. **OPC 安全**：所有寫入必須經 `WriteGuard` 護欄檢查
+1. **LLM**：一律 `backend.core.llm.call_llm`，禁止直連供應商 SDK  
+2. **測試隔離**：外部服務用 `monkeypatch`，不依賴真實金鑰／遊戲伺服器  
+3. **圖狀態**：禁止改編譯後的圖；改 `build_graph()` 與節點實作  
+4. **OPC**：寫入必須經 `opc_service/guard.py`  
+5. **Minecraft**：寫入必須經 `backend/tools/minecraft_mcp.py` 與 `backend/linkin/minecraft.py`；禁止把檔案系統工具暴露給角色  
+
+詳見 [AGENTS.md](../../AGENTS.md)。
 
 ## 擴展點
 
-### 添加新的評估維度
+### 新評估維度
 
-1. 在 `backend/core/evaluation.py` 的 `DIMENSION_WEIGHTS` 中添加
-2. 在 `MULTI_DIM_EVALUATE_PROMPT` 中添加維度說明
-3. 在 `RuleBasedFallback` 中添加規則評估邏輯
+1. `backend/core/evaluation.py` 的 `DIMENSION_WEIGHTS`  
+2. `MULTI_DIM_EVALUATE_PROMPT` 維度說明  
+3. `RuleBasedFallback` 規則邏輯  
 
-### 添加新的組織模板
+### 新組織模板
 
-1. 在 `backend/company/roles.py` 的 `BUILTIN_TEMPLATES` 中添加
-2. 定義角色配置和預算
+在 `backend/company/roles.py` 的 `BUILTIN_TEMPLATES` 新增角色與預算。
 
-### 添加新的 OPC 感測器
+### 新 OPC 感測器
 
-1. 在 `opc_service/simulator/` 中添加模擬數據
-2. 在 `opc_service/analyze.py` 的 `DEFAULT_THRESHOLDS` 中添加閾值
+1. `opc_service/simulator/` 模擬資料  
+2. `opc_service/analyze.py` 的 `DEFAULT_THRESHOLDS`  
 
-### 更換 LLM 供應商
+### 更換／鎖定 LLM
 
-1. 設置對應的 API Key 環境變數
-2. 設置 `EVOL_MODEL` 為目標模型
-3. 如使用自訂端點，設置 `api_base`
+1. `.env` 或控制台「API 路由」寫入金鑰與端點  
+2. `EVOL_MODEL`（仍會被模型池 `clamp`）  
+3. 通用端點可開 `EVOL_LLM_OPS_ENABLED` 爬取 `/models`  
+
+詳見 [配置參考](../config/reference.md)。
 
 ## 調試
 
-### 查看 LangGraph 執行軌跡
+### LangGraph 軌跡
 
-```bash
-# 通過 API 查看
+```powershell
 curl http://localhost:8000/tasks/{task_id}/trace
-
-# 通過前端 TraceView 查看
-# http://localhost:5173 → 執行軌跡標籤
 ```
 
-### 查看 LLM 快取統計
+前端：監控中心 → 軌跡（`http://localhost:3001`）。
+
+### LLM 快取
 
 ```python
 from backend.core.llm_cache import get_llm_cache
-stats = get_llm_cache().stats
-# {"hits": 42, "misses": 10, "semantic_hits": 5, "evictions": 2}
+print(get_llm_cache().stats)
 ```
 
-### 查看向量記憶庫
+### 向量記憶
 
 ```python
 from backend.memory.vector_store import VectorMemoryStore
 store = VectorMemoryStore()
-print(f"記憶總數: {store.count()}")
-memories = store.all()
+print(store.count())
 ```
+
+### LLM 連線
+
+```powershell
+python backend/scripts/test_llm_connection.py
+```
+
+## 相關文件
+
+- [常見問題](../faq.md)  
+- [部署指南](../deployment/guide.md)  
+- [REST API](../api/reference.md)  
+- [前端 README](../../frontend/README.md)
