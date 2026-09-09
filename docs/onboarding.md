@@ -15,17 +15,18 @@
 | 1 | [根 README](../README.md) | 落地頁、快速開始、約束摘要 |
 | 2 | 本文 | 心智模型 |
 | 3 | [目錄地圖](structure.md) | 套件路徑單一來源（85 vs 16 角色別搞混） |
-| 4 | [AGENTS.md](../AGENTS.md) | 模組邊界與**禁止事項** |
-| 5 | [架構總覽](architecture/overview.md) | 資料流 |
-| 6 | 依你要動的領域選讀 | 見下表 |
-| 7 | [開發指南](development/guide.md) · [貢獻指南](../CONTRIBUTING.md) | 動手與送審 |
+| 4 | [術語表](glossary.md) | RAHO／L 層／埠號（5 分鐘） |
+| 5 | [AGENTS.md](../AGENTS.md) | 模組邊界與**禁止事項** |
+| 6 | [架構總覽](architecture/overview.md) | 資料流 |
+| 7 | 依你要動的領域選讀 | 見下表 |
+| 8 | [開發指南](development/guide.md) · [貢獻指南](../CONTRIBUTING.md) | 動手與送審 |
 
 ### 依任務選讀
 
 | 你要改… | 讀這些 |
 |---------|--------|
 | 反思閉環／圖節點 | [reflection-loop](architecture/reflection-loop.md) · `backend/core/` |
-| 多代理人／RAHO | [company-runtime](architecture/company-runtime.md) · `backend/company/` |
+| 多代理人／RAHO | [company-runtime](architecture/company-runtime.md) · [角色介紹](company/roles.md) · `backend/company/` |
 | OPC | [opc-integration](architecture/opc-integration.md) · `opc_service/` |
 | 靈境／Minecraft | [linkin/](linkin/worldview.md) · [minecraft-mcp](linkin/minecraft-mcp.md) |
 | 模型池／價卡／Hub | [config/reference](config/reference.md) · [AI Hub](AI_HUB_DETAILED_DESIGN.md) |
@@ -96,5 +97,7 @@ cd frontend; npm install; npm run dev   # :3001
 ## 7. 下一步
 
 - 目錄地圖：[structure.md](structure.md)  
+- 角色一覽：[company/roles.md](company/roles.md)（85＋16＋模板）  
+- 術語表：[glossary.md](glossary.md)  
 - 知識庫總目錄：[README.md](README.md)  
 - 卡住：[faq.md](faq.md)

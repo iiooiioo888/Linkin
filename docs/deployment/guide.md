@@ -22,10 +22,12 @@ docker compose logs -f backend
 | 服務 | 端口 | 說明 |
 |------|------|------|
 | `backend` | 8000 | FastAPI + LangGraph |
-| `frontend` | 3001（dev）／80（prod） | React + Vite；可用 `VITE_DEV_PORT` 覆寫 |
+| `frontend` | **3001**（宿主） | Compose prod：3001→容器 80；Compose dev／本機 Vite：3001 |
 | `opc_service` | 8001 | OPC UA 微服務 |
 | `redis` | 6379 | 任務持久化 |
 | `chroma` | 8100 | 向量記憶庫 |
+
+完整埠號矩陣見 [術語表](../glossary.md)。
 
 ### 環境變數
 

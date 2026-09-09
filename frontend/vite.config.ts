@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { archifyRenderPlugin } from './vite-plugin-archify.ts'
 
-// GitHub Pages 專案站必須用 /Evoloop/，本機與 Docker 維持 /
+// GitHub Pages 專案站用 VITE_BASE=/Linkin/；本機與 Docker 維持 /
 const base = process.env.VITE_BASE || '/'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 

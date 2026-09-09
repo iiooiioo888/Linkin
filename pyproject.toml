@@ -1,7 +1,7 @@
 [project]
-name = "evoloop"
+name = "linkin"
 version = "0.1.0"
-description = "EvoLoop — 具备自我反思闭环的 AI 助手系统"
+description = "靈境·Linkin — EvoLoop 運行時 × 世界觀 × 監控中心（自我反思閉環 AI 系統）"
 requires-python = ">=3.12"
 # Node 前端依赖见 frontend/package.json。
 # archify（https://github.com/tt-a1i/archify）以 file:../vendor/archify 列入，

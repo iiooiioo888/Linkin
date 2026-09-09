@@ -55,6 +55,7 @@ pytest backend/tests/ --basetemp=.pytest_tmp
 | 落地頁、快速開始 | 根 `README.md`（保持精簡） |
 | 詳文 | `docs/**`（知識庫為準） |
 | **目錄／套件地圖** | `docs/structure.md`（改目錄先改此文） |
+| 術語／埠號 | `docs/glossary.md` |
 | 後端／OPC 心智模型 | `backend/README.md` · `opc_service/README.md` |
 | Agent／CI 常用指令 | `AGENTS.md` |
 | 前端視覺 Token | 根 `DESIGN.md`（**不是**系統設計） |
