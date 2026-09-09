@@ -35,7 +35,9 @@ export interface KanbanItem {
   output?: string;
   /** 角色思考過程 */
   thinking?: string;
+  created_at?: string;
   updated_at?: string;
+  completed_at?: string | null;
 }
 
 /** 任務進階控制選項 */

@@ -18,6 +18,7 @@ import {
   KANBAN_STATUS_ORDER,
   num,
   textField,
+  timeText,
 } from './narrow';
 import {
   AnyValue,
@@ -315,6 +316,11 @@ function KanbanCard({ item, statusKey }: { item: KanbanItem; statusKey: string }
         {item.tier ? <span>· {item.tier}</span> : null}
         {item.actual_cost != null ? <span>· {fmtUsd(num(item.actual_cost) ?? 0)}</span> : null}
         {item.depends_on?.length ? <span>· 依賴 {item.depends_on.length}</span> : null}
+      </div>
+      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0 text-[9.5px] text-[var(--apple-tertiary)]">
+        <span>建 {timeText(item.created_at)}</span>
+        <span>更 {timeText(item.updated_at)}</span>
+        {item.completed_at ? <span className="text-[var(--apple-green)]">完 {timeText(item.completed_at)}</span> : null}
       </div>
       {item.description ? (
         <p className="mt-1 line-clamp-3 text-[10.5px] leading-relaxed text-[var(--apple-secondary)]">

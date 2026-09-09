@@ -244,6 +244,7 @@ class WorkItemManager:
                 "thinking": thinking[:12000],
                 "created_at": item.created_at,
                 "updated_at": item.updated_at,
+                "completed_at": item.completed_at,
             })
         return board
 
