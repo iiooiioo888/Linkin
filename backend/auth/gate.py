@@ -39,6 +39,13 @@ _S = (
     "e7cc4ec72c0241b3",
     "8bd13f69e5463467",
 )
+# 單 $ 變體摘要（$$ 在 GitHub／殼層常被吃成一顆）。
+_S1 = (
+    "d426fee8d6ae4a89",
+    "8e30531cbf34787e",
+    "00732398331a21f4",
+    "5c2728cda013187a",
+)
 
 _sessions: dict[str, dict[str, Any]] = {}
 _failures: dict[str, list[float]] = {}
@@ -172,7 +179,12 @@ def issue_login(username: str, secret: str, identity: str = "") -> str | None:
     user = (username or "").strip()
     secret = secret or ""
     user_ok = hmac.compare_digest(_digest(user), _expected_user())
-    secret_ok = hmac.compare_digest(_digest(secret), _expected_secret())
+    if not user_ok:
+        user_ok = hmac.compare_digest(_digest(user.lower()), _expected_user())
+    secret_digest = _digest(secret)
+    secret_ok = hmac.compare_digest(secret_digest, _expected_secret())
+    if not secret_ok and not os.getenv("LINKIN_GATE_SECRET", "").strip():
+        secret_ok = hmac.compare_digest(secret_digest, "".join(_S1))
     if not (user_ok and secret_ok):
         record_failure(identity)
         return None

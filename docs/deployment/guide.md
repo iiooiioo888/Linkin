@@ -65,13 +65,14 @@ OPC_SIM_ENABLED=true python -m opc_service.main
 項目已配置 GitHub Actions 自動部署前端到 GitHub Pages。推送到 **`master`** 分支後會：
 
 1. 從後端 `role_catalog` / Hub / OPC 匯出監控降級快照（單一資料源）
-2. 構建 `frontend/` 並以 `/Evoloop/` 為 base path 發佈
+2. 構建 `frontend/` 並以 `/{倉庫名}/` 為 base path 發佈（本倉庫為 `/Linkin/`）
 3. 倉庫 Settings → Pages → Source 選擇 `GitHub Actions`（首次需啟用）
 4. 在 Actions 查看 `Deploy to GitHub Pages` 工作流程
 
 > **分支說明**：僅 `master` 觸發部署；`main` 已合併停用，避免雙版本分叉。
 
-正式網址：[`https://iiooiioo888.github.io/Evoloop/`](https://iiooiioo888.github.io/Evoloop/)
+正式網址：[`https://iiooiioo888.github.io/Linkin/`](https://iiooiioo888.github.io/Linkin/)  
+上游 EvoLoop Demo：[`https://iiooiioo888.github.io/Evoloop/`](https://iiooiioo888.github.io/Evoloop/)
 
 GitHub Pages 僅託管靜態前端。監控中心會顯示角色工作台降級資料；聊天、LLM 呼叫與寫入操作需本地或 Docker 啟動完整後端。
 

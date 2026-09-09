@@ -2,7 +2,7 @@
 
 > EvoLoop 運行時 × 世界觀憲法 × 監控中心  
 > 本倉庫基於 [EvoLoop](https://github.com/iiooiioo888/Evoloop)（MIT）衍生 · 倉庫：[iiooiioo888/Linkin](https://github.com/iiooiioo888/Linkin)  
-> 文件對齊日期：2026-09-04
+> 文件對齊日期：2026-09-08
 
 ## 目錄
 
@@ -10,7 +10,7 @@
 
 - [架構總覽](architecture/overview.md) — 統一管線、三層能力、數據流
 - [反思閉環](architecture/reflection-loop.md) — 評分 → 反思 → 改進迭代機制
-- [公司運行時](architecture/company-runtime.md) — RAHO 五層指揮鏈、多代理人協調、83 席角色、工作項狀態機、預算管控
+- [公司運行時](architecture/company-runtime.md) — RAHO 五層指揮鏈、多代理人協調、85 席角色、工作項狀態機、預算管控
 - [量化行情工具](company/quant-tools.md) — 角色可呼叫的 Yahoo／東方財富／新浪／Frankfurter 行情、31 策略回測（含增強成交量／單成交量）、策略庫目錄、組合與資金流
 - [OPC 工業整合](architecture/opc-integration.md) — 6 級閉環、安全護欄、超時降級
 
@@ -36,7 +36,7 @@
 
 ### 🚀 部署
 
-- [部署指南](deployment/guide.md) — Docker Compose、GitHub Pages（https://iiooiioo888.github.io/Evoloop/）、生產環境
+- [部署指南](deployment/guide.md) — Docker Compose、GitHub Pages（https://iiooiioo888.github.io/Linkin/）、生產環境
 
 ---
 

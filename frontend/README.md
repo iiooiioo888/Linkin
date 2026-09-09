@@ -5,7 +5,7 @@
 | 視圖 | 說明 |
 |------|------|
 | 聊天 | 對話、任務進度；頂欄齒輪快速加入 API |
-| 控制台 | 執行／觀測／系統（API 路由、記憶、基礎設施）／靈境 |
+| 控制台 | 執行／觀測／系統（API 路由、L0 核心、基礎設施）／靈境 |
 | 軌跡 | 任務執行軌跡 |
 
 ## 開發
@@ -19,4 +19,4 @@ npm run dev
 
 ## GitHub Pages
 
-以 `VITE_BASE=/Evoloop/`、`VITE_GITHUB_PAGES=true` 建置；完整說明見根目錄 [README.md](../README.md)。
+以 `VITE_BASE=/Linkin/`、`VITE_GITHUB_PAGES=true` 建置（Actions 用倉庫名）；完整說明見根目錄 [README.md](../README.md)。

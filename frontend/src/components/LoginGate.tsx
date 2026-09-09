@@ -49,14 +49,20 @@ export default function LoginGate({ children }: LoginGateProps) {
     if (busy) return;
     setBusy(true);
     setError(null);
-    const result = await loginGate(username, password);
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
+    try {
+      const result = await loginGate(username, password);
+      if (!result.ok) {
+        setError(result.error);
+        setPassword('');
+        return;
+      }
+      setOk(true);
+    } catch {
+      setError(t('gate.failed'));
       setPassword('');
-      return;
+    } finally {
+      setBusy(false);
     }
-    setOk(true);
   };
 
   if (!ready) {

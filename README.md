@@ -11,18 +11,19 @@
 [![Python](https://img.shields.io/badge/Python-3.10–3.12-3776ab?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-1c3d5a?logo=langchain&logoColor=white)](https://github.com/langchain-ai/langgraph)
-[![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)](https://react.dev/)
-[![Tests](https://img.shields.io/badge/Tests-251%20passed-success?logo=pytest&logoColor=white)](backend/tests/)
+[![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)](https://react.dev/)
+[![Tests](https://img.shields.io/badge/Tests-621%20collected-success?logo=pytest&logoColor=white)](backend/tests/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 **倉庫：** [https://github.com/iiooiioo888/Linkin](https://github.com/iiooiioo888/Linkin)
 
 **上游基礎：** [https://github.com/iiooiioo888/Evoloop](https://github.com/iiooiioo888/Evoloop)（MIT License，署名保留）
 
-**線上預覽（EvoLoop 靜態 Demo）：** [https://iiooiioo888.github.io/Evoloop/](https://iiooiioo888.github.io/Evoloop/)  
+**線上預覽：** [https://iiooiioo888.github.io/Linkin/](https://iiooiioo888.github.io/Linkin/)  
+**上游 EvoLoop Demo：** [https://iiooiioo888.github.io/Evoloop/](https://iiooiioo888.github.io/Evoloop/)  
 （靜態 UI；聊天、寫入與模型刷新需本地或 Docker 啟動完整服務）
 
-> **單一主線** · 分支僅 `master` · 最近文件更新：2026-09-04
+> **單一主線** · 分支僅 `master` · 最近文件更新：2026-09-08
 
 </div>
 
@@ -56,21 +57,22 @@ EvoLoop 不是普通的 AI 助手——它是具備**自我反思閉環**的**�
 | 能力 | 說明 |
 |:---:|------|
 | 🔄 **反思閉環** | 4 維度獨立評分（準確／完整／清晰／相關），低於門檻自動反思改進直到達標 |
-| 🏢 **公司運行時** | 複雜任務自動觸發：Manager 分解 → 多角色並行 → Reviewer 審查 → Synthesizer 整合 |
+| 🏢 **公司運行時** | 複雜任務自動觸發 **RAHO**：L5 Grill-Me → L4 戰役 DAG → L3 原子拆解 → L2 專注執行；獨立審查 L1 憲兵；L0 環境與記憶核心注入每一層 |
 | 🏭 **OPC 整合** | 工業任務注入感測上下文，6 級閉環（感知→預處理→分析→診斷→決策→執行） |
 | 🖥️ **監控中心** | 活動欄五層：對話 · 控制台（EvoLoop）· 靈境（世界）· Minecraft · 實驗室 |
-| 🎭 **角色目錄** | **83** 個內建角色（Level 0–4，含需求審計官與憲兵審查官）+ 自定義角色 CRUD + 執行期設定覆蓋 |
+| 🎭 **角色目錄** | **85** 個內建角色（組織職級 0–4，含 RAHO 脊柱）+ 自定義角色 CRUD + 執行期設定覆蓋 |
 | 🔌 **模型池鎖定** | 依已存 API 鎖定可用模型；單一廠商只准該廠商；OpenRouter 等通用端點爬取 `/models` |
+| 💳 **公開價卡** | 輸入／輸出之外另計推理、快取、搜尋、工具、圖像、音訊等；路由與預算估算同一套卡 |
 | ☁️ **雲控制台** | 費用帳單、資源監控、告警中心、Docker 實例管理 |
-| 🧠 **語義記憶** | 向量記憶庫 + LLM 語義快取，成功經驗沉澱為 few-shot |
+| 🧠 **語義記憶** | 向量記憶庫 + LLM 語義快取，成功經驗沉澱為 few-shot；L0 把記憶／知識／態勢注入指揮鏈 |
 
 ```mermaid
 graph LR
-    A[使用者查詢] --> B[記憶檢索]
+    A[使用者查詢] --> B[L0 記憶檢索]
     B --> C[OPC 上下文增強]
     C --> D{複雜度路由}
     D -->|簡單任務| E[單次 LLM 生成]
-    D -->|複雜任務| F[公司運行時]
+    D -->|複雜任務| F[RAHO 公司運行時]
     D -->|工業任務| G[OPC 6 級閉環]
     E --> H[多維度評估]
     F --> H
@@ -88,22 +90,28 @@ graph LR
 
 | 主題 | 你會得到什麼 |
 |------|-------------|
+| **RAHO 指揮鏈** | L5 用戶 Grill-Me → L4 需求審計／戰役 DAG → L3 戰術指揮官 → L2 原子執行；L1 憲兵獨立驗收；強制質詢協議（MGP）與熱馬桶圈 |
+| **L0 環境核心** | 記憶／知識圖譜／態勢雷達滲透 L1–L5；控制台「系統 → L0 核心」與質詢樹共用同一套身分 |
 | **靈境·Linkin** | 活動欄獨立「靈境」：世界觀／NPC／任務／道具／工作室角色；種子：`python -m backend.scripts.seed_linkin_world` |
 | **Minecraft MCP** | 獨立活動「Minecraft」（建築／橋接）；MineMCP JSON-RPC；未設 Token 乾跑 |
-| **量化行情工具** | 金融角色可 `tool_call` 引用 Yahoo／東方財富／新浪／Stooq／Frankfurter／CoinPaprika／Binance（報價、31 策略回測含增強成交量／單成交量、策略庫目錄、優化、Walk-Forward、組合、資金流）；實驗室「策略庫」分類樹勾選引用，「策略圖」用 Archify 可視化全部策略；可選 Tushare／Finnhub／Alpha Vantage Token；不嵌入 stock-quant 完整工作站 |
-| **監控中心擴充** | 控制台（EvoLoop 公司角色）與靈境工作室分開；自定義角色 CRUD；監控偏好 |
-| **角色總覽操作** | 依 L0–L4 分組；左側層級錨點跳轉；活躍／告警為篩選而非第二套計數；卡片右上角為該角色合計成本 |
+| **量化行情工具** | 金融角色可 `tool_call` 引用 Yahoo／東方財富／新浪／Stooq／Frankfurter／CoinPaprika／Binance（報價、31 策略回測含增強成交量／單成交量、策略庫目錄、優化、Walk-Forward、組合、資金流）；實驗室「策略庫」分類樹勾選引用，「策略圖」用 Archify 可視化全部策略；可選 Tushare／Finnhub／Alpha Vantage／iTick Token；不嵌入 stock-quant 完整工作站 |
+| **伺服器運維** | `server_admin` AIOps 席：巡檢／日報／批准隊列；寫操作需二次確認，未批准則乾跑 |
+| **監控中心擴充** | 控制台（EvoLoop 公司角色）與靈境工作室分開；角色工作台與質詢樹合一；自定義角色 CRUD；監控偏好 |
+| **公開價卡** | `backend/company/rate_card.py`：API 路由目錄顯示輸入／輸出／推理／快取／搜尋／工具等費率 |
+| **登入閘門** | 前端 `LoginGate` + `POST /auth/login`；倉庫只存 HMAC 摘要；Pages 無後端時本機核對 |
 | **示範資料** | `python -m backend.scripts.seed_demo_content` 寫入 60 任務、60 推理軌跡、60 知識庫條目（Chroma 失敗則降級 JSON） |
 | **通用模型優化** | 只存 DeepSeek → 全系統只能用 DeepSeek；OpenRouter／Ollama／vLLM → 爬取 `/models` 寫入配置；定時檢查 + 手動刷新 + 健康快照 |
-| **GitHub / Pages** | 推送 `master` 跑 CI，並部署靜態 Demo → [iiooiioo888.github.io/Evoloop](https://iiooiioo888.github.io/Evoloop/) |
+| **GitHub / Pages** | 推送 `master` 跑 CI，並以倉庫名為 base path 部署靜態 Demo → [iiooiioo888.github.io/Linkin](https://iiooiioo888.github.io/Linkin/) |
 
-### 最近更新（2026-09-03）
+### 最近更新（2026-09-08）
 
-- 角色總覽卡片排版：標題、狀態、合計成本（API／Docker／雲）分開，不再互相擠壓
-- 左側可依層級快速跳到對應角色區塊；篩選改為「全部／活躍／告警」分段控制
+- **RAHO**：需求審計官、戰術指揮官、原子執行者、憲兵審查官、環境與記憶核心納入 `STANDARD_ROLES`（共 **85** 席）；`backend/company/raho/` 預設開啟
+- 控制台「系統 → 記憶」改為 **L0 核心**（記憶瀏覽器／知識圖譜／態勢雷達／向量）
+- 角色工作台與 **質詢樹** 合一（`#/monitor/console/agents`）；熱馬桶圈可在前端點選方案
+- 模型公開價卡：輸入／輸出之外顯示推理、快取命中、搜尋、工具呼叫等；預算估算走同一套卡
+- 身分驗證：`POST /auth/login` · `GET /auth/me` · `POST /auth/logout`；前端登入閘門與後端中間件對齊
+- `server_admin` AIOps + Grill-Me 壓測代理人；圖表改為 ECharts／純 SVG（不再依賴 LightningChart）
 - 開發前端預設 **http://localhost:3001**（Windows 上 5173 常被占用；可用 `VITE_DEV_PORT` 覆寫）
-- 示範種子：任務寫入 `backend/data/company_runs/`，推理寫入 `backend/data/traces/`，知識庫寫入 Chroma `evo_memory` 與 `backend/data/memory_store.json`
-- 記憶庫 API `GET /memories`：Chroma 為空或失敗時改讀 JSON 記憶檔，避免監控「記憶」分頁空白
 - 前端與監控仍為**唯一版本**（`AppShell` + `MonitorView`）；CI／Pages 僅追蹤 `master`
 
 ---
@@ -117,8 +125,8 @@ graph LR
 | 分支 | 僅 `master`（舊 `main` 已合併停用） |
 | 前端 | 一套 IDE 風格 UI；活動欄 **對話／控制台／靈境／Minecraft／實驗室** |
 | 監控 | Hub 併入監控中心；導航與降級資料單一來源（`monitorTabs` / `monitorFallbacks`） |
-| CI / Pages | 推送 `master` → `test.yml` 測試 + `deploy-pages.yml` 部署 GitHub Pages |
-| 倉庫 | [iiooiioo888/Evoloop](https://github.com/iiooiioo888/Evoloop) → [GitHub Pages](https://iiooiioo888.github.io/Evoloop/) |
+| CI / Pages | 推送 `master` → `test.yml` 測試 + `deploy-pages.yml` 部署 GitHub Pages（`VITE_BASE=/{倉庫名}/`） |
+| 倉庫 | [iiooiioo888/Linkin](https://github.com/iiooiioo888/Linkin) → [GitHub Pages](https://iiooiioo888.github.io/Linkin/) |
 
 > 沒有「標準版／公司版／OPC 版」三套產品線，也沒有前後端雙 UI 分叉——複雜度路由與監控分頁都在同一條主線上。
 
@@ -130,14 +138,14 @@ graph LR
 ┌──────────────────────────────────────────────────────────────────┐
 │                     🖥️ 前端（單一版本 · React + Vite）              │
 │  ActivityBar（對話／控制台／靈境／Minecraft／實驗室）│ SidePanel │ ChatView │ MonitorView │ TraceView │
-│  控制台：API 路由／即時／角色／管線／用量／基礎設施                               │
+│  控制台：API 路由／即時／角色（含質詢樹）／管線／用量／L0 核心／基礎設施     │
 │  靈境：世界觀／NPC／任務／道具／工作室角色                                         │
 │  Minecraft：建築方案／MineMCP 橋接                                                 │
 └───────────────────────────────┬──────────────────────────────────┘
                                 │ REST + WebSocket + SSE
 ┌───────────────────────────────┴──────────────────────────────────┐
 │                    ⚙️ 後端（FastAPI + LangGraph）                   │
-│  反思閉環 │ 公司運行時 │ OPC │ role_catalog │ provider_pool       │
+│  反思閉環 │ RAHO 公司運行時 │ OPC │ role_catalog │ provider_pool   │
 │  LLMCache · Evaluation · StateStore · VectorMemory · llm_ops     │
 └───────────────────────────────┬──────────────────────────────────┘
                                 │
@@ -147,18 +155,30 @@ graph LR
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### 公司運行時內部流程
+### 公司運行時內部流程（RAHO）
 
 ```
-Manager 分解目標
-  │  TaskDecomposer（LLM / 模板 / 規則）
+L0 環境與記憶核心 ──注入──→ L5–L1 每一層
+                              │
+L5 用戶 Grill-Me（需求審計官五維鎖定，置信度 > 0.92）
+  │  未鎖定不得進入 Planner
   ▼
-工作項 DAG → 並行執行池（自適應並發）
+L4 元規劃官產出戰役 DAG（里程碑 + 依賴 + 成敗標準）
   ▼
-Reviewer 審查閘（通過 / Rework / 角色升級）
+L3 戰術指揮官產出原子作戰地圖
+  │  門票檢查 → 拆解四步法 → 孵化 <200 Token 的 L2
   ▼
-Synthesizer 整合 → 外部反思回圈
+L2 專注執行（戰前五問；[GRILL]／[ESCALATE] 走 SOP）
+  ▼
+L1 憲兵審查閘（結構／語義／事實／邊界）
+  ├─ APPROVED → 黑板簽核，下游才可引用
+  ├─ REWORK   → 向 L2 [GRILL]
+  └─ ESCALATE → 向 L3 或上交 L4／L5
+  ▼
+Reviewer 審查 → Synthesizer 整合 → 外部反思回圈
 ```
+
+指揮鏈（L5→L4→L3→L2）與獨立審查（L1）分開；L0 不參與質詢。詳見 [公司運行時](docs/architecture/company-runtime.md)。
 
 ---
 
@@ -167,9 +187,10 @@ Synthesizer 整合 → 外部反思回圈
 ```
 linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 ├── backend/                     # FastAPI + LangGraph
-│   ├── main.py                  #   /chat /tasks /monitor/* /linkin/* /config /cloud /docker
-│   ├── linkin/                  #   靈境憲法 / NPC / 任務 / 建築 / 道具 / Minecraft 護欄
-│   ├── tools/                   #   Minecraft MCP JSON-RPC 封裝
+│   ├── main.py                  #   /chat /tasks /raho/* /auth/* /monitor/* /linkin/* /config /cloud /docker
+│   ├── auth/                    #   登入閘門（HMAC 摘要、會話 Token）
+│   ├── linkin/                  #   靈境憲法 / NPC / 任務 / 建築 / 道具 / Minecraft 護欄 / server_admin
+│   ├── tools/                   #   Minecraft MCP · server_admin 底層橋接
 │   ├── core/
 │   │   ├── graph.py             #     統一模式圖 + 複雜度路由
 │   │   ├── nodes.py             #     生成 / 多維評估 / 分層反思 / 改進
@@ -179,10 +200,12 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 │   │   ├── evaluation.py        #     4 維評估引擎
 │   │   └── llm_cache.py         #     精確 + 語義快取
 │   ├── company/
-│   │   ├── roles.py             #     83 個內建角色 + 組織模板
+│   │   ├── roles.py             #     85 個內建角色 + 組織模板
 │   │   ├── role_catalog.py      #     角色設定覆蓋 + 自定義角色持久化
-│   │   ├── orchestrator.py      #     公司協調器
-│   │   ├── tools.py             #     公司工具註冊（實驗室／Minecraft／量化）
+│   │   ├── orchestrator.py      #     公司協調器（掛載 RAHO）
+│   │   ├── rate_card.py         #     公開價卡（輸入／輸出／推理／快取／搜尋…）
+│   │   ├── raho/                #     遞歸對抗分層（Grill / Planner / Commander / Inspector / L0）
+│   │   ├── tools.py             #     公司工具註冊（實驗室／Minecraft／量化／運維）
 │   │   ├── quant_tools.py       #     角色可呼叫的免費行情／回測／資金流工具
 │   │   ├── quant_strategy_catalog.py  #  stock-quant 策略庫目錄（分類／別名）
 │   │   ├── quant_strategy_maps.py     #  策略庫 → Archify IR（可視化）
@@ -204,16 +227,20 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 │   ├── scripts/
 │   │   ├── seed_demo_content.py #     60 任務／推理／知識庫
 │   │   └── seed_linkin_world.py #     靈境世界觀／NPC／角色種子
-│   └── tests/                   #   單元測試
+│   └── tests/                   #   單元測試（含 RAHO／L0／auth／server_admin）
 ├── opc_service/                 # OPC UA 工業微服務 + 安全護欄
-├── frontend/                    # React + Vite + TypeScript（單一 UI）
+├── frontend/                    # React 19 + Vite + TypeScript（單一 UI）
 │   └── src/
 │       ├── api/linkin.ts        #   靈境 REST 客戶端
 │       ├── lib/monitorTabs.ts   #   監控分頁單一資料源
-│       ├── lib/agentUi.ts       #   角色狀態／跳轉事件 / 成本格式
+│       ├── lib/agentUi.ts       #   角色狀態／跳轉事件 / 成本格式 / 價卡
+│       ├── lib/auth.ts          #   登入閘門（後端會話或 Pages 本機摘要）
 │       └── components/
 │           ├── MonitorView.tsx
+│           ├── LoginGate.tsx
 │           ├── AgentsMonitorPanel.tsx
+│           ├── GrillTreePanel.tsx / GrillUserCard.tsx
+│           ├── L0Panel.tsx
 │           ├── RoleSettingsPanel.tsx
 │           ├── LlmOpsPanel.tsx
 │           ├── HubPanel.tsx      #   Hub 操作台（內嵌於監控，非獨立產品線）
@@ -221,8 +248,10 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 │           ├── StrategyMapPanel.tsx      # Archify 策略可視化
 │           ├── ArchifyFrame.tsx          # archify CLI HTML 嵌入
 │           ├── ArchifyViewer.tsx         # Archify IR → SVG 後備
+│           ├── PipelineDag.tsx           # @xyflow 管線 DAG
 │           ├── linkin/          #   憲法／NPC／任務／建築／道具／Minecraft 橋接
 │           └── ...
+├── vendor/archify/              # Archify CLI（前端 file: 依賴）
 ├── docs/                        # 知識庫（含 docs/linkin/）
 ├── .github/workflows/
 │   ├── test.yml                 #   master CI
@@ -252,24 +281,39 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 
 | 特性 | 說明 |
 |------|------|
-| **內建角色** | **83** 席，Level 0–4 |
+| **內建角色** | **85** 席，組織職級 0–4（含 RAHO 脊柱 5 席） |
 | **角色目錄** | `role_catalog`：內建設定覆蓋 + 自定義角色 CRUD |
 | **角色設定** | Prompt、職責、偏好模型、日／週／月預算、工具、路由、告警、SLA…（見下表） |
-| 組織模板 | `page_dev` / `fullstack_app` / `research_report` / `quick_task` / `full_company` 等 |
+| 組織模板 | `page_dev` / `fullstack_app` / `research_report` / `quick_task` / `story_studio` / `full_company` 等 |
 | 工作項狀態機 | Planning → Ready → Executing → In Review → Rework / Done / Blocked |
 | 錯誤回退 | 公司失敗但有部分產出 → 降級反思閉環繼續優化 |
-| SSE 即時串流 | 分解／執行／審查／整合各階段進度推送 |
+| SSE 即時串流 | 分解／執行／審查／整合／質詢各階段進度推送 |
 | **量化工具** | 金融角色可呼叫 `market_quote`／`market_backtest`／`market_portfolio`／`fx_rate`／`crypto_quote`（Yahoo 主源，免費 JSON API） |
 
-#### 內建角色層級
+組織職級（`RoleDefinition.level`，數字越小越高層）與 RAHO 指揮層是兩套座標：後者見下一節。
+
+#### 內建角色層級（組織職級）
 
 | Level | 數量 | 範例 |
 |------|:----:|------|
 | 0 Manager | 1 | 專案經理 |
 | 1 Lead | 10 | 技術／架構／資安／產品／財務／工業／創意／平台／AI／成長主管 |
-| 2 Domain Lead | 4 | 前端／後端／測試／資料主管 |
-| 3 Executor | 54 | UI、DevOps、OPC、RAG、評測、PLC／IoT、GitHub Ops、Hub 執勤… |
-| 4 Support | 11 | 審查者、整合者、Prompt、法務、記憶策展、知識庫… |
+| 2 Domain Lead | 5 | 前端／後端／測試／資料主管、**戰術指揮官** |
+| 3 Executor | 55 | UI、DevOps、OPC、RAG、評測、PLC／IoT、GitHub Ops、Hub 執勤、**原子執行者**… |
+| 4 Support | 14 | 審查者、整合者、Prompt、法務、記憶策展、知識庫、**需求審計官**、**憲兵審查官**、**環境與記憶核心** |
+
+#### RAHO 指揮／審查／核心
+
+| RAHO 層 | 對應角色 | 職責 |
+|---------|----------|------|
+| L5 | 用戶 | Grill-Me 最終簽核、仲裁最高爭議 |
+| L4 | 需求審計官／戰役規劃 | 五維語意鎖定（皆 > 90、總分 > 0.92）後產出戰役 DAG |
+| L3 | 戰術指揮官 | 原子 DAG、拆解四步法、孵化 <200 Token L2、Grill SOP |
+| L2 | 原子執行者 | 戰前五問後專注單一 KPI，任務結束即回收 |
+| L1 | 憲兵審查官 | 四維度驗收、雙向 Grill、黑板簽核後下游才可引用 |
+| L0 | 環境與記憶核心 | 記憶／知識／態勢注入每一層，**不參與質詢、不執行任務** |
+
+模組在 `backend/company/raho/`，預設開啟（`EVOL_RAHO_ENABLED=true`）。強制質詢協議（MGP）：L2 硬編碼 `[GRILL]`，上層 3 輪內必須答覆，否則 `[ESCALATE]`。熱馬桶圈決策 TTL 預設 60 秒。
 
 #### 角色可編輯設定（摘要）
 
@@ -293,6 +337,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 | 模型路由 | 依任務複雜度選 tier（routine / normal / critical） |
 | **模型池 clamp** | 路由與角色偏好模型一律經 `clamp_model` 鎖在可用池內 |
 | 動態價格 | `backend/config/model_costs.json`，支援熱更新 |
+| **公開價卡** | `rate_card.py` 補齊推理／快取／搜尋／工具／圖像／音訊等項；控制台 API 路由與角色設定共用 |
 
 ### 🏭 OPC UA 工業整合
 
@@ -323,7 +368,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 | `fx_rate` | Frankfurter（currency-api 備援） | 免註冊匯率 |
 | `crypto_quote` | CoinPaprika（CoinGecko／Binance 備援） | 無需 API Key |
 
-可選環境變數：`EVOL_TUSHARE_TOKEN`、`EVOL_FINNHUB_TOKEN`、`EVOL_ALPHAVANTAGE_KEY`。詳見 [docs/company/quant-tools.md](docs/company/quant-tools.md)。
+可選環境變數：`EVOL_TUSHARE_TOKEN`、`EVOL_FINNHUB_TOKEN`、`EVOL_ALPHAVANTAGE_KEY`、`EVOL_ITICK_TOKEN`。詳見 [docs/company/quant-tools.md](docs/company/quant-tools.md)。
 
 ---
 
@@ -335,16 +380,16 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 
 | 分組 | 分頁 | 說明 |
 |------|------|------|
-| **配置** | **API 路由** | 多 API 金鑰、模型目錄、分發策略；側欄列已配置 API |
+| **配置** | **API 路由** | 多 API 金鑰、模型目錄、分發策略、公開價卡；側欄列已配置 API |
 | **執行** | 即時 | 總覽看板：工作流（配置 API → 指定角色 → 執行 → 觀測）、API 池、角色、管線 |
 | | 任務 | 佇列與進度 |
-| | 角色 | EvoLoop 公司角色工作台（不含靈境工作室班底）；「設定」可新增自定義角色 |
-| | 管線 | 反思閉環階段圖 |
+| | 角色 | 質詢鏈與公司角色工作台合一（不含靈境工作室班底）；「設定」可新增自定義角色 |
+| | 管線 | 反思閉環階段圖（`@xyflow/react` DAG） |
 | | 軌跡 | 執行步驟（側欄獨立入口） |
 | **觀測** | 運行指標 | 快取／反思／優化路線圖（非工業 OPC） |
 | | 調用用量 | Trace 彙總的延遲與成本 |
 | | 用戶反饋 | 評分紀錄 |
-| **系統** | 記憶 | 向量檢索 |
+| **系統** | L0 核心 | 記憶瀏覽器／知識圖譜／態勢雷達／向量；舊鍵 `memory`／`l0` 皆導向此頁 |
 | | 基礎設施 | AI Hub／雲端／檢查點／連接池 |
 
 **靈境**（世界內容，不連遊戲伺服器）：
@@ -361,15 +406,21 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 | **伺服器** | 建築 | Schematic 生成、3D 預覽、方案畫廊、派發到世界 |
 | | 橋接 | MineMCP 探測、工具呼叫、審計 |
 
-**實驗室**獨立活動：提示詞／爬蟲／架構／精簡／**策略庫**，以及 OPC／記憶等通用 MCP 開關（不含 Minecraft 工具）。
+**實驗室**獨立活動：
 
-頂欄齒輪為 **快速加入 API**（與控制台 API 路由共用同一編輯器）。EvoLoop 角色級模型與 Token 只在控制台「執行 → 角色 → 設定」指定；靈境班底在「靈境 → 工作室」。
+| 分組 | 分頁 | 說明 |
+|------|------|------|
+| **整合** | 提示詞／爬蟲／架構／精簡／策略庫／策略圖 | prompt-optimizer、Firecrawl、Archify、Ponytail、stock-quant |
+| **實驗** | MCP／A/B | OPC／記憶／爬蟲開關；提示詞對照（不含 Minecraft 工具） |
+
+頂欄齒輪為 **快速加入 API**（與控制台 API 路由共用同一編輯器）。EvoLoop 角色級模型與 Token 只在控制台「執行 → 角色 → 設定」指定；靈境班底在「靈境 → 工作室」。介面語言可在頂欄切換 **繁中／EN**。
 
 ### 圖表與影像
 
 | 庫 | 用途 |
 |------|------|
 | **Apache ECharts** | 控制台／實驗室／雲監控／回測曲線（Apache-2.0，免費、無需授權金鑰） |
+| **@xyflow/react** | 管線 DAG |
 | **neiki-gallery** | NPC／道具／陣營／任務／建築方案畫廊；爬蟲抓到的圖；對話 Markdown 圖片燈箱。含砌體、網格、馬賽克、畫中畫 |
 
 圖表入口：`frontend/src/components/charts/`。畫廊入口：`frontend/src/components/media/MediaGallery.tsx`（vendor：`frontend/src/vendor/neiki-gallery/`）。
@@ -381,12 +432,17 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 | `poll_interval_ms` | 輪詢間隔 |
 | `group_by` | 依 level／category 分組 |
 | `show_disabled` / `show_idle` / `show_custom_only` | 顯示篩選 |
-| 活躍／告警分段 | 頂部「全部／活躍／告警」是篩選，不是第二套 80/80 計數 |
+| 活躍／告警分段 | 頂部「全部／活躍／告警」是篩選，不是第二套計數 |
 | `compact_cards` | 緊湊卡片 |
 | `default_desk_tab` | 預設工作台分頁 |
 
 ### 相關 API
 
+- `POST /auth/login` · `GET /auth/me` · `POST /auth/logout` — 登入閘門
+- `POST /raho/grill/start` · `/turn` · `GET /raho/grill/status` — L5→L4 Grill-Me
+- `GET /raho/tree` · `POST /raho/decide` · `GET /raho/scorecard` — 質詢樹、熱馬桶圈、評分卡
+- `POST /raho/commander/plan` · `/grill` · `/grill/stream` — L3 原子作戰地圖與 Grill 回覆
+- `GET /raho/l0` — L0 核心快照（記憶／知識／態勢）
 - `GET/POST/PUT/DELETE /monitor/agents*` — Agent 監控、偏好、角色設定、自定義角色
 - `GET /monitor/opc` · `GET /monitor/hub` · `GET /monitor/llm-ops`
 - `POST /config/models/refresh` · `PUT /config/ops`
@@ -415,6 +471,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 |------|------|
 | 多 API 並存 | 控制台 **配置 → API 路由**（或頂欄齒輪）可加入多條路由，每條獨立金鑰、端點、模型目錄 |
 | 多模型 | 千問：qwen-plus / max / turbo…；OpenRouter：爬取 `/models` |
+| 公開價卡 | 目錄列輸入／輸出單價，以及推理、快取、搜尋、工具等附加項（`model_rate_cards`） |
 | 角色級設定 | 每個角色可獨立指定供應商、模型、輸出 Token、上下文 Token，以及故障轉移模型 |
 | 向後相容 | 未設定 `api_routes` 時，頂層單一 `api_key` 仍視為預設路由 |
 
@@ -483,8 +540,9 @@ EVOL_LLM_OPS_INTERVAL_SEC=300
 | 17 | **模型池鎖定** | 依 API 供應商鎖定可用模型，禁止跨廠商誤用 |
 | 17b | **API 分割** | 多組 API 並存；角色級模型／Token；加權輪詢與故障轉移 |
 | 18 | **通用目錄爬取** | OpenRouter 等端點定時／手動同步 `/models` |
-| 19 | **角色目錄** | 監控中心可編輯內建設定並建立自定義角色（80 席） |
+| 19 | **角色目錄** | 監控中心可編輯內建設定並建立自定義角色（85 席） |
 | 20 | **單一前端版本** | Hub 併入監控中心；Pages／CI 單一主線 |
+| 21 | **RAHO** | 遞歸對抗分層、Grill-Me、L1 憲兵、L0 核心、公開價卡 |
 
 詳見 [知識庫](docs/README.md)。
 
@@ -560,8 +618,8 @@ docker compose logs -f backend
 推送到 `master` 後，Actions `Deploy to GitHub Pages` 會：
 
 1. 匯出監控降級資料（單一來源：`python -m backend.scripts.export_monitor_fallback`）
-2. 以 `VITE_BASE=/Evoloop/`、`VITE_GITHUB_PAGES=true` 建置前端
-3. 部署至 [https://iiooiioo888.github.io/Evoloop/](https://iiooiioo888.github.io/Evoloop/)
+2. 以 `VITE_BASE=/{倉庫名}/`、`VITE_GITHUB_PAGES=true` 建置前端（本倉庫為 `/Linkin/`）
+3. 部署至 [https://iiooiioo888.github.io/Linkin/](https://iiooiioo888.github.io/Linkin/)
 
 靜態站可登入並瀏覽 UI（閘門在無後端時改為本機摘要核對）；完整聊天／寫入請本地或 Docker 啟動後端（可設 `VITE_API_URL`）。
 
@@ -602,6 +660,20 @@ docker compose logs -f backend
 | `EVOL_LLM_OPS_ENABLED` | `true` | 啟用背景目錄刷新 |
 | `EVOL_LLM_OPS_INTERVAL_SEC` | `300` | 刷新間隔（秒，限制 60–3600） |
 
+### RAHO 遞歸對抗分層
+
+| 變數 | 預設 | 說明 |
+|------|------|------|
+| `EVOL_RAHO_ENABLED` | `true` | 總開關 |
+| `EVOL_RAHO_USER_GRILL` | `true` | L5→L4 用戶 Grill-Me／需求審計 |
+| `EVOL_RAHO_MGP` | `true` | 強制質詢協議 |
+| `EVOL_RAHO_LOCK_THRESHOLD` | `0.92` | 語意鎖定綜合置信度（五維皆 > 90，總分 > 0.92 才進 Planner） |
+| `EVOL_RAHO_DECISION_TTL` | `60` | 熱馬桶圈決策逾時（秒；`0` = 立即自動裁決） |
+| `EVOL_RAHO_PLANNER_LLM` | `false` | L4 戰役 DAG 是否呼叫 LLM（關閉則純規則） |
+| `EVOL_RAHO_COMMANDER_LLM` | `false` | L3 原子 DAG 是否呼叫 LLM（關閉則純規則） |
+| `EVOL_RAHO_L1_LLM` | `false` | L1 憲兵是否在規則通過後再呼叫 LLM 覆核 |
+| `EVOL_RAHO_L0` | `true` | L0 環境與記憶核心（記憶／知識／態勢注入 L1–L5） |
+
 ### 角色目錄
 
 | 變數 | 預設 | 說明 |
@@ -623,7 +695,7 @@ docker compose logs -f backend
 
 ### 量化行情（免費數據源）
 
-無需金鑰即可使用。可選：`EVOL_TUSHARE_TOKEN`、`EVOL_FINNHUB_TOKEN`、`EVOL_ALPHAVANTAGE_KEY`。角色透過 `tool_call` 呼叫 `market_quote` 等工具；網路失敗時回傳結構化錯誤，不中斷公司運行時。詳見 [docs/company/quant-tools.md](docs/company/quant-tools.md)。
+無需金鑰即可使用。可選：`EVOL_TUSHARE_TOKEN`、`EVOL_FINNHUB_TOKEN`、`EVOL_ALPHAVANTAGE_KEY`、`EVOL_ITICK_TOKEN`。角色透過 `tool_call` 呼叫 `market_quote` 等工具；網路失敗時回傳結構化錯誤，不中斷公司運行時。詳見 [docs/company/quant-tools.md](docs/company/quant-tools.md)。
 
 ### LLM 快取
 
@@ -663,6 +735,10 @@ docker compose logs -f backend
 pytest backend/tests/ -q
 
 pytest backend/tests/test_company.py
+pytest backend/tests/test_raho.py
+pytest backend/tests/test_raho_e2e.py
+pytest backend/tests/test_l0.py
+pytest backend/tests/test_auth_gate.py
 pytest backend/tests/test_opc_service.py
 pytest backend/tests/test_reflection_loop.py
 pytest backend/tests/test_provider_pool.py
@@ -670,15 +746,18 @@ pytest backend/tests/test_monitor.py
 pytest backend/tests/test_architecture.py
 ```
 
-測試無需真實 API 金鑰；單元測試以 monkeypatch 隔離 LLM／Redis／OPC。案例數量以 `pytest backend/tests/ -q` 當次輸出為準。
+測試無需真實 API 金鑰；單元測試以 monkeypatch 隔離 LLM／Redis／OPC。目前 `pytest --collect-only` 收錄 **621** 筆；當次通過數以 `pytest backend/tests/ -q` 輸出為準。
 
 | 類別 | 涵蓋 |
 |------|------|
-| 公司運行時 | 狀態機、預算、拆分、事件、檢查點、自定義角色 |
+| 公司運行時 | 狀態機、預算、拆分、事件、檢查點、自定義角色、價卡 |
+| RAHO | Grill-Me、戰役／原子 DAG、L1 憲兵、L0 核心、熱馬桶圈、e2e |
 | 量化工具 | Yahoo／東方財富／Frankfurter／CoinPaprika／Binance（monkeypatch，不連外網） |
 | 模型池 | DeepSeek 鎖定、OpenRouter 爬取、Hub 交集、HTTP 運維端點 |
-| 監控中心 | Agent 監控、角色設定 CRUD、偏好 |
+| 監控中心 | Agent 監控、角色設定 CRUD、偏好、L0 面板資料 |
+| 登入閘門 | `/auth/login` 會話、中間件拒絕未授權 |
 | OPC／反思／架構 | 護欄、閉環、LLM 調用層約束 |
+| 運維智能體 | `server_admin` 乾跑、批准隊列、角色預設 |
 
 ---
 
@@ -688,14 +767,14 @@ pytest backend/tests/test_architecture.py
 |------|------|------|
 | 核心閉環 | LangGraph + LiteLLM | 反思圖 + 多模型路由 |
 | 後端 | FastAPI + asyncio | REST／SSE／WebSocket |
-| 公司運行時 | `company/` + `role_catalog` | 多代理人 + 可編輯角色 |
-| 模型運維 | `provider_pool` + `llm_ops` | 鎖定／爬取／定時檢查 |
+| 公司運行時 | `company/` + `raho/` + `role_catalog` | 多代理人 + RAHO + 可編輯角色 |
+| 模型運維 | `provider_pool` + `llm_ops` + `rate_card` | 鎖定／爬取／定時檢查／價卡 |
 | AI Hub | `hub/` | 探針、熔斷、目錄 |
 | 向量庫 | ChromaDB | 記憶檢索 |
 | 快取 | Redis | 任務／狀態 |
 | 工業協議 | OPC UA (asyncua) | 感測讀寫 |
-| 前端 | React 18 + Vite + TS | 單一 IDE 風格 UI |
-| 測試 | pytest | `backend/tests/` |
+| 前端 | React 19 + Vite + TS | 單一 IDE 風格 UI；i18next 繁中／EN |
+| 測試 | pytest | `backend/tests/`（621 筆收錄） |
 | 部署 | Docker Compose + GitHub Pages | 一鍵編排 + 靜態預覽 |
 
 ---
@@ -706,11 +785,11 @@ pytest backend/tests/test_architecture.py
 |------|------|
 | [架構總覽](docs/architecture/overview.md) | 統一管線、資料流 |
 | [反思閉環](docs/architecture/reflection-loop.md) | 多維評估、快取 |
-| [公司運行時](docs/architecture/company-runtime.md) | 多代理人、83 席角色、預算 |
+| [公司運行時](docs/architecture/company-runtime.md) | RAHO 五層指揮鏈、85 席角色、預算 |
 | [量化行情工具](docs/company/quant-tools.md) | 角色可呼叫的 Yahoo／東方財富／Frankfurter 行情、回測與資金流 |
 | [OPC 整合](docs/architecture/opc-integration.md) | 6 級閉環、護欄 |
-| [REST API](docs/api/reference.md) | 端點與 SSE |
-| [配置參考](docs/config/reference.md) | 環境變數、模型池、價格 |
+| [REST API](docs/api/reference.md) | 端點與 SSE（含 `/raho/*`、`/auth/*`） |
+| [配置參考](docs/config/reference.md) | 環境變數、模型池、RAHO、價格 |
 | [開發指南](docs/development/guide.md) | 本地開發、擴展 |
 | [部署指南](docs/deployment/guide.md) | Docker、GitHub Pages |
 | [AGENTS.md](AGENTS.md) | Agent 約束與常用指令 |
@@ -739,13 +818,13 @@ Windows 暫存目錄權限問題。`pyproject.toml` 已設 `--basetemp=.pytest_t
 <details>
 <summary><b>Q: 角色卡片右上角的 $0 是什麼？</b></summary>
 
-該角色的**合計成本**（API + Docker + 雲／阿里雲），不是狀態徽章。沒有用量時顯示 `$0`。
+該角色的**合計成本**（API + Docker + 雲／阿里雲），不是狀態徽章。沒有用量時顯示 `$0`。API 單價見控制台「配置 → API 路由」的公開價卡。
 </details>
 
 <details>
 <summary><b>Q: 監控「記憶」分頁是空的？</b></summary>
 
-向量庫預設讀 Chroma `evo_memory`。尚未跑過成功對話、或 Chroma 未啟動時會是空的。可執行：
+已改名為 **L0 核心**（舊網址 `#/monitor/console/memory` 仍會導向）。向量庫預設讀 Chroma `evo_memory`。尚未跑過成功對話、或 Chroma 未啟動時會是空的。可執行：
 
 `python -m backend.scripts.seed_demo_content`
 
@@ -755,13 +834,19 @@ Windows 暫存目錄權限問題。`pyproject.toml` 已設 `--basetemp=.pytest_t
 <details>
 <summary><b>Q: 如何新增自定義角色？</b></summary>
 
-監控中心 → **角色 Agent** → 新增／複製角色。資料寫入 `role_catalog.json`（可用 `EVOL_ROLE_CATALOG_PATH` 覆寫），並套用到後續公司運行時。亦可呼叫 `POST /monitor/agents`。
+監控中心 → **執行 → 角色** → 新增／複製角色。資料寫入 `role_catalog.json`（可用 `EVOL_ROLE_CATALOG_PATH` 覆寫），並套用到後續公司運行時。亦可呼叫 `POST /monitor/agents`。
 </details>
 
 <details>
 <summary><b>Q: 內建有多少角色？設定能改哪些？</b></summary>
 
-`STANDARD_ROLES` 目前為 **83** 席（Level 0–4，含 L4 需求審計官與 L1 憲兵審查官）。監控中心可覆寫 Prompt、模型、預算、工具、告警、SLA、路由策略等，或再疊加自定義角色。
+`STANDARD_ROLES` 目前為 **85** 席（組織職級 0–4，含 RAHO 脊柱：需求審計官、戰術指揮官、原子執行者、憲兵審查官、環境與記憶核心）。監控中心可覆寫 Prompt、模型、預算、工具、告警、SLA、路由策略等，或再疊加自定義角色。
+</details>
+
+<details>
+<summary><b>Q: RAHO 是什麼？可以關掉嗎？</b></summary>
+
+遞歸對抗分層組織：複雜任務先經用戶 Grill-Me 鎖定需求，再拆戰役／原子任務，由獨立憲兵驗收。預設開啟。`EVOL_RAHO_ENABLED=false` 可關閉；`EVOL_RAHO_USER_GRILL=false` 只關 L5 審計。規劃／憲兵預設走規則，不額外呼叫 LLM（`EVOL_RAHO_*_LLM`）。
 </details>
 
 <details>
@@ -800,12 +885,13 @@ Pages 僅靜態前端預覽；登入閘門可在無後端時本機核對。聊�
 | Phase 9–10 | 系統優化、知識庫 | ✅ |
 | Phase 11 | MCP 工具接入（MineMCP → 公司角色工具） | ✅ |
 | Phase 12 | 記憶蒸餾 + A/B 評估 | ⏳ |
-| Phase 13 | 監控中心擴充（角色設定／自定義角色／80 席） | ✅ |
+| Phase 13 | 監控中心擴充（角色設定／自定義角色／85 席） | ✅ |
 | Phase 14 | 模型池鎖定 + OpenRouter 爬取 + LLM 運維 | ✅ |
 | Phase 15 | 合拼單一版本 + GitHub Pages | ✅ |
 | Phase 16 | 角色總覽操作（層級跳轉／篩選／成本列）+ 示範種子 | ✅ |
 | Phase 17 | 靈境·Linkin（憲法／RAG／監控分頁／統一管線注入） | ✅ |
 | Phase 18 | 量化行情公司工具（stock-quant 能力 → 角色 `tool_call`，含 31 策略／策略庫目錄／11 種組合／資金流／分鐘線） | ✅ |
+| Phase 19 | RAHO（Grill-Me／戰役 DAG／原子執行／L1 憲兵／L0 核心）+ 公開價卡 + 登入閘門 | ✅ |
 
 ---
 
@@ -813,7 +899,7 @@ Pages 僅靜態前端預覽；登入閘門可在無後端時本機核對。聊�
 
 **Built with ❤️ using Python · LangGraph · React · Docker**
 
-[📚 知識庫](docs/README.md) · [📡 API](docs/api/reference.md) · [🛠️ 開發](docs/development/guide.md) · [🚀 部署](docs/deployment/guide.md) · [🌐 Demo](https://iiooiioo888.github.io/Evoloop/)
+[📚 知識庫](docs/README.md) · [📡 API](docs/api/reference.md) · [🛠️ 開發](docs/development/guide.md) · [🚀 部署](docs/deployment/guide.md) · [🌐 Demo](https://iiooiioo888.github.io/Linkin/)
 
 [⬆ 回到頂部](#-evoloop)
 
