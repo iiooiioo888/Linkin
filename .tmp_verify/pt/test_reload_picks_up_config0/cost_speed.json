@@ -1,0 +1,1 @@
+{"enabled": true, "complexity": {"simple": {"max_query_length": 50, "path": "simple"}, "complex": {"min_query_length": 100, "path": "company", "keywords": []}}, "stage_models": {"simple": {"generate": "qwen-turbo"}}, "models": {}}

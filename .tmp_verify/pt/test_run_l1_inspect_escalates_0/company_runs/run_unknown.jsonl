@@ -1,0 +1,1 @@
+{"ts": "2026-09-09T07:48:09.129604+00:00", "run_id": null, "source": "eventbus", "event": "inspector_verdict", "degraded": false, "item_id": "8e4388205b10", "title": "分析營收", "verdict": "ESCALATE", "quality_score": 45.0, "test_results": {"schema_validation": "PASS", "semantic_integrity": "PASS", "factual_consistency": "FAIL", "edge_case": "PASS"}, "round": 1}
