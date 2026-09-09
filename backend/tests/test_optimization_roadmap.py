@@ -77,7 +77,7 @@ class TestMergeReviewSynth:
         monkeypatch.setattr(orch.work_items, "get_stats", lambda: {"total": 1, "done": 1})
         monkeypatch.setattr(orch, "_count_review_rounds", lambda: 0)
 
-        def _fake_llm(prompt, system=None, model=None):
+        def _fake_llm(prompt, system=None, model=None, **kwargs):
             return json.dumps({
                 "quality_passed": True,
                 "quality_score": 9,
