@@ -51,7 +51,7 @@ function eventLabel(event: string): string {
   return EVENT_LABELS[event] ?? event.replace(/_/g, ' ');
 }
 
-export type RoleDeskTab = 'tasks' | 'monitor' | 'settings' | 'quant';
+export type RoleDeskTab = 'tasks' | 'list' | 'monitor' | 'settings' | 'quant';
 
 export function RoleDeskHeader({
   agent,
@@ -118,6 +118,13 @@ export function RoleDeskHeader({
           onClick={() => onDeskTab('settings')}
         >
           設定
+        </button>
+        <button
+          type="button"
+          className={`rd-btn ${deskTab === 'list' ? 'on' : ''}`}
+          onClick={() => onDeskTab('list')}
+        >
+          任務列表{(agent.company_tasks?.length ?? 0) > 0 ? ` ${agent.company_tasks?.length}` : ''}
         </button>
         <button
           type="button"

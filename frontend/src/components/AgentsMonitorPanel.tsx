@@ -40,6 +40,7 @@ import { nodesForRole } from '../lib/rahoUi';
 import type { AgentMonitorData, AgentWorkItem, GrillTree, L0Snapshot, RoleAgent } from '../types';
 import GrillTreePanel from './GrillTreePanel';
 import RoleSettingsPanel, { CreateRoleModal, draftToPayload, type RoleSettingsDraft } from './RoleSettingsPanel';
+import RoleTasksPanel from './RoleTasksPanel';
 import { RdCell, RoleDeskHeader, RoleRightPanel, RoleStatsStrip, type RoleDeskTab } from './RoleDeskLayout';
 import { StatusColumnBoard } from './StatusColumnBoard';
 import StrategyCatalogPanel from './StrategyCatalogPanel';
@@ -50,7 +51,7 @@ function itemStatus(status: string): { label: string; cls: string } {
 }
 
 function toDeskTab(tab?: string | null): RoleDeskTab {
-  if (tab === 'monitor' || tab === 'settings' || tab === 'quant') return tab;
+  if (tab === 'monitor' || tab === 'settings' || tab === 'quant' || tab === 'list') return tab;
   return 'tasks';
 }
 
@@ -429,7 +430,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   useEffect(() => {
     if (appliedDefaultTab) return;
     const tab = data?.monitor_prefs?.default_desk_tab;
-    if (tab === 'tasks' || tab === 'monitor' || tab === 'settings' || tab === 'org' || tab === 'overview') {
+    if (tab === 'tasks' || tab === 'list' || tab === 'monitor' || tab === 'settings' || tab === 'org' || tab === 'overview') {
       setDeskTab(toDeskTab(tab));
       setAppliedDefaultTab(true);
     }
@@ -595,6 +596,20 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                   </div>
                   <div className="rd-pane">
                     <StrategyCatalogPanel embedded />
+                  </div>
+                </>
+              ) : deskTab === 'list' ? (
+                <>
+                  <div className="rd-th">
+                    <h2>任務列表 — 公司任務 {selected.company_tasks?.length ?? 0} · 工作項 {selected.work_items.length}</h2>
+                  </div>
+                  <div className="rd-pane">
+                    <RoleTasksPanel
+                      agent={selected}
+                      onOpenTask={(taskId) => {
+                        window.location.hash = `#/task/${encodeURIComponent(taskId)}`;
+                      }}
+                    />
                   </div>
                 </>
               ) : deskTab === 'monitor' ? (

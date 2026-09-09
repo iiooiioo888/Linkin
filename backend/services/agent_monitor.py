@@ -652,6 +652,37 @@ def _strip_budget_alerts(alerts: list[dict[str, str]]) -> list[dict[str, str]]:
     return cleaned
 
 
+_ARCHIVE_QUERY_CACHE: dict[str, str] = {}
+_ARCHIVE_QUERY_CACHE_LOADED = False
+
+
+def _archive_query(task_id: str) -> str:
+    """從 JSONL 對話存檔回填已淘汰任務的原始查詢（程序內快取）。"""
+    global _ARCHIVE_QUERY_CACHE_LOADED
+    if not _ARCHIVE_QUERY_CACHE_LOADED:
+        _ARCHIVE_QUERY_CACHE_LOADED = True
+        try:
+            from backend.services.archiver import _archive_dir
+
+            for path in sorted(_archive_dir().glob("*.jsonl")):
+                try:
+                    with open(path, encoding="utf-8") as f:
+                        for line in f:
+                            try:
+                                row = json.loads(line)
+                            except json.JSONDecodeError:
+                                continue
+                            sid = str(row.get("session_id") or "")
+                            q = str(row.get("user_query") or row.get("query") or "")
+                            if sid and q:
+                                _ARCHIVE_QUERY_CACHE.setdefault(sid, q)
+                except OSError:
+                    continue
+        except Exception:  # noqa: BLE001
+            logger.debug("存檔查詢回填載入失敗", exc_info=True)
+    return _ARCHIVE_QUERY_CACHE.get(task_id, "")
+
+
 def _apply_split_budgets(agent: dict[str, Any]) -> None:
     """AI 使用預算對 API，雲服務預算對 Docker＋阿里雲；互不混算。"""
     api_spent = round(float(agent.get("api_cost_usd") or 0), 4)
@@ -902,11 +933,23 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
         tid = str(item.get("task_id") or "")
         if not tid or tid in seen_tasks:
             continue
+        # run_log 來源的工作項可能缺 query/status：從 task_manager 回填
+        query = item.get("task_query") or ""
+        status = item.get("task_status") or ""
+        phase = item.get("phase") or ""
+        if not query or not status:
+            rec = task_manager.get_task(tid)
+            if rec is not None:
+                query = query or rec.query or tid
+                status = status or rec.status
+                phase = phase or rec.phase
+        if not query or query == tid:
+            query = _archive_query(tid) or query or tid
         seen_tasks[tid] = {
             "task_id": tid,
-            "query": item.get("task_query") or tid,
-            "status": item.get("task_status") or "",
-            "phase": item.get("phase") or "",
+            "query": query or tid,
+            "status": status or "unknown",
+            "phase": phase,
         }
     agent["company_tasks"] = list(seen_tasks.values())[:12]
     agent["capacity_used"] = min(int(agent["executing"]), int(agent["max_parallel_work"]))
