@@ -524,6 +524,21 @@ class CompanyOrchestrator:
         nested = atomic.get("allowed_tools") if isinstance(atomic, dict) else None
         if isinstance(nested, list) and nested:
             return [str(t) for t in nested]
+        blob = f"{getattr(item, 'title', '')}\n{getattr(item, 'description', '')}"
+        try:
+            from backend.services.commander import fill_allowed_tools
+
+            inferred = fill_allowed_tools(blob)
+        except Exception:  # noqa: BLE001
+            inferred = []
+        if inferred:
+            artifacts["allowed_tools"] = list(inferred)
+            if isinstance(atomic, dict):
+                atomic["allowed_tools"] = list(inferred)
+                layer = atomic.get("task_layer")
+                if isinstance(layer, dict):
+                    layer["allowed_tools"] = list(inferred)
+            return inferred
         return None
 
     async def _maybe_resolve_mgp(
@@ -1213,6 +1228,11 @@ class CompanyOrchestrator:
             if mgp_enabled():
                 atomic = item.artifacts.get("atomic_role") or {}
                 task_spec = atomic.get("task_layer") if isinstance(atomic, dict) else None
+                filled = self._allowed_tools_for(item)
+                if filled and isinstance(task_spec, dict) and not task_spec.get("allowed_tools"):
+                    task_spec["allowed_tools"] = list(filled)
+                    if isinstance(atomic, dict):
+                        atomic["allowed_tools"] = list(filled)
                 pre_issues = rule_inspect_instruction(
                     item.title,
                     item.description,
@@ -1370,8 +1390,9 @@ class CompanyOrchestrator:
                 self._concurrency_stats["success_times"].append(elapsed)
 
                 cost = CostTracker.estimate_cost_rough(model, "high")
-                self.budget.record_cost(cost)
+                self.budget.record_cost(cost, complexity="high")
                 item.actual_cost += cost
+                item.artifacts["tokens"] = int(item.artifacts.get("tokens") or 0) + 16000
 
                 thinking, visible = split_thinking(raw)
                 item.artifacts["output"] = visible or raw
@@ -1389,6 +1410,7 @@ class CompanyOrchestrator:
                     "role": role_type.value,
                     "output": (visible or raw)[:8000],
                     "thinking": thinking[:4000],
+                    "tokens": int(item.artifacts.get("tokens") or 0),
                 })
 
                 # ── 角色記憶保存：將執行經驗存入角色記憶 ──
@@ -1669,7 +1691,7 @@ class CompanyOrchestrator:
                     **llm_opts,
                 )
                 cost = CostTracker.estimate_cost_rough(model, "medium")
-                self.budget.record_cost(cost)
+                self.budget.record_cost(cost, complexity="medium")
                 current.actual_cost += cost
                 self._record_seat_io(
                     self._seat_meta(
@@ -1812,7 +1834,7 @@ class CompanyOrchestrator:
                         **llm_opts,
                     )
                 cost = CostTracker.estimate_cost_rough(model, "high")
-                self.budget.record_cost(cost)
+                self.budget.record_cost(cost, complexity="high")
                 item.actual_cost += cost
                 self._record_seat_io(
                     rework_seat, item, role_type.value,
@@ -1893,7 +1915,7 @@ class CompanyOrchestrator:
                 **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "high")
-            self.budget.record_cost(cost)
+            self.budget.record_cost(cost, complexity="high")
             self._record_seat_io(merge_seat, None, RoleType.SYNTHESIZER.value,
                                  prompt=prompt, system=synth_system, model=model, response=raw,
                                  step=0, llm_kwargs=llm_opts,
@@ -1963,7 +1985,7 @@ class CompanyOrchestrator:
                 **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "high")
-            self.budget.record_cost(cost)
+            self.budget.record_cost(cost, complexity="high")
             self._record_seat_io(
                 synth_seat, None, RoleType.SYNTHESIZER.value,
                 prompt=prompt, system=synth_system, model=model, response=raw,
@@ -2023,7 +2045,7 @@ class CompanyOrchestrator:
                 **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "medium")
-            self.budget.record_cost(cost)
+            self.budget.record_cost(cost, complexity="medium")
             self._record_seat_io(
                 final_seat, None, RoleType.MANAGER.value,
                 prompt=prompt, system=manager_system, model=model, response=raw,

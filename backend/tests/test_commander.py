@@ -300,6 +300,13 @@ class TestGrillSop:
         inferred = infer_tools_from_text(issue.message)
         assert "read_file" in inferred
 
+    def test_fill_allowed_tools_keeps_existing(self):
+        from backend.services.commander import fill_allowed_tools
+
+        assert fill_allowed_tools("讀檔", ["web_search"]) == ["web_search"]
+        filled = fill_allowed_tools("ALLOWED_TOOLS 為空，但任務描述需要讀檔／擷取／解析類工具。")
+        assert "read_file" in filled
+
     def test_tool_gap_preferred_when_mixed_with_data(self):
         from backend.company.raho.atomic_executor import BLOCKER_INPUT, BLOCKER_TOOL, GrillMessage
 

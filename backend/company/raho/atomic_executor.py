@@ -451,6 +451,13 @@ class AtomicExecutorFactory:
     @classmethod
     def spawn_card(cls, task_spec: dict[str, Any] | AtomicTaskSpec) -> dict[str, Any]:
         spec = spec_from_mapping(task_spec)
+        if not spec.allowed_tools:
+            try:
+                from backend.services.commander import fill_allowed_tools
+
+                spec.allowed_tools = fill_allowed_tools(spec.task_description)
+            except Exception:  # noqa: BLE001
+                pass
         prompt = cls.spawn(spec)
         grills = run_preflight(spec)
         return {

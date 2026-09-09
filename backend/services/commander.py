@@ -1265,6 +1265,15 @@ def infer_tools_from_text(text: str) -> list[str]:
     return normalize_tools(found)
 
 
+def fill_allowed_tools(text: str, current: list[str] | None = None) -> list[str]:
+    """空白名單時依任務描述推斷；已有名單則原樣正規化。"""
+    raw = [str(t).strip() for t in (current or []) if str(t).strip()]
+    if raw:
+        return normalize_tools(raw)
+    inferred = infer_tools_from_text(text)
+    return inferred if inferred else normalize_tools([])
+
+
 def respond_to_grill(
     issues: list[GrillIssue] | list[str] | str,
     *,
@@ -1535,6 +1544,7 @@ __all__ = [
     "has_concrete_object",
     "hours_until_deadline",
     "increment_grill_round",
+    "fill_allowed_tools",
     "infer_tools_from_text",
     "l2_brief_ok",
     "l2_task_brief",

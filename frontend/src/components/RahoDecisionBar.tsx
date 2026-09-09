@@ -1,9 +1,8 @@
 /**
- * 決策阻塞點：L5 用戶可直接點選方案，解除熱馬桶圈。
- * 一律 portal 到 document.body（fixed 底欄），避開側欄遮罩／overflow 擋點擊。
+ * 決策阻塞點：L5 用戶可直接點選方案。
+ * 畫在文件流內（工作台標題區／抽屜），不用 portal，避免被底欄或遮罩擋住點擊。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { decideRaho, fetchRahoTree } from '../api/client';
 import type { RahoPendingDecision } from '../types';
 import { jumpToRoleDesk, rahoLayerLabel } from '../lib/rahoUi';
@@ -14,8 +13,8 @@ interface RahoDecisionBarProps {
   runId?: string;
   poll?: boolean;
   /**
-   * chat：主對話 → portal 到底部（避開側欄遮罩）
-   * embed：任務卡／質詢樹內嵌（不 portal，避免與 chat 重複）
+   * chat：對話工作台（文件流內，可點）
+   * embed：任務卡／質詢樹內嵌
    */
   variant?: 'chat' | 'embed';
   onResolved?: (decisionId?: string) => void;
@@ -154,9 +153,9 @@ export default function RahoDecisionBar({
 
   if (!actionable.length) return null;
 
-  const body = (
+  return (
     <section
-      className={`raho-decision-bar relative z-[70] rounded-xl border border-[#FF453A]/40 bg-[#1C0B0A] p-3 shadow-lg ${
+      className={`raho-decision-bar relative z-[80] rounded-xl border border-[#FF453A]/40 bg-[#1C0B0A] p-3 shadow-lg pointer-events-auto ${
         variant === 'chat' ? 'mb-0' : 'mb-3'
       }`}
       role="region"
@@ -208,12 +207,7 @@ export default function RahoDecisionBar({
                     key={key}
                     type="button"
                     disabled={busy === p.decision_id}
-                    className="raho-decision-choice relative z-[71] w-full cursor-pointer touch-manipulation rounded-lg border border-white/20 bg-white/[0.08] px-3 py-2.5 text-left text-[13px] font-medium text-[#F5F5F7] hover:border-[#FF453A]/60 hover:bg-[#FF453A]/20 active:scale-[0.99] disabled:cursor-wait disabled:opacity-50 sm:w-auto sm:min-w-[10rem]"
-                    onPointerDown={(ev) => {
-                      if (ev.button !== 0) return;
-                      ev.stopPropagation();
-                      void pickChoice(p.decision_id, choice);
-                    }}
+                    className="raho-decision-choice relative z-[81] w-full cursor-pointer touch-manipulation rounded-lg border border-white/20 bg-white/[0.08] px-3 py-2.5 text-left text-[13px] font-medium text-[#F5F5F7] hover:border-[#3b82f6]/60 hover:bg-[#3b82f6]/20 active:scale-[0.99] disabled:cursor-wait disabled:opacity-50 sm:w-auto sm:min-w-[10rem]"
                     onClick={(ev) => {
                       ev.preventDefault();
                       ev.stopPropagation();
@@ -230,24 +224,4 @@ export default function RahoDecisionBar({
       })}
     </section>
   );
-
-  // 主對話：portal 到 body，壓過側欄 fixed 遮罩（z-20）
-  if (variant === 'chat') {
-    if (typeof document === 'undefined') return null;
-    return createPortal(
-      <div
-        className="raho-decision-portal pointer-events-auto fixed inset-x-0 bottom-0 z-[200] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-6"
-        data-testid="raho-decision-portal"
-        role="dialog"
-        aria-modal="false"
-        aria-label="決策阻塞點"
-      >
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0d0d0f] via-[#0d0d0f]/85 to-transparent" />
-        <div className="relative mx-auto w-full max-w-xl pointer-events-auto">{body}</div>
-      </div>,
-      document.body,
-    );
-  }
-
-  return body;
 }

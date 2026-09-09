@@ -268,6 +268,9 @@ class TestBudgetManager:
         d = bm.to_dict()
         assert "task_spent" in d
         assert "budget_pressure" in d
+        assert d["tokens_total"] == 0
+        bm.record_cost(0.1, complexity="medium")
+        assert bm.to_dict()["tokens_total"] == 4000
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -324,6 +327,11 @@ class TestWorkItemManager:
 
         kanban = wm.get_kanban()
         assert len(kanban[WorkItemStatus.PLANNING]) == 2
+        row = kanban[WorkItemStatus.PLANNING][0]
+        assert "progress" in row
+        assert "tags" in row
+        assert "files" in row
+        assert "current_action" in row
 
     def test_stats(self):
         wm = WorkItemManager()

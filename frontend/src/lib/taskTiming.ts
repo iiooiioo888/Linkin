@@ -32,6 +32,16 @@ export function formatDuration(sec: number): string {
   return `${h} 小時 ${m % 60} 分`;
 }
 
+/** 緊湊耗時：5m 36s */
+export function formatDurationCompact(sec: number): string {
+  const s = Math.max(0, Math.round(sec));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return s % 60 ? `${m}m ${s % 60}s` : `${m}m`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
 /** 事件絕對時間戳 HH:MM:SS。 */
 export function eventClock(ts: number): string {
   const d = new Date(ts * 1000);

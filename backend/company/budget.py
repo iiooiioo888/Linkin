@@ -131,6 +131,8 @@ class BudgetManager:
         self._month: int = datetime.now(timezone.utc).month
         self._year: int = datetime.now(timezone.utc).year
         self._router = TierRouter(config)
+        self._tokens_in: int = 0
+        self._tokens_out: int = 0
         # 預算預測所需數據
         self._spending_history: list[dict[str, Any]] = []  # [{date, api_cost, cloud_cost, total}]
 
@@ -211,12 +213,27 @@ class BudgetManager:
 
     # ── 花費記錄 ──
 
-    def record_cost(self, amount: float) -> None:
+    def record_cost(
+        self,
+        amount: float,
+        *,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        complexity: str | None = None,
+    ) -> None:
         """記錄一筆 API（LLM）花費到所有追蹤層級。"""
         self._check_month_rollover()
         self._task_spent += amount
         self._session_spent += amount
         self._monthly_spent += amount
+        tin, tout = int(input_tokens or 0), int(output_tokens or 0)
+        if complexity and tin <= 0 and tout <= 0:
+            n = {"low": 500, "medium": 2000, "high": 8000}.get(complexity, 2000)
+            tin = tout = n
+        if tin > 0:
+            self._tokens_in += tin
+        if tout > 0:
+            self._tokens_out += tout
         pressure = self.budget_pressure
         if pressure >= self.config.warn_threshold:
             logger.warning(
@@ -501,6 +518,8 @@ class BudgetManager:
         self._task_spent = 0.0
         self._docker_cost = 0.0
         self._task_aliyun_delta = 0.0
+        self._tokens_in = 0
+        self._tokens_out = 0
 
     def reset_session(self) -> None:
         """重置會話級別花費。"""
@@ -526,6 +545,9 @@ class BudgetManager:
             "cloud_cost": round(self.cloud_cost, 4),
             "total_spent": round(self.total_spent, 4),
             "budget_pressure": round(self.budget_pressure, 2),
+            "tokens_in": int(self._tokens_in),
+            "tokens_out": int(self._tokens_out),
+            "tokens_total": int(self._tokens_in + self._tokens_out),
             "active_tier": self._router.resolve_model(
                 BudgetTier.ROUTINE, self.budget_pressure
             ),

@@ -143,6 +143,14 @@ def incubate_instance(item: WorkItem, instance: dict[str, Any]) -> dict[str, Any
 def assemble(item: WorkItem, tools: list[str] | None = None) -> dict[str, Any]:
     """為單一工作項組裝微型角色；寫入 artifacts 供執行使用。"""
     tmpl = pick_template(item)
+    allow = tools if tools is not None else list(tmpl.tools)
+    if not allow:
+        try:
+            from backend.services.commander import fill_allowed_tools
+
+            allow = fill_allowed_tools(f"{item.title}\n{item.description}")
+        except Exception:  # noqa: BLE001
+            allow = []
     card = AtomicExecutorFactory.spawn_card(
         {
             "template_id": tmpl.template_id,
@@ -150,7 +158,7 @@ def assemble(item: WorkItem, tools: list[str] | None = None) -> dict[str, Any]:
             "task_description": f"你是一次性原子角色「{tmpl.name}」。生命週期內只做一件事：{item.title}。{item.description[:280]}",
             "success_criteria": tmpl.kpi,
             "output_schema": tmpl.output_spec,
-            "allowed_tools": tools if tools is not None else list(tmpl.tools),
+            "allowed_tools": allow,
             "input_ref": item.description[:280] or item.title,
             "max_iterations": DEFAULT_MAX_ITERATIONS,
             "token_budget": DEFAULT_TOKEN_BUDGET,

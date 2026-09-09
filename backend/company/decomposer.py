@@ -369,7 +369,7 @@ class TaskDecomposer:
                 **llm_opts,
             )
             cost = CostTracker.estimate_cost_rough(model, "high")
-            self.budget.record_cost(cost)
+            self.budget.record_cost(cost, complexity="high")
             try:
                 from backend.company.raho.protocol import layer_label, role_to_raho_layer
                 from backend.company.seat_io import record_seat_io

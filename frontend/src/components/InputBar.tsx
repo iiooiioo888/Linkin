@@ -15,6 +15,7 @@ export interface SendOptions {
 interface InputBarProps {
   disabled: boolean;
   onSend: (text: string, options: SendOptions) => void;
+  compact?: boolean;
 }
 
 const STRATEGIES: { key: 'auto' | 'simple' | 'company'; label: string }[] = [
@@ -23,7 +24,7 @@ const STRATEGIES: { key: 'auto' | 'simple' | 'company'; label: string }[] = [
   { key: 'company', label: '公司' },
 ];
 
-export default function InputBar({ disabled, onSend }: InputBarProps) {
+export default function InputBar({ disabled, onSend, compact = false }: InputBarProps) {
   const [text, setText] = useState('');
   const [executionStrategy, setExecutionStrategy] = useState<'auto' | 'simple' | 'company'>('auto');
   const [companyTemplate, setCompanyTemplate] = useState<CompanyTemplate>('quick_task');
@@ -71,8 +72,8 @@ export default function InputBar({ disabled, onSend }: InputBarProps) {
   };
 
   return (
-    <div className="apple-input-bar shrink-0">
-      <div className="relative mx-auto w-full max-w-3xl">
+    <div className={`apple-input-bar shrink-0 ${compact ? '!px-0 !py-0 !border-0' : ''}`}>
+      <div className={`relative mx-auto w-full ${compact ? '' : 'max-w-3xl'}`}>
         {showAdvanced && (
           <div className="mb-2 rounded-xl border border-white/[0.06] bg-[#1C1C1E] p-3">
             <p className="mb-2 text-[10px] font-medium text-[#636366]">進階</p>
@@ -153,7 +154,7 @@ export default function InputBar({ disabled, onSend }: InputBarProps) {
               autoResize();
             }}
             onKeyDown={handleKeyDown}
-            placeholder="輸入問題…"
+            placeholder={compact ? '輸入訊息給 Agent...' : '輸入問題…'}
             rows={1}
             disabled={disabled}
             className="apple-composer__field"

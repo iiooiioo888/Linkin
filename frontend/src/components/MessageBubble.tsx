@@ -18,12 +18,15 @@ interface MessageBubbleProps {
   onOpenTrace?: (taskId: string) => void;
   onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
   onBattlePick?: (messageId: string, choice: string) => void;
+  variant?: 'default' | 'workspace';
 }
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString('zh-TW', {
     hour: '2-digit',
     minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
   });
 }
 
@@ -34,6 +37,7 @@ export default function MessageBubble({
   onOpenTrace,
   onGrillAnswer,
   onBattlePick,
+  variant = 'default',
 }: MessageBubbleProps) {
   const [feedbackSent, setFeedbackSent] = useState<1 | 2 | undefined>(message.feedback);
   const [copied, setCopied] = useState(false);
@@ -83,10 +87,11 @@ export default function MessageBubble({
   };
 
   const hasActions = !isUser && !message.streaming && (message.content || message.taskState);
+  const workspace = variant === 'workspace';
 
   return (
-    <div className={`group flex flex-col gap-2 ${isUser ? 'items-end' : 'items-start'}`}>
-      {message.taskState && (
+    <div className={`group flex flex-col gap-2 ${workspace ? '' : isUser ? 'items-end' : 'items-start'}`}>
+      {message.taskState && !workspace && (
         <div className="w-full max-w-[min(100%,720px)]">
           <TaskPanel
             task={message.taskState}
@@ -124,6 +129,30 @@ export default function MessageBubble({
       )}
 
       {(thinking || visible || (message.streaming && !message.taskState)) && !message.grill && (
+        workspace ? (
+          <div className={`ws-msg ${isUser ? 'is-user' : 'is-agent'}`}>
+            <div
+              className="ws-ava ws-ava-lg"
+              style={{ background: isUser ? '#8b5cf6' : '#3b82f6' }}
+            >
+              {isUser ? 'Y' : 'S'}
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
+              {isUser ? (
+                <div className="ws-msg-b whitespace-pre-wrap">{message.content}</div>
+              ) : visible ? (
+                <div className="ws-msg-b">
+                  <div className="markdown-body">
+                    <MarkdownBody markdown={visible} />
+                  </div>
+                </div>
+              ) : (
+                <div className="ws-msg-b">{message.streaming ? '生成中…' : ''}</div>
+              )}
+              <div className="ws-msg-time">{formatTime(message.timestamp)}</div>
+            </div>
+          </div>
+        ) : (
         <div className={`max-w-[min(92%,720px)] min-w-0 ${isUser ? '' : 'w-full'}`}>
           {isUser ? (
             <div className="evo-msg-user whitespace-pre-wrap">{message.content}</div>
@@ -162,9 +191,10 @@ export default function MessageBubble({
             </div>
           )}
         </div>
+        )
       )}
 
-      {hasActions && (
+      {hasActions && !workspace && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[11px] text-[#48484A] opacity-70 transition-opacity group-hover:opacity-100">
           <span>{formatTime(message.timestamp)}</span>
           {message.meta?.score != null && (
@@ -198,7 +228,7 @@ export default function MessageBubble({
         </div>
       )}
 
-      {isUser && (
+      {isUser && !workspace && (
         <span className="px-0.5 text-[10px] text-[#48484A] opacity-0 transition-opacity group-hover:opacity-70">
           {formatTime(message.timestamp)}
         </span>

@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Task Monitor - Live Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* =========================================
+           1. 核心设计系统 (Design System)
+           ========================================= */
+        :root {
+            --bg-app: #09090b;
+            --bg-sidebar: #0c0c0e;
+            --bg-panel: #111113;
+            --bg-card: #161618;
+            --bg-card-hover: #1c1c1f;
+            --bg-input: #09090b;
+            
+            --border-subtle: #1f1f22;
+            --border-default: #27272a;
+            --border-active: #3b82f6;
+            --border-focus: rgba(59, 130, 246, 0.5);
+            
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-tertiary: #71717a;
+            --text-inverse: #09090b;
+            
+            --accent-blue: #3b82f6;
+            --accent-blue-dim: rgba(59, 130, 246, 0.15);
+            --accent-purple: #8b5cf6;
+            --accent-purple-dim: rgba(139, 92, 246, 0.15);
+            --accent-green: #10b981;
+            --accent-green-dim: rgba(16, 185, 129, 0.15);
+            --accent-orange: #f59e0b;
+            --accent-orange-dim: rgba(245, 158, 11, 0.15);
+            --accent-red: #ef4444;
+            --accent-red-dim: rgba(239, 68, 68, 0.15);
+            
+            --code-bg: #0d1117;
+            --code-text: #c9d1d9;
+            --code-keyword: #ff7b72;
+            --code-function: #d2a8ff;
+            --code-string: #a5d6ff;
+            --code-variable: #ffa657;
+            --code-comment: #8b949e;
+            --code-number: #79c0ff;
+            
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', Consolas, monospace;
+            
+            --sidebar-w: 260px;
+            --drawer-w: 520px;
+            --bottom-panel-h: 280px;
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+            --radius-xl: 12px;
+            
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -1px rgba(0,0,0,0.2);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5), 0 4px 6px -2px rgba(0,0,0,0.3);
+            --shadow-glow-blue: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            font-size: 13px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 4px; border: 2px solid var(--bg-app); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+        .icon { width: 16px; height: 16px; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; stroke: currentColor; flex-shrink: 0; }
+        .icon-sm { width: 14px; height: 14px; }
+        .icon-lg { width: 20px; height: 20px; }
+
+        /* =========================================
+           2. 左側 Sidebar
+           ========================================= */
+        .sidebar {
+            width: var(--sidebar-w);
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 20;
+        }
+
+        .company-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .company-header:hover { background-color: var(--bg-panel); }
+        
+        .company-info { display: flex; align-items: center; gap: 10px; }
+        .company-logo {
+            width: 28px; height: 28px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 11px; color: white;
+            box-shadow: var(--shadow-sm);
+        }
+        .company-name { font-weight: 600; font-size: 13px; }
+        .company-plan { font-size: 10px; color: var(--text-tertiary); margin-top: 1px; }
+
+        .sidebar-section { padding: 12px 8px 6px; }
+        .section-label {
+            font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--text-tertiary); padding: 0 8px; margin-bottom: 6px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .badge-isolated {
+            background: var(--accent-purple-dim); color: var(--accent-purple);
+            padding: 1px 4px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 600;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .task-list { flex: 1; overflow-y: auto; padding: 0 8px; }
+        .task-item {
+            padding: 10px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            margin-bottom: 2px;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+        }
+        .task-item:hover { background-color: var(--bg-panel); border-color: var(--border-subtle); }
+        .task-item.active {
+            background-color: var(--bg-card);
+            border-color: var(--border-default);
+            box-shadow: var(--shadow-sm);
+        }
+        .task-title { font-weight: 500; font-size: 12px; line-height: 1.4; margin-bottom: 6px; }
+        .task-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary); }
+        
+        .progress-mini { height: 2px; background: var(--bg-app); border-radius: 1px; margin-top: 8px; overflow: hidden; }
+        .progress-mini-fill { height: 100%; background: var(--accent-blue); border-radius: 1px; transition: width 0.5s ease-out; }
+
+        .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border-subtle); background: var(--bg-sidebar); }
+        .resource-bar { margin-bottom: 10px; }
+        .resource-bar:last-child { margin-bottom: 0; }
+        .resource-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; }
+        .resource-track { height: 4px; background: var(--bg-app); border-radius: 2px; overflow: hidden; }
+        .resource-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease-out; }
+
+        /* =========================================
+           3. 中央 Main Content
+           ========================================= */
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .top-nav {
+            height: 48px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background-color: var(--bg-app);
+            flex-shrink: 0;
+            backdrop-filter: blur(8px);
+        }
+        .breadcrumb { display: flex; align-items: center; gap: 6px; color: var(--text-tertiary); font-size: 12px; }
+        .breadcrumb span { color: var(--text-primary); font-weight: 500; }
+        .nav-actions { display: flex; gap: 8px; }
+        
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 10px; border-radius: var(--radius-md);
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            border: 1px solid var(--border-default); background: var(--bg-card); color: var(--text-secondary);
+            transition: all 0.15s;
+            box-shadow: var(--shadow-sm);
+        }
+        .btn:hover { background: var(--bg-card-hover); color: var(--text-primary); border-color: var(--border-active); }
+        .btn-primary { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+        .btn-primary:hover { background: #2563eb; color: white; box-shadow: var(--shadow-glow-blue); }
+        .btn-icon { padding: 5px; }
+        .btn-danger { color: var(--accent-red); border-color: rgba(239,68,68,0.3); }
+        .btn-danger:hover { background: var(--accent-red-dim); color: var(--accent-red); }
+
+        .dashboard-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+        
+        .task-header-area { padding: 24px 24px 16px; border-bottom: 1px solid var(--border-subtle); background: linear-gradient(180deg, var(--bg-app) 0%, var(--bg-panel) 100%); }
+        .header-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+        .task-title-lg { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+            background: var(--accent-orange-dim); color: var(--accent-orange);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; } 50% { opacity: 0.7; box-shadow: 0 0 0 4px transparent; } }
+
+        .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 20px; }
+        .metric-box { 
+            background: var(--bg-card); border: 1px solid var(--border-subtle); 
+            border-radius: var(--radius-lg); padding: 14px; 
+            transition: all 0.2s;
+        }
+        .metric-box:hover { border-color: var(--border-default); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .metric-label { font-size: 10px; color: var(--text-tertiary); margin-bottom: 6px; display: flex; align-items: center; gap: 4px; font-weight: 500; }
+        .metric-val { font-size: 20px; font-weight: 600; font-family: var(--font-mono); letter-spacing: -0.02em; }
+        .metric-sub { font-size: 10px; color: var(--text-secondary); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+        .metric-sub.up { color: var(--accent-green); }
+
+        .kanban-area { flex: 1; padding: 20px 24px; display: flex; gap: 16px; overflow-x: auto; min-height: 0; }
+        .kanban-col {
+            flex: 1; min-width: 280px; background: var(--bg-panel); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-xl); display: flex; flex-direction: column;
+            box-shadow: var(--shadow-sm);
+        }
+        .col-header { padding: 14px 16px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+        .col-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+        .col-count { background: var(--bg-app); padding: 2px 8px; border-radius: 10px; font-size: 10px; color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+        .col-body { padding: 12px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+
+        .node-card {
+            background: var(--bg-card); border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg); padding: 14px; cursor: pointer;
+            transition: all 0.2s; position: relative;
+        }
+        .node-card:hover { border-color: var(--border-default); background: var(--bg-card-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .node-card.selected { border-color: var(--accent-blue); box-shadow: var(--shadow-glow-blue); background: rgba(59, 130, 246, 0.05); }
+        
+        .node-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .node-id { font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500; }
+        .node-title { font-size: 13px; font-weight: 500; line-height: 1.4; margin-bottom: 8px; color: var(--text-primary); }
+        .node-action { font-size: 10px; color: var(--accent-blue); font-family: var(--font-mono); margin-bottom: 10px; display: flex; align-items: center; gap: 4px; }
+        .node-action::before { content: ''; width: 4px; height: 4px; background: var(--accent-blue); border-radius: 50%; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        
+        .node-tags { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+        .node-tag { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: var(--bg-app); color: var(--text-secondary); border: 1px solid var(--border-subtle); }
+        
+        .node-progress { height: 3px; background: var(--bg-app); border-radius: 2px; margin-bottom: 10px; overflow: hidden; }
+        .node-progress-fill { height: 100%; background: var(--accent-blue); border-radius: 2px; transition: width 0.5s ease-out; }
+        
+        .node-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border-subtle); }
+        .node-user { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+        .user-avatar { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; color: white; border: 2px solid var(--bg-card); }
+        .node-time { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px; }
+
+        /* =========================================
+           4. 底部面板 (全局文件與終端空間)
+           ========================================= */
+        .bottom-panel {
+            height: var(--bottom-panel-h);
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+            transition: height 0.3s ease;
+        }
+        .bottom-panel.collapsed { height: 38px; }
+        .bottom-panel.collapsed .panel-body { display: none; }
+        
+        .panel-header {
+            height: 38px; border-bottom: 1px solid var(--border-subtle);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; background: var(--bg-app); flex-shrink: 0;
+        }
+        .panel-tabs { display: flex; gap: 4px; }
+        .panel-tab {
+            font-size: 11px; color: var(--text-tertiary); cursor: pointer;
+            padding: 6px 12px; border-radius: var(--radius-md); font-weight: 500;
+            display: flex; align-items: center; gap: 6px; transition: all 0.15s;
+        }
+        .panel-tab:hover { color: var(--text-secondary); background: var(--bg-card); }
+        .panel-tab.active { color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-sm); }
+        .panel-tab .count { background: var(--bg-app); padding: 0 5px; border-radius: 8px; font-size: 9px; font-weight: 600; border: 1px solid var(--border-subtle); }
+        
+        .panel-body { flex: 1; display: flex; overflow: hidden; }
+        
+        .file-tree-container { width: 260px; border-right: 1px solid var(--border-subtle); overflow-y: auto; padding: 8px 0; background: var(--bg-sidebar); }
+        .tree-group { margin-bottom: 2px; }
+        .tree-item {
+            display: flex; align-items: center; padding: 5px 12px 5px calc(12px + var(--indent, 0) * 16px);
+            cursor: pointer; font-size: 12px; color: var(--text-secondary); gap: 6px;
+            transition: all 0.1s; border-left: 2px solid transparent;
+        }
+        .tree-item:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+        .tree-item.active { background: var(--accent-blue-dim); color: var(--accent-blue); border-left-color: var(--accent-blue); }
+        .tree-item.new-file { animation: slideIn 0.3s ease-out; background: var(--accent-green-dim); }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        
+        .tree-icon { width: 14px; height: 14px; transition: transform 0.2s; }
+        .tree-item.expanded .tree-icon.arrow { transform: rotate(90deg); }
+        .tree-children { display: none; }
+        .tree-group.expanded > .tree-children { display: block; }
+        .file-status { margin-left: auto; font-size: 10px; font-weight: 600; padding: 1px 4px; border-radius: 3px; }
+        .file-status.added { background: var(--accent-green-dim); color: var(--accent-green); }
+        .file-status.modified { background: var(--accent-orange-dim); color: var(--accent-orange); }
+        .file-meta { margin-left: auto; font-size: 9px; color: var(--text-tertiary); font-family: var(--font-mono); }
+
+        .file-preview-container { flex: 1; overflow: auto; background: var(--code-bg); font-family: var(--font-mono); font-size: 12px; line-height: 1.6; position: relative; }
+        .code-header {
+            position: sticky; top: 0; background: var(--bg-panel); border-bottom: 1px solid var(--border-subtle);
+            padding: 8px 16px; font-size: 11px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;
+            font-family: var(--font-sans); z-index: 10;
+        }
+        .code-line { display: flex; min-height: 20px; }
+        .code-line:hover { background: rgba(255,255,255,0.03); }
+        .line-num { width: 50px; color: var(--code-comment); text-align: right; padding-right: 16px; user-select: none; flex-shrink: 0; font-size: 11px; }
+        .line-content { color: var(--code-text); white-space: pre; flex: 1; padding-right: 16px; position: relative; }
+        .line-content .keyword { color: var(--code-keyword); }
+        .line-content .function { color: var(--code-function); }
+        .line-content .string { color: var(--code-string); }
+        .line-content .comment { color: var(--code-comment); font-style: italic; }
+        .line-content .variable { color: var(--code-variable); }
+        .line-content .number { color: var(--code-number); }
+        
+        .diff-line.add { background: rgba(16, 185, 129, 0.1); }
+        .diff-line.add .line-num { color: var(--accent-green); }
+        .diff-line.rem { background: rgba(239, 68, 68, 0.1); }
+        .diff-line.rem .line-num { color: var(--accent-red); }
+        .diff-line.rem .line-content { text-decoration: line-through; opacity: 0.6; }
+        
+        .error-squiggle { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 4'%3E%3Cpath d='M0 3 Q 5 0 10 3 T 20 3' fill='none' stroke='%23ef4444' stroke-width='1'/%3E%3C/svg%3E") repeat-x; }
+
+        .terminal-container { flex: 1; overflow: auto; background: #000; padding: 12px 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; }
+        .term-line { margin-bottom: 2px; display: flex; gap: 8px; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .term-prompt { color: var(--accent-green); font-weight: 600; }
+        .term-cmd { color: var(--text-primary); }
+        .term-out { color: var(--text-secondary); }
+        .term-err { color: var(--accent-red); }
+        .term-warn { color: var(--accent-orange); }
+        .term-info { color: var(--accent-blue); }
+        .term-cursor { display: inline-block; width: 8px; height: 14px; background: var(--text-primary); animation: blink 1s infinite; vertical-align: middle; margin-left: 4px; }
+
+        /* =========================================
+           5. 右側抽 (節點工作台)
+           ========================================= */
+        .right-drawer {
+            width: var(--drawer-w);
+            background-color: var(--bg-panel);
+            border-left: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: absolute;
+            right: 0; top: 0; bottom: 0;
+            z-index: 30;
+            box-shadow: -10px 0 40px rgba(0,0,0,0.5);
+        }
+        .right-drawer.open { transform: translateX(0); }
+
+        .drawer-header {
+            padding: 16px 20px; border-bottom: 1px solid var(--border-subtle);
+            display: flex; justify-content: space-between; align-items: flex-start;
+            background: var(--bg-app);
+        }
+        .drawer-node-id { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 500; }
+        .drawer-title { font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--text-primary); }
+        .drawer-close { background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 4px; border-radius: 4px; transition: all 0.15s; }
+        .drawer-close:hover { background: var(--bg-card); color: var(--text-primary); }
+
+        .drawer-tabs {
+            display: flex; border-bottom: 1px solid var(--border-subtle); padding: 0 16px; background: var(--bg-app);
+        }
+        .d-tab {
+            padding: 12px 14px; font-size: 12px; color: var(--text-tertiary); cursor: pointer;
+            border-bottom: 2px solid transparent; transition: all 0.15s; font-weight: 500;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .d-tab:hover { color: var(--text-secondary); }
+        .d-tab.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+        .d-tab .badge { background: var(--bg-card); padding: 1px 5px; border-radius: 8px; font-size: 9px; font-weight: 600; border: 1px solid var(--border-subtle); }
+
+        .drawer-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; background: var(--bg-panel); }
+        .d-pane { display: none; flex: 1; flex-direction: column; }
+        .d-pane.active { display: flex; }
+
+        .thinking-list { padding: 20px; display: flex; flex-direction: column; gap: 0; }
+        .t-item { display: flex; gap: 14px; position: relative; }
+        .t-line { display: flex; flex-direction: column; align-items: center; width: 16px; flex-shrink: 0; }
+        .t-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bg-panel); border: 2px solid var(--border-default); z-index: 1; transition: all 0.3s; }
+        .t-item.success .t-dot { background: var(--accent-green); border-color: var(--accent-green); box-shadow: 0 0 0 3px var(--accent-green-dim); }
+        .t-item.process .t-dot { background: var(--accent-blue); border-color: var(--accent-blue); box-shadow: 0 0 0 3px var(--accent-blue-dim); animation: pulse-blue 2s infinite; }
+        .t-item.warning .t-dot { background: var(--accent-orange); border-color: var(--accent-orange); box-shadow: 0 0 0 3px var(--accent-orange-dim); }
+        @keyframes pulse-blue { 0%, 100% { box-shadow: 0 0 0 3px var(--accent-blue-dim); } 50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.1); } }
+        
+        .t-connector { width: 2px; flex: 1; background: var(--border-subtle); margin-top: 4px; min-height: 20px; }
+        .t-item:last-child .t-connector { display: none; }
+        
+        .t-content { flex: 1; padding-bottom: 24px; }
+        .t-item:last-child .t-content { padding-bottom: 0; }
+        .t-time { font-size: 10px; color: var(--text-tertiary); font-family: var(--font-mono); margin-bottom: 6px; font-weight: 500; display: flex; justify-content: space-between; }
+        .t-token { color: var(--accent-purple); font-size: 9px; }
+        .t-text { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+        .t-text strong { color: var(--text-primary); font-weight: 600; }
+        .t-code { 
+            background: var(--code-bg); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); 
+            padding: 10px 12px; margin-top: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--code-text);
+            overflow-x: auto;
+        }
+        .t-code .key { color: var(--code-variable); }
+        .t-code .val { color: var(--code-string); }
+
+        .chat-container { padding: 20px; display: flex; flex-direction: column; gap: 16px; flex: 1; overflow-y: auto; }
+        .chat-msg { display: flex; gap: 10px; max-width: 90%; }
+        .chat-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+        .chat-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: white; flex-shrink: 0; border: 2px solid var(--bg-panel); }
+        .chat-bubble {
+            padding: 10px 14px; border-radius: var(--radius-lg); font-size: 12px; line-height: 1.5;
+            box-shadow: var(--shadow-sm);
+        }
+        .chat-msg.agent .chat-bubble { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-subtle); border-top-left-radius: 4px; }
+        .chat-msg.user .chat-bubble { background: var(--accent-blue); color: white; border-top-right-radius: 4px; }
+        .chat-time { font-size: 10px; color: var(--text-tertiary); margin-top: 4px; }
+        .chat-msg.user .chat-time { text-align: right; }
+        
+        .chat-input-area { padding: 16px 20px; border-top: 1px solid var(--border-subtle); background: var(--bg-app); display: flex; gap: 10px; align-items: flex-end; }
+        .chat-input {
+            flex: 1; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+            padding: 10px 14px; font-size: 12px; color: var(--text-primary); font-family: var(--font-sans);
+            resize: none; min-height: 40px; max-height: 120px; outline: none; transition: all 0.15s;
+        }
+        .chat-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 2px var(--border-focus); }
+        .chat-input::placeholder { color: var(--text-tertiary); }
+
+        .drawer-file-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid var(--border-subtle); max-height: 200px; overflow-y: auto; }
+        .df-item {
+            display: flex; align-items: center; padding: 8px 10px; border-radius: var(--radius-md);
+            cursor: pointer; font-size: 12px; color: var(--text-secondary); gap: 8px;
+            border: 1px solid transparent; transition: all 0.15s;
+        }
+        .df-item:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+        .df-item.active { background: var(--accent-blue-dim); color: var(--accent-blue); border-color: var(--accent-blue); }
+        .df-name { flex: 1; font-family: var(--font-mono); font-size: 11px; }
+        .df-status { font-size: 9px; font-weight: 600; padding: 2px 5px; border-radius: var(--radius-sm); }
+        .df-status.added { background: var(--accent-green-dim); color: var(--accent-green); }
+        .df-status.modified { background: var(--accent-orange-dim); color: var(--accent-orange); }
+        
+        .drawer-file-preview { flex: 1; background: var(--code-bg); overflow: auto; font-family: var(--font-mono); font-size: 11px; }
+        
+        .drawer-actions { padding: 14px 20px; border-top: 1px solid var(--border-subtle); display: flex; gap: 10px; background: var(--bg-app); }
+        .btn-full { flex: 1; justify-content: center; padding: 8px; }
+
+        .toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+            padding: 12px 20px; box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 10px;
+            font-size: 12px; z-index: 100; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast-icon { color: var(--accent-green); }
+
+    </style>
+</head>
+<body>
+
+    <!-- 左側 Sidebar -->
+    <aside class="sidebar">
+        <div class="company-header">
+            <div class="company-info">
+                <div class="company-logo">AC</div>
+                <div>
+                    <div class="company-name">Acme Corp.</div>
+                    <div class="company-plan">Enterprise Plan</div>
+                </div>
+            </div>
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="section-label">搜尋任務 <svg class="icon icon-sm" style="margin-left:auto" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div>
+        </div>
+
+        <div class="sidebar-section" style="padding-top: 4px;">
+            <div class="section-label">進行中任務 <span class="badge-isolated">ISOLATED</span></div>
+        </div>
+        
+        <div class="task-list">
+            <div class="task-item active">
+                <div class="task-title">Minecraft RPG 伺服器架構</div>
+                <div class="task-meta"><span>執行與審查</span><span id="task-progress-text">45%</span></div>
+                <div class="progress-mini"><div class="progress-mini-fill" id="task-progress-bar" style="width: 45%;"></div></div>
+            </div>
+            <div class="task-item">
+                <div class="task-title">前端 UI 組件庫升級 v2.0</div>
+                <div class="task-meta"><span>已完成</span><span>100%</span></div>
+                <div class="progress-mini"><div class="progress-mini-fill" style="width: 100%; background: var(--accent-green);"></div></div>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="resource-bar">
+                <div class="resource-label"><span>CPU</span><span id="cpu-val">42%</span></div>
+                <div class="resource-track"><div class="resource-fill" id="cpu-bar" style="width: 42%; background: var(--accent-blue);"></div></div>
+            </div>
+            <div class="resource-bar">
+                <div class="resource-label"><span>Token/s</span><span id="token-val">124</span></div>
+                <div class="resource-track"><div class="resource-fill" id="token-bar" style="width: 60%; background: var(--accent-purple);"></div></div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 中央區域 -->
+    <div class="main-wrapper">
+        <nav class="top-nav">
+            <div class="breadcrumb">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                Acme Corp. / 任務監控 / <span>Minecraft RPG 伺服器架構</span>
+            </div>
+            <div class="nav-actions">
+                <button class="btn btn-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
+                <button class="btn btn-danger"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 暫停</button>
+                <button class="btn btn-primary"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 繼續執行</button>
+            </div>
+        </nav>
+
+        <div class="dashboard-scroll">
+            <div class="task-header-area">
+                <div class="header-row">
+                    <h1 class="task-title-lg">Minecraft RPG 伺服器架構</h1>
+                    <div class="status-pill"><span class="status-dot"></span> 執行中</div>
+                    <div class="btn" style="font-size:11px; padding:3px 8px;"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 預計剩餘 <span id="time-remaining">3m 36s</span></div>
+                </div>
+                <p style="color: var(--text-tertiary); font-size: 11px;">Task ID: #TASK-8842 · 建立於 2 分鐘前 · 負責人: Manager Agent · 模型: qwen3.8-flash</p>
+                
+                <div class="metrics-row">
+                    <div class="metric-box">
+                        <div class="metric-label"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 總耗時</div>
+                        <div class="metric-val" id="metric-time">5m 36s</div>
+                        <div class="metric-sub">本階段已 5m 36s</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Token 消耗</div>
+                        <div class="metric-val" id="metric-tokens">12,450</div>
+                        <div class="metric-sub up"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg> 12% 較昨日</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 節點成功率</div>
+                        <div class="metric-val">100%</div>
+                        <div class="metric-sub">0 失敗 / 6 總計</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 預估成本</div>
+                        <div class="metric-val">$0.006</div>
+                        <div class="metric-sub">上限 $2.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kanban-area">
+                <div class="kanban-col">
+                    <div class="col-header">
+                        <div class="col-title"><span style="color: var(--text-tertiary);">●</span> 隊列</div>
+                        <div class="col-count">3</div>
+                    </div>
+                    <div class="col-body">
+                        <div class="node-card" onclick="openDrawer('N-01', 'MCP 工具契約與 SSE 端點協議定義')">
+                            <div class="node-header"><div class="node-id">NODE-01</div></div>
+                            <div class="node-title">MCP 工具契約與 SSE 端點協議定義</div>
+                            <div class="node-tags"><span class="node-tag">API</span><span class="node-tag">SSE</span></div>
+                            <div class="node-progress"><div class="node-progress-fill" style="width: 0%;"></div></div>
+                            <div class="node-footer">
+                                <div class="node-user"><div class="user-avatar" style="background: #3b82f6;">A</div> API 工程師</div>
+                                <div class="node-time">~2m</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kanban-col">
+                    <div class="col-header">
+                        <div class="col-title"><span style="color: var(--accent-orange);">●</span> 執行中</div>
+                        <div class="col-count">2</div>
+                    </div>
+                    <div class="col-body">
+                        <div class="node-card selected" id="node-n04" onclick="openDrawer('N-04', 'RPG 世界觀、任務鏈與 NPC 資料結構規劃')">
+                            <div class="node-header"><div class="node-id">NODE-04</div></div>
+                            <div class="node-title">RPG 世界觀、任務鏈與 NPC 資料結構規劃</div>
+                            <div class="node-action" id="node-n04-action">Writing src/npc_schema.ts...</div>
+                            <div class="node-tags"><span class="node-tag">Design</span><span class="node-tag">Schema</span></div>
+                            <div class="node-progress"><div class="node-progress-fill" id="node-n04-progress" style="width: 65%; background: var(--accent-orange);"></div></div>
+                            <div class="node-footer">
+                                <div class="node-user"><div class="user-avatar" style="background: #8b5cf6;">S</div> 故事創作者</div>
+                                <div class="node-time" style="color: var(--accent-orange);">1m 24s</div>
+                            </div>
+                        </div>
+                        <div class="node-card" onclick="openDrawer('N-05', '系統架構與技術選型設計')">
+                            <div class="node-header"><div class="node-id">NODE-05</div></div>
+                            <div class="node-title">系統架構與技術選型設計</div>
+                            <div class="node-action">Analyzing dependencies...</div>
+                            <div class="node-tags"><span class="node-tag">Architecture</span></div>
+                            <div class="node-progress"><div class="node-progress-fill" style="width: 40%; background: var(--accent-orange);"></div></div>
+                            <div class="node-footer">
+                                <div class="node-user"><div class="user-avatar" style="background: #ef4444;">A</div> 架構師</div>
+                                <div class="node-time" style="color: var(--accent-orange);">2m 10s</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kanban-col">
+                    <div class="col-header">
+                        <div class="col-title"><span style="color: var(--accent-purple);">●</span> 審查中</div>
+                        <div class="col-count">1</div>
+                    </div>
+                    <div class="col-body">
+                        <div class="node-card" onclick="openDrawer('N-06', '資料庫 Schema 設計與優化')">
+                            <div class="node-header"><div class="node-id">NODE-06</div></div>
+                            <div class="node-title">資料庫 Schema 設計與優化</div>
+                            <div class="node-tags"><span class="node-tag">Database</span><span class="node-tag">PostgreSQL</span></div>
+                            <div class="node-progress"><div class="node-progress-fill" style="width: 100%; background: var(--accent-purple);"></div></div>
+                            <div class="node-footer">
+                                <div class="node-user"><div class="user-avatar" style="background: #6366f1;">T</div> 技術主管</div>
+                                <div class="node-time">等待中</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部面板 -->
+        <div class="bottom-panel" id="bottomPanel">
+            <div class="panel-header">
+                <div class="panel-tabs">
+                    <div class="panel-tab active" onclick="switchBottomTab('files', this)">
+                        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                        AI 輸出文件空間 <span class="count" id="file-count">12</span>
+                    </div>
+                    <div class="panel-tab" onclick="switchBottomTab('terminal', this)">
+                        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M4 17l6-6-6-6M12 19h8"/></svg>
+                        終端機 <span class="count">2</span>
+                    </div>
+                    <div class="panel-tab" onclick="switchBottomTab('problems', this)">
+                        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        問題 <span class="count" style="background:var(--accent-red-dim); color:var(--accent-red); border-color:rgba(239,68,68,0.3);">1</span>
+                    </div>
+                </div>
+                <div class="nav-actions">
+                    <button class="btn btn-icon" style="padding:3px;" onclick="toggleBottomPanel()"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+                </div>
+            </div>
+            <div class="panel-body" id="bottomPanelBody">
+                <!-- 動態填充 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 右側抽屜 -->
+    <aside class="right-drawer" id="contextDrawer">
+        <div class="drawer-header">
+            <div>
+                <div class="drawer-node-id" id="drawerNodeId">NODE-04</div>
+                <div class="drawer-title" id="drawerTitle">RPG 世界觀、任務鏈與 NPC 資料結構規劃</div>
+            </div>
+            <button class="drawer-close" onclick="closeDrawer()"><svg class="icon" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+        </div>
+        
+        <div class="drawer-tabs">
+            <div class="d-tab active" onclick="switchDrawerTab('thinking', this)">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                思考過程
+            </div>
+            <div class="d-tab" onclick="switchDrawerTab('chat', this)">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                對話 <span class="badge">3</span>
+            </div>
+            <div class="d-tab" onclick="switchDrawerTab('files', this)">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                產出文件 <span class="badge" id="drawer-file-count">2</span>
+            </div>
+        </div>
+
+        <div class="drawer-body">
+            <div class="d-pane active" id="pane-thinking">
+                <div class="thinking-list" id="thinking-list">
+                    <!-- 動態填充 -->
+                </div>
+            </div>
+
+            <div class="d-pane" id="pane-chat">
+                <div class="chat-container">
+                    <div class="chat-msg user">
+                        <div class="chat-avatar" style="background:#8b5cf6;">Y</div>
+                        <div style="flex:1; display:flex; flex-direction:column; align-items:flex-end;">
+                            <div class="chat-bubble">請確保 NPC 資料結構支援動態對話樹，而不只是靜態文本。</div>
+                            <div class="chat-time">16:45:00</div>
+                        </div>
+                    </div>
+                    <div class="chat-msg agent">
+                        <div class="chat-avatar" style="background:#3b82f6;">S</div>
+                        <div style="flex:1;">
+                            <div class="chat-bubble">收到。我將在 NPC Schema 中加入 <code style="background:rgba(0,0,0,0.3); padding:2px 4px; border-radius:4px; font-family:var(--font-mono); font-size:11px;">dialogue_tree_id</code> 欄位，並關聯到獨立的 DialogueNodes 表，以支援分支邏輯。</div>
+                            <div class="chat-time">16:45:15</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <textarea class="chat-input" placeholder="輸入訊息給 Agent..."></textarea>
+                    <button class="btn btn-primary" style="padding:8px 12px;"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+                </div>
+            </div>
+
+            <div class="d-pane" id="pane-files">
+                <div class="drawer-file-list" id="drawer-file-list">
+                    <!-- 動態填充 -->
+                </div>
+                <div class="drawer-file-preview" id="drawer-file-content">
+                    <!-- 動態填充 -->
+                </div>
+                <div class="drawer-actions">
+                    <button class="btn"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg> 預覽</button>
+                    <button class="btn btn-primary btn-full" onclick="showToast('已接受 2 個文件的變更')"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> 接受所有變更 (2)</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="toast" id="toast">
+        <svg class="icon toast-icon" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+        <span id="toastMsg">操作成功</span>
+    </div>
+
+    <script>
+        // 狀態管理
+        let state = {
+            currentNodeId: 'N-04',
+            tokens: 12450,
+            time: 336, // seconds
+            files: [
+                { name: 'src/server/npc_schema.ts', status: 'modified', size: '2.4KB', time: '16:48' },
+                { name: 'src/server/quest_chain.ts', status: 'added', size: '1.1KB', time: '16:47' }
+            ],
+            thinkingSteps: [
+                { time: '16:45:54', type: 'success', text: '<strong>任務分析完成</strong><br>已解析使用者需求：建立 RPG 伺服器。識別出核心模組：世界觀、任務鏈、NPC。', token: 142 },
+                { time: '16:46:12', type: 'success', text: '<strong>工具調用：read_file</strong><br>讀取專案根目錄的 package.json 以確認現有依賴。<div class="t-code">{<br>  <span class="key">"dependencies"</span>: {<br>    <span class="key">"express"</span>: <span class="val">"^4.18.2"</span><br>  }<br>}</div>', token: 89 },
+                { time: '16:47:05', type: 'warning', text: '<strong>決策阻塞點觸發</strong><br>發現 ALLOWED_TOOLS 為空。已暫停並向上層 Manager 報告。', token: 45 },
+                { time: '16:48:30', type: 'process', text: '<strong>生成 DAG 節點結構</strong><br>正在構建里程碑依賴圖。當前節點 N04 依賴於 N05。', token: 210 }
+            ]
+        };
+
+        // 初始化
+        function init() {
+            renderThinking();
+            renderBottomFiles();
+            startSimulation();
+        }
+
+        // 渲染思考過程
+        function renderThinking() {
+            const list = document.getElementById('thinking-list');
+            list.innerHTML = state.thinkingSteps.map((step, i) => `
+                <div class="t-item ${step.type}">
+                    <div class="t-line"><div class="t-dot"></div>${i < state.thinkingSteps.length - 1 ? '<div class="t-connector"></div>' : ''}</div>
+                    <div class="t-content">
+                        <div class="t-time"><span>${step.time}</span><span class="t-token">${step.token} tokens</span></div>
+                        <div class="t-text">${step.text}</div>
+                    </div>
+                </div>
+            `).join('');
+            list.scrollTop = list.scrollHeight;
+        }
+
+        // 渲染底部文件
+        function renderBottomFiles() {
+            const body = document.getElementById('bottomPanelBody');
+            document.getElementById('file-count').textContent = state.files.length;
+            
+            body.innerHTML = `
+                <div class="file-tree-container">
+                    <div class="tree-group expanded">
+                        <div class="tree-item expanded" style="--indent: 0;" onclick="toggleTree(this)">
+                            <svg class="icon tree-icon arrow" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+                            <svg class="icon tree-icon" viewBox="0 0 24 24" style="color:var(--accent-blue)"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                            src/
+                        </div>
+                        <div class="tree-children">
+                            <div class="tree-group expanded">
+                                <div class="tree-item expanded" style="--indent: 1;" onclick="toggleTree(this)">
+                                    <svg class="icon tree-icon arrow" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+                                    <svg class="icon tree-icon" viewBox="0 0 24 24" style="color:var(--accent-blue)"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                                    server/
+                                </div>
+                                <div class="tree-children">
+                                    ${state.files.map(f => `
+                                        <div class="tree-item ${f.status === 'added' ? 'new-file' : ''}" style="--indent: 2;">
+                                            <svg class="icon tree-icon" viewBox="0 0 24 24" style="color:${f.status === 'added' ? 'var(--accent-green)' : 'var(--accent-orange)'}"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            ${f.name.split('/').pop()}
+                                            <span class="file-meta">${f.size} · ${f.time}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="file-preview-container">
+                    <div class="code-header"><span>src/server/npc_schema.ts</span><span>TypeScript</span></div>
+                    <div class="code-line"><span class="line-num">1</span><span class="line-content"><span class="keyword">export interface</span> <span class="function">NPC</span> {</span></div>
+                    <div class="code-line"><span class="line-num">2</span><span class="line-content">  id: <span class="keyword">string</span>;</span></div>
+                    <div class="code-line"><span class="line-num">3</span><span class="line-content">  name: <span class="keyword">string</span>;</span></div>
+                    <div class="code-line"><span class="line-num">4</span><span class="line-content">  role: <span class="string">'quest_giver'</span> | <span class="string">'merchant'</span> | <span class="string">'enemy'</span>;</span></div>
+                    <div class="code-line diff-line add"><span class="line-num">5</span><span class="line-content">+ dialogue_tree_id: <span class="keyword">string</span>; <span class="comment">// 新增：支援動態對話樹</span></span></div>
+                    <div class="code-line diff-line add"><span class="line-num">6</span><span class="line-content">+ prerequisites: <span class="variable">QuestCondition</span>[]; <span class="comment">// 新增：前置條件</span></span></div>
+                    <div class="code-line"><span class="line-num">7</span><span class="line-content">}</span></div>
+                    <div class="code-line"><span class="line-num">8</span><span class="line-content"></span></div>
+                    <div class="code-line"><span class="line-num">9</span><span class="line-content"><span class="keyword">export interface</span> <span class="function">QuestCondition</span> {</span></div>
+                    <div class="code-line"><span class="line-num">10</span><span class="line-content">  type: <span class="string">'level'</span> | <span class="string">'item'</span> | <span class="string">'quest_completed'</span>;</span></div>
+                    <div class="code-line"><span class="line-num">11</span><span class="line-content">  value: <span class="keyword">any</span>;</span></div>
+                    <div class="code-line"><span class="line-num">12</span><span class="line-content">}</span></div>
+                </div>
+            `;
+        }
+
+        // 模擬實時變化
+        function startSimulation() {
+            // Token 增長
+            setInterval(() => {
+                state.tokens += Math.floor(Math.random() * 50);
+                document.getElementById('metric-tokens').textContent = state.tokens.toLocaleString();
+                document.getElementById('token-val').textContent = Math.floor(Math.random() * 50 + 100);
+            }, 2000);
+
+            // 時間倒數
+            setInterval(() => {
+                state.time--;
+                const m = Math.floor(state.time / 60);
+                const s = state.time % 60;
+                document.getElementById('time-remaining').textContent = `${m}m ${s.toString().padStart(2, '0')}s`;
+            }, 1000);
+
+            // 節點進度增長
+            let progress = 65;
+            setInterval(() => {
+                if(progress < 95) {
+                    progress += Math.random() * 2;
+                    document.getElementById('node-n04-progress').style.width = progress + '%';
+                    document.getElementById('task-progress-bar').style.width = (45 + (progress-65)*0.5) + '%';
+                    document.getElementById('task-progress-text').textContent = Math.floor(45 + (progress-65)*0.5) + '%';
+                }
+            }, 3000);
+
+            // 終端機日誌
+            const termLogs = [
+                '<span class="term-info">[INFO]</span> <span class="term-out">Compiling TypeScript...</span>',
+                '<span class="term-info">[INFO]</span> <span class="term-out">File changed: src/server/npc_schema.ts</span>',
+                '<span class="term-warn">[WARN]</span> <span class="term-out">Type check passed with 1 warning</span>',
+                '<span class="term-info">[INFO]</span> <span class="term-out">Hot reload triggered</span>'
+            ];
+            let logIndex = 0;
+            setInterval(() => {
+                if(document.querySelector('.terminal-container')) {
+                    const term = document.querySelector('.terminal-container');
+                    const newLine = document.createElement('div');
+                    newLine.className = 'term-line';
+                    newLine.innerHTML = termLogs[logIndex % termLogs.length];
+                    term.appendChild(newLine);
+                    term.scrollTop = term.scrollHeight;
+                    logIndex++;
+                }
+            }, 4000);
+        }
+
+        // 交互函數
+        function openDrawer(nodeId, title) {
+            state.currentNodeId = nodeId;
+            document.getElementById('drawerNodeId').textContent = nodeId;
+            document.getElementById('drawerTitle').textContent = title;
+            document.getElementById('contextDrawer').classList.add('open');
+            
+            document.querySelectorAll('.node-card').forEach(c => c.classList.remove('selected'));
+            if(event && event.currentTarget) event.currentTarget.classList.add('selected');
+            
+            switchDrawerTab('thinking', document.querySelector('.d-tab'));
+            renderDrawerFiles();
+        }
+
+        function closeDrawer() {
+            document.getElementById('contextDrawer').classList.remove('open');
+            document.querySelectorAll('.node-card').forEach(c => c.classList.remove('selected'));
+        }
+
+        function switchDrawerTab(tabName, el) {
+            document.querySelectorAll('.d-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            document.querySelectorAll('.d-pane').forEach(p => p.classList.remove('active'));
+            document.getElementById('pane-' + tabName).classList.add('active');
+            
+            if(tabName === 'files') renderDrawerFiles();
+        }
+
+        function renderDrawerFiles() {
+            const list = document.getElementById('drawer-file-list');
+            document.getElementById('drawer-file-count').textContent = state.files.length;
+            list.innerHTML = state.files.map((f, i) => `
+                <div class="df-item ${i===0?'active':''}" onclick="selectDrawerFile(this, '${f.name}')">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24" style="color:${f.status === 'added' ? 'var(--accent-green)' : 'var(--accent-orange)'}"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span class="df-name">${f.name}</span>
+                    <span class="df-status ${f.status}">${f.status === 'added' ? 'Added' : 'Modified'}</span>
+                </div>
+            `).join('');
+            selectDrawerFile(list.firstChild, state.files[0].name);
+        }
+
+        function selectDrawerFile(el, fileName) {
+            document.querySelectorAll('.df-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            
+            const preview = document.getElementById('drawer-file-content');
+            if(fileName.includes('quest_chain')) {
+                preview.innerHTML = `
+                    <div class="code-header"><span>${fileName}</span><span style="color:var(--accent-green)">+ 4 行</span></div>
+                    <div class="code-line diff-line add"><span class="line-num">1</span><span class="line-content"><span class="keyword">export interface</span> <span class="function">QuestChain</span> {</span></div>
+                    <div class="code-line diff-line add"><span class="line-num">2</span><span class="line-content">+   id: <span class="keyword">string</span>;</span></div>
+                    <div class="code-line diff-line add"><span class="line-num">3</span><span class="line-content">+   name: <span class="keyword">string</span>;</span></div>
+                    <div class="code-line diff-line add"><span class="line-num">4</span><span class="line-content">+   steps: <span class="variable">QuestStep</span>[];</span></div>
+                    <div class="code-line diff-line add"><span class="line-num">5</span><span class="line-content">+ }</span></div>
+                `;
+            } else {
+                preview.innerHTML = `
+                    <div class="code-header"><span>${fileName}</span><span style="color:var(--accent-orange)">~ 2 行</span></div>
+                    <div class="code-line"><span class="line-num">4</span><span class="line-content">  role: <span class="string">'quest_giver'</span> | <span class="string">'merchant'</span> | <span class="string">'enemy'</span>;</span></div>
+                    <div class="code-line diff-line add"><span class="line-num">5</span><span class="line-content">+ dialogue_tree_id: <span class="keyword">string</span>; <span class="comment">// 新增：支援動態對話樹</span></span></div>
+                    <div class="code-line diff-line add"><span class="line-num">6</span><span class="line-content">+ prerequisites: <span class="variable">QuestCondition</span>[]; <span class="comment">// 新增：前置條件</span></span></div>
+                    <div class="code-line"><span class="line-num">7</span><span class="line-content">}</span></div>
+                `;
+            }
+        }
+
+        function switchBottomTab(tabName, el) {
+            document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            
+            const body = document.getElementById('bottomPanelBody');
+            if(tabName === 'files') {
+                renderBottomFiles();
+            } else if(tabName === 'terminal') {
+                body.innerHTML = `
+                    <div class="terminal-container">
+                        <div class="term-line"><span class="term-prompt">➜</span><span class="term-cmd">minecraft-rpg git:(main) ✗</span> <span class="term-out">npm run dev</span></div>
+                        <div class="term-line"><span class="term-info">[INFO]</span> <span class="term-out">Server running on port 3000</span></div>
+                        <div class="term-line"><span class="term-info">[INFO]</span> <span class="term-out">SSE endpoint registered: /api/stream</span></div>
+                        <div class="term-line"><span class="term-warn">[WARN]</span> <span class="term-out">ALLOWED_TOOLS is empty. Fallback to read-only mode.</span></div>
+                        <div class="term-line"><span class="term-info">[INFO]</span> <span class="term-out">Compiling TypeScript...</span></div>
+                        <div class="term-line"><span class="term-info">[INFO]</span> <span class="term-out">File changed: src/server/npc_schema.ts</span></div>
+                        <div class="term-line" style="margin-top:8px;"><span class="term-prompt"></span><span class="term-cmd">minecraft-rpg git:(main) ✗</span> <span class="term-cursor"></span></div>
+                    </div>
+                `;
+            } else {
+                body.innerHTML = `
+                    <div class="file-preview-container" style="background:var(--bg-panel); padding:16px;">
+                        <div style="display:flex; gap:12px; padding:12px; background:var(--accent-red-dim); border-radius:var(--radius-md); margin-bottom:12px; border:1px solid rgba(239,68,68,0.2);">
+                            <svg class="icon icon-lg" style="color:var(--accent-red); margin-top:2px;" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <div style="flex:1;">
+                                <div style="font-weight:600; color:var(--accent-red); font-size:12px; margin-bottom:4px;">DecisionBlocker: Missing write permissions</div>
+                                <div style="font-size:11px; color:var(--text-secondary); font-family:var(--font-mono);">at src/server/npc_schema.ts:12:5</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function toggleTree(el) {
+            const group = el.parentElement;
+            group.classList.toggle('expanded');
+            el.classList.toggle('expanded');
+        }
+
+        function toggleBottomPanel() {
+            document.getElementById('bottomPanel').classList.toggle('collapsed');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

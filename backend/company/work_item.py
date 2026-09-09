@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -18,6 +19,106 @@ from backend.company.state import (
 )
 
 logger = logging.getLogger(__name__)
+
+_STATUS_PROGRESS = {
+    WorkItemStatus.PLANNING: 0,
+    WorkItemStatus.READY: 8,
+    WorkItemStatus.BLOCKED: 12,
+    WorkItemStatus.EXECUTING: 55,
+    WorkItemStatus.REWORK: 40,
+    WorkItemStatus.IN_REVIEW: 100,
+    WorkItemStatus.DONE: 100,
+}
+
+_TAG_RULES: tuple[tuple[str, str], ...] = (
+    ("API", r"api|sse|endpoint|協議"),
+    ("Schema", r"schema|資料結構|npc|quest"),
+    ("Design", r"設計|design|架構|選型"),
+    ("Database", r"資料庫|postgres|sql|schema"),
+    ("Code", r"程式|code|實作|typescript|python"),
+    ("Docs", r"文件|文檔|文件空間"),
+    ("Research", r"調研|研究|競品"),
+)
+
+
+def _slug_file(title: str) -> str:
+    raw = "".join(ch if ch.isalnum() or ch in "-_ " else "" for ch in (title or "").strip())
+    slug = "_".join(raw.split())[:48] or "output"
+    return slug
+
+
+def _item_tags(item: WorkItem) -> list[str]:
+    tags: list[str] = []
+    artifacts = item.artifacts if isinstance(item.artifacts, dict) else {}
+    raw = artifacts.get("tags")
+    if isinstance(raw, list):
+        tags.extend(str(t).strip()[:18] for t in raw if str(t).strip())
+    blob = f"{item.title} {item.description}"
+    for label, pat in _TAG_RULES:
+        if label in tags:
+            continue
+        if re.search(pat, blob, re.IGNORECASE):
+            tags.append(label)
+    return tags[:4]
+
+
+def _item_progress(item: WorkItem) -> int:
+    artifacts = item.artifacts if isinstance(item.artifacts, dict) else {}
+    raw = artifacts.get("progress")
+    try:
+        n = int(raw)
+        if 0 <= n <= 100:
+            return n
+    except (TypeError, ValueError):
+        pass
+    return _STATUS_PROGRESS.get(item.status, 0)
+
+
+def _item_action(item: WorkItem) -> str:
+    artifacts = item.artifacts if isinstance(item.artifacts, dict) else {}
+    action = str(artifacts.get("current_action") or "").strip()
+    if action:
+        return action[:120]
+    if item.status != WorkItemStatus.EXECUTING:
+        return ""
+    think = str(artifacts.get("thinking") or "").strip()
+    if think:
+        last = think.splitlines()[-1].strip()
+        if last:
+            return last[:120]
+    return "執行中…"
+
+
+def _item_files(item: WorkItem, output: str) -> list[dict[str, str]]:
+    artifacts = item.artifacts if isinstance(item.artifacts, dict) else {}
+    files: list[dict[str, str]] = []
+    raw = artifacts.get("files")
+    if isinstance(raw, list):
+        for row in raw[:12]:
+            if not isinstance(row, dict):
+                continue
+            path = str(row.get("path") or row.get("name") or "").strip()
+            if not path:
+                continue
+            files.append(
+                {
+                    "name": path.rsplit("/", 1)[-1],
+                    "path": path,
+                    "status": str(row.get("status") or "modified"),
+                    "size": str(row.get("size") or f"{len(str(row.get('content') or ''))}B"),
+                }
+            )
+    if output and not files:
+        name = f"{_slug_file(item.title)}.md"
+        files.append(
+            {
+                "name": name,
+                "path": f"output/{name}",
+                "status": "added" if item.status == WorkItemStatus.DONE else "modified",
+                "size": f"{len(output)}B",
+            }
+        )
+    return files
 
 
 class WorkItemManager:
@@ -244,6 +345,11 @@ class WorkItemManager:
                 "thinking": thinking[:12000],
                 "created_at": item.created_at,
                 "updated_at": item.updated_at,
+                "tags": _item_tags(item),
+                "progress": _item_progress(item),
+                "current_action": _item_action(item),
+                "files": _item_files(item, output),
+                "tokens": int(item.artifacts.get("tokens") or 0) if isinstance(item.artifacts, dict) else 0,
             })
         return board
 

@@ -175,6 +175,16 @@ class TestPoolIntegration:
         assert "SWOT" in card["system_prompt"] or card["template_id"] == "swot"
         assert card["constitution_locked"] is True
 
+    def test_assemble_infers_tools_when_template_empty(self):
+        item = WorkItem(
+            title="讀取報告 PDF 並擷取表格",
+            description="從上傳檔解析 CSV",
+            assignee=RoleType.ANALYST,
+        )
+        card = assemble(item, tools=[])
+        assert card.get("allowed_tools")
+        assert any(t in card["allowed_tools"] for t in ("read_file", "python_exec", "json_formatter"))
+
     def test_incubate_uses_l3_task_layer_not_as_constitution(self):
         item = WorkItem(title="分析營收", description="趨勢", assignee=RoleType.ANALYST)
         card = incubate_instance(

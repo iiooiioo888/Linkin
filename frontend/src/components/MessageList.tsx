@@ -16,6 +16,7 @@ interface MessageListProps {
   onSuggest?: (text: string, companyMode: boolean) => void;
   onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
   onBattlePick?: (messageId: string, choice: string) => void;
+  variant?: 'default' | 'drawer';
 }
 
 const SUGGESTIONS: { text: string; company: boolean }[] = [
@@ -32,6 +33,7 @@ export default function MessageList({
   onSuggest,
   onGrillAnswer,
   onBattlePick,
+  variant = 'default',
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -68,10 +70,10 @@ export default function MessageList({
   }
 
   return (
-    <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+    <div ref={scrollerRef} className={`min-h-0 flex-1 overflow-y-auto ${variant === 'drawer' ? 'px-4 py-4' : 'px-4 py-5 sm:px-6'}`}>
+      <div className={`flex flex-col gap-4 ${variant === 'drawer' ? '' : 'mx-auto w-full max-w-3xl'}`}>
         {messages.length === 0 && (
-          <div className="flex flex-col items-center gap-8 py-20 text-center sm:py-28">
+          <div className={`flex flex-col items-center gap-8 text-center ${variant === 'drawer' ? 'py-10' : 'py-20 sm:py-28'}`}>
             <div>
               <h2 className="text-[20px] font-semibold tracking-tight text-[#F5F5F7] sm:text-[22px]">
                 開始對話
@@ -104,6 +106,7 @@ export default function MessageList({
             onOpenTrace={onOpenTrace}
             onGrillAnswer={onGrillAnswer}
             onBattlePick={onBattlePick}
+            variant={variant === 'drawer' ? 'workspace' : 'default'}
           />
         ))}
         <div ref={bottomRef} />
@@ -111,4 +114,4 @@ export default function MessageList({
     </div>
   );
 }
-
+
