@@ -25,6 +25,7 @@ import {
 import { fetchPlugins, togglePlugin, type PluginCatalogEntry } from '../api/plugins';
 import { openChatContextDetail, openContextModal } from '../lib/contextUi';
 import { jumpToContextMonitor } from '../lib/rahoUi';
+import { PanelSection, PanelShell, consoleLayout } from './ui/ConsoleLayout';
 
 type SubTab = 'skills' | 'mcp' | 'viz';
 
@@ -34,7 +35,7 @@ const btnCls =
   'rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2.5 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8] disabled:opacity-40';
 const btnPrimaryCls =
   'rounded-xl border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-2.5 py-1 text-[11px] text-[#64D2FF] disabled:opacity-40';
-const cardCls = 'rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3';
+const cardCls = consoleLayout.insetCard;
 
 function ErrorBar({ message }: { message: string | null }) {
   if (!message) return null;
@@ -248,7 +249,7 @@ function SkillsSection() {
           </div>
         ))}
         {skills.length === 0 && !editing && (
-          <p className="col-span-full py-8 text-center text-[12px] text-[#636366]">
+          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[#636366]`}>
             尚無技能。點「＋ 新技能」新增第一條——例如把公司的 SOP、代碼規範、領域知識放進去，角色執行時就會自動帶上。
           </p>
         )}
@@ -588,7 +589,7 @@ function McpSection() {
           );
         })}
         {servers.length === 0 && !editing && (
-          <p className="col-span-full py-8 text-center text-[12px] text-[#636366]">
+          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[#636366]`}>
             尚無 MCP 連線。點「＋ 新連線」接入第一個 server——例如 <code className="font-mono text-[#8a8f98]">npx -y @modelcontextprotocol/server-filesystem /data</code>。
           </p>
         )}
@@ -600,10 +601,10 @@ function McpSection() {
 export default function SkillsMcpPanel() {
   const [tab, setTab] = useState<SubTab>('skills');
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto p-5">
-      <div className="mx-auto w-full max-w-5xl">
-        <div className="mb-4 flex items-center gap-4">
-          <h2 className="text-[15px] font-semibold text-[#F5F5F7]">技能與 MCP</h2>
+    <PanelShell constrained>
+      <PanelSection>
+        <div className={consoleLayout.toolbar}>
+          <h2 className={consoleLayout.title}>技能與 MCP</h2>
           <div className="flex gap-1 rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-0.5">
             <button
               type="button"
@@ -632,8 +633,8 @@ export default function SkillsMcpPanel() {
         {tab === 'skills' ? <SkillsSection /> : null}
         {tab === 'mcp' ? <McpSection /> : null}
         {tab === 'viz' ? <VizPluginsSection /> : null}
-      </div>
-    </div>
+      </PanelSection>
+    </PanelShell>
   );
 }
 
@@ -742,7 +743,7 @@ function VizPluginsSection() {
           </article>
         ))}
         {items.length === 0 ? (
-          <p className="col-span-full py-8 text-center text-[12px] text-[#636366]">尚無可視化插件目錄</p>
+          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[#636366]`}>尚無可視化插件目錄</p>
         ) : null}
       </div>
     </div>

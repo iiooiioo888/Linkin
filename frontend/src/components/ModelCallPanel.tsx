@@ -7,6 +7,18 @@ import { extraRateItems, fmtPerMillion, fmtRate, lookupRateCard } from '../lib/a
 import { navPathForTab } from '../lib/monitorTabs';
 import type { ModelRateCatalog, OptimizationMonitorData } from '../types';
 import LcBarChart from './charts/LcBarChart';
+import {
+  ConsoleCard,
+  ConsoleCardBody,
+  ConsoleCardHeader,
+  KpiCard,
+  KpiGrid,
+  PanelAlert,
+  PanelSection,
+  PanelShell,
+  SectionHeader,
+  consoleLayout,
+} from './ui/ConsoleLayout';
 
 function Bar({ pct, color = '#007AFF' }: { pct: number; color?: string }) {
   return (
@@ -57,55 +69,43 @@ export default function ModelCallPanel() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold">調用用量</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            從全鏈路 Trace 彙總 LLM 調用 · 按模型與環節統計
-          </p>
-          <p className="mt-1 text-[11px] text-[#636366]">
-            要改金鑰或目錄請到{' '}
-            <a href="#/monitor/llm" className="text-[#64D2FF] hover:underline">
-              {navPathForTab('llm')}
-            </a>
-            。
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]"
-        >
-          {loading ? '同步中' : '重新整理'}
-        </button>
-      </div>
+    <PanelShell>
+      <PanelSection>
+        <SectionHeader
+          title="調用用量"
+          description="從全鏈路 Trace 彙總 LLM 調用 · 按模型與環節統計"
+          meta={
+            <>
+              要改金鑰或目錄請到{' '}
+              <a href="#/monitor/llm" className="text-[#64D2FF] hover:underline">
+                {navPathForTab('llm')}
+              </a>
+              。
+            </>
+          }
+          actions={
+            <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
+              {loading ? '同步中' : '重新整理'}
+            </button>
+          }
+        />
 
-      {error && (
-        <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-          {error}
-        </div>
-      )}
+        {error ? <PanelAlert>{error}</PanelAlert> : null}
 
-      <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {[
-          { label: '總調用', value: String(calls?.total_calls ?? 0) },
-          { label: '掃描軌跡', value: String(calls?.files_scanned ?? 0) },
-          { label: '平均耗時', value: calls?.avg_duration_ms != null ? `${calls.avg_duration_ms}ms` : '—' },
-          { label: '主力模型', value: topModel?.model?.split('/').pop() ?? '—' },
-        ].map((kpi) => (
-          <div key={kpi.label} className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wider text-[#62666d]">{kpi.label}</p>
-            <p className="mt-1 truncate font-mono text-sm text-[#f7f8f8]">{kpi.value}</p>
-          </div>
-        ))}
-      </div>
+        <KpiGrid>
+          {[
+            { label: '總調用', value: String(calls?.total_calls ?? 0) },
+            { label: '掃描軌跡', value: String(calls?.files_scanned ?? 0) },
+            { label: '平均耗時', value: calls?.avg_duration_ms != null ? `${calls.avg_duration_ms}ms` : '—' },
+            { label: '主力模型', value: topModel?.model?.split('/').pop() ?? '—' },
+          ].map((kpi) => (
+            <KpiCard key={kpi.label} label={kpi.label} value={kpi.value} valueClassName="truncate text-sm" />
+          ))}
+        </KpiGrid>
 
-      <div className="mb-4 apple-card apple-card--tight !p-0 overflow-hidden">
-        <p className="border-b border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
-          模型佔比
-        </p>
-        <div className="h-[220px] p-2">
+        <ConsoleCard>
+          <ConsoleCardHeader>模型佔比</ConsoleCardHeader>
+          <div className="h-[220px] p-4">
           {(calls?.by_model ?? []).length === 0 ? (
             <p className="p-3 text-xs text-[#62666d]">尚無 llm_call 軌跡，完成任務後將自動彙總。</p>
           ) : (
@@ -120,15 +120,13 @@ export default function ModelCallPanel() {
               ]}
             />
           )}
-        </div>
-      </div>
+          </div>
+        </ConsoleCard>
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
-        <div className="apple-card apple-card--tight !p-0 overflow-hidden">
-          <p className="border-b border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
-            按模型
-          </p>
-          <div className="max-h-[360px] overflow-y-auto p-3 space-y-3">
+        <div className={consoleLayout.cardGrid}>
+          <ConsoleCard>
+            <ConsoleCardHeader>按模型</ConsoleCardHeader>
+            <ConsoleCardBody dense className="max-h-[360px] space-y-3 overflow-y-auto">
             {(calls?.by_model ?? []).length === 0 ? (
               <p className="text-xs text-[#62666d]">尚無 llm_call 軌跡，完成任務後將自動彙總。</p>
             ) : (
@@ -148,14 +146,12 @@ export default function ModelCallPanel() {
                 </div>
               ))
             )}
-          </div>
-        </div>
+            </ConsoleCardBody>
+          </ConsoleCard>
 
-        <div className="apple-card apple-card--tight !p-0 overflow-hidden">
-          <p className="border-b border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
-            按環節（phase）
-          </p>
-          <div className="max-h-[360px] overflow-y-auto p-3 space-y-3">
+          <ConsoleCard>
+            <ConsoleCardHeader>按環節（phase）</ConsoleCardHeader>
+            <ConsoleCardBody dense className="max-h-[360px] space-y-3 overflow-y-auto">
             {phaseRows.length === 0 ? (
               <p className="text-xs text-[#62666d]">—</p>
             ) : (
@@ -171,15 +167,15 @@ export default function ModelCallPanel() {
                 </div>
               ))
             )}
-          </div>
+            </ConsoleCardBody>
+          </ConsoleCard>
         </div>
-      </div>
 
-      <div className="mt-4 apple-card apple-card--tight !p-0 overflow-hidden">
-        <p className="border-b border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
-          公開價目 · {rates?.models?.length ?? 0} 模型 · {rates?.fields?.length ?? 0} 收費項
-        </p>
-        <div className="max-h-[420px] overflow-y-auto p-3 space-y-3">
+        <ConsoleCard>
+          <ConsoleCardHeader>
+            公開價目 · {rates?.models?.length ?? 0} 模型 · {rates?.fields?.length ?? 0} 收費項
+          </ConsoleCardHeader>
+          <ConsoleCardBody dense className="max-h-[420px] space-y-3 overflow-y-auto">
           {(rates?.models ?? []).length === 0 ? (
             <p className="text-xs text-[#62666d]">尚無價目。請到 API 路由檢查目錄。</p>
           ) : (
@@ -211,8 +207,9 @@ export default function ModelCallPanel() {
               );
             })
           )}
-        </div>
-      </div>
-    </div>
+          </ConsoleCardBody>
+        </ConsoleCard>
+      </PanelSection>
+    </PanelShell>
   );
 }

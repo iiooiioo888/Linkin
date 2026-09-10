@@ -16,6 +16,7 @@ import { moduleIdForTab } from '../lib/worldModules';
 import ModuleWorkspace from '../modules/ModuleWorkspace';
 import LiveBoard from './LiveBoard';
 import ErrorState from './ui/ErrorState';
+import { PanelShell } from './ui/ConsoleLayout';
 
 const AgentsMonitorPanel = lazy(() => import('./AgentsMonitorPanel'));
 const TasksMonitorPanel = lazy(() => import('./TasksMonitorPanel'));
@@ -106,10 +107,10 @@ function LiveTab({
         </div>
       )}
       {!connected && !error && (
-        <div className="shrink-0 px-5 py-2 text-[10px] text-[#48484A]">離線資料</div>
+        <div className="shrink-0 px-6 py-2 text-[10px] text-[#48484A]">離線資料</div>
       )}
       {l0 ? (
-        <button type="button" className="l0-live mx-5 mt-4" onClick={jumpToL0Kernel}>
+        <button type="button" className="l0-live mx-6 mt-4" onClick={jumpToL0Kernel}>
           <div>
             <p>L0 態勢 · {l0.radar?.energy_save ? '節能模式' : '壓力正常'}</p>
             <span>{l0.radar?.bias_instructions || '三核待命：記憶／知識／雷達'}</span>
@@ -197,13 +198,13 @@ export default function MonitorView({
         {tab === 'ops' && <OpsPanel />}
         {tab === 'llm' && <LlmOpsPanel />}
         {tab === 'memory' && (
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4 apple-canvas">
+          <PanelShell>
             <L0Panel />
-          </div>
+          </PanelShell>
         )}
         {tab === 'context' && (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="shrink-0 border-b border-white/[0.06] bg-[#1C1C1E]/80 px-5 py-2.5">
+            <div className="shrink-0 border-b border-white/[0.06] bg-[#1C1C1E]/80 px-6 py-3">
               <p className="text-[12px] text-[#AEAEB2]">
                 Context 主表面在<strong className="mx-1 text-[#F5F5F7]">對話底部詳細區</strong>
                 （輸入 <code className="text-[11px] text-[#64D2FF]">/context</code>）。此處為控制台完整鏡像。

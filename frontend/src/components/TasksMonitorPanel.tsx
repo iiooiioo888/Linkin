@@ -16,6 +16,7 @@ import TaskPanel, {
   phaseIndex,
 } from './TaskPanel';
 import ErrorState from './ui/ErrorState';
+import { consoleLayout } from './ui/ConsoleLayout';
 
 interface TasksMonitorPanelProps {
   focusTaskId: string | null;
@@ -214,7 +215,7 @@ export default function TasksMonitorPanel({
       </div>
 
       {storeError && (
-        <div className="shrink-0 px-4 pt-2">
+        <div className="shrink-0 px-6 pt-2">
           <ErrorState kind="partial" message={storeError} compact />
         </div>
       )}
@@ -274,7 +275,7 @@ export default function TasksMonitorPanel({
         {/* 右：詳情 */}
         {focusTaskId && (
           <div className="hidden min-h-0 min-w-0 flex-1 flex-col overflow-y-auto border-l border-white/[0.06] lg:flex">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.06] bg-[#0d0d0f]/95 px-5 py-2.5 backdrop-blur">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.06] bg-[#0d0d0f]/95 px-6 py-3 backdrop-blur">
               <p className="truncate text-[12px] font-medium text-[#F5F5F7]">
                 {detail?.query ?? focusTaskId.slice(0, 8)}
               </p>
@@ -286,9 +287,9 @@ export default function TasksMonitorPanel({
                 關閉
               </button>
             </div>
-            <div className="p-5">
+            <div className={consoleLayout.cardBody}>
               {detailLoading && !detail && (
-                <p className="py-8 text-center text-[12px] text-[#636366]">載入任務…</p>
+                <p className={`${consoleLayout.emptySm} text-[12px] text-[#636366]`}>載入任務…</p>
               )}
               {detailError && (
                 <ErrorState kind="generic" message={detailError} compact />

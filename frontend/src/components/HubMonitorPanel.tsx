@@ -7,6 +7,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchHubMonitor } from '../api/client';
 import { HUB_FALLBACK_MODELS, HUB_FALLBACK_ROUTING } from '../lib/monitorFallbacks';
 import type { HubMonitorData } from '../types';
+import {
+  ConsoleCard,
+  ConsoleCardHeader,
+  KpiGrid,
+  PanelAlert,
+  PanelSection,
+  PanelShell,
+  SectionHeader,
+  consoleLayout,
+} from './ui/ConsoleLayout';
 
 function circuitTone(state: string): string {
   if (state === 'OPEN') return 'bg-red-500/15 text-red-300';
@@ -80,40 +90,34 @@ export default function HubMonitorPanel() {
   const maxLatency = Math.max(1, ...models.map((m) => Number(m.latency_ewma_ms) || 0));
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold">AI Hub 編排監控</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            {data?.routing?.pool_lock?.lock_message
-              || 'GPT-5.6 Sol 旗艦 · Gemini 3.1 Pro 多模態 · 禁止 Anthropic / Claude'}
-          </p>
-        </div>
-        <button
-          onClick={() => void refresh()}
-          className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]"
-        >
-          {loading ? '同步中' : '重新整理'}
-        </button>
-      </div>
+    <PanelShell>
+      <PanelSection>
+        <SectionHeader
+          title="AI Hub 編排監控"
+          description={
+            data?.routing?.pool_lock?.lock_message
+              || 'GPT-5.6 Sol 旗艦 · Gemini 3.1 Pro 多模態 · 禁止 Anthropic / Claude'
+          }
+          actions={
+            <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
+              {loading ? '同步中' : '重新整理'}
+            </button>
+          }
+        />
 
-      {error && (
-        <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-          {error}
-        </div>
-      )}
+        {error ? <PanelAlert>{error}</PanelAlert> : null}
 
-      <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">語義快取命中率</p>
+        <KpiGrid>
+        <div className={consoleLayout.kpiCard}>
+          <p className={consoleLayout.kpiLabel}>語義快取命中率</p>
           <p className="mt-1 font-mono text-lg">{hitPct}%</p>
           <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#141516]">
             <div className="h-full bg-[#007AFF]" style={{ width: `${hitPct}%` }} />
           </div>
           <p className="mt-1 text-[10px] text-[#62666d]">目標 &gt; {targetPct}%</p>
         </div>
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">今日預算</p>
+        <div className={consoleLayout.kpiCard}>
+          <p className={consoleLayout.kpiLabel}>今日預算</p>
           <p className="mt-1 font-mono text-lg">
             {fmtUsd(budget?.spent_today_usd)}
             <span className="text-xs text-[#62666d]"> / {fmtUsd(budget?.daily_limit_usd)}</span>
@@ -128,24 +132,23 @@ export default function HubMonitorPanel() {
             />
           </div>
         </div>
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">呼叫日誌</p>
+        <div className={consoleLayout.kpiCard}>
+          <p className={consoleLayout.kpiLabel}>呼叫日誌</p>
           <p className="mt-1 font-mono text-lg">{data?.call_log_count ?? 0}</p>
           <p className="mt-1 text-[10px] text-[#62666d]">上游 {data?.upstream_calls ?? 0} 次</p>
         </div>
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">熔斷 Open</p>
+        <div className={consoleLayout.kpiCard}>
+          <p className={consoleLayout.kpiLabel}>熔斷 Open</p>
           <p className="mt-1 font-mono text-lg">
             {models.filter((m) => m.circuit.state === 'OPEN').length}
           </p>
           <p className="mt-1 text-[10px] text-[#62666d]">threshold 50% · 半開 10s</p>
         </div>
-      </div>
+        </KpiGrid>
 
-      <section className="mb-4 apple-card apple-card--tight !p-0 p-3">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
-          故障轉移鏈
-        </p>
+        <ConsoleCard>
+          <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-4 pt-4 pb-2">故障轉移鏈</ConsoleCardHeader>
+          <div className="px-4 pb-4">
         <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
           {(routing.default_chain).map(
             (id, i, arr) => (
@@ -163,9 +166,10 @@ export default function HubMonitorPanel() {
           {routing.race_pair.join(' × ') || 'Gemini × Mercury'} · 禁止{' '}
           {routing.forbidden_vendor}
         </p>
-      </section>
+          </div>
+        </ConsoleCard>
 
-      <div className="mb-4 overflow-x-auto apple-card apple-card--tight !p-0">
+        <ConsoleCard className="overflow-x-auto">
         <table className="w-full min-w-[1040px] text-left">
           <thead>
             <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[#62666d]">
@@ -239,13 +243,12 @@ export default function HubMonitorPanel() {
             ))}
           </tbody>
         </table>
-      </div>
+        </ConsoleCard>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="apple-card apple-card--tight !p-0 p-3">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
-            呼叫日誌
-          </p>
+        <div className={consoleLayout.cardGrid}>
+          <ConsoleCard>
+            <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-4 pt-4 pb-2">呼叫日誌</ConsoleCardHeader>
+            <div className="px-4 pb-4">
           {(data?.call_logs.length ?? 0) === 0 ? (
             <p className="text-[11px] text-[#62666d]">
               尚無推論紀錄。到 AI Hub 送出一次同步推論後會寫入 call_logs。
@@ -270,12 +273,12 @@ export default function HubMonitorPanel() {
               ))}
             </div>
           )}
-        </section>
+            </div>
+          </ConsoleCard>
 
-        <section className="apple-card apple-card--tight !p-0 p-3">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
-            Agent 任務
-          </p>
+          <ConsoleCard>
+            <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-4 pt-4 pb-2">Agent 任務</ConsoleCardHeader>
+            <div className="px-4 pb-4">
           {(data?.agent_tasks.length ?? 0) === 0 ? (
             <p className="text-[11px] text-[#62666d]">
               尚無 Agent 任務。工具呼叫走 JWT RPC，OPC 寫入禁止直連。
@@ -293,8 +296,10 @@ export default function HubMonitorPanel() {
               ))}
             </div>
           )}
-        </section>
-      </div>
-    </div>
+            </div>
+          </ConsoleCard>
+        </div>
+      </PanelSection>
+    </PanelShell>
   );
 }

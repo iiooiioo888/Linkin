@@ -17,6 +17,7 @@ import { filterAgentsByDesk, requestRoleSettingsDesk } from '../lib/agentUi';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { MonitorTab } from './AppShell';
 import IntegrationsStrip from './IntegrationsStrip';
+import { consoleLayout } from './ui/ConsoleLayout';
 
 const PIPELINE = [
   { id: 'sense', label: '感知' },
@@ -740,7 +741,7 @@ export default function LiveBoard({
     >
       <div
         className={`lb-board-scroll min-h-0 flex-1 overflow-y-auto ${
-          dock ? 'px-3 py-3' : 'px-4 py-4 sm:px-6 sm:py-5'
+          dock ? consoleLayout.pagePaddingDense : consoleLayout.pagePadding
         }`}
       >
         {!dock && (
