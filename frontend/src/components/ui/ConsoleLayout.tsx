@@ -171,4 +171,36 @@ export function ConsoleEmpty({
   );
 }
 
+/** 控制台內的 rd-shell 外殼（角色／管線／任務共用骨架，外緣 padding 對齊 pagePadding） */
+export function ConsoleRdShell({ className, children, ...rest }: DivProps) {
+  return (
+    <div className={cn(consoleLayout.rdShell, className)} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+export function ConsoleRdToolbar({
+  title,
+  actions,
+  className,
+  children,
+}: {
+  title?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={cn(consoleLayout.rdToolbar, className)}>
+      {children ?? (
+        <>
+          <h2 className={cn(consoleLayout.title, 'm-0 text-[#8a8f98]')}>{title}</h2>
+          {actions}
+        </>
+      )}
+    </div>
+  );
+}
+
 export { consoleLayout };

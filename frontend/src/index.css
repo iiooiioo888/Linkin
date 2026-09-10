@@ -1031,6 +1031,59 @@ body {
   overflow: hidden;
 }
 
+/* 控制台 rd-shell：外緣 chrome 對齊 consoleLayout（px-6 py-4 / gap-4 / p-4） */
+.console-rd-shell .rd-header {
+  padding: 16px 24px 12px;
+}
+
+.console-rd-shell .rd-th {
+  padding: 16px 24px;
+}
+
+.console-rd-shell .rd-stats {
+  gap: 8px;
+  padding: 16px 24px;
+  background: transparent;
+  border-bottom: 1px solid var(--apple-hairline);
+}
+
+.console-rd-shell .rd-stat {
+  border-radius: var(--apple-radius);
+  border: 1px solid var(--apple-hairline);
+  background: var(--apple-surface);
+  padding: 12px 16px;
+}
+
+.console-rd-shell .rd-pane {
+  padding: 16px;
+}
+
+.console-rd-shell .rd-rp {
+  gap: 16px;
+  padding: 16px;
+  background: var(--apple-canvas);
+}
+
+.console-rd-shell .rd-rp > .rd-sec {
+  margin: 0;
+  border: 1px solid var(--apple-hairline);
+  border-radius: var(--apple-radius-lg);
+  background: var(--apple-surface);
+  padding: 0;
+  overflow: hidden;
+}
+
+.console-rd-shell .rd-rp > .rd-sec .rd-tt {
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--apple-hairline);
+  background: #1c1c1e;
+}
+
+.console-rd-shell .rd-rp > .rd-sec > :not(.rd-tt) {
+  padding: 12px 16px 16px;
+}
+
 .rd-header {
   display: flex;
   flex-shrink: 0;

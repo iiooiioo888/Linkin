@@ -17,6 +17,13 @@ export const consoleLayout = {
   sectionGap: 'gap-4',
   /** KPI／統計列 */
   kpiGrid: 'grid grid-cols-2 gap-2 lg:grid-cols-4',
+  /** 管線／角色工作台指標帶（6 格） */
+  kpiStrip6:
+    'grid shrink-0 grid-cols-2 gap-2 border-b border-white/[0.06] px-6 py-4 sm:grid-cols-3 lg:grid-cols-6',
+  /** rd-shell 控制台外殼（內層 rd-* 骨架保留，僅對齊外緣節奏） */
+  rdShell: 'console-rd-shell rd-shell',
+  rdToolbar:
+    'flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] px-6 py-4',
   /** 雙欄卡片格 */
   cardGrid: 'grid gap-4 lg:grid-cols-2',
   /** apple-card 外殼（表頭＋內容分離時 !p-0） */
