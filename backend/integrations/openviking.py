@@ -109,21 +109,45 @@ class OpenVikingClient:
 
     @staticmethod
     def _extract_hits(data: Any) -> list[dict]:
+        """抽取命中：OpenViking 回 ``{"status","result":{"memories":[],"resources":[]}}``；
+        兼容舊式 ``results``／``hits``／``data`` 平舖形狀。"""
         if not isinstance(data, dict):
             return []
-        for key in ("results", "hits", "data"):
-            node = data.get(key)
+        hits: list[dict] = []
+
+        def _collect(node: Any) -> None:
             if isinstance(node, list):
-                return [x for x in node if isinstance(x, dict)]
-        return []
+                hits.extend(x for x in node if isinstance(x, dict))
+
+        result = data.get("result")
+        if isinstance(result, dict):
+            for key in ("resources", "memories", "results", "hits", "data"):
+                _collect(result.get(key))
+        for key in ("results", "hits", "data"):
+            _collect(data.get(key))
+        seen: set[str] = set()
+        unique: list[dict] = []
+        for hit in hits:
+            uri = str(hit.get("uri") or "")
+            if uri and uri in seen:
+                continue
+            if uri:
+                seen.add(uri)
+            unique.append(hit)
+        return unique
 
     @staticmethod
     def _extract_text(data: Any) -> str:
+        """取出文本：OpenViking 的 L0/L1/L2 端點回 ``{"status":"ok","result":"<text>"}``。"""
         if isinstance(data, str):
             return data
         if isinstance(data, dict):
-            for key in ("content", "text", "abstract", "overview"):
+            for key in ("content", "text", "abstract", "overview", "result"):
                 value = data.get(key)
                 if isinstance(value, str):
                     return value
+                if isinstance(value, dict):
+                    nested = OpenVikingClient._extract_text(value)
+                    if nested:
+                        return nested
         return ""
