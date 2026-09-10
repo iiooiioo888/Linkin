@@ -55,7 +55,8 @@
 | `backend/tools/` | MineMCP／運維等底層橋接 | 同上 |
 | `backend/hub/` | AI Hub 契約實作 | 同上 |
 | `opc_service/` | OPC UA 讀寫與護欄（獨立進程） | [opc_service/](../opc_service/README.md) |
-| `frontend/src/` | 單一 UI（活動欄五層） | [frontend/](../frontend/README.md) |
+| `frontend/src/` | 單一 UI（對話／控制台／世界模組宿主／實驗室） | [frontend/](../frontend/README.md) |
+| `backend/modules/` | 可插拔模組目錄（Minecraft 為內建） | 同上 |
 | `docs/` | **詳文唯一來源** | [docs/README.md](README.md) |
 
 ## 4. 本機最小路徑

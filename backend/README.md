@@ -33,6 +33,7 @@
 | 模型池／API 路由 | `core/provider_pool.py`、`core/api_router.py`、`core/llm_config.py` |
 
 | 靈境實體／憲法 | `linkin/` |
+| 世界模組目錄 | `modules/`（`GET /modules`、`/{id}/api/*`） |
 
 | Minecraft 寫入護欄 | `linkin/minecraft.py` + `tools/minecraft_mcp.py` |
 

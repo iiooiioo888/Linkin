@@ -1437,6 +1437,15 @@ class TestCompanyGraphIntegration:
         state = {"query": "你好"}
         assert route_by_complexity(state) == "generate_initial_answer"
 
+    def test_route_story_deliverable_is_company(self, monkeypatch):
+        """長文／故事類交付應走公司運行時（主頁才會分裂監控欄）。"""
+        from backend.core.company_nodes import _is_complex_task, route_by_complexity
+
+        query = "幫我寫一個故事，5000字"
+        assert _is_complex_task(query) is True
+        monkeypatch.setenv("EVOL_COST_SPEED_ENABLED", "false")
+        assert route_by_complexity({"query": query, "execution_strategy": "auto"}) == "run_company"
+
     def test_run_company_with_mock(self, monkeypatch):
         """run_company 節點（模擬 LLM 呼叫）。
 

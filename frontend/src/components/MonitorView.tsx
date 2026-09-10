@@ -12,6 +12,8 @@ import { useMonitorStore } from '../stores/monitorStore';
 import type { L0Snapshot, TaskProgress } from '../types';
 import type { MonitorTab } from './AppShell';
 import type { LabSubTab } from '../lib/labTabs';
+import { moduleIdForTab } from '../lib/worldModules';
+import ModuleWorkspace from '../modules/ModuleWorkspace';
 import LiveBoard from './LiveBoard';
 import ErrorState from './ui/ErrorState';
 
@@ -25,13 +27,8 @@ const LabPanel = lazy(() => import('./LabPanel'));
 const OpsPanel = lazy(() => import('./OpsPanel'));
 const LlmOpsPanel = lazy(() => import('./LlmOpsPanel'));
 const L0Panel = lazy(() => import('./L0Panel'));
-const WorldConstitutionPanel = lazy(() => import('./linkin/WorldConstitutionPanel'));
-const NpcManagerPanel = lazy(() => import('./linkin/NpcManagerPanel'));
-const QuestPanel = lazy(() => import('./linkin/QuestPanel'));
-const BuildPanel = lazy(() => import('./linkin/BuildPanel'));
-const ItemPanel = lazy(() => import('./linkin/ItemPanel'));
-const MinecraftBridgePanel = lazy(() => import('./linkin/MinecraftBridgePanel'));
-const SkillsMcpPanel = lazy(() => import('./linkin/SkillsMcpPanel'));
+const SkillsMcpPanel = lazy(() => import('./SkillsMcpPanel'));
+const BillingPanel = lazy(() => import('./BillingPanel'));
 
 interface MonitorViewProps {
   onOpenTask: (task: TaskProgress) => void;
@@ -142,8 +139,22 @@ export default function MonitorView({
   onLabSubTabChange,
 }: MonitorViewProps) {
   const tab = activeTab;
+  const moduleId = moduleIdForTab(tab);
 
   useMonitorHub(tab !== 'lab');
+
+  if (moduleId) {
+    return (
+      <div className="flex flex-1 flex-col overflow-hidden apple-canvas">
+        <ModuleWorkspace
+          moduleId={moduleId}
+          page={tab}
+          focusAgentId={focusAgentId}
+          onFocusAgent={onFocusAgent}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden apple-canvas">
@@ -176,6 +187,7 @@ export default function MonitorView({
         {tab === 'pipeline' && <PipelineView onGoTasks={() => onTabChange('tasks')} />}
         {tab === 'metrics' && <SystemMetricsPanel />}
         {tab === 'models' && <ModelCallPanel />}
+        {tab === 'billing' && <BillingPanel />}
         {tab === 'feedback' && <UserFeedbackPanel />}
         {tab === 'lab' && (
           <LabPanel activeTab={labSubTab} onTabChange={onLabSubTabChange} />
@@ -188,15 +200,6 @@ export default function MonitorView({
           </div>
         )}
         {tab === 'skills' && <SkillsMcpPanel />}
-        {tab === 'world' && <WorldConstitutionPanel />}
-        {tab === 'npcs' && <NpcManagerPanel />}
-        {tab === 'quests' && <QuestPanel />}
-        {tab === 'building' && <BuildPanel />}
-        {tab === 'items' && <ItemPanel />}
-        {tab === 'studio' && (
-          <AgentsMonitorPanel focusAgentId={focusAgentId} onFocusAgent={onFocusAgent} deskScope="linkin" />
-        )}
-        {tab === 'minecraft' && <MinecraftBridgePanel />}
       </Suspense>
     </div>
   );

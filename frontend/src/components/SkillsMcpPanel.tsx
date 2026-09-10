@@ -21,7 +21,7 @@ import {
   toggleSkill,
   type McpServerRecord,
   type SkillRecord,
-} from '../../api/client';
+} from '../api/client';
 
 type SubTab = 'skills' | 'mcp';
 

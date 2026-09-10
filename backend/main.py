@@ -70,6 +70,7 @@ from backend.services.task_manager import task_manager
 from backend.services import lab_tools
 from backend.hub.api import register_hub
 from backend.linkin.api import register_linkin
+from backend.modules import register_modules
 
 # ═══════════════════════════════════════════════════════════════
 # 全局公司預算狀態（由 orchestrator 更新，API 讀取）
@@ -175,6 +176,10 @@ app.add_middleware(
 # AI Hub 旁路面：/api/v1/*（Nginx 剝除 /api 時另掛 /v1/*）
 register_hub(app)
 register_linkin(app)
+register_modules(app)
+from backend.integrations.api import register_integrations  # noqa: E402
+
+register_integrations(app)
 
 
 class ChatRequest(BaseModel):

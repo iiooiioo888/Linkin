@@ -24,6 +24,8 @@ import {
   saveActiveSessionId,
   saveSessions,
 } from './lib/storage';
+import { looksLikeCompanyQuery } from './lib/chatWorkspace';
+import { hydrateWorldModules } from './lib/worldModules';
 import { splitThink } from './lib/splitThink';
 import AppShell from './components/AppShell';
 import type { MonitorTab, ViewKey } from './components/AppShell';
@@ -94,6 +96,10 @@ export default function App() {
   useEffect(() => {
     refreshConfigStatus();
   }, [refreshConfigStatus]);
+
+  useEffect(() => {
+    void hydrateWorldModules();
+  }, []);
 
   // Hash 路由：初始化正規化 + 狀態同步 + 瀏覽器前進/後退
   useEffect(() => {
@@ -380,8 +386,11 @@ export default function App() {
         };
       }
 
-      // ── 統一模式：簡單任務走 SSE 串流打字機效果 ──
-      if (options.executionStrategy !== 'company') {
+      // ── 統一模式：寒暄／簡單走 SSE；公司或長文交付建任務，主頁才分裂監控欄 ──
+      const openTaskWorkspace =
+        options.executionStrategy === 'company' ||
+        (options.executionStrategy === 'auto' && looksLikeCompanyQuery(workQuery));
+      if (!openTaskWorkspace) {
         setSending(false);
 
         // 構建對話歷史（最近 6 輪，排除當前佔位訊息）
@@ -1183,7 +1192,7 @@ export default function App() {
         }}
         onGoUsage={() => {
           setSettingsOpen(false);
-          handleMonitorTabChange('models');
+          handleMonitorTabChange('billing');
         }}
       />
     </>

@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { deleteQuest, fetchQuests, generateQuest, type Quest } from '../../api/linkin';
 import { questCardUri } from '../../lib/visualCards';
-import MediaGallery from '../media/MediaGallery';
+import MediaGallery from '../../components/media/MediaGallery';
 
 export default function QuestPanel() {
   const [quests, setQuests] = useState<Quest[]>([]);

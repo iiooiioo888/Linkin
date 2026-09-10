@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchConstitution, fetchEvents, fetchOverview, saveConstitution, type Constitution, type Overview, type WorldEvent } from '../../api/linkin';
 import { activityNavPath } from '../../lib/monitorTabs';
 import { eventCardUri, factionBannerUri, schoolBannerUri } from '../../lib/visualCards';
-import MediaGallery from '../media/MediaGallery';
+import MediaGallery from '../../components/media/MediaGallery';
 
 export default function WorldConstitutionPanel() {
   const [data, setData] = useState<Constitution | null>(null);
@@ -96,7 +96,7 @@ export default function WorldConstitutionPanel() {
 
       <div className="mb-4 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] text-[#8a8f98]">
         世界觀約束 NPC／任務／道具。Minecraft 連線、建築派發與審計在
-        <a href="#/monitor/minecraft" className="ml-1 text-[#64D2FF] hover:underline">
+        <a href="#/modules/minecraft/bridge" className="ml-1 text-[#64D2FF] hover:underline">
           {activityNavPath('minecraft')}
         </a>
         。

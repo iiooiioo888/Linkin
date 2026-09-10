@@ -18,7 +18,7 @@ import {
 import BuildingViewer from './BuildingViewer';
 import { activityNavPath } from '../../lib/monitorTabs';
 import { buildingPostcardUri } from '../../lib/visualCards';
-import MediaGallery from '../media/MediaGallery';
+import MediaGallery from '../../components/media/MediaGallery';
 
 const FALLBACK_REGION_STYLES: Record<string, string[]> = {
   织庭都: ['织梦典章', '白石圣殿', '契约广场', '金线回廊'],

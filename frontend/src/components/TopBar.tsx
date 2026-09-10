@@ -4,7 +4,7 @@
 import { useTranslation } from 'react-i18next';
 import { setLocale } from '../i18n';
 import { getGateUser, logoutGate } from '../lib/auth';
-import { consoleChromeLabel, consoleChromeTabKey, CONSOLE_CHROME_TABS, resolveActivity } from '../lib/monitorTabs';
+import { activityTitle, consoleChromeLabel, consoleChromeTabKey, CONSOLE_CHROME_TABS, isCoreActivity, resolveActivity } from '../lib/monitorTabs';
 import { labSubTabLabel, type LabSubTab } from '../lib/labTabs';
 import type { MonitorTab, ViewKey } from './AppShell';
 
@@ -42,11 +42,9 @@ export default function TopBar({
       ? t('nav.chat')
       : activity === 'lab'
         ? `${t('nav.lab')} · ${labSubTabLabel(labSubTab)}`
-        : activity === 'linkin'
-          ? `${t('nav.linkin')} · ${path}`
-          : activity === 'minecraft'
-            ? `${t('nav.minecraft')} · ${path}`
-            : t('nav.console');
+        : !isCoreActivity(activity)
+          ? `${activityTitle(activity)} · ${path}`
+          : t('nav.console');
 
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.06] apple-chrome px-3">

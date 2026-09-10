@@ -1,0 +1,126 @@
+{"ts": 1789013090.5830653, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789013090.8280747, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 64.7}
+{"ts": 1789013091.1490865, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789013091.1790879, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789013091.217089, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789013091.249091, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789013091.282093, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789013544.7178285, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789013544.71984, "dry_run": true, "tool": "get_system_load", "ok": false, "reason": "no_psutil"}
+{"ts": 1789013544.7428305, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789013544.7738252, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789013544.86984, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789013544.9388306, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789013544.990831, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789013545.391839, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789013545.392837, "dry_run": true, "tool": "get_system_load", "ok": false, "reason": "no_psutil"}
+{"ts": 1789013545.3978374, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789013545.4248347, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789013545.4518385, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789013545.4798422, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789013545.5378482, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789013546.5088606, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789013546.5118563, "dry_run": true, "tool": "get_system_load", "ok": false, "reason": "no_psutil"}
+{"ts": 1789013546.5168567, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789013546.542854, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789013546.5678544, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789013546.5928547, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789013546.6218553, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789013546.9479625, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789013546.9499183, "dry_run": true, "tool": "get_system_load", "ok": false, "reason": "no_psutil"}
+{"ts": 1789013546.9539497, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789013546.9800882, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789013547.0031238, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789013547.0270889, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789013547.0511158, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789013738.5209837, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789013738.6489906, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 67.9}
+{"ts": 1789013739.0450187, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789013739.0720158, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789013739.1020212, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789013739.1380212, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789013739.172034, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789014967.2597678, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789014967.5057743, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 87.0}
+{"ts": 1789014967.6457813, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789014967.6757805, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789014967.7047834, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789014967.7317843, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789014967.7607856, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789015040.4211218, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789015040.5271347, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 100.0}
+{"ts": 1789015041.1591523, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789015041.391158, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789015041.584176, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789015041.7501872, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789015041.975181, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789015675.3518867, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789015675.457876, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 87.5}
+{"ts": 1789015675.4628751, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789015675.4938738, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789015675.521874, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789015675.5488737, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789015675.5788743, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789016079.5718892, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789016079.6778777, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 96.4}
+{"ts": 1789016079.8468876, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789016079.9258819, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789016080.0328872, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789016080.072885, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789016080.1478853, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789016221.672221, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789016221.7772145, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 95.8}
+{"ts": 1789016221.906218, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789016221.932224, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789016221.9582205, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789016221.983216, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789016222.0082178, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789021730.7329745, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789021730.841372, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 17.9}
+{"ts": 1789021731.0433714, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789021731.0703692, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789021731.0993843, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789021731.127378, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789021731.1573713, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789021829.0891984, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789021829.1957748, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 0.0}
+{"ts": 1789021829.2986176, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789021829.322618, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789021829.3485816, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789021829.3741696, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789021829.3971875, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789021912.2576764, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789021912.3636756, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 12.5}
+{"ts": 1789021912.4777062, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789021912.5036755, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789021912.529677, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789021912.5537736, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789021912.5807726, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789022003.8916593, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789022003.9960608, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 33.3}
+{"ts": 1789022004.1001406, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789022004.1249304, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789022004.1479313, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789022004.1729343, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789022004.1969385, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789023914.2082155, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789023914.3438327, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 10.7}
+{"ts": 1789023914.348739, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789023914.373768, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789023914.4025075, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789023914.4325173, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789023914.4885235, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789024691.7077112, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789024691.813718, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 37.5}
+{"ts": 1789024691.8167045, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789024691.845706, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789024691.872722, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789024691.8997028, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789024691.927717, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}
+{"ts": 1789025823.5473342, "dry_run": true, "tool": "get_disk_usage", "ok": true, "target": ""}
+{"ts": 1789025823.652326, "dry_run": true, "tool": "get_system_load", "ok": true, "cpu": 44.0}
+{"ts": 1789025823.6553257, "dry_run": true, "tool": "get_docker_status", "ok": true, "available": false}
+{"ts": 1789025823.7113268, "dry_run": true, "tool": "check_service", "ok": true, "service": "linkin-api", "available": false}
+{"ts": 1789025823.758333, "dry_run": true, "tool": "check_service", "ok": true, "service": "mysql", "available": false}
+{"ts": 1789025823.786325, "dry_run": true, "tool": "check_service", "ok": true, "service": "redis-server", "available": false}
+{"ts": 1789025823.8143246, "dry_run": true, "tool": "check_service", "ok": true, "service": "nginx", "available": false}

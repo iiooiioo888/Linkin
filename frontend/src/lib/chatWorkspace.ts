@@ -1,7 +1,7 @@
 /**
  * 對話工作台資料：把任務看板／事件／產出轉成 1.html 風格節點。
  */
-import type { KanbanItem, RahoPendingDecision, TaskEvent, TaskProgress } from '../types';
+import type { ChatMessage, KanbanItem, RahoPendingDecision, TaskEvent, TaskProgress } from '../types';
 import { eventBody } from './splitThink';
 
 export const WS_KANBAN_COLUMNS = [
@@ -401,6 +401,47 @@ export function wsProblems(
       });
     });
   return out;
+}
+
+export function hasUnresolvedDecision(message: Pick<ChatMessage, 'taskState'>): boolean {
+  return (message.taskState?.raho?.pending_decisions ?? []).some(
+    (p) => !p.resolved && (p.choices?.length ?? 0) > 0,
+  );
+}
+
+/**
+ * 與後端 `_COMPANY_KEYWORDS` / `_complex_query_length` 對齊。
+ * 自動模式下只有這類查詢才建任務、才分裂左右監控。
+ */
+const COMPANY_QUERY_RE =
+  /开发|設計|设计|构建|實現|实现|建立|打造|完整|系統|系统|專案|项目|多步|架構|架构|重构|遷移|迁移|deploy|develop|build|implement|design|create|refactor|migrate|project|system|application|故事|小說|小说|撰寫|撰写|長文|长文|\d+\s*字/i;
+
+const COMPANY_QUERY_LENGTH = 200;
+
+export function looksLikeCompanyQuery(query: string): boolean {
+  const q = (query || '').trim();
+  if (!q) return false;
+  if (q.length >= COMPANY_QUERY_LENGTH) return true;
+  return COMPANY_QUERY_RE.test(q);
+}
+
+/**
+ * 有公司／OPC／看板任務才切左右欄（含已完成的歷史記錄，例如「寫一個故事，5000字」）。
+ * 寒暄 SSE、沒有 taskId 的簡單對話不切欄。
+ */
+export function isLiveMonitorTask(message: Pick<ChatMessage, 'taskState' | 'taskId'>): boolean {
+  if (message.taskId) return true;
+  const task = message.taskState;
+  if (!task) return false;
+  const path = task.resolved_path;
+  const hasWork = flattenWsNodes(task).length > 0 || hasUnresolvedDecision(message);
+  return path === 'company' || path === 'opc' || hasWork;
+}
+
+export function activeTaskMessage<T extends Pick<ChatMessage, 'taskState' | 'taskId'>>(
+  messages: T[],
+): T | null {
+  return [...messages].reverse().find(isLiveMonitorTask) ?? null;
 }
 
 export function numBudget(task: TaskProgress | null | undefined, key: string): number {

@@ -109,6 +109,7 @@ Linkin/
 │   │   └── evaluation.py        #     多維評估
 │   ├── company/                 #   多代理人 + raho/ + 量化（85 席）
 │   ├── linkin/                  #   靈境／Minecraft 護欄（16 席子角色）
+│   ├── modules/                 #   可插拔世界模組目錄與閘道（GET /modules、/{id}/api/*）
 │   ├── tools/ · hub/ · memory/ · services/
 │   ├── config/                  #   執行期 JSON（價卡等）
 │   ├── data/ · scripts/

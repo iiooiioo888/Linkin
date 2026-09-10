@@ -1,6 +1,6 @@
 /**
  * LlmOpsPanel — 控制台「配置 → API 路由」。
- * 側欄列已配置 API；主區編輯金鑰／模型與目錄。用量與角色設定分屬觀測／執行。
+ * 側欄列已配置 API；主區編輯金鑰／模型與目錄。用量與角色設定分屬計費／執行。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchLlmOps, refreshLlmModels, updateLlmOpsPrefs } from '../api/client';

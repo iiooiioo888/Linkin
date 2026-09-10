@@ -1,0 +1,12 @@
+{"seq": 1, "ts": "2026-09-10T07:01:22.760605+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "generate_initial_answer", "model": "gpt-6-astra"}
+{"seq": 2, "ts": "2026-09-10T07:01:22.766617+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}
+{"seq": 3, "ts": "2026-09-10T07:01:22.776604+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "decide_final_answer", "route": "simple", "score": 9.0}
+{"seq": 1, "ts": "2026-09-10T07:14:29.766296+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "generate_initial_answer", "model": "gpt-6-astra"}
+{"seq": 2, "ts": "2026-09-10T07:14:29.770296+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}
+{"seq": 3, "ts": "2026-09-10T07:14:29.781305+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "decide_final_answer", "route": "simple", "score": 9.0}
+{"seq": 1, "ts": "2026-09-10T07:33:21.463729+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "generate_initial_answer", "model": "gpt-6-astra"}
+{"seq": 2, "ts": "2026-09-10T07:33:21.467725+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}
+{"seq": 3, "ts": "2026-09-10T07:33:21.479725+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "decide_final_answer", "route": "simple", "score": 9.0}
+{"seq": 1, "ts": "2026-09-10T07:57:14.527372+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "generate_initial_answer", "model": "gpt-6-astra"}
+{"seq": 2, "ts": "2026-09-10T07:57:14.531371+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}
+{"seq": 3, "ts": "2026-09-10T07:57:14.542373+00:00", "task_id": "sess-graph-1", "event": "pipeline_node", "node": "decide_final_answer", "route": "simple", "score": 9.0}

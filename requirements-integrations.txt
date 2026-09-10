@@ -1,0 +1,13 @@
+# 外部整合層的 Python 可安裝元件（預設不安裝；需要時：pip install -r requirements-integrations.txt）
+#
+# 三個純 Python 系統可直接裝進 backend 環境；
+# WeKnora（Go）、Yao（Go）、OpenPencil（TS）無 pip 套件，走 docker-compose.integrations.yml 服務。
+
+# MemOS：記憶作業系統（本地 server 模式需另起 Neo4j+Qdrant，見 compose overlay）
+memos @ git+https://github.com/MemTensor/MemOS.git@main ; python_version >= "3.10"
+
+# OpenViking：上下文資料庫（含 openviking-server 與 ov CLI）
+openviking ; python_version >= "3.10"
+
+# Ouroboros：Agent OS（MCP server／CLI；[mcp] extra 含 MCP v2 依賴）
+ouroboros-ai[mcp] ; python_version >= "3.12"

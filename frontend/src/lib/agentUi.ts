@@ -318,10 +318,10 @@ export function isLinkinStudioAgent(agent: Pick<RoleAgent, 'id' | 'tags'> | stri
   return agent.id.startsWith('custom_linkin_') || tags.includes('linkin');
 }
 
-export type AgentDeskScope = 'console' | 'linkin';
+export type AgentDeskScope = 'console' | 'studio';
 
 export function filterAgentsByDesk(agents: RoleAgent[], desk: AgentDeskScope): RoleAgent[] {
-  return agents.filter((agent) => (desk === 'linkin' ? isLinkinStudioAgent(agent) : !isLinkinStudioAgent(agent)));
+  return agents.filter((agent) => (desk === 'studio' ? isLinkinStudioAgent(agent) : !isLinkinStudioAgent(agent)));
 }
 
 export function pickDefaultAgentId(agents: RoleAgent[], preferred?: string | null): string {

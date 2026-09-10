@@ -34,7 +34,8 @@ logger = logging.getLogger(__name__)
 _COMPANY_KEYWORDS = re.compile(
     r"(开发|設計|设计|构建|實現|实现|建立|打造|完整|系統|系统|專案|项目|"
     r"多步|架構|架构|重构|遷移|迁移|deploy|develop|build|implement|design|"
-    r"create|refactor|migrate|project|system|application)",
+    r"create|refactor|migrate|project|system|application|"
+    r"故事|小說|小说|撰寫|撰写|長文|长文|\d+\s*字)",
     re.IGNORECASE,
 )
 

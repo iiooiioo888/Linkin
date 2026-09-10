@@ -9,6 +9,9 @@ test.describe('EvoLoop 核心 UI', () => {
   test('首頁載入並可切換控制台即時動態', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('body')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '開始對話' })).toBeVisible();
+    await expect(page.getByPlaceholder('輸入問題…')).toBeVisible();
+    await expect(page.getByText('靈境 · 任務監控')).toHaveCount(0);
 
     await page.getByTitle('控制台').or(page.getByTitle('Console')).click();
     await expect(page.getByText('即時').or(page.getByText('Live')).first()).toBeVisible();
@@ -146,19 +149,19 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.url()).toMatch(/#\/monitor\/tasks/);
   });
 
-  test('Hash 路由：#/monitor/world 可開啟靈境世界觀', async ({ page }) => {
+  test('Hash 路由：#/monitor/world 可開啟 Minecraft 世界觀', async ({ page }) => {
     await page.goto('/#/monitor/world');
-    await expect(page.getByText(/靈境 · .*世界觀|Linkin ·/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Minecraft · .*世界觀/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/世界觀憲法|Constitution/).first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.url()).toMatch(/#\/monitor\/world/);
+    await expect(page.url()).toMatch(/#\/(monitor\/world|modules\/minecraft(?:\/world)?)/);
 
     await page.reload();
-    await expect(page.url()).toMatch(/#\/monitor\/world/);
+    await expect(page.url()).toMatch(/#\/(monitor\/world|modules\/minecraft(?:\/world)?)/);
   });
 
   test('Hash 路由：#/monitor/llm 可開啟 API 路由', async ({ page }) => {
     await page.goto('/#/monitor/llm');
-    await expect(page.getByRole('button', { name: '權限' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: '系統' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/全域分發策略|已配置的 API/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.url()).toMatch(/#\/monitor\/llm/);
 
@@ -177,44 +180,47 @@ test.describe('EvoLoop 核心 UI', () => {
     await page.goto('/#/monitor/minecraft');
     await expect(page.getByText(/Minecraft · .*橋接/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/Minecraft MCP/).first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.url()).toMatch(/#\/monitor\/minecraft/);
+    await expect(page.url()).toMatch(/#\/(monitor\/minecraft|modules\/minecraft\/bridge)/);
 
     await page.reload();
-    await expect(page.url()).toMatch(/#\/monitor\/minecraft/);
+    await expect(page.url()).toMatch(/#\/(monitor\/minecraft|modules\/minecraft\/bridge)/);
   });
 
-  test('活動欄：控制台與靈境不含 Minecraft，獨立活動可進橋接', async ({ page }) => {
+  test('活動欄：控制台不含世界模組，Minecraft 含世界觀與 Admin', async ({ page }) => {
     await page.goto('/');
     await page.getByTitle('控制台').or(page.getByTitle('Console')).click();
     await expect(page.getByRole('button', { name: /即時|Live/ }).first()).toBeVisible();
     await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /世界觀/ })).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /橋接/ })).toHaveCount(0);
-
-    await page.getByTitle('靈境').or(page.getByTitle('Linkin')).click();
-    await expect(page.getByRole('button', { name: /世界觀/ }).first()).toBeVisible();
-    await expect(page.getByRole('navigation', { name: '靈境' }).getByRole('button', { name: /橋接/ })).toHaveCount(0);
-    await expect(page.getByRole('navigation', { name: '靈境' }).getByRole('button', { name: /建築/ })).toHaveCount(0);
-    await expect(page.getByRole('navigation', { name: '靈境' }).getByRole('button', { name: /工作室角色/ })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /Admin/ })).toHaveCount(0);
+    await expect(page.getByTitle('靈境').or(page.getByTitle('Linkin'))).toHaveCount(0);
 
     await page.getByTitle('Minecraft').click();
+    await expect(page.getByRole('navigation', { name: 'Minecraft' }).getByRole('button', { name: /世界觀/ })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Minecraft' }).getByRole('button', { name: /Admin/ })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Minecraft' }).getByRole('button', { name: /工作室角色/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /建築/ }).first()).toBeVisible();
     await page.getByRole('button', { name: /橋接/ }).click();
     await expect(page.getByText(/Minecraft MCP/).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.url()).toMatch(/#\/monitor\/minecraft/);
+    await expect(page.url()).toMatch(/#\/(monitor\/minecraft|modules\/minecraft\/bridge)/);
+
+    await page.getByRole('button', { name: /Admin/ }).click();
+    await expect(page.getByText(/Minecraft Admin/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.url()).toMatch(/#\/(monitor\/admin|modules\/minecraft\/admin)/);
   });
 
-  test('靈境工作室角色不進控制台執行-角色', async ({ page }) => {
+  test('Minecraft 工作室角色不進控制台執行-角色', async ({ page }) => {
     await page.goto('/#/monitor/agents');
     await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('button', { name: '執行-角色' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /角色/ })).toBeVisible();
     await expect(page.locator('.ar-ri', { hasText: '建築總監' })).toHaveCount(0);
     await expect(page.locator('.rd-header .rd-acts').getByRole('button', { name: /^新增$/ })).toHaveCount(0);
 
     await page.goto('/#/monitor/studio');
-    await expect(page.getByText(/靈境 · .*工作室/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Minecraft · .*工作室/).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('建築總監').first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('建築執行者').first()).toBeVisible();
-    await expect(page.url()).toMatch(/#\/monitor\/studio/);
+    await expect(page.url()).toMatch(/#\/(monitor\/studio|modules\/minecraft\/studio)/);
   });
 });

@@ -66,8 +66,8 @@ export default function SettingsModal({
             className="bg-[#141416] px-3 py-2 text-left hover:bg-white/[0.03]"
             onClick={() => onGoUsage?.()}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#636366]">3 觀測</p>
-            <p className="text-[11px] text-[#AEAEB2]">用量與成本</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#636366]">3 計費</p>
+            <p className="text-[11px] text-[#AEAEB2]">AI 用量與 Docker 成本</p>
           </button>
         </div>
 

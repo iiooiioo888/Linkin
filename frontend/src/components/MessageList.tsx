@@ -17,6 +17,8 @@ interface MessageListProps {
   onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
   onBattlePick?: (messageId: string, choice: string) => void;
   variant?: 'default' | 'drawer';
+  /** 左右分裂時隱藏氣泡內看板，避免與右側監控重複 */
+  hideTaskCard?: boolean;
 }
 
 const SUGGESTIONS: { text: string; company: boolean }[] = [
@@ -34,6 +36,7 @@ export default function MessageList({
   onGrillAnswer,
   onBattlePick,
   variant = 'default',
+  hideTaskCard = false,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -106,7 +109,7 @@ export default function MessageList({
             onOpenTrace={onOpenTrace}
             onGrillAnswer={onGrillAnswer}
             onBattlePick={onBattlePick}
-            variant={variant === 'drawer' ? 'workspace' : 'default'}
+            variant={variant === 'drawer' || hideTaskCard ? 'workspace' : 'default'}
           />
         ))}
         <div ref={bottomRef} />

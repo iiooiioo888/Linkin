@@ -1,6 +1,6 @@
 /**
  * LiveBoard — 控制台總覽（Apple 控制中心風格）。
- * 卡片可跳到對應分頁：API 路由／角色／任務／觀測，避免功能孤立。
+ * 卡片可跳到對應分頁：API 路由／角色／任務／計費，避免功能孤立。
  */
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
@@ -128,9 +128,9 @@ function WorkflowStrip({
     },
     {
       n: '4',
-      label: '觀測用量',
-      hint: '延遲與成本',
-      tab: 'models',
+      label: '計費用量',
+      hint: 'AI 與 Docker 成本',
+      tab: 'billing',
       done: false,
     },
   ];
@@ -714,7 +714,7 @@ export default function LiveBoard({
       >
         {!dock && (
           <header className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-[11px] text-[#8E8E93]">控制台總覽 · 配置 API → 指定角色 → 執行 → 觀測</p>
+            <p className="text-[11px] text-[#8E8E93]">控制台總覽 · 配置 API → 指定角色 → 執行 → 審計／計費</p>
             <span className="flex items-center gap-2">
               <StatusDot color={feed.live ? GREEN : GRAY} label={feed.live ? 'LIVE' : 'IDLE'} />
               {updated && <span className="apple-data text-[10px] text-[#636366]">{updated}</span>}

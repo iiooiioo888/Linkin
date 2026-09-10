@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createNpc, deleteNpc, fetchNpcs, npcDialogue, updateNpc, type NpcCard } from '../../api/linkin';
 import { npcPortraitUri } from '../../lib/visualCards';
-import MediaGallery, { VisualThumb } from '../media/MediaGallery';
+import MediaGallery, { VisualThumb } from '../../components/media/MediaGallery';
 
 const EMPTY: NpcCard = {
   name: '',

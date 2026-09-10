@@ -1,32 +1,36 @@
 /**
  * 監控中心分頁定義（單一資料源）。
  *
- * 左側三層：
- *   ActivityBar（對話 / 控制台 / 靈境 / Minecraft / 實驗室）
+ * 左側：
+ *   ActivityBar（對話 / 控制台 / 已註冊世界模組 / 實驗室）
  *   → SidePanel 分組功能
  *   → 上下文清單（會話／名冊／軌跡）
  *
- * 對話／控制台／實驗室 = EvoLoop 原功能
- * 靈境                 = 世界內容（憲法／NPC／任務／道具），不連遊戲伺服器
- * Minecraft            = 建築方案與 MineMCP 橋接
+ * 對話／控制台／實驗室 = EvoLoop（總覽／執行／審計／計費／系統）
+ * 世界模組（目前 Minecraft）= 世界觀／Admin／內容／建築／橋接；不進控制台
  */
 import type { MonitorTab } from '../components/AppShell';
+import {
+  getWorldModule,
+  hashPageForTab,
+  isModuleActivity,
+  listWorldModules,
+  moduleIdForTab,
+  normalizeActivityAlias,
+  resolveModulePage,
+  type ModuleNavGroup,
+  type ModuleNavItem,
+} from './worldModules';
 
-export type ActivityKey = 'chat' | 'console' | 'linkin' | 'minecraft' | 'lab';
+export type CoreActivityKey = 'chat' | 'console' | 'lab';
+export type ActivityKey = CoreActivityKey | string;
 
 export type ConsoleNavKey = MonitorTab | 'traces';
 
 export type MonitorTabItem = { key: MonitorTab; icon: string; label: string };
 export type ConsoleNavItem = { key: ConsoleNavKey; icon: string; label: string; hint?: string };
 
-export type MonitorNavGroupId =
-  | 'setup'
-  | 'execute'
-  | 'observe'
-  | 'system'
-  | 'world'
-  | 'studio'
-  | 'minecraft';
+export type MonitorNavGroupId = 'overview' | 'execute' | 'roles' | 'observe' | 'system' | string;
 
 export type MonitorNavGroup = {
   id: MonitorNavGroupId;
@@ -48,10 +52,14 @@ export const MONITOR_WORK_TABS: MonitorTabItem[] = [
   { key: 'pipeline', icon: '⬡', label: '管線' },
 ];
 
-export const MONITOR_OBSERVE_TABS: MonitorTabItem[] = [
-  { key: 'metrics', icon: '◇', label: '運行指標' },
-  { key: 'models', icon: '◉', label: '調用用量' },
+export const MONITOR_AUDIT_TABS: MonitorTabItem[] = [
   { key: 'feedback', icon: '♥', label: '用戶反饋' },
+  { key: 'metrics', icon: '◇', label: '運行指標' },
+];
+
+export const MONITOR_BILLING_TABS: MonitorTabItem[] = [
+  { key: 'models', icon: '◉', label: 'AI 用量' },
+  { key: 'billing', icon: '💰', label: '雲與 Docker' },
 ];
 
 export const MONITOR_SETUP_TABS: MonitorTabItem[] = [
@@ -64,161 +72,135 @@ export const MONITOR_SYSTEM_TABS: MonitorTabItem[] = [
   { key: 'ops', icon: '⚙', label: '基礎設施' },
 ];
 
-/** 靈境世界內容（非 Minecraft、非控制台公司角色）。 */
-export const MONITOR_WORLD_TABS: MonitorTabItem[] = [
-  { key: 'world', icon: '✧', label: '世界觀' },
-  { key: 'npcs', icon: '☺', label: 'NPC' },
-  { key: 'quests', icon: '⚑', label: '任務' },
-  { key: 'items', icon: '◆', label: '道具' },
-  { key: 'studio', icon: '◈', label: '工作室' },
-];
-
-/** Minecraft：建築方案與 MineMCP 橋接（獨立活動，不進靈境側欄）。 */
-export const MONITOR_MINECRAFT_TABS: MonitorTabItem[] = [
-  { key: 'building', icon: '⌂', label: '建築' },
-  { key: 'minecraft', icon: '⇄', label: '橋接' },
-];
-
-/** 靈境活動僅世界內容。 */
-export const MONITOR_LINKIN_TABS: MonitorTabItem[] = [...MONITOR_WORLD_TABS];
-
 export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
   {
-    id: 'setup',
-    label: '配置',
-    items: [
-      { key: 'llm', icon: '⊞', label: 'API 路由', hint: '金鑰、目錄、分發' },
-    ],
+    id: 'overview',
+    label: '總覽',
+    items: [{ key: 'live', icon: '◎', label: '即時', hint: '總覽，點卡片跳轉' }],
   },
   {
     id: 'execute',
     label: '執行',
     items: [
-      { key: 'live', icon: '◎', label: '即時', hint: '總覽，點卡片跳轉' },
       { key: 'tasks', icon: '▣', label: '任務', hint: '隊列／執行中／已完成' },
-      { key: 'agents', icon: '◈', label: '角色', hint: '質詢鏈與角色工作台合一' },
       { key: 'pipeline', icon: '⬡', label: '管線', hint: '反思閉環階段' },
       TRACES_NAV_ITEM,
     ],
   },
   {
-    id: 'observe',
-    label: '觀測',
+    id: 'roles',
+    label: '角色',
+    items: [{ key: 'agents', icon: '◈', label: '角色', hint: '質詢鏈與角色工作台合一' }],
+  },
+  {
+    id: 'audit',
+    label: '審計',
     items: [
+      { key: 'feedback', icon: '♥', label: '用戶反饋', hint: '評分與審計留痕' },
       { key: 'metrics', icon: '◇', label: '運行指標', hint: '快取／反思／優化' },
-      { key: 'models', icon: '◉', label: '調用用量', hint: '延遲與成本' },
-      { key: 'feedback', icon: '♥', label: '用戶反饋', hint: '評分紀錄' },
+    ],
+  },
+  {
+    id: 'billing',
+    label: '計費',
+    items: [
+      { key: 'models', icon: '◉', label: 'AI 用量', hint: 'Token 延遲與模型成本' },
+      { key: 'billing', icon: '💰', label: '雲與 Docker', hint: '容器按時與雲帳單' },
     ],
   },
   {
     id: 'system',
     label: '系統',
     items: [
+      { key: 'llm', icon: '⊞', label: 'API 路由', hint: '金鑰、目錄、分發' },
       { key: 'memory', icon: '◌', label: 'L0 核心', hint: '記憶／知識／態勢雷達' },
       { key: 'skills', icon: '⚡', label: '技能與 MCP', hint: '技能庫／MCP 連線' },
-      { key: 'ops', icon: '⚙', label: '基礎設施', hint: 'Hub／雲／檢查點／連線池' },
+      { key: 'ops', icon: '⚙', label: '基礎設施', hint: 'Hub／檢查點／連線池' },
     ],
   },
 ];
 
-export const LINKIN_NAV_GROUPS: MonitorNavGroup[] = [
-  {
-    id: 'world',
-    label: '世界',
-    items: [
-      { key: 'world', icon: '✧', label: '世界觀', hint: '憲法與陣營' },
-      { key: 'npcs', icon: '☺', label: 'NPC', hint: '角色卡與對話' },
-      { key: 'quests', icon: '⚑', label: '任務', hint: '主線／支線／日常' },
-      { key: 'items', icon: '◆', label: '道具', hint: '稀有度平衡' },
-    ],
-  },
-  {
-    id: 'studio',
-    label: '工作室',
-    items: [
-      { key: 'studio', icon: '◈', label: '工作室角色', hint: '建築／敘事／NPC／道具班底' },
-    ],
-  },
-];
+function moduleNavAsGroups(id: string): MonitorNavGroup[] {
+  const spec = getWorldModule(id);
+  if (!spec) return [];
+  return spec.navGroups.map((group: ModuleNavGroup) => ({
+    id: group.id,
+    label: group.label,
+    items: group.items.map((item: ModuleNavItem) => ({
+      key: item.key as ConsoleNavKey,
+      icon: item.icon,
+      label: item.label,
+      hint: item.hint,
+    })),
+  }));
+}
 
-export const MINECRAFT_NAV_GROUPS: MonitorNavGroup[] = [
-  {
-    id: 'minecraft',
-    label: '伺服器',
-    items: [
-      { key: 'building', icon: '⌂', label: '建築', hint: 'Schematic 生成與派發' },
-      { key: 'minecraft', icon: '⇄', label: '橋接', hint: 'MineMCP 探測與審計' },
-    ],
-  },
-];
+function allNavGroups(): MonitorNavGroup[] {
+  return [
+    ...CONSOLE_NAV_GROUPS,
+    ...listWorldModules().flatMap((spec) => moduleNavAsGroups(spec.id)),
+  ];
+}
 
-export const MONITOR_NAV_GROUPS: MonitorNavGroup[] = [
-  ...CONSOLE_NAV_GROUPS,
-  ...LINKIN_NAV_GROUPS,
-  ...MINECRAFT_NAV_GROUPS,
-];
+export const MONITOR_NAV_GROUPS: MonitorNavGroup[] = CONSOLE_NAV_GROUPS;
 
-/** 實驗室獨立活動，不進控制台／靈境側欄。 */
 export const LAB_TAB: MonitorTabItem = { key: 'lab', icon: '✦', label: '實驗室' };
 
-/** 全部（相容舊呼叫）。 */
 export const MONITOR_TABS: MonitorTabItem[] = [
   ...MONITOR_SETUP_TABS,
   ...MONITOR_WORK_TABS,
-  ...MONITOR_OBSERVE_TABS,
+  ...MONITOR_AUDIT_TABS,
+  ...MONITOR_BILLING_TABS,
   ...MONITOR_SYSTEM_TABS,
-  ...MONITOR_LINKIN_TABS,
-  ...MONITOR_MINECRAFT_TABS,
   LAB_TAB,
 ];
 
-/** @deprecated 使用 MONITOR_WORK_TABS */
 export const MONITOR_PRIMARY_TABS = MONITOR_WORK_TABS;
 
-/** @deprecated 使用 MONITOR_NAV_GROUPS */
 export const MONITOR_MORE_TABS: MonitorTabItem[] = [
-  ...MONITOR_OBSERVE_TABS,
+  ...MONITOR_AUDIT_TABS,
+  ...MONITOR_BILLING_TABS,
   ...MONITOR_SYSTEM_TABS,
   LAB_TAB,
 ];
 
-/** 舊分頁鍵 → 新分頁。 */
-export const MONITOR_TAB_ALIASES: Record<string, MonitorTab> = {
+/** 僅控制台別名。世界模組頁別名在 worldModules.MODULE_PAGE_ALIASES。 */
+export const CONSOLE_TAB_ALIASES: Record<string, MonitorTab> = {
   overview: 'live',
   balancer: 'live',
   task: 'tasks',
   dashboard: 'tasks',
   hub: 'ops',
-  cloud: 'ops',
+  cloud: 'billing',
+  docker: 'billing',
+  usage: 'models',
+  observe: 'models',
   checkpoints: 'ops',
   opc: 'metrics',
   dbpool: 'ops',
   routes: 'llm',
-  mc: 'minecraft',
-  minecraft_mcp: 'minecraft',
-  studio_roles: 'studio',
-  linkin_roles: 'studio',
   l0: 'memory',
   grill: 'agents',
 };
+export const MONITOR_TAB_ALIASES = CONSOLE_TAB_ALIASES;
 
 const WORK_TAB_KEYS = new Set<string>(MONITOR_WORK_TABS.map((t) => t.key));
-const LINKIN_TAB_KEYS = new Set<string>(MONITOR_LINKIN_TABS.map((t) => t.key));
-const MINECRAFT_TAB_KEYS = new Set<string>(MONITOR_MINECRAFT_TABS.map((t) => t.key));
 const CONSOLE_TAB_KEYS = new Set<string>([
   ...MONITOR_SETUP_TABS.map((t) => t.key),
   ...MONITOR_WORK_TABS.map((t) => t.key),
-  ...MONITOR_OBSERVE_TABS.map((t) => t.key),
+  ...MONITOR_AUDIT_TABS.map((t) => t.key),
+  ...MONITOR_BILLING_TABS.map((t) => t.key),
   ...MONITOR_SYSTEM_TABS.map((t) => t.key),
 ]);
+const CORE_PAGE_KEYS = new Set<string>([...CONSOLE_TAB_KEYS, 'lab']);
 
-/** 控制台頂欄五個主入口（靈境／Minecraft 不進此列）。 */
 export const CONSOLE_CHROME_TABS: Array<{ key: MonitorTab; label: string; match: MonitorTab[] }> = [
-  { key: 'live', label: '總覽', match: ['live', 'pipeline'] },
-  { key: 'tasks', label: '新項', match: ['tasks'] },
-  { key: 'models', label: '使用', match: ['models', 'metrics', 'feedback'] },
-  { key: 'llm', label: '權限', match: ['llm', 'ops', 'memory', 'skills'] },
+  { key: 'live', label: '總覽', match: ['live'] },
+  { key: 'tasks', label: '執行', match: ['tasks', 'pipeline'] },
   { key: 'agents', label: '角色', match: ['agents'] },
+  { key: 'feedback', label: '審計', match: ['feedback', 'metrics'] },
+  { key: 'billing', label: '計費', match: ['billing', 'models'] },
+  { key: 'llm', label: '系統', match: ['llm', 'ops', 'memory', 'skills'] },
 ];
 
 export function consoleChromeTabKey(tab: MonitorTab | 'traces'): MonitorTab | null {
@@ -226,32 +208,35 @@ export function consoleChromeTabKey(tab: MonitorTab | 'traces'): MonitorTab | nu
   return CONSOLE_CHROME_TABS.find((item) => item.match.includes(tab))?.key ?? null;
 }
 
-export const ACTIVITY_DEFAULT_TAB: Record<Exclude<ActivityKey, 'chat'>, MonitorTab | 'traces'> = {
+export const ACTIVITY_DEFAULT_TAB: Partial<Record<ActivityKey, MonitorTab | 'traces'>> = {
   console: 'live',
-  linkin: 'world',
-  minecraft: 'building',
   lab: 'lab',
+  minecraft: 'world',
 };
+
 export function normalizeMonitorTab(tab: string | null | undefined): MonitorTab {
   if (!tab) return 'live';
-  if (MONITOR_TABS.some((t) => t.key === tab)) return tab as MonitorTab;
-  return MONITOR_TAB_ALIASES[tab] ?? 'live';
+  if (CORE_PAGE_KEYS.has(tab)) return tab as MonitorTab;
+  if (CONSOLE_TAB_ALIASES[tab]) return CONSOLE_TAB_ALIASES[tab];
+  const modulePage = resolveModulePage(tab);
+  if (modulePage) return modulePage;
+  return 'live';
 }
 
 export function monitorTabLabel(tab: MonitorTab): string {
-  return MONITOR_TABS.find((item) => item.key === tab)?.label ?? tab;
+  const consoleItem = MONITOR_TABS.find((item) => item.key === tab);
+  if (consoleItem) return consoleItem.label;
+  for (const spec of listWorldModules()) {
+    for (const group of spec.navGroups) {
+      const item = group.items.find((nav) => nav.key === tab);
+      if (item) return item.label;
+    }
+  }
+  return tab;
 }
 
 export function isMonitorMoreTab(tab: MonitorTab): boolean {
   return MONITOR_MORE_TABS.some((t) => t.key === tab);
-}
-
-export function isLinkinTab(tab: MonitorTab | string | null | undefined): boolean {
-  return Boolean(tab && LINKIN_TAB_KEYS.has(tab));
-}
-
-export function isMinecraftTab(tab: MonitorTab | string | null | undefined): boolean {
-  return Boolean(tab && MINECRAFT_TAB_KEYS.has(tab));
 }
 
 export function isConsoleTab(tab: MonitorTab | string | null | undefined): boolean {
@@ -265,10 +250,11 @@ export function resolveActivity(
   if (view === 'chat') return 'chat';
   if (view === 'traces' || view === 'task' || view === 'raho') return 'console';
   if (monitorTab === 'lab') return 'lab';
-  if (isMinecraftTab(monitorTab)) return 'minecraft';
-  if (isLinkinTab(monitorTab)) return 'linkin';
+  const moduleId = moduleIdForTab(monitorTab);
+  if (moduleId) return moduleId;
   return 'console';
 }
+
 export function isWorkActivity(
   view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho',
   monitorTab: MonitorTab,
@@ -277,41 +263,52 @@ export function isWorkActivity(
 }
 
 export function navGroupsForActivity(activity: ActivityKey): MonitorNavGroup[] {
-  if (activity === 'console') return CONSOLE_NAV_GROUPS;
-  if (activity === 'linkin') return LINKIN_NAV_GROUPS;
-  if (activity === 'minecraft') return MINECRAFT_NAV_GROUPS;
+  const resolved = normalizeActivityAlias(activity) ?? activity;
+  if (resolved === 'console') return CONSOLE_NAV_GROUPS;
+  if (isModuleActivity(resolved)) return moduleNavAsGroups(resolved);
   return [];
 }
 
 export function navItemsForActivity(activity: ActivityKey): MonitorTabItem[] {
-  if (activity === 'console') {
-    return [...MONITOR_SETUP_TABS, ...MONITOR_WORK_TABS, ...MONITOR_OBSERVE_TABS, ...MONITOR_SYSTEM_TABS];
+  const resolved = normalizeActivityAlias(activity) ?? activity;
+  if (resolved === 'console') {
+    return [
+      ...MONITOR_SETUP_TABS,
+      ...MONITOR_WORK_TABS,
+      ...MONITOR_AUDIT_TABS,
+      ...MONITOR_BILLING_TABS,
+      ...MONITOR_SYSTEM_TABS,
+    ];
   }
-  if (activity === 'linkin') return MONITOR_LINKIN_TABS;
-  if (activity === 'minecraft') return MONITOR_MINECRAFT_TABS;
+  if (isModuleActivity(resolved)) {
+    return moduleNavAsGroups(resolved).flatMap((group) =>
+      group.items
+        .filter((item) => item.key !== 'traces')
+        .map((item) => ({ key: item.key as MonitorTab, icon: item.icon, label: item.label })),
+    );
+  }
   return [];
 }
 
 export function activityTitle(activity: ActivityKey): string {
   if (activity === 'chat') return '對話';
   if (activity === 'lab') return '實驗室';
-  if (activity === 'linkin') return '靈境';
-  if (activity === 'minecraft') return 'Minecraft';
-  return '控制台';
-}
-export function navGroupForTab(tab: ConsoleNavKey): MonitorNavGroup['id'] | null {
-  return MONITOR_NAV_GROUPS.find((g) => g.items.some((i) => i.key === tab))?.id ?? null;
+  if (activity === 'console') return '控制台';
+  const spec = getWorldModule(normalizeActivityAlias(activity) ?? activity);
+  return spec?.title ?? '模組';
 }
 
-/** 跨頁麵包屑，例如「配置 → API 路由」。 */
+export function navGroupForTab(tab: ConsoleNavKey): MonitorNavGroup['id'] | null {
+  return allNavGroups().find((g) => g.items.some((i) => i.key === tab))?.id ?? null;
+}
+
 export function navPathForTab(tab: ConsoleNavKey): string {
-  const group = MONITOR_NAV_GROUPS.find((g) => g.items.some((i) => i.key === tab));
+  const group = allNavGroups().find((g) => g.items.some((i) => i.key === tab));
   const item = group?.items.find((i) => i.key === tab);
-  if (!group || !item) return item?.label ?? String(tab);
+  if (!group || !item) return item?.label ?? monitorTabLabel(tab as MonitorTab);
   return `${group.label} → ${item.label}`;
 }
 
-/** 含活動名的跨活動路徑，例如「Minecraft → 橋接」。 */
 export function activityNavPath(tab: ConsoleNavKey): string {
   if (tab === 'traces') return `${activityTitle('console')} → ${navPathForTab('traces')}`;
   const activity = resolveActivity('monitor', tab);
@@ -320,7 +317,7 @@ export function activityNavPath(tab: ConsoleNavKey): string {
     MONITOR_TABS.find((i) => i.key === tab);
   return `${activityTitle(activity)} → ${item?.label ?? String(tab)}`;
 }
-/** 頂欄路徑：配置 → API 路由（不含活動名前綴）。 */
+
 export function consoleChromeLabel(
   view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho',
   monitorTab: MonitorTab,
@@ -334,8 +331,8 @@ export function consoleChromeLabel(
   }
   if (view === 'task' || view === 'raho') return `詳情 · ${traceTaskId ? traceTaskId.slice(0, 8) + '…' : ''}`.trimEnd();
   if (monitorTab === 'lab') return _labLabel ? `實驗室 · ${_labLabel}` : '實驗室';
-  if (isMinecraftTab(monitorTab)) {
-    return MONITOR_MINECRAFT_TABS.find((item) => item.key === monitorTab)?.label ?? monitorTab;
+  if (moduleIdForTab(monitorTab)) {
+    return monitorTabLabel(monitorTab);
   }
   return navPathForTab(monitorTab);
 }
@@ -343,3 +340,18 @@ export function consoleChromeLabel(
 export function isWorkTab(tab: MonitorTab): boolean {
   return WORK_TAB_KEYS.has(tab);
 }
+
+export function defaultTabForActivity(activity: ActivityKey): MonitorTab {
+  const resolved = normalizeActivityAlias(activity) ?? activity;
+  if (resolved === 'lab') return 'lab';
+  if (resolved === 'console' || resolved === 'chat') return 'live';
+  const spec = getWorldModule(resolved);
+  if (spec?.defaultPage) return normalizeMonitorTab(spec.defaultPage);
+  return 'live';
+}
+
+export function isCoreActivity(activity: ActivityKey): activity is CoreActivityKey {
+  return activity === 'chat' || activity === 'console' || activity === 'lab';
+}
+
+export { hashPageForTab, listWorldModules, moduleIdForTab };

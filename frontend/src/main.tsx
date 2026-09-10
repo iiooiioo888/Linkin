@@ -1,4 +1,5 @@
 import './lib/randomUuidPolyfill'
+import './modules/bootstrap'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './i18n'

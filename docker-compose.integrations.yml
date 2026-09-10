@@ -1,0 +1,165 @@
+# 外部整合服務 overlay（MemOS / OpenViking / WeKnora / Yao / Ouroboros）
+#
+# 這五個系統各有自己的倉庫與完整堆疊；本檔**不重建**它們的映像，
+# 只做兩件事：
+#   1. 以 profiles 提供「宿主機已有部署」的網路接線（host.docker.internal）
+#   2. 集中管理 Linkin 側的啟用旗標與位址（全部預設關閉，顯式啟用）
+#
+# 用法：
+#   docker compose -f docker-compose.yml -f docker-compose.integrations.yml --profile integrations up -d
+#
+# 各服務的安裝請見其官方文件：
+#   MemOS       https://github.com/MemTensor/MemOS        （docker compose，Neo4j+Qdrant）
+#   OpenViking  https://github.com/volcengine/OpenViking  （pip install openviking && openviking-server）
+#   WeKnora     https://github.com/Tencent/WeKnora        （docker compose）
+#   Yao         https://github.com/YaoApp/yao             （自架 Open API）
+#   Ouroboros   https://github.com/Q00/ouroboros          （pipx install 'ouroboros-ai[mcp]' && ouroboros mcp serve）
+
+services:
+  backend:
+    environment:
+      # ── MemOS（本地部署，token 節省主力：記憶召回取代完整歷史）──
+      - LINKIN_MEMOS_ENABLED=${LINKIN_MEMOS_ENABLED:-false}
+      # 宿主機 MemOS（官方預設 8000；與 Linkin backend 宿主埠衝突時改此處）
+      - LINKIN_MEMOS_BASE_URL=${LINKIN_MEMOS_BASE_URL:-http://host.docker.internal:18000}
+      - LINKIN_MEMOS_API_KEY=${LINKIN_MEMOS_API_KEY:-}
+      # ── OpenViking（L0/L1 分層召回）──
+      - LINKIN_OPENVIKING_ENABLED=${LINKIN_OPENVIKING_ENABLED:-false}
+      - LINKIN_OPENVIKING_BASE_URL=${LINKIN_OPENVIKING_BASE_URL:-http://host.docker.internal:1933}
+      - LINKIN_OPENVIKING_API_KEY=${LINKIN_OPENVIKING_API_KEY:-}
+      # ── WeKnora（企業級 RAG 知識庫）──
+      - LINKIN_WEKNORA_ENABLED=${LINKIN_WEKNORA_ENABLED:-false}
+      - LINKIN_WEKNORA_BASE_URL=${LINKIN_WEKNORA_BASE_URL:-http://host.docker.internal:8080}
+      - LINKIN_WEKNORA_API_KEY=${LINKIN_WEKNORA_API_KEY:-}
+      # ── Yao（自架 agent 工作區／任務板 Open API）──
+      - LINKIN_YAO_ENABLED=${LINKIN_YAO_ENABLED:-false}
+      - LINKIN_YAO_BASE_URL=${LINKIN_YAO_BASE_URL:-http://host.docker.internal:5099}
+      - LINKIN_YAO_API_KEY=${LINKIN_YAO_API_KEY:-}
+      # ── Ouroboros（Agent OS：ambiguity 閘門／三階段評估）──
+      - LINKIN_OUROBOROS_ENABLED=${LINKIN_OUROBOROS_ENABLED:-false}
+      - LINKIN_OUROBOROS_BASE_URL=${LINKIN_OUROBOROS_BASE_URL:-http://host.docker.internal:8600}
+      - LINKIN_OUROBOROS_API_KEY=${LINKIN_OUROBOROS_API_KEY:-}
+    extra_hosts:
+      # Linux 下 host.docker.internal 需顯式映射（Windows/Mac Docker Desktop 內建）
+      - "host.docker.internal:host-gateway"
+
+  # ────────────────────────────────────────────────────────────────
+  # 以下為「最小自架」服務塊（--profile integrations 才啟動）。
+  # 完整功能（WeKnora 的 docreader/langfuse、MemOS 的排程器等）請以各官方
+  # compose 為準；此處提供與 Linkin 對接所需的最小可跑集合。
+  # ────────────────────────────────────────────────────────────────
+
+  # MemOS：官方堆疊 = API + Neo4j + Qdrant（https://github.com/MemTensor/MemOS/tree/main/docker）
+  memos-neo4j:
+    image: neo4j:5-community
+    profiles: ["integrations"]
+    container_name: linkin-memos-neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/${MEMOS_NEO4J_PASSWORD:-linkin-memos}
+    volumes:
+      - memos_neo4j:/data
+    networks: [evoloop_net]
+    restart: unless-stopped
+
+  memos-qdrant:
+    image: qdrant/qdrant:latest
+    profiles: ["integrations"]
+    container_name: linkin-memos-qdrant
+    volumes:
+      - memos_qdrant:/qdrant/storage
+    networks: [evoloop_net]
+    restart: unless-stopped
+
+  memos:
+    image: memtensor/memos:latest   # 若官方未發佈映像，改用其倉庫 docker/ 目錄建置
+    profiles: ["integrations"]
+    container_name: linkin-memos
+    ports:
+      - "18000:8000"   # 避開 Linkin backend 的 8000
+    environment:
+      - NEO4J_URI=bolt://memos-neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=${MEMOS_NEO4J_PASSWORD:-linkin-memos}
+      - QDRANT_HOST=memos-qdrant
+    depends_on:
+      - memos-neo4j
+      - memos-qdrant
+    networks: [evoloop_net]
+    restart: unless-stopped
+
+  # OpenViking：官方 Dockerfile（pip 安裝後跑 openviking-server）
+  openviking:
+    image: volcengine/openviking:latest   # 或以官方倉庫 Dockerfile 建置
+    profiles: ["integrations"]
+    container_name: linkin-openviking
+    ports:
+      - "1933:1933"
+    volumes:
+      - openviking_data:/root/.openviking
+    networks: [evoloop_net]
+    restart: unless-stopped
+
+  # WeKnora：最小集 = app + postgres(pgvector)；完整集（docreader/langfuse）見官方 compose
+  weknora-db:
+    image: pgvector/pgvector:pg16
+    profiles: ["integrations"]
+    container_name: linkin-weknora-db
+    environment:
+      - POSTGRES_USER=weknora
+      - POSTGRES_PASSWORD=${WEKNORA_DB_PASSWORD:-linkin-weknora}
+      - POSTGRES_DB=weknora
+    volumes:
+      - weknora_pg:/var/lib/postgresql/data
+    networks: [evoloop_net]
+    restart: unless-stopped
+
+  weknora:
+    image: wechatopenai/weknora-app:latest   # 官方映像名以其 .env.example 為準
+    profiles: ["integrations"]
+    container_name: linkin-weknora
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_DSN=postgres://weknora:${WEKNORA_DB_PASSWORD:-linkin-weknora}@weknora-db:5432/weknora?sslmode=disable
+    depends_on:
+      - weknora-db
+    networks: [evoloop_net]
+    restart: unless-stopped
+
+  # Yao：自架 agent 平台（官方 docker/ 目錄）
+  yao:
+    image: yaoapp/yao:latest
+    profiles: ["integrations"]
+    container_name: linkin-yao
+    ports:
+      - "5099:5099"
+    volumes:
+      - yao_data:/data
+    networks: [evoloop_net]
+    restart: unless-stopped
+
+  # Ouroboros：Python 套件，以 pip 映像跑 MCP HTTP server
+  ouroboros:
+    image: python:3.13-slim
+    profiles: ["integrations"]
+    container_name: linkin-ouroboros
+    command: >
+      sh -c "pip install --no-cache-dir 'ouroboros-ai[mcp]' &&
+             ouroboros mcp serve --transport http --port 8600"
+    ports:
+      - "8600:8600"
+    volumes:
+      - ouroboros_data:/root/.ouroboros
+    networks: [evoloop_net]
+    restart: unless-stopped
+
+  # OpenPencil：尚無官方映像；請以其倉庫指示自架後用 host.docker.internal 接線
+  # （https://github.com/ZSeven-W/openpencil）
+
+volumes:
+  memos_neo4j:
+  memos_qdrant:
+  openviking_data:
+  weknora_pg:
+  yao_data:
+  ouroboros_data:

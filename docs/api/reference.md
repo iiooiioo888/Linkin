@@ -302,3 +302,5 @@ L3 回應 L2 `[GRILL]`（資料缺失／工具不足／邏輯矛盾／單純確�
 - `GET /linkin/events`
 - `POST /linkin/admin/execute`（敏感操作需 `confirmed`）
 - `GET /linkin/overview`
+- `GET /linkin/server/health` · `POST /linkin/server/ask` · 批准／巡檢／審計
+- `GET /modules` · `GET /modules/{id}` · `GET /modules/{id}/pages` · `GET /modules/{id}/pages/{page}` · `GET /modules/{id}/capabilities` · `GET /modules/{id}/health` · `ANY /modules/{id}/api/{path}` — 可插拔模組統一契約與業務閘道

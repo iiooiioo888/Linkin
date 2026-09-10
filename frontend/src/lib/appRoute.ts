@@ -7,7 +7,8 @@
  *   #/monitor/agents/{agentId}
  *   #/monitor/lab | #/monitor/lab/{prompt|firecrawl|archify|ponytail|quant|maps|mcp|ab}
  *   #/monitor/world | #/monitor/npcs | #/monitor/quests | #/monitor/items | #/monitor/studio
- *   #/monitor/building | #/monitor/minecraft
+ *   #/monitor/building | #/monitor/minecraft | #/monitor/admin
+ *   #/modules/{id} | #/modules/{id}/{page}   世界模組（Minecraft…）
  *   #/traces | #/traces/{taskId}
  *   #/task/{taskId}                 任務詳情整頁（需求分析與一切分析產物）
  *   #/raho | #/raho/{runId|taskId}  公司運行時席位 I/O 監察整頁
@@ -16,6 +17,7 @@ import type { MonitorTab, ViewKey } from '../components/AppShell';
 import { markGrillReveal, setPendingDeskTab } from './agentUi';
 import { normalizeLabSubTab, type LabSubTab } from './labTabs';
 import { normalizeMonitorTab } from './monitorTabs';
+import { getWorldModule, hashPageForTab, moduleIdForTab, tabForModulePage } from './worldModules';
 
 export interface AppRoute {
   view: ViewKey;
@@ -53,6 +55,22 @@ export function parseAppRoute(hash: string): AppRoute {
 
   if (head === 'chat') {
     return { ...getDefaultRoute(), view: 'chat' };
+  }
+
+  if (head === 'modules') {
+    const moduleId = parts[1] ? decodeURIComponent(parts[1]) : '';
+    const spec = getWorldModule(moduleId);
+    const rawPage = parts[2] ? decodeURIComponent(parts[2]) : spec?.defaultPage ?? 'world';
+    const tab = normalizeMonitorTab(tabForModulePage(rawPage) ?? rawPage);
+    return {
+      view: 'monitor',
+      monitorTab: spec ? tab : 'live',
+      focusAgentId: (tab === 'agents' || tab === 'studio') && parts[3] ? decodeURIComponent(parts[3]) : null,
+      focusTaskId: null,
+      traceTaskId: null,
+      rahoFocus: null,
+      labSubTab: 'prompt',
+    };
   }
 
   if (head === 'monitor') {
@@ -109,11 +127,19 @@ export function buildAppRouteHash(route: AppRoute): string {
   if (route.view === 'chat') return '#/chat';
 
   if (route.view === 'monitor') {
+    const moduleId = moduleIdForTab(route.monitorTab);
+    if (moduleId) {
+      const page = hashPageForTab(route.monitorTab, moduleId);
+      if (route.monitorTab === 'studio' && route.focusAgentId) {
+        return `#/modules/${encodeURIComponent(moduleId)}/studio/${encodeURIComponent(route.focusAgentId)}`;
+      }
+      if (page === getWorldModule(moduleId)?.defaultPage) {
+        return `#/modules/${encodeURIComponent(moduleId)}`;
+      }
+      return `#/modules/${encodeURIComponent(moduleId)}/${encodeURIComponent(page)}`;
+    }
     if (route.monitorTab === 'agents' && route.focusAgentId) {
       return `#/monitor/agents/${encodeURIComponent(route.focusAgentId)}`;
-    }
-    if (route.monitorTab === 'studio' && route.focusAgentId) {
-      return `#/monitor/studio/${encodeURIComponent(route.focusAgentId)}`;
     }
     if (route.monitorTab === 'tasks' && route.focusTaskId) {
       return `#/monitor/tasks/${encodeURIComponent(route.focusTaskId)}`;

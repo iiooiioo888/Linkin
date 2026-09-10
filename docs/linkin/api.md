@@ -50,6 +50,28 @@ Base URL 與主應用相同：`http://localhost:8000`
 |------|------|------|
 | POST | `/linkin/admin/execute` | 敏感指令需 `confirmed: true`，否則 409 |
 | GET | `/linkin/overview` | NPC／任務／事件計數與合規狀態 |
+| GET | `/linkin/server/health` | 伺服器健康快照 |
+| POST | `/linkin/server/ask` | 運維問答（寫操作轉批准） |
+| GET | `/linkin/server/approvals` | 批准隊列 |
+| POST | `/linkin/server/approvals/{id}/confirm` | 批准 |
+| POST | `/linkin/server/approvals/{id}/cancel` | 取消 |
+| POST | `/linkin/server/patrol` | 巡檢（破壞性操作預設轉批准） |
+| GET | `/linkin/server/report` | 日報 |
+| GET | `/linkin/server/audit` | 運維審計尾部 |
+
+## 統一模組目錄
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| GET | `/modules` | 已註冊世界／整合模組清單（含 pages） |
+| GET | `/modules/{id}` | 模組契約（導航、capabilities、pages、api_prefix） |
+| GET | `/modules/{id}/pages` | 扁平頁面目錄（鍵、能力、API 前綴與路由） |
+| GET | `/modules/{id}/pages/{page}` | 單一頁面契約 |
+| GET | `/modules/{id}/health` | 模組健康（Minecraft 含世界／橋接／Admin） |
+| GET | `/modules/{id}/capabilities` | 能力清單（api_prefix／routes） |
+| ANY | `/modules/{id}/api/{path}` | 統一業務閘道；Minecraft 轉發 `/linkin/{path}`，寫入仍經護欄 |
+
+新模組：註冊 `ModuleSpec`（nav／capabilities／health／page_aliases）+ 把實作掛在 `api_prefix`，前端 `createModuleClient(id)` 只打 `/modules/{id}/api/...`。`/linkin/*` 仍保留給既有測試與內部轉發。前端宿主在 `frontend/src/modules/`，控制台不含這些頁。
 
 ## 工具鐵律（所有寫入共用）
 

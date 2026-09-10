@@ -1,0 +1,5 @@
+{"seq": 1, "ts": "2026-09-10T07:05:02.477215+00:00", "task_id": "dfd73026f2f3", "event": "pipeline_node", "node": "enforce_output_length", "gate": "current_answer", "length": 4500, "limit": 4000, "length_rewrites": 1}
+{"seq": 2, "ts": "2026-09-10T07:05:02.481216+00:00", "task_id": "dfd73026f2f3", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}
+{"seq": 3, "ts": "2026-09-10T07:05:02.484215+00:00", "task_id": "dfd73026f2f3", "event": "pipeline_node", "node": "reflect", "model": "gpt-6-astra", "score": 9.0}
+{"seq": 4, "ts": "2026-09-10T07:05:02.492215+00:00", "task_id": "dfd73026f2f3", "event": "pipeline_node", "node": "improve_answer", "model": "gpt-6-astra", "iteration": 1}
+{"seq": 5, "ts": "2026-09-10T07:05:02.496217+00:00", "task_id": "dfd73026f2f3", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}

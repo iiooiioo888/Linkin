@@ -359,7 +359,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   useEffect(() => {
     if (!focusAgentId) return;
     const studio = isLinkinStudioAgent(focusAgentId);
-    if (deskScope === 'linkin' ? studio : !studio) setSelectedId(focusAgentId);
+    if (deskScope === 'studio' ? studio : !studio) setSelectedId(focusAgentId);
   }, [focusAgentId, deskScope]);
 
   useEffect(() => {
@@ -375,7 +375,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
       const { id, level, rahoLayer, deskTab: nextTab } = (event as CustomEvent<JumpAgentDetail>).detail ?? {};
       if (id) {
         const studio = isLinkinStudioAgent(id);
-        if (id !== 'atomic_executor' && (deskScope === 'linkin' ? !studio : studio)) return;
+        if (id !== 'atomic_executor' && (deskScope === 'studio' ? !studio : studio)) return;
         const roster = filterAgentsByDesk(
           data?.agents?.length ? data.agents : AGENT_FALLBACK_ROSTER,
           deskScope,
@@ -491,7 +491,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
       {!selected && (
         <div className="flex flex-1 items-center justify-center px-6 text-center">
           <p className="text-[13px] text-[#AEAEB2]">
-            {deskScope === 'linkin' ? '尚無靈境工作室角色' : '尚無名冊'}
+            {deskScope === 'studio' ? '尚無工作室角色' : '尚無名冊'}
           </p>
         </div>
       )}

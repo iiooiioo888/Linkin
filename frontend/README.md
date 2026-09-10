@@ -4,10 +4,9 @@
 
 | 活動欄 | 說明 |
 |--------|------|
-| 對話 | 聊天、任務進度；頂欄齒輪快速加入 API |
-| 控制台 | EvoLoop：API 路由、角色／質詢樹、管線、L0、基礎設施 |
-| 靈境 | 世界觀／NPC／任務／道具／工作室角色 |
-| Minecraft | 建築方案、MineMCP 橋接 |
+| 對話 | 聊天；有進行中任務才左右分裂（左對話／文件／終端，右監控） |
+| 控制台 | EvoLoop：總覽、執行、審計、計費、系統（不含世界觀／Admin） |
+| 世界模組 | 可插拔宿主；Minecraft 為內建（世界觀／Admin／內容／建築／橋接），目錄 `GET /modules`，業務 `/modules/{id}/api/*` |
 | 實驗室 | 提示詞、爬蟲、策略庫／策略圖、A/B… |
 
 ## 開發
@@ -24,10 +23,11 @@ npm run dev
 | 路徑 | 用途 |
 |------|------|
 | `src/components/MonitorView.tsx` | 監控主視圖 |
-| `src/lib/monitorTabs.ts` | 分頁單一資料源 |
+| `src/lib/monitorTabs.ts` | 控制台分頁（總覽／執行／審計／計費／系統） |
+| `src/lib/worldModules.ts` | 世界模組目錄（可 hydrate `GET /modules`） |
+| `src/modules/` | 模組宿主；`minecraft/` 為獨立世界模組 |
 | `src/lib/auth.ts` | 登入閘門 |
-| `src/api/` | REST 客戶端（含 `linkin.ts`） |
-| `src/components/linkin/` | 靈境／Minecraft UI |
+| `src/api/` | REST 客戶端（`createModuleClient` 統一閘道、`linkin.ts` 為 Minecraft 型別包裝） |
 | `src/vendor/neiki-gallery/` | 畫廊元件 |
 
 ## GitHub Pages

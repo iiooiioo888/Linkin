@@ -2,8 +2,9 @@
   "nav": {
     "chat": "對話",
     "console": "控制台",
-    "linkin": "靈境",
+    "linkin": "Minecraft",
     "minecraft": "Minecraft",
+    "modules": "模組",
     "work": "執行",
     "observe": "觀測",
     "system": "系統",

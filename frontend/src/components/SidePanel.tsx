@@ -21,6 +21,7 @@ import {
   type ConsoleNavItem,
   type ConsoleNavKey,
 } from '../lib/monitorTabs';
+import { rosterKindForTab } from '../lib/worldModules';
 import { useMonitorStore } from '../stores/monitorStore';
 import type { MonitorTab, ViewKey } from './AppShell';
 import TraceRoster from './TraceRoster';
@@ -251,7 +252,7 @@ function AgentRoster({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="ar-h">
-        <span className="ar-ht">{deskScope === 'linkin' ? '工作室' : '指揮／審查／組織'}</span>
+        <span className="ar-ht">{deskScope === 'studio' ? '工作室' : '指揮／審查／組織'}</span>
         <span className="ar-hc">{agents.length}</span>
       </div>
       <div className="ar-flt" role="tablist" aria-label="角色篩選">
@@ -662,7 +663,7 @@ function MonitorSidebar({
   const onLab = activity === 'lab';
   const navGroups = navGroupsForActivity(activity);
   const onAgentsTab = activeView === 'monitor' && monitorTab === 'agents';
-  const onStudioTab = activeView === 'monitor' && monitorTab === 'studio';
+  const onStudioTab = activeView === 'monitor' && rosterKindForTab(monitorTab) === 'agents';
   const onMemoryTab = activeView === 'monitor' && monitorTab === 'memory';
   const onRoleDesk = onAgentsTab || onStudioTab || onMemoryTab;
   const onTasksTab = activeView === 'monitor' && monitorTab === 'tasks';
@@ -676,9 +677,10 @@ function MonitorSidebar({
       return;
     }
     onMonitorTabChange(key);
-    if (key !== 'agents' && key !== 'studio' && key !== 'memory' && focusAgentId) onFocusAgent(null);
+    const keepAgent = key === 'agents' || key === 'memory' || rosterKindForTab(key) === 'agents';
+    if (!keepAgent && focusAgentId) onFocusAgent(null);
     if (key !== 'tasks' && focusTaskId) onFocusTask(null);
-    if (key !== 'agents' && key !== 'studio' && key !== 'memory' && key !== 'tasks' && key !== 'llm') onClose();
+    if (!keepAgent && key !== 'tasks' && key !== 'llm') onClose();
   };
 
   if (onLab) {
@@ -712,7 +714,7 @@ function MonitorSidebar({
 
       {onRoleDesk ? (
         <AgentRoster
-          deskScope={onStudioTab ? 'linkin' : 'console'}
+          deskScope={onStudioTab ? 'studio' : 'console'}
           focusAgentId={onMemoryTab ? 'environment_kernel' : focusAgentId}
           onPick={(id) => {
             if (id === 'environment_kernel') {

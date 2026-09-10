@@ -1,43 +1,10 @@
 /**
- * 靈境·Linkin API（VITE_API_URL + fetch，開發時經 /api 代理）。
+ * Minecraft 模組業務 API（typed wrapper）。
+ * 一律走 createModuleClient('minecraft') → /modules/minecraft/api/*。
  */
-const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
+import { createModuleClient } from './modules';
 
-function apiUrl(path: string): string {
-  return `${API_BASE}${path}`;
-}
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(apiUrl(path), {
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    ...init,
-  });
-  const text = await resp.text();
-  let data: unknown = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { detail: text };
-    }
-  }
-  if (!resp.ok) {
-    throw new Error(_httpError(resp.status, data, text));
-  }
-  return data as T;
-}
-
-function _httpError(status: number, data: unknown, text: string): string {
-  if (status === 405) {
-    return '後端不接受此操作（HTTP 405）。請重啟 python -m backend.main 後再試。';
-  }
-  const detail = (data as { detail?: unknown })?.detail;
-  if (typeof detail === 'string') return detail;
-  if (detail && typeof detail === 'object' && 'message' in detail) {
-    return String((detail as { message: string }).message);
-  }
-  return text?.trim() ? text.trim().slice(0, 240) : `請求失敗（HTTP ${status}）`;
-}
+const mc = createModuleClient('minecraft');
 
 export type Constitution = {
   world_name: string;
@@ -184,28 +151,24 @@ export type MinecraftStatus = {
   };
 };
 
-export const fetchConstitution = () => request<Constitution>('/linkin/constitution');
+export const fetchConstitution = () => mc.get<Constitution>('/constitution');
 export const saveConstitution = (body: Record<string, unknown>) =>
-  request<Constitution>('/linkin/constitution', { method: 'PUT', body: JSON.stringify(body) });
+  mc.put<Constitution>('/constitution', body);
 
-export const fetchNpcs = () => request<{ npcs: NpcCard[]; count: number }>('/linkin/npcs');
-export const createNpc = (body: NpcCard) =>
-  request<{ npc: NpcCard }>('/linkin/npcs', { method: 'POST', body: JSON.stringify(body) });
+export const fetchNpcs = () => mc.get<{ npcs: NpcCard[]; count: number }>('/npcs');
+export const createNpc = (body: NpcCard) => mc.post<{ npc: NpcCard }>('/npcs', body);
 export const updateNpc = (id: string, body: Partial<NpcCard>) =>
-  request<{ npc: NpcCard }>(`/linkin/npcs/${id}`, { method: 'PUT', body: JSON.stringify(body) });
-export const deleteNpc = (id: string) =>
-  request<{ deleted: boolean }>(`/linkin/npcs/${id}`, { method: 'DELETE' });
+  mc.put<{ npc: NpcCard }>(`/npcs/${id}`, body);
+export const deleteNpc = (id: string) => mc.del<{ deleted: boolean }>(`/npcs/${id}`);
 export const npcDialogue = (id: string, playerMessage: string) =>
-  request<{ reply: string; rag: { hits: unknown[]; backend: unknown } }>(
-    `/linkin/npcs/${id}/dialogue`,
-    { method: 'POST', body: JSON.stringify({ playerMessage }) },
-  );
+  mc.post<{ reply: string; rag: { hits: unknown[]; backend: unknown } }>(`/npcs/${id}/dialogue`, {
+    playerMessage,
+  });
 
 export const generateQuest = (body: { playerId: string; questType: string; difficulty: string; region?: string }) =>
-  request<{ quest: Quest }>('/linkin/quests/generate', { method: 'POST', body: JSON.stringify(body) });
-export const fetchQuests = () => request<{ quests: Quest[]; count: number }>('/linkin/quests');
-export const deleteQuest = (id: string) =>
-  request<{ deleted: boolean }>(`/linkin/quests/${id}`, { method: 'DELETE' });
+  mc.post<{ quest: Quest }>('/quests/generate', body);
+export const fetchQuests = () => mc.get<{ quests: Quest[]; count: number }>('/quests');
+export const deleteQuest = (id: string) => mc.del<{ deleted: boolean }>(`/quests/${id}`);
 
 export const generateBuilding = (body: {
   prompt: string;
@@ -213,26 +176,22 @@ export const generateBuilding = (body: {
   location: string;
   region: string;
   block_count: number;
-}) => request<{ building: Building; preview?: BuildingPreview | null }>('/linkin/buildings/generate', { method: 'POST', body: JSON.stringify(body) });
-export const fetchBuildings = () => request<{ buildings: Building[]; count: number }>('/linkin/buildings');
-export const fetchBuildingPreview = (id: string) => request<BuildingPreview>(`/linkin/buildings/${id}/preview`);
-export const schematicUrl = (id: string) => apiUrl(`/linkin/buildings/${id}/schematic`);
-export const deleteBuilding = (id: string) =>
-  request<{ deleted: boolean }>(`/linkin/buildings/${id}`, { method: 'DELETE' });
+}) => mc.post<{ building: Building; preview?: BuildingPreview | null }>('/buildings/generate', body);
+export const fetchBuildings = () => mc.get<{ buildings: Building[]; count: number }>('/buildings');
+export const fetchBuildingPreview = (id: string) => mc.get<BuildingPreview>(`/buildings/${id}/preview`);
+export const schematicUrl = (id: string) => mc.url(`/buildings/${id}/schematic`);
+export const deleteBuilding = (id: string) => mc.del<{ deleted: boolean }>(`/buildings/${id}`);
 
 export const importSchematicBase64 = (
   schematicBase64: string,
   meta: { prompt?: string; style?: string; location?: string; region?: string },
 ) =>
-  request<{ building: Building; preview: BuildingPreview }>('/linkin/buildings/import-base64', {
-    method: 'POST',
-    body: JSON.stringify({
-      schematic_base64: schematicBase64,
-      prompt: meta.prompt ?? '',
-      style: meta.style ?? '',
-      location: meta.location ?? '',
-      region: meta.region ?? '',
-    }),
+  mc.post<{ building: Building; preview: BuildingPreview }>('/buildings/import-base64', {
+    schematic_base64: schematicBase64,
+    prompt: meta.prompt ?? '',
+    style: meta.style ?? '',
+    location: meta.location ?? '',
+    region: meta.region ?? '',
   });
 
 export async function importSchematic(
@@ -245,42 +204,79 @@ export async function importSchematic(
   if (meta.style) form.append('style', meta.style);
   if (meta.location) form.append('location', meta.location);
   if (meta.region) form.append('region', meta.region);
-  const resp = await fetch(apiUrl('/linkin/buildings/import'), { method: 'POST', body: form });
-  const text = await resp.text();
-  let data: unknown = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { detail: text };
-    }
-  }
-  if (!resp.ok) {
-    throw new Error(_httpError(resp.status, data, text));
-  }
-  return data as { building: Building; preview: BuildingPreview };
+  return mc.form<{ building: Building; preview: BuildingPreview }>('/buildings/import', form);
 }
 
-export const fetchItems = () => request<{ items: Item[]; count: number }>('/linkin/items');
-export const createItem = (body: Omit<Item, 'id'>) =>
-  request<{ item: Item }>('/linkin/items', { method: 'POST', body: JSON.stringify(body) });
-export const deleteItem = (id: string) =>
-  request<{ deleted: boolean }>(`/linkin/items/${id}`, { method: 'DELETE' });
+export const fetchItems = () => mc.get<{ items: Item[]; count: number }>('/items');
+export const createItem = (body: Omit<Item, 'id'>) => mc.post<{ item: Item }>('/items', body);
+export const deleteItem = (id: string) => mc.del<{ deleted: boolean }>(`/items/${id}`);
 
-export const fetchEvents = () => request<{ events: WorldEvent[]; count: number }>('/linkin/events');
+export const fetchEvents = () => mc.get<{ events: WorldEvent[]; count: number }>('/events');
 
-export const fetchOverview = () => request<Overview>('/linkin/overview');
+export const fetchOverview = () => mc.get<Overview>('/overview');
 
-export const fetchMinecraftStatus = () => request<MinecraftStatus>('/linkin/minecraft/status');
-export const probeMinecraft = () =>
-  request<MinecraftStatus['probe']>('/linkin/minecraft/probe', { method: 'POST', body: '{}' });
+export const fetchMinecraftStatus = () => mc.get<MinecraftStatus>('/minecraft/status');
+export const probeMinecraft = () => mc.post<MinecraftStatus['probe']>('/minecraft/probe');
 export const callMinecraftTool = (tool: string, arguments_: Record<string, unknown>) =>
-  request<Record<string, unknown>>('/linkin/minecraft/call', {
-    method: 'POST',
-    body: JSON.stringify({ tool, arguments: arguments_ }),
-  });
+  mc.post<Record<string, unknown>>('/minecraft/call', { tool, arguments: arguments_ });
 export const dispatchBuilding = (id: string) =>
-  request<{ building: Building; minecraft: Record<string, unknown> }>(
-    `/linkin/buildings/${id}/dispatch`,
-    { method: 'POST', body: '{}' },
+  mc.post<{ building: Building; minecraft: Record<string, unknown> }>(`/buildings/${id}/dispatch`);
+
+export const executeAdminCommand = (command: string, confirmed = false) =>
+  mc.post<{ executed: boolean; command: string; sensitive?: boolean; minecraft?: Record<string, unknown> }>(
+    '/admin/execute',
+    { command, confirmed },
   );
+
+export type ServerHealthCheck = {
+  name: string;
+  ok: boolean;
+  warning?: boolean;
+  critical?: boolean;
+  detail?: string;
+};
+
+export type ServerHealth = {
+  status: string;
+  dry_run?: boolean;
+  storage_root?: string;
+  checks: ServerHealthCheck[];
+  ts?: number;
+  error?: string;
+};
+
+export type ServerApproval = {
+  id: string;
+  tool: string;
+  params?: Record<string, unknown>;
+  question?: string;
+  preview?: Record<string, unknown>;
+  status: string;
+  created_ts?: number;
+  ttl_min?: number;
+};
+
+export type ServerAuditEntry = {
+  ts?: string;
+  tool?: string;
+  ok?: boolean;
+  message?: string;
+  error?: string;
+  [key: string]: unknown;
+};
+
+export const fetchServerHealth = () => mc.get<ServerHealth>('/server/health');
+export const askServerAdmin = (question: string) =>
+  mc.post<Record<string, unknown>>('/server/ask', { question });
+export const fetchServerApprovals = (includeDone = false) =>
+  mc.get<{ approvals: ServerApproval[]; count: number }>(
+    `/server/approvals${includeDone ? '?include_done=true' : ''}`,
+  );
+export const confirmServerApproval = (id: string) =>
+  mc.post<Record<string, unknown>>(`/server/approvals/${encodeURIComponent(id)}/confirm`);
+export const cancelServerApproval = (id: string) =>
+  mc.post<Record<string, unknown>>(`/server/approvals/${encodeURIComponent(id)}/cancel`);
+export const runServerPatrol = () => mc.post<Record<string, unknown>>('/server/patrol');
+export const fetchServerReport = () => mc.get<{ report: string }>('/server/report');
+export const fetchServerAudit = (limit = 40) =>
+  mc.get<{ entries: ServerAuditEntry[]; count: number }>(`/server/audit?limit=${limit}`);

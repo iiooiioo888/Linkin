@@ -2,20 +2,20 @@
  * AppShell — IDE 风格布局容器。
  *
  * 布局：TopBar → [ActivityBar | SidePanel | MainContent | RightPanel] → StatusBar
- * 活動：對話 / 控制台（EvoLoop）/ 靈境（世界）/ Minecraft（建築 + 橋接）/ 實驗室
+ * 活動：對話 / 控制台（EvoLoop）/ 世界模組（Minecraft…）/ 實驗室
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ChatSession } from '../types';
 import type { LabSubTab } from '../lib/labTabs';
 import {
-  ACTIVITY_DEFAULT_TAB,
+  defaultTabForActivity,
   isConsoleTab,
-  isLinkinTab,
-  isMinecraftTab,
+  isCoreActivity,
   resolveActivity,
   type ActivityKey,
 } from '../lib/monitorTabs';
+import { getWorldModule, pagesOfModule } from '../lib/worldModules';
 import ActivityBar from './ActivityBar';
 import RightPanel from './RightPanel';
 import SidePanel from './SidePanel';
@@ -23,28 +23,23 @@ import StatusBar from './StatusBar';
 import TopBar from './TopBar';
 
 export type ViewKey = 'chat' | 'monitor' | 'traces' | 'task' | 'raho';
-/** 精簡後的監控主分頁（次要功能收入 ops / lab）。 */
-export type MonitorTab =
+/** 控制台分頁。模組頁（世界觀／Admin…）是字串鍵，不進此聯合。 */
+export type ConsoleTab =
   | 'live'
   | 'tasks'
   | 'agents'
   | 'pipeline'
   | 'metrics'
   | 'models'
+  | 'billing'
   | 'feedback'
   | 'lab'
   | 'llm'
   | 'ops'
   | 'memory'
   | 'skills'
-  | 'world'
-  | 'npcs'
-  | 'quests'
-  | 'building'
-  | 'items'
-  | 'studio'
-  | 'minecraft'
   | 'grill';
+export type MonitorTab = ConsoleTab | string;
 
 export interface AppShellProps {
   /** 当前活跃视图 */
@@ -160,17 +155,11 @@ export default function AppShell({
         onMonitorTabChange('lab');
         return;
       }
-      if (next === 'linkin') {
-        const remembered = lastTabByActivity.current.linkin;
+      if (!isCoreActivity(next) && getWorldModule(next)) {
+        const remembered = lastTabByActivity.current[next];
+        const pages = pagesOfModule(next);
         onMonitorTabChange(
-          isLinkinTab(remembered) ? remembered! : (ACTIVITY_DEFAULT_TAB.linkin as MonitorTab),
-        );
-        return;
-      }
-      if (next === 'minecraft') {
-        const remembered = lastTabByActivity.current.minecraft;
-        onMonitorTabChange(
-          isMinecraftTab(remembered) ? remembered! : (ACTIVITY_DEFAULT_TAB.minecraft as MonitorTab),
+          remembered && pages.includes(remembered) ? remembered : defaultTabForActivity(next),
         );
         return;
       }
@@ -183,7 +172,7 @@ export default function AppShell({
         onViewChange('monitor');
         return;
       }
-      onMonitorTabChange(ACTIVITY_DEFAULT_TAB.console as MonitorTab);
+      onMonitorTabChange(defaultTabForActivity('console'));
     },
     [activity, activeView, monitorTab, onMonitorTabChange, onViewChange],
   );

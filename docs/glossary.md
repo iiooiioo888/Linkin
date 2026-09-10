@@ -28,7 +28,8 @@
 | **護欄（guard）** | OPC 寫入白名單／邊界；Minecraft 寫入允許清單與體積上限 |
 | **MineMCP** | Minecraft JSON-RPC 橋；角色經 tool_registry，禁止直連 |
 | **憲法／worldview** | 靈境世界觀最高裁決依據（`backend/linkin/`） |
-| **監控中心** | 前端活動欄：對話 · 控制台 · 靈境 · Minecraft · 實驗室 |
+| **監控中心** | 前端活動欄：對話 · 控制台 · 世界模組（Minecraft…） · 實驗室 |
+| **世界模組** | 可插拔整合（目錄 `GET /modules`）。Minecraft 含世界觀、Admin、內容、建築、橋接 |
 | **`DESIGN.md`** | **前端視覺 Token**，不是系統架構設計 |
 | **Archify** | `vendor/archify` 策略圖 CLI（`file:` 依賴） |
 

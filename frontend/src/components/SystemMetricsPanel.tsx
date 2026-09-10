@@ -218,7 +218,7 @@ export default function SystemMetricsPanel() {
             </a>
             ；用量在{' '}
             <a href="#/monitor/models" className="text-[#64D2FF] hover:underline">
-              觀測 → 調用用量
+              計費 → AI 用量
             </a>
             。
           </p>

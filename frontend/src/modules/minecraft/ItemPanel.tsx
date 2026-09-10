@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createItem, deleteItem, fetchItems, type Item } from '../../api/linkin';
 import { itemTileUri } from '../../lib/visualCards';
-import MediaGallery, { VisualThumb } from '../media/MediaGallery';
+import MediaGallery, { VisualThumb } from '../../components/media/MediaGallery';
 
 export default function ItemPanel() {
   const [items, setItems] = useState<Item[]>([]);

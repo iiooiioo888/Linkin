@@ -51,6 +51,7 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `core/` | 圖、節點、`call_llm`、評估、模型池、路由 |
 | `company/` | 多代理人協調、`raho/`、角色目錄、量化工具 |
 | `linkin/` | 靈境憲法、實體、Minecraft **業務**護欄、16 席子角色種子 |
+| `modules/` | 可插拔世界／整合模組目錄（`GET /modules`）；Minecraft 為內建模組 |
 | `tools/` | MineMCP／運維等**底層**橋接（角色勿直連） |
 | `hub/` | AI Hub（探針／熔斷／目錄）；契約：`AI_HUB_DETAILED_DESIGN.md` |
 | `memory/` | 向量記憶（Chroma 等） |
@@ -113,6 +114,15 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `schematic.py` · `nbt.py` · `schem_nbtlib.py` | 建築圖／NBT |
 | `pipeline.py` · `grill_me.py` · `design_llm.py` · `server_admin.py` | 管線、Grill、設計、伺服器管理 |
 
+### backend/modules/
+
+| 檔案 | 職責 |
+|------|------|
+| `registry.py` | `ModuleSpec` 註冊表；禁止與 chat／console／lab 撞 id |
+| `api.py` | `GET /modules`、`/{id}`、`/{id}/pages`、`/{id}/capabilities`、`/{id}/health`、`/{id}/api/{path}` |
+| `gateway.py` | 統一業務閘道：校驗 capabilities 後轉發 `api_prefix` |
+| `minecraft.py` | 內建 Minecraft 模組契約（世界觀／Admin／建築／橋接） |
+
 ### backend/scripts/
 
 | 腳本 | 用途 |
@@ -156,9 +166,10 @@ python backend/scripts/test_llm_connection.py
 | 路徑 | 職責 |
 |------|------|
 | `src/components/MonitorView.tsx` | 監控主視圖 |
-| `src/lib/monitorTabs.ts` | 活動欄分頁單一資料源 |
-| `src/api/` | REST 客戶端 |
-| `src/components/linkin/` | 靈境／Minecraft UI |
+| `src/lib/monitorTabs.ts` | 控制台分頁（總覽／執行／審計／計費／系統） |
+| `src/lib/worldModules.ts` | 世界模組目錄（hydrate `GET /modules`） |
+| `src/modules/` | 模組宿主；`minecraft/` 為獨立世界模組 UI |
+| `src/api/` | REST 客戶端（`modules.ts` 的 `createModuleClient`、`linkin.ts` 為 Minecraft typed wrapper） |
 | 開發埠 | 預設 **3001**（`VITE_DEV_PORT` 可覆寫） |
 
 ## docs/（知識庫）

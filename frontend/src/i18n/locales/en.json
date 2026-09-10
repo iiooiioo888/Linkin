@@ -2,8 +2,9 @@
   "nav": {
     "chat": "Chat",
     "console": "Console",
-    "linkin": "Linkin",
+    "linkin": "Minecraft",
     "minecraft": "Minecraft",
+    "modules": "Modules",
     "work": "Execute",
     "observe": "Observe",
     "system": "System",
