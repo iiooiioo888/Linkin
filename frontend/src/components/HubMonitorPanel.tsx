@@ -147,8 +147,8 @@ export default function HubMonitorPanel() {
         </KpiGrid>
 
         <ConsoleCard>
-          <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-4 pt-4 pb-2">故障轉移鏈</ConsoleCardHeader>
-          <div className="px-4 pb-4">
+          <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-3 pt-3 pb-1.5">故障轉移鏈</ConsoleCardHeader>
+          <div className="px-3 pb-3">
         <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
           {(routing.default_chain).map(
             (id, i, arr) => (
@@ -247,8 +247,8 @@ export default function HubMonitorPanel() {
 
         <div className={consoleLayout.cardGrid}>
           <ConsoleCard>
-            <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-4 pt-4 pb-2">呼叫日誌</ConsoleCardHeader>
-            <div className="px-4 pb-4">
+            <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-3 pt-3 pb-1.5">呼叫日誌</ConsoleCardHeader>
+            <div className="px-3 pb-3">
           {(data?.call_logs.length ?? 0) === 0 ? (
             <p className="text-[11px] text-[#62666d]">
               尚無推論紀錄。到 AI Hub 送出一次同步推論後會寫入 call_logs。
@@ -277,8 +277,8 @@ export default function HubMonitorPanel() {
           </ConsoleCard>
 
           <ConsoleCard>
-            <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-4 pt-4 pb-2">Agent 任務</ConsoleCardHeader>
-            <div className="px-4 pb-4">
+            <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-3 pt-3 pb-1.5">Agent 任務</ConsoleCardHeader>
+            <div className="px-3 pb-3">
           {(data?.agent_tasks.length ?? 0) === 0 ? (
             <p className="text-[11px] text-[#62666d]">
               尚無 Agent 任務。工具呼叫走 JWT RPC，OPC 寫入禁止直連。

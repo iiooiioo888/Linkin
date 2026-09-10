@@ -1031,18 +1031,18 @@ body {
   overflow: hidden;
 }
 
-/* 控制台 rd-shell：外緣 chrome 對齊 consoleLayout（px-6 py-4 / gap-4 / p-4） */
+/* 控制台 rd-shell：頁面邊距 px-6 不變；卡片／pane 內距收緊（p-3 級） */
 .console-rd-shell .rd-header {
-  padding: 16px 24px 12px;
+  padding: 12px 24px 8px;
 }
 
 .console-rd-shell .rd-th {
-  padding: 16px 24px;
+  padding: 12px 24px;
 }
 
 .console-rd-shell .rd-stats {
-  gap: 8px;
-  padding: 16px 24px;
+  gap: 6px;
+  padding: 12px 24px;
   background: transparent;
   border-bottom: 1px solid var(--apple-hairline);
 }
@@ -1051,16 +1051,16 @@ body {
   border-radius: var(--apple-radius);
   border: 1px solid var(--apple-hairline);
   background: var(--apple-surface);
-  padding: 12px 16px;
+  padding: 8px 12px;
 }
 
 .console-rd-shell .rd-pane {
-  padding: 16px;
+  padding: 12px;
 }
 
 .console-rd-shell .rd-rp {
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
   background: var(--apple-canvas);
 }
 
@@ -1075,13 +1075,13 @@ body {
 
 .console-rd-shell .rd-rp > .rd-sec .rd-tt {
   margin: 0;
-  padding: 8px 16px;
+  padding: 6px 12px;
   border-bottom: 1px solid var(--apple-hairline);
   background: #1c1c1e;
 }
 
 .console-rd-shell .rd-rp > .rd-sec > :not(.rd-tt) {
-  padding: 12px 16px 16px;
+  padding: 8px 12px 12px;
 }
 
 .rd-header {
