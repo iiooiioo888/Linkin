@@ -20,6 +20,7 @@ import os
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+from urllib.parse import quote
 
 from backend.integrations.base import IntegrationConfig, IntegrationResponse, ResilientHttpClient
 
@@ -52,13 +53,17 @@ class OpenVikingClient:
         self.http = ResilientHttpClient(config or config_from_env(), **http_kwargs)
 
     def find(self, query: str, *, top_k: int = 5) -> IntegrationResponse:
-        return self.http.post("api/v1/find", {"query": query, "top_k": top_k})
+        # 真實路徑為 /api/v1/search/find；分頁參數名是 limit（非 top_k）。
+        return self.http.post("api/v1/search/find", {"query": query, "limit": top_k})
 
     def read(self, uri: str, *, tier: VikingTier = VikingTier.L0_ABSTRACT) -> IntegrationResponse:
-        return self.http.post("api/v1/read", {"uri": uri, "tier": tier.value})
+        # L0/L1/L2 各為 GET 端點（query 參數 uri），非單一 POST /read。
+        path = f"api/v1/content/{tier.value}?uri={quote(uri, safe='')}"
+        return self.http.get(path)
 
     def add_resource(self, source: str) -> IntegrationResponse:
-        return self.http.post("api/v1/resources", {"source": source})
+        # AddResourceRequest 的欄位是 path（交付來源：檔案／URL／repo）。
+        return self.http.post("api/v1/resources", {"path": source})
 
     def recall_tiered(
         self,

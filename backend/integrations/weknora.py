@@ -26,12 +26,23 @@ DEFAULT_BASE_URL = "http://localhost:8080"
 
 def config_from_env(env: dict[str, str] | None = None) -> IntegrationConfig:
     e = env if env is not None else os.environ
+    key = e.get("LINKIN_WEKNORA_API_KEY", "")
     return IntegrationConfig(
         name="weknora",
         base_url=e.get("LINKIN_WEKNORA_BASE_URL", DEFAULT_BASE_URL),
         enabled=e.get("LINKIN_WEKNORA_ENABLED", "false").lower() == "true",
-        api_key=e.get("LINKIN_WEKNORA_API_KEY", ""),
+        # WeKnora 只認 ``X-API-Key``／``Authorization: Bearer``，不認通用的
+        # ``Authorization: Token``，故 api_key 走 extra_headers（見 base._headers）。
+        api_key="",
+        timeout_seconds=float(e.get("LINKIN_WEKNORA_TIMEOUT", "20")),
+        extra_headers={"X-API-Key": key} if key else {},
     )
+
+
+def default_knowledge_base_id(env: dict[str, str] | None = None) -> str:
+    """召回預設知識庫（``LINKIN_WEKNORA_KB_ID``）；未設定時由呼叫方顯式傳入。"""
+    e = env if env is not None else os.environ
+    return e.get("LINKIN_WEKNORA_KB_ID", "").strip()
 
 
 @dataclass
@@ -53,9 +64,11 @@ class WeKnoraClient:
         knowledge_base_id: str = "",
         top_k: int = 5,
     ) -> IntegrationResponse:
+        # WeKnora 要求顯式指定檢索範圍，否則 400；缺省走 LINKIN_WEKNORA_KB_ID。
+        kb = knowledge_base_id or default_knowledge_base_id()
         payload: dict[str, Any] = {"query": query, "top_k": top_k}
-        if knowledge_base_id:
-            payload["knowledge_base_id"] = knowledge_base_id
+        if kb:
+            payload["knowledge_base_id"] = kb
         return self.http.post("api/v1/knowledge-search", payload)
 
     def ask(self, query: str, *, knowledge_base_id: str = "", mode: str = "rag") -> IntegrationResponse:

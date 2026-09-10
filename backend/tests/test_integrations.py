@@ -103,15 +103,16 @@ def test_openviking_tiered_recall_l0_by_default_l1_on_high_score():
     def _t(method, url, headers, body, timeout):
         payload = json.loads(body.decode()) if body else {}
         calls.append({"url": url, "payload": payload})
-        if url.endswith("/api/v1/find"):
+        if url.endswith("/api/v1/search/find"):
             return 200, json.dumps(
                 {"results": [
                     {"uri": "viking://resources/a", "score": 0.9},
                     {"uri": "viking://resources/b", "score": 0.3},
                 ]}
             ).encode()
-        # read：回傳對應 tier 的文字
-        return 200, json.dumps({"content": f"text-{payload.get('tier')}"}).encode()
+        # read：L0/L1/L2 各為 GET 端點，以路徑尾段判別 tier
+        tier = url.rsplit("/", 1)[-1].split("?", 1)[0]
+        return 200, json.dumps({"content": f"text-{tier}"}).encode()
 
     viking = OpenVikingClient(config=_cfg("openviking"), transport=_t)
     out = viking.recall_tiered("q", l1_threshold=0.75)
@@ -119,12 +120,12 @@ def test_openviking_tiered_recall_l0_by_default_l1_on_high_score():
     assert tiers["viking://resources/a"] == VikingTier.L1_OVERVIEW.value   # 高分升 L1
     assert tiers["viking://resources/b"] == VikingTier.L0_ABSTRACT.value   # 低分留 L0
     # 預設絕不讀 L2 全文
-    assert all(c["payload"].get("tier") != VikingTier.L2_DETAILS.value for c in calls if c["url"].endswith("/api/v1/read"))
+    assert all("/api/v1/content/details" not in c["url"] for c in calls)
 
 
 def test_openviking_max_tier_l0_forces_abstract_only():
     def _t(method, url, headers, body, timeout):
-        if url.endswith("/api/v1/find"):
+        if url.endswith("/api/v1/search/find"):
             return 200, json.dumps({"results": [{"uri": "viking://x", "score": 0.99}]}).encode()
         return 200, json.dumps({"content": "abstract-text"}).encode()
 

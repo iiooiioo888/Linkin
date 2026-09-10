@@ -34,6 +34,29 @@ def _urllib_transport(
         return resp.status, resp.read()
 
 
+def _decode_payload(raw: bytes | None) -> Any:
+    """解析回應主體：一般 JSON，或 SSE 影格（``event:``／``data:``）剝殼後的 JSON。
+
+    MCP streamable-HTTP 服務（如 Ouroboros）以 ``text/event-stream`` 回傳
+    JSON-RPC 結果，直接 ``json.loads`` 整包會失敗；此處取最後一個 ``data:``
+    影格再解析，其餘維持原語義。空主體 → ``None``。
+    """
+    if not raw:
+        return None
+    text = raw.decode("utf-8").strip()
+    if not text:
+        return None
+    if text.startswith("{") or text.startswith("["):
+        return json.loads(text)
+    frames = [line[len("data:"):].strip() for line in text.splitlines() if line.startswith("data:")]
+    if not frames:
+        raise ValueError("no JSON payload in response body")
+    payload = frames[-1]
+    if payload in ("", "[DONE]"):
+        return None
+    return json.loads(payload)
+
+
 @dataclass(frozen=True)
 class IntegrationConfig:
     """單一外部服務的連線設定。"""
@@ -98,7 +121,7 @@ class ResilientHttpClient:
         if status >= 400:
             return self._finish(False, None, ERR_INTEGRATION_BAD_RESPONSE, f"integration:{name}:http_{status}", latency, method, path)
         try:
-            data = json.loads(raw.decode("utf-8")) if raw else None
+            data = _decode_payload(raw)
         except (ValueError, UnicodeDecodeError):
             return self._finish(False, None, ERR_INTEGRATION_BAD_RESPONSE, f"integration:{name}:bad_json", latency, method, path)
         return self._finish(True, data, "", f"integration:{name}:ok", latency, method, path)

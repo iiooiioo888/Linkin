@@ -44,6 +44,10 @@ def config_from_env(env: dict[str, str] | None = None) -> IntegrationConfig:
         base_url=e.get("LINKIN_OUROBOROS_BASE_URL", DEFAULT_BASE_URL),
         enabled=e.get("LINKIN_OUROBOROS_ENABLED", "false").lower() == "true",
         api_key=e.get("LINKIN_OUROBOROS_API_KEY", ""),
+        timeout_seconds=float(e.get("LINKIN_OUROBOROS_TIMEOUT", "30")),
+        # MCP streamable-HTTP 端點要求客戶端同時接受兩種型別，否則回 406；
+        # 回應本體為 SSE 影格，由 base._decode_payload 剝殼。
+        extra_headers={"Accept": "application/json, text/event-stream"},
     )
 
 
@@ -71,10 +75,26 @@ class OuroborosClient:
             },
         )
 
+    def health(self) -> dict:
+        """健康檢查：MCP 服務沒有 /health，改以 ``tools/list`` 探測。"""
+        if not self.http.enabled:
+            return {"ok": True, "enabled": False}
+        resp = self.http.post(
+            "mcp",
+            {
+                "jsonrpc": "2.0",
+                "id": next(self._ids),
+                "method": "tools/list",
+                "params": {},
+            },
+        )
+        return {"ok": resp.ok, "enabled": True, "reason_code": resp.reason_code}
+
     # ── 訪談與 Seed 閘門 ──
 
     def interview(self, goal: str, *, context: str = "") -> IntegrationResponse:
-        args: dict[str, Any] = {"goal": goal}
+        # MCP 工具 `ouroboros_interview` 以 initial_context 啟動新會話（resume 用 session_id）。
+        args: dict[str, Any] = {"initial_context": goal}
         if context:
             args["context"] = context
         return self.call_tool("ouroboros_interview", args)

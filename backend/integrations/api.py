@@ -148,7 +148,7 @@ def _status_of(name: str, client: Any) -> dict[str, Any]:
         "base_url": cfg.base_url,
     }
     if cfg.enabled:
-        if name in ("yao", "openpencil"):
+        if name in ("yao", "openpencil", "ouroboros"):
             status["health"] = client.health()
         else:
             probe = client.http.get("health")
