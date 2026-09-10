@@ -105,7 +105,7 @@ export default function ModelCallPanel() {
 
         <ConsoleCard>
           <ConsoleCardHeader>模型佔比</ConsoleCardHeader>
-          <div className="h-[220px] p-4">
+          <div className={`h-[220px] ${consoleLayout.cardBody}`}>
           {(calls?.by_model ?? []).length === 0 ? (
             <p className="p-3 text-xs text-[#62666d]">尚無 llm_call 軌跡，完成任務後將自動彙總。</p>
           ) : (
