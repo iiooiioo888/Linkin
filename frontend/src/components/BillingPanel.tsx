@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { fetchCloudBilling } from '../api/client';
 import type { CloudBilling, CloudServiceCost } from '../types';
+import { PanelSection, PanelShell, consoleLayout } from './ui/ConsoleLayout';
 
 function formatCost(amount: number): string {
   if (amount < 0.01) return `$${amount.toFixed(4)}`;
@@ -58,15 +59,15 @@ function SectionCard({
   action?: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden apple-card !p-0">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] px-5 py-3.5">
+    <section className={consoleLayout.card}>
+      <div className={`flex flex-wrap items-center justify-between gap-2 ${consoleLayout.cardHeader} normal-case tracking-normal`}>
         <div>
           <h3 className="apple-heading text-[14px]">{title}</h3>
           {hint && <p className="mt-1 text-[11px] font-normal text-[#8E8E93]">{hint}</p>}
         </div>
         {action}
       </div>
-      <div className="p-5">{children}</div>
+      <div className={consoleLayout.cardBody}>{children}</div>
     </section>
   );
 }
@@ -166,8 +167,9 @@ export default function BillingPanel() {
   }
 
   return (
-    <div className="flex-1 space-y-4 overflow-auto p-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <PanelShell>
+      <PanelSection>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="今日費用"
           value={billing ? formatCost(billing.today_total) : '--'}
@@ -357,6 +359,7 @@ export default function BillingPanel() {
           </p>
         </SectionCard>
       )}
-    </div>
+      </PanelSection>
+    </PanelShell>
   );
 }

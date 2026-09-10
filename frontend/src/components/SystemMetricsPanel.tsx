@@ -8,6 +8,17 @@ import { fetchOptimizationMonitor } from '../api/client';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { OptimizationMonitorData } from '../types';
 import { RoadmapTable } from './ChatMonitorCards';
+import {
+  ConsoleCard,
+  ConsoleCardHeader,
+  KpiCard,
+  KpiGrid,
+  PanelAlert,
+  PanelSection,
+  PanelShell,
+  SectionHeader,
+  consoleLayout,
+} from './ui/ConsoleLayout';
 
 type MetricRow = {
   name: string;
@@ -204,60 +215,53 @@ export default function SystemMetricsPanel() {
   const activeCount = data?.roadmap?.filter((r) => r.status === 'active').length ?? 0;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold">運行指標</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            快取 · 反思 · 優化路線圖 · 環節模型（非工業 OPC）
-          </p>
-          <p className="mt-1 text-[11px] text-[#636366]">
-            API 金鑰在{' '}
-            <a href="#/monitor/llm" className="text-[#64D2FF] hover:underline">
-              {navPathForTab('llm')}
-            </a>
-            ；用量在{' '}
-            <a href="#/monitor/models" className="text-[#64D2FF] hover:underline">
-              計費 → AI 用量
-            </a>
-            。
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-[#27a644]/15 px-2.5 py-0.5 text-[11px] text-[#4cc38a]">
-            {activeCount} 項優化啟用
-          </span>
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]"
-          >
-            {loading ? '同步中' : '重新整理'}
-          </button>
-        </div>
-      </div>
+    <PanelShell>
+      <PanelSection>
+        <SectionHeader
+          title="運行指標"
+          description="快取 · 反思 · 優化路線圖 · 環節模型（非工業 OPC）"
+          meta={
+            <>
+              API 金鑰在{' '}
+              <a href="#/monitor/llm" className="text-[#64D2FF] hover:underline">
+                {navPathForTab('llm')}
+              </a>
+              ；用量在{' '}
+              <a href="#/monitor/models" className="text-[#64D2FF] hover:underline">
+                計費 → AI 用量
+              </a>
+              。
+            </>
+          }
+          actions={
+            <>
+              <span className="rounded-full bg-[#27a644]/15 px-2.5 py-0.5 text-[11px] text-[#4cc38a]">
+                {activeCount} 項優化啟用
+              </span>
+              <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
+                {loading ? '同步中' : '重新整理'}
+              </button>
+            </>
+          }
+        />
 
-      {error && (
-        <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-          {error}
-        </div>
-      )}
+        {error ? <PanelAlert>{error}</PanelAlert> : null}
 
-      <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {[
-          { label: '快取命中', value: `${hitPct}%` },
-          { label: '任務成功率', value: `${sys?.success_rate ?? 0}%` },
-          { label: '反思均輪次', value: reflectionTrace?.avg_iterations != null ? String(reflectionTrace.avg_iterations) : '—' },
-          { label: 'Trace', value: String(data?.trace.trace_count ?? 0) },
-        ].map((kpi) => (
-          <div key={kpi.label} className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wider text-[#62666d]">{kpi.label}</p>
-            <p className="mt-1 font-mono text-lg text-[#f7f8f8]">{kpi.value}</p>
-          </div>
-        ))}
-      </div>
+        <KpiGrid>
+          {[
+            { label: '快取命中', value: `${hitPct}%` },
+            { label: '任務成功率', value: `${sys?.success_rate ?? 0}%` },
+            {
+              label: '反思均輪次',
+              value: reflectionTrace?.avg_iterations != null ? String(reflectionTrace.avg_iterations) : '—',
+            },
+            { label: 'Trace', value: String(data?.trace.trace_count ?? 0) },
+          ].map((kpi) => (
+            <KpiCard key={kpi.label} label={kpi.label} value={kpi.value} />
+          ))}
+        </KpiGrid>
 
-      <div className="overflow-x-auto apple-card apple-card--tight !p-0">
+        <ConsoleCard className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-left">
           <thead>
             <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[#62666d]">
@@ -297,16 +301,12 @@ export default function SystemMetricsPanel() {
             ))}
           </tbody>
         </table>
-      </div>
+        </ConsoleCard>
 
-      <div className="mt-4">
         <RoadmapTable items={data?.roadmap ?? []} />
-      </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-white/[0.08]">
-        <p className="border-b border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
-          反思鏈路追蹤（輪次 · 耗時 · 改進幅度）
-        </p>
+        <ConsoleCard>
+          <ConsoleCardHeader>反思鏈路追蹤（輪次 · 耗時 · 改進幅度）</ConsoleCardHeader>
         <table className="w-full text-left text-[12px]">
           <thead className="bg-[#0a0a0b] text-[10px] uppercase tracking-wider text-[#62666d]">
             <tr>
@@ -360,12 +360,10 @@ export default function SystemMetricsPanel() {
             )}
           </tbody>
         </table>
-      </div>
+        </ConsoleCard>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-white/[0.08]">
-        <p className="border-b border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
-          環節 → 模型層級（P0 任務-模型匹配）
-        </p>
+        <ConsoleCard>
+          <ConsoleCardHeader>環節 → 模型層級（P0 任務-模型匹配）</ConsoleCardHeader>
         <table className="w-full text-left text-[12px]">
           <thead className="bg-[#0a0a0b] text-[10px] uppercase tracking-wider text-[#62666d]">
             <tr>
@@ -384,7 +382,8 @@ export default function SystemMetricsPanel() {
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
+        </ConsoleCard>
+      </PanelSection>
+    </PanelShell>
   );
 }

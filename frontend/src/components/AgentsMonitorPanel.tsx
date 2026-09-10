@@ -45,6 +45,7 @@ import { RdCell, RoleDeskHeader, RoleRightPanel, RoleStatsStrip, type RoleDeskTa
 import { StatusColumnBoard } from './StatusColumnBoard';
 import StrategyCatalogPanel from './StrategyCatalogPanel';
 import { ITEM_STATUS_META } from './TaskPanel';
+import { ConsoleEmpty, ConsoleRdShell, PanelShell } from './ui/ConsoleLayout';
 
 function itemStatus(status: string): { label: string; cls: string } {
   return ITEM_STATUS_META[status] ?? { label: status, cls: 'bg-gray-700/60 text-gray-300' };
@@ -481,23 +482,23 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
         .join(' · ')
     : '';
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas text-[#f7f8f8]">
+    <PanelShell scroll={false} className="text-[#f7f8f8]">
       {error && (
-        <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-[11px] text-amber-100">
+        <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-6 py-2 text-[11px] text-amber-100">
           {error} · 已顯示角色目錄，後端恢復後會自動帶入任務
         </div>
       )}
 
       {!selected && (
-        <div className="flex flex-1 items-center justify-center px-6 text-center">
+        <ConsoleEmpty className="flex flex-1 items-center justify-center">
           <p className="text-[13px] text-[#AEAEB2]">
             {deskScope === 'studio' ? '尚無工作室角色' : '尚無名冊'}
           </p>
-        </div>
+        </ConsoleEmpty>
       )}
 
       {selected && (
-        <div className="rd-shell">
+        <ConsoleRdShell>
           <RoleDeskHeader
             agent={selected}
             modelLabel={selectedModelLabel}
@@ -506,7 +507,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
             showQuant={quantDesk}
           />
           {(selected.alerts?.length ?? 0) > 0 && (
-            <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-[11px] text-amber-100">
+            <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-6 py-2 text-[11px] text-amber-100">
               {selected.alerts![0].level} · {selected.alerts![0].message}
               {(selected.alerts!.length ?? 0) > 1 ? ` · 另 ${selected.alerts!.length - 1} 則` : ''}
             </div>
@@ -747,7 +748,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
               />
             ) : null}
           </div>
-        </div>
+        </ConsoleRdShell>
       )}
       {creating && (
         <CreateRoleModal
@@ -766,6 +767,6 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
           }}
         />
       )}
-    </div>
+    </PanelShell>
   );
 }

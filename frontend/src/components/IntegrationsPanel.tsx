@@ -36,6 +36,7 @@ import {
 } from '../lib/integrationsUi';
 import { jumpToL0Kernel, jumpToContextMonitor } from '../lib/rahoUi';
 import { openChatContextDetail } from '../lib/contextUi';
+import { PanelSection, PanelShell, consoleLayout } from './ui/ConsoleLayout';
 
 const inputCls =
   'w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[#F5F5F7] outline-none focus:border-[#64D2FF]/50';
@@ -43,7 +44,7 @@ const btnCls =
   'rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2.5 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8] disabled:opacity-40';
 const btnPrimaryCls =
   'rounded-xl border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-2.5 py-1 text-[11px] text-[#64D2FF] disabled:opacity-40';
-const cardCls = 'rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3';
+const cardCls = consoleLayout.insetCard;
 
 function ErrorBar({ message }: { message: string | null }) {
   if (!message) return null;
@@ -564,7 +565,8 @@ export default function IntegrationsPanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4 apple-canvas">
+    <PanelShell>
+      <PanelSection>
       <header className="integ-hero">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -609,14 +611,14 @@ export default function IntegrationsPanel() {
         <RecallWorkbench enabled={recallEnabled} />
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         {byGroup.map(({ group, meta, items: groupItems }) => (
           <section key={group}>
             <div className="mb-2">
               <h3 className="text-[12px] font-semibold tracking-wide text-[#F5F5F7]">{meta.label}</h3>
               <p className="text-[10px] text-[#636366]">{meta.hint}</p>
             </div>
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className={consoleLayout.cardGrid}>
               {groupItems.map((item) => (
                 <IntegrationCard
                   key={item.name}
@@ -633,6 +635,7 @@ export default function IntegrationsPanel() {
           </section>
         ))}
       </div>
-    </div>
+      </PanelSection>
+    </PanelShell>
   );
 }

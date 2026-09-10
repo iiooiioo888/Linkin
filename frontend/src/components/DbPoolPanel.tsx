@@ -11,6 +11,7 @@ import {
   runDbHealthCheck,
   type DbPoolStats,
 } from '../api/client';
+import { PanelScroll, PanelShell, SectionHeader, consoleLayout } from './ui/ConsoleLayout';
 
 export default function DbPoolPanel() {
   const [stats, setStats] = useState<DbPoolStats | null>(null);
@@ -71,15 +72,15 @@ export default function DbPoolPanel() {
   }, []);
 
   return (
-    <div className="flex h-full min-h-0 flex-col apple-canvas text-[#f7f8f8]">
-      <div className="border-b border-white/[0.08] px-5 py-3">
-        <h1 className="text-sm font-semibold tracking-tight">🗄️ 數據庫連接池管理</h1>
-        <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-          監控 SQLite 連接池狀態、管理連接、執行健康檢查
-        </p>
+    <PanelShell scroll={false}>
+      <div className="shrink-0 border-b border-white/[0.08] px-6 py-4">
+        <SectionHeader
+          title="🗄️ 數據庫連接池管理"
+          description="監控 SQLite 連接池狀態、管理連接、執行健康檢查"
+        />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
+      <PanelScroll className="flex flex-col gap-4">
         {error && (
           <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
             {error}
@@ -114,7 +115,7 @@ export default function DbPoolPanel() {
         )}
 
         {/* 總覽卡片 */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           <StatCard label="連接池大小" value={stats?.pool_size ?? 0} />
           <StatCard label="活躍連接" value={stats?.active_connections ?? 0} />
           <StatCard label="空閒連接" value={stats?.idle_connections ?? 0} />
@@ -213,14 +214,14 @@ export default function DbPoolPanel() {
             暫無連接記錄
           </div>
         )}
-      </div>
-    </div>
+      </PanelScroll>
+    </PanelShell>
   );
 }
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-[#1C1C1E] p-3">
+    <div className={consoleLayout.kpiCard}>
       <div className="text-[10px] uppercase tracking-wider text-[#62666d]">{label}</div>
       <div className="mt-1 text-lg font-semibold text-[#f7f8f8]">{value}</div>
     </div>

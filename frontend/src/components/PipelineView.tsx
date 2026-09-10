@@ -13,6 +13,17 @@ import type { MultiDimEvaluation } from '../types';
 import PipelineDag from './PipelineDag';
 import { IterationTrend, ReflectionRadar } from './ReflectionCharts';
 import { StatusColumnBoard } from './StatusColumnBoard';
+import {
+  ConsoleCard,
+  ConsoleCardBody,
+  ConsoleCardHeader,
+  ConsoleRdShell,
+  ConsoleRdToolbar,
+  KpiCard,
+  PanelShell,
+  cn,
+  consoleLayout,
+} from './ui/ConsoleLayout';
 
 interface PipelineViewProps {
   onGoTasks?: () => void;
@@ -78,84 +89,91 @@ export default function PipelineView({ onGoTasks }: PipelineViewProps) {
     return grouped;
   }, [activeIndex]);
 
+  const kpis = [
+    { label: '當前', value: currentLabel, valueClassName: activeIndex != null ? 'text-[#34C759]' : undefined },
+    { label: '隊列', value: stageByCol.queue.length },
+    { label: '執行中', value: stageByCol.executing.length },
+    { label: '已完成', value: stageByCol.done.length, valueClassName: stageByCol.done.length ? 'text-[#34C759]' : undefined },
+    { label: '門檻', value: optimization?.reflection?.pass_threshold ?? '—' },
+    { label: '路徑', value: feed.resolvedPath || '—', valueClassName: 'truncate text-sm' },
+  ];
+
   return (
-    <div className="rd-shell apple-canvas">
-      <div className="rd-th">
-        <h2>管線 — {PIPELINE_STAGES.length} 階</h2>
-        <button type="button" className="rd-btn" onClick={() => onGoTasks?.()}>
-          任務監控
-        </button>
-      </div>
+    <PanelShell scroll={false} className="text-[#f7f8f8]">
+      <ConsoleRdShell>
+        <ConsoleRdToolbar
+          title={`管線 — ${PIPELINE_STAGES.length} 階`}
+          actions={
+            <button type="button" className="rd-btn" onClick={() => onGoTasks?.()}>
+              任務監控
+            </button>
+          }
+        />
 
-      <div className="rd-stats">
-        <div className="rd-stat">
-          <span className="rd-stat-l">當前</span>
-          <span className={`rd-stat-v ${activeIndex != null ? 'ok' : ''}`}>{currentLabel}</span>
+        <div className={consoleLayout.kpiStrip6}>
+          {kpis.map((kpi) => (
+            <KpiCard
+              key={kpi.label}
+              label={kpi.label}
+              value={kpi.value}
+              valueClassName={kpi.valueClassName}
+            />
+          ))}
         </div>
-        <div className="rd-stat">
-          <span className="rd-stat-l">隊列</span>
-          <span className="rd-stat-v">{stageByCol.queue.length}</span>
-        </div>
-        <div className="rd-stat">
-          <span className="rd-stat-l">執行中</span>
-          <span className="rd-stat-v">{stageByCol.executing.length}</span>
-        </div>
-        <div className="rd-stat">
-          <span className="rd-stat-l">已完成</span>
-          <span className={`rd-stat-v ${stageByCol.done.length ? 'ok' : ''}`}>{stageByCol.done.length}</span>
-        </div>
-        <div className="rd-stat">
-          <span className="rd-stat-l">門檻</span>
-          <span className="rd-stat-v">{optimization?.reflection?.pass_threshold ?? '—'}</span>
-        </div>
-        <div className="rd-stat">
-          <span className="rd-stat-l">路徑</span>
-          <span className="rd-stat-v">{feed.resolvedPath || '—'}</span>
-        </div>
-      </div>
 
-      <div className="rd-body">
-        <div className="rd-tasks">
-          <StatusColumnBoard
-            columns={WORK_ITEM_COLUMNS.map((col) => {
-              const stages = stageByCol[col.key];
-              return {
-                key: col.key,
-                label: col.label,
-                count: stages.length,
-                children: stages.map((stage) => (
-                  <div key={stage.id} className="rd-tc">
-                    <div className="rd-tc-t">
-                      <span className={`rd-od ${col.key === 'executing' ? 'run' : col.key === 'done' ? 'on' : 'off'}`} />
-                      <span className="rd-tc-ttl">{stage.label}</span>
+        <div className="rd-body">
+          <div className="rd-tasks">
+            <StatusColumnBoard
+              columns={WORK_ITEM_COLUMNS.map((col) => {
+                const stages = stageByCol[col.key];
+                return {
+                  key: col.key,
+                  label: col.label,
+                  count: stages.length,
+                  children: stages.map((stage) => (
+                    <div key={stage.id} className="rd-tc">
+                      <div className="rd-tc-t">
+                        <span className={`rd-od ${col.key === 'executing' ? 'run' : col.key === 'done' ? 'on' : 'off'}`} />
+                        <span className="rd-tc-ttl">{stage.label}</span>
+                      </div>
+                      <div className="rd-tc-m">
+                        <span className={`rd-badge ${col.key === 'executing' ? 'run' : ''}`}>
+                          {col.label}
+                        </span>
+                        <span className="rd-tc-meta">{stage.id}</span>
+                      </div>
                     </div>
-                    <div className="rd-tc-m">
-                      <span className={`rd-badge ${col.key === 'executing' ? 'run' : ''}`}>
-                        {col.label}
-                      </span>
-                      <span className="rd-tc-meta">{stage.id}</span>
-                    </div>
-                  </div>
-                )),
-              };
-            })}
-          />
-          <div className="rd-pane">
-            <PipelineDag phase={phase} height={260} />
+                  )),
+                };
+              })}
+            />
+            <div className="rd-pane">
+              <PipelineDag phase={phase} height={260} />
+            </div>
           </div>
-        </div>
 
-        <aside className="rd-rp">
-          <div className="rd-sec">
-            <div className="rd-tt">反思雷達</div>
-            <ReflectionRadar multiDim={multiDim} />
-          </div>
-          <div className="rd-sec">
-            <div className="rd-tt">迭代趨勢</div>
-            <IterationTrend history={history} />
-          </div>
-        </aside>
-      </div>
-    </div>
+          <aside
+            className={cn(
+              'rd-rp flex w-[360px] shrink-0 flex-col overflow-y-auto border-l border-white/[0.06]',
+              consoleLayout.sectionStack,
+              consoleLayout.cardBody,
+            )}
+          >
+            <ConsoleCard>
+              <ConsoleCardHeader>反思雷達</ConsoleCardHeader>
+              <ConsoleCardBody dense>
+                <ReflectionRadar multiDim={multiDim} />
+              </ConsoleCardBody>
+            </ConsoleCard>
+            <ConsoleCard>
+              <ConsoleCardHeader>迭代趨勢</ConsoleCardHeader>
+              <ConsoleCardBody dense>
+                <IterationTrend history={history} />
+              </ConsoleCardBody>
+            </ConsoleCard>
+          </aside>
+        </div>
+      </ConsoleRdShell>
+    </PanelShell>
   );
 }

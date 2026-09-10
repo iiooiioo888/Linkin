@@ -6,6 +6,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchCheckpoints, resumeTask } from '../api/client';
 import type { CheckpointSummary } from '../types';
+import {
+  ConsoleCard,
+  ConsoleEmpty,
+  KpiCard,
+  KpiGrid,
+  PanelAlert,
+  PanelSection,
+  PanelShell,
+  SectionHeader,
+  consoleLayout,
+} from './ui/ConsoleLayout';
 
 function fmtTime(iso: string): string {
   const d = new Date(iso);
@@ -53,63 +64,46 @@ export default function CheckpointsPanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold">斷點檢查點</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            公司運行時中斷後可從此續跑 · {items.length} 筆
-          </p>
-        </div>
-        <button
-          onClick={() => void refresh()}
-          className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]"
-        >
-          {loading ? '同步中' : '重新整理'}
-        </button>
-      </div>
+    <PanelShell>
+      <PanelSection>
+        <SectionHeader
+          title="斷點檢查點"
+          description={`公司運行時中斷後可從此續跑 · ${items.length} 筆`}
+          actions={
+            <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
+              {loading ? '同步中' : '重新整理'}
+            </button>
+          }
+        />
 
-      {error && (
-        <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-          {error}
-        </div>
-      )}
-      {notice && (
-        <div className="mb-3 rounded-md border border-[#007AFF]/30 bg-[#007AFF]/10 px-3 py-2 text-xs text-[#64D2FF]">
-          {notice}
-        </div>
-      )}
+        {error ? <PanelAlert>{error}</PanelAlert> : null}
+        {notice ? <PanelAlert tone="notice">{notice}</PanelAlert> : null}
 
-      <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">可恢復</p>
-          <p className="mt-1 font-mono text-lg">{items.length}</p>
-        </div>
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">工作項合計</p>
-          <p className="mt-1 font-mono text-lg">
-            {items.reduce((sum, c) => sum + (c.work_item_count ?? 0), 0)}
-          </p>
-        </div>
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">最近階段</p>
-          <p className="mt-1 truncate font-mono text-sm">{items[0]?.phase || '—'}</p>
-        </div>
-        <div className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#62666d]">最近儲存</p>
-          <p className="mt-1 truncate font-mono text-[11px]">{items[0] ? fmtTime(items[0].saved_at) : '—'}</p>
-        </div>
-      </div>
+        <KpiGrid>
+          <KpiCard label="可恢復" value={items.length} />
+          <KpiCard
+            label="工作項合計"
+            value={items.reduce((sum, c) => sum + (c.work_item_count ?? 0), 0)}
+          />
+          <KpiCard label="最近階段" value={items[0]?.phase || '—'} valueClassName="truncate text-sm" />
+          <KpiCard
+            label="最近儲存"
+            value={items[0] ? fmtTime(items[0].saved_at) : '—'}
+            valueClassName="truncate text-[11px]"
+          />
+        </KpiGrid>
 
-      {items.length === 0 ? (
-        <div className="apple-card apple-card--tight !p-0 px-4 py-16 text-center">
-          <p className="text-sm text-[#8a8f98]">尚無可恢復檢查點</p>
-          <p className="mt-1 text-[11px] text-[#62666d]">
-            公司任務執行中會自動寫入 checkpoint_*.json，中斷後可在此續跑。
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto apple-card apple-card--tight !p-0">
+        {items.length === 0 ? (
+          <ConsoleCard>
+            <ConsoleEmpty>
+              <p className="text-sm text-[#8a8f98]">尚無可恢復檢查點</p>
+              <p className="mt-1 text-[11px] text-[#62666d]">
+                公司任務執行中會自動寫入 checkpoint_*.json，中斷後可在此續跑。
+              </p>
+            </ConsoleEmpty>
+          </ConsoleCard>
+        ) : (
+          <ConsoleCard className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left">
             <thead>
               <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[#62666d]">
@@ -150,8 +144,9 @@ export default function CheckpointsPanel() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-    </div>
+          </ConsoleCard>
+        )}
+      </PanelSection>
+    </PanelShell>
   );
 }

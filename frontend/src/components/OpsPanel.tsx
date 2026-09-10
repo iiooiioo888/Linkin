@@ -7,6 +7,7 @@ import CheckpointsPanel from './CheckpointsPanel';
 import CloudConsoleView from './CloudConsoleView';
 import DbPoolPanel from './DbPoolPanel';
 import HubPanel from './HubPanel';
+import { PanelShell, PanelTabBar } from './ui/ConsoleLayout';
 
 type OpsTab = 'hub' | 'cloud' | 'checkpoints' | 'dbpool';
 
@@ -14,8 +15,8 @@ export default function OpsPanel() {
   const [tab, setTab] = useState<OpsTab>('hub');
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas">
-      <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-white/[0.06] px-6 py-3">
+    <PanelShell scroll={false}>
+      <PanelTabBar>
         {(
           [
             ['hub', 'AI Hub'],
@@ -37,13 +38,13 @@ export default function OpsPanel() {
             {label}
           </button>
         ))}
-      </div>
+      </PanelTabBar>
       <div className="min-h-0 flex-1 overflow-hidden">
         {tab === 'hub' && <HubPanel />}
         {tab === 'cloud' && <CloudConsoleView />}
         {tab === 'checkpoints' && <CheckpointsPanel />}
         {tab === 'dbpool' && <DbPoolPanel />}
       </div>
-    </div>
+    </PanelShell>
   );
 }
