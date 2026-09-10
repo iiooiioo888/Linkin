@@ -236,7 +236,7 @@ def fetch_opc_live(base_url: str | None = None) -> dict[str, Any]:
     for url in _opc_service_candidates(base_url):
         try:
             return _fetch_opc_live_once(url)
-        except Exception as exc:  # noqa: BLE001 — 監控降級，不得讓控制面崩潰
+        except Exception as exc:
             msg = f"{url}: {exc}"
             errors.append(msg)
             logger.info("opc_service 即時資料不可達：%s", msg)

@@ -17,9 +17,10 @@ import hashlib
 import random
 import re
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from backend.linkin import nbt
 from backend.linkin.knowledge import data_dir

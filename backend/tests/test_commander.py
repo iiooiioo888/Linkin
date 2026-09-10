@@ -13,10 +13,10 @@ from backend.company.roles import STANDARD_ROLES
 from backend.company.state import RoleType
 from backend.services.commander import (
     MAX_L2_PROMPT_TOKENS,
-    SYSTEM_PROMPT,
     STATUS_ESCALATE_USER,
     STATUS_PLAN_READY,
     STATUS_REJECT_L4,
+    SYSTEM_PROMPT,
     TacticalCommander,
     apply_commander_system,
     classify_grill,

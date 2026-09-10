@@ -1,13 +1,10 @@
 """性能优化路线图相关单元测试。"""
 
 import json
-import os
-from pathlib import Path
 
 import pytest
 
-from backend.company.budget import BudgetManager
-from backend.company.state import BudgetConfig, BudgetTier
+from backend.company.state import BudgetTier
 from backend.core.routing_feedback import (
     adaptive_length_threshold,
     record_outcome,

@@ -98,7 +98,7 @@ def resolve_stage_model(
                     tier.value,
                 )
                 return model
-    except Exception as exc:  # noqa: BLE001 — 路由降級不得中斷主流程
+    except Exception as exc:
         logger.warning("cost_speed 路由失敗，回退 tier 模型：%s", exc)
     logger.debug("環節 %s → tier %s → model %s", stage, tier.value, fallback)
     return fallback

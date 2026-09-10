@@ -582,7 +582,12 @@ def test_minutes_flow_benchmark_returns_and_sina(monkeypatch):
 
 
 def test_keyed_feeds_require_tokens(monkeypatch):
-    from backend.company.quant_feeds import alphavantage_quote, finnhub_quote, keyed_status, tushare_bars
+    from backend.company.quant_feeds import (
+        alphavantage_quote,
+        finnhub_quote,
+        keyed_status,
+        tushare_bars,
+    )
 
     monkeypatch.setattr("backend.company.quant_feeds.env_tokens", lambda: {"tushare": "", "finnhub": "", "alphavantage": "", "itick": ""})
     status = keyed_status()

@@ -142,7 +142,7 @@ def classify_provider(api_base: str = "", model: str = "") -> str:
         return "deepseek"
     if "qwen" in model_l:
         return "qwen"
-    if model_l.startswith("kimi") or model_l.startswith("moonshot"):
+    if model_l.startswith(("kimi", "moonshot")):
         return "moonshot"
     if model_l.startswith("glm"):
         return "zhipu"
@@ -303,7 +303,7 @@ def clamp_model(
                     **runtime,
                     "allowed_models": union_allowed_models(runtime),
                 }
-        except Exception:  # noqa: BLE001 — 路由層失敗時回退單一池
+        except Exception:
             logger.debug("多 API 路由 clamp 回退單一池", exc_info=True)
     return _clamp_against(requested, runtime)
 
@@ -327,7 +327,7 @@ def compatible_hub_models(
         union = union_allowed_models(runtime)
         if union:
             allowed = union
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     kind = str(
         runtime.get("provider_kind")
@@ -391,7 +391,7 @@ def fetch_catalog(
                 source = "crawl"
             else:
                 error = "目錄為空，改用靜態清單"
-        except Exception as exc:  # noqa: BLE001 — 爬取失敗必須回退，不得中斷 Agent
+        except Exception as exc:
             error = str(exc)[:300]
             logger.warning("爬取模型目錄失敗（%s %s）：%s", kind, url, error)
 
@@ -504,7 +504,12 @@ def refresh_model_catalog(*, reason: str = "manual", route_id: str | None = None
         }
     )
     try:
-        from backend.core.api_router import PRIMARY_ROUTE_ID, list_routes, save_routes, sync_primary_into_routes
+        from backend.core.api_router import (
+            PRIMARY_ROUTE_ID,
+            list_routes,
+            save_routes,
+            sync_primary_into_routes,
+        )
 
         sync_primary_into_routes()
         refreshed: list[dict[str, Any]] = []
@@ -525,7 +530,7 @@ def refresh_model_catalog(*, reason: str = "manual", route_id: str | None = None
             refreshed.append(_merge_catalog_into_route(route, extra_cat))
         if refreshed:
             save_routes(refreshed)
-    except Exception:  # noqa: BLE001 — 額外路由刷新失敗不得擋住主目錄
+    except Exception:
         logger.warning("額外 API 路由目錄刷新失敗", exc_info=True)
     return public_pool()
 
@@ -542,7 +547,7 @@ def public_pool(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
     stale = False
     if fetched:
         try:
-            ts = datetime.fromisoformat(fetched.replace("Z", "+00:00"))
+            ts = datetime.fromisoformat(fetched)
             age = (datetime.now(timezone.utc) - ts.astimezone(timezone.utc)).total_seconds()
             stale = age > interval * 2
         except ValueError:
@@ -558,7 +563,7 @@ def public_pool(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
         union = router_state.get("allowed_models") or union_allowed_models(runtime)
         if union:
             allowed = union
-    except Exception:  # noqa: BLE001
+    except Exception:
         router_state = {}
     route_count = len(router_state.get("api_routes") or [])
     models = runtime.get("catalog_models") or [{"id": m, "name": m, "owned_by": kind} for m in allowed]
@@ -638,7 +643,7 @@ def _next_check_at(fetched: str, interval: int) -> str:
     if not fetched:
         return ""
     try:
-        ts = datetime.fromisoformat(fetched.replace("Z", "+00:00"))
+        ts = datetime.fromisoformat(fetched)
         nxt = ts.astimezone(timezone.utc) + timedelta(seconds=interval)
         return nxt.isoformat()
     except ValueError:
@@ -890,7 +895,7 @@ def probe_pool_health(
             catalog_ids = [row["id"] for row in parse_models_payload(payload)]
             latency_ms = int((time.monotonic() - t0) * 1000)
             ok = True
-        except Exception as exc:  # noqa: BLE001 — 探活失敗不得中斷主流程
+        except Exception as exc:
             latency_ms = int((time.monotonic() - t0) * 1000)
             error = f"endpoint:{exc}"[:300]
             force_open_pool_model(primary, error, from_probe=True)
@@ -937,7 +942,7 @@ def probe_pool_health(
                 heal_pool_model(model, only_probe=False)
                 if model not in healed:
                     healed.append(model)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 force_open_pool_model(model, f"probe ping:{exc}", from_probe=True)
                 opened.append(model)
 
@@ -976,7 +981,7 @@ def _model_cost_score(model: str) -> float:
         for key, prices in costs.items():
             if key == model or _bare(key) == bare:
                 return float(prices[0]) + float(prices[1])
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     return 999.0
 
@@ -995,7 +1000,7 @@ def failover_models(requested: str | None, cfg: dict[str, Any] | None = None) ->
             if owned:
                 runtime = route_as_cfg(owned)
                 allowed = [str(x) for x in (runtime.get("allowed_models") or []) if str(x).strip()]
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
     primary = clamp_model(requested or str(runtime.get("model") or ""), cfg=runtime)
     if not allowed:
@@ -1054,7 +1059,7 @@ def invoke_with_pool_failover(
             )
             record_pool_call(model, False, time.monotonic() - t0)
             return str(result), model, hops
-        except Exception as exc:  # noqa: BLE001 — 需嘗試下一模型
+        except Exception as exc:
             duration = time.monotonic() - t0
             record_pool_call(model, True, duration, str(exc))
             last_error = exc

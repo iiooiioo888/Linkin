@@ -287,14 +287,7 @@ def test_agent_monitor_reads_run_logs_and_skips_bad_lines(tmp_path, monkeypatch)
     run_dir = tmp_path / "company_runs"
     run_dir.mkdir()
     (run_dir / "run_hist1.jsonl").write_text(
-        "\n".join(
-            [
-                '{"ts": "2026-08-26T01:00:00+00:00", "run_id": "hist1", "event": "work_item_start", "item_id": "d1", "title": "寫 hello world", "assignee": "developer"}',
-                "not-json",
-                '{"ts": "2026-08-26T01:00:01+00:00", "run_id": "hist1", "event": "work_item_done", "item_id": "d1", "title": "寫 hello world", "assignee": "developer", "cost": 0.006}',
-                '{"ts": "2026-08-26T01:00:02+00:00", "run_id": "hist1", "event": "synthesize_done", "cost": 0.1}',
-            ]
-        )
+        '{"ts": "2026-08-26T01:00:00+00:00", "run_id": "hist1", "event": "work_item_start", "item_id": "d1", "title": "寫 hello world", "assignee": "developer"}\nnot-json\n{"ts": "2026-08-26T01:00:01+00:00", "run_id": "hist1", "event": "work_item_done", "item_id": "d1", "title": "寫 hello world", "assignee": "developer", "cost": 0.006}\n{"ts": "2026-08-26T01:00:02+00:00", "run_id": "hist1", "event": "synthesize_done", "cost": 0.1}'
         + "\n",
         encoding="utf-8",
     )

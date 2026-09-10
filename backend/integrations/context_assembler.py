@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Callable
 
 from backend.company.raho.l0_pipeline import redact
 from backend.core.decision_router import REASON_CACHE_HIT

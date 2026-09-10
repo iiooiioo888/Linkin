@@ -5,8 +5,8 @@ from __future__ import annotations
 from backend.hub.budget_guard import DailyBudgetLedger
 from backend.hub.cache import SemanticCache
 from backend.hub.circuit import CircuitRegistry
+from backend.hub.db import init_database
 from backend.hub.store import HubStore
-from backend.hub.db import get_database, init_database
 
 
 class HubRuntime:

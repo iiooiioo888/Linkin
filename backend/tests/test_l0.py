@@ -19,7 +19,12 @@ from backend.company.raho.l0 import (
     match_knowledge,
     remember_query,
 )
-from backend.company.raho.protocol import LAYER_LABELS, RahoLayer, l0_enabled, raho_directory, raho_identity
+from backend.company.raho.protocol import (
+    LAYER_LABELS,
+    l0_enabled,
+    raho_directory,
+    raho_identity,
+)
 from backend.company.raho.store import STORE
 from backend.environment.global_monitor import EnvSnapshot, compute_bias
 from backend.memory.context_compressor import compress, extract_decisions, summarize_trace
@@ -50,8 +55,8 @@ class TestIdentity:
         from backend.company.raho.protocol import canonical_role_id
 
         assert canonical_role_id(2) == "atomic_executor"
-        from backend.company.state import RoleType
         from backend.company.roles import STANDARD_ROLES
+        from backend.company.state import RoleType
 
         assert RoleType.ATOMIC_EXECUTOR in STANDARD_ROLES
         assert RoleType.ENVIRONMENT_KERNEL in STANDARD_ROLES
@@ -149,7 +154,7 @@ class TestInjection:
         assert pack["battle_plan"]["atomic_role_instances"][0]["max_iterations"] == 2
 
     def test_radar_bias_never_relaxes_schema(self):
-        from backend.company.raho.inspector import InspectorGrill, InspectorVerdict, TEST_SCHEMA
+        from backend.company.raho.inspector import TEST_SCHEMA, InspectorGrill, InspectorVerdict
 
         verdict = InspectorVerdict(
             verdict=VERDICT_REWORK,

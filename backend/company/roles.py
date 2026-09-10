@@ -6,6 +6,8 @@
 - 內建組織架構模板（page_dev / fullstack_app / research_report / quick_task / full_company / quant_desk / industrial_ops / story_studio）
 """
 
+from backend.company.raho.atomic_executor import CONSTITUTION_LAYER as EXECUTOR_CONSTUTION
+from backend.company.raho.inspector import CONSTITUTION_LAYER as INSPECTOR_CONSTUTION
 from backend.company.state import (
     BudgetConfig,
     BudgetTier,
@@ -15,8 +17,6 @@ from backend.company.state import (
 )
 from backend.services.auditor_prompt import SYSTEM_PROMPT as AUDITOR_SYSTEM_PROMPT
 from backend.services.commander import SYSTEM_PROMPT as COMMANDER_SYSTEM_PROMPT
-from backend.company.raho.inspector import CONSTITUTION_LAYER as INSPECTOR_CONSTUTION
-from backend.company.raho.atomic_executor import CONSTITUTION_LAYER as EXECUTOR_CONSTUTION
 
 # ═══════════════════════════════════════════════════════════════
 # Level 0：最高決策層

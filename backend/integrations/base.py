@@ -13,8 +13,9 @@ import logging
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ def _urllib_transport(
     method: str, url: str, headers: Mapping[str, str], body: bytes | None, timeout: float
 ) -> tuple[int, bytes]:
     req = urllib.request.Request(url, data=body, headers=dict(headers), method=method)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — 僅內網自建服務
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.status, resp.read()
 
 
@@ -46,7 +47,7 @@ def _decode_payload(raw: bytes | None) -> Any:
     text = raw.decode("utf-8").strip()
     if not text:
         return None
-    if text.startswith("{") or text.startswith("["):
+    if text.startswith(("{", "[")):
         return json.loads(text)
     frames = [line[len("data:"):].strip() for line in text.splitlines() if line.startswith("data:")]
     if not frames:

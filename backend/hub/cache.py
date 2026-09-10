@@ -8,7 +8,6 @@ import re
 import unicodedata
 from typing import Any
 
-
 SEMANTIC_TTL_S = 86400
 INTENT_MAX_CHARS = 512
 
@@ -38,7 +37,7 @@ def last_user_text(messages: list[dict[str, Any]]) -> str:
 
 def semantic_key(user_id: str, strategy: str, messages: list[dict[str, Any]]) -> str:
     digest = hashlib.md5(
-        f"{user_id}:{strategy}:{normalize_intent(last_user_text(messages))}".encode("utf-8"),
+        f"{user_id}:{strategy}:{normalize_intent(last_user_text(messages))}".encode(),
         usedforsecurity=False,
     ).hexdigest()
     return f"semantic:{digest}"

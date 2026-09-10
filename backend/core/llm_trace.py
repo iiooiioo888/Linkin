@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import contextvars
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -77,5 +78,5 @@ def emit(entry: dict[str, Any]) -> None:
     for hook in _HOOKS:
         try:
             hook(record)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("llm_trace 鉤子失敗（已忽略）：%s", exc)

@@ -110,7 +110,7 @@ def enhance_with_opc_context(state: EvoLoopState) -> dict[str, Any]:
                 "summary": "\n".join(summary_lines),
             }
         }
-    except Exception as exc:  # noqa: BLE001 - OPC 不可用時靜默降級
+    except Exception as exc:
         logger.warning("OPC 上下文增強失敗（降級跳過）：%s", exc)
         return {"opc_context": {}}
 
@@ -150,7 +150,7 @@ def route_by_complexity(state: EvoLoopState) -> str:
         if is_minecraft_control_query(query):
             logger.info("Minecraft MCP 控制任務判定為複雜，啟用公司運行時")
             return "run_company"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.debug("靈境／Minecraft 複雜度判斷略過：%s", exc)
 
     try:
@@ -167,7 +167,7 @@ def route_by_complexity(state: EvoLoopState) -> str:
                 logger.info("cost_speed 判定為 %s，啟用公司運行時", level)
                 return "run_company"
             return "generate_initial_answer"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("cost_speed 路徑路由失敗，回退規則判斷：%s", exc)
 
     # auto：規則判斷（向後相容）
@@ -199,13 +199,16 @@ def run_company(state: EvoLoopState) -> dict[str, Any]:
     template_name = state.get("company_template", "quick_task")
 
     try:
-        from backend.linkin.pipeline import prefix_query_with_linkin, resolve_linkin_company_template
+        from backend.linkin.pipeline import (
+            prefix_query_with_linkin,
+            resolve_linkin_company_template,
+        )
 
         linkin_template = resolve_linkin_company_template(state)
         if linkin_template:
             template_name = linkin_template
         query = prefix_query_with_linkin(query, state)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.debug("靈境公司前綴略過：%s", exc)
 
     # 選擇組織架構模板
@@ -241,7 +244,7 @@ def run_company(state: EvoLoopState) -> dict[str, Any]:
             "iteration": 0,
         }
 
-    except Exception as exc:  # noqa: BLE001 - 降級兜底：公司運行時失敗不中斷主流程
+    except Exception as exc:
         logger.error("公司運行時執行失敗：%s", exc)
         # 失敗：直接設定 final_answer，跳過評估迭代
         return {

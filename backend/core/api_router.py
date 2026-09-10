@@ -528,9 +528,7 @@ def upsert_route(payload: dict[str, Any]) -> dict[str, Any]:
         if route["id"] == incoming["id"]:
             if keep_key and not incoming.get("api_key"):
                 incoming["api_key"] = route.get("api_key") or ""
-            if "is_default" not in payload and "is_default" not in (payload or {}):
-                incoming["is_default"] = bool(route.get("is_default"))
-            elif payload.get("is_default") is None:
+            if "is_default" not in payload and "is_default" not in (payload or {}) or payload.get("is_default") is None:
                 incoming["is_default"] = bool(route.get("is_default"))
             next_rows.append(incoming)
             replaced = True
@@ -818,7 +816,7 @@ def _public_rate_cards() -> dict[str, Any]:
         from backend.company.rate_card import public_rate_cards
 
         return public_rate_cards()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return {"models": [], "by_id": {}, "fields": []}
 
 

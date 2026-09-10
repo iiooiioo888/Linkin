@@ -80,7 +80,7 @@ def collect_metrics(overrides: dict[str, Any] | None = None) -> dict[str, Any]:
         if token_ratio <= 0 and tokens:
             total = sum(tokens)
             token_ratio = min(1.2, total / 80_000.0) if total else 0.0
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
     metrics = {

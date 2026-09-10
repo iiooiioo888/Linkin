@@ -9,7 +9,6 @@
 
 from __future__ import annotations
 
-
 TERMINAL = frozenset({"completed", "failed", "cancelled", "interrupted"})
 
 

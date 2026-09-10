@@ -69,7 +69,7 @@ def constitution_brief() -> str:
         from backend.linkin.constitution import load_constitution
 
         const = load_constitution()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("讀取靈境憲法失敗（跳過注入）：%s", exc)
         return ""
     foundation = const.get("foundation") or {}
@@ -106,7 +106,7 @@ def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
         mc_hit = is_minecraft_control_query(query)
         if mc_hit:
             mcp_block = "\n" + connector_status_brief()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.debug("Minecraft MCP 摘要略過：%s", exc)
 
     if not world_hit and not mc_hit:
@@ -117,13 +117,13 @@ def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
     backend = "none"
     if world_hit:
         try:
-            from backend.linkin.knowledge import COL_WORLDVIEW, COL_NPCS, COL_EVENTS, get_store
+            from backend.linkin.knowledge import COL_EVENTS, COL_NPCS, COL_WORLDVIEW, get_store
 
             store = get_store()
             backend = "chroma" if store.backend_status().get("chroma") else "json"
             for collection in (COL_WORLDVIEW, COL_NPCS, COL_EVENTS):
                 hits.extend(store.search(collection, query, k=2))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("靈境 RAG 檢索失敗（降級僅憲法）：%s", exc)
 
     hit_lines: list[str] = []
@@ -167,7 +167,7 @@ def resolve_linkin_company_template(state: EvoLoopState) -> str | None:
             from backend.tools.minecraft_mcp import is_minecraft_control_query
 
             mc_hit = is_minecraft_control_query(query)
-        except Exception:  # noqa: BLE001
+        except Exception:
             mc_hit = False
     active = isinstance(ctx, dict) and bool(ctx.get("active"))
     complex_hit = bool(isinstance(ctx, dict) and ctx.get("complex")) or is_linkin_complex_task(query)

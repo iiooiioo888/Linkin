@@ -42,13 +42,13 @@ from backend.core.company_nodes import (
     _needs_opc_context,
     enhance_with_opc_context,
 )
+from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD
 from backend.linkin.pipeline import (
     enhance_with_linkin_context,
     is_linkin_complex_task,
     prefix_query_with_linkin,
     resolve_linkin_company_template,
 )
-from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD
 from backend.services.archiver import save_session_archive_sync
 from backend.services.task_broadcaster import task_broadcaster
 from backend.services.trace_logger import (
@@ -160,7 +160,7 @@ class TaskRecord:
         return data
 
     @classmethod
-    def from_snapshot(cls, data: dict[str, Any]) -> "TaskRecord":
+    def from_snapshot(cls, data: dict[str, Any]) -> TaskRecord:
         # 向後兼容：舊記錄使用 mode 欄位
         strategy = data.get("strategy") or data.get("mode", "auto")
         record = cls(
@@ -226,7 +226,7 @@ class TaskManager:
 
     # ── Redis 持久化 ──
 
-    def _get_redis(self) -> "redis.Redis | None":
+    def _get_redis(self) -> redis.Redis | None:
         """惰性取得 Redis 連線；失敗後不再重試（降級為記憶體）。"""
         if self._redis is not None:
             return self._redis
@@ -241,7 +241,7 @@ class TaskManager:
             self._redis = client
             logger.info("任務持久化：Redis 連線成功")
             return client
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("任務持久化：Redis 不可用，降級為記憶體：%s", exc)
             self._redis_failed = True
             return None
@@ -257,7 +257,7 @@ class TaskManager:
                 json.dumps(record.to_snapshot(), ensure_ascii=False),
                 ex=TASK_TTL_SECONDS,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("任務持久化寫入失敗：%s", exc)
 
     def _load_from_redis(self, task_id: str) -> TaskRecord | None:
@@ -273,7 +273,7 @@ class TaskManager:
             # 這裡若改狀態，跨行程讀取（MCP stdio 子行程讀主服務正在跑的
             # 任務）會把活任務誤標中斷並持久化。
             return record
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("任務記錄讀取失敗：%s", exc)
             return None
 
@@ -289,7 +289,7 @@ class TaskManager:
         loaded = 0
         try:
             keys = list(client.scan_iter(match=TASK_KEY_PREFIX + "*", count=500))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("任務 rehydrate 掃描失敗：%s", exc)
             return 0
         for key in keys:
@@ -306,7 +306,7 @@ class TaskManager:
                     self._persist(record)
                 self.tasks.setdefault(record.task_id, record)
                 loaded += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.debug("任務 rehydrate 跳過 %s：%s", key, exc)
         if loaded:
             logger.info("任務 rehydrate：自 Redis 載回 %d 筆記錄", loaded)
@@ -525,7 +525,7 @@ class TaskManager:
         }
         try:
             save_session_archive_sync(state, record.task_id)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("任務存檔失敗（不影響結果）：%s", exc)
 
     # ── 執行策略解析 ──
@@ -666,7 +666,7 @@ class TaskManager:
                 record.status = "completed"
                 tracer.log_phase_change("done")
                 self._set_phase(record, "done")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("簡單任務 %s 執行失敗：%s", record.task_id, exc)
             record.status = "failed"
             record.error = str(exc)
@@ -750,7 +750,7 @@ class TaskManager:
         try:
             tracer = TraceLogger(record.task_id)
             orchestrator.tracer = tracer
-        except Exception as exc:  # noqa: BLE001 - 軌跡注入失敗不阻斷執行
+        except Exception as exc:
             tracer = None
             logger.warning("公司任務軌跡注入失敗（不影響執行）：%s", exc)
 
@@ -772,7 +772,7 @@ class TaskManager:
                         mirror.setdefault("item_id", ctx["item_id"])
                         mirror.setdefault("phase", ctx["phase"])
                     tracer.log_company_event(event.value, mirror)
-                except Exception:  # noqa: BLE001
+                except Exception:
                     logger.debug("公司事件軌跡鏡像失敗：%s", event)
             if event == CompanyEvent.PHASE_CHANGE:
                 record.phase = str(data.get("phase", ""))
@@ -795,7 +795,7 @@ class TaskManager:
             }:
                 try:
                     record.raho = orchestrator._raho_snapshot()
-                except Exception:  # noqa: BLE001
+                except Exception:
                     pass
             # 每次事件都刷新看板與預算快照
             try:
@@ -804,7 +804,7 @@ class TaskManager:
                     for status, items in orchestrator.get_kanban().items()
                 }
                 record.budget = orchestrator.get_budget_status()
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
         orchestrator.events.on(listener)
@@ -818,7 +818,7 @@ class TaskManager:
             save_checkpoint(record.task_id, checkpoint_data)
             record.resumable = True
             self._persist(record)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("檢查點保存失敗（不影響執行）：%s", exc)
 
     async def _resume_company_task(self, record: TaskRecord, checkpoint: dict[str, Any]) -> None:
@@ -851,7 +851,7 @@ class TaskManager:
                 self._set_phase(record, "cancelled")
                 self._finish(record)
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("公司任務 %s 恢復執行失敗：%s", record.task_id, exc)
             record.status = "failed"
             record.error = str(exc)
@@ -894,7 +894,7 @@ class TaskManager:
         }
         try:
             await self._run_reflection_loop(record, state, tracer)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("任務 %s 評估迴圈失敗（保留公司產出）：%s", record.task_id, exc)
 
         record.answer = state.get("current_answer", "")
@@ -930,7 +930,7 @@ class TaskManager:
             if linkin_template:
                 config = BUILTIN_TEMPLATES.get(linkin_template) or config
             company_query = prefix_query_with_linkin(record.query, linkin_state)
-        except Exception:  # noqa: BLE001
+        except Exception:
             company_query = record.query
 
         orchestrator = CompanyOrchestrator(config)
@@ -944,7 +944,7 @@ class TaskManager:
             # 強制中斷：保存檢查點供斷點續跑，狀態收尾交給 _run_unified_task
             self._save_company_checkpoint(record, orchestrator, record.phase)
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("公司任務 %s 執行失敗：%s", record.task_id, exc)
             record.status = "failed"
             record.error = str(exc)
@@ -998,7 +998,7 @@ class TaskManager:
         }
         try:
             await self._run_reflection_loop(record, state, tracer)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("任務 %s 評估迴圈失敗（保留公司產出）：%s", record.task_id, exc)
 
         record.answer = state.get("current_answer", "")
@@ -1149,7 +1149,7 @@ class TaskManager:
             state["score"] = 0.0
             try:
                 await self._run_reflection_loop(record, state, tracer)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("任務 %s 評估迴圈失敗（保留 OPC 產出）：%s", record.task_id, exc)
 
             record.answer = state.get("current_answer", "")
@@ -1158,7 +1158,7 @@ class TaskManager:
             if record.status != "cancelled" and not record.cancel_requested:
                 record.status = "completed"
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("OPC 任務 %s 執行失敗：%s", record.task_id, exc)
             record.status = "failed"
             record.error = str(exc)

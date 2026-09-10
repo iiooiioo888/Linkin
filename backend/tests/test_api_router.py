@@ -6,7 +6,6 @@ from backend.core.api_router import (
     find_route_for_model,
     list_failover_chain,
     list_routes,
-    public_router_state,
     reset_router_state,
     resolve_route_ref,
     resolve_target,
@@ -16,7 +15,7 @@ from backend.core.api_router import (
     union_allowed_models,
     upsert_route,
 )
-from backend.core.llm import llm_kwargs_for_role, _truncate_prompt
+from backend.core.llm import _truncate_prompt, llm_kwargs_for_role
 from backend.core.llm_config import save_runtime_config
 from backend.core.provider_pool import clamp_model, refresh_model_catalog
 from backend.services.task_manager import task_manager

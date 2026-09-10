@@ -189,7 +189,7 @@ class AliyunBssClient:
             result["today_total_usd"] = _cny_to_usd(result["today_total_cny"])
             result["products"] = products
             result["error"] = None
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("阿里雲 BSS 查詢失敗：%s", exc)
             result["ok"] = False
             result["error"] = str(exc)

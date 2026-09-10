@@ -53,7 +53,7 @@ def unbind_run(token: Token) -> None:
     """還原 run 綁定。"""
     try:
         _CURRENT_RUN.reset(token)
-    except (ValueError, LookupError):  # noqa: PERF203 - token 跨上下文時放棄還原
+    except (ValueError, LookupError):
         pass
 
 
@@ -311,15 +311,15 @@ def record_seat_io(data: dict[str, Any]) -> dict[str, Any] | None:
     """記錄一次席位投遞；失敗回傳 None，絕不中斷公司主流程。"""
     try:
         return STORE.record(data)
-    except Exception:  # noqa: BLE001 - 監察軌跡不得影響執行
+    except Exception:
         logger.warning("席位 I/O 記錄失敗（已忽略）", exc_info=True)
         return None
 
 
 __all__ = [
     "BUFFER_CAPACITY",
-    "TEXT_LIMIT",
     "STORE",
+    "TEXT_LIMIT",
     "SeatIOStore",
     "bind_run",
     "current_run",

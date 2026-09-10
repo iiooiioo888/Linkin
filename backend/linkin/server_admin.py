@@ -452,7 +452,7 @@ def _llm_ready() -> bool:
 
         cfg = get_runtime_config()
         key = str(cfg.get("api_key") or os.getenv("OPENAI_API_KEY") or "").strip()
-    except Exception:  # noqa: BLE001 — 配置層不可用時退回環境變數
+    except Exception:
         key = str(os.getenv("OPENAI_API_KEY") or "").strip()
     return bool(key) and not key.startswith("sk-your")
 
@@ -561,7 +561,7 @@ def ask_agent(question: str, *, auto_approve: bool = False, role: str = "") -> d
     if _llm_ready():
         try:
             plan = _plan_with_llm(text)
-        except Exception as exc:  # noqa: BLE001 — LLM 失敗降級關鍵詞路由
+        except Exception as exc:
             logger.warning("運維 LLM 規劃失敗（降級關鍵詞路由）：%s", exc)
     if plan is None:
         plan = _plan_keyword(text)

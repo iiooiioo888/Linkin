@@ -81,7 +81,7 @@ async def _ask_layer(
     prompt += "請裁決。"
     try:
         raw = await asyncio.to_thread(_call_superior, system, prompt)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("RAHO %s 裁決失敗：%s", layer.name, exc)
         return {"action": "escalate", "reply": str(exc)}
     return parse_superior_reply(raw)
@@ -124,7 +124,7 @@ async def wait_user_decision(
     if on_created is not None and timeout > 0:
         try:
             on_created(pending)
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.debug("pending on_created hook 失敗", exc_info=True)
     if timeout <= 0:
         resolution = {
@@ -273,7 +273,7 @@ async def resolve_grill(
                         or re.search(
                             r"allowed_tools|工具白名單|工具不足|ALLOWED_TOOLS",
                             i.message or "",
-                            re.I,
+                            re.IGNORECASE,
                         )
                     )
                 ]
@@ -385,7 +385,7 @@ def _auto_reissue_tools(
         if not inferred:
             return None
         return normalize_tools(list(allowed_tools or []) + inferred)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.debug("工具自動重發推斷失敗", exc_info=True)
         return None
 
@@ -396,7 +396,7 @@ def _tool_only_issues(issues: list[GrillIssue]) -> bool:
     for issue in issues:
         if issue.blocker_type == "工具不足" or issue.kind == "tool":
             continue
-        if re.search(r"allowed_tools|工具白名單|工具不足|ALLOWED_TOOLS", issue.message or "", re.I):
+        if re.search(r"allowed_tools|工具白名單|工具不足|ALLOWED_TOOLS", issue.message or "", re.IGNORECASE):
             continue
         return False
     return True

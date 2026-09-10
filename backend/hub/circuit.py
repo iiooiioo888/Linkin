@@ -34,9 +34,7 @@ class CircuitBreaker:
                 self.half_open_calls = 0
             else:
                 return False
-        if self.state == "HALF_OPEN" and self.half_open_calls >= self.permitted_half_open:
-            return False
-        return True
+        return not (self.state == "HALF_OPEN" and self.half_open_calls >= self.permitted_half_open)
 
     def record(self, failed: bool, duration_s: float = 0.0, now: float | None = None) -> None:
         now = time.monotonic() if now is None else now

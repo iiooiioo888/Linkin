@@ -181,7 +181,7 @@ def test_agent_monitor_allocates_cloud_into_budget(monkeypatch):
         "catalog_meta",
         lambda: {"categories": [], "org_templates": [], "presets": []},
     )
-    monkeypatch.setattr(am, "get_monitor_prefs", lambda: {})
+    monkeypatch.setattr(am, "get_monitor_prefs", dict)
 
     class _Billing:
         def get_billing_summary(self):

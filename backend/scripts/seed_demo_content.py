@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import math
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -275,8 +274,9 @@ def seed_knowledge() -> tuple[int, str]:
 
     chroma_note = "chroma skipped"
     try:
-        from backend.memory.chroma_compat import apply_chromadb_sql_txt_compat
         import chromadb
+
+        from backend.memory.chroma_compat import apply_chromadb_sql_txt_compat
 
         apply_chromadb_sql_txt_compat()
         persist = DATA / "chroma"
@@ -289,7 +289,7 @@ def seed_knowledge() -> tuple[int, str]:
             pass
         col.add(ids=ids, documents=docs, metadatas=metas, embeddings=embs)
         chroma_note = f"chroma evo_memory +{N}"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         chroma_note = f"chroma failed: {exc}"
 
     return N, chroma_note

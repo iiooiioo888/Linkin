@@ -96,7 +96,7 @@ def retrieve_memories(state: EvoLoopState) -> dict:
         if complexity:
             payload["task_complexity"] = complexity
         return payload
-    except Exception as exc:  # noqa: BLE001 - 檢索失敗不阻斷主流程
+    except Exception as exc:
         logger.warning("記憶檢索失敗（跳過）：%s", exc)
         payload = {"retrieved_memories": []}
         if complexity:
@@ -240,7 +240,7 @@ def reflect(state: EvoLoopState) -> dict:
         grill_notes = reflection_notes(state.get("company_result") or {})
         if grill_notes:
             reflection_hints = (reflection_hints or "") + grill_notes + "\n"
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
     # 分層反思：根據分數選擇反思深度
@@ -498,7 +498,7 @@ def save_memory(state: EvoLoopState) -> dict:
     try:
         _memory_store.add_memory(text, metadata=metadata)
         return {"memory_saved": True}
-    except Exception as exc:  # noqa: BLE001 - 儲存失敗不中斷主流程
+    except Exception as exc:
         logger.warning("記憶儲存失敗：%s", exc)
         return {"memory_saved": False}
 
@@ -522,6 +522,6 @@ def archive_state(state: EvoLoopState) -> dict:
             # 當前線程已有執行中的事件迴圈，改用同步寫入
             save_session_archive_sync(state, session_id)
         return {"archived": True}
-    except Exception as exc:  # noqa: BLE001 - 存檔不應中斷主流程
+    except Exception as exc:
         logger.warning("對話存檔失敗（不影響回應）：%s", exc)
         return {"archived": False}

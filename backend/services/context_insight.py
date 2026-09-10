@@ -114,7 +114,7 @@ def _tool_source_chip(tool_name: str) -> str:
     """對齊 dsh-context 來源晶片：tool-*／dsh-*／mcp:*／plugin:*。"""
     name = (tool_name or "tool").strip() or "tool"
     low = name.lower().replace("-", "_")
-    if low.startswith("mcp_") or low.startswith("mcp:") or "mcp/" in low:
+    if low.startswith(("mcp_", "mcp:")) or "mcp/" in low:
         server = name.split(":", 1)[-1] if ":" in name else name
         return f"mcp:{server}"
     if low.startswith("dsh") or "dsh_" in low:

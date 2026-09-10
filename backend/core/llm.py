@@ -10,7 +10,6 @@ LLM 供應商參數（金鑰、端點、模型）優先讀取運行時
 
 import json
 import logging
-import os
 import re
 import time
 
@@ -20,7 +19,12 @@ from litellm.exceptions import APIError, RateLimitError
 
 from backend.core.llm_cache import get_llm_cache
 from backend.core.llm_config import get_runtime_config
-from backend.core.provider_pool import clamp_model, failover_models, invoke_with_pool_failover, pool_failover_enabled
+from backend.core.provider_pool import (
+    clamp_model,
+    failover_models,
+    invoke_with_pool_failover,
+    pool_failover_enabled,
+)
 
 load_dotenv()
 
@@ -145,7 +149,7 @@ def _completion_once(
 
     try:
         target = _resolve_call_target(model, route_id)
-    except Exception:  # noqa: BLE001 — 路由解析失敗回退單一配置
+    except Exception:
         target = None
     params = _llm_params(target)
     if model:
@@ -202,7 +206,7 @@ def _build_call_hops(
         from backend.core.api_router import list_failover_chain
 
         chain = list_failover_chain(route_id=route_id, model=model, extra_models=extra_models)
-    except Exception:  # noqa: BLE001
+    except Exception:
         chain = []
     if not chain:
         _add(route_id, model)
@@ -214,7 +218,7 @@ def _build_call_hops(
             from backend.core.api_router import find_route_for_model
 
             owned = find_route_for_model(extra)
-        except Exception:  # noqa: BLE001
+        except Exception:
             owned = None
         _add((owned or {}).get("id") or None, extra)
     for route in chain[1:]:
@@ -254,7 +258,7 @@ def call_llm(
             role_failover_models=role_failover_models,
             **kwargs,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         if llm_trace.current_context()["task_id"]:
             llm_trace.emit({
                 "label": trace_label,
@@ -329,7 +333,7 @@ def _call_llm_core(
                 max_context_tokens=max_context_tokens,
                 **kwargs,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last_error = exc
             if hop + 1 < len(hops):
                 nxt = hops[hop + 1][0]
@@ -367,7 +371,7 @@ def _call_llm_on_route(
         resolved_model = clamp_model(model or target.get("model"), cfg=clamp_cfg, route_id=route_id)
         params = _llm_params(target)
         tracked = str(route_id or target.get("route_id") or "")
-    except Exception:  # noqa: BLE001
+    except Exception:
         params = _llm_params()
         clamp_cfg = None
         resolved_model = clamp_model(model or params.get("model"))
@@ -380,7 +384,7 @@ def _call_llm_on_route(
         from backend.core.api_router import mark_route_end, mark_route_start
 
         mark_route_start(tracked)
-    except Exception:  # noqa: BLE001
+    except Exception:
         mark_route_end = None  # type: ignore[assignment]
 
     try:
@@ -429,7 +433,7 @@ def _call_llm_on_route(
         if mark_route_end is not None:
             try:
                 mark_route_end(tracked)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
 
@@ -445,7 +449,7 @@ def llm_kwargs_for_role(runtime: dict | None) -> dict:
 
             route = resolve_route_ref(provider)
             out["route_id"] = (route or {}).get("id") or provider
-        except Exception:  # noqa: BLE001
+        except Exception:
             out["route_id"] = provider
     failover = [
         str(item).strip()
@@ -502,7 +506,7 @@ def call_llm_stream(
 
     try:
         target = _resolve_call_target(model, route_id)
-    except Exception:  # noqa: BLE001
+    except Exception:
         target = None
     params = _llm_params(target)
     if model:

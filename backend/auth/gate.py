@@ -74,9 +74,7 @@ def gate_enabled() -> bool:
         return False
     if os.getenv("LINKIN_AUTH_FORCE", "").strip().lower() in {"1", "true", "yes"}:
         return True
-    if os.getenv("PYTEST_CURRENT_TEST"):
-        return False
-    return True
+    return not os.getenv("PYTEST_CURRENT_TEST")
 
 
 def _prune_sessions(now: float) -> None:

@@ -215,7 +215,7 @@ def invoke_with_failover(
                 if on_result:
                     on_result(model, False, time.monotonic() - t0)
                 return text, model, hops
-            except Exception as exc:  # noqa: BLE001 — 路由層需分類後再拋
+            except Exception as exc:
                 last_err = exc
                 status = getattr(exc, "status_code", None)
                 timed_out = (time.monotonic() - t0) > read_s
@@ -233,8 +233,7 @@ def invoke_with_failover(
                 hops += 1
                 break
     timeout_like = last_err is not None and (
-        isinstance(last_err, TimeoutError)
-        or isinstance(last_err, CircuitOpenError)
+        isinstance(last_err, (TimeoutError, CircuitOpenError))
         or "timeout" in str(last_err).lower()
     )
     if timeout_like and not isinstance(last_err, CircuitOpenError):

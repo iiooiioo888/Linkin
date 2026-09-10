@@ -456,7 +456,7 @@ class AtomicExecutorFactory:
                 from backend.services.commander import fill_allowed_tools
 
                 spec.allowed_tools = fill_allowed_tools(spec.task_description)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
         prompt = cls.spawn(spec)
         grills = run_preflight(spec)

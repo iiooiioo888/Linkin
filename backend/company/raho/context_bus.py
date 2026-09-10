@@ -46,7 +46,7 @@ def downward_context(item: WorkItem, dependencies: list[WorkItem]) -> str:
                 from backend.company.raho.inspector import resolve_input_ref
 
                 signed = resolve_input_ref(pointer)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 signed = None
                 UNSIGNED_WARNING = "警告：此指標尚未經 L1 簽核，禁止引用為已核准數據。"
             if signed is None:
@@ -119,6 +119,6 @@ def blackboard_record(
             None,
             True,
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     return payload

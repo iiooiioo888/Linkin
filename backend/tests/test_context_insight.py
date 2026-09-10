@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from backend.services.context_insight import COMPOSITION_KEYS, build_context_insight, resolve_default_task_id
+from backend.services.context_insight import (
+    COMPOSITION_KEYS,
+    build_context_insight,
+    resolve_default_task_id,
+)
 from backend.services.trace_logger import TraceLogger
 
 

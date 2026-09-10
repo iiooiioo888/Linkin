@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from backend.services.commander import SYSTEM_PROMPT, TacticalCommander
 
 
 def command_from_ticket(ticket: dict[str, Any] | str, *, use_llm: bool | None = None) -> dict[str, Any]:

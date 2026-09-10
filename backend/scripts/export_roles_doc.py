@@ -24,25 +24,25 @@ def main() -> None:
     lines += [
         "# 角色介紹",
         "",
-        "> 來源：`backend/company/roles.py`（`STANDARD_ROLES`）＋"
-        "`backend/linkin/roles.py`（靈境子角色種子）",
+        ("> 來源：`backend/company/roles.py`（`STANDARD_ROLES`）＋"
+        "`backend/linkin/roles.py`（靈境子角色種子）"),
         f"> 對齊日期：2026-09-09 · 內建 **{n}** 席＋靈境 **16** 席＋模板 **{nt}**",
         "",
         "## 先分清楚三種「角色」",
         "",
         "| 種類 | 數量 | 程式來源 | 用途 |",
         "|------|------|----------|------|",
-        f"| **公司 STANDARD_ROLES** | {n} | `backend/company/roles.py` | "
-        "複雜任務／RAHO 調度的代理人席位 |",
-        "| **靈境子角色** | 16 | `backend/linkin/roles.py` → `role_catalog` | "
-        "建築／敘事／NPC／道具四部門 |",
-        f"| **組織模板 BUILTIN_TEMPLATES** | {nt} | 同 `roles.py` | "
-        "預組團隊（非獨立角色） |",
+        (f"| **公司 STANDARD_ROLES** | {n} | `backend/company/roles.py` | "
+        "複雜任務／RAHO 調度的代理人席位 |"),
+        ("| **靈境子角色** | 16 | `backend/linkin/roles.py` → `role_catalog` | "
+        "建築／敘事／NPC／道具四部門 |"),
+        (f"| **組織模板 BUILTIN_TEMPLATES** | {nt} | 同 `roles.py` | "
+        "預組團隊（非獨立角色） |"),
         "",
-        "監控中心可覆寫 Prompt／預算／工具；持久化於 `EVOL_ROLE_CATALOG_PATH`"
-        "（預設 `backend/data/role_catalog.json`）。",
-        "詳見 [公司運行時](../architecture/company-runtime.md) · "
-        "[術語表](../glossary.md)。",
+        ("監控中心可覆寫 Prompt／預算／工具；持久化於 `EVOL_ROLE_CATALOG_PATH`"
+        "（預設 `backend/data/role_catalog.json`）。"),
+        ("詳見 [公司運行時](../architecture/company-runtime.md) · "
+        "[術語表](../glossary.md)。"),
         "",
         "## 組織職級 vs RAHO 指揮鏈",
         "",
@@ -50,10 +50,10 @@ def main() -> None:
         "",
         "| 維度 | 含義 |",
         "|------|------|",
-        "| **組織職級 Level 0–4** | `RoleDefinition.level`："
-        "數字越小越高層（Manager=0） |",
-        "| **RAHO L5–L0** | 指揮／審查協議層："
-        "用戶→審計→戰術→原子執行；獨立憲兵；環境核心注入 |",
+        ("| **組織職級 Level 0–4** | `RoleDefinition.level`："
+        "數字越小越高層（Manager=0） |"),
+        ("| **RAHO L5–L0** | 指揮／審查協議層："
+        "用戶→審計→戰術→原子執行；獨立憲兵；環境核心注入 |"),
         "",
         "```",
         "組織： L0 Manager → L1 Leads → L2 Domain Leads → L3 Executors → L4 Support",
@@ -101,8 +101,8 @@ def main() -> None:
         lines.append(f"| `{rid}` | {rd.name} | {raho_l} | {blurb} |")
     lines += [
         "",
-        "完整協議見 "
-        "[company-runtime.md](../architecture/company-runtime.md#raho遞歸對抗分層)。",
+        ("完整協議見 "
+        "[company-runtime.md](../architecture/company-runtime.md#raho遞歸對抗分層)。"),
         "",
     ]
 
@@ -143,7 +143,7 @@ def main() -> None:
         "|--------|------|------|----------|",
     ]
     for tid, cfg in BUILTIN_TEMPLATES.items():
-        role_ids = sorted(r.value for r in cfg.roles.keys())
+        role_ids = sorted(r.value for r in cfg.roles)
         core = "、".join(f"`{x}`" for x in role_ids[:8])
         if len(role_ids) > 8:
             core += f" 等 {len(role_ids)} 席"
@@ -152,13 +152,13 @@ def main() -> None:
         )
     lines += [
         "",
-        "> Minecraft 建造／靈境任務在預設 `quick_task` 時會改走 `story_studio`，"
-        "以免只有 `developer` 卻無權放方塊。",
+        ("> Minecraft 建造／靈境任務在預設 `quick_task` 時會改走 `story_studio`，"
+        "以免只有 `developer` 卻無權放方塊。"),
         "",
         "## 靈境子角色（16）",
         "",
-        "由 `seed_linkin_roles()` 冪等寫入 `role_catalog`"
-        "（ID 前綴 `custom_linkin_*`）。",
+        ("由 `seed_linkin_roles()` 冪等寫入 `role_catalog`"
+        "（ID 前綴 `custom_linkin_*`）。"),
         "四部門 ×（總監＋執行者＋審查員＋記錄員）。",
         "",
         "| 部門 | 總監 ID | 執行者 | 審查員 | 記錄員 | 工具重點 |",
@@ -178,31 +178,31 @@ def main() -> None:
         )
     lines += [
         "",
-        "世界觀憲法為最高裁決；工具鐵律見 "
+        ("世界觀憲法為最高裁決；工具鐵律見 "
         "[Minecraft MCP](../linkin/minecraft-mcp.md) · "
-        "[世界觀](../linkin/worldview.md)。",
+        "[世界觀](../linkin/worldview.md)。"),
         "",
         "## 開發者怎麼改角色",
         "",
         "| 需求 | 作法 |",
         "|------|------|",
-        "| 改內建席 Prompt／職責 | 編輯 `backend/company/roles.py` "
-        "對應 `ROLE_*`，補測試 |",
-        "| 執行期覆寫／自定義席 | 監控中心或 `role_catalog` API；"
-        "檔案 `backend/data/role_catalog.json` |",
-        "| 新增組織模板 | 在 `roles.py` 加 `create_*` 並掛進 "
-        "`BUILTIN_TEMPLATES` |",
-        "| 靈境 16 席 | `backend/linkin/roles.py`＋`prompts.py`，"
-        "啟動時冪等刷新 |",
-        "| 禁止事項 | 勿讓角色直連 MineMCP／檔案系統工具；"
-        "LLM 一律 `call_llm` |",
+        ("| 改內建席 Prompt／職責 | 編輯 `backend/company/roles.py` "
+        "對應 `ROLE_*`，補測試 |"),
+        ("| 執行期覆寫／自定義席 | 監控中心或 `role_catalog` API；"
+        "檔案 `backend/data/role_catalog.json` |"),
+        ("| 新增組織模板 | 在 `roles.py` 加 `create_*` 並掛進 "
+        "`BUILTIN_TEMPLATES` |"),
+        ("| 靈境 16 席 | `backend/linkin/roles.py`＋`prompts.py`，"
+        "啟動時冪等刷新 |"),
+        ("| 禁止事項 | 勿讓角色直連 MineMCP／檔案系統工具；"
+        "LLM 一律 `call_llm` |"),
         "",
         "## 相關入口",
         "",
-        "- [公司運行時](../architecture/company-runtime.md) · "
-        "[目錄地圖](../structure.md) · [新人導覽](../onboarding.md)",
-        "- 程式：`backend/company/roles.py` · `role_catalog.py` · "
-        "`backend/linkin/roles.py`",
+        ("- [公司運行時](../architecture/company-runtime.md) · "
+        "[目錄地圖](../structure.md) · [新人導覽](../onboarding.md)"),
+        ("- 程式：`backend/company/roles.py` · `role_catalog.py` · "
+        "`backend/linkin/roles.py`"),
         "",
     ]
 

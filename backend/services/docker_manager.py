@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Docker SDK 為可選依賴：容器環境外（如本機開發）優雅降級
 try:
     import docker
-    from docker.errors import APIError, DockerException, NotFound
+    from docker.errors import NotFound
     DOCKER_AVAILABLE = True
 except ImportError:  # pragma: no cover — 可選依賴
     DOCKER_AVAILABLE = False
@@ -368,8 +368,7 @@ class DockerManager:
         # 移除項目前綴和副本編號後綴
         prefix = f"{self._project}-"
         name = container_name
-        if name.startswith(prefix):
-            name = name[len(prefix):]
+        name = name.removeprefix(prefix)
         # 移除 -N 後綴（副本編號）
         parts = name.rsplit("-", 1)
         if len(parts) == 2 and parts[1].isdigit():
@@ -403,7 +402,7 @@ class DockerManager:
             return []
         formatted = []
         for p in ports:
-            if "PublicPort" in p and p["PublicPort"]:
+            if p.get("PublicPort"):
                 formatted.append(f"{p['PublicPort']}:{p['PrivatePort']}/{p.get('Type', 'tcp')}")
             elif "PrivatePort" in p:
                 formatted.append(f"{p['PrivatePort']}/{p.get('Type', 'tcp')}")

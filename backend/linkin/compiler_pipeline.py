@@ -27,9 +27,10 @@ from __future__ import annotations
 import hashlib
 import time
 import uuid
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Iterable, Mapping, Protocol
+from typing import Any, Protocol
 
 from backend.company.seat_table import SeatTable, build_default_seat_table
 from backend.company.task_state_machine import TaskAction, TaskRuntimeState, Verdict, evaluate
@@ -247,7 +248,7 @@ def sandbox_scan(
     return SandboxReport(
         ok=ok,
         structure_errors=structure_errors,
-        version_compatible=version_ok and bool(world_version or True),
+        version_compatible=version_ok and True,
         conflicts=tuple(conflicts),
     )
 
@@ -372,7 +373,7 @@ class CompilePipeline:
         self._trail(task_id, {"type": "compile_start", "namespace": request.namespace, "by": request.requested_by})
         try:
             files = dict(self._compiler(request))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._trail(task_id, {"type": "compile_failed", "error": str(exc)})
             return PipelineResult(ok=False, error_code=ERR_COMPILE_FAILED, detail=str(exc))
 

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.company.quant_strategy_catalog import resolve_strategy
 from backend.company.quant_strategy_maps import _find_item, _listing
 
 # 依策略分類的預設資金流參數（可被 query 覆寫）
@@ -362,7 +361,7 @@ def _timeline_from_trades(
         {
             "time": f"T{idx} 風控檢查",
             "event": "日虧損檢查",
-            "cash": _fmt_wan(cash if not position else cash),
+            "cash": _fmt_wan(cash),
             "position": _fmt_wan(position),
             "margin": _fmt_wan(margin),
             "equity": _fmt_wan(final_equity),
@@ -504,7 +503,7 @@ def strategy_capital_flow(
             risk_kw["enable_t1"] = True
         try:
             backtest = market_backtest(code, strategy=engine, **risk_kw)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             backtest = {"ok": False, "error": str(exc)[:300]}
 
     if backtest and backtest.get("ok"):

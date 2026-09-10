@@ -10,7 +10,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-1c3d5a?logo=langchain&logoColor=white)](https://github.com/langchain-ai/langgraph)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)](https://react.dev/)
-[![Tests](https://img.shields.io/badge/Tests-639%20collected-success?logo=pytest&logoColor=white)](backend/tests/)
+[![Tests](https://img.shields.io/badge/Tests-817%20collected-success?logo=pytest&logoColor=white)](backend/tests/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 **倉庫：** [iiooiioo888/Linkin](https://github.com/iiooiioo888/Linkin) · **上游：** [EvoLoop](https://github.com/iiooiioo888/Evoloop)  

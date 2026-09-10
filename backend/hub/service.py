@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from backend.core.llm import call_llm
 from backend.hub.budget_guard import actual_cost_usd, estimate_cost_usd, estimate_tokens
@@ -31,7 +32,6 @@ from backend.hub.errors import (
 )
 from backend.hub.router import (
     CONNECT_TIMEOUT_S,
-    READ_TIMEOUT_S,
     HubUpstreamError,
     Metrics,
     agent_synthesis_chain,
@@ -596,11 +596,11 @@ def authenticate(authorization: str | None) -> HubUser:
     - 防止空白或過短的 token
     - 對 JWT token 進行完整的簽名和過期驗證
     """
-    import time
-    import json
     import base64
-    import hmac
     import hashlib
+    import hmac
+    import json
+    import time
     
     if not authorization:
         raise HubError(401, "UNAUTHORIZED", "缺少 Authorization header")

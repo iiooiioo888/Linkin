@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "python ../backend/scripts/export_monitor_fallback.py",
+    "prebuild": "node -e \"const {spawnSync}=require('child_process');const py=['python3','python'].find(c=>!spawnSync(c,['--version'],{stdio:'ignore'}).error)||'python3';const r=spawnSync(py,['../backend/scripts/export_monitor_fallback.py'],{stdio:'inherit',shell:false});process.exit(r.status??1)\"",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",

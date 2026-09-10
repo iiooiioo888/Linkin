@@ -8,15 +8,16 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-import time
 import threading
+import time
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any, Iterator, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
-from backend.hub.store import HubUser, AgentTask, hash_api_key
+from backend.hub.store import AgentTask, HubUser, hash_api_key
 
 
 class ConnectionStats:
@@ -61,9 +62,9 @@ class Database:
     """SQLite 數據庫連接管理類（帶連接池）。"""
     
     # 類級連接池統計
-    _pool_stats: Optional[Dict[str, Any]] = None
+    _pool_stats: dict[str, Any] | None = None
     _pool_lock = threading.Lock()
-    _connection_registry: Dict[str, ConnectionStats] = {}
+    _connection_registry: dict[str, ConnectionStats] = {}
     
     def __init__(self, db_path: str | None = None, pool_size: int = 5):
         """初始化數據庫連接。
@@ -154,7 +155,6 @@ class Database:
                 if not stats.is_active:
                     continue
                 # 保留最近的連接
-                pass
             cls._update_pool_stats()
             return cls._pool_stats or {}
     
@@ -265,7 +265,6 @@ class Database:
             
             # 種子開發用戶
             import hashlib
-            from uuid import UUID
             
             api_key = "ak_live_hub_dev_key_for_local_only"
             api_key_hash = hashlib.sha256(api_key.encode("utf-8")).hexdigest()
@@ -456,8 +455,9 @@ class Database:
     
     def seed_dev_user(self, api_key: str = "ak_live_hub_dev_key_for_local_only") -> HubUser:
         """種子開發用戶。"""
-        from backend.hub.store import HubUser, hash_api_key
         from uuid import UUID
+
+        from backend.hub.store import HubUser, hash_api_key
         
         user = HubUser(
             id=UUID("00000000-0000-4000-8000-000000000001"),

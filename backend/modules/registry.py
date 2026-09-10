@@ -8,8 +8,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 HealthFn = Callable[[], dict[str, Any]]
 
@@ -155,7 +156,7 @@ class ModuleSpec:
             return {"ok": True, "id": self.id}
         try:
             data = dict(self.health() or {})
-        except Exception as exc:  # noqa: BLE001 — 目錄不得因單一模組健康檢查失敗而 500
+        except Exception as exc:
             return {"ok": False, "id": self.id, "error": str(exc)}
         data.setdefault("id", self.id)
         data.setdefault("ok", True)

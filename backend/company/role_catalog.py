@@ -834,7 +834,7 @@ def _allowed_models() -> list[str]:
         from backend.core.provider_pool import public_pool
 
         return list(public_pool().get("allowed_models") or [])
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
 
@@ -843,7 +843,7 @@ def _models_by_provider() -> list[dict[str, Any]]:
         from backend.core.api_router import public_router_state
 
         return list(public_router_state().get("models_by_provider") or [])
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
 
@@ -866,7 +866,7 @@ def _api_routes_meta() -> list[dict[str, Any]]:
             }
             for r in routes
         ]
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
 
@@ -875,7 +875,7 @@ def _model_token_hints() -> dict[str, dict[str, int]]:
         from backend.core.api_router import MODEL_TOKEN_HINTS
 
         return dict(MODEL_TOKEN_HINTS)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return {}
 
 
@@ -884,7 +884,7 @@ def _model_rate_cards() -> dict[str, Any]:
         from backend.company.rate_card import public_rate_cards
 
         return public_rate_cards()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return {"models": [], "by_id": {}, "fields": []}
 
 
@@ -894,7 +894,7 @@ def catalog_meta() -> dict[str, Any]:
         from backend.company.tools import tool_registry
 
         tool_names = [t.name for t in tool_registry.list_tools()]
-    except Exception:  # noqa: BLE001
+    except Exception:
         tool_names = []
     return {
         "categories": [{"id": k, "label": v} for k, v in CATEGORY_LABELS.items()],

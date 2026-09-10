@@ -5,7 +5,8 @@ from __future__ import annotations
 import os
 import threading
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from backend.core.llm import call_llm
 from backend.hub.catalog import HUB_CATALOG, PRICE_PER_1M, seed_default_metrics
@@ -45,7 +46,7 @@ def probe_once(llm: Callable[..., str] | None = None) -> dict[str, dict[str, Any
             row["latency_ewma_ms"] = _ewma(float(row.get("latency_ewma_ms") or sample_ms), sample_ms)
             row["ttfb_ms"] = sample_ms
             row["consecutive_fail"] = 0
-        except Exception:  # noqa: BLE001 — 探針不得讓主流程崩潰
+        except Exception:
             row["latency_ewma_ms"] = FAIL_PENALTY_MS
             row["consecutive_fail"] = int(row.get("consecutive_fail") or 0) + 1
         in_p, out_p = PRICE_PER_1M[model]

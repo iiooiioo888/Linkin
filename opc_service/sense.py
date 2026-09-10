@@ -75,7 +75,7 @@ async def _read_opc_tags(tag_names: list[str]) -> dict[str, dict]:
                 }
                 for tag in data.get("tags", [])
             }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("OPC 读取失败：%s", exc)
         return {}
 

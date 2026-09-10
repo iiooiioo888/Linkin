@@ -180,7 +180,7 @@ class SkillsStore:
                 content=content,
                 description=(description or "").strip(),
                 trigger=(trigger or "").strip(),
-                enabled=bool(enabled) if old is None else bool(enabled),
+                enabled=bool(enabled),
                 roles=[str(r).strip() for r in (roles or []) if str(r).strip()],
                 skill_budget=max(200, min(int(skill_budget or DEFAULT_SKILL_BUDGET), 20000)),
                 created_at=old.created_at if old else now,
@@ -268,6 +268,6 @@ def inject_skills(system_prompt: str, role: str | None = None) -> str:
             return system_prompt
         sep = "\n\n" if system_prompt and not system_prompt.endswith("\n") else "\n"
         return f"{system_prompt}{sep}{block}"
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning("技能注入失敗（已跳過）", exc_info=True)
         return system_prompt

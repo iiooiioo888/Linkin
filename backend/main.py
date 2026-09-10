@@ -5,17 +5,17 @@
     uvicorn backend.main:app --host 0.0.0.0 --port 8000
 """
 
+import asyncio
+import json as json_mod
 import logging
-import time
-from contextlib import asynccontextmanager
 import os
+import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-import asyncio
-import json as json_mod
-
+import httpx
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
@@ -30,23 +30,7 @@ from backend.auth.gate import (
     session_user,
     ws_authorized,
 )
-from backend.middleware.auth_gate import AuthGateMiddleware
-
-from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD, evoloop_graph
-from backend.core import nodes
-from backend.core.llm import call_llm, call_llm_stream, split_thinking
-from backend.core.llm_config import get_runtime_config, masked_key, save_runtime_config
-from backend.core.provider_pool import public_pool, refresh_model_catalog, refresh_route_catalog, set_refresh_interval
-from backend.core.api_router import (
-    delete_route,
-    public_router_state,
-    save_routes,
-    set_route_strategy,
-    upsert_route,
-)
-from backend.services.llm_ops import collect_llm_ops, llm_ops_loop, run_ops_once
-from backend.hub.monitor import collect_hub_monitor
-from backend.services.optimization_monitor import collect_optimization_monitor
+from backend.company.docker_tools import DOCKER_SERVICE_HOURLY_RATES
 from backend.company.role_catalog import (
     create_custom_role,
     delete_custom_role,
@@ -54,23 +38,43 @@ from backend.company.role_catalog import (
     update_monitor_prefs,
     update_role_settings,
 )
+from backend.core import nodes
+from backend.core.api_router import (
+    delete_route,
+    public_router_state,
+    save_routes,
+    set_route_strategy,
+    upsert_route,
+)
+from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD, evoloop_graph
+from backend.core.llm import call_llm, call_llm_stream, split_thinking
+from backend.core.llm_config import get_runtime_config, masked_key, save_runtime_config
+from backend.core.provider_pool import (
+    public_pool,
+    refresh_model_catalog,
+    refresh_route_catalog,
+    set_refresh_interval,
+)
+from backend.hub.api import register_hub
+from backend.hub.monitor import collect_hub_monitor
+from backend.linkin.api import register_linkin
+from backend.middleware.auth_gate import AuthGateMiddleware
+from backend.modules import register_modules
+from backend.services import lab_tools
 from backend.services.agent_monitor import collect_agent_monitor
-from backend.services.dashboard import collect_dashboard
-from backend.services.opc_monitor import collect_opc_monitor
-from backend.services.docker_manager import get_docker_manager
-from backend.company.docker_tools import DOCKER_SERVICE_HOURLY_RATES
 from backend.services.cloud_console import (
     get_cloud_alerts,
     get_cloud_billing,
     get_cloud_events,
     get_cloud_monitor,
 )
+from backend.services.dashboard import collect_dashboard
+from backend.services.docker_manager import get_docker_manager
+from backend.services.llm_ops import collect_llm_ops, llm_ops_loop, run_ops_once
+from backend.services.opc_monitor import collect_opc_monitor
+from backend.services.optimization_monitor import collect_optimization_monitor
 from backend.services.task_broadcaster import task_broadcaster
 from backend.services.task_manager import task_manager
-from backend.services import lab_tools
-from backend.hub.api import register_hub
-from backend.linkin.api import register_linkin
-from backend.modules import register_modules
 
 # ═══════════════════════════════════════════════════════════════
 # 全局公司預算狀態（由 orchestrator 更新，API 讀取）
@@ -108,7 +112,7 @@ async def _lifespan(_app: FastAPI):
     # 重啟回灌：從 Redis 載回任務記錄，修復任務列表／管線重啟後清空
     try:
         await asyncio.to_thread(task_manager.rehydrate)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("任務 rehydrate 失敗（降級為記憶體）：%s", exc)
     # 主 loop 註冊：供 MCP server 等無 loop 執行緒安全派發任務
     task_manager._loop = asyncio.get_running_loop()
@@ -122,7 +126,7 @@ async def _lifespan(_app: FastAPI):
         mounted = await asyncio.to_thread(mcp_registry.mount_tools, tool_registry)
         if mounted:
             logger.info("啟動掛載 MCP 工具 %d 個", len(mounted))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("技能／MCP 啟動掛載失敗（降級為無）：%s", exc)
     task = asyncio.create_task(llm_ops_loop())
     try:
@@ -177,10 +181,10 @@ app.add_middleware(
 register_hub(app)
 register_linkin(app)
 register_modules(app)
-from backend.integrations.api import register_integrations  # noqa: E402
+from backend.integrations.api import register_integrations
 
 register_integrations(app)
-from backend.company.runtime_api import register_runtime_api  # noqa: E402
+from backend.company.runtime_api import register_runtime_api
 
 register_runtime_api(app)
 
@@ -611,7 +615,7 @@ async def update_config(req: LlmConfigRequest):
     logger.info("LLM 配置已更新（model=%s, api_base=%s）", req.model, req.api_base)
     try:
         refresh_model_catalog(reason="save")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("儲存後刷新模型目錄失敗：%s", exc)
     return await get_config()
 
@@ -632,7 +636,7 @@ async def replace_config_routes(body: ApiRoutesReplaceBody):
     )
     try:
         refresh_model_catalog(reason="routes")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("路由儲存後刷新目錄失敗：%s", exc)
     return public_router_state()
 
@@ -643,7 +647,7 @@ async def upsert_config_route(body: ApiRouteBody):
     route = upsert_route(body.model_dump())
     try:
         refresh_route_catalog(route["id"], reason="save")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("路由 %s 刷新目錄失敗：%s", route.get("id"), exc)
     return public_router_state()
 
@@ -660,7 +664,7 @@ async def refresh_config_route(route_id: str):
         return await asyncio.to_thread(refresh_route_catalog, route_id, reason="manual")
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=502, detail=f"刷新路由目錄失敗：{exc}") from exc
 
 
@@ -696,7 +700,7 @@ async def refresh_config_models():
     """立刻爬取通用端點 /models 或重建單一廠商靜態池。"""
     try:
         return await asyncio.to_thread(run_ops_once, "manual")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=502, detail=f"刷新模型目錄失敗：{exc}") from exc
 
 
@@ -810,9 +814,9 @@ async def _company_stream(req: ChatRequest):
     將公司運行時的生命週期事件轉換為 SSE 事件，
     前端可即時看到分解/執行/審查/整合各階段進度。
     """
+    from backend.company.events import CompanyEvent
     from backend.company.orchestrator import CompanyOrchestrator
     from backend.company.roles import BUILTIN_TEMPLATES
-    from backend.company.events import CompanyEvent
 
     session_id = req.session_id or uuid.uuid4().hex[:12]
     lock = req.semantic_lock or {}
@@ -856,7 +860,7 @@ async def _company_stream(req: ChatRequest):
                 )
             elif et in ("work_item_error", "review_rework", "work_item_escalate"):
                 company_tracer.log_custom(et, {k: (str(v)[:500]) for k, v in data.items()})
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
     orchestrator.events.on(_on_company_event)
@@ -1000,7 +1004,8 @@ async def chat_stream(req: ChatRequest):
     session_id = req.session_id or uuid.uuid4().hex[:12]
 
     # 思考軌跡回填（session_id 即軌跡檔名；前端「軌跡」按鈕以此查詢）
-    from backend.services.trace_logger import TraceLogger, eval_trace_kwargs as _eval_trace_kwargs
+    from backend.services.trace_logger import TraceLogger
+    from backend.services.trace_logger import eval_trace_kwargs as _eval_trace_kwargs
 
     chat_tracer = TraceLogger(session_id)
 
@@ -1175,7 +1180,7 @@ async def chat_stream(req: ChatRequest):
             await asyncio.to_thread(nodes.save_memory, state)
 
             yield f"event: done\ndata: {json_mod.dumps({'answer': final_answer, 'thinking': state.get('thinking', ''), 'score': state.get('score'), 'iteration': state.get('iteration', 0)}, ensure_ascii=False)}\n\n"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("串流聊天失敗：%s", exc)
             yield f"event: error\ndata: {json_mod.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"
 
@@ -1449,7 +1454,7 @@ async def list_memories(limit: int = 100, offset: int = 0):
     chroma_error = ""
     try:
         all_memories = await asyncio.to_thread(_memory_store_api.all)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("記憶庫讀取失敗：%s", exc)
         chroma_error = str(exc)
         all_memories = []
@@ -1475,7 +1480,7 @@ async def delete_memory(memory_id: str):
         collection.delete(ids=[memory_id])
         _memory_store_api.invalidate_cache()
         return {"deleted": True, "id": memory_id}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=500, detail=f"刪除失敗：{exc}") from exc
 
 
@@ -1487,7 +1492,7 @@ async def cleanup_memories(max_age_days: int = 30, min_score: float | None = Non
             _memory_store_api.cleanup, max_age_days, min_score
         )
         return {"deleted_count": deleted}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=500, detail=f"清理失敗：{exc}") from exc
 
 
@@ -2202,6 +2207,7 @@ async def lab_quant_capital_flow(
 
 from backend.hub.db import Database
 
+
 class DbPoolRefreshRequest(BaseModel):
     min_idle: int = 2
 
@@ -2385,7 +2391,7 @@ async def call_mcp_tool(server_id: str, body: McpCallBody):
         result = await asyncio.to_thread(mcp_registry.call, server_id, body.tool, body.args)
     except KeyError:
         raise HTTPException(status_code=404, detail="server 不存在")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)[:400]) from exc
     return {"ok": True, "result": str(result)[:8000]}
 
@@ -2435,7 +2441,7 @@ async def mcp_server_endpoint(request: Request):
         )
     try:
         body = await request.json()
-    except Exception:  # noqa: BLE001
+    except Exception:
         raise HTTPException(status_code=400, detail="body 需為 JSON") from None
     messages = body if isinstance(body, list) else [body]
     replies = []

@@ -327,8 +327,8 @@ class BudgetManager:
         Returns:
             {services: {svc: {rate, hours, cost}}, total_cost: float}
         """
-        from backend.services.docker_manager import get_docker_manager
         from backend.company.docker_tools import get_service_hourly_rate
+        from backend.services.docker_manager import get_docker_manager
 
         dm = get_docker_manager()
         if not dm.available:
@@ -371,8 +371,8 @@ class BudgetManager:
         Returns:
             建議列表，每項包含 service, action, reason, estimated_saving
         """
-        from backend.services.docker_manager import get_docker_manager
         from backend.company.docker_tools import get_service_hourly_rate
+        from backend.services.docker_manager import get_docker_manager
 
         pressure = self.budget_pressure
         suggestions: list[dict[str, Any]] = []
@@ -552,3 +552,16 @@ class BudgetManager:
                 BudgetTier.ROUTINE, self.budget_pressure
             ),
         }
+
+
+__all__ = [
+    "BudgetManager",
+    "CostTracker",
+    "TierRouter",
+    "estimate_usage_cost",
+    "get_model_costs",
+    "get_model_rate_cards",
+    "public_rate_cards",
+    "rate_card_for",
+    "reload_model_costs",
+]

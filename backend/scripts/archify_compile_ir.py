@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backend.company.archify_compile import compile_ir  # noqa: E402
+from backend.company.archify_compile import compile_ir
 
 
 def main() -> None:

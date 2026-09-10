@@ -14,10 +14,10 @@ from backend.company.raho.protocol import (
     CLEAR_MARK,
     ESCALATE_MARK,
     GRILL_MARK,
-    EscalationChoice,
-    GrillIssue,
     MGP_EXECUTOR_PREAMBLE,
     MGP_SUPERIOR_PREAMBLE,
+    EscalationChoice,
+    GrillIssue,
     mgp_enabled,
 )
 
@@ -48,7 +48,7 @@ def apply_mgp_system(system_prompt: str, *, superior: bool = False) -> str:
                 from backend.company.raho.l0 import inject_l0
 
                 return inject_l0(body, layer, "")
-            except Exception:  # noqa: BLE001
+            except Exception:
                 return body
     preamble = MGP_SUPERIOR_PREAMBLE if superior else MGP_EXECUTOR_PREAMBLE
     if preamble in body:
@@ -60,7 +60,7 @@ def apply_mgp_system(system_prompt: str, *, superior: bool = False) -> str:
             from backend.company.raho.l0 import inject_l0
 
             assembled = inject_l0(assembled, 3, "")
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
     return assembled
 
@@ -88,10 +88,7 @@ def parse_grill_output(text: str) -> tuple[str, list[GrillIssue]]:
 
     issues: list[GrillIssue] = []
     if (
-        stripped.startswith(ESCALATE_MARK)
-        or stripped.startswith(CHOICE_MARK)
-        or f"\n{ESCALATE_MARK}" in raw
-        or f"\n{CHOICE_MARK}" in raw
+        stripped.startswith((ESCALATE_MARK, CHOICE_MARK)) or f"\n{ESCALATE_MARK}" in raw or f"\n{CHOICE_MARK}" in raw
     ):
         kind = "escalate"
     elif stripped.startswith(GRILL_MARK) or f"\n{GRILL_MARK}" in raw:

@@ -547,7 +547,7 @@ def _load_rate_cards() -> dict[str, dict[str, float]]:
                     merged[field] = amount
             cards[str(model)] = merged
         logger.info("從配置文件載入 %d 個模型價目：%s", len(loaded), config_path)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("載入模型價格配置失敗（使用預設值）：%s", exc)
     return cards
 

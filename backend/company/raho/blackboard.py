@@ -45,7 +45,7 @@ class BlackboardEntry:
         return payload
 
     @classmethod
-    def from_mapping(cls, raw: dict[str, Any] | None) -> "BlackboardEntry | None":
+    def from_mapping(cls, raw: dict[str, Any] | None) -> BlackboardEntry | None:
         if not isinstance(raw, dict) or not raw.get("node_id"):
             return None
         try:
@@ -127,8 +127,8 @@ def signed_entry(
 
 
 __all__ = [
-    "SCHEME",
     "RESULTS_PREFIX",
+    "SCHEME",
     "TICKET_URI",
     "UNSIGNED_WARNING",
     "UPLOADS_PREFIX",

@@ -104,7 +104,7 @@ def save_runtime_config(
 
         sync_primary_into_routes()
         snapshot = get_runtime_config()
-    except Exception:  # noqa: BLE001 — 路由同步失敗不得擋住主配置
+    except Exception:
         logger.debug("同步 primary 路由失敗", exc_info=True)
     return snapshot
 

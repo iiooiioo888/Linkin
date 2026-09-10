@@ -8,14 +8,12 @@ L2 執行前仍強制戰前檢查；無法決策則熱馬桶圈上交。
 """
 
 from backend.company.raho.atomic_executor import AtomicExecutorFactory
-from backend.company.raho.blackboard import BlackboardEntry
-from backend.company.raho.inspector import InspectorGate
 from backend.company.raho.atomic_pool import assemble as assemble_atomic
 from backend.company.raho.atomic_pool import incubate_instance
 from backend.company.raho.atomic_pool import recycle as recycle_atomic
+from backend.company.raho.blackboard import BlackboardEntry
 from backend.company.raho.commander import command_from_ticket, command_grill
 from backend.company.raho.context_bus import downward_context, upward_brief
-from backend.company.raho.planner import plan_campaign
 from backend.company.raho.escalation import decide as decide_escalation
 from backend.company.raho.escalation import resolve_grill
 from backend.company.raho.grill_user import (
@@ -25,13 +23,17 @@ from backend.company.raho.grill_user import (
     grill_user_turn,
     should_grill_user,
 )
-from backend.company.raho.mgp import apply_mgp_system, parse_grill_output
+from backend.company.raho.inspector import InspectorGate
 from backend.company.raho.l0 import (
     brief_for as l0_brief_for,
+)
+from backend.company.raho.l0 import (
     inject_l0,
     kernel_snapshot,
     remember_query,
 )
+from backend.company.raho.mgp import apply_mgp_system, parse_grill_output
+from backend.company.raho.planner import plan_campaign
 from backend.company.raho.protocol import (
     LAYER_LABELS,
     RAHO_CHAIN,
@@ -50,41 +52,41 @@ from backend.company.raho.scorecard import all_metrics, metrics_for, should_demo
 from backend.company.raho.store import STORE
 
 __all__ = [
+    "LAYER_LABELS",
+    "RAHO_CHAIN",
     "STORE",
     "AtomicExecutorFactory",
     "BlackboardEntry",
     "InspectorGate",
-    "LAYER_LABELS",
-    "RAHO_CHAIN",
     "RahoLayer",
+    "all_metrics",
     "apply_mgp_system",
+    "assemble_atomic",
     "attach_raho_fields",
     "canonical_role_id",
-    "grill_edges",
-    "inject_l0",
-    "kernel_snapshot",
-    "l0_brief_for",
-    "l0_enabled",
-    "raho_directory",
-    "raho_graph",
-    "raho_identity",
-    "remember_query",
-    "assemble_atomic",
     "command_from_ticket",
     "command_grill",
     "decide_escalation",
-    "incubate_instance",
     "downward_context",
+    "grill_edges",
     "grill_user_lock",
     "grill_user_start",
     "grill_user_status",
     "grill_user_turn",
+    "incubate_instance",
+    "inject_l0",
+    "kernel_snapshot",
+    "l0_brief_for",
+    "l0_enabled",
     "metrics_for",
-    "all_metrics",
     "parse_grill_output",
     "plan_campaign",
+    "raho_directory",
     "raho_enabled",
+    "raho_graph",
+    "raho_identity",
     "recycle_atomic",
+    "remember_query",
     "resolve_grill",
     "should_demote",
     "should_grill_user",

@@ -67,7 +67,7 @@ async def write_tags(req: WriteRequest):
                     result="success" if result["success"] else "failed",
                     detail=result.get("message", ""),
                 )
-        except Exception as exc:  # noqa: BLE001 - 逐项隔离：单项失败不影响其余写入，并记录审计
+        except Exception as exc:
             logger.exception("批量写入失败")
             # 降级处理：为每个未处理的条目添加失败结果
             for entry in valid_entries:

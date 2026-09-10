@@ -237,9 +237,8 @@ def _append_audit(record: dict[str, Any], cfg: MinecraftMcpConfig | None = None)
         path = cfg.audit_path
         path.parent.mkdir(parents=True, exist_ok=True)
         line = json.dumps(payload, ensure_ascii=False)
-        with _audit_lock:
-            with path.open("a", encoding="utf-8") as handle:
-                handle.write(line + "\n")
+        with _audit_lock, path.open("a", encoding="utf-8") as handle:
+            handle.write(line + "\n")
     except OSError as exc:
         logger.warning("Minecraft MCP 審計寫入失敗：%s", exc)
 

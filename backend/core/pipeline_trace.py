@@ -35,7 +35,7 @@ def log_node(state: dict[str, Any], node: str, **fields: Any) -> None:
     if tracer is None:
         return
     try:
-        tracer._write("pipeline_node", {"node": node, **fields})  # noqa: SLF001
+        tracer._write("pipeline_node", {"node": node, **fields})
     except Exception as exc:
         logger.debug("trace 寫入失敗：%s", exc)
 

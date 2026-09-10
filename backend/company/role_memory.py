@@ -66,7 +66,7 @@ class RoleMemory:
                     "角色 %s 檢索到 %d 筆相關經驗", self.role, len(results)
                 )
             return results
-        except Exception as exc:  # noqa: BLE001 - 檢索失敗不阻斷主流程
+        except Exception as exc:
             logger.warning("角色記憶檢索失敗（%s）：%s", self.role, exc)
             return []
 
@@ -119,7 +119,7 @@ class RoleMemory:
             record_id = self._store.add_memory(text, metadata=meta)
             logger.debug("角色 %s 保存經驗：%s", self.role, task_title[:50])
             return record_id
-        except Exception as exc:  # noqa: BLE001 - 保存失敗不中斷主流程
+        except Exception as exc:
             logger.warning("角色記憶保存失敗（%s）：%s", self.role, exc)
             return None
 
@@ -176,14 +176,14 @@ class RoleMemory:
         """回傳角色記憶總數。"""
         try:
             return self._store.count()
-        except Exception:  # noqa: BLE001
+        except Exception:
             return 0
 
     def cleanup(self, max_age_days: int = 60, min_score: float | None = None) -> int:
         """清理過期或低品質記憶。"""
         try:
             return self._store.cleanup(max_age_days, min_score)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("角色記憶清理失敗（%s）：%s", self.role, exc)
             return 0
 

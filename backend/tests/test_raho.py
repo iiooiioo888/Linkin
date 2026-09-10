@@ -348,10 +348,11 @@ class TestEscalationTtl:
 
     def test_decide_idempotent_after_timeout(self):
         """逾時後再點選應回傳既有結果，勿 404。"""
+        import time
+
         from backend.company.raho.escalation import decide
         from backend.company.raho.protocol import EscalationChoice, RahoLayer
         from backend.company.raho.store import STORE, PendingDecision
-        import time
 
         pending = PendingDecision(
             decision_id="idem01",

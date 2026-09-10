@@ -24,23 +24,23 @@ def collect_monitor_hub() -> dict[str, Any]:
 
     try:
         agents = collect_agent_monitor()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         errors.append(f"agents:{exc}")
     try:
         optimization = collect_optimization_monitor()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         errors.append(f"optimization:{exc}")
     try:
         llm_ops = collect_llm_ops()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         errors.append(f"llm_ops:{exc}")
     try:
         hub = collect_hub_monitor()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         errors.append(f"hub:{exc}")
     try:
         dashboard = collect_dashboard()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         errors.append(f"dashboard:{exc}")
 
     try:

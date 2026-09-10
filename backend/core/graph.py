@@ -39,8 +39,8 @@ from backend.core.company_nodes import (
     run_company,
     should_evaluate_company,
 )
-from backend.linkin.pipeline import enhance_with_linkin_context
 from backend.core.state import EvoLoopState
+from backend.linkin.pipeline import enhance_with_linkin_context
 
 # 可透過環境變數調整；測試中也可 monkeypatch 此模組常數
 PASS_THRESHOLD = float(os.getenv("EVOL_PASS_THRESHOLD", "8"))

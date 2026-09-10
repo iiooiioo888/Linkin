@@ -31,16 +31,12 @@ from backend.company.decomposer import (
     TaskDecomposer,
 )
 from backend.company.docker_tools import (
-    DOCKER_TOOLS,
-    can_use_docker_tool,
     execute_docker_tool,
 )
-from backend.company.tools import tool_registry
-from backend.company.react_loop import ReActExecutor
-from backend.company.role_memory import get_role_memory
 from backend.company.events import CompanyEvent, EventBus
 from backend.company.prompts import PromptConfig
 from backend.company.role_catalog import resolve_runtime
+from backend.company.role_memory import get_role_memory
 from backend.company.roles import STANDARD_ROLES, RoleType
 from backend.company.run_log import append_run_record, utc_now_iso
 from backend.company.state import (
@@ -49,6 +45,7 @@ from backend.company.state import (
     CompanyRunState,
     WorkItemStatus,
 )
+from backend.company.tools import tool_registry
 from backend.company.work_item import WorkItemManager
 from backend.core.llm import call_llm, llm_kwargs_for_role, parse_json_response, split_thinking
 from backend.services.docker_manager import DockerManager, get_docker_manager
@@ -65,7 +62,7 @@ async def _llm_thread(fn, *args, **kwargs):
     def _run():
         try:
             return fn(*args, **kwargs)
-        except StopIteration as exc:  # noqa: PERF203
+        except StopIteration as exc:
             raise RuntimeError(f"LLM 呼叫序列耗盡（StopIteration）：{exc}") from exc
 
     return await asyncio.to_thread(_run)
@@ -129,7 +126,7 @@ class CompanyOrchestrator:
         self.cancel_requested = True
         try:
             self.work_items.cancel_all_pending("任務已被使用者取消")
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning("取消時標記工作項失敗（不影響取消）", exc_info=True)
         logger.info("公司任務已請求取消（run_id=%s）", self._run_id)
 
@@ -205,7 +202,7 @@ class CompanyOrchestrator:
             from backend.company.seat_io import bind_run
 
             bind_run(self._run_id, self.task_id)
-        except Exception:  # noqa: BLE001 - 監察綁定失敗不得阻斷執行
+        except Exception:
             logger.debug("席位 I/O run 綁定失敗（已忽略）", exc_info=True)
         self.budget.reset_task()
         self.work_items = WorkItemManager()
@@ -230,7 +227,7 @@ class CompanyOrchestrator:
 
             if raho_enabled() and self._run_id:
                 _RAHO_STORE.ensure_tree(self._run_id, goal)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
         # ── 階段 0：雲資源預算檢查（Docker + 阿里雲 BSS）──
@@ -296,7 +293,7 @@ class CompanyOrchestrator:
                     "node_count": len(campaign.nodes),
                     "source": campaign.source,
                 })
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.debug("L4 戰役規劃略過", exc_info=True)
 
         # ── 階段 1b：L3 戰術指揮官把 L4 門票拆成原子作戰地圖 ──
@@ -350,7 +347,7 @@ class CompanyOrchestrator:
                         "node_count": len(self._battle_plan.get("dag_nodes") or []),
                         "rush_mode": bool(pack.get("rush_mode")),
                     })
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.debug("L3 戰術拆解略過，回退 TaskDecomposer", exc_info=True)
 
         if not work_items:
@@ -372,7 +369,7 @@ class CompanyOrchestrator:
                 if raho_enabled():
                     for _item in work_items:
                         assemble_atomic(_item)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.debug("原子角色組裝略過", exc_info=True)
 
         try:
@@ -382,7 +379,7 @@ class CompanyOrchestrator:
                 from backend.company.raho.planner import CampaignMap, tag_work_items
 
                 tag_work_items(work_items, CampaignMap.from_dict(self._campaign, goal))
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.debug("戰役節點掛載略過", exc_info=True)
         self._log("decompose_done", {
             "subtask_count": len(work_items),
@@ -535,7 +532,7 @@ class CompanyOrchestrator:
                 "battle_plan": self._battle_plan,
                 "commander": self._commander,
             }
-        except Exception:  # noqa: BLE001
+        except Exception:
             return {}
 
     def _emit_user_pending(self, pending, *, title: str = "", phase: str = "") -> None:
@@ -569,7 +566,7 @@ class CompanyOrchestrator:
             from backend.services.commander import fill_allowed_tools
 
             inferred = fill_allowed_tools(blob)
-        except Exception:  # noqa: BLE001
+        except Exception:
             inferred = []
         if inferred:
             artifacts["allowed_tools"] = list(inferred)
@@ -597,9 +594,13 @@ class CompanyOrchestrator:
         """若產出含 [GRILL]，走熱馬桶圈後重試一次執行。無標記則原樣返回。"""
         try:
             from backend.company.raho.escalation import resolve_grill
-            from backend.company.raho.mgp import parse_choices, parse_grill_output, strip_protocol_marks
+            from backend.company.raho.mgp import (
+                parse_choices,
+                parse_grill_output,
+                strip_protocol_marks,
+            )
             from backend.company.raho.protocol import mgp_enabled
-        except Exception:  # noqa: BLE001
+        except Exception:
             return raw, prompt
         if not mgp_enabled():
             return raw, prompt
@@ -665,7 +666,7 @@ class CompanyOrchestrator:
             if kind2 == "clear":
                 return retried, next_prompt
             return strip_protocol_marks(retried) or reply, next_prompt
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("MGP 重試執行失敗，使用裁決原文：%s", exc)
             return reply, next_prompt
 
@@ -928,7 +929,7 @@ class CompanyOrchestrator:
                 raw = await _llm_thread(
                     call_llm, full_prompt, system=system, model=model, **(llm_kwargs or {})
                 )
-            except Exception as exc:  # noqa: BLE001 - 失敗投遞同樣要留痕
+            except Exception as exc:
                 self._record_seat_io(
                     seat, item, role_value,
                     prompt=full_prompt, system=system, model=model,
@@ -1097,7 +1098,7 @@ class CompanyOrchestrator:
             from backend.company.seat_io import record_seat_io
 
             record_seat_io(record)
-        except Exception:  # noqa: BLE001 - 監察軌跡不得中斷執行
+        except Exception:
             logger.debug("席位 I/O 軌跡記錄異常（已忽略）", exc_info=True)
         try:
             if self.tracer is not None:
@@ -1112,7 +1113,7 @@ class CompanyOrchestrator:
                     item_id=str(record["item_id"]),
                     iteration=int(meta.get("attempt") or 0),
                 )
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.debug("席位 LLM 調用寫入 trace 異常（已忽略）", exc_info=True)
 
     def _seat_meta(
@@ -1137,7 +1138,7 @@ class CompanyOrchestrator:
             layer = int(role_to_raho_layer(role_type))
             meta["layer"] = layer
             meta["layer_label"] = layer_label(layer)
-        except Exception:  # noqa: BLE001
+        except Exception:
             meta["layer"] = None
         return meta
 
@@ -1189,7 +1190,7 @@ class CompanyOrchestrator:
             _layer = int(role_to_raho_layer(role_type))
             seat_ctx["layer"] = _layer
             seat_ctx["layer_label"] = layer_label(_layer)
-        except Exception:  # noqa: BLE001 - 層級資訊缺失不影響執行
+        except Exception:
             seat_ctx["layer"] = None
         sources: list[dict[str, Any]] = seat_ctx["context_sources"]
         sources.append({
@@ -1203,7 +1204,7 @@ class CompanyOrchestrator:
             from backend.company.raho.scorecard import record_execution
 
             record_execution(role_type.value)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
         # 使用角色專用執行提示（若有）
@@ -1245,7 +1246,7 @@ class CompanyOrchestrator:
                 campaign_brief = CampaignMap.from_dict(self._campaign, goal).brief()
                 prompt = prompt + "\n\n" + campaign_brief
                 sources.append({"kind": "campaign", "label": "L4 戰役簡報（CampaignMap）", "text": campaign_brief})
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
         # ── 角色記憶注入：原子角色只讀 input_ref，不灌歷史對話 ──
@@ -1261,7 +1262,7 @@ class CompanyOrchestrator:
                     self._log("role_memory_injected", {
                         "item_id": item.id, "role": role_type.value,
                     }, level=logging.DEBUG)
-            except Exception:  # noqa: BLE001 - 記憶注入失敗不阻斷執行
+            except Exception:
                 pass
 
         # 若角色有工具權限，附加工具說明（原子角色只列白名單）
@@ -1337,7 +1338,7 @@ class CompanyOrchestrator:
                         "phase": "preflight",
                         "timeout": bool(resolved.get("timeout")),
                     })
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.debug("執行前 MGP 略過", exc_info=True)
 
         # ── 重試迴圈（含指數退避 + 超時 + 角色升級）──
@@ -1409,9 +1410,9 @@ class CompanyOrchestrator:
                         system_prompt = inject_skills(system_prompt, role_type.value)
                         if len(system_prompt) > before_len:
                             system_origin += " ＋ 技能庫"
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         pass
-                except Exception:  # noqa: BLE001
+                except Exception:
                     pass
                 seat_ctx["attempt"] = attempt
                 seat_ctx["context_sources"] = base_sources + [
@@ -1438,7 +1439,7 @@ class CompanyOrchestrator:
                     from backend.company.raho.atomic_executor import parse_failed_output
 
                     failed = parse_failed_output(raw)
-                except Exception:  # noqa: BLE001
+                except Exception:
                     failed = None
                 if failed:
                     last_error = f"原子任務失敗：{(failed.get('partial_output') or '')[:240]}"
@@ -1484,7 +1485,7 @@ class CompanyOrchestrator:
                         None,  # 審查結果稍後由 _review_item 補充
                         True,
                     )
-                except Exception:  # noqa: BLE001 - 記憶保存失敗不阻斷流程
+                except Exception:
                     pass
                 try:
                     from backend.company.raho.atomic_pool import recycle as recycle_atomic
@@ -1500,7 +1501,7 @@ class CompanyOrchestrator:
                             content=str(item.artifacts.get("output") or "")[:800],
                             role=role_type.value,
                         )
-                except Exception:  # noqa: BLE001
+                except Exception:
                     pass
 
                 return  # 成功，退出
@@ -1508,7 +1509,7 @@ class CompanyOrchestrator:
             except asyncio.TimeoutError:
                 last_error = f"執行超時（{retry_cfg.deadline_seconds}s）"
                 logger.warning("工作項 %s 超時（attempt %d/%d）", item.id, attempt + 1, retry_cfg.max_retries + 1)
-            except Exception as exc:  # noqa: BLE001 - 重試兜底：記錄失敗後繼續下一輪
+            except Exception as exc:
                 last_error = str(exc)
                 logger.warning("工作項 %s 失敗（attempt %d/%d）：%s", item.id, attempt + 1, retry_cfg.max_retries + 1, exc)
 
@@ -1569,7 +1570,7 @@ class CompanyOrchestrator:
             )
             from backend.company.raho.protocol import RahoLayer, raho_enabled
             from backend.company.raho.store import STORE as _RAHO_STORE
-        except Exception:  # noqa: BLE001
+        except Exception:
             return None
         if not raho_enabled():
             return None
@@ -1666,7 +1667,7 @@ class CompanyOrchestrator:
                     reply = str(result.get("reply") or "").strip()
                     if reply:
                         item.description = (item.description or "") + f"\n【L1 呈報後裁決】{reply}"
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.debug("L1 呈報裁決略過", exc_info=True)
             return verdict
         return verdict
@@ -1695,7 +1696,7 @@ class CompanyOrchestrator:
                     from backend.company.raho.store import STORE as _RAHO_STORE
 
                     _RAHO_STORE.revoke_signed(current.id)
-                except Exception:  # noqa: BLE001
+                except Exception:
                     pass
                 current.artifacts["l1_signed"] = False
                 self.work_items.request_rework(item.id, feedback)
@@ -1753,7 +1754,7 @@ class CompanyOrchestrator:
                 from backend.company.skills import inject_skills
 
                 system_prompt = inject_skills(system_prompt, RoleType.REVIEWER.value)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
             _review_start = time.monotonic()
             try:
@@ -1810,7 +1811,7 @@ class CompanyOrchestrator:
                     # 重新執行（Developer 根據回饋修改）
                     await self._rework_item(goal, current, feedback)
 
-            except Exception as exc:  # noqa: BLE001 - 審查異常不阻塞交付，記錄後退出審查迴圈
+            except Exception as exc:
                 logger.error("審查 %s 失敗：%s", item.id, exc)
                 break
 
@@ -1937,7 +1938,7 @@ class CompanyOrchestrator:
 
             except asyncio.TimeoutError:
                 last_error = f"修改超時（{retry_cfg.deadline_seconds}s）"
-            except Exception as exc:  # noqa: BLE001 - 重試兜底：記錄失敗後繼續下一輪
+            except Exception as exc:
                 last_error = str(exc)
                 logger.warning("修改 %s 失敗（attempt %d/%d）：%s", item.id, attempt + 1, retry_cfg.max_retries + 1, exc)
 
@@ -2015,7 +2016,7 @@ class CompanyOrchestrator:
             self._log("synthesize_done", meta)
             return final_output, meta
 
-        except Exception as exc:  # noqa: BLE001 - 合併失敗降級為分離流程
+        except Exception as exc:
             logger.warning("Review+Synth 合併失敗，降級為獨立 Synthesizer：%s", exc)
             output = await self._synthesize(goal)
             return output, {"merged": False, "fallback": str(exc)}
@@ -2079,7 +2080,7 @@ class CompanyOrchestrator:
             self._log("synthesize_done", {"cost": round(cost, 4)})
             return raw
 
-        except Exception as exc:  # noqa: BLE001 - 降級兜底：整合失敗改為直接拼接產出
+        except Exception as exc:
             logger.error("整合失敗：%s", exc)
             return self._collect_artifacts()  # 降級：直接拼接
 
@@ -2141,7 +2142,7 @@ class CompanyOrchestrator:
             self._log("final_review_done", result)
             return result
 
-        except Exception as exc:  # noqa: BLE001 - 降級兜底：審查異常時自動通過並留痕
+        except Exception as exc:
             logger.error("最終審查失敗：%s", exc)
             # 降級路徑：審查異常時自動通過，但必須留下可追蹤的持久軌跡
             self._log(
@@ -2181,7 +2182,7 @@ class CompanyOrchestrator:
                         f"{ctx}"
                     )
                 return ctx
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         if not deps:
             return "（無依賴上下文）"

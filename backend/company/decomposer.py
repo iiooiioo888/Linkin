@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -45,16 +46,16 @@ async def _llm_thread(fn, *args, **kwargs):
     def _run():
         try:
             return fn(*args, **kwargs)
-        except StopIteration as exc:  # noqa: PERF203
+        except StopIteration as exc:
             raise RuntimeError(f"LLM 呼叫序列耗盡（StopIteration）：{exc}") from exc
 
     return await asyncio.to_thread(_run)
 
-# ── 拆分結果快取（優化 #13）──
-_DECOMPOSE_CACHE_SIZE = int(os.getenv("EVOL_DECOMPOSE_CACHE_SIZE", "64")) if 'os' in dir() else 64
 import hashlib
-import os
 from collections import OrderedDict as _OrderedDict
+
+# ── 拆分結果快取（優化 #13）──
+_DECOMPOSE_CACHE_SIZE = int(os.getenv("EVOL_DECOMPOSE_CACHE_SIZE", "64"))
 
 _decompose_cache: _OrderedDict[str, DecompositionResult] = _OrderedDict()
 
@@ -341,7 +342,7 @@ class TaskDecomposer:
                 for rt in self.config.roles
                 if resolve_runtime(rt.value).get("enabled", True)
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             valid_roles = "/".join(rt.value for rt in self.config.roles)
 
         model = self.budget.resolve_model_for_tier(BudgetTier.REASONING)
@@ -353,7 +354,7 @@ class TaskDecomposer:
             if runtime.get("preferred_model"):
                 model = runtime["preferred_model"]
             llm_opts = llm_kwargs_for_role(runtime)
-        except Exception:  # noqa: BLE001
+        except Exception:
             llm_opts = {}
         prompt = self.prompt_config.manager_decompose.format(
             goal=goal,
@@ -369,7 +370,7 @@ class TaskDecomposer:
             hint = planning_paradigm_hint()
             if hint:
                 prompt = prompt + "\n\n" + hint
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
         _dec_start = time.monotonic()
@@ -413,7 +414,7 @@ class TaskDecomposer:
                         }
                     ],
                 })
-            except Exception:  # noqa: BLE001 - 監察軌跡不得影響拆分
+            except Exception:
                 logger.debug("分解席位投遞軌跡異常（已忽略）", exc_info=True)
 
             result = parse_json_response(raw)
@@ -432,7 +433,7 @@ class TaskDecomposer:
                 meta={"model": model, "cost": round(cost, 4)},
             )
 
-        except Exception as exc:  # noqa: BLE001 - 降級兜底：LLM 失敗時改用 RULE 策略
+        except Exception as exc:
             logger.error("LLM 拆分失敗，降級為 RULE 策略：%s", exc)
             return self._rule_decompose(goal)
 

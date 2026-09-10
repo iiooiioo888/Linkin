@@ -1,7 +1,6 @@
 """模型調用分布與用戶反饋分析測試。"""
 
 import json
-from pathlib import Path
 
 from backend.core.user_feedback import feedback_analysis, record_feedback
 from backend.services.trace_logger import aggregate_llm_call_stats, aggregate_reflection_stats
@@ -18,8 +17,7 @@ def test_aggregate_llm_call_stats_from_traces(tmp_path, monkeypatch):
         {"event": "phase_change", "phase": "evaluate"},
     ]
     with open(trace_file, "w", encoding="utf-8") as f:
-        for ev in events:
-            f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+        f.writelines(json.dumps(ev, ensure_ascii=False) + "\n" for ev in events)
 
     monkeypatch.setenv("EVOL_TRACE_DIR", str(trace_dir))
     stats = aggregate_llm_call_stats()
@@ -49,8 +47,7 @@ def test_aggregate_reflection_stats_from_traces(tmp_path, monkeypatch):
         {"event": "phase_change", "phase": "early_stop"},
     ]
     with open(trace_file, "w", encoding="utf-8") as f:
-        for ev in events:
-            f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+        f.writelines(json.dumps(ev, ensure_ascii=False) + "\n" for ev in events)
 
     monkeypatch.setenv("EVOL_TRACE_DIR", str(trace_dir))
     stats = aggregate_reflection_stats()

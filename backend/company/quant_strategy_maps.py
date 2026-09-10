@@ -683,7 +683,7 @@ def strategy_preview(strategy_id: str, symbol: str = "600519") -> dict[str, Any]
     engine = str(item.get("engine") or item.get("id") or "")
     try:
         chart = market_backtest(code, strategy=engine, include_chart=True)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         chart = {"ok": False, "error": str(exc)[:400], "tool": "market_backtest"}
     series = chart.get("chart") if isinstance(chart, dict) else None
     has_equity = isinstance(series, dict) and bool(series.get("equity"))

@@ -74,7 +74,7 @@ def collect_hub_monitor() -> dict[str, Any]:
             from backend.company.rate_card import rate_card_for
 
             extra = rate_card_for(model)
-        except Exception:  # noqa: BLE001
+        except Exception:
             extra = {}
         models.append(
             {
