@@ -22,6 +22,7 @@
     "ops": "Infra",
     "llm": "API routes",
     "memory": "Memory",
+    "integrations": "Integrations",
     "more": "More",
     "liveIdle": "Idle",
     "liveActive": "Live",

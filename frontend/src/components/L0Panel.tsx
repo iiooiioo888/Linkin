@@ -7,7 +7,9 @@ import { fetchL0Kernel } from '../api/client';
 import type { L0Snapshot } from '../types';
 import MemoryPanel from './MemoryPanel';
 import LcSpiderChart from './charts/LcSpiderChart';
-import { jumpToGrillTree, RAHO_LAYERS } from '../lib/rahoUi';
+import { jumpToGrillTree, jumpToIntegrations, jumpToContextMonitor, RAHO_LAYERS } from '../lib/rahoUi';
+import { openChatContextDetail } from '../lib/contextUi';
+import IntegrationsStrip from './IntegrationsStrip';
 
 type L0Tab = 'memory' | 'knowledge' | 'radar' | 'vectors';
 
@@ -92,12 +94,44 @@ export default function L0Panel({
         </div>
         <div className="l0-head-acts">
           <span className={`l0-pressure${radar.energy_save ? ' is-hot' : ''}`}>壓力 {pressure}%</span>
+          {!embed ? (
+            <>
+              <button
+                type="button"
+                className="rd-btn text-[11px] text-[#AEAEB2]"
+                onClick={() => openChatContextDetail()}
+                title="開啟對話詳細區 Context"
+              >
+                Context
+              </button>
+              <button
+                type="button"
+                className="rd-btn text-[11px] text-[#AEAEB2]"
+                onClick={() => jumpToContextMonitor(undefined, { mirror: true })}
+                title="控制台 Context 鏡像"
+              >
+                Context 鏡像
+              </button>
+              <button type="button" className="rd-btn text-[11px] text-[#AEAEB2]" onClick={() => jumpToIntegrations()}>
+                外部整合
+              </button>
+            </>
+          ) : null}
           <button type="button" className="rd-btn text-[11px] text-[#0A84FF]" onClick={() => void reload()}>
             重新整理
           </button>
         </div>
       </div>
       {error ? <p className="mb-3 text-[12px] text-[#FF453A]">{error}</p> : null}
+
+      {!embed ? (
+        <div className="l0-integ-bar">
+          <p className="mb-2 text-[10px] text-[#8E8E93]">
+            召回來源（MemOS／OpenViking／WeKnora）經協調器注入；啟用後才發網路請求。
+          </p>
+          <IntegrationsStrip density="compact" showSummary={false} pollMs={15000} />
+        </div>
+      ) : null}
 
       <div className="l0-tabs" role="tablist">
         {(

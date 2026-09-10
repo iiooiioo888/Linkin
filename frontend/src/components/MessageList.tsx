@@ -13,6 +13,8 @@ interface MessageListProps {
   sending?: boolean;
   onOpenTask?: (messageId: string) => void;
   onOpenTrace?: (taskId: string) => void;
+  /** 開啟對話底部詳細區 Context */
+  onOpenContext?: (taskId: string) => void;
   onSuggest?: (text: string, companyMode: boolean) => void;
   onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
   onBattlePick?: (messageId: string, choice: string) => void;
@@ -32,6 +34,7 @@ export default function MessageList({
   loading,
   onOpenTask,
   onOpenTrace,
+  onOpenContext,
   onSuggest,
   onGrillAnswer,
   onBattlePick,
@@ -107,6 +110,7 @@ export default function MessageList({
             sessionId={sessionId}
             onOpenTask={msg.taskState ? () => onOpenTask?.(msg.id) : undefined}
             onOpenTrace={onOpenTrace}
+            onOpenContext={onOpenContext}
             onGrillAnswer={onGrillAnswer}
             onBattlePick={onBattlePick}
             variant={variant === 'drawer' || hideTaskCard ? 'workspace' : 'default'}

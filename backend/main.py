@@ -180,6 +180,9 @@ register_modules(app)
 from backend.integrations.api import register_integrations  # noqa: E402
 
 register_integrations(app)
+from backend.company.runtime_api import register_runtime_api  # noqa: E402
+
+register_runtime_api(app)
 
 
 class ChatRequest(BaseModel):
@@ -1276,6 +1279,41 @@ async def get_task_trace(
     if with_counts:
         result["event_counts"] = await asyncio.to_thread(trace_event_counts, task_id)
     return result
+
+
+@app.get("/tasks/{task_id}/context")
+async def get_task_context_insight(task_id: str, step: int | None = None):
+    """Context 洞察（對齊 dsh-context：組成／趨勢／事件／瀏覽器）。
+
+    從軌跡聚合，不觸發 LLM、不自動審計；``step`` 為 0-based llm_call 序號。
+    """
+    from backend.services.context_insight import build_context_insight
+
+    return await asyncio.to_thread(build_context_insight, task_id, step=step)
+
+
+@app.get("/context")
+async def get_context_insight(task_id: str | None = None, step: int | None = None):
+    """Context 洞察快捷入口：可省略 task_id（取最新軌跡）。"""
+    from backend.services.context_insight import build_context_insight, resolve_default_task_id
+
+    resolved = await asyncio.to_thread(resolve_default_task_id, task_id)
+    if not resolved:
+        return {
+            "task_id": None,
+            "stats": {},
+            "composition": {},
+            "trend": [],
+            "events": [],
+            "steps": [],
+            "selected_step": None,
+            "browser": {"step": None, "categories": {}, "vs_previous": None},
+            "empty": True,
+            "message": "尚無軌跡；先執行任務後再開啟 Context 面板。",
+        }
+    insight = await asyncio.to_thread(build_context_insight, resolved, step=step)
+    insight["empty"] = False
+    return insight
 
 
 @app.get("/tasks/{task_id}/checkpoint")

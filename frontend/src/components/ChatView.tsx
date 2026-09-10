@@ -1,8 +1,9 @@
 /**
- * ChatView — 無任務只顯示對話；有公司／OPC 任務（含歷史記錄）才左右分裂。
- * 左：主對話 + AI 輸出文件／終端機／問題；右：角色／審計／計費監控。
+ * ChatView — 對話主表面。
+ * 底部詳細區（文件／終端／問題／Context）一律常駐；有公司／OPC 任務時再左右分裂右側監控。
+ * Context（dsh-context 風格）主表面固定在底部詳細區，不跳監看台。
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, TaskProgress } from '../types';
 import { cancelTask, fetchTask, resumeTask } from '../api/client';
 import InputBar from './InputBar';
@@ -13,7 +14,19 @@ import RahoDecisionBar from './RahoDecisionBar';
 import ChatBottomPanel from './ChatBottomPanel';
 import type { BottomTab } from './ChatBottomPanel';
 import ChatTaskMonitor from './ChatTaskMonitor';
-import { activeTaskMessage, flattenWsNodes, wsFiles, wsProblems, wsTerminal } from '../lib/chatWorkspace';
+import {
+  activeTaskMessage,
+  flattenWsNodes,
+  resolveContextTaskId,
+  wsFiles,
+  wsProblems,
+  wsTerminal,
+} from '../lib/chatWorkspace';
+import {
+  OPEN_CHAT_CONTEXT_EVENT,
+  consumePendingChatContext,
+  openContextModal,
+} from '../lib/contextUi';
 import { useNowTick } from '../lib/taskTiming';
 
 interface ChatViewProps {
@@ -91,10 +104,88 @@ export default function ChatView({
   );
   const showMonitor = Boolean(live);
 
-  const [bottomTab, setBottomTab] = useState<BottomTab>('files');
-  const [bottomOff, setBottomOff] = useState(false);
+  /** 對話詳細區預設 Context（dsh-context）；其餘分頁可切 */
+  const [bottomTab, setBottomTab] = useState<BottomTab>('context');
+  /** 無進行中任務時預設收合詳細區本體，保留分頁列；/context 會展開 */
+  const [bottomOff, setBottomOff] = useState(() => !live);
   const [fileId, setFileId] = useState<string | null>(null);
   const [actError, setActError] = useState<string | null>(null);
+
+  /**
+   * 對話頁 Context **永遠**綁定本會話軌跡，禁止跨對話選擇器。
+   * - 預設：進行中任務 → 否則本會話最近一則
+   * - 點訊息／任務卡 Context：僅當該 taskId 屬於本會話才對準，否則忽略
+   */
+  const [contextFocusId, setContextFocusId] = useState<string | null>(null);
+  const contextTaskId = useMemo(
+    () => resolveContextTaskId(messages, contextFocusId),
+    [messages, contextFocusId],
+  );
+
+  /** 打開底部詳細區 Context；prefer 僅接受本會話 taskId */
+  const openContextDetail = (preferTaskId?: string | null) => {
+    const explicit = (preferTaskId || '').trim();
+    if (explicit) {
+      const bound = resolveContextTaskId(messages, explicit);
+      // 外來／其他對話 ID：拒絕對準，仍顯示本會話預設軌跡
+      setContextFocusId(bound === explicit ? explicit : null);
+    } else {
+      // /context、導航列：回到本會話預設（live → 最近），不保留舊 focus
+      setContextFocusId(null);
+    }
+    setBottomTab('context');
+    setBottomOff(false);
+  };
+
+  const openContextDetailRef = useRef(openContextDetail);
+  openContextDetailRef.current = openContextDetail;
+
+  // 切換對話會話時回到 Context 分頁，清空跨會話 focus
+  useEffect(() => {
+    setBottomTab('context');
+    setFileId(null);
+    setContextFocusId(null);
+    setBottomOff(!live);
+  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps -- 僅在切換會話時重置
+
+  // focus 若已不在本會話 messages 內，自動清掉（防殘留）
+  useEffect(() => {
+    if (!contextFocusId) return;
+    if (resolveContextTaskId(messages, contextFocusId) !== contextFocusId) {
+      setContextFocusId(null);
+    }
+  }, [messages, contextFocusId]);
+
+  // 本會話出現可綁定軌跡時自動展開詳細區（直接顯示對應對話 Context）
+  const sawContextRef = useRef(false);
+  useEffect(() => {
+    if (contextTaskId && !sawContextRef.current) {
+      sawContextRef.current = true;
+      setBottomTab('context');
+      setBottomOff(false);
+    }
+    if (!contextTaskId) sawContextRef.current = false;
+  }, [contextTaskId]);
+
+  useEffect(() => {
+    const pending = consumePendingChatContext();
+    if (pending !== undefined) {
+      // pending 可能來自控制台；仍須經本會話校驗
+      openContextDetailRef.current(pending);
+    }
+
+    const onOpen = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ taskId?: string | null }>).detail;
+      const prefer =
+        detail && Object.prototype.hasOwnProperty.call(detail, 'taskId')
+          ? detail.taskId
+          : undefined;
+      // 實際綁定一律經本會話 resolve；外來 ID 被忽略
+      openContextDetailRef.current(prefer);
+    };
+    window.addEventListener(OPEN_CHAT_CONTEXT_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_CHAT_CONTEXT_EVENT, onOpen);
+  }, []);
 
   const running = task?.status === 'running' || task?.status === 'pending';
   const now = useNowTick(Boolean(showMonitor && running));
@@ -166,6 +257,7 @@ export default function ChatView({
       loading={loading}
       onOpenTask={onOpenTask}
       onOpenTrace={onOpenTrace}
+      onOpenContext={(tid) => openContextDetail(tid)}
       onSuggest={onSuggest}
       sending={sending}
       onGrillAnswer={onGrillAnswer}
@@ -174,28 +266,38 @@ export default function ChatView({
     />
   );
 
-  const composer = <InputBar disabled={sending || grilling || waitingBattle} onSend={onSend} />;
-
-  if (!showMonitor) {
-    return (
-      <div className="flex min-h-0 flex-1">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {banners}
-          {chat}
-          {composer}
-        </div>
-      </div>
-    );
-  }
+  const composer = (
+    <InputBar
+      disabled={sending || grilling || waitingBattle}
+      onSend={onSend}
+      onContextCommand={(mode) => {
+        // 對話頁 Context／Peek 一律綁定本會話解析結果，禁止選其他對話
+        if (mode === 'peek') {
+          openContextModal(contextTaskId);
+        } else {
+          openContextDetail();
+        }
+      }}
+    />
+  );
 
   return (
-    <div className="ws">
+    <div className={`ws${!showMonitor ? ' is-chat-only' : ''}`}>
       <div className="ws-main">
         <nav className="ws-nav">
           <div className="ws-crumb">
-            對話 / <strong>{title || '進行中任務'}</strong>
+            對話 / <strong>{title || (showMonitor ? '進行中任務' : '會話')}</strong>
           </div>
           <div className="ws-nav-acts">
+            <button
+              type="button"
+              className="ws-btn"
+              onClick={() => openContextDetail()}
+              data-testid="chat-nav-context"
+              title="開啟本對話詳細區 Context（/context）· 直接顯示本會話軌跡，不可切換其他對話"
+            >
+              Context
+            </button>
             {onOpenSettings && (
               <button type="button" className="ws-btn ws-btn-icon" onClick={onOpenSettings} aria-label="設定">
                 ⚙
@@ -230,6 +332,8 @@ export default function ChatView({
           onFile={setFileId}
           terminal={terminal}
           problems={problems}
+          taskId={contextTaskId}
+          sessionKey={sessionId}
           onProblem={() => {
             setBottomTab('problems');
             setBottomOff(false);
@@ -245,6 +349,7 @@ export default function ChatView({
           now={now}
           onOpenTask={() => onOpenTask(live.id)}
           onOpenTrace={onOpenTrace}
+          onOpenContext={() => openContextDetail(task.task_id)}
           onPause={() => void handlePause()}
           onResume={() => void handleResume()}
         />

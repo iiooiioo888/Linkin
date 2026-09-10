@@ -704,3 +704,65 @@ def test_contract_c_plugin_003_dsh_plugin_pin_default():
     # 無任何遠端腳本執行入口（禁止執行未審核遠端腳本）
     for forbidden in ("run_remote_script", "exec_remote", "fetch_and_run"):
         assert not hasattr(PluginManager, forbidden), f"禁止遠端腳本入口：{forbidden}"
+
+
+# ── C-PERF-001 / C-UI-002 ──────────────────────────────────────
+
+
+def test_contract_c_perf_001_stubbed_clock_budgets():
+    """C-PERF-001（§7.2）：P95 預設上限可用 stub 耗時驗證。"""
+    from backend.core.perf_budget import (
+        DEFAULT_P95_SECONDS,
+        ERR_PERF_BUDGET_EXCEEDED,
+        assert_within_budget,
+        check_elapsed,
+    )
+
+    assert DEFAULT_P95_SECONDS["l0_refresh"] == 3.0
+    assert DEFAULT_P95_SECONDS["plugin_toggle"] == 2.0
+    assert DEFAULT_P95_SECONDS["compile_pipeline_stub"] == 5.0
+    assert DEFAULT_P95_SECONDS["audit_no_llm"] == 1.0
+
+    ok = check_elapsed("l0_refresh", 2.9)
+    assert ok.ok is True
+    bad = check_elapsed("l0_refresh", 3.01)
+    assert bad.ok is False
+    assert bad.error_code == ERR_PERF_BUDGET_EXCEEDED
+
+    assert_within_budget("audit_no_llm", 0.5)
+    try:
+        assert_within_budget("audit_no_llm", 1.5)
+        raise AssertionError("expected TimeoutError")
+    except TimeoutError as exc:
+        assert ERR_PERF_BUDGET_EXCEEDED in str(exc)
+
+
+def test_contract_c_ui_002_button_enabled_matches_deny_matrix():
+    """C-UI-002（§9.2）：按鈕可用性 = 非 DENY；與 denied_pairs 一致。"""
+    from backend.company.task_state_machine import (
+        TaskAction,
+        TaskRuntimeState,
+        button_enabled,
+        denied_pairs,
+        evaluate,
+        export_matrix,
+        Verdict,
+    )
+
+    for state, action, code in denied_pairs():
+        assert button_enabled(state, action) is False
+        assert evaluate(state, action).error_code == code
+
+    # 已知允許組合
+    assert button_enabled(TaskRuntimeState.RUNNING, TaskAction.PAUSE) is True
+    assert button_enabled(TaskRuntimeState.PAUSED, TaskAction.AUDIT) is True
+    assert button_enabled(TaskRuntimeState.L0_REFRESHING, TaskAction.AUDIT) is True  # QUEUE
+    assert button_enabled(TaskRuntimeState.AUDITING, TaskAction.RESUME) is False
+
+    exported = export_matrix()
+    assert exported["schema"] == "todo-§9-v1"
+    deny_cells = [c for c in exported["cells"] if c["verdict"] == Verdict.DENY.value]
+    assert len(deny_cells) == len(denied_pairs())
+    for cell in deny_cells:
+        assert cell["button_enabled"] is False
+        assert cell["error_code"]

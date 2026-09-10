@@ -2,7 +2,7 @@
  * ChatMonitorCards — 對話／監控共用卡片（Apple 控制中心語彙）。
  * 標題 Bold、數據 Regular；狀態燈柔光圓點；色票 #007AFF / #34C759 / #FF9500 / #FF3B30。
  */
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 const ACCENT_CLS: Record<string, string> = {
   green: 'text-[#34C759]',
@@ -71,6 +71,7 @@ export function MonitorSection({
   children,
   scroll = false,
   maxHeight,
+  defaultCollapsed = false,
 }: {
   title: string;
   hint?: string;
@@ -78,13 +79,21 @@ export function MonitorSection({
   children: ReactNode;
   scroll?: boolean;
   maxHeight?: string;
+  /** C-UI-001：預設折疊防過載 */
+  defaultCollapsed?: boolean;
 }) {
+  const [open, setOpen] = useState(!defaultCollapsed);
   return (
     <section
       className="apple-card"
-      style={scroll && maxHeight ? { maxHeight } : undefined}
+      style={scroll && maxHeight && open ? { maxHeight } : undefined}
     >
-      <div className="apple-card__head">
+      <button
+        type="button"
+        className="apple-card__head w-full cursor-pointer text-left"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
         <div className="flex min-w-0 items-center gap-2">
           <h4 className="apple-title">{title}</h4>
           {badge && (
@@ -99,11 +108,15 @@ export function MonitorSection({
             </span>
           )}
         </div>
-        {hint && <span className="shrink-0 text-[10px] font-normal text-[#636366]">{hint}</span>}
-      </div>
-      <div className={`apple-card__body ${scroll ? '' : 'apple-card__body--static'}`}>
-        {children}
-      </div>
+        <span className="shrink-0 text-[10px] font-normal text-[#636366]">
+          {hint ? `${hint} · ` : ''}{open ? '收合' : '展開'}
+        </span>
+      </button>
+      {open ? (
+        <div className={`apple-card__body ${scroll ? '' : 'apple-card__body--static'}`}>
+          {children}
+        </div>
+      ) : null}
     </section>
   );
 }

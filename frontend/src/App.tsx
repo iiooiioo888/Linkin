@@ -28,6 +28,8 @@ import { looksLikeCompanyQuery } from './lib/chatWorkspace';
 import { hydrateWorldModules } from './lib/worldModules';
 import { splitThink } from './lib/splitThink';
 import AppShell from './components/AppShell';
+import ContextModal from './components/ContextModal';
+import { OPEN_CONTEXT_MODAL_EVENT, type OpenContextModalDetail } from './lib/contextUi';
 import type { MonitorTab, ViewKey } from './components/AppShell';
 import type { LabSubTab } from './lib/labTabs';
 import ChatView from './components/ChatView';
@@ -81,6 +83,10 @@ export default function App() {
   const [labSubTab, setLabSubTab] = useState<LabSubTab>(initialRoute.labSubTab);
   const [rightPanelTask, setRightPanelTask] = useState<TaskProgress | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [contextModal, setContextModal] = useState<{ open: boolean; taskId: string | null }>({
+    open: false,
+    taskId: null,
+  });
   const [memoryCount, setMemoryCount] = useState(0);
   const [decisionPending, setDecisionPending] = useState(false);
 
@@ -148,6 +154,20 @@ export default function App() {
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, [activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
+
+  useEffect(() => {
+    const onPeek = (ev: Event) => {
+      const detail = (ev as CustomEvent<OpenContextModalDetail>).detail;
+      // 僅使用呼叫方顯式傳入的 taskId；禁止用 monitor focusTaskId 頂替（避免跨對話洩漏）
+      const explicit =
+        detail && Object.prototype.hasOwnProperty.call(detail, 'taskId')
+          ? detail.taskId ?? null
+          : null;
+      setContextModal({ open: true, taskId: explicit });
+    };
+    window.addEventListener(OPEN_CONTEXT_MODAL_EVENT, onPeek);
+    return () => window.removeEventListener(OPEN_CONTEXT_MODAL_EVENT, onPeek);
+  }, []);
 
   const navigateRoute = useCallback(
     (patch: Partial<ReturnType<typeof getDefaultRoute>>) => {
@@ -1194,6 +1214,11 @@ export default function App() {
           setSettingsOpen(false);
           handleMonitorTabChange('billing');
         }}
+      />
+      <ContextModal
+        open={contextModal.open}
+        taskId={contextModal.taskId}
+        onClose={() => setContextModal((s) => ({ ...s, open: false }))}
       />
     </>
   );

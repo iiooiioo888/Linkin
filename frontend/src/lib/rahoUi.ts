@@ -384,6 +384,31 @@ export function jumpToL0Kernel() {
   window.location.hash = '#/monitor/memory';
 }
 
+/** Context：優先開對話詳細區；僅在明確要控制台鏡像時走 hash。 */
+export function jumpToContextMonitor(taskId?: string, opts?: { mirror?: boolean }) {
+  if (opts?.mirror) {
+    if (taskId) {
+      window.location.hash = `#/monitor/context/${encodeURIComponent(taskId)}`;
+      return;
+    }
+    window.location.hash = '#/monitor/context';
+    return;
+  }
+  // 動態匯入避免與 contextUi 循環依賴
+  void import('./contextUi').then(({ openChatContextDetail }) => {
+    openChatContextDetail(taskId ?? null);
+  });
+}
+
+/** 外部整合控制台（MemOS／OpenViking／WeKnora／Yao／Ouroboros／OpenPencil）。 */
+export function jumpToIntegrations(name?: string) {
+  if (name) {
+    window.location.hash = `#/monitor/integrations/${encodeURIComponent(name)}`;
+    return;
+  }
+  window.location.hash = '#/monitor/integrations';
+}
+
 export function jumpLayer(layer: number, roleId?: string) {
   const canonical = canonicalRoleId(layer, roleId);
   if (layer === 0 || canonical === 'environment_kernel') {

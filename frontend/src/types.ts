@@ -92,6 +92,8 @@ export interface TaskProgress {
   cancel_requested?: boolean;
   /** 是否有可用的檢查點（可斷點續跑） */
   resumable?: boolean;
+  /** TODO §9 單任務運行時狀態（C-UI-002） */
+  runtime_state?: string;
   /** 進階控制選項 */
   options?: TaskOptions;
   /** 公司運行時：分解計劃 */

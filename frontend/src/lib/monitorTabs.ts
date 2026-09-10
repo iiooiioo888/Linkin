@@ -68,6 +68,8 @@ export const MONITOR_SETUP_TABS: MonitorTabItem[] = [
 
 export const MONITOR_SYSTEM_TABS: MonitorTabItem[] = [
   { key: 'memory', icon: '◌', label: 'L0 核心' },
+  { key: 'context', icon: '◫', label: 'Context' },
+  { key: 'integrations', icon: '⧉', label: '外部整合' },
   { key: 'skills', icon: '⚡', label: '技能與 MCP' },
   { key: 'ops', icon: '⚙', label: '基礎設施' },
 ];
@@ -114,7 +116,9 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     items: [
       { key: 'llm', icon: '⊞', label: 'API 路由', hint: '金鑰、目錄、分發' },
       { key: 'memory', icon: '◌', label: 'L0 核心', hint: '記憶／知識／態勢雷達' },
-      { key: 'skills', icon: '⚡', label: '技能與 MCP', hint: '技能庫／MCP 連線' },
+      { key: 'context', icon: '◫', label: 'Context', hint: '控制台鏡像；主表面在對話詳細區' },
+      { key: 'integrations', icon: '⧉', label: '外部整合', hint: 'MemOS／Viking／WeKnora／Yao／Ouroboros／OpenPencil' },
+      { key: 'skills', icon: '⚡', label: '技能與 MCP', hint: '技能庫／MCP／dsh-context 可視化' },
       { key: 'ops', icon: '⚙', label: '基礎設施', hint: 'Hub／檢查點／連線池' },
     ],
   },
@@ -180,6 +184,17 @@ export const CONSOLE_TAB_ALIASES: Record<string, MonitorTab> = {
   dbpool: 'ops',
   routes: 'llm',
   l0: 'memory',
+  context: 'context',
+  ctx: 'context',
+  dshcontext: 'context',
+  integrate: 'integrations',
+  integration: 'integrations',
+  memos: 'integrations',
+  openviking: 'integrations',
+  weknora: 'integrations',
+  yao: 'integrations',
+  ouroboros: 'integrations',
+  openpencil: 'integrations',
   grill: 'agents',
 };
 export const MONITOR_TAB_ALIASES = CONSOLE_TAB_ALIASES;
@@ -200,7 +215,7 @@ export const CONSOLE_CHROME_TABS: Array<{ key: MonitorTab; label: string; match:
   { key: 'agents', label: '角色', match: ['agents'] },
   { key: 'feedback', label: '審計', match: ['feedback', 'metrics'] },
   { key: 'billing', label: '計費', match: ['billing', 'models'] },
-  { key: 'llm', label: '系統', match: ['llm', 'ops', 'memory', 'skills'] },
+  { key: 'llm', label: '系統', match: ['llm', 'ops', 'memory', 'context', 'integrations', 'skills'] },
 ];
 
 export function consoleChromeTabKey(tab: MonitorTab | 'traces'): MonitorTab | null {

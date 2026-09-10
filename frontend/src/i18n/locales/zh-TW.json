@@ -22,6 +22,7 @@
     "ops": "基礎設施",
     "llm": "API 路由",
     "memory": "記憶",
+    "integrations": "外部整合",
     "more": "更多",
     "liveIdle": "待命",
     "liveActive": "即時",

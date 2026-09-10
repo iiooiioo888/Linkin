@@ -16,6 +16,7 @@ import { LAB_INTEGRATION_TABS, type LabSubTab } from '../lib/labTabs';
 import { filterAgentsByDesk, requestRoleSettingsDesk } from '../lib/agentUi';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { MonitorTab } from './AppShell';
+import IntegrationsStrip from './IntegrationsStrip';
 
 const PIPELINE = [
   { id: 'sense', label: '感知' },
@@ -325,6 +326,7 @@ function CompanyCard({
           />
           {onOpen ? <GoBtn onClick={onOpen} label="角色／質詢" /> : null}
           {onOpenTab ? <GoBtn onClick={() => onOpenTab('memory')} label="L0" /> : null}
+          {onOpenTab ? <GoBtn onClick={() => onOpenTab('integrations')} label="整合" /> : null}
         </span>
       }
       className={dock ? 'max-h-[180px]' : 'max-h-[240px]'}
@@ -616,6 +618,35 @@ function ApiPoolCard({ feed, onOpen }: { feed: AnimLiveFeed; onOpen?: () => void
   );
 }
 
+function ExternalIntegrationsCard({
+  dock,
+  onOpenTab,
+}: {
+  dock?: boolean;
+  onOpenTab?: (tab: MonitorTab) => void;
+}) {
+  return (
+    <FrostCard
+      title="外部整合"
+      accessory={
+        onOpenTab ? (
+          <GoBtn onClick={() => onOpenTab('integrations')} label="面板" />
+        ) : (
+          <a href="#/monitor/integrations" className="text-[10px] font-bold text-[#0A84FF] hover:underline">
+            面板
+          </a>
+        )
+      }
+      className={dock ? '' : 'lb-span-2'}
+    >
+      <IntegrationsStrip density={dock ? 'compact' : 'comfortable'} showSummary={false} showGroups={!dock} />
+      <p className="mt-2 text-[10px] leading-relaxed text-[#636366]">
+        MemOS 記憶 · OpenViking 分層上下文 · WeKnora 知識 · Yao 任務板 · Ouroboros 閘門 · OpenPencil 設計。預設關閉，顯式啟用。
+      </p>
+    </FrostCard>
+  );
+}
+
 function LabToolsCard({
   dock,
   onOpenLab,
@@ -628,7 +659,7 @@ function LabToolsCard({
 
   return (
     <FrostCard
-      title="整合工具"
+      title="實驗室工具"
       accessory={
         onOpenLab ? (
           <button
@@ -714,7 +745,9 @@ export default function LiveBoard({
       >
         {!dock && (
           <header className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-[11px] text-[#8E8E93]">控制台總覽 · 配置 API → 指定角色 → 執行 → 審計／計費</p>
+            <p className="text-[11px] text-[#8E8E93]">
+              控制台總覽 · API → 角色 → 執行 → 外部整合（MemOS／Viking…）→ 審計／計費
+            </p>
             <span className="flex items-center gap-2">
               <StatusDot color={feed.live ? GREEN : GRAY} label={feed.live ? 'LIVE' : 'IDLE'} />
               {updated && <span className="apple-data text-[10px] text-[#636366]">{updated}</span>}
@@ -750,6 +783,9 @@ export default function LiveBoard({
               <EventsCard feed={consoleFeed} dock onOpen={onOpenTraces} />
             </div>
             <div className="lb-span-2">
+              <ExternalIntegrationsCard dock onOpenTab={onOpenTab} />
+            </div>
+            <div className="lb-span-2">
               <LabToolsCard dock onOpenLab={onOpenLab} />
             </div>
           </div>
@@ -770,6 +806,7 @@ export default function LiveBoard({
             <div className="lb-span-2">
               <EventsCard feed={consoleFeed} onOpen={onOpenTraces} />
             </div>
+            <ExternalIntegrationsCard onOpenTab={onOpenTab} />
             <LabToolsCard onOpenLab={onOpenLab} />
           </div>
         )}

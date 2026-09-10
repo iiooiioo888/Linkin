@@ -444,6 +444,37 @@ export function activeTaskMessage<T extends Pick<ChatMessage, 'taskState' | 'tas
   return [...messages].reverse().find(isLiveMonitorTask) ?? null;
 }
 
+/**
+ * 解析 Context 面板應綁定的任務 ID（對話詳細區用）。
+ *
+ * **契約（對話頁 C-UI-004）**：
+ * - 僅在本會話 `messages` 內解析；永遠綁定「進行中 → 否則最近一則」
+ * - `prefer` 僅當屬於本會話才生效；外來／其他對話 ID **一律忽略**
+ * - 不回落全域最新軌跡；UI 不得提供跨對話任務選擇器
+ */
+export function resolveContextTaskId(
+  messages: Array<Pick<ChatMessage, 'taskState' | 'taskId'>>,
+  prefer?: string | null,
+): string | null {
+  const sessionIds = new Set<string>();
+  for (const m of messages) {
+    const id = (m.taskId || m.taskState?.task_id || '').trim();
+    if (id) sessionIds.add(id);
+  }
+  const explicit = (prefer || '').trim();
+  // 僅當 prefer 確屬本會話才採用；外來 ID 一律忽略
+  if (explicit && sessionIds.has(explicit)) return explicit;
+  const live = activeTaskMessage(messages);
+  const fromLive = (live?.taskId || live?.taskState?.task_id || '').trim();
+  if (fromLive) return fromLive;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const m = messages[i];
+    const id = (m.taskId || m.taskState?.task_id || '').trim();
+    if (id) return id;
+  }
+  return null;
+}
+
 export function numBudget(task: TaskProgress | null | undefined, key: string): number {
   const v = task?.budget?.[key];
   const n = typeof v === 'number' ? v : Number(v);

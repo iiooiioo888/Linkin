@@ -8,7 +8,7 @@
  *
  * 元件樣式一律走 taskdetail/parts.tsx 的共用小件與 --apple-* token。
  */
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { KanbanItem, TaskProgress } from '../../types';
 import { eventClock, taskEta, useNowTick } from '../../lib/taskTiming';
 import { fmtUsd } from '../../lib/agentUi';
@@ -33,6 +33,8 @@ import {
 import OverviewSection from './OverviewSection';
 import PlanSection from './PlanSection';
 import RequirementSection from './RequirementSection';
+
+const ContextPanel = lazy(() => import('../ContextPanel'));
 
 const REFRESH_MS = 3000;
 /** 看板狀態 → 顯示標籤（對應 backend/company/state.py::WorkItemStatus）。 */
@@ -65,6 +67,7 @@ const ANCHORS: Array<{ id: string; label: string }> = [
   { id: 'td-plan', label: '03 作戰計劃' },
   { id: 'td-board', label: '04 工作項' },
   { id: 'td-events', label: '05 事件流' },
+  { id: 'td-context', label: '07 Context' },
 ];
 
 export default function TaskDetailView({
@@ -249,6 +252,26 @@ export default function TaskDetailView({
                   ) : null}
                 </Card>
               </div>
+            </section>
+
+            {/* 07 Context 洞察（dsh-context 風格） */}
+            <section id="td-context" className="scroll-mt-2">
+              <SectionHead
+                index={7}
+                title="Context 洞察"
+                hint="組成／趨勢／瀏覽器／注入與剪枝事件（對齊 dsh-context）"
+              />
+              <Card>
+                <div className="td-context-embed max-h-[640px] overflow-auto">
+                  <Suspense
+                    fallback={
+                      <p className="px-2 py-4 text-[11px] text-[var(--apple-tertiary)]">載入 Context…</p>
+                    }
+                  >
+                    <ContextPanel key={`td-ctx-${task.task_id}`} taskId={task.task_id} embed />
+                  </Suspense>
+                </div>
+              </Card>
             </section>
           </div>
         ) : null}

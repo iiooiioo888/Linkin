@@ -22,6 +22,8 @@ interface TaskPanelProps {
   onResume?: (taskId: string) => void;
   /** 查看執行軌跡回調 */
   onOpenTrace?: (taskId: string) => void;
+  /** 開啟對話底部詳細區 Context（組成／趨勢／瀏覽器） */
+  onOpenContext?: (taskId: string) => void;
   /** 對話流已由 ChatView portal 決策列接管時隱藏，避免重複 */
   hideDecision?: boolean;
 }
@@ -199,7 +201,15 @@ export function elapsed(ts: number): string {
   return `${Math.floor(min / 60)} 小時前`;
 }
 
-export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpenTrace, hideDecision = false }: TaskPanelProps) {
+export default function TaskPanel({
+  task,
+  onOpenFull,
+  onCancel,
+  onResume,
+  onOpenTrace,
+  onOpenContext,
+  hideDecision = false,
+}: TaskPanelProps) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [resuming, setResuming] = useState(false);
   const isCompany = task.resolved_path === 'company';
@@ -571,7 +581,18 @@ export default function TaskPanel({ task, onOpenFull, onCancel, onResume, onOpen
       )}
 
       {/* ── 操作按鈕列 ── */}
-      <div className="mt-2.5 flex gap-1.5">
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {onOpenContext && (
+          <button
+            type="button"
+            onClick={() => onOpenContext(task.task_id)}
+            data-testid="task-open-context"
+            title="在對話底部詳細區開啟 Context"
+            className="flex-1 rounded-lg border border-[#64D2FF]/35 bg-[#64D2FF]/10 py-1.5 text-[11px] font-medium text-[#64D2FF] transition-all duration-200 hover:border-[#64D2FF]/70 hover:bg-[#64D2FF]/18 active:scale-[0.98]"
+          >
+            Context 詳細區
+          </button>
+        )}
         {onOpenFull && (
           <button
             onClick={onOpenFull}

@@ -1,10 +1,16 @@
 /**
- * 對話工作台底部：產出文件 / 終端 / 問題。
+ * 對話工作台底部詳細區：Context（主）／產出文件／終端／問題。
+ * Context 對齊 dsh-context：組成、趨勢、瀏覽器、注入／剪枝事件。
+ * 主表面固定於此，不跳監看台。
+ * @see https://github.com/bowenliang123/dsh-context
  */
+import { lazy, Suspense } from 'react';
 import type { WsFile, WsProblem, WsTermLine } from '../lib/chatWorkspace';
 import { langOf, tokenizeCode, wsTreeRows } from '../lib/chatWorkspace';
 
-export type BottomTab = 'files' | 'terminal' | 'problems';
+const ContextPanel = lazy(() => import('./ContextPanel'));
+
+export type BottomTab = 'files' | 'terminal' | 'problems' | 'context';
 
 interface ChatBottomPanelProps {
   collapsed: boolean;
@@ -17,6 +23,10 @@ interface ChatBottomPanelProps {
   terminal: WsTermLine[];
   problems: WsProblem[];
   onProblem?: (id: string) => void;
+  /** 當前對話任務 ID；Context 分頁鎖死此軌跡，不可切換其他對話 */
+  taskId?: string | null;
+  /** 會話鍵：切換對話時強制 remount Context，避免殘留上一會話資料 */
+  sessionKey?: string;
 }
 
 export function WsCodePreview({ file }: { file: WsFile | null }) {
@@ -83,14 +93,38 @@ export default function ChatBottomPanel({
   terminal,
   problems,
   onProblem,
+  taskId,
+  sessionKey,
 }: ChatBottomPanelProps) {
   const active = files.find((f) => f.id === fileId) ?? files[0] ?? null;
   const tree = wsTreeRows(files);
+  const tall = tab === 'context' && !collapsed;
 
   return (
-    <div className={`ws-bottom${collapsed ? ' is-off' : ''}`}>
-      <div className="ws-bottom-h">
+    <div
+      className={`ws-bottom${collapsed ? ' is-off' : ''}${tall ? ' is-context' : ''}`}
+      data-testid="chat-bottom-panel"
+    >
+      <div className="ws-bottom-h" aria-label="對話詳細區">
         <div className="ws-tabs">
+          <button
+            type="button"
+            className={`ws-tab${tab === 'context' ? ' is-on' : ''}`}
+            onClick={() => onTab('context')}
+            data-testid="chat-bottom-tab-context"
+            title="Context 組成／趨勢／瀏覽器／事件（本對話詳細區 · 鎖定當前會話 · /context）"
+          >
+            <Ico d="M4 6h16M4 12h10M4 18h14" />
+            Context
+            <span className="ws-tab-badge" title="對話詳細區主表面 · 不可切換其他對話">
+              本對話
+            </span>
+            {taskId ? (
+              <span className="ws-tab-badge is-lock" title={`已鎖定 ${taskId}`} data-testid="chat-context-bound-id">
+                {taskId.slice(0, 8)}…
+              </span>
+            ) : null}
+          </button>
           <button type="button" className={`ws-tab${tab === 'files' ? ' is-on' : ''}`} onClick={() => onTab('files')}>
             <Ico d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
             AI 輸出文件空間 <span className="ws-count">{files.length}</span>
@@ -105,7 +139,7 @@ export default function ChatBottomPanel({
             <span className={`ws-count${problems.length ? ' is-err' : ''}`}>{problems.length}</span>
           </button>
         </div>
-        <button type="button" className="ws-btn ws-btn-icon" onClick={onToggle} aria-label={collapsed ? '展開底部面板' : '收合底部面板'}>
+        <button type="button" className="ws-btn ws-btn-icon" onClick={onToggle} aria-label={collapsed ? '展開詳細區' : '收合詳細區'}>
           <Ico d="M6 18L18 6M6 6l12 12" />
         </button>
       </div>
@@ -174,6 +208,23 @@ export default function ChatBottomPanel({
                 </div>
               </button>
             ))}
+          </div>
+        )}
+        {tab === 'context' && (
+          <div className="ws-context-embed" data-testid="chat-context-embed">
+            <Suspense
+              fallback={
+                <p className="ws-empty" style={{ padding: 16 }}>
+                  載入 Context 面板…
+                </p>
+              }
+            >
+              <ContextPanel
+                key={`chat-ctx-${sessionKey || 's'}-${taskId || 'none'}`}
+                taskId={taskId}
+                embed
+              />
+            </Suspense>
           </div>
         )}
       </div>

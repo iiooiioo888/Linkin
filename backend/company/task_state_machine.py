@@ -203,3 +203,34 @@ def queued_pairs() -> list[tuple[TaskRuntimeState, TaskAction]]:
         for (state, action), d in _MATRIX.items()
         if d.verdict is Verdict.QUEUE
     ]
+
+
+def button_enabled(state: TaskRuntimeState | str, action: TaskAction | str) -> bool:
+    """C-UI-002：前端按鈕可用性以後端矩陣為準。
+
+    DENY → 禁用；ALLOW／SEQUENCE／QUEUE → 可點（QUEUE 由後端佇列，UI 可提交）。
+    """
+    return evaluate(state, action).verdict is not Verdict.DENY
+
+
+def export_matrix() -> dict:
+    """匯出可序列化矩陣供 GUI／契約測試對照（C-UI-002）。"""
+    cells: list[dict] = []
+    for (state, action), decision in _MATRIX.items():
+        cells.append(
+            {
+                "state": state.value,
+                "action": action.value,
+                "verdict": decision.verdict.value,
+                "next_state": decision.next_state.value if decision.next_state else None,
+                "error_code": decision.error_code,
+                "note": decision.note,
+                "button_enabled": decision.verdict is not Verdict.DENY,
+            }
+        )
+    return {
+        "states": [s.value for s in TaskRuntimeState],
+        "actions": [a.value for a in TaskAction],
+        "cells": cells,
+        "schema": "todo-§9-v1",
+    }

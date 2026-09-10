@@ -4,6 +4,8 @@
 import { useEffect, useState } from 'react';
 import { fetchDockerBudget, fetchDockerStatus } from '../api/client';
 import type { DockerBudget, DockerStatus } from '../types';
+import { useIntegrationsStatus } from '../hooks/useIntegrationsStatus';
+import { jumpToIntegration, summarizeIntegrations } from '../lib/integrationsUi';
 import { useMonitorStore } from '../stores/monitorStore';
 
 interface StatusBarProps {
@@ -35,6 +37,10 @@ export default function StatusBar({ llmConfigured, taskCount, memoryCount }: Sta
   const [dockerBudget, setDockerBudget] = useState<DockerBudget | null>(null);
   const llmOps = useMonitorStore((s) => s.llmOps);
   const apiReady = (llmOps?.api_routes ?? []).filter((r) => r.enabled && r.configured).length;
+  const { items: integItems } = useIntegrationsStatus(20000);
+  const integ = summarizeIntegrations(integItems);
+  const integTone =
+    integ.degraded > 0 ? 'warn' : integ.enabled > 0 ? 'ok' : ('idle' as const);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +104,19 @@ export default function StatusBar({ llmConfigured, taskCount, memoryCount }: Sta
           <a href="#/monitor/agents" className="hover:text-[#F5F5F7]">
             角色
           </a>
+        </span>
+
+        <span className="apple-status-item hidden md:inline-flex">
+          <Dot tone={integTone} />
+          <button
+            type="button"
+            className="hover:text-[#F5F5F7]"
+            onClick={() => jumpToIntegration()}
+            title="MemOS／OpenViking／WeKnora／Yao／Ouroboros／OpenPencil"
+          >
+            整合 {integ.enabled}/{integ.total}
+            {integ.degraded ? ` ·降${integ.degraded}` : ''}
+          </button>
         </span>
 
         <span className="apple-status-item hidden sm:inline-flex">

@@ -6,6 +6,8 @@
  *   #/monitor | #/monitor/tasks | #/monitor/tasks/{taskId}
  *   #/monitor/agents/{agentId}
  *   #/monitor/lab | #/monitor/lab/{prompt|firecrawl|archify|ponytail|quant|maps|mcp|ab}
+ *   #/monitor/integrations | #/monitor/integrations/{memos|openviking|weknora|yao|ouroboros|openpencil}
+ *   #/monitor/context | #/monitor/context/{taskId}
  *   #/monitor/world | #/monitor/npcs | #/monitor/quests | #/monitor/items | #/monitor/studio
  *   #/monitor/building | #/monitor/minecraft | #/monitor/admin
  *   #/modules/{id} | #/modules/{id}/{page}   世界模組（Minecraft…）
@@ -86,7 +88,8 @@ export function parseAppRoute(hash: string): AppRoute {
       view: 'monitor',
       monitorTab: tab,
       focusAgentId: (tab === 'agents' || tab === 'studio') && focusRaw ? focusRaw : null,
-      focusTaskId: tab === 'tasks' && focusRaw ? focusRaw : null,
+      focusTaskId:
+        (tab === 'tasks' || tab === 'context') && focusRaw ? focusRaw : null,
       traceTaskId: null,
       rahoFocus: null,
       labSubTab,
@@ -143,6 +146,9 @@ export function buildAppRouteHash(route: AppRoute): string {
     }
     if (route.monitorTab === 'tasks' && route.focusTaskId) {
       return `#/monitor/tasks/${encodeURIComponent(route.focusTaskId)}`;
+    }
+    if (route.monitorTab === 'context' && route.focusTaskId) {
+      return `#/monitor/context/${encodeURIComponent(route.focusTaskId)}`;
     }
     if (route.monitorTab === 'lab') {
       return route.labSubTab === 'prompt' ? '#/monitor/lab' : `#/monitor/lab/${route.labSubTab}`;

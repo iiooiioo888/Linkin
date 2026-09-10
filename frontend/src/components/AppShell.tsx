@@ -38,6 +38,8 @@ export type ConsoleTab =
   | 'ops'
   | 'memory'
   | 'skills'
+  | 'integrations'
+  | 'context'
   | 'grill';
 export type MonitorTab = ConsoleTab | string;
 

@@ -28,6 +28,8 @@ const OpsPanel = lazy(() => import('./OpsPanel'));
 const LlmOpsPanel = lazy(() => import('./LlmOpsPanel'));
 const L0Panel = lazy(() => import('./L0Panel'));
 const SkillsMcpPanel = lazy(() => import('./SkillsMcpPanel'));
+const IntegrationsPanel = lazy(() => import('./IntegrationsPanel'));
+const ContextPanel = lazy(() => import('./ContextPanel'));
 const BillingPanel = lazy(() => import('./BillingPanel'));
 
 interface MonitorViewProps {
@@ -199,6 +201,29 @@ export default function MonitorView({
             <L0Panel />
           </div>
         )}
+        {tab === 'context' && (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="shrink-0 border-b border-white/[0.06] bg-[#1C1C1E]/80 px-5 py-2.5">
+              <p className="text-[12px] text-[#AEAEB2]">
+                Context 主表面在<strong className="mx-1 text-[#F5F5F7]">對話底部詳細區</strong>
+                （輸入 <code className="text-[11px] text-[#64D2FF]">/context</code>）。此處為控制台完整鏡像。
+              </p>
+              <button
+                type="button"
+                className="mt-1.5 rounded-lg border border-[#64D2FF]/35 bg-[#64D2FF]/10 px-2.5 py-1 text-[11px] font-medium text-[#64D2FF] hover:bg-[#64D2FF]/18"
+                onClick={() => {
+                  void import('../lib/contextUi').then(({ openChatContextDetail }) => {
+                    openChatContextDetail(focusTaskId);
+                  });
+                }}
+              >
+                開啟對話詳細區 →
+              </button>
+            </div>
+            <ContextPanel taskId={focusTaskId} />
+          </div>
+        )}
+        {tab === 'integrations' && <IntegrationsPanel />}
         {tab === 'skills' && <SkillsMcpPanel />}
       </Suspense>
     </div>

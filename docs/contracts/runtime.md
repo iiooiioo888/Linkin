@@ -247,15 +247,29 @@
 - **條款**: 審計結果不佔常駐狀態列分數槽；側欄預設折疊（主一席＋動作類型＋預算進度條）
 - **來源**: TODO §3.3
 - **優先級**: P2
-- **驗證**: e2e::core-flow.spec.ts（規劃中擴充）
-- **狀態**: ❌ 未實現
+- **驗證**: ChatTaskMonitor 預設折疊＋compact HUD（席位／動作／預算）；需求審計門票分數不佔常駐槽
+- **狀態**: ✅ 已實現（compact HUD＋MonitorSection defaultCollapsed；完整 e2e 仍可擴充）
 
 ## CONTRACT-ID: C-UI-002
 - **條款**: UI 按鈕可用性以後端 §9 矩陣為準；禁止前端自行放行後端會拒絕的組合
 - **來源**: TODO §9.2
 - **優先級**: P2
-- **驗證**: e2e::state-matrix-buttons（規劃中）
-- **狀態**: ❌ 未實現
+- **驗證**: pytest::backend/tests/test_contracts.py::test_contract_c_ui_002_button_enabled_matches_deny_matrix ＋ frontend/src/lib/taskStateMatrix.ts＋GET /runtime/state-matrix
+- **狀態**: ✅ 已實現
+
+## CONTRACT-ID: C-UI-003
+- **條款**: 外部整合 GUI（MemOS／OpenViking／WeKnora／Yao／Ouroboros／OpenPencil）僅提供顯式啟停與動作；未啟用時不得暗示自動接入
+- **來源**: C-INTEG-002／§3 可視化
+- **優先級**: P2
+- **驗證**: frontend IntegrationsPanel ＋ pytest::backend/tests/test_integrations_api.py
+- **狀態**: ✅ 已實現
+
+## CONTRACT-ID: C-UI-004
+- **條款**: Context 可視化（組成／趨勢 Total|Delta／Step|Turn 粒度／瀏覽器／Inject·Compact·Prune·Switch 事件／File Activity／Agent Network）為顯式入口；**主表面一律在對話底部詳細區**（ChatBottomPanel `Context` 分頁為分頁列首位）；**對話頁永遠直接顯示當前會話軌跡**（進行中任務→否則最近一則），**禁止任務選擇器、禁止切換其他對話**；空軌跡顯示空態、不回落全域最新；`#/monitor/context` 僅為控制台完整鏡像（可選任務）；`/context peek` 為次級浮動預覽且同樣鎖死本會話；不觸發審計、不自動灌入分數。可視化適配掛載為 dsh-plugin 目錄項 `dsh-context`（`bowenliang123/dsh-context`，pin `linkin-adapted`，禁止遠端拉取 npm）
+- **來源**: TODO §3／dsh-context 適配（https://github.com/bowenliang123/dsh-context）
+- **優先級**: P2
+- **驗證**: pytest::backend/tests/test_context_insight.py ＋ pytest::backend/tests/test_context_session_bind.py ＋ pytest::backend/tests/test_plugins_api.py ＋ frontend ChatBottomPanel／ContextPanel（embed 無任務選擇器、鎖死本會話）／ContextModal／InputBar `/context`／`/context peek`／SkillsMcpPanel 可視化分頁／e2e::core-flow
+- **狀態**: ✅ 已實現（對話頁 Context 永遠綁定當前會話；外來 taskId 忽略；embed 無跨對話選擇器；pytest::test_context_session_bind）
 
 ## CONTRACT-ID: C-INTEG-001
 - **條款**: 外部整合（MemOS／OpenViking／WeKnora／Yao／Ouroboros／OpenPencil）一律 fail-open；每次呼叫寫審計軌跡並附原因碼
@@ -289,5 +303,5 @@
 - **條款**: P95 預設上限（可配置）：L0 `/refresh` 3s、插件啟停 2s、編譯管線（stub）5s、審計（無 LLM）1s
 - **來源**: TODO §7.2
 - **優先級**: P2
-- **驗證**: pytest::test_perf_budget_stubbed_clock（規劃中）
-- **狀態**: ❌ 未實現
+- **驗證**: pytest::backend/tests/test_contracts.py::test_contract_c_perf_001_stubbed_clock_budgets（`backend/core/perf_budget.py`）
+- **狀態**: ✅ 已實現

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from backend.modules.api import register_module_routes
 from backend.modules.minecraft import register_minecraft_module
+from backend.modules.plugins_api import register_plugin_routes
 from backend.modules.registry import get_module, list_modules, register_module, reset_registry
 
 
@@ -26,6 +27,7 @@ def register_builtin_modules() -> None:
 def register_modules(app) -> None:
     register_builtin_modules()
     register_module_routes(app)
+    register_plugin_routes(app)
 
 
 __all__ = [

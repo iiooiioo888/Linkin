@@ -16,6 +16,8 @@ interface MessageBubbleProps {
   sessionId: string;
   onOpenTask?: () => void;
   onOpenTrace?: (taskId: string) => void;
+  /** 開啟對話底部詳細區 Context（綁定該訊息任務） */
+  onOpenContext?: (taskId: string) => void;
   onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
   onBattlePick?: (messageId: string, choice: string) => void;
   variant?: 'default' | 'workspace';
@@ -35,6 +37,7 @@ export default function MessageBubble({
   sessionId,
   onOpenTask,
   onOpenTrace,
+  onOpenContext,
   onGrillAnswer,
   onBattlePick,
   variant = 'default',
@@ -100,6 +103,7 @@ export default function MessageBubble({
             onCancel={(taskId) => void handleCancelTask(taskId)}
             onResume={(taskId) => void handleResumeTask(taskId)}
             onOpenTrace={onOpenTrace}
+            onOpenContext={onOpenContext}
           />
           {cancelError && (
             <div className="mt-2">

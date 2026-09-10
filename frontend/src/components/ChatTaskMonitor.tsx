@@ -18,7 +18,9 @@ import { DIMENSION_META, ticketStatusLabel } from './taskdetail/labels';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, roleLabel } from './TaskPanel';
 import { MonitorSection } from './ChatMonitorCards';
 import { L0BiasHint } from './L0BiasHint';
+import IntegrationsStrip from './IntegrationsStrip';
 import { formatDurationCompact, taskEta } from '../lib/taskTiming';
+import { buttonEnabled, inferRuntimeState } from '../lib/taskStateMatrix';
 
 interface ChatTaskMonitorProps {
   task: TaskProgress;
@@ -27,6 +29,7 @@ interface ChatTaskMonitorProps {
   now: number;
   onOpenTask?: () => void;
   onOpenTrace?: (taskId: string) => void;
+  onOpenContext?: () => void;
   onPause?: () => void;
   onResume?: () => void;
 }
@@ -50,6 +53,7 @@ export default function ChatTaskMonitor({
   now,
   onOpenTask,
   onOpenTrace,
+  onOpenContext,
   onPause,
   onResume,
 }: ChatTaskMonitorProps) {
@@ -112,6 +116,16 @@ export default function ChatTaskMonitor({
   const scores = ticket?.dimension_scores ?? {};
   const trail = Array.isArray(ticket?.audit_trail) ? ticket.audit_trail : [];
   const blockers = pending.filter((p) => !p.resolved);
+  const runtimeState = inferRuntimeState({
+    status: task.status,
+    resumable: task.resumable,
+    runtime_state: (task as { runtime_state?: string }).runtime_state,
+    phase: task.phase,
+  });
+  const canPause = buttonEnabled(runtimeState, 'pause') && Boolean(onPause);
+  const canResume = buttonEnabled(runtimeState, 'resume') && Boolean(onResume) && Boolean(task.resumable);
+  const spentPct = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
+  const primarySeat = roleRows.find((r) => r.status === 'busy') || roleRows[0];
 
   return (
     <aside className="ws-side" aria-label="任務監控" data-testid="chat-task-monitor">
@@ -121,14 +135,19 @@ export default function ChatTaskMonitor({
           <p className="ws-side-t">{phaseLabel}</p>
         </div>
         <div className="ws-side-acts">
-          {running && onPause && (
-            <button type="button" className="ws-btn ws-btn-danger" onClick={onPause}>
+          {canPause && running && (
+            <button type="button" className="ws-btn ws-btn-danger" onClick={onPause} data-matrix-action="pause">
               暫停
             </button>
           )}
-          {task.resumable && !running && !blockers.length && onResume && (
-            <button type="button" className="ws-btn ws-btn-primary" onClick={onResume}>
+          {canResume && !running && !blockers.length && (
+            <button type="button" className="ws-btn ws-btn-primary" onClick={onResume} data-matrix-action="resume">
               續跑
+            </button>
+          )}
+          {onOpenContext && (
+            <button type="button" className="ws-btn" onClick={onOpenContext} title="開啟對話詳細區 Context">
+              Context
             </button>
           )}
           {onOpenTrace && (
@@ -145,18 +164,28 @@ export default function ChatTaskMonitor({
       </div>
 
       <div className="ws-side-scroll">
-        <div className="ws-side-kpi">
+        <div className="ws-side-kpi" data-testid="runtime-hud-compact">
           <div>
-            <span>耗時</span>
-            <strong>{eta ? formatDurationCompact(eta.elapsedSec) : '—'}</strong>
+            <span>席位</span>
+            <strong>{primarySeat?.name || '—'}</strong>
           </div>
           <div>
-            <span>階段</span>
-            <strong>{running ? '執行中' : task.status}</strong>
+            <span>動作</span>
+            <strong>{phaseLabel}</strong>
+          </div>
+          <div>
+            <span>預算</span>
+            <strong>{spentPct}%</strong>
           </div>
         </div>
+        <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-white/10" title="任務預算進度">
+          <i className="block h-full rounded-full bg-[#0A84FF]" style={{ width: `${spentPct}%` }} />
+        </div>
+        <p className="mb-2 text-[10px] text-[#636366]">
+          狀態 {runtimeState} · 耗時 {eta ? formatDurationCompact(eta.elapsedSec) : '—'}
+        </p>
 
-        <MonitorSection title="啟用角色" hint={`${enabledN}/${roleRows.length || 0}`}>
+        <MonitorSection title="啟用角色" hint={`${enabledN}/${roleRows.length || 0}`} defaultCollapsed>
           {roleRows.length === 0 ? (
             <p className="ws-empty">任務啟動後會列出被指派的角色</p>
           ) : (
@@ -181,7 +210,14 @@ export default function ChatTaskMonitor({
           )}
         </MonitorSection>
 
-        <MonitorSection title="審計" hint={ticket ? ticketStatusLabel(ticket.status) : '尚無門票'}>
+        <MonitorSection title="外部整合" hint="召回／Agent／設計" defaultCollapsed>
+          <IntegrationsStrip density="compact" showSummary={false} pollMs={15000} />
+          <p className="mt-2 text-[10px] leading-relaxed text-[#636366]">
+            MemOS／Viking／WeKnora 服務 L0 注入；Yao／Ouroboros／OpenPencil 為顯式動作。點晶片開啟面板。
+          </p>
+        </MonitorSection>
+
+        <MonitorSection title="需求審計門票" hint={ticket ? ticketStatusLabel(ticket.status) : '尚無門票'} defaultCollapsed>
           <L0BiasHint snapshot={task.raho?.l0} compact />
           {blockers[0] && (
             <p className="mb-2 rounded-lg border border-[#FF9F0A]/30 bg-[#FF9F0A]/10 px-2.5 py-2 text-[11px] leading-relaxed text-[#FF9F0A]">
@@ -234,7 +270,7 @@ export default function ChatTaskMonitor({
           )}
         </MonitorSection>
 
-        <MonitorSection title="AI 計費" hint={model || '模型用量'}>
+        <MonitorSection title="AI 計費" hint={model || '模型用量'} defaultCollapsed>
           <div className="ws-bill-grid">
             <div>
               <span>Token</span>
@@ -263,6 +299,7 @@ export default function ChatTaskMonitor({
         <MonitorSection
           title="Docker 計費"
           hint={dockerRate > 0 ? `${fmtUsd(dockerRate)}/h` : '容器按時'}
+          defaultCollapsed
         >
           <div className="ws-bill-grid">
             <div>

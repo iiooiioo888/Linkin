@@ -13,3 +13,13 @@
 {"seq": 3, "ts": "2026-09-10T07:36:57.256322+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "reflect", "model": "gpt-6-astra", "score": 9.0}
 {"seq": 4, "ts": "2026-09-10T07:36:57.263359+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "improve_answer", "model": "gpt-6-astra", "iteration": 1}
 {"seq": 5, "ts": "2026-09-10T07:36:57.266323+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}
+{"seq": 1, "ts": "2026-09-10T08:00:43.676839+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "enforce_output_length", "gate": "current_answer", "length": 900, "limit": 800, "length_rewrites": 1}
+{"seq": 2, "ts": "2026-09-10T08:00:47.699933+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}
+{"seq": 3, "ts": "2026-09-10T08:00:47.702933+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "reflect", "model": "gpt-6-astra", "score": 9.0}
+{"seq": 4, "ts": "2026-09-10T08:00:47.705933+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "improve_answer", "model": "gpt-6-astra", "iteration": 1}
+{"seq": 5, "ts": "2026-09-10T08:00:47.709932+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}
+{"seq": 1, "ts": "2026-09-10T08:07:26.390128+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "enforce_output_length", "gate": "current_answer", "length": 900, "limit": 800, "length_rewrites": 1}
+{"seq": 2, "ts": "2026-09-10T08:07:30.408185+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}
+{"seq": 3, "ts": "2026-09-10T08:07:30.411185+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "reflect", "model": "gpt-6-astra", "score": 9.0}
+{"seq": 4, "ts": "2026-09-10T08:07:30.415223+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "improve_answer", "model": "gpt-6-astra", "iteration": 1}
+{"seq": 5, "ts": "2026-09-10T08:07:30.419185+00:00", "task_id": "task-len-1", "event": "pipeline_node", "node": "evaluate_answer", "score": 9.0, "source": "llm"}

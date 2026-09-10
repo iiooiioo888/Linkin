@@ -129,6 +129,7 @@
 - [ ] **席位／任務狀態**：區分 **活動中** vs **等待中**，並涵蓋顯式狀態：`paused`、`auditing`、恢復中、注入刷新中、外掛降級中、編譯中／部署待確認等；狀態來源以後端狀態機為準（見 §9）。
 - [ ] **當前執行動作類型**：MCP 呼叫、編程、內容思考、編排／調度、外掛／模組呼叫、編譯／沙盒驗證等，隨階段即時更新；標籤不得與審計分數或壓力百分比混用同一元件。
 - [ ] **模組／外掛啟用狀態**（對齊 §6／§7）：可選展示已啟用模組（含 DeepSeek Club、dsh-plugin）與能力摘要，與審計結果區分離。
+- [x] **Context 可視化（dsh-context 適配）**：對話底部詳細區主表面 + `/context` 命令 + `/context peek` 浮動模態 + `#/monitor/context` 鏡像；組成六色條、Trend（Step|Turn × Total|Delta）、Browser（來源晶片／排序／Live）、Inject/Compact/Prune/Switch 事件、File Activity、Agent Network；掛載為 dsh-plugin 目錄項 `dsh-context`（白名單 `bowenliang123/dsh-context`，pin `linkin-adapted`，技能面板「可視化插件」顯式啟停）；不佔審計分數槽。見 [dsh-context](https://github.com/bowenliang123/dsh-context)。
 
 ### 3.3 資訊層級（防過載）
 
