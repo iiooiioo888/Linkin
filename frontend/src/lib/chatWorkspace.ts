@@ -425,17 +425,49 @@ export function looksLikeCompanyQuery(query: string): boolean {
   return COMPANY_QUERY_RE.test(q);
 }
 
+const TERMINAL_TASK_STATUSES = new Set<TaskProgress['status']>([
+  'completed',
+  'failed',
+  'cancelled',
+  'interrupted',
+]);
+
+function isRunningTaskStatus(status: TaskProgress['status'] | undefined): boolean {
+  return status === 'running' || status === 'pending';
+}
+
+/** Grill 質詢尚未鎖定、未終止 → 仍算互動中 */
+export function isGrillInteractive(message: Pick<ChatMessage, 'grill'>): boolean {
+  const g = message.grill;
+  return Boolean(g && !g.locked && !g.terminated);
+}
+
+/** L3 戰術地圖等待 L5 裁決 */
+export function isBattleWaiting(message: Pick<ChatMessage, 'battle'>): boolean {
+  const b = message.battle;
+  return b?.status === 'ESCALATE_TO_USER' && Boolean(b.waiting_for_user_decision);
+}
+
 /**
- * 有公司／OPC／看板任務才切左右欄（含已完成的歷史記錄，例如「寫一個故事，5000字」）。
- * 寒暄 SSE、沒有 taskId 的簡單對話不切欄。
+ * 僅在任務仍 live／互動中時切右側監控欄。
+ * 已完成／失敗／取消的歷史任務不切欄；寒暄 SSE、無任務的簡單對話亦不切欄。
  */
-export function isLiveMonitorTask(message: Pick<ChatMessage, 'taskState' | 'taskId'>): boolean {
-  if (message.taskId) return true;
+export function isLiveMonitorTask(
+  message: Pick<ChatMessage, 'taskState' | 'taskId' | 'grill' | 'battle' | 'streaming'>,
+): boolean {
+  if (isGrillInteractive(message) || isBattleWaiting(message)) return true;
+  if (hasUnresolvedDecision(message)) return true;
+
   const task = message.taskState;
-  if (!task) return false;
-  const path = task.resolved_path;
-  const hasWork = flattenWsNodes(task).length > 0 || hasUnresolvedDecision(message);
-  return path === 'company' || path === 'opc' || hasWork;
+  if (task) {
+    if (isRunningTaskStatus(task.status)) return true;
+    if (TERMINAL_TASK_STATUSES.has(task.status)) return false;
+  }
+
+  // 僅 taskId、尚無快照：任務剛建立、串流中才暫開監控
+  if (message.taskId && !task) return Boolean(message.streaming);
+
+  return false;
 }
 
 export function activeTaskMessage<T extends Pick<ChatMessage, 'taskState' | 'taskId'>>(

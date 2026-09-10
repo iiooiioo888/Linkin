@@ -1,6 +1,6 @@
 /**
  * ChatView — 對話主表面。
- * 底部詳細區（文件／終端／問題／Context）一律常駐；有公司／OPC 任務時再左右分裂右側監控。
+ * 底部詳細區（文件／終端／問題／Context）一律常駐；僅有進行中／互動中任務時才左右分裂右側監控。
  * Context（dsh-context 風格）主表面固定在底部詳細區，不跳監看台。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
