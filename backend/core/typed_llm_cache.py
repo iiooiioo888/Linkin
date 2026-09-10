@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -68,7 +69,7 @@ class TypedLLMCache:
     """分類型 TTL 快取；審計／憲兵路徑預設 TTL=0。"""
 
     ttl_map: dict[CacheKind, float] = field(default_factory=lambda: dict(DEFAULT_TTL))
-    clock: callable = time.monotonic
+    clock: Callable[[], float] = time.monotonic
     _store: dict[tuple[CacheKind, str], _Entry] = field(default_factory=dict)
 
     def ttl_for(self, kind: CacheKind) -> float:

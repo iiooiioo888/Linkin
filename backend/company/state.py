@@ -488,7 +488,7 @@ class RetryConfig:
     deadline_seconds: float = 300.0         # 單一工作項超時秒數（0=不限）
 
 
-def _default_tier_models() -> dict["BudgetTier", str]:
+def _default_tier_models() -> dict[BudgetTier, str]:
     """層級模型預設值：用戶明確配置過 LLM 模型時全部層級跟随該模型。
 
     確保公司模式與前端/API 配置的供應商（如 Qwen）一致；

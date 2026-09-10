@@ -260,7 +260,7 @@ def _l0_knowledge_cite(query: str) -> str:
         from backend.company.raho.l0 import match_knowledge
 
         hits = match_knowledge(query)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return ""
     if not hits:
         return ""
@@ -474,7 +474,7 @@ def extract_json(text: str) -> dict[str, Any] | None:
         from backend.core.llm import parse_json_response
 
         data = parse_json_response(raw)
-    except Exception:  # noqa: BLE001
+    except Exception:
         match = re.search(r"\{.*\}", raw, re.DOTALL)
         if not match:
             return None
@@ -508,9 +508,7 @@ def _fan_contract_ready(sess: UserGrillSession) -> bool:
         return False
     if not _has_review_gate(text):
         return False
-    if int(sess.phase or 1) < 4 and 10 not in sess.asked_ids:
-        return False
-    return True
+    return not (int(sess.phase or 1) < 4 and 10 not in sess.asked_ids)
 
 
 def _is_unquantified(text: str, phase: int = 1) -> bool:
@@ -524,11 +522,7 @@ def _is_unquantified(text: str, phase: int = 1) -> bool:
         return False
     if _is_vague(raw) or _SOFT_GOAL.search(raw):
         return True
-    if int(phase or 1) >= 2 and not (
-        _TRADEOFF.search(raw) or _FALLBACK.search(raw) or _BOUNDARY.search(raw)
-    ):
-        return True
-    return False
+    return bool(int(phase or 1) >= 2 and not (_TRADEOFF.search(raw) or _FALLBACK.search(raw) or _BOUNDARY.search(raw)))
 
 
 def _synthesize_fan_lock(sess: UserGrillSession) -> str:
@@ -641,7 +635,7 @@ def _llm_question(query: str, transcript: str, gaps: list[str], phase: int) -> G
             why=str(data.get("why") or ""),
             dimension=str(data.get("dimension") or "specificity"),
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.debug("需求審計官 LLM 降級為題庫：%s", exc)
         return None
 
@@ -929,7 +923,7 @@ def _pack(
         from backend.company.raho.l0 import kernel_snapshot
 
         payload["l0"] = kernel_snapshot(query=sess.query)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     return payload
 
@@ -968,7 +962,7 @@ def trigger_planner(final_plan: dict[str, Any]) -> dict[str, Any]:
 
         campaign = plan_campaign(goal or "已鎖定需求")
         campaign_data = campaign.to_dict() if hasattr(campaign, "to_dict") else campaign
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("L4 戰役規劃失敗，仍保留門票：%s", exc)
         campaign_data = {"status": "PLANNER_DEFERRED", "error": str(exc)}
 
@@ -976,7 +970,7 @@ def trigger_planner(final_plan: dict[str, Any]) -> dict[str, Any]:
         from backend.company.raho.commander import command_from_ticket
 
         commander = command_from_ticket(ticket, use_llm=False)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("L3 戰術拆解失敗，仍保留門票：%s", exc)
         commander = {"status": "COMMANDER_DEFERRED", "error": str(exc)}
 
@@ -996,7 +990,7 @@ def _approve(sess: UserGrillSession) -> dict[str, Any]:
     sess.confidence = min(float(sess.scores.get(k, 0)) for k in DIM_KEYS) / 100.0
     try:
         sess.planner = trigger_planner(ticket)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("自動觸發 Planner 失敗：%s", exc)
         sess.planner = {"status": "PLANNER_DEFERRED", "error": str(exc)}
     _trace_close(sess, "五維達標，門票已核發", "resolved")
@@ -1029,11 +1023,13 @@ def _ask_next(sess: UserGrillSession, *, prefix: str = "") -> dict[str, Any]:
         _append_assistant(sess, question)
         _trace_l4_question(sess, question)
         return _pack(sess, question)
-    question = _llm_question(sess.query, _transcript(sess), gaps, phase)
-    if question is None:
+    llm_question = _llm_question(sess.query, _transcript(sess), gaps, phase)
+    if llm_question is None:
         question = _next_question(sess)
-    elif not sess.asked_ids:
-        sess.asked_ids.append(0)
+    else:
+        question = llm_question
+        if not sess.asked_ids:
+            sess.asked_ids.append(0)
     text = f"{prefix}{question.question}" if prefix else question.question
     if not sess.asked_ids or (len(sess.asked_ids) == 1 and not sess.user_rounds):
         hook = _opening_hook(sess.query)
@@ -1056,7 +1052,7 @@ def auditor_start(query: str) -> dict[str, Any]:
         from backend.company.raho.l0 import remember_query
 
         remember_query(text, task_id="auditor")
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     sess = STORE.new_user_session(text)
     sess.phase = 1

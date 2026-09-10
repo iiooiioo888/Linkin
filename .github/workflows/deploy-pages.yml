@@ -18,20 +18,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      pages_enabled: ${{ steps.pages.outputs.enabled }}
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect GitHub Pages
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${GITHUB_REPOSITORY}/pages" >/dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::GitHub Pages 未啟用或未配置；略過 Pages 部署。"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Python
+        if: steps.pages.outputs.enabled == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Export monitor fallback (single source)
+        if: steps.pages.outputs.enabled == 'true'
         run: python -m backend.scripts.export_monitor_fallback
         continue-on-error: true
 
       - name: Setup Node.js
+        if: steps.pages.outputs.enabled == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -39,13 +56,16 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Setup Pages
+        if: steps.pages.outputs.enabled == 'true'
         uses: actions/configure-pages@v5
 
       - name: Install dependencies
+        if: steps.pages.outputs.enabled == 'true'
         working-directory: ./frontend
         run: npm ci
 
       - name: Build
+        if: steps.pages.outputs.enabled == 'true'
         working-directory: ./frontend
         # 跳過 prebuild：export 已在上一步嘗試；檔案已在倉庫內。
         run: npx tsc -b && npx vite build
@@ -54,11 +74,13 @@ jobs:
           VITE_GITHUB_PAGES: 'true'
 
       - name: SPA fallback
+        if: steps.pages.outputs.enabled == 'true'
         run: |
           cp frontend/dist/index.html frontend/dist/404.html
           touch frontend/dist/.nojekyll
 
       - name: Upload artifact
+        if: steps.pages.outputs.enabled == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./frontend/dist
@@ -71,7 +93,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
 
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/master' &&
+      needs.build.outputs.pages_enabled == 'true'
 
     steps:
       - name: Deploy to GitHub Pages

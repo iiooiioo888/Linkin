@@ -6,10 +6,9 @@ import json
 
 import pytest
 
-from backend.company.skills import SkillsStore, inject_skills
 from backend.company import mcp_clients
-from backend.company.mcp_clients import McpRegistry, McpServer, _slug
-
+from backend.company.mcp_clients import McpRegistry, _slug
+from backend.company.skills import SkillsStore, inject_skills
 
 # ══════════════ Skills ══════════════
 

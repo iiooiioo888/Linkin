@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 # 錯誤碼（寫死，前後端共用）
 ERR_WORKSPACE_UNKNOWN = "ERR_WORKSPACE_UNKNOWN"

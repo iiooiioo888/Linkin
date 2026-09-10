@@ -154,11 +154,11 @@ def firecrawl_scrape(url: str, only_main_content: bool = True) -> dict[str, Any]
         resp.raise_for_status()
         body = resp.json()
 
-    data = body.get("data") if isinstance(body, dict) else {}
-    if not isinstance(data, dict):
-        data = {}
-    markdown = data.get("markdown") or data.get("content") or ""
-    metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+    raw_data = body.get("data") if isinstance(body, dict) else None
+    page_data: dict[str, Any] = raw_data if isinstance(raw_data, dict) else {}
+    markdown = page_data.get("markdown") or page_data.get("content") or ""
+    raw_metadata = page_data.get("metadata")
+    metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
     return {
         "url": metadata.get("sourceURL") or metadata.get("url") or url,
         "title": metadata.get("title") or url,

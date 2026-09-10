@@ -125,7 +125,7 @@ def _llm_ready() -> bool:
 
         cfg = get_runtime_config()
         key = str(cfg.get("api_key") or os.getenv("OPENAI_API_KEY") or "").strip()
-    except Exception:  # noqa: BLE001 — 配置層不可用時退回環境變數
+    except Exception:
         key = str(os.getenv("OPENAI_API_KEY") or "").strip()
     return bool(key) and not key.startswith("sk-your")
 
@@ -519,7 +519,7 @@ def generate_llm_structure(
     try:
         model_name = resolve_stage_model("generate", query=prompt)
         raw = call_llm(task_prompt, system=DESIGN_SYSTEM_PROMPT, model=model_name)
-    except Exception as exc:  # noqa: BLE001 — LLM 失敗降級程序化生成
+    except Exception as exc:
         logger.warning("LLM 建築設計呼叫失敗（降級程序化生成）：%s", exc)
         return None
     design = parse_design(raw or "", style=style, prompt=prompt)
@@ -536,7 +536,7 @@ def generate_llm_structure(
             biome=biome,
             prompt=prompt,
         )
-    except Exception as exc:  # noqa: BLE001 — 編譯失敗降級程序化生成
+    except Exception as exc:
         logger.warning("LLM 建築設計編譯失敗（降級程序化生成）：%s", exc)
         return None
     if schematic.solid_count() <= 0:

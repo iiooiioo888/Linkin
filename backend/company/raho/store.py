@@ -250,7 +250,7 @@ class RahoStore:
                 failure_reason=fail,
                 horizon="stm" if status in {"open", "blocked"} else "mtm",
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         return node
 
@@ -377,7 +377,7 @@ class RahoStore:
     def snapshot(self) -> dict[str, Any]:
         trees = [t.to_dict() for t in self.list_trees()]
         pending = [p.to_dict() for p in self.list_pending() if p.resolution is None]
-        blocked = []
+        blocked: list[Any] = []
         for tree in trees:
             blocked.extend(tree.get("blocked") or [])
         for p in pending:
@@ -408,7 +408,7 @@ class RahoStore:
             from backend.company.raho.l0 import kernel_snapshot
 
             payload["l0"] = kernel_snapshot()
-        except Exception:  # noqa: BLE001
+        except Exception:
             payload["l0"] = {"layer": 0, "enabled": False, "traces": [], "knowledge": []}
         return payload
 

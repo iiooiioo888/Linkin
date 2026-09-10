@@ -123,7 +123,7 @@ class PluginManager:
         err = self._check_source(repo, version)
         if err:
             return {"ok": False, "error_code": err}
-        pin = PluginPin(plugin_id=plugin_id, pin_version=version, enabled=False)
+        pin = PluginPin(plugin_id=plugin_id, pin_version=version or "", enabled=False)
         self.plugins[plugin_id] = InstalledPlugin(plugin_id=plugin_id, repo=repo, pin=pin)
         self.trail_store.append(plugin_id, {"type": "plugin_installed", "version": version})
         return {"ok": True, "status": PluginStatus.INSTALLED.value}
@@ -171,7 +171,7 @@ class PluginManager:
 
     def audit_trail(self, plugin_id: str) -> list[dict]:
         """審計讀取持久化軌跡：與插件當前狀態（含降級／停用）無關。"""
-        return self.trail_store.read(plugin_id)
+        return list(self.trail_store.read(plugin_id))
 
     def plugin_set(self) -> list[PluginPin]:
         """給 C-AUDIT-004 快照雜湊用的當前插件集合。"""

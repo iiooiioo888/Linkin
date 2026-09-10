@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from backend.integrations.base import (
     ERR_INTEGRATION_DISABLED,
     ERR_INTEGRATION_UNREACHABLE,

@@ -15,8 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backend.linkin.constitution import load_constitution, worldview_seed_documents  # noqa: E402
-from backend.linkin.knowledge import (  # noqa: E402
+from backend.linkin.constitution import load_constitution, worldview_seed_documents
+from backend.linkin.knowledge import (
     COL_EVENTS,
     COL_NPCS,
     COL_WORLDVIEW,
@@ -26,8 +26,8 @@ from backend.linkin.knowledge import (  # noqa: E402
     save_entities,
     upsert_entity,
 )
-from backend.linkin.roles import seed_linkin_roles  # noqa: E402
-from backend.linkin.tools import format_npc_text  # noqa: E402
+from backend.linkin.roles import seed_linkin_roles
+from backend.linkin.tools import format_npc_text
 
 SEED_NPCS = [
     {
@@ -98,7 +98,7 @@ def seed_npcs() -> int:
             COL_NPCS,
             format_npc_text(card),
             dict(card),
-            record_id=card["id"],
+            record_id=str(card["id"]),
             skip_quality=True,
         )
     store.upsert(

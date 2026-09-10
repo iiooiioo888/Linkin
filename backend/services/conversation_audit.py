@@ -29,10 +29,11 @@ import json
 import logging
 import time
 import uuid
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Iterable, Protocol
+from typing import Any, Protocol
 
 from backend.company.task_state_machine import (
     Decision,
@@ -76,7 +77,7 @@ class ContextSnapshot:
     plugin_set_hash: str
     frozen_at: float = field(default_factory=time.time)
 
-    def diff_against(self, other: "ContextSnapshot") -> list[str]:
+    def diff_against(self, other: ContextSnapshot) -> list[str]:
         """產出快照差異摘要（§9.1：awaiting_confirmation 必須展示衝突詳情）。"""
         diffs: list[str] = []
         if self.conversation_snapshot_id != other.conversation_snapshot_id:
@@ -291,7 +292,7 @@ class ConversationAuditService:
         trail = self._trail.read(task_id)  # C-AUDIT-005：只讀軌跡
         try:
             report = self._run_audit(task_id, task.frozen, trail)
-        except Exception as exc:  # noqa: BLE001 — C-AUDIT-003：失敗預設保持 paused
+        except Exception as exc:
             logger.warning("審計失敗，任務保持 paused：%s", exc)
             task.state = TaskRuntimeState.PAUSED
             task.error = f"{ERR_AUDIT_FAILED}: {exc}"

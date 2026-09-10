@@ -19,7 +19,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from backend.company.raho.protocol import raho_directory, canonical_role_id, grill_edges, role_to_raho_layer
+from backend.company.raho.protocol import (
+    canonical_role_id,
+    grill_edges,
+    raho_directory,
+    role_to_raho_layer,
+)
 from backend.company.role_catalog import (
     LEVEL_LABELS,
     catalog_meta,
@@ -91,7 +96,7 @@ def _p95(values: list[float]) -> float:
     if not values:
         return 0.0
     ordered = sorted(values)
-    idx = min(len(ordered) - 1, max(0, int(round(0.95 * (len(ordered) - 1)))))
+    idx = min(len(ordered) - 1, max(0, round(0.95 * (len(ordered) - 1))))
     return round(ordered[idx], 1)
 
 
@@ -389,7 +394,7 @@ def _mirror_spine_item(
     """把專職角色的工作項鏡像到 RAHO 脊柱席（L2 池／L1 憲兵），與質詢樹同一套身分。"""
     try:
         spine = canonical_role_id(role_to_raho_layer(assignee))
-    except Exception:  # noqa: BLE001
+    except Exception:
         return
     if not spine or spine == assignee or spine not in agents:
         return
@@ -595,7 +600,7 @@ def _ingest_run_logs(agents: dict[str, dict[str, Any]]) -> None:
                 status = WorkItemStatus.BLOCKED.value
             else:
                 status = WorkItemStatus.EXECUTING.value
-            hist = {
+            hist: dict[str, Any] = {
                 "id": item_id or f"{task_id}:{payload.get('title', '')}",
                 "title": payload.get("title") or "(歷史工作項)",
                 "description": "",
@@ -678,7 +683,7 @@ def _archive_query(task_id: str) -> str:
                                 _ARCHIVE_QUERY_CACHE.setdefault(sid, q)
                 except OSError:
                     continue
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.debug("存檔查詢回填載入失敗", exc_info=True)
     return _ARCHIVE_QUERY_CACHE.get(task_id, "")
 
@@ -887,7 +892,7 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
         agent["metrics"]["raho_rank"] = card.get("rank") or "ok"
         agent["demoted"] = bool(card.get("demoted"))
         agent["raho_rank"] = card.get("rank") or "ok"
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     alerts: list[dict[str, str]] = []
     if not agent.get("enabled", True):
@@ -973,7 +978,7 @@ def _allocate_cloud_costs(agents: list[dict[str, Any]]) -> dict[str, float]:
         breakdown = summary.get("breakdown") or {}
         docker_usd = float(breakdown.get("docker_usd") or 0)
         aliyun_usd = float(breakdown.get("aliyun_usd") or 0)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.debug("雲資源費用讀取失敗，Agent 雲成本視為 0", exc_info=True)
 
     cloud_total = docker_usd + aliyun_usd
@@ -1045,7 +1050,7 @@ def _ingest_auditor_sessions(agents: dict[str, dict[str, Any]]) -> None:
         return
     try:
         from backend.company.raho.store import STORE
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.debug("讀取審計會話失敗（已忽略）", exc_info=True)
         return
 
@@ -1108,7 +1113,7 @@ def collect_agent_monitor() -> dict[str, Any]:
 
     try:
         records = list(task_manager.tasks.values())
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning("讀取任務列表失敗，角色監控降級為目錄", exc_info=True)
         records = []
 
@@ -1123,17 +1128,17 @@ def collect_agent_monitor() -> dict[str, Any]:
             running_company += 1
         try:
             _ingest_live_task(agents, rec)
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning("聚合任務 %s 的角色資料失敗（已跳過）", rec.task_id, exc_info=True)
 
     try:
         _ingest_run_logs(agents)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning("讀取公司 run log 失敗（已忽略）", exc_info=True)
 
     try:
         _ingest_auditor_sessions(agents)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning("讀取需求審計會話失敗（已忽略）", exc_info=True)
 
     finalized = [_finalize_agent(agent) for agent in agents.values()]

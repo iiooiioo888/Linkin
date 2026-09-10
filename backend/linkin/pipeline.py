@@ -10,7 +10,7 @@ import logging
 import re
 from typing import Any
 
-from backend.core.state import EvoLoopState
+from backend.core.state import StateInput
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ def constitution_brief() -> str:
         from backend.linkin.constitution import load_constitution
 
         const = load_constitution()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("讀取靈境憲法失敗（跳過注入）：%s", exc)
         return ""
     foundation = const.get("foundation") or {}
@@ -89,7 +89,7 @@ def constitution_brief() -> str:
     )
 
 
-def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
+def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
     """靈境 RAG 增強：命中世界觀關鍵詞時注入憲法摘要與知識庫檢索。
 
     Minecraft 控制查詢即使未提靈境也注入 MCP 摘要（不碰 RAG），
@@ -106,7 +106,7 @@ def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
         mc_hit = is_minecraft_control_query(query)
         if mc_hit:
             mcp_block = "\n" + connector_status_brief()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.debug("Minecraft MCP 摘要略過：%s", exc)
 
     if not world_hit and not mc_hit:
@@ -117,13 +117,13 @@ def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
     backend = "none"
     if world_hit:
         try:
-            from backend.linkin.knowledge import COL_WORLDVIEW, COL_NPCS, COL_EVENTS, get_store
+            from backend.linkin.knowledge import COL_EVENTS, COL_NPCS, COL_WORLDVIEW, get_store
 
             store = get_store()
             backend = "chroma" if store.backend_status().get("chroma") else "json"
             for collection in (COL_WORLDVIEW, COL_NPCS, COL_EVENTS):
                 hits.extend(store.search(collection, query, k=2))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("靈境 RAG 檢索失敗（降級僅憲法）：%s", exc)
 
     hit_lines: list[str] = []
@@ -151,7 +151,7 @@ def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
     }
 
 
-def resolve_linkin_company_template(state: EvoLoopState) -> str | None:
+def resolve_linkin_company_template(state: StateInput) -> str | None:
     """靈境複雜任務或 Minecraft 控制任務且呼叫端仍用預設 quick_task 時，改走故事工作室。
 
     quick_task 只有 manager＋developer；developer 不能放方塊。
@@ -167,7 +167,7 @@ def resolve_linkin_company_template(state: EvoLoopState) -> str | None:
             from backend.tools.minecraft_mcp import is_minecraft_control_query
 
             mc_hit = is_minecraft_control_query(query)
-        except Exception:  # noqa: BLE001
+        except Exception:
             mc_hit = False
     active = isinstance(ctx, dict) and bool(ctx.get("active"))
     complex_hit = bool(isinstance(ctx, dict) and ctx.get("complex")) or is_linkin_complex_task(query)
@@ -181,7 +181,7 @@ def resolve_linkin_company_template(state: EvoLoopState) -> str | None:
     return None
 
 
-def prefix_query_with_linkin(query: str, state: EvoLoopState) -> str:
+def prefix_query_with_linkin(query: str, state: StateInput) -> str:
     ctx = state.get("linkin_context") or {}
     if not isinstance(ctx, dict):
         return query

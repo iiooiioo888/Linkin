@@ -77,7 +77,7 @@ def test_toggle_installs_from_catalog_when_missing():
 
 
 def test_contract_whitelist_includes_dsh_context_repo():
-    from backend.modules.plugin_manager import PluginManager, PluginSourcePolicy
+    from backend.modules.plugin_manager import PluginManager
 
     mgr = PluginManager()
     assert DSH_CONTEXT_REPO in mgr.policy.whitelisted_repos

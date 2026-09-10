@@ -32,7 +32,7 @@ def minecraft_health() -> dict[str, Any]:
         from backend.linkin.server_admin import health_snapshot
 
         admin = health_snapshot()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         admin = {"status": "unavailable", "error": str(exc)}
     return {
         "ok": bool(const.get("world_name")),

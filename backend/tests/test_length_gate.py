@@ -280,18 +280,17 @@ class TestCompanyStreamLengthGate:
             patch("backend.core.nodes.call_llm", side_effect=fake),
             patch("backend.core.evaluation.call_llm", side_effect=fake),
             patch("backend.core.nodes._memory_store", store),
-            TestClient(app) as client,
+            TestClient(app) as client,client.stream(
+            "POST", "/chat/stream",
+            json={
+                "query": "請設計並實現一個完整的微服務系統架構",
+                "execution_strategy": "company",
+            },
+        ) as resp
         ):
-            with client.stream(
-                "POST", "/chat/stream",
-                json={
-                    "query": "請設計並實現一個完整的微服務系統架構",
-                    "execution_strategy": "company",
-                },
-            ) as resp:
-                for line in resp.iter_lines():
-                    if line:
-                        lines.append(line)
+            for line in resp.iter_lines():
+                if line:
+                    lines.append(line)
 
         payloads = [
             json.loads(ln.split("data:", 1)[1].strip())

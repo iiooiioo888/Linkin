@@ -36,8 +36,7 @@ def record_grill(role_id: str) -> None:
     with _lock:
         stats = _role(role_id)
         stats["grills"] += 1
-        if stats["executions"] < 1:
-            stats["executions"] = 1
+        stats["executions"] = max(stats["executions"], 1)
 
 
 def record_resolution(role_id: str, *, clear: bool) -> None:

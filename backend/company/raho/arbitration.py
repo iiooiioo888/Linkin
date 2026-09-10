@@ -131,7 +131,7 @@ def apply_ruling(dispute: L1Dispute, ruling: dict[str, Any]) -> dict[str, Any]:
         from_layer=int(RahoLayer.L5_USER),
         to_layer=int(RahoLayer.L1_INSPECTOR),
         kind=f"{ARBITRATION_KIND}_ruling",
-        summary=f"L5 裁決：{choice}——{str(ruling.get('reply') or '')}"[:240],
+        summary=f"L5 裁決：{choice}——{ruling.get('reply') or ''!s}"[:240],
         status="resolved",
         payload={"dispute_id": dispute.dispute_id, "choice": choice},
     )

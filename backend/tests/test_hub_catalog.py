@@ -147,7 +147,8 @@ class TestHubCatalogExcludesClaude:
                 assert needle not in lowered
 
     def test_runtime_catalog_matches_frozen_set(self) -> None:
-        from backend.hub.catalog import DEFAULT_CHAIN, HUB_CATALOG as RUNTIME, INTEL
+        from backend.hub.catalog import DEFAULT_CHAIN, INTEL
+        from backend.hub.catalog import HUB_CATALOG as RUNTIME
 
         assert RUNTIME == HUB_CATALOG
         assert set(INTEL) == HUB_CATALOG

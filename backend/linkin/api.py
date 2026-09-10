@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
-import json
 import uuid
 from typing import Any
 
@@ -13,26 +13,13 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from starlette.convertors import CONVERTOR_TYPES, Convertor, register_url_convertor
 
-from backend.tools.server_admin import ServerAdminError
-from backend.linkin.design_llm import generate_llm_structure
-
 from backend.linkin.constitution import (
     allowed_styles_for_region,
     load_constitution,
     save_constitution,
     update_constitution,
 )
-from backend.linkin.schematic import (
-    attach_model,
-    SchematicError,
-    attach_schematic,
-    b64_to_schem_bytes,
-    ensure_schematic,
-    import_schematic_bytes,
-    preview_payload,
-    remove_schematic_file,
-    schematic_path,
-)
+from backend.linkin.design_llm import generate_llm_structure
 from backend.linkin.knowledge import (
     COL_EVENTS,
     COL_NPCS,
@@ -47,7 +34,20 @@ from backend.linkin.knowledge import (
 from backend.linkin.minecraft import (
     dispatch_building,
     execute_named_tool,
+)
+from backend.linkin.minecraft import (
     monitor_status as minecraft_monitor_status,
+)
+from backend.linkin.schematic import (
+    SchematicError,
+    attach_model,
+    attach_schematic,
+    b64_to_schem_bytes,
+    ensure_schematic,
+    import_schematic_bytes,
+    preview_payload,
+    remove_schematic_file,
+    schematic_path,
 )
 from backend.linkin.tools import (
     TOOL_ADMIN_EXECUTE,
@@ -61,6 +61,7 @@ from backend.linkin.tools import (
     invoke_tool,
     npc_relationships,
 )
+from backend.tools.server_admin import ServerAdminError
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ def _llm_ready() -> bool:
 
         cfg = get_runtime_config()
         key = str(cfg.get("api_key") or os.getenv("OPENAI_API_KEY") or "").strip()
-    except Exception:  # noqa: BLE001
+    except Exception:
         key = str(os.getenv("OPENAI_API_KEY") or "").strip()
     return bool(key) and not key.startswith("sk-your")
 
@@ -107,7 +108,7 @@ def _try_call_llm(prompt: str, *, system: str, fallback: str) -> str:
 
         text = call_llm(prompt, system=system)
         return (text or "").strip() or fallback
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning("靈境 LLM 呼叫失敗，改用本地模板", exc_info=True)
         return fallback
 
@@ -323,7 +324,7 @@ def _npc_reply(card: dict[str, Any], message: str, context: str) -> str:
         from backend.linkin.prompts import inherit_prompt
 
         system = inherit_prompt("npc_director")
-    except Exception:  # noqa: BLE001
+    except Exception:
         system = "你是灵境·Linkin 的 NPC。回应必须符合角色卡，禁止现实政治与写实暴力。"
     prompt = (
         f"你正在扮演灵境 NPC「{name}」。性格：{card.get('personality')}。"
@@ -355,7 +356,7 @@ def generate_quest(body: dict[str, Any]) -> dict[str, Any]:
         from backend.linkin.prompts import inherit_prompt
 
         system = inherit_prompt("narrative_director")
-    except Exception:  # noqa: BLE001
+    except Exception:
         system = "你是灵境·Linkin 的叙事总监。任务必须源自三大阵营张力。"
     llm_raw = _try_call_llm(
         (
@@ -670,7 +671,7 @@ def admin_execute(body: dict[str, Any]) -> dict[str, Any]:
         )
     except ToolValidationError as exc:
         raise _tool_http(exc) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("Admin.execute MCP 橋接失敗：%s", exc)
         mcp_result = {"ok": False, "error": str(exc)}
     return {
@@ -879,7 +880,7 @@ def grill_start(body: dict[str, Any]) -> dict[str, Any]:
         return {"status": "ok", **grill_me.grill_start(topic)}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
-    except Exception as exc:  # noqa: BLE001 — LLM 未配置/失敗
+    except Exception as exc:
         logger.warning("grill_me 啟動失敗：%s", exc)
         raise HTTPException(
             status_code=503, detail={"message": f"grill-me 不可用（LLM 未配置或呼叫失敗）：{exc}"}
@@ -899,7 +900,7 @@ def grill_turn(body: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("grill_me 回合失敗：%s", exc)
         raise HTTPException(status_code=503, detail={"message": f"grill-me 不可用：{exc}"}) from exc
 
@@ -914,7 +915,7 @@ def grill_summary(body: dict[str, Any]) -> dict[str, Any]:
         return {"status": "ok", **grill_me.grill_summary(session_id)}
     except KeyError as exc:
         raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("grill_me 總結失敗：%s", exc)
         raise HTTPException(status_code=503, detail={"message": f"grill-me 不可用：{exc}"}) from exc
 

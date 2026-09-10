@@ -9,6 +9,7 @@ from backend.company.raho.blackboard import (
     BlackboardEntry,
     result_uri,
 )
+from backend.company.raho.context_bus import downward_context
 from backend.company.raho.inspector import (
     GRILL_TARGET_L2,
     GRILL_TARGET_L3,
@@ -39,9 +40,8 @@ from backend.company.raho.inspector import (
 )
 from backend.company.raho.mgp import apply_mgp_system, parse_grill_output
 from backend.company.raho.protocol import MGP_EXECUTOR_PREAMBLE, RahoLayer, role_to_raho_layer
-from backend.company.roles import STANDARD_ROLES
 from backend.company.raho.store import STORE
-from backend.company.raho.context_bus import downward_context
+from backend.company.roles import STANDARD_ROLES
 from backend.company.state import RoleType, WorkItem, WorkItemStatus
 
 

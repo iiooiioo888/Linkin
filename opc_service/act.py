@@ -39,7 +39,7 @@ async def _write_opc_tags(
             resp.raise_for_status()
             data = resp.json()
             return data.get("results", [])
-    except Exception as exc:  # noqa: BLE001 - 降级兜底：写入失败返回逐项失败结果
+    except Exception as exc:
         logger.warning("OPC 写入失败：%s", exc)
         return [
             {

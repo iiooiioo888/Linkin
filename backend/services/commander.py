@@ -70,17 +70,17 @@ HUGE_SCALE = re.compile(
 )
 _GRILL_DATA = re.compile(
     r"(不存在|缺失|沒有欄位|没有栏位|資料缺|data missing|欄位.?不|INPUT_REF|資料缺失)",
-    re.I,
+    re.IGNORECASE,
 )
 _GRILL_TOOL = re.compile(
     r"(無法用|无法用|權限|权限|工具|ffmpeg|\.mov|tool insufficient|白名單|工具不足)",
-    re.I,
+    re.IGNORECASE,
 )
 _GRILL_LOGIC = re.compile(
     r"(矛盾|無法同時|无法同时|保守.{0,8}激進|激進.{0,8}保守|logic conflict|容量矛盾)",
-    re.I,
+    re.IGNORECASE,
 )
-_GRILL_CONSTRAINT = re.compile(r"(約束衝突|迭代|token.?預算|TOKEN_BUDGET|MAX_ITERATIONS)", re.I)
+_GRILL_CONSTRAINT = re.compile(r"(約束衝突|迭代|token.?預算|TOKEN_BUDGET|MAX_ITERATIONS)", re.IGNORECASE)
 _BLOCKER_KIND = {
     "資料缺失": GRILL_DATA,
     "工具不足": GRILL_TOOL,
@@ -381,7 +381,7 @@ def extract_ticket(source: Any) -> dict[str, Any] | None:
         from backend.core.llm import parse_json_response
 
         data = parse_json_response(blob)
-    except Exception:  # noqa: BLE001
+    except Exception:
         match = re.search(r"\{.*\}", blob, re.DOTALL)
         if not match:
             return None
@@ -457,7 +457,7 @@ def pick_template(description: str) -> str:
 
 def exclusions_ban_crawl(exclusions: list[str]) -> bool:
     blob = " ".join(exclusions or [])
-    return bool(re.search(r"爬蟲|爬虫|scrape|crawler|爬取", blob, re.I))
+    return bool(re.search(r"爬蟲|爬虫|scrape|crawler|爬取", blob, re.IGNORECASE))
 
 
 def remap_template(template: str, *, ban_crawl: bool) -> str:
@@ -684,7 +684,7 @@ def _gather_specs(ticket: dict[str, Any], *, ban_crawl: bool) -> list[tuple[str,
     quantified = str(goal.get("quantified_success") or "").strip()
     blob = f"{action} {quantified}"
     pricing = bool(re.search(r"價格|訂價|定价|預警|预警|調價|调价", blob))
-    pdf = bool(re.search(r"pdf|表格|第三頁", blob, re.I))
+    pdf = bool(re.search(r"pdf|表格|第三頁", blob, re.IGNORECASE))
     social = bool(re.search(r"社群|提及|社交", blob))
 
     if pdf:
@@ -712,11 +712,11 @@ def _rule_nodes(ticket: dict[str, Any], *, rush: bool) -> list[dict[str, Any]]:
     exclusions = _as_list((ticket.get("hard_constraints") or {}).get("absolute_exclusions"))
     ban_crawl = exclusions_ban_crawl(exclusions)
     deliverable = "交付物"
-    if re.search(r"Excel|報表|报表", quantified, re.I):
+    if re.search(r"Excel|報表|报表", quantified, re.IGNORECASE):
         deliverable = "預警摘要（Excel 列）"
-    elif re.search(r"Prototype|原型", quantified, re.I):
+    elif re.search(r"Prototype|原型", quantified, re.IGNORECASE):
         deliverable = "可點擊原型說明"
-    elif re.search(r"JSON", quantified, re.I):
+    elif re.search(r"JSON", quantified, re.IGNORECASE):
         deliverable = "JSON 結果"
 
     gathers = _gather_specs(ticket, ban_crawl=ban_crawl)
@@ -1072,7 +1072,7 @@ def _llm_plan(ticket: dict[str, Any], *, rush: bool) -> dict[str, Any] | None:
             return data
         if isinstance(data, dict) and isinstance(data.get("battle_plan"), dict):
             return data["battle_plan"]
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.debug("L3 LLM 拆解降級為規則引擎：%s", exc)
     return None
 
@@ -1176,7 +1176,7 @@ def plan_from_ticket(
         if clarified:
             goal = str(clarified.get("core_action") or clarified.get("quantified_success") or "")
         attach_to_plan(pack, query=goal or str(parsed.get("clarified_goal") or "")[:240])
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     return pack
 
@@ -1307,7 +1307,7 @@ def respond_to_grill(
                 has_tool_blocker = True
                 break
         if not has_tool_blocker and kind != GRILL_TOOL:
-            if not re.search(r"allowed_tools|工具白名單|工具不足|ALLOWED_TOOLS", text, re.I):
+            if not re.search(r"allowed_tools|工具白名單|工具不足|ALLOWED_TOOLS", text, re.IGNORECASE):
                 return None
         requested = _requested_tool(text)
         if requested and requested not in KNOWN_TOOLS:
@@ -1524,12 +1524,12 @@ __all__ = [
     "GRILL_TOOL",
     "KNOWN_TOOLS",
     "MAX_L2_PROMPT_TOKENS",
+    "MGP_EXECUTOR_PREAMBLE",
     "STATUS_ESCALATE_USER",
     "STATUS_PLAN_READY",
     "STATUS_REJECT_L4",
     "SYSTEM_PROMPT",
     "TacticalCommander",
-    "MGP_EXECUTOR_PREAMBLE",
     "apply_commander_system",
     "battle_plan_to_yaml",
     "build_escalation",
@@ -1540,11 +1540,11 @@ __all__ = [
     "estimate_tokens",
     "exclusions_ban_crawl",
     "extract_ticket",
+    "fill_allowed_tools",
     "grill_rounds",
     "has_concrete_object",
     "hours_until_deadline",
     "increment_grill_round",
-    "fill_allowed_tools",
     "infer_tools_from_text",
     "l2_brief_ok",
     "l2_task_brief",

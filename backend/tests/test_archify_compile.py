@@ -7,7 +7,11 @@ import shutil
 import pytest
 
 from backend.company.archify_compile import compile_ir, render_view, resolve_strategy_ir
-from backend.company.quant_strategy_maps import overview_architecture, overview_data_flow, strategy_maps
+from backend.company.quant_strategy_maps import (
+    overview_architecture,
+    overview_data_flow,
+    strategy_maps,
+)
 from backend.services.lab_tools import get_evoloop_architecture
 
 

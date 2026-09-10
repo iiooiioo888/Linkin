@@ -8,6 +8,25 @@ from __future__ import annotations
 
 import pytest
 
+from backend.company.raho import arbitration
+from backend.company.raho.arbitration import (
+    ARBITRATION_KIND,
+    RULING_ACCEPT_L1,
+    raise_l1_dispute,
+    resolve_l1_dispute,
+)
+from backend.company.raho.l0_pipeline import (
+    PIPELINE_ORDER,
+    REASON_CORE_DISABLED,
+    REASON_REDACTED,
+    CoreKind,
+    L0Pipeline,
+    compute_pressure,
+    default_pressure_weights,
+    injection_strength,
+    redact,
+)
+from backend.company.raho.store import STORE as RAHO_STORE
 from backend.company.seat_table import (
     DEPLOY_CONFIRM_SEATS,
     PluginMountPolicy,
@@ -30,43 +49,16 @@ from backend.linkin.compiler_pipeline import (
     ERR_RUNTIME_JAVA_FORBIDDEN,
     ERR_SANDBOX_FAILED,
     ArtifactKind,
+    CompileArtifact,
     CompilePipeline,
     CompileRequest,
     ConflictKind,
     InMemoryArtifactStore,
     InMemoryWorldIndex,
     RecordingDeployer,
+    _hash_files,
     guard_artifact_kind,
     sandbox_scan,
-    CompileArtifact,
-    _hash_files,
-)
-from backend.services.conversation_audit import (
-    ERR_SNAPSHOT_CONFLICT,
-    AuditReport,
-    ContextSnapshot,
-    ConversationAuditService,
-    InMemoryAuditTrailStore,
-    PluginPin,
-    compute_plugin_set_hash,
-)
-from backend.company.raho import arbitration
-from backend.company.raho.arbitration import (
-    ARBITRATION_KIND,
-    RULING_ACCEPT_L1,
-    raise_l1_dispute,
-    resolve_l1_dispute,
-)
-from backend.company.raho.l0_pipeline import (
-    CoreKind,
-    L0Pipeline,
-    PIPELINE_ORDER,
-    REASON_CORE_DISABLED,
-    REASON_REDACTED,
-    compute_pressure,
-    default_pressure_weights,
-    injection_strength,
-    redact,
 )
 from backend.linkin.narrative_workspace import (
     CHOICE_REBIND,
@@ -76,8 +68,14 @@ from backend.linkin.narrative_workspace import (
 )
 from backend.scripts.lint_contracts import scan as lint_scan
 from backend.scripts.lint_contracts import scan_file as lint_scan_file
-from backend.company.raho.store import STORE as RAHO_STORE
-
+from backend.services.conversation_audit import (
+    ERR_SNAPSHOT_CONFLICT,
+    ContextSnapshot,
+    ConversationAuditService,
+    InMemoryAuditTrailStore,
+    PluginPin,
+    compute_plugin_set_hash,
+)
 
 # ═══════════════════════════════════════════════════════════════
 # §1 對話審計契約（P0）
@@ -742,11 +740,11 @@ def test_contract_c_ui_002_button_enabled_matches_deny_matrix():
     from backend.company.task_state_machine import (
         TaskAction,
         TaskRuntimeState,
+        Verdict,
         button_enabled,
         denied_pairs,
         evaluate,
         export_matrix,
-        Verdict,
     )
 
     for state, action, code in denied_pairs():

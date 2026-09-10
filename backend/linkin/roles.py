@@ -151,7 +151,7 @@ def _safe_create(payload: dict[str, Any]) -> dict[str, Any] | None:
         if patch:
             try:
                 return update_role_settings(prefixed, patch)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("刷新靈境角色設定失敗 %s：%s", prefixed, exc)
                 return existing
         return existing

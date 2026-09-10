@@ -111,9 +111,9 @@ def _err(text: str) -> dict[str, Any]:
 
 
 def _call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
-    from backend.services.task_manager import task_manager
     from backend.company.skills import skills_store
     from backend.company.tools import tool_registry
+    from backend.services.task_manager import task_manager
 
     try:
         if name == "linkin_submit_task":
@@ -175,7 +175,7 @@ def _call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
         if name == "linkin_health":
             return _text(json.dumps({"status": "ok", "server": SERVER_NAME, "ts": time.time()}, ensure_ascii=False))
         return _err(f"未知工具：{name}")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("MCP server 工具 %s 執行失敗：%s", name, exc)
         return _err(f"工具執行失敗：{exc}")
 
@@ -186,6 +186,7 @@ def handle_message(msg: dict[str, Any]) -> dict[str, Any] | None:
     msg_id = msg.get("id")
     params = msg.get("params") or {}
 
+    result: dict[str, Any]
     if method == "initialize":
         result = {
             "protocolVersion": PROTOCOL_VERSION,

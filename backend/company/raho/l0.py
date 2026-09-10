@@ -16,9 +16,6 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.environment.global_monitor import EnvSnapshot, snapshot as radar_snapshot
-from backend.memory.context_compressor import compress, extract_decisions, summarize_trace
-from backend.memory.entity_extractor import extract_entities
 from backend.company.raho.protocol import (
     RahoLayer,
     l0_enabled,
@@ -26,6 +23,10 @@ from backend.company.raho.protocol import (
     raho_directory,
     raho_identity,
 )
+from backend.environment.global_monitor import EnvSnapshot
+from backend.environment.global_monitor import snapshot as radar_snapshot
+from backend.memory.context_compressor import compress, extract_decisions, summarize_trace
+from backend.memory.entity_extractor import extract_entities
 
 L0_MARKER = "[L0 環境與記憶核心]"
 L0_LAYER = int(RahoLayer.L0_KERNEL)
@@ -204,7 +205,7 @@ def _vector_hits(query: str) -> list[KnowledgeEntity]:
 
         store = VectorMemoryStore()
         rows = store.search_similar(query, k=3) or []
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
     out: list[KnowledgeEntity] = []
     for i, row in enumerate(rows):

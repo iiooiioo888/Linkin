@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
 
     try:
         await opc_client.connect()
-    except Exception:  # noqa: BLE001 - 降级兜底：连接失败以降级模式启动
+    except Exception:
         logger.warning(
             "无法连接至 OPC UA 服务器（%s），将以降级模式运行",
             settings.opc_server_url,

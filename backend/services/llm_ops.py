@@ -45,7 +45,7 @@ def run_ops_once(reason: str = "schedule") -> dict[str, Any]:
         failover = pool.setdefault("ops", {}).setdefault("pool_failover", {})
         failover["active_probe"] = probe
         failover["models"] = pool_health_snapshot()
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning("模型池主動探活失敗", exc_info=True)
     return pool
 
@@ -58,6 +58,6 @@ async def llm_ops_loop() -> None:
     while ops_enabled():
         try:
             run_ops_once("schedule")
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning("LLM 定時目錄檢查失敗", exc_info=True)
         await asyncio.sleep(refresh_interval_sec())

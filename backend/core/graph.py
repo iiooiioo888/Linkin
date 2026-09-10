@@ -39,8 +39,8 @@ from backend.core.company_nodes import (
     run_company,
     should_evaluate_company,
 )
+from backend.core.state import EvoLoopState, StateInput
 from backend.linkin.pipeline import enhance_with_linkin_context
-from backend.core.state import EvoLoopState
 
 # 可透過環境變數調整；測試中也可 monkeypatch 此模組常數
 PASS_THRESHOLD = float(os.getenv("EVOL_PASS_THRESHOLD", "8"))
@@ -49,7 +49,7 @@ MAX_ITERATIONS = int(os.getenv("EVOL_MAX_ITERATIONS", "3"))
 MIN_SCORE_IMPROVEMENT = float(os.getenv("EVOL_MIN_SCORE_IMPROVEMENT", "0.5"))
 
 
-def should_improve(state: EvoLoopState) -> str:
+def should_improve(state: StateInput) -> str:
     """條件路由（優化 #4：動態迭代策略）。
 
     終止條件（任一滿足即 finalize）：
@@ -86,7 +86,7 @@ def should_improve(state: EvoLoopState) -> str:
     return "reflect"
 
 
-def should_rewrite_length(state: EvoLoopState) -> str:
+def should_rewrite_length(state: StateInput) -> str:
     """條件路由：長度守門節點仍留有未消化的指令 → 丢回 reflect 重寫。"""
     return "rewrite" if state.get("length_directive") else "ok"
 

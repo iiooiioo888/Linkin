@@ -58,7 +58,7 @@ async def decide_opc(state: dict) -> dict[str, Any]:
             f"严重度 {v['severity']}）"
             for v in violations
         ]
-        context_parts.append(f"【阈值违规】\n" + "\n".join(violation_lines))
+        context_parts.append("【阈值违规】\n" + "\n".join(violation_lines))
 
     # 品质报告
     if quality:
@@ -77,7 +77,7 @@ async def decide_opc(state: dict) -> dict[str, Any]:
             f"（{a.get('reason', '无说明')}）"
             for a in suggested
         ]
-        context_parts.append(f"【建议动作（来自诊断）】\n" + "\n".join(action_lines))
+        context_parts.append("【建议动作（来自诊断）】\n" + "\n".join(action_lines))
 
     context = "\n\n".join(context_parts)
     prompt = DECIDE_OPC.format(

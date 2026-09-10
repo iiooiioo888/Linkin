@@ -54,7 +54,7 @@ class CampaignMap:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None, goal: str = "") -> "CampaignMap":
+    def from_dict(cls, data: dict[str, Any] | None, goal: str = "") -> CampaignMap:
         raw = data or {}
         nodes = []
         for row in raw.get("nodes") or []:
@@ -243,7 +243,7 @@ def plan_campaign(goal: str) -> CampaignMap:
         return campaign
     try:
         return _enrich_with_llm(campaign)
-    except Exception:  # noqa: BLE001
+    except Exception:
         campaign.source = "rule"
         return campaign
 

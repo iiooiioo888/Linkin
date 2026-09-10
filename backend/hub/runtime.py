@@ -5,8 +5,8 @@ from __future__ import annotations
 from backend.hub.budget_guard import DailyBudgetLedger
 from backend.hub.cache import SemanticCache
 from backend.hub.circuit import CircuitRegistry
+from backend.hub.db import Database, init_database
 from backend.hub.store import HubStore
-from backend.hub.db import get_database, init_database
 
 
 class HubRuntime:
@@ -21,7 +21,8 @@ class HubRuntime:
         self.budget = DailyBudgetLedger()
         self.circuits = CircuitRegistry()
         self.upstream_calls: list[dict] = []
-        
+        self.db: Database | None = None
+
         # 初始化數據庫（若啟用）
         self._use_database = use_database
         if use_database:
@@ -31,8 +32,6 @@ class HubRuntime:
                 # 若數據庫初始化失敗，回退到內存存儲
                 self._use_database = False
                 self.db = None
-        else:
-            self.db = None
     
     def reset(self) -> None:
         self.store.reset()

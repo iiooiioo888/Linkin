@@ -16,9 +16,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 
 class CoreKind(str, Enum):
@@ -211,7 +212,7 @@ class L0Pipeline:
         final: list[str] = []
 
         for kind in PIPELINE_ORDER:
-            cap = max(1, int(round(_CORE_CAP[kind] * strength)))
+            cap = max(1, round(_CORE_CAP[kind] * strength))
             if not self.enabled.get(kind, True):
                 # 旁路：下游拿降級輸入（空片段），原因碼可觀測
                 results.append(CoreResult(kind, (), bypassed=True, reason_code=REASON_CORE_DISABLED))
@@ -220,7 +221,7 @@ class L0Pipeline:
                 continue
             try:
                 raw = self.cores[kind](**upstream) or []
-            except Exception:  # noqa: BLE001 - 核失敗不得拖垮注入，降級＋原因碼
+            except Exception:
                 results.append(CoreResult(kind, (), bypassed=True, reason_code=REASON_CORE_FAILED))
                 reason_codes.append(f"{kind.value}:{REASON_CORE_FAILED}")
                 upstream[kind.value] = []
@@ -252,10 +253,6 @@ class L0Pipeline:
 
 
 __all__ = [
-    "CoreKind",
-    "CoreResult",
-    "L0Pipeline",
-    "L0PipelineResult",
     "PIPELINE_ORDER",
     "PRESSURE_SOURCES",
     "REASON_CORE_DISABLED",
@@ -263,6 +260,10 @@ __all__ = [
     "REASON_OK",
     "REASON_PRESSURE_TRIMMED",
     "REASON_REDACTED",
+    "CoreKind",
+    "CoreResult",
+    "L0Pipeline",
+    "L0PipelineResult",
     "compute_pressure",
     "default_pressure_weights",
     "injection_strength",

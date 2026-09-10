@@ -19,8 +19,8 @@ from fastapi.testclient import TestClient
 from backend.company.decomposer import DecompositionResult, DecompositionStrategy
 from backend.company.roles import BUILTIN_TEMPLATES
 from backend.company.seat_io import (
-    TEXT_LIMIT,
     STORE,
+    TEXT_LIMIT,
     bind_run,
     record_seat_io,
     seat_log_path,

@@ -105,8 +105,9 @@ class VectorMemoryStore:
     # ---- 連線（惰性） ----
 
     def _create_client(self) -> Any:
-        from backend.memory.chroma_compat import apply_chromadb_sql_txt_compat
         import chromadb
+
+        from backend.memory.chroma_compat import apply_chromadb_sql_txt_compat
 
         apply_chromadb_sql_txt_compat()
         host = os.getenv("CHROMA_HOST")

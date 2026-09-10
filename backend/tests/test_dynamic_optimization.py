@@ -1,6 +1,5 @@
 """動態閾值與用戶反饋單元測試。"""
 
-import pytest
 
 from backend.core.dynamic_threshold import resolve_pass_threshold, threshold_config
 from backend.core.user_feedback import feedback_stats, record_feedback, satisfaction_bias

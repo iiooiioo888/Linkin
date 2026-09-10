@@ -61,7 +61,7 @@ class TaskBroadcaster:
         for websocket in subscribers:
             try:
                 await websocket.send_json(message)
-            except Exception:  # noqa: BLE001 - 连接可能已断开
+            except Exception:
                 dead_connections.append(websocket)
 
         # 清理断开的连接

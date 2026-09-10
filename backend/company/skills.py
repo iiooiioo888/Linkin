@@ -15,6 +15,7 @@ system_prompt 時調用 inject_skills() 將啟用技能附加到提示詞尾部�
 
 from __future__ import annotations
 
+import builtins
 import hashlib
 import json
 import logging
@@ -160,7 +161,7 @@ class SkillsStore:
         description: str = "",
         trigger: str = "",
         enabled: bool = True,
-        roles: list[str] | None = None,
+        roles: builtins.list[str] | None = None,
         skill_budget: int = DEFAULT_SKILL_BUDGET,
     ) -> Skill:
         name = (name or "").strip()
@@ -180,7 +181,7 @@ class SkillsStore:
                 content=content,
                 description=(description or "").strip(),
                 trigger=(trigger or "").strip(),
-                enabled=bool(enabled) if old is None else bool(enabled),
+                enabled=bool(enabled),
                 roles=[str(r).strip() for r in (roles or []) if str(r).strip()],
                 skill_budget=max(200, min(int(skill_budget or DEFAULT_SKILL_BUDGET), 20000)),
                 created_at=old.created_at if old else now,
@@ -213,7 +214,7 @@ class SkillsStore:
 
     # ── 提示詞渲染 ──
 
-    def enabled_for(self, role: str | None) -> list[Skill]:
+    def enabled_for(self, role: str | None) -> builtins.list[Skill]:
         with self._lock:
             self._load_locked()
             rows = [s for s in self._skills.values() if s.enabled]
@@ -268,6 +269,6 @@ def inject_skills(system_prompt: str, role: str | None = None) -> str:
             return system_prompt
         sep = "\n\n" if system_prompt and not system_prompt.endswith("\n") else "\n"
         return f"{system_prompt}{sep}{block}"
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning("技能注入失敗（已跳過）", exc_info=True)
         return system_prompt

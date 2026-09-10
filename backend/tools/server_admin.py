@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 try:  # psutil 为运维指标的软依赖；缺失时读操作降级而非崩溃
     import psutil
-except Exception:  # noqa: BLE001 - 软依赖缺失时降级
+except Exception:
     psutil = None  # type: ignore[assignment]
 
 # ── 默认值与常量 ──
@@ -321,7 +321,7 @@ def get_docker_status(*, config: ServerAdminConfig | None = None) -> dict[str, A
                     started = c.attrs.get("State", {}).get("StartedAt", "running")
                 tags = getattr(c.image, "tags", None) or []
                 image = str(tags[0]) if tags else ""
-            except Exception:  # noqa: BLE001 - 单容器属性缺失不影响整体
+            except Exception:
                 started = c.status
             statuses[c.name] = {"status": c.status, "uptime": started, "image": image}
         running = sum(1 for s in statuses.values() if s["status"] == "running")
@@ -333,7 +333,7 @@ def get_docker_status(*, config: ServerAdminConfig | None = None) -> dict[str, A
             "containers": statuses,
             "warning": any(s["status"] == "exited" for s in statuses.values()),
         }
-    except Exception as exc:  # noqa: BLE001 - 守护进程不可达/未安装一律降级
+    except Exception as exc:
         result = {
             "ok": True,
             "available": False,

@@ -11,8 +11,9 @@ import json
 import os
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from backend.company.raho.atomic_executor import (
     AtomicTaskSpec,
@@ -188,7 +189,7 @@ CONSTITUTION_LAYER = f"""# ==========================================
 class ReworkRequired(Exception):
     """L1 要求 L2 重做。"""
 
-    def __init__(self, verdict: "InspectorVerdict"):
+    def __init__(self, verdict: InspectorVerdict):
         super().__init__(verdict.details or "L1 退回重做")
         self.verdict = verdict
 
@@ -196,7 +197,7 @@ class ReworkRequired(Exception):
 class EscalateRequired(Exception):
     """L1 向上呈報 L3／L4／L5。"""
 
-    def __init__(self, verdict: "InspectorVerdict"):
+    def __init__(self, verdict: InspectorVerdict):
         super().__init__(verdict.details or "L1 向上呈報")
         self.verdict = verdict
 
@@ -304,7 +305,7 @@ def has_inspector_constitution(prompt: str) -> bool:
 
 
 def sign_payload(data: str, inspector_id: str = INSPECTOR_ID) -> str:
-    digest = hashlib.sha256(f"{inspector_id}|{data}".encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(f"{inspector_id}|{data}".encode()).hexdigest()
     return f"L1:{digest[:20]}"
 
 
@@ -325,7 +326,7 @@ def _extract_json(text: str) -> Any | None:
     fence = re.search(r"```(?:json)?\s*(\{.*?\}|\[.*?\])\s*```", raw, re.DOTALL)
     blob = fence.group(1) if fence else None
     if blob is None:
-        if raw.startswith("{") or raw.startswith("["):
+        if raw.startswith(("{", "[")):
             blob = raw
         else:
             match = re.search(r"(\{.*\}|\[.*\])", raw, re.DOTALL)
@@ -441,8 +442,8 @@ def compose_inspector_prompt(
     try:
         from backend.company.raho.l0 import inject_l0
 
-        return inject_l0(prompt, int(1), task.task_description)
-    except Exception:  # noqa: BLE001
+        return inject_l0(prompt, 1, task.task_description)
+    except Exception:
         return prompt
 
 
@@ -684,7 +685,8 @@ def parse_verdict(text: str) -> InspectorVerdict | None:
     kind = str(data.get("verdict") or "").upper()
     if kind not in VERDICTS:
         return None
-    tests = data.get("test_results") if isinstance(data.get("test_results"), dict) else {}
+    test_results = data.get("test_results")
+    tests = test_results if isinstance(test_results, dict) else {}
     normalized = {key: str(tests.get(key) or PASS) for key in TEST_KEYS}
     try:
         score = float(data.get("quality_score") or 0)
@@ -778,7 +780,8 @@ def source_for_artifacts(artifacts: dict[str, Any] | None, l2_output: str = "") 
     blob = artifacts if isinstance(artifacts, dict) else {}
     if "source_data" in blob:
         return blob.get("source_data")
-    layer = blob.get("task_layer") if isinstance(blob.get("task_layer"), dict) else {}
+    task_layer = blob.get("task_layer")
+    layer = task_layer if isinstance(task_layer, dict) else {}
     ref = blob.get("input_ref") if "input_ref" in blob else layer.get("input_ref")
     signed = resolve_input_ref(ref)
     if signed:
@@ -853,7 +856,7 @@ class InspectorGate:
             from backend.company.raho.l0 import apply_radar_bias
 
             verdict = apply_radar_bias(verdict)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         if verdict.verdict == VERDICT_APPROVED:
             write_signed_memory(node_id or verdict.node_id, verdict, title=title)
@@ -882,7 +885,7 @@ class InspectorGate:
                 from backend.core.llm import call_llm
 
                 raw = call_llm(prompt, system=self.system_prompt)
-        except Exception:  # noqa: BLE001
+        except Exception:
             return None
         try:
             from backend.company.raho.protocol import RahoLayer, layer_label
@@ -907,7 +910,7 @@ class InspectorGate:
                     {"kind": "deliverable", "label": "被審查的 L2 產出", "text": _as_text(l2_output)[:4000]},
                 ],
             })
-        except Exception:  # noqa: BLE001 - 監察軌跡不得影響裁決
+        except Exception:
             pass
         return parse_verdict(raw)
 

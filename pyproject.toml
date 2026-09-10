@@ -27,6 +27,14 @@ ignore = [
     "SIM102",  # flake8-simplify：嵌套 if 可合并（测试文件中常见）
     "UP017",   # pyupgrade：datetime.UTC 别名（Python 3.12+ 风格）
     "UP041",   # pyupgrade：TimeoutError 别名
+    # 運行時降級／護欄邊界：刻意廣捕 Exception 或静默 pass，避免單點故障拖垮管線
+    "BLE001",  # blind-except — LLM/OPC/Docker/向量庫等可選依賴探測
+    "S110",    # try-except-pass — 同上，降級路徑不刷屏
+    "TRY004",  # 與既有 ValueError 契約一致（量化／archify 輸入驗證）
+    "PLW0602", # stage_router 延遲初始化 singleton（global 只讀）
+    "PLC0206", # quant_tools 就地更新嵌套 dict（已知模式）
+    "RUF012",  # hub schema / 測試 stub 的 mutable class default
+    "ASYNC230", # 測試夾具同步 open（pytest 隔離目錄）
 ]
 
 # ============================================================
@@ -40,7 +48,21 @@ warn_unused_configs = true
 # 默认不检查无类型注解的函数体（避免大量噪音）
 check_untyped_defs = false
 
-# 已知类型问题的模块 —— 后续按需修复后移除（已全部清零）
+# 量化工具：大量可空序列／動態 JSON，漸進補 typing 前放寬運算與索引檢查
+[[tool.mypy.overrides]]
+module = [
+    "backend.company.quant_tools",
+    "backend.company.quant_strategy_maps",
+]
+disable_error_code = [
+    "operator",
+    "union-attr",
+    "arg-type",
+    "index",
+    "assignment",
+    "dict-item",
+    "str-unpack",
+]
 
 # ============================================================
 # Pytest

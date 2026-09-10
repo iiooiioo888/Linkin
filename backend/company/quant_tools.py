@@ -237,7 +237,7 @@ def _http_get_text(url: str, params: dict[str, Any] | None = None) -> str:
         return resp.text
 
 
-def _fail(error: str, **extra: Any) -> dict[str, Any]:
+def _fail(error: str | BaseException, **extra: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {"ok": False, "error": str(error)[:400], **extra}
     payload.setdefault("disclaimer", "公開數據僅供研究，非投資建議。")
     return payload
@@ -259,7 +259,7 @@ def _yahoo_chart(symbol: str, range_: str, interval: str) -> dict[str, Any]:
                 return result[0]
             err = chart.get("error") or "empty chart"
             last_err = str(err)[:200]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last_err = str(exc)[:200]
     raise RuntimeError(f"Yahoo 無法取得 {symbol}: {last_err}")
 
@@ -335,7 +335,7 @@ def _stooq_ticker(symbol: str) -> str | None:
     text = symbol.strip().lower()
     if "." not in text:
         return f"{text}.us"
-    if text.endswith(".ss") or text.endswith(".sz") or text.endswith(".bj"):
+    if text.endswith((".ss", ".sz", ".bj")):
         return None
     return text
 
@@ -389,44 +389,44 @@ def _load_bars(symbol: str, range_: str, interval: str) -> tuple[list[dict[str, 
         if bars:
             return bars, "yahoo"
         yahoo_err = "Yahoo 無有效收盤價"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         yahoo_err = str(exc)[:200]
     errors = [yahoo_err] if yahoo_err else []
     daily = interval in ("1d", "1wk", "5d")
     if _a_share_code(symbol) and daily:
         try:
             return _eastmoney_bars(symbol, "1d" if interval == "5d" else interval, 180), "eastmoney"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(f"東方財富：{exc}")
         try:
             from backend.company.quant_feeds import sina_bars
 
             return sina_bars(symbol, "1d" if interval == "5d" else interval), "sina"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(f"新浪：{exc}")
         try:
             from backend.company.quant_feeds import tushare_bars
 
             return tushare_bars(symbol), "tushare"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(f"Tushare：{exc}")
     if daily and _stooq_ticker(symbol):
         try:
             return _bars_from_stooq(symbol), "stooq"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(f"Stooq：{exc}")
     if daily and not _a_share_code(symbol):
         try:
             from backend.company.quant_feeds import finnhub_bars
 
             return finnhub_bars(symbol), "finnhub"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(f"Finnhub：{exc}")
         try:
             from backend.company.quant_feeds import alphavantage_bars
 
             return alphavantage_bars(symbol), "alpha_vantage"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(f"Alpha Vantage：{exc}")
     raise RuntimeError("；".join(errors) or f"無法取得 {symbol} K 線")
 
@@ -1608,7 +1608,7 @@ def _chart_points(dates: list[str], values: list[float], n: int = 96) -> list[di
         idxs = list(range(length))
     else:
         step = (length - 1) / (n - 1)
-        idxs = sorted({min(length - 1, int(round(i * step))) for i in range(n)})
+        idxs = sorted({min(length - 1, round(i * step)) for i in range(n)})
         if idxs[-1] != length - 1:
             idxs.append(length - 1)
     points: list[dict[str, Any]] = []
@@ -1731,7 +1731,7 @@ def market_quote(symbol: str) -> dict[str, Any]:
             "pct_change": pct,
             "disclaimer": "公開數據僅供研究，非投資建議。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_quote", query=symbol)
 
 
@@ -1754,7 +1754,7 @@ def market_kline(symbol: str, range: str = "1y", interval: str = "1d") -> dict[s
             "last_close": closes[-1] if closes else None,
             "disclaimer": "公開數據僅供研究，非投資建議。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_kline", query=symbol)
 
 
@@ -1846,7 +1846,7 @@ def market_backtest(
             **stats,
             "disclaimer": "回測可含滑點／止損，不含稅費，禁止當作收益保證。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_backtest", query=symbol)
 
 
@@ -1891,7 +1891,7 @@ def market_watch(symbol: str, drop_pct: float = 3.0) -> dict[str, Any]:
             "alerts": alerts,
             "disclaimer": "預警僅反映技術條件，非進出場指令。",
         }
-    except Exception as ext:  # noqa: BLE001
+    except Exception as ext:
         return _fail(ext, tool="market_watch", query=symbol)
 
 
@@ -1916,7 +1916,7 @@ def fx_rate(base: str = "USD", quote: str = "CNY", date: str = "") -> dict[str, 
                     "as_of": data.get("date"),
                     "disclaimer": "歐洲央行參考匯率，每日更新一次，非即時。",
                 }
-        except Exception as frank_err:  # noqa: BLE001
+        except Exception as frank_err:
             last = str(frank_err)[:200]
         else:
             last = "Frankfurter 無此幣對"
@@ -1936,7 +1936,7 @@ def fx_rate(base: str = "USD", quote: str = "CNY", date: str = "") -> dict[str, 
             "as_of": data.get("date") if isinstance(data, dict) else None,
             "disclaimer": "社區匯率備援（fawazahmed0），每日更新，非即時。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="fx_rate", base=base, quote=quote)
 
 
@@ -1977,16 +1977,16 @@ def crypto_quote(symbol: str = "BTC") -> dict[str, Any]:
         if gecko_id:
             return _crypto_from_coingecko(query, gecko_id)
         return _crypto_from_binance(query)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         gecko_id = COINGECKO_IDS.get((symbol or "BTC").strip().upper())
         if gecko_id:
             try:
                 return _crypto_from_coingecko(symbol, gecko_id)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
         try:
             return _crypto_from_binance(symbol)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         return _fail(exc, tool="crypto_quote", query=symbol)
 
@@ -2128,7 +2128,7 @@ def market_compare(symbol: str, range: str = "1y") -> dict[str, Any]:
             "best": ranking[0] if ranking else None,
             "disclaimer": "對比不含滑點／稅費，禁止當作收益保證。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_compare", query=symbol)
 
 
@@ -2160,7 +2160,7 @@ def market_search(keyword: str) -> dict[str, Any]:
                         "source": "yahoo",
                     }
                 )
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         seen: set[str] = set()
         unique: list[dict[str, Any]] = []
@@ -2171,7 +2171,7 @@ def market_search(keyword: str) -> dict[str, Any]:
             seen.add(key)
             unique.append(item)
         return {"ok": True, "query": query, "hits": unique[:10], "disclaimer": "公開數據僅供研究，非投資建議。"}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_search", query=keyword)
 
 
@@ -2204,7 +2204,7 @@ def market_screener(sort: str = "pct", limit: int = 15) -> dict[str, Any]:
             "items": items,
             "disclaimer": "A 股盤面快照，非投資建議。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_screener")
 
 
@@ -2228,7 +2228,7 @@ def market_fundamentals(symbol: str) -> dict[str, Any]:
             "circ_cap": row.get("f21") or row.get("f117"),
             "disclaimer": "基本面快照，口徑可能與財報不一致。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_fundamentals", query=symbol)
 
 
@@ -2273,7 +2273,7 @@ def market_capital_flow(symbol: str, days: int = 15) -> dict[str, Any]:
             "latest": flows[-1] if flows else None,
             "disclaimer": "主力淨額單位依東財口徑，僅供研究。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_capital_flow", query=symbol)
 
 
@@ -2298,7 +2298,7 @@ def market_north_flow(days: int = 15) -> dict[str, Any]:
             "latest": daily[0] if daily else None,
             "disclaimer": "滬深港通北向匯總，非即時成交。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_north_flow")
 
 
@@ -2329,7 +2329,7 @@ def market_dragon_tiger(limit: int = 15) -> dict[str, Any]:
             "items": items,
             "disclaimer": "龍虎榜公開數據，非進出場指令。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_dragon_tiger")
 
 
@@ -2356,7 +2356,7 @@ def market_sectors(kind: str = "industry", limit: int = 15) -> dict[str, Any]:
             "items": items,
             "disclaimer": "板塊漲跌快照，非投資建議。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_sectors")
 
 
@@ -2497,7 +2497,7 @@ def market_portfolio(symbols: str, range: str = "1y", method: str = "equal_weigh
                 series = {str(b["t"]): float(b["c"]) for b in bars if b.get("c") is not None and b.get("t")}
                 if series:
                     legs.append((code, source, series))
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors.append(f"{raw}: {exc}")
         if len(legs) < 2:
             return _fail("有效標的不足兩個：" + "；".join(errors), tool="market_portfolio")
@@ -2567,7 +2567,7 @@ def market_portfolio(symbols: str, range: str = "1y", method: str = "equal_weigh
             "errors": errors,
             "disclaimer": "組合不含再平衡成本，禁止當作收益保證。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_portfolio", query=symbols)
 
 
@@ -2587,7 +2587,7 @@ def market_minutes(symbol: str, interval: str = "5m", limit: int = 80) -> dict[s
             "count": len(bars),
             "disclaimer": "分鐘線來自東財，僅供研究。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_minutes", query=symbol)
 
 
@@ -2599,10 +2599,10 @@ def market_realtime(symbol: str) -> dict[str, Any]:
                 from backend.company.quant_feeds import sina_realtime
 
                 return sina_realtime(code)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
         return market_quote(code)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_realtime", query=symbol)
 
 
@@ -2634,7 +2634,7 @@ def market_flow(days: int = 15) -> dict[str, Any]:
             "latest": flows[-1] if flows else None,
             "disclaimer": "上證指數資金流向，口徑依東財。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_flow")
 
 
@@ -2690,7 +2690,7 @@ def market_benchmark(symbol: str, range: str = "1y", benchmark: str = "000300") 
             "tracking_error": round(te * math.sqrt(252), 6),
             "disclaimer": "基準對比不含股息再投資差異，禁止當作收益保證。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_benchmark", query=symbol)
 
 
@@ -2720,7 +2720,7 @@ def market_returns(symbols: str, range: str = "1y") -> dict[str, Any]:
                         "bars": len(closes),
                     }
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors.append(f"{raw}: {exc}")
         rows.sort(key=lambda item: -(item.get("total_return") or 0))
         return {
@@ -2730,7 +2730,7 @@ def market_returns(symbols: str, range: str = "1y") -> dict[str, Any]:
             "errors": errors,
             "disclaimer": "區間收益不含股息，禁止當作收益保證。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_returns", query=symbols)
 
 
@@ -2788,7 +2788,7 @@ def market_optimize(symbol: str, strategy: str = "dual_ma", range: str = "1y") -
             "best": trials[0] if trials else None,
             "disclaimer": "網格搜尋不含前視偏差校正，禁止當作收益保證。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_optimize", query=symbol)
 
 
@@ -2867,7 +2867,7 @@ def market_walkforward(symbol: str, strategy: str = "dual_ma", range: str = "2y"
             "mean_oos_sharpe": round(sum(oos_sharpes) / len(oos_sharpes), 4) if oos_sharpes else None,
             "disclaimer": "Walk-Forward 樣本外績效仍可能過擬合，禁止當作收益保證。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_walkforward", query=symbol)
 
 
@@ -2906,7 +2906,7 @@ def market_heatmap(symbol: str, range: str = "1y") -> dict[str, Any]:
             "best": cells[0] if cells else None,
             "disclaimer": "參數敏感度熱力圖，禁止當作收益保證。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_heatmap", query=symbol)
 
 
@@ -2937,7 +2937,7 @@ def market_signals(symbol: str, range: str = "6mo") -> dict[str, Any]:
             "strategies": items,
             "disclaimer": "訊號僅反映技術條件，非進出場指令。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_signals", query=symbol)
 
 
@@ -2963,7 +2963,7 @@ def market_leaderboard(symbols: str = "600519,000001,AAPL", range: str = "1y") -
                     stats = _dispatch_strategy(name, closes, dates, 5, 20, highs=highs, lows=lows, vols=vols)
                     if stats.get("sharpe") is not None:
                         scores[name].append(float(stats["sharpe"]))
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors.append(f"{raw}: {exc}")
         ranking = []
         for name, values in scores.items():
@@ -2986,7 +2986,7 @@ def market_leaderboard(symbols: str = "600519,000001,AAPL", range: str = "1y") -
             "errors": errors,
             "disclaimer": "跨標的平均夏普，樣本外未必持續，禁止當作收益保證。",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return _fail(exc, tool="market_leaderboard", query=symbols)
 
 

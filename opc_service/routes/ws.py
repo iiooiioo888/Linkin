@@ -63,7 +63,7 @@ async def ws_subscribe(websocket: WebSocket):
                     asyncio.create_task(
                         _push_updates(websocket, queue)
                     )
-                except Exception as exc:  # noqa: BLE001 - 订阅失败时向客户端回报错误而非断开
+                except Exception as exc:
                     await websocket.send_text(
                         json.dumps({"error": f"订阅失败：{exc}"})
                     )
@@ -94,7 +94,7 @@ async def _push_updates(websocket: WebSocket, queue: asyncio.Queue):
                 await websocket.send_text(
                     json.dumps(event, default=str)
                 )
-            except Exception:  # noqa: BLE001 - 推送失败（连接已断）时停止推送循环
+            except Exception:
                 break
     except asyncio.CancelledError:
         pass

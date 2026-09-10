@@ -1,6 +1,5 @@
 """公司任務軌跡鏡像測試：CompanyEvent→trace、llm_trace 鉤子、read_trace 篩選。"""
 
-import json
 import os
 
 import pytest
@@ -108,9 +107,8 @@ class TestCompanyEventMirror:
 class TestTaskManagerWiring:
     def test_listener_mirrors_company_events_to_trace(self, trace_env, monkeypatch):
         """_attach_company_listener 把 CompanyEvent 鏡像進 trace_<task_id>.jsonl。"""
-        import asyncio
 
-        from backend.company.events import CompanyEvent, EventBus
+        from backend.company.events import CompanyEvent
         from backend.company.orchestrator import CompanyOrchestrator
         from backend.company.roles import BUILTIN_TEMPLATES
         from backend.services.task_manager import TaskManager, TaskRecord

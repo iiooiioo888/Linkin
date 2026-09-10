@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
 import math
 import os
@@ -16,7 +17,12 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from backend.company.quant_strategy_maps import ARCHIFY_SOURCE, archify_strategies, strategy_catalog_maps, strategy_maps
+from backend.company.quant_strategy_maps import (
+    ARCHIFY_SOURCE,
+    archify_strategies,
+    strategy_catalog_maps,
+    strategy_maps,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 CACHE_DIR = ROOT / ".archify_cache"
@@ -102,7 +108,7 @@ def _grid_spine(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
     n = 0
     for row in sorted(by_row):
         items = sorted(by_row[row], key=lambda c: int(c["col"]))
-        for left, right in zip(items, items[1:]):
+        for left, right in itertools.pairwise(items):
             connections.append(
                 {
                     "id": _sid(f"h{n}_{left['id']}_{right['id']}"),
@@ -113,7 +119,7 @@ def _grid_spine(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
             )
             n += 1
     rows = sorted(by_row)
-    for upper, lower in zip(rows, rows[1:]):
+    for upper, lower in itertools.pairwise(rows):
         a = min(by_row[upper], key=lambda c: int(c["col"]))
         b = min(by_row[lower], key=lambda c: int(c["col"]))
         if a["id"] == b["id"]:
@@ -131,7 +137,8 @@ def _grid_spine(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _meta(ir: dict[str, Any], *, diagram_type: str) -> dict[str, Any]:
-    src = ir.get("meta") if isinstance(ir.get("meta"), dict) else {}
+    meta = ir.get("meta")
+    src = meta if isinstance(meta, dict) else {}
     title = str(src.get("title") or "Archify")
     locale = src.get("locale")
     if locale not in {"en", "zh-CN"}:
@@ -456,9 +463,8 @@ def _compile_lifecycle(ir: dict[str, Any]) -> dict[str, Any]:
     for state in states:
         by_lane[state["lane"]].append(state)
     transitions = []
-    n = 0
     ordered_main = sorted(by_lane["main"], key=lambda s: int(s["col"]))
-    for a, b in zip(ordered_main, ordered_main[1:]):
+    for n, (a, b) in enumerate(itertools.pairwise(ordered_main)):
         transitions.append(
             {
                 "id": _sid(f"t{n}_{a['id']}_{b['id']}"),
@@ -467,7 +473,6 @@ def _compile_lifecycle(ir: dict[str, Any]) -> dict[str, Any]:
                 "route": "straight",
             }
         )
-        n += 1
     return {
         "schema_version": 1,
         "diagram_type": "lifecycle",

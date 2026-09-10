@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backend.hub.catalog import (  # noqa: E402
+from backend.hub.catalog import (
     CN_CHAIN,
     DEFAULT_CHAIN,
     DEFAULT_LATENCY_MS,
@@ -25,7 +25,7 @@ from backend.hub.catalog import (  # noqa: E402
     PROVIDER_OF,
     RACE_PAIR,
 )
-from backend.services.agent_monitor import build_idle_roster  # noqa: E402
+from backend.services.agent_monitor import build_idle_roster
 
 OUT_DIR = ROOT / "frontend" / "src" / "generated"
 OUT_JSON = OUT_DIR / "monitor-fallback.json"

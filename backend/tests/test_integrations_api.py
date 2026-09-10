@@ -26,7 +26,7 @@ def _transport_ok(*_a, **_k):
 def _build_app() -> TestClient:
     integ_api.reset_registry()
     transport = _transport_ok
-    integ_api._REGISTRY = {  # noqa: SLF001 — 測試注入
+    integ_api._REGISTRY = {
         "memos": MemosClient(config=_cfg("memos"), transport=transport),
         "openviking": OpenVikingClient(config=_cfg("openviking"), transport=transport),
         "weknora": WeKnoraClient(config=_cfg("weknora"), transport=transport),

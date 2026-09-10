@@ -10,11 +10,9 @@
 
 from __future__ import annotations
 
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ═══════════════════════════════════════════════════════════════
 # DockerManager stub 模式測試
@@ -457,8 +455,9 @@ class TestDockerApiEndpoints:
         monkeypatch.setattr(
             "backend.services.docker_manager.DOCKER_AVAILABLE", False
         )
-        from backend.main import app
         from fastapi.testclient import TestClient
+
+        from backend.main import app
         return TestClient(app)
 
     def test_docker_status_endpoint(self, client):

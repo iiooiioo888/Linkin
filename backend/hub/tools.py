@@ -11,12 +11,11 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 import re
 import time
 from typing import Any
 from uuid import uuid4
-
-import os
 
 from backend.hub.errors import HubError
 

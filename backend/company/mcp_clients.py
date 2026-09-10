@@ -20,6 +20,7 @@ tool_call 閉環調用。與 minecraft_mcp.py（MineMCP 專用、JSON-RPC）
 
 from __future__ import annotations
 
+import builtins
 import hashlib
 import json
 import logging
@@ -31,7 +32,7 @@ import threading
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import httpx
 
@@ -99,13 +100,13 @@ class _StdioSession:
         self._id += 1
         return self._id
 
-    def __enter__(self) -> "_StdioSession":
+    def __enter__(self) -> Self:
         argv = shlex.split(self.server.command)
         if not argv:
             raise ValueError("stdio server 缺少 command")
         env = dict(os.environ)
         env.update(self.server.env or {})
-        self._proc = subprocess.Popen(  # noqa: S603
+        self._proc = subprocess.Popen(
             argv,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -116,16 +117,17 @@ class _StdioSession:
         )
         return self
 
-    def __exit__(self, *_exc: Any) -> None:
+    def __exit__(self, *_exc: object) -> None:
         if self._proc:
             try:
-                self._proc.stdin.close()
+                if self._proc.stdin is not None:
+                    self._proc.stdin.close()
                 self._proc.terminate()
                 self._proc.wait(timeout=3)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 try:
                     self._proc.kill()
-                except Exception:  # noqa: BLE001
+                except Exception:
                     pass
 
     def _send(self, method: str, params: dict[str, Any] | None) -> dict[str, Any]:
@@ -244,9 +246,7 @@ def _unwrap_content(res: dict[str, Any]) -> Any:
             if not isinstance(block, dict):
                 parts.append(str(block))
                 continue
-            if block.get("type") == "text" and "text" in block:
-                parts.append(str(block["text"]))
-            elif "text" in block:
+            if block.get("type") == "text" and "text" in block or "text" in block:
                 parts.append(str(block["text"]))
             else:
                 parts.append(json.dumps(block, ensure_ascii=False))
@@ -286,7 +286,7 @@ def probe_server(server: McpServer) -> dict[str, Any]:
             "probed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "error": "",
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("MCP 探測失敗 %s：%s", server.name, exc)
         return {
             "ok": False,
@@ -388,7 +388,7 @@ class McpRegistry:
         url: str = "",
         headers: dict[str, str] | None = None,
         enabled: bool = True,
-        allowed_tools: list[str] | None = None,
+        allowed_tools: builtins.list[str] | None = None,
         readonly: bool = True,
         timeout: float = DEFAULT_TIMEOUT,
     ) -> McpServer:
@@ -484,13 +484,13 @@ class McpRegistry:
 
     # ── 動態掛載進 tool_registry ──
 
-    def mount_tools(self, tool_registry: Any, *, force: bool = False) -> list[str]:
+    def mount_tools(self, tool_registry: Any, *, force: bool = False) -> builtins.list[str]:
         """探測所有啟用 server，把其工具註冊進 tool_registry。
 
         回傳本次新增的內部工具名列表。已掛載的跳過（除非 force）。
         任何 server 探測失敗都只記警告，不影響其他 server。
         """
-        mounted: list[str] = []
+        mounted: builtins.list[str] = []
         for srv in self.list():
             if not srv.enabled:
                 continue
@@ -501,7 +501,7 @@ class McpRegistry:
                         tools = s.list_tools()
                 else:
                     tools = sess.list_tools()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("MCP mount 探測 %s 失敗：%s", srv.name, exc)
                 continue
             allowed = set(srv.allowed_tools) if srv.allowed_tools else None

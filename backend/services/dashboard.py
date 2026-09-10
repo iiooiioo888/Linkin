@@ -178,7 +178,7 @@ def _collect_capabilities(
         from backend.linkin.minecraft import monitor_status as minecraft_monitor_status
 
         mcp_status = minecraft_monitor_status()
-    except Exception:  # noqa: BLE001
+    except Exception:
         mcp_status = {"dry_run": True, "connected": False, "world": "world"}
 
     return [
@@ -264,7 +264,7 @@ def collect_dashboard() -> dict[str, Any]:
 
     try:
         memories = _memory_store().all()
-    except Exception:  # noqa: BLE001
+    except Exception:
         memories = []
 
     completed = [t for t in tasks if t["status"] == "completed"]

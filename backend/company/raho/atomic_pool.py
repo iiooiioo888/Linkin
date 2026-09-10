@@ -149,7 +149,7 @@ def assemble(item: WorkItem, tools: list[str] | None = None) -> dict[str, Any]:
             from backend.services.commander import fill_allowed_tools
 
             allow = fill_allowed_tools(f"{item.title}\n{item.description}")
-        except Exception:  # noqa: BLE001
+        except Exception:
             allow = []
     card = AtomicExecutorFactory.spawn_card(
         {

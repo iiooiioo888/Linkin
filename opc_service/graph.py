@@ -11,7 +11,8 @@
 import asyncio
 import logging
 import os
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from langgraph.graph import END, StateGraph
 

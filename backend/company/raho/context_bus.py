@@ -33,7 +33,8 @@ def _format_input_ref(ref: Any) -> str:
 def downward_context(item: WorkItem, dependencies: list[WorkItem]) -> str:
     """上層 → 下層：優先傳共享記憶體指標，避免把整份戰役上下文灌進原子角色。"""
     artifacts = item.artifacts if isinstance(item.artifacts, dict) else {}
-    atomic = artifacts.get("atomic_role") if isinstance(artifacts.get("atomic_role"), dict) else {}
+    atomic_raw = artifacts.get("atomic_role")
+    atomic = atomic_raw if isinstance(atomic_raw, dict) else {}
     pointer = _format_input_ref(atomic.get("input_ref") or artifacts.get("input_ref"))
     if pointer:
         schema = atomic.get("output_schema") or artifacts.get("output_schema") or ""
@@ -46,7 +47,7 @@ def downward_context(item: WorkItem, dependencies: list[WorkItem]) -> str:
                 from backend.company.raho.inspector import resolve_input_ref
 
                 signed = resolve_input_ref(pointer)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 signed = None
                 UNSIGNED_WARNING = "警告：此指標尚未經 L1 簽核，禁止引用為已核准數據。"
             if signed is None:
@@ -102,12 +103,13 @@ def blackboard_record(
     role: str = "",
 ) -> dict[str, Any]:
     """寫入角色記憶庫（失敗靜默）。"""
+    content_text = compress(content, 1200)
     payload = {
         "task_id": task_id,
         "layer": int(layer),
         "title": title,
         "role": role,
-        "content": compress(content, 1200),
+        "content": content_text,
     }
     try:
         from backend.company.role_memory import get_role_memory
@@ -115,10 +117,10 @@ def blackboard_record(
         memory = get_role_memory(role or "raho")
         memory.save_from_work_item(
             f"[L{int(layer)}] {title}",
-            payload["content"][:1000],
+            content_text[:1000],
             None,
             True,
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     return payload

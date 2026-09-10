@@ -20,7 +20,6 @@ from backend.company.state import WorkItemStatus
 from backend.company.work_item import WorkItemManager
 from backend.services import task_manager as tm
 
-
 # ══════════════ 工作項取消 ══════════════
 
 

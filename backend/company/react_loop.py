@@ -153,7 +153,7 @@ class ReActExecutor:
                 tools_prompt = self.registry.format_tools_prompt(
                     role, catalog_allowed=catalog_allowed
                 )
-        except Exception:  # noqa: BLE001
+        except Exception:
             tools_prompt = self.registry.format_tools_prompt(role)
         system_prompt = REACT_SYSTEM_PROMPT.format(max_steps=self.max_steps)
         
@@ -182,7 +182,7 @@ class ReActExecutor:
                     model=model,
                     **llm_opts,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.error("ReAct LLM 調用失敗（step %d）：%s", step_num, exc)
                 return ReActResult(
                     success=False,
@@ -277,7 +277,7 @@ class ReActExecutor:
                 steps=steps,
                 total_steps=self.max_steps,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return ReActResult(
                 success=False,
                 final_answer="",

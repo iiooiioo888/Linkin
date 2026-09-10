@@ -17,7 +17,6 @@ from backend.linkin.tools import (
     invoke_tool,
 )
 
-
 NPC_CARD = {
     "name": "司契·白绫",
     "faction": "织庭盟",

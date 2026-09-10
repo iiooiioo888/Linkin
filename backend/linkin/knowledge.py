@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 import hashlib
 import json
 import logging
@@ -27,7 +28,7 @@ COLLECTIONS = (COL_WORLDVIEW, COL_NPCS, COL_EVENTS, COL_PLAYERS)
 DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "linkin"
 
 _lock = threading.Lock()
-_store: "LinkinKnowledgeStore | None" = None
+_store: LinkinKnowledgeStore | None = None
 
 
 class QualityGateError(ValueError):
@@ -95,7 +96,7 @@ def reset_store() -> None:
         _store = None
 
 
-def get_store() -> "LinkinKnowledgeStore":
+def get_store() -> LinkinKnowledgeStore:
     global _store
     with _lock:
         if _store is None:
@@ -187,13 +188,14 @@ class LinkinKnowledgeStore:
         try:
             self._init_chroma()
             self._chroma_ok = True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._chroma_error = str(exc)
             logger.warning("Linkin Chroma 初始化失敗，降級 JSON：%s", exc)
 
     def _init_chroma(self) -> None:
-        from backend.memory.chroma_compat import apply_chromadb_sql_txt_compat
         import chromadb
+
+        from backend.memory.chroma_compat import apply_chromadb_sql_txt_compat
 
         apply_chromadb_sql_txt_compat()
         persist = chroma_dir()
@@ -250,7 +252,7 @@ class LinkinKnowledgeStore:
             try:
                 self._chroma_upsert(collection, rec_id, text, meta)
                 backend = "chroma"
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("Chroma 寫入失敗，降級 JSON：%s", exc)
                 self._chroma_ok = False
                 self._chroma_error = str(exc)
@@ -273,7 +275,7 @@ class LinkinKnowledgeStore:
         }
         try:
             col.delete(ids=[rec_id])
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         col.add(ids=[rec_id], documents=[text], metadatas=[clean])
 
@@ -290,7 +292,7 @@ class LinkinKnowledgeStore:
                 return item
         return None
 
-    def list(self, collection: str) -> list[dict[str, Any]]:
+    def list(self, collection: str) -> builtins.list[dict[str, Any]]:
         return _load_json_list(json_path(collection))
 
     def delete(self, collection: str, rec_id: str) -> bool:
@@ -303,7 +305,7 @@ class LinkinKnowledgeStore:
         if self._chroma_ok:
             try:
                 self._collections[collection].delete(ids=[rec_id])
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
         return True
 
@@ -314,11 +316,11 @@ class LinkinKnowledgeStore:
         *,
         k: int = 5,
         threshold: float = SIMILARITY_THRESHOLD,
-    ) -> list[dict[str, Any]]:
+    ) -> builtins.list[dict[str, Any]]:
         if self._chroma_ok:
             try:
                 return self._chroma_search(collection, query, k=k, threshold=threshold)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("Chroma 檢索失敗，降級 JSON：%s", exc)
                 self._chroma_ok = False
                 self._chroma_error = str(exc)
@@ -326,7 +328,7 @@ class LinkinKnowledgeStore:
 
     def _chroma_search(
         self, collection: str, query: str, *, k: int, threshold: float
-    ) -> list[dict[str, Any]]:
+    ) -> builtins.list[dict[str, Any]]:
         col = self._collections[collection]
         result = col.query(query_texts=[query], n_results=max(k, 1))
         docs = (result.get("documents") or [[]])[0]
@@ -351,8 +353,8 @@ class LinkinKnowledgeStore:
 
     def _json_search(
         self, collection: str, query: str, *, k: int, threshold: float
-    ) -> list[dict[str, Any]]:
-        scored: list[dict[str, Any]] = []
+    ) -> builtins.list[dict[str, Any]]:
+        scored: builtins.list[dict[str, Any]] = []
         for item in self.list(collection):
             similarity = _lexical_similarity(query, str(item.get("text") or ""))
             if similarity < threshold:

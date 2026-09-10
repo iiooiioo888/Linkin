@@ -17,7 +17,6 @@ import logging
 import os
 import time
 from collections import OrderedDict
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ _SEMANTIC_THRESHOLD = float(os.getenv("EVOL_SEMANTIC_THRESHOLD", "0.92"))  # 相
 class _CacheEntry:
     """快取條目。"""
 
-    __slots__ = ("value", "created_at", "hit_count", "model")
+    __slots__ = ("created_at", "hit_count", "model", "value")
 
     def __init__(self, value: str, model: str) -> None:
         self.value = value
