@@ -24,7 +24,7 @@ from typing import Any
 
 from backend.company.orchestrator import CompanyOrchestrator
 from backend.company.roles import BUILTIN_TEMPLATES
-from backend.core.state import EvoLoopState, StateInput
+from backend.core.state import StateInput
 
 logger = logging.getLogger(__name__)
 

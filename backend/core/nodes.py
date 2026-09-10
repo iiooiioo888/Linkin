@@ -7,12 +7,13 @@ import asyncio
 import json
 import logging
 import os
+from typing import Literal, cast
 
 from backend.core.evaluation import CrossModelEvaluator, get_evaluator
 from backend.core.llm import call_llm, parse_json_response
 from backend.core.pipeline_trace import log_node
 from backend.core.stage_router import resolve_stage_model
-from backend.core.state import EvoLoopState, StateInput
+from backend.core.state import StateInput
 from backend.memory.vector_store import VectorMemoryStore
 from backend.prompts import templates
 from backend.prompts.templates import truncate
@@ -447,8 +448,6 @@ def decide_final_answer(state: StateInput) -> dict:
     # P2：路由自適應反饋 — 記錄最終品質供後續調整
     try:
         from backend.core.routing_feedback import record_outcome
-
-        from typing import Literal, cast
 
         route = cast(
             Literal["simple", "company"],

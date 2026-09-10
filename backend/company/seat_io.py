@@ -16,6 +16,7 @@ events[]，混入逐次模型調用會排掉真正的生命週期事件。
 
 from __future__ import annotations
 
+import builtins
 import json
 import logging
 import threading
@@ -25,7 +26,7 @@ from collections import deque
 from contextvars import ContextVar, Token
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 from backend.company.run_log import run_log_dir
 
@@ -218,7 +219,7 @@ class SeatIOStore:
                     return record
         return None
 
-    def load_run(self, run_id: str, *, limit: int = 500) -> List[dict[str, Any]]:
+    def load_run(self, run_id: str, *, limit: int = 500) -> builtins.list[dict[str, Any]]:
         """讀指定 run 的持久投遞軌跡（舊於環形緩衝的歷史）。"""
         path = seat_log_path(run_id)
         try:
@@ -240,7 +241,7 @@ class SeatIOStore:
                 break
         return out
 
-    def recent_runs(self, *, limit: int = 20) -> List[dict[str, Any]]:
+    def recent_runs(self, *, limit: int = 20) -> builtins.list[dict[str, Any]]:
         """環形緩衝中出现過的 run 摘要（供監察頁選單）。"""
         with self._lock:
             pool = list(self._records)

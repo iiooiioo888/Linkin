@@ -15,6 +15,7 @@ system_prompt 時調用 inject_skills() 將啟用技能附加到提示詞尾部�
 
 from __future__ import annotations
 
+import builtins
 import hashlib
 import json
 import logging
@@ -23,7 +24,7 @@ import threading
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +161,7 @@ class SkillsStore:
         description: str = "",
         trigger: str = "",
         enabled: bool = True,
-        roles: List[str] | None = None,
+        roles: builtins.list[str] | None = None,
         skill_budget: int = DEFAULT_SKILL_BUDGET,
     ) -> Skill:
         name = (name or "").strip()
@@ -213,7 +214,7 @@ class SkillsStore:
 
     # ── 提示詞渲染 ──
 
-    def enabled_for(self, role: str | None) -> List[Skill]:
+    def enabled_for(self, role: str | None) -> builtins.list[Skill]:
         with self._lock:
             self._load_locked()
             rows = [s for s in self._skills.values() if s.enabled]

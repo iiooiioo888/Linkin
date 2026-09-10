@@ -20,6 +20,7 @@ tool_call 閉環調用。與 minecraft_mcp.py（MineMCP 專用、JSON-RPC）
 
 from __future__ import annotations
 
+import builtins
 import hashlib
 import json
 import logging
@@ -31,7 +32,7 @@ import threading
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, List, Self
+from typing import Any, Self
 
 import httpx
 
@@ -387,7 +388,7 @@ class McpRegistry:
         url: str = "",
         headers: dict[str, str] | None = None,
         enabled: bool = True,
-        allowed_tools: List[str] | None = None,
+        allowed_tools: builtins.list[str] | None = None,
         readonly: bool = True,
         timeout: float = DEFAULT_TIMEOUT,
     ) -> McpServer:
@@ -483,13 +484,13 @@ class McpRegistry:
 
     # ── 動態掛載進 tool_registry ──
 
-    def mount_tools(self, tool_registry: Any, *, force: bool = False) -> List[str]:
+    def mount_tools(self, tool_registry: Any, *, force: bool = False) -> builtins.list[str]:
         """探測所有啟用 server，把其工具註冊進 tool_registry。
 
         回傳本次新增的內部工具名列表。已掛載的跳過（除非 force）。
         任何 server 探測失敗都只記警告，不影響其他 server。
         """
-        mounted: List[str] = []
+        mounted: builtins.list[str] = []
         for srv in self.list():
             if not srv.enabled:
                 continue
