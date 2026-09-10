@@ -108,3 +108,7 @@ class EvoLoopState(OPCStateFields, total=False):
     # ---- RAHO 語意鎖定（用戶 Grill-Me 通過後注入） ----
     semantic_lock: dict[str, Any]
     raho: dict[str, Any]
+
+
+# LangGraph 運行時為 dict；靜態標註為 TypedDict。節點簽名用此別名接受兩者。
+StateInput = EvoLoopState | dict[str, Any]

@@ -237,7 +237,7 @@ def _http_get_text(url: str, params: dict[str, Any] | None = None) -> str:
         return resp.text
 
 
-def _fail(error: str, **extra: Any) -> dict[str, Any]:
+def _fail(error: str | BaseException, **extra: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {"ok": False, "error": str(error)[:400], **extra}
     payload.setdefault("disclaimer", "公開數據僅供研究，非投資建議。")
     return payload

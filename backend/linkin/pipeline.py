@@ -10,7 +10,7 @@ import logging
 import re
 from typing import Any
 
-from backend.core.state import EvoLoopState
+from backend.core.state import StateInput
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ def constitution_brief() -> str:
     )
 
 
-def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
+def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
     """靈境 RAG 增強：命中世界觀關鍵詞時注入憲法摘要與知識庫檢索。
 
     Minecraft 控制查詢即使未提靈境也注入 MCP 摘要（不碰 RAG），
@@ -151,7 +151,7 @@ def enhance_with_linkin_context(state: EvoLoopState) -> dict[str, Any]:
     }
 
 
-def resolve_linkin_company_template(state: EvoLoopState) -> str | None:
+def resolve_linkin_company_template(state: StateInput) -> str | None:
     """靈境複雜任務或 Minecraft 控制任務且呼叫端仍用預設 quick_task 時，改走故事工作室。
 
     quick_task 只有 manager＋developer；developer 不能放方塊。
@@ -181,7 +181,7 @@ def resolve_linkin_company_template(state: EvoLoopState) -> str | None:
     return None
 
 
-def prefix_query_with_linkin(query: str, state: EvoLoopState) -> str:
+def prefix_query_with_linkin(query: str, state: StateInput) -> str:
     ctx = state.get("linkin_context") or {}
     if not isinstance(ctx, dict):
         return query

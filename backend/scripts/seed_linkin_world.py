@@ -98,7 +98,7 @@ def seed_npcs() -> int:
             COL_NPCS,
             format_npc_text(card),
             dict(card),
-            record_id=card["id"],
+            record_id=str(card["id"]),
             skip_quality=True,
         )
     store.upsert(

@@ -268,6 +268,8 @@ class TaskManager:
             raw = client.get(TASK_KEY_PREFIX + task_id)
             if not raw:
                 return None
+            if not isinstance(raw, (str, bytes, bytearray)):
+                return None
             record = TaskRecord.from_snapshot(json.loads(raw))
             # 唯讀回傳：interrupted 標記只由啟動時 rehydrate 負責。
             # 這裡若改狀態，跨行程讀取（MCP stdio 子行程讀主服務正在跑的
@@ -295,7 +297,7 @@ class TaskManager:
         for key in keys:
             try:
                 raw = client.get(key)
-                if not raw:
+                if not raw or not isinstance(raw, (str, bytes, bytearray)):
                     continue
                 record = TaskRecord.from_snapshot(json.loads(raw))
                 if record.status in ("pending", "running"):
@@ -1063,7 +1065,7 @@ class TaskManager:
             # ── 第 4 級：診斷 (Diagnose) ──
             self._set_phase(record, "diagnose_opc")
             tracer.log_phase_change("diagnose_opc")
-            state.update(await asyncio.to_thread(diagnose_opc, state))
+            state.update(await diagnose_opc(state))
             record.opc_state["diagnose"] = state.get("opc_diagnosis", {})
             self._persist(record)
             if self._check_cancelled(record):
@@ -1073,7 +1075,7 @@ class TaskManager:
             # ── 第 5 級：決策 (Decide) ──
             self._set_phase(record, "decide_opc")
             tracer.log_phase_change("decide_opc")
-            state.update(await asyncio.to_thread(decide_opc, state))
+            state.update(await decide_opc(state))
             record.opc_state["decide"] = {
                 "decisions": state.get("opc_decisions", []),
                 "summary": state.get("opc_decision_summary", ""),

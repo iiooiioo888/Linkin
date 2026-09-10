@@ -362,7 +362,10 @@ def refresh_interval_sec(cfg: dict[str, Any] | None = None) -> int:
 
     runtime = cfg or get_runtime_config()
     try:
-        raw = int(runtime.get("ops_refresh_interval_sec") or os.getenv("EVOL_LLM_OPS_INTERVAL_SEC", DEFAULT_REFRESH_SEC))
+        interval = runtime.get("ops_refresh_interval_sec") or os.getenv(
+            "EVOL_LLM_OPS_INTERVAL_SEC", DEFAULT_REFRESH_SEC
+        )
+        raw = int(interval) if interval is not None else DEFAULT_REFRESH_SEC
     except (TypeError, ValueError):
         raw = DEFAULT_REFRESH_SEC
     return max(60, min(3600, raw))

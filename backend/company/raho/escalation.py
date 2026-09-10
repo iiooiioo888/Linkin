@@ -362,7 +362,7 @@ def decide(decision_id: str, choice: str, note: str = "") -> dict[str, Any]:
         from_layer=int(RahoLayer.L5_USER),
         to_layer=int(RahoLayer.L2_EXECUTOR),
         kind="user_decide",
-        summary=resolution["reply"][:240],
+        summary=str(resolution["reply"])[:240],
         status="resolved",
         payload={"decision_id": decision_id, "choice": choice},
     )

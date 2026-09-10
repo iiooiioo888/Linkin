@@ -1023,11 +1023,13 @@ def _ask_next(sess: UserGrillSession, *, prefix: str = "") -> dict[str, Any]:
         _append_assistant(sess, question)
         _trace_l4_question(sess, question)
         return _pack(sess, question)
-    question = _llm_question(sess.query, _transcript(sess), gaps, phase)
-    if question is None:
+    llm_question = _llm_question(sess.query, _transcript(sess), gaps, phase)
+    if llm_question is None:
         question = _next_question(sess)
-    elif not sess.asked_ids:
-        sess.asked_ids.append(0)
+    else:
+        question = llm_question
+        if not sess.asked_ids:
+            sess.asked_ids.append(0)
     text = f"{prefix}{question.question}" if prefix else question.question
     if not sess.asked_ids or (len(sess.asked_ids) == 1 and not sess.user_rounds):
         hook = _opening_hook(sess.query)

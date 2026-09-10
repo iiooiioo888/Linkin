@@ -841,5 +841,5 @@ def list_traces(limit: int = 50) -> list[dict[str, Any]]:
             })
         except OSError:
             continue
-    results.sort(key=lambda x: x.get("last_ts", ""), reverse=True)
+    results.sort(key=lambda x: str(x.get("last_ts", "")), reverse=True)
     return results[:limit]

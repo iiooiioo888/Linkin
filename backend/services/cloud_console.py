@@ -337,7 +337,8 @@ class CloudAlerts:
             "enabled": True,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        self._rules[rule["id"]] = rule
+        rule_id = str(rule["id"])
+        self._rules[rule_id] = rule
         self._save_rules()
         return rule
 

@@ -132,14 +132,14 @@ def feedback_analysis(*, top_words: int = 24) -> dict[str, Any]:
             if len(token) >= 2:
                 word_counter[token] += 1
 
-    word_cloud = [
+    word_cloud: list[dict[str, Any]] = [
         {"word": word, "count": count, "weight": round(count / max(word_counter.values()), 3)}
         for word, count in word_counter.most_common(top_words)
     ]
     if word_cloud and word_counter:
         max_c = max(word_counter.values())
         for item in word_cloud:
-            item["weight"] = round(item["count"] / max_c, 3)
+            item["weight"] = round(int(item["count"]) / max_c, 3)
 
     return {
         "total": len(records),

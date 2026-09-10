@@ -47,7 +47,7 @@ class CostTracker:
         image_tokens: int = 0,
         audio_tokens: int = 0,
         embedding_tokens: int = 0,
-        **extra: float,
+        **extra: int,
     ) -> float:
         """根據各收費項用量估算成本（USD）。"""
         return estimate_usage_cost(

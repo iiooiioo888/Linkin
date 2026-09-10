@@ -66,7 +66,7 @@ def _item_progress(item: WorkItem) -> int:
     artifacts = item.artifacts if isinstance(item.artifacts, dict) else {}
     raw = artifacts.get("progress")
     try:
-        n = int(raw)
+        n = int(raw) if raw is not None else -1
         if 0 <= n <= 100:
             return n
     except (TypeError, ValueError):

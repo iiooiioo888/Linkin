@@ -1,6 +1,7 @@
 """OPC 路由 — 标签写入（含安全护栏检查）。"""
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter
 
@@ -28,7 +29,7 @@ async def write_tags(req: WriteRequest):
     性能优化：使用并发批量写入，显著提升多标签写入性能。
     """
     results: list[WriteResult] = []
-    valid_entries: list[dict] = []
+    valid_entries: list[dict[str, Any]] = []
 
     # 第一阶段：安全检查与过滤
     for entry in req.entries:
@@ -62,7 +63,7 @@ async def write_tags(req: WriteRequest):
                 results.append(WriteResult(**result))
                 audit_logger.log_write(
                     result["tag_name"],
-                    result.get("written_value"),
+                    float(result.get("written_value") or 0.0),
                     reason=req.reason,
                     result="success" if result["success"] else "failed",
                     detail=result.get("message", ""),
@@ -70,17 +71,17 @@ async def write_tags(req: WriteRequest):
         except Exception as exc:
             logger.exception("批量写入失败")
             # 降级处理：为每个未处理的条目添加失败结果
-            for entry in valid_entries:
+            for pending in valid_entries:
                 results.append(
                     WriteResult(
-                        tag_name=entry["tag_name"],
+                        tag_name=pending["tag_name"],
                         success=False,
                         message=str(exc),
                     )
                 )
                 audit_logger.log_write(
-                    entry["tag_name"],
-                    entry["value"],
+                    pending["tag_name"],
+                    float(pending["value"]),
                     reason=req.reason,
                     result="failed",
                     detail=str(exc),

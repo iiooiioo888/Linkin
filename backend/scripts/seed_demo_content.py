@@ -287,7 +287,12 @@ def seed_knowledge() -> tuple[int, str]:
             col.delete(ids=ids)
         except Exception:
             pass
-        col.add(ids=ids, documents=docs, metadatas=metas, embeddings=embs)
+        col.add(  # chromadb stubs: metadatas/embeddings typed loosely at runtime
+            ids=ids,
+            documents=docs,
+            metadatas=metas,  # type: ignore[arg-type]
+            embeddings=embs,  # type: ignore[arg-type]
+        )
         chroma_note = f"chroma evo_memory +{N}"
     except Exception as exc:
         chroma_note = f"chroma failed: {exc}"

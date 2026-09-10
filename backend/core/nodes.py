@@ -12,7 +12,7 @@ from backend.core.evaluation import CrossModelEvaluator, get_evaluator
 from backend.core.llm import call_llm, parse_json_response
 from backend.core.pipeline_trace import log_node
 from backend.core.stage_router import resolve_stage_model
-from backend.core.state import EvoLoopState
+from backend.core.state import EvoLoopState, StateInput
 from backend.memory.vector_store import VectorMemoryStore
 from backend.prompts import templates
 from backend.prompts.templates import truncate
@@ -72,7 +72,7 @@ def _format_memories(memories: list[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def retrieve_memories(state: EvoLoopState) -> dict:
+def retrieve_memories(state: StateInput) -> dict:
     """節點 0：從向量記憶庫檢索與查詢相似的成功經驗。
 
     在生成回答前執行，將檢索結果注入 state 供
@@ -104,7 +104,7 @@ def retrieve_memories(state: EvoLoopState) -> dict:
         return payload
 
 
-def _format_injected_context(state: EvoLoopState) -> str:
+def _format_injected_context(state: StateInput) -> str:
     """OPC／靈境上下文摘要，注入生成 prompt。"""
     parts: list[str] = []
     opc = state.get("opc_context") or {}
@@ -118,7 +118,7 @@ def _format_injected_context(state: EvoLoopState) -> str:
     return "\n".join(parts) + "\n"
 
 
-def _generate_system_prompt(state: EvoLoopState) -> str:
+def _generate_system_prompt(state: StateInput) -> str:
     system = templates.GENERATE_INITIAL_ANSWER_SYSTEM
     linkin = state.get("linkin_context") or {}
     if isinstance(linkin, dict) and linkin.get("active") and linkin.get("system_overlay"):
@@ -126,7 +126,7 @@ def _generate_system_prompt(state: EvoLoopState) -> str:
     return system
 
 
-def generate_initial_answer(state: EvoLoopState) -> dict:
+def generate_initial_answer(state: StateInput) -> dict:
     """節點 1：生成初始回答。"""
     extra = _format_injected_context(state)
     memory = _format_memories(state.get("retrieved_memories", []))
@@ -153,7 +153,7 @@ def generate_initial_answer(state: EvoLoopState) -> dict:
     }
 
 
-def evaluate_answer(state: EvoLoopState) -> dict:
+def evaluate_answer(state: StateInput) -> dict:
     """節點 2：多維度自動評估，產出 0-10 分與評語。
 
     評估流程（優化 #1）：
@@ -196,7 +196,7 @@ def evaluate_answer(state: EvoLoopState) -> dict:
     }
 
 
-def _length_requirement(state: EvoLoopState) -> str:
+def _length_requirement(state: StateInput) -> str:
     """長度守門節點尚未消化的硬性要求，注入反思與改進 prompt。"""
     directive = state.get("length_directive", "")
     return f"{directive}\n" if directive else ""
@@ -223,7 +223,7 @@ def _search_reflection_hints(query: str) -> str:
     return ""
 
 
-def reflect(state: EvoLoopState) -> dict:
+def reflect(state: StateInput) -> dict:
     """節點 3：針對低分回答進行反思（優化 #4：分層反思）。
 
     分層策略：
@@ -253,7 +253,12 @@ def reflect(state: EvoLoopState) -> dict:
             eval_summary = {
                 "overall": multi_dim.get("overall", 0),
                 "weakest": min(
-                    [(d, multi_dim.get(d, {}).get("score", 10)) for d in ("accuracy", "completeness", "clarity", "relevance")],
+                    [
+                        (d, float(entry.get("score", 10)))
+                        for d in ("accuracy", "completeness", "clarity", "relevance")
+                        for entry in [multi_dim.get(d)]
+                        if isinstance(entry, dict)
+                    ],
                     key=lambda x: x[1],
                 )[0],
             }
@@ -285,7 +290,7 @@ def reflect(state: EvoLoopState) -> dict:
     }
 
 
-def improve_answer(state: EvoLoopState) -> dict:
+def improve_answer(state: StateInput) -> dict:
     """節點 4：根據反思結果優化回答，並累加迭代計數與反思紀錄。"""
     prompt = _length_requirement(state) + templates.IMPROVE_ANSWER.format(
         query=state["query"],
@@ -313,7 +318,7 @@ def improve_answer(state: EvoLoopState) -> dict:
     return {"current_answer": improved, "iteration": iteration, "reflections": reflections}
 
 
-def _resolve_output_limit(state: EvoLoopState) -> int:
+def _resolve_output_limit(state: StateInput) -> int:
     """解析本次任務的輸出長度上限（依複雜度動態，可由配置熱重載覆寫）。"""
     from backend.core.cost_speed_router import (
         classify_task_complexity,
@@ -324,15 +329,15 @@ def _resolve_output_limit(state: EvoLoopState) -> int:
     return max_output_chars_for_complexity(complexity)  # type: ignore[arg-type]
 
 
-def _enforce_output_length(state: EvoLoopState, field: str) -> dict:
-    answer = state.get(field) or ""
+def _enforce_output_length(state: StateInput, field: str) -> dict:
+    answer = str(state.get(field) or "")
     limit = _resolve_output_limit(state)
     if len(answer) <= limit:
         if not state.get("length_directive"):
             return {}
         return {"length_directive": "", "max_output_chars": limit}
 
-    best = state.get("length_best_answer") or ""
+    best = str(state.get("length_best_answer") or "")
     if not best or len(answer) < len(best):
         best = answer
 
@@ -384,7 +389,7 @@ def _enforce_output_length(state: EvoLoopState, field: str) -> dict:
     return rewrite
 
 
-def enforce_output_length(state: EvoLoopState) -> dict:
+def enforce_output_length(state: StateInput) -> dict:
     """節點 4.5：評估前的長度守門（看 current_answer）。
 
     未超限 → 放行且不消耗 LLM 呼叫（並清掉已消化的長度指令）；
@@ -394,7 +399,7 @@ def enforce_output_length(state: EvoLoopState) -> dict:
     return _enforce_output_length(state, "current_answer")
 
 
-def enforce_final_length(state: EvoLoopState) -> dict:
+def enforce_final_length(state: StateInput) -> dict:
     """節點 5.5：交付端的長度守門（看 final_answer）。
 
     攔下 decide_final_answer 因空回答降級使用 initial_answer 造成的超長交付。
@@ -402,7 +407,7 @@ def enforce_final_length(state: EvoLoopState) -> dict:
     return _enforce_output_length(state, "final_answer")
 
 
-def decide_final_answer(state: EvoLoopState) -> dict:
+def decide_final_answer(state: StateInput) -> dict:
     """節點 5：決定最終回答並執行最終質量門檢查（優化 #16）。
 
     質量門：
@@ -443,7 +448,12 @@ def decide_final_answer(state: EvoLoopState) -> dict:
     try:
         from backend.core.routing_feedback import record_outcome
 
-        route = "company" if state.get("company_result") else "simple"
+        from typing import Literal, cast
+
+        route = cast(
+            Literal["simple", "company"],
+            "company" if state.get("company_result") else "simple",
+        )
         record_outcome(
             route=route,
             query_length=len(state.get("query", "")),
@@ -457,7 +467,7 @@ def decide_final_answer(state: EvoLoopState) -> dict:
     return {"final_answer": answer, "quality_warnings": warnings}
 
 
-def save_memory(state: EvoLoopState) -> dict:
+def save_memory(state: StateInput) -> dict:
     """節點 6：將經驗嵌入並存入向量記憶庫（優化 #5）。
 
     保存策略：
@@ -503,7 +513,7 @@ def save_memory(state: EvoLoopState) -> dict:
         return {"memory_saved": False}
 
 
-def archive_state(state: EvoLoopState) -> dict:
+def archive_state(state: StateInput) -> dict:
     """節點 7（Task 8.6）：將完整對話生命週期存檔為 JSONL。
 
     位於圖的最末端，確保狀態已完整；採盡力而為策略，

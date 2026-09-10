@@ -95,10 +95,11 @@ class JSONLStateStore(StateStore):
     """JSONL 文件狀態存儲（輕量部署）。"""
 
     def __init__(self, base_dir: str | Path | None = None) -> None:
-        self._base_dir = Path(base_dir or os.getenv(
+        resolved = base_dir or os.getenv(
             "EVOL_STATE_DIR",
             str(Path(__file__).resolve().parent.parent / "data" / "state"),
-        ))
+        ) or str(Path(__file__).resolve().parent.parent / "data" / "state")
+        self._base_dir = Path(resolved)
         self._base_dir.mkdir(parents=True, exist_ok=True)
 
     def _path_for(self, key: str) -> Path:

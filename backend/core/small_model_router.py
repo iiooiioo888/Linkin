@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ class SmallModelRouter:
     small_model: str = "local-small"
     large_model: str = "default-large"
     escalation_cap: int = DEFAULT_ESCALATION_CAP
-    evaluator: callable = heuristic_score
+    evaluator: Callable[[str], tuple[bool, str]] = heuristic_score
     cost_log: list[EscalationEvent] = field(default_factory=list)
     _attempts: dict[str, int] = field(default_factory=dict)
 

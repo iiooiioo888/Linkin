@@ -685,7 +685,8 @@ def parse_verdict(text: str) -> InspectorVerdict | None:
     kind = str(data.get("verdict") or "").upper()
     if kind not in VERDICTS:
         return None
-    tests = data.get("test_results") if isinstance(data.get("test_results"), dict) else {}
+    test_results = data.get("test_results")
+    tests = test_results if isinstance(test_results, dict) else {}
     normalized = {key: str(tests.get(key) or PASS) for key in TEST_KEYS}
     try:
         score = float(data.get("quality_score") or 0)
@@ -779,7 +780,8 @@ def source_for_artifacts(artifacts: dict[str, Any] | None, l2_output: str = "") 
     blob = artifacts if isinstance(artifacts, dict) else {}
     if "source_data" in blob:
         return blob.get("source_data")
-    layer = blob.get("task_layer") if isinstance(blob.get("task_layer"), dict) else {}
+    task_layer = blob.get("task_layer")
+    layer = task_layer if isinstance(task_layer, dict) else {}
     ref = blob.get("input_ref") if "input_ref" in blob else layer.get("input_ref")
     signed = resolve_input_ref(ref)
     if signed:

@@ -185,8 +185,9 @@ class AliyunBssClient:
             # 無日帳單 API 時以月額 / 當日比例粗估（監控展示用）
             day = datetime.now(timezone.utc).day
             days_in_month = 30
-            result["today_total_cny"] = round(month_cny / max(days_in_month, day), 4)
-            result["today_total_usd"] = _cny_to_usd(result["today_total_cny"])
+            today_cny = round(month_cny / max(days_in_month, day), 4)
+            result["today_total_cny"] = today_cny
+            result["today_total_usd"] = _cny_to_usd(today_cny)
             result["products"] = products
             result["error"] = None
         except Exception as exc:

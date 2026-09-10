@@ -377,7 +377,7 @@ class RahoStore:
     def snapshot(self) -> dict[str, Any]:
         trees = [t.to_dict() for t in self.list_trees()]
         pending = [p.to_dict() for p in self.list_pending() if p.resolution is None]
-        blocked = []
+        blocked: list[Any] = []
         for tree in trees:
             blocked.extend(tree.get("blocked") or [])
         for p in pending:

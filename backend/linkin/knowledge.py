@@ -11,7 +11,7 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 from backend.core.evaluation import DIMENSION_NAMES, EvaluationResult, MultiDimensionalEvaluator
 from backend.linkin.tools import QUALITY_THRESHOLD, SIMILARITY_THRESHOLD
@@ -291,7 +291,7 @@ class LinkinKnowledgeStore:
                 return item
         return None
 
-    def list(self, collection: str) -> list[dict[str, Any]]:
+    def list(self, collection: str) -> List[dict[str, Any]]:
         return _load_json_list(json_path(collection))
 
     def delete(self, collection: str, rec_id: str) -> bool:
@@ -315,7 +315,7 @@ class LinkinKnowledgeStore:
         *,
         k: int = 5,
         threshold: float = SIMILARITY_THRESHOLD,
-    ) -> list[dict[str, Any]]:
+    ) -> List[dict[str, Any]]:
         if self._chroma_ok:
             try:
                 return self._chroma_search(collection, query, k=k, threshold=threshold)
@@ -327,7 +327,7 @@ class LinkinKnowledgeStore:
 
     def _chroma_search(
         self, collection: str, query: str, *, k: int, threshold: float
-    ) -> list[dict[str, Any]]:
+    ) -> List[dict[str, Any]]:
         col = self._collections[collection]
         result = col.query(query_texts=[query], n_results=max(k, 1))
         docs = (result.get("documents") or [[]])[0]
@@ -352,8 +352,8 @@ class LinkinKnowledgeStore:
 
     def _json_search(
         self, collection: str, query: str, *, k: int, threshold: float
-    ) -> list[dict[str, Any]]:
-        scored: list[dict[str, Any]] = []
+    ) -> List[dict[str, Any]]:
+        scored: List[dict[str, Any]] = []
         for item in self.list(collection):
             similarity = _lexical_similarity(query, str(item.get("text") or ""))
             if similarity < threshold:

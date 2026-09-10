@@ -24,7 +24,7 @@ from typing import Any
 
 from backend.company.orchestrator import CompanyOrchestrator
 from backend.company.roles import BUILTIN_TEMPLATES
-from backend.core.state import EvoLoopState
+from backend.core.state import EvoLoopState, StateInput
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ def _needs_opc_context(query: str) -> bool:
 # ─── OPC 上下文增強節點 ──────────────────────────────────────
 
 
-def enhance_with_opc_context(state: EvoLoopState) -> dict[str, Any]:
+def enhance_with_opc_context(state: StateInput) -> dict[str, Any]:
     """OPC 上下文增強：query 涉及工業關鍵詞時自動注入感測數據。
 
     統一模式下 OPC 整合不再是獨立模式，而是管線中的
@@ -118,7 +118,7 @@ def enhance_with_opc_context(state: EvoLoopState) -> dict[str, Any]:
 # ─── 複雜度路由節點 ──────────────────────────────────────────
 
 
-def route_by_complexity(state: EvoLoopState) -> str:
+def route_by_complexity(state: StateInput) -> str:
     """條件路由：依執行策略與任務複雜度決定生成路徑。
 
     執行策略（execution_strategy）：
@@ -180,7 +180,7 @@ def route_by_complexity(state: EvoLoopState) -> str:
 # ─── 公司運行時節點 ──────────────────────────────────────────
 
 
-def run_company(state: EvoLoopState) -> dict[str, Any]:
+def run_company(state: StateInput) -> dict[str, Any]:
     """執行公司運行時：多角色分工完成目標。
 
     成功時將公司產出設為 current_answer，交由 evaluate_answer
@@ -258,7 +258,7 @@ def run_company(state: EvoLoopState) -> dict[str, Any]:
         }
 
 
-def should_evaluate_company(state: EvoLoopState) -> str:
+def should_evaluate_company(state: StateInput) -> str:
     """公司運行時執行後路由（優化 #2：錯誤回退策略）。
 
     路由邏輯：

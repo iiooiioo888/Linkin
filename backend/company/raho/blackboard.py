@@ -52,7 +52,8 @@ class BlackboardEntry:
             score = float(raw.get("quality_score") or 0)
         except (TypeError, ValueError):
             score = 0.0
-        tests = raw.get("test_results") if isinstance(raw.get("test_results"), dict) else {}
+        test_results = raw.get("test_results")
+        tests = test_results if isinstance(test_results, dict) else {}
         return cls(
             node_id=str(raw.get("node_id") or ""),
             uri=str(raw.get("uri") or result_uri(str(raw.get("node_id") or ""))),

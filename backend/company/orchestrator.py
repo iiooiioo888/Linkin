@@ -1546,7 +1546,8 @@ class CompanyOrchestrator:
         layer = artifacts.get("task_layer")
         if isinstance(layer, dict) and layer:
             return layer
-        atomic = artifacts.get("atomic_role") if isinstance(artifacts.get("atomic_role"), dict) else {}
+        atomic_raw = artifacts.get("atomic_role")
+        atomic = atomic_raw if isinstance(atomic_raw, dict) else {}
         inner = atomic.get("task_layer")
         if isinstance(inner, dict) and inner:
             return inner
@@ -2313,7 +2314,7 @@ class CompanyOrchestrator:
                 continue
             svc = s["service"]
             try:
-                dm.stop_container(svc)
+                dm.stop_service(svc)
                 result["stopped"].append(svc)
                 result["saved_per_hour"] += s["estimated_saving_per_hour"]
                 self._log("docker_stop", {
@@ -2353,7 +2354,7 @@ class CompanyOrchestrator:
             for row in (plan.get("atomic_role_instances") or [])
             if isinstance(row, dict)
         }
-        created = []
+        created: list[Any] = []
         id_map: dict[str, str] = {}
         for node in nodes:
             node_id = str(node.get("node_id") or f"N{len(created) + 1}")

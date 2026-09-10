@@ -600,7 +600,7 @@ def _ingest_run_logs(agents: dict[str, dict[str, Any]]) -> None:
                 status = WorkItemStatus.BLOCKED.value
             else:
                 status = WorkItemStatus.EXECUTING.value
-            hist = {
+            hist: dict[str, Any] = {
                 "id": item_id or f"{task_id}:{payload.get('title', '')}",
                 "title": payload.get("title") or "(歷史工作項)",
                 "description": "",

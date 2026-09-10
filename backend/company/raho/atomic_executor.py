@@ -234,12 +234,14 @@ def spec_from_mapping(task_spec: dict[str, Any] | AtomicTaskSpec) -> AtomicTaskS
         or raw.get("title")
         or ""
     )
+    raw_iters = raw.get("max_iterations")
     try:
-        iters = int(raw.get("max_iterations") if raw.get("max_iterations") is not None else DEFAULT_MAX_ITERATIONS)
+        iters = int(raw_iters) if raw_iters is not None else DEFAULT_MAX_ITERATIONS
     except (TypeError, ValueError):
         iters = DEFAULT_MAX_ITERATIONS
+    raw_tokens = raw.get("token_budget")
     try:
-        tokens = int(raw.get("token_budget") if raw.get("token_budget") is not None else DEFAULT_TOKEN_BUDGET)
+        tokens = int(raw_tokens) if raw_tokens is not None else DEFAULT_TOKEN_BUDGET
     except (TypeError, ValueError):
         tokens = DEFAULT_TOKEN_BUDGET
     return AtomicTaskSpec(

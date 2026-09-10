@@ -309,10 +309,9 @@ def jsonrpc_request(
         headers["Authorization"] = f"Bearer {cfg.token}"
     url = _rpc_endpoint(cfg)
     owns_client = client is None
-    if owns_client:
-        client = httpx.Client(timeout=cfg.timeout)
+    http_client = client if client is not None else httpx.Client(timeout=cfg.timeout)
     try:
-        response = client.post(url, json=payload, headers=headers)
+        response = http_client.post(url, json=payload, headers=headers)
         response.raise_for_status()
         try:
             body = response.json()
@@ -325,7 +324,7 @@ def jsonrpc_request(
         return {"ok": False, "error": f"MCP HTTP 失敗：{exc}"}
     finally:
         if owns_client:
-            client.close()
+            http_client.close()
 
 
 def _deny_file_tool(remote_name: str, cfg: MinecraftMcpConfig) -> dict[str, Any] | None:
@@ -420,7 +419,7 @@ def call_mcp_tool(
             "dry_run": False,
             "role": role,
             "duration_ms": elapsed_ms,
-            "error": out["error"][:300] if out["error"] else "",
+            "error": str(out["error"])[:300] if out["error"] else "",
         },
         cfg,
     )

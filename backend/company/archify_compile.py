@@ -137,7 +137,8 @@ def _grid_spine(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _meta(ir: dict[str, Any], *, diagram_type: str) -> dict[str, Any]:
-    src = ir.get("meta") if isinstance(ir.get("meta"), dict) else {}
+    meta = ir.get("meta")
+    src = meta if isinstance(meta, dict) else {}
     title = str(src.get("title") or "Archify")
     locale = src.get("locale")
     if locale not in {"en", "zh-CN"}:

@@ -672,12 +672,12 @@ def authenticate(authorization: str | None) -> HubUser:
     # API Key 驗證（原有邏輯）
     if not (43 <= len(token) <= 128):
         # 開發金鑰較短時仍允許精確命中 store
-        user = runtime.store.get_by_api_key(token)
-        if user:
-            return user
+        short_key_user = runtime.store.get_by_api_key(token)
+        if short_key_user:
+            return short_key_user
         raise HubError(401, "UNAUTHORIZED", "缺少或無效的 API Key")
     
-    user = runtime.store.get_by_api_key(token)
-    if user is None:
+    api_user = runtime.store.get_by_api_key(token)
+    if api_user is None:
         raise HubError(401, "UNAUTHORIZED", "缺少或無效的 API Key")
-    return user
+    return api_user

@@ -52,7 +52,7 @@ class SimulatedOPCServer:
         for tag in SIM_TAGS:
             name = tag["name"]
             self._values[name] = tag["init"]
-            node_id = ua.NodeId(name, idx)
+            node_id = ua.NodeId(name, ua.Int16(idx))
 
             var = await objects.add_variable(
                 nodeid=node_id,

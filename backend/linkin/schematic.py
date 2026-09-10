@@ -870,7 +870,8 @@ def _encode_v2(schematic: Schematic) -> bytes:
 
 def _encode_block_entity(item: dict[str, Any]) -> dict[str, Any]:
     pos = item.get("Pos") or [item.get("x") or 0, item.get("y") or 0, item.get("z") or 0]
-    data = item.get("Data") if isinstance(item.get("Data"), dict) else {}
+    raw_data = item.get("Data")
+    data = raw_data if isinstance(raw_data, dict) else {}
     extra = {k: v for k, v in item.items() if k not in {"Pos", "Id", "Data", "x", "y", "z"}}
     return {
         "Pos": ("int_array", [int(v) for v in list(pos)[:3]]),
@@ -881,7 +882,8 @@ def _encode_block_entity(item: dict[str, Any]) -> dict[str, Any]:
 
 def _encode_entity(item: dict[str, Any]) -> dict[str, Any]:
     pos = item.get("Pos") or [0.0, 0.0, 0.0]
-    data = item.get("Data") if isinstance(item.get("Data"), dict) else {}
+    raw_data = item.get("Data")
+    data = raw_data if isinstance(raw_data, dict) else {}
     extra = {k: v for k, v in item.items() if k not in {"Pos", "Id", "Data"}}
     coords = [float(v) for v in list(pos)[:3]]
     while len(coords) < 3:
@@ -963,7 +965,8 @@ def _coerce_biome_palette(raw: Any) -> dict[str, int]:
 def _normalize_block_entity(raw: dict[str, Any]) -> dict[str, Any]:
     if "Pos" in raw and isinstance(raw.get("Pos"), (list, tuple)):
         pos = [int(v) for v in list(raw["Pos"])[:3]]
-        data = raw.get("Data") if isinstance(raw.get("Data"), dict) else {}
+        raw_data = raw.get("Data")
+        data = raw_data if isinstance(raw_data, dict) else {}
         extra = {k: v for k, v in raw.items() if k not in {"Pos", "Id", "Data"}}
         return {"Pos": pos, "Id": str(raw.get("Id") or ""), "Data": {**extra, **data}}
     pos = [int(raw.get("x") or 0), int(raw.get("y") or 0), int(raw.get("z") or 0)]
@@ -976,7 +979,8 @@ def _normalize_entity(raw: dict[str, Any]) -> dict[str, Any]:
     coords = [float(v) for v in list(pos_raw)[:3]]
     while len(coords) < 3:
         coords.append(0.0)
-    data = raw.get("Data") if isinstance(raw.get("Data"), dict) else {}
+    raw_data = raw.get("Data")
+    data = raw_data if isinstance(raw_data, dict) else {}
     extra = {k: v for k, v in raw.items() if k not in {"Pos", "Id", "Data"}}
     return {"Pos": coords, "Id": str(raw.get("Id") or raw.get("id") or ""), "Data": {**extra, **data}}
 
