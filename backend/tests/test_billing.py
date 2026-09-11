@@ -10,8 +10,13 @@ from backend.billing.credits import credits_for_llm_tokens, credits_for_raho_lay
 from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
 from backend.billing.metering import meter_llm, meter_raho_layer, meter_quant_call, require_feature
 from backend.billing.plans import PACK_QUANT, plan_has_feature
+from backend.billing.pool_store import get_pool_store
+from backend.billing.pool_types import POOL_MONTHLY_GRANT, POOL_PURCHASED
+from backend.billing.pools_service import PoolsService, TransferForbiddenError, get_pools_service
+from backend.billing.pricing_engine import compute_cost_credits
 from backend.billing.quota import BillingService, reset_billing_service
 from backend.billing.store import BillingStore, reset_billing_store
+from backend.billing.task_lifecycle import begin_billed_task, complete_billed_task, record_llm_usage
 
 
 @pytest.fixture()
@@ -177,6 +182,76 @@ def test_docker_start_preflight_insufficient(billing_store):
     finally:
         billing_user_id.reset(token)
         reset_docker_billing_tracker(None)
+
+
+def test_spend_priority_monthly_before_purchased(billing_store):
+    pools = get_pool_store()
+    uid = "pool_user"
+    billing_store.ensure_account(uid, "free")
+    pools.credit_pool(uid, POOL_PURCHASED, 1000, source="test", description="purchased")
+    pools.spend_from_pools(uid, 500, source="test")
+    bals = pools.get_balances(uid)
+    assert bals.get(POOL_MONTHLY_GRANT, 0) == 9500
+    assert bals.get(POOL_PURCHASED, 0) == 1000
+
+
+def test_monthly_rollover_proportional(billing_store):
+    pools = get_pool_store()
+    uid = "rollover_user"
+    billing_store.ensure_account(uid, "free")
+    pools.spend_from_pools(uid, 8000, source="test")
+    results = pools.run_monthly_rollover("2025-08")
+    row = next(r for r in results if r["account_id"] == uid)
+    assert row["unused"] == 2000
+    assert row["rolled"] == 1000
+    assert row["forfeited"] == 1000
+    bals = pools.get_balances(uid)
+    assert bals.get(POOL_MONTHLY_GRANT, 0) == 0
+    assert bals.get(POOL_PURCHASED, 0) == 1000
+
+
+def test_reserve_settle_and_refund(billing_store):
+    token = billing_user_id.set("reserve_user")
+    try:
+        billing_store.ensure_account("reserve_user", "pro")
+        begun = begin_billed_task("reserve_user", baseline_tokens=100, iterations=1, roles=1, model="gpt-4o-mini")
+        tid = begun["task_id"]
+        record_llm_usage(tid, input_tokens=100, output_tokens=50, model="gpt-4o-mini")
+        done = complete_billed_task(tid)
+        assert done["reserved"] >= done["actual"]
+        assert done["refund"] >= 0
+    finally:
+        billing_user_id.reset(token)
+
+
+def test_pricing_snapshot_immutable(billing_store):
+    pools = get_pool_store()
+    uid = "snap_user"
+    billing_store.ensure_account(uid, "pro")
+    begun = begin_billed_task(uid, baseline_tokens=200, model="gpt-4o-mini")
+    snap_v1 = pools.get_task_snapshot(begun["task_id"])["pricing_config_version"]
+    with pools._conn() as conn:
+        conn.execute(
+            "INSERT INTO pricing_configs(status, effective_at, config_json, created_by, reason, created_at) VALUES ('active', datetime('now'), '{}', 'test', 'v2', datetime('now'))"
+        )
+    snap_v2_active = pools.active_pricing_config()["version"]
+    snap_task = pools.get_task_snapshot(begun["task_id"])["pricing_config_version"]
+    assert snap_task == snap_v1
+    assert snap_v2_active >= snap_v1
+
+
+def test_transfer_forbidden(billing_store):
+    svc = PoolsService()
+    with pytest.raises(TransferForbiddenError):
+        svc.transfer("a", "b", 10)
+
+
+def test_pricing_engine_cache_tokens(billing_store):
+    pools = get_pool_store()
+    cfg = pools.active_pricing_config()["config"]
+    full = compute_cost_credits(cfg, model="gpt-4o-mini", input_tokens=1000, output_tokens=0)
+    cached = compute_cost_credits(cfg, model="gpt-4o-mini", input_tokens=1000, output_tokens=0, cached_tokens=1000)
+    assert cached < full
 
 
 def test_billing_api(billing_store, monkeypatch):

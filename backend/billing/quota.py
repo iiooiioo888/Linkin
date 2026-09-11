@@ -33,11 +33,17 @@ class BillingService:
 
     def ensure_can_afford(self, user_id: str, credits: float) -> None:
         acct = self.get_account(user_id)
-        if float(acct["balance_credits"]) < float(credits):
+        available = float(acct.get("balance_credits") or 0)
+        if available < float(credits):
             raise InsufficientCreditsError(
-                balance_credits=float(acct["balance_credits"]),
+                balance_credits=available,
                 required_credits=float(credits),
             )
+
+    def transfer_credits(self, *args, **kwargs) -> None:
+        from backend.billing.pools_service import TransferForbiddenError
+
+        raise TransferForbiddenError()
 
     def reserve(self, user_id: str, estimated_credits: float) -> str:
         self.ensure_can_afford(user_id, estimated_credits)

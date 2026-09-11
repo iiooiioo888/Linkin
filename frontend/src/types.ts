@@ -2,6 +2,7 @@
 export interface BillingAccount {
   user_id: string;
   balance_credits: number;
+  pool_balances?: Record<string, number>;
   plan_id: string;
   plan_name_zh: string;
   byok: boolean;
@@ -12,6 +13,9 @@ export interface BillingAccount {
   concurrency_limit: number;
   low_balance: boolean;
   features: string[];
+  transfer_allowed?: boolean;
+  pricing_config_version?: number;
+  credit_policy_version?: number;
 }
 
 export interface BillingLedgerEntry {

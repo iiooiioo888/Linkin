@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from backend.billing.plans import get_plan
+from backend.billing.pool_store import get_pool_store
+from backend.billing.pool_types import POOL_PURCHASED
 
 
 def _utc_now() -> str:
@@ -30,6 +32,9 @@ class BillingStore:
         self.db_path = db_path
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
+        from backend.billing.pool_store import PoolStore, reset_pool_store
+
+        reset_pool_store(PoolStore(db_path=self.db_path))
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
@@ -125,6 +130,7 @@ class BillingStore:
                     """
                 )
                 conn.commit()
+        get_pool_store()._init_schema()
 
     def ensure_account(self, user_id: str, plan_id: str = "free") -> dict[str, Any]:
         user_id = user_id.strip()
@@ -144,41 +150,31 @@ class BillingStore:
                             (period, now, user_id),
                         )
                         conn.commit()
-                    return self._row_account(conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,)).fetchone())
-                quota = float(plan["monthly_credits"])
-                conn.execute(
-                    """
-                    INSERT INTO accounts
-                        (user_id, balance_credits, plan_id, byok, monthly_quota_credits,
-                         monthly_used_credits, period_key, concurrency_limit, created_at, updated_at)
-                    VALUES (?, ?, ?, 0, ?, 0, ?, ?, ?, ?)
-                    """,
-                    (user_id, quota, plan_id, quota, period, int(plan["concurrency"]), now, now),
-                )
-                conn.execute(
-                    """
-                    INSERT INTO ledger
-                        (id, user_id, amount_credits, balance_after_credits, kind, source, reference, meta_json, created_at)
-                    VALUES (?, ?, ?, ?, 'credit', 'plan_quota', 'initial_monthly', ?, ?)
-                    """,
-                    (
-                        uuid.uuid4().hex,
-                        user_id,
-                        quota,
-                        quota,
-                        json.dumps({"plan_id": plan_id, "period": period}, ensure_ascii=False),
-                        now,
-                    ),
-                )
-                conn.execute(
-                    """
-                    INSERT INTO subscriptions (id, user_id, plan_id, status, started_at, meta_json)
-                    VALUES (?, ?, ?, 'active', ?, ?)
-                    """,
-                    (uuid.uuid4().hex, user_id, plan_id, now, json.dumps({"seed": True}, ensure_ascii=False)),
-                )
-                conn.commit()
-                return self._row_account(conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,)).fetchone())
+                else:
+                    quota = float(plan["monthly_credits"])
+                    conn.execute(
+                        """
+                        INSERT INTO accounts
+                            (user_id, balance_credits, plan_id, byok, monthly_quota_credits,
+                             monthly_used_credits, period_key, concurrency_limit, created_at, updated_at)
+                        VALUES (?, 0, ?, 0, ?, 0, ?, ?, ?, ?)
+                        """,
+                        (user_id, plan_id, quota, period, int(plan["concurrency"]), now, now),
+                    )
+                    conn.execute(
+                        """
+                        INSERT INTO subscriptions (id, user_id, plan_id, status, started_at, meta_json)
+                        VALUES (?, ?, ?, 'active', ?, ?)
+                        """,
+                        (uuid.uuid4().hex, user_id, plan_id, now, json.dumps({"seed": True}, ensure_ascii=False)),
+                    )
+                    conn.commit()
+        pools = get_pool_store()
+        pools.ensure_pools(user_id, plan_id)
+        with self._lock:
+            with self._connect() as conn:
+                row = conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,)).fetchone()
+                return self._row_account(row)
 
     def get_account(self, user_id: str) -> dict[str, Any] | None:
         with self._lock:
@@ -210,24 +206,65 @@ class BillingStore:
         return self.ensure_account(user_id, plan_id)
 
     def credit(self, user_id: str, credits: float, *, source: str, reference: str = "", meta: dict | None = None) -> dict:
-        return self._adjust(user_id, abs(float(credits)), kind="credit", source=source, reference=reference, meta=meta)
+        self.ensure_account(user_id)
+        amount = abs(float(credits))
+        pools = get_pool_store()
+        pools.credit_pool(
+            user_id.strip(),
+            POOL_PURCHASED,
+            amount,
+            source=source,
+            description=reference or source,
+        )
+        balance = pools.total_spendable(user_id)
+        now = _utc_now()
+        entry_id = uuid.uuid4().hex
+        with self._lock:
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO ledger (id, user_id, amount_credits, balance_after_credits, kind, source, reference, meta_json, created_at)
+                    VALUES (?, ?, ?, ?, 'credit', ?, ?, ?, ?)
+                    """,
+                    (entry_id, user_id.strip(), amount, balance, source, reference, json.dumps(meta or {}, ensure_ascii=False), now),
+                )
+                conn.commit()
+        return {"id": entry_id, "amount_credits": amount, "balance_after_credits": balance, "kind": "credit", "source": source, "reference": reference, "created_at": now}
 
     def debit(self, user_id: str, credits: float, *, source: str, reference: str = "", meta: dict | None = None) -> dict:
         from backend.billing.errors import InsufficientCreditsError
 
+        self.ensure_account(user_id)
         amount = abs(float(credits))
+        pools = get_pool_store()
+        available = pools.total_spendable(user_id)
+        if available < amount:
+            raise InsufficientCreditsError(balance_credits=available, required_credits=amount)
+        try:
+            breakdown = pools.spend_from_pools(user_id.strip(), amount, source=source)
+        except ValueError:
+            raise InsufficientCreditsError(balance_credits=available, required_credits=amount) from None
+        balance = pools.total_spendable(user_id)
+        now = _utc_now()
+        entry_id = uuid.uuid4().hex
+        payload = dict(meta or {})
+        payload["breakdown"] = breakdown
         with self._lock:
             with self._connect() as conn:
-                conn.execute("BEGIN IMMEDIATE")
-                row = conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id.strip(),)).fetchone()
-                if not row:
-                    conn.rollback()
-                    raise InsufficientCreditsError(balance_credits=0, required_credits=amount)
-                balance = float(row["balance_credits"])
-                if balance < amount:
-                    conn.rollback()
-                    raise InsufficientCreditsError(balance_credits=balance, required_credits=amount)
-                return self._adjust_tx(conn, user_id, -amount, kind="debit", source=source, reference=reference, meta=meta)
+                monthly_used = float(conn.execute("SELECT monthly_used_credits FROM accounts WHERE user_id=?", (user_id.strip(),)).fetchone()["monthly_used_credits"])
+                conn.execute(
+                    "UPDATE accounts SET monthly_used_credits=?, updated_at=? WHERE user_id=?",
+                    (round(monthly_used + amount, 4), now, user_id.strip()),
+                )
+                conn.execute(
+                    """
+                    INSERT INTO ledger (id, user_id, amount_credits, balance_after_credits, kind, source, reference, meta_json, created_at)
+                    VALUES (?, ?, ?, ?, 'debit', ?, ?, ?, ?)
+                    """,
+                    (entry_id, user_id.strip(), -amount, balance, source, reference, json.dumps(payload, ensure_ascii=False), now),
+                )
+                conn.commit()
+        return {"id": entry_id, "amount_credits": -amount, "balance_after_credits": balance, "kind": "debit", "source": source, "reference": reference, "created_at": now}
 
     def _adjust(self, user_id: str, amount_signed: float, *, kind: str, source: str, reference: str, meta: dict | None) -> dict:
         with self._lock:
@@ -340,20 +377,29 @@ class BillingStore:
         plan = get_plan(row["plan_id"])
         quota = float(row["monthly_quota_credits"])
         used = float(row["monthly_used_credits"])
-        balance = float(row["balance_credits"])
+        pools = get_pool_store()
+        pool_balances = pools.get_balances(row["user_id"])
+        balance = pools.total_spendable(row["user_id"])
+        pricing = pools.active_pricing_config()
+        policy = pools.active_credit_policy(row["plan_id"])
+        monthly_grant = pool_balances.get("monthly_grant", 0.0)
         return {
             "user_id": row["user_id"],
             "balance_credits": balance,
+            "pool_balances": pool_balances,
             "plan_id": row["plan_id"],
             "plan_name_zh": plan.get("name_zh", row["plan_id"]),
             "byok": bool(row["byok"]),
             "monthly_quota_credits": quota,
             "monthly_used_credits": used,
-            "monthly_remaining_credits": max(0.0, quota - used) if quota > 0 else balance,
+            "monthly_remaining_credits": max(0.0, monthly_grant),
             "period_key": row["period_key"],
             "concurrency_limit": int(row["concurrency_limit"]),
             "low_balance": balance < max(100.0, quota * 0.05),
             "features": plan.get("features") or [],
+            "transfer_allowed": False,
+            "pricing_config_version": pricing["version"],
+            "credit_policy_version": policy["version"],
         }
 
     @staticmethod
@@ -411,3 +457,13 @@ def reset_billing_store(store: BillingStore | None = None) -> None:
     global _STORE
     with _LOCK:
         _STORE = store
+    from backend.billing.pool_store import PoolStore, reset_pool_store
+
+    from backend.billing.pools_service import reset_pools_service
+
+    if store is None:
+        reset_pool_store(None)
+        reset_pools_service(None)
+    else:
+        reset_pool_store(PoolStore(db_path=store.db_path))
+        reset_pools_service(None)

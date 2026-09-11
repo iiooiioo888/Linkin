@@ -135,11 +135,32 @@ async def _lifespan(_app: FastAPI):
     from backend.billing.docker_meter import docker_billing_loop
 
     docker_bill_task = asyncio.create_task(docker_billing_loop())
+
+    async def _rollover_loop() -> None:
+        import os
+        from backend.billing.pool_store import get_pool_store
+
+        interval = max(3600, int(os.getenv("LINKIN_ROLLOVER_CHECK_SEC", "86400")))
+        while True:
+            try:
+                await asyncio.sleep(interval)
+                await asyncio.to_thread(get_pool_store().run_monthly_rollover)
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.warning("月末滾存檢查失敗：%s", exc)
+
+    rollover_task = asyncio.create_task(_rollover_loop())
     try:
         yield
     finally:
+        rollover_task.cancel()
         docker_bill_task.cancel()
         task.cancel()
+        try:
+            await rollover_task
+        except asyncio.CancelledError:
+            pass
         try:
             await docker_bill_task
         except asyncio.CancelledError:
@@ -1253,11 +1274,40 @@ async def create_task(req: TaskRequest):
     """
     if not req.query.strip():
         raise HTTPException(status_code=422, detail="query 不可為空")
+    from backend.billing.context import billing_enabled, current_billing_user, billing_task_id
+    from backend.billing.task_lifecycle import begin_billed_task
+
     record = task_manager.create_task(
         req.query, req.execution_strategy, req.company_template, options=req.options
     )
+    billing_meta: dict = {}
+    uid = current_billing_user()
+    if billing_enabled() and uid:
+        try:
+            billing_meta = begin_billed_task(
+                uid,
+                task_id=record.task_id,
+                baseline_tokens=max(500, len(req.query) // 2),
+                model=str((req.options or {}).get("model") or "default"),
+            )
+            token = billing_task_id.set(record.task_id)
+            record.options = {**(record.options or {}), "billing": billing_meta}
+            task_manager._persist(record)
+            billing_task_id.reset(token)
+        except Exception as exc:
+            from backend.billing.errors import InsufficientCreditsError
+
+            if isinstance(exc, InsufficientCreditsError):
+                raise HTTPException(status_code=402, detail=exc.message) from exc
+            if getattr(exc, "__class__", None).__name__ == "InsufficientCreditsError":
+                raise HTTPException(status_code=402, detail=str(exc)) from exc
     task_manager.start_task(record)
-    return {"task_id": record.task_id, "strategy": req.execution_strategy}
+    return {
+        "task_id": record.task_id,
+        "strategy": req.execution_strategy,
+        "pricing_version": billing_meta.get("pricing_config_version"),
+        "reserved_credits": billing_meta.get("reserved_credits"),
+    }
 
 
 @app.get("/tasks/{task_id}")

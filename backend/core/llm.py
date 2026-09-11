@@ -131,16 +131,22 @@ def _message_visible_text(message: object | None) -> str:
     return str(content)
 
 
-def _usage_tokens(response: object, *, prompt: str, system: str | None, output_text: str) -> tuple[int, int]:
-    """從 LiteLLM 回應擷取 token 用量；缺省時以字元粗估。"""
+def _usage_tokens(response: object, *, prompt: str, system: str | None, output_text: str) -> tuple[int, int, int, int]:
+    """從 LiteLLM 回應擷取 token 用量；缺省時以字元粗估。返回 input, output, cached, cache_write。"""
     usage = getattr(response, "usage", None)
     prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
     completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+    cached_tokens = int(
+        getattr(usage, "prompt_tokens_details", {}).get("cached_tokens", 0)
+        if hasattr(getattr(usage, "prompt_tokens_details", None), "get")
+        else getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", 0) or 0
+    )
+    cache_write_tokens = int(getattr(usage, "cache_creation_input_tokens", 0) or 0)
     if prompt_tokens <= 0:
         prompt_tokens = max(1, len(prompt) // 4 + len(system or "") // 4)
     if completion_tokens <= 0:
         completion_tokens = max(1, len(output_text) // 4)
-    return prompt_tokens, completion_tokens
+    return prompt_tokens, completion_tokens, cached_tokens, cache_write_tokens
 
 
 def _wallet_bill_llm(
@@ -152,21 +158,25 @@ def _wallet_bill_llm(
     input_tokens: int,
     output_tokens: int,
     trace_label: str,
+    cached_tokens: int = 0,
+    cache_write_tokens: int = 0,
 ) -> None:
     from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
     from backend.billing.metering import meter_llm, precheck_llm
 
     try:
         if max_tokens and input_tokens <= 0:
-            precheck_llm(model, max(1, len(prompt) // 4), int(max_tokens))
+            precheck_llm(model, max(1, len(prompt) // 4), int(max_tokens), cached_tokens=cached_tokens, cache_write_tokens=cache_write_tokens)
         else:
-            precheck_llm(model, input_tokens, output_tokens)
+            precheck_llm(model, input_tokens, output_tokens, cached_tokens=cached_tokens, cache_write_tokens=cache_write_tokens)
         meter_llm(
             model,
             input_tokens,
             output_tokens,
             reference=trace_label or "call_llm",
             meta={"trace_label": trace_label or ""},
+            cached_tokens=cached_tokens,
+            cache_write_tokens=cache_write_tokens,
         )
     except (InsufficientCreditsError, FeatureNotEntitledError) as exc:
         raise RuntimeError(exc.message) from exc
@@ -215,7 +225,7 @@ def _completion_once(
                 **kwargs,
             )
             text = _message_visible_text(response.choices[0].message)
-            in_tok, out_tok = _usage_tokens(
+            in_tok, out_tok, cached_tok, cwrite_tok = _usage_tokens(
                 response,
                 prompt=prompt,
                 system=system,
@@ -229,6 +239,8 @@ def _completion_once(
                 input_tokens=in_tok,
                 output_tokens=out_tok,
                 trace_label=trace_label,
+                cached_tokens=cached_tok,
+                cache_write_tokens=cwrite_tok,
             )
             return text
         except RateLimitError as exc:

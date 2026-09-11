@@ -96,8 +96,13 @@ def meter_llm(
     task_id: str | None = None,
     reference: str = "call_llm",
     meta: dict | None = None,
+    cached_tokens: int = 0,
+    cache_write_tokens: int = 0,
+    role: str = "",
+    tool: str = "",
 ) -> dict | None:
     uid = _user(user_id)
+    tid = _task(task_id)
     if uid:
         acct = get_billing_service().ensure_account(uid)
         from backend.billing.credits import model_multiplier
@@ -105,19 +110,89 @@ def meter_llm(
         if model_multiplier(model) >= 2.0 and not plan_has_feature(acct["plan_id"], PACK_ADVANCED_MODELS):
             if not acct.get("byok"):
                 raise FeatureNotEntitledError(feature=PACK_ADVANCED_MODELS, plan_id=acct["plan_id"])
-    credits = credits_for_llm_tokens(model, input_tokens, output_tokens)
+    from backend.billing.pool_store import get_pool_store
+    from backend.billing.pricing_engine import compute_cost_credits
+
+    pools = get_pool_store()
+    if tid:
+        snap = pools.get_task_snapshot(tid)
+        if snap:
+            config = snap.get("pricing_config", pools.active_pricing_config()["config"])
+            credits = compute_cost_credits(
+                config,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cached_tokens=cached_tokens,
+                cache_write_tokens=cache_write_tokens,
+                role=role,
+                tool=tool,
+            )
+            from backend.billing.task_lifecycle import record_llm_usage
+
+            usage = record_llm_usage(
+                tid,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cached_tokens=cached_tokens,
+                cache_write_tokens=cache_write_tokens,
+                model=model,
+                role=role,
+                tool=tool,
+                meta=meta,
+            )
+            return {"credits": usage.get("cost_credits", credits), "task_id": tid, "pricing_version": usage.get("pricing_version")}
+    config = pools.active_pricing_config()["config"]
+    credits = compute_cost_credits(
+        config,
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cached_tokens=cached_tokens,
+        cache_write_tokens=cache_write_tokens,
+        role=role,
+        tool=tool,
+    )
     m = dict(meta or {})
-    m.update({"model": model, "input_tokens": input_tokens, "output_tokens": output_tokens})
-    return emit_usage_event("llm_tokens", credits, user_id=uid, task_id=task_id, reference=reference, meta=m, quantity=input_tokens + output_tokens, unit="token")
+    m.update(
+        {
+            "model": model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cached_tokens": cached_tokens,
+            "cache_write_tokens": cache_write_tokens,
+            "pricing_version": pools.active_pricing_config()["version"],
+        }
+    )
+    return emit_usage_event("llm_tokens", credits, user_id=uid, task_id=tid, reference=reference, meta=m, quantity=input_tokens + output_tokens, unit="token")
 
 
-def precheck_llm(model: str, input_tokens: int, output_tokens: int, *, user_id: str | None = None) -> None:
+def precheck_llm(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    *,
+    user_id: str | None = None,
+    cached_tokens: int = 0,
+    cache_write_tokens: int = 0,
+) -> None:
     if not billing_enabled() and not user_id:
         return
     uid = _user(user_id)
     if not uid:
         return
-    est = credits_for_llm_tokens(model, input_tokens, output_tokens) * ESTIMATE_BUFFER
+    from backend.billing.pool_store import get_pool_store
+    from backend.billing.pricing_engine import compute_cost_credits
+
+    config = get_pool_store().active_pricing_config()["config"]
+    est = compute_cost_credits(
+        config,
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cached_tokens=cached_tokens,
+        cache_write_tokens=cache_write_tokens,
+    ) * ESTIMATE_BUFFER
     get_billing_service().ensure_can_afford(uid, est)
 
 

@@ -86,7 +86,10 @@ export default function WalletPanel() {
             {loading && !account ? '—' : fmtCredits(account?.balance_credits ?? 0)}
           </p>
           <p className="mt-1 text-[11px] text-[#8E8E93]">
-            方案：{account?.plan_name_zh ?? '—'} · 本月已用 {fmtCredits(account?.monthly_used_credits ?? 0)} / {fmtCredits(account?.monthly_quota_credits ?? 0)}
+            方案：{account?.plan_name_zh ?? '—'} · 月度贈送 {fmtCredits(account?.pool_balances?.monthly_grant ?? 0)} · 已購買 {fmtCredits(account?.pool_balances?.purchased ?? 0)}
+          </p>
+          <p className="mt-0.5 text-[10px] text-[#636366]">
+            定價版本 v{account?.pricing_config_version ?? '—'} · 積分不可轉贈／轉移
           </p>
           {account?.low_balance ? (
             <p className="mt-2 text-[11px] text-[#FF9F0A]">積分偏低，請升級方案或充值後繼續使用計費功能。</p>

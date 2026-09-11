@@ -130,6 +130,18 @@ def wallet_topup_alias(req: TopupRequest, request: Request) -> dict[str, Any]:
     return topup(req, request)
 
 
+@router.post("/transfer")
+def transfer_forbidden() -> dict[str, Any]:
+    from backend.billing.pools_service import TransferForbiddenError
+
+    raise HTTPException(status_code=403, detail=str(TransferForbiddenError()))
+
+
 def register_billing(app) -> None:
+    from backend.billing.admin_api import router as admin_router
+    from backend.billing.phase2_stubs import router as phase2_router
+
     app.include_router(router)
     app.include_router(wallet_router)
+    app.include_router(admin_router)
+    app.include_router(phase2_router)
