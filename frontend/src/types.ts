@@ -29,6 +29,18 @@ export interface BillingLedgerEntry {
   created_at: string;
 }
 
+export interface PoolLedgerEntry {
+  id: string;
+  amount_credits: number;
+  balance_after_credits: number;
+  kind: 'credit' | 'debit';
+  source: string;
+  reference: string;
+  pool_type?: string;
+  meta: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface BillingUsageEvent {
   id: string;
   event_type: string;

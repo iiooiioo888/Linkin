@@ -1096,6 +1096,12 @@ export async function fetchBillingRollover(limit = 20) {
   return resp.json() as Promise<{ items: Record<string, unknown>[] }>;
 }
 
+export async function fetchBillingPoolLedger(limit = 50) {
+  const resp = await fetch(apiUrl(`/billing/pools/ledger?limit=${limit}`));
+  if (!resp.ok) throw new Error(`讀取池帳本失敗（HTTP ${resp.status}）`);
+  return resp.json() as Promise<{ items: import('../types').PoolLedgerEntry[] }>;
+}
+
 export async function fetchBillingAppeals(limit = 20) {
   const resp = await fetch(apiUrl(`/billing/appeals?limit=${limit}`));
   if (!resp.ok) throw new Error(`讀取申訴失敗（HTTP ${resp.status}）`);

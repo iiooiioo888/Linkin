@@ -180,6 +180,14 @@ def my_grants(request: Request, limit: int = 50) -> dict[str, Any]:
     return {"items": get_pool_store().list_grants(user_id, limit)}
 
 
+@router.get("/pools/ledger")
+def my_pool_ledger(request: Request, limit: int = 50) -> dict[str, Any]:
+    from backend.billing.pool_store import get_pool_store
+
+    user_id = _resolve_user(request)
+    return {"items": get_pool_store().list_pool_ledger(user_id, limit)}
+
+
 @router.post("/contribution/convert")
 def convert_contribution(request: Request, amount: float) -> dict[str, Any]:
     from backend.billing.contribution_service import convert_unlocked_to_purchased

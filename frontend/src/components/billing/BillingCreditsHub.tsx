@@ -7,6 +7,7 @@ import {
   fetchBilling,
   fetchBillingAppeals,
   fetchBillingGrants,
+  fetchBillingPoolLedger,
   fetchBillingRollover,
   lockContribution,
   submitBillingAppeal,
@@ -26,9 +27,10 @@ import {
   earlyUnlockConfirmZh,
   keyFailureAppealNoticeZh,
 } from '../../lib/billingUi';
-import type { BillingAppeal, BillingGrant, BillingPoolsDetail, ContributionStatus } from '../../types';
+import type { BillingAppeal, BillingGrant, BillingPoolsDetail, ContributionStatus, PoolLedgerEntry } from '../../types';
 import WalletPanel from '../WalletPanel';
 import BillingAdminPanel from './BillingAdminPanel';
+import ContributionCharts, { type LockPreview } from './ContributionCharts';
 
 type SubTab = 'wallet' | 'pools' | 'contribution' | 'contributor' | 'appeals' | 'admin';
 
@@ -48,22 +50,26 @@ export default function BillingCreditsHub() {
   const [grants, setGrants] = useState<BillingGrant[]>([]);
   const [rollovers, setRollovers] = useState<Record<string, unknown>[]>([]);
   const [appeals, setAppeals] = useState<BillingAppeal[]>([]);
+  const [poolLedger, setPoolLedger] = useState<PoolLedgerEntry[]>([]);
+  const [lockPreview, setLockPreview] = useState<LockPreview>({ amount: 10, days: 30, multiplier: 1.02 });
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      const [billing, grantResp, rollResp, appealResp] = await Promise.all([
+      const [billing, grantResp, rollResp, appealResp, ledgerResp] = await Promise.all([
         fetchBilling(),
         fetchBillingGrants(30),
         fetchBillingRollover(20),
         fetchBillingAppeals(20),
+        fetchBillingPoolLedger(50),
       ]);
       setPools(billing.pools ?? null);
       setContribution(billing.contribution ?? null);
       setGrants(grantResp.items);
       setRollovers(rollResp.items);
       setAppeals(appealResp.appeals);
+      setPoolLedger(ledgerResp.items);
     } catch (err) {
       setMsg(err instanceof Error ? err.message : '載入失敗');
     }
@@ -193,11 +199,17 @@ export default function BillingCreditsHub() {
                 <LockForm
                   max={contribution.convertible_to_locked}
                   tiers={contribution.lock_tiers}
+                  onPreviewChange={setLockPreview}
                   onSubmit={(amount, days) => run(() => lockContribution(amount, days), `已鎖倉 ${fmtCredits(amount)} · ${days} 天`)}
                   busy={busy}
                 />
               </div>
             </div>
+            <ContributionCharts
+              contribution={contribution}
+              poolLedger={poolLedger}
+              lockPreview={lockPreview}
+            />
             <section>
               <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">分期解鎖進度</h3>
               {(contribution.installments ?? []).length === 0 ? (
@@ -306,18 +318,58 @@ function ConvertForm({ max, preview, onSubmit, busy }: { max: number; preview: (
   );
 }
 
-function LockForm({ max, tiers, onSubmit, busy }: { max: number; tiers: Record<string, number>; onSubmit: (a: number, d: number) => void; busy: boolean }) {
+function LockForm({
+  max,
+  tiers,
+  onSubmit,
+  onPreviewChange,
+  busy,
+}: {
+  max: number;
+  tiers: Record<string, number>;
+  onSubmit: (a: number, d: number) => void;
+  onPreviewChange: (p: LockPreview) => void;
+  busy: boolean;
+}) {
   const [amount, setAmount] = useState('10');
   const [days, setDays] = useState(30);
   const a = Number(amount);
+  const mult = Number(tiers[String(days)] ?? tiers[days] ?? 1.02);
+
+  const emitPreview = (amt: number, d: number) => {
+    const m = Number(tiers[String(d)] ?? tiers[d] ?? 1.02);
+    onPreviewChange({ amount: amt, days: d, multiplier: m });
+  };
+
+  useEffect(() => {
+    emitPreview(a, days);
+  }, []);
+
   return (
     <div className="mt-2 space-y-2">
-      <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
-      <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]">
+      <input
+        type="number"
+        value={amount}
+        onChange={(e) => {
+          setAmount(e.target.value);
+          emitPreview(Number(e.target.value), days);
+        }}
+        className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]"
+      />
+      <select
+        value={days}
+        onChange={(e) => {
+          const d = Number(e.target.value);
+          setDays(d);
+          emitPreview(a, d);
+        }}
+        className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]"
+      >
         {Object.entries(tiers).map(([d, m]) => (
           <option key={d} value={d}>{d} 天 · 倍率 ×{m}</option>
         ))}
       </select>
+      <p className="text-[10px] text-[#636366]">預估獎勵 ×{mult} → +{fmtCredits(a * Math.max(0, mult - 1))}</p>
       <button type="button" disabled={busy || a <= 0 || a > max} onClick={() => onSubmit(a, days)} className="text-[12px] text-[#64D2FF]">鎖倉</button>
     </div>
   );
