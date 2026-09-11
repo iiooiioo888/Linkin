@@ -398,3 +398,77 @@
   color: var(--console-faint);
   font-size: 9px;
 }
+
+/* 行動端：熱力圖／矩陣橫向捲動 + 可讀字級 */
+.mon-heatmap-scroll,
+.mon-matrix-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--console-line-strong) transparent;
+}
+
+.mon-heatmap-scroll::-webkit-scrollbar,
+.mon-matrix-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.mon-heatmap-scroll::-webkit-scrollbar-thumb,
+.mon-matrix-scroll::-webkit-scrollbar-thumb {
+  background: var(--console-line-strong);
+  border-radius: 999px;
+}
+
+@media (max-width: 767px) {
+  .mon-heatmap-scroll .mon-heatmap {
+    min-width: 480px;
+    grid-template-columns: repeat(24, minmax(14px, 1fr));
+    gap: 3px;
+  }
+
+  .mon-matrix-scroll .mon-matrix__row {
+    min-width: 480px;
+    grid-template-columns: 40px repeat(24, minmax(14px, 1fr));
+    gap: 3px;
+  }
+
+  .mon-heatmap__label,
+  .mon-gauge__lbl,
+  .mon-matrix__row-label,
+  .mon-matrix__legend-item,
+  .mon-kpi-spark__label,
+  .mon-pipeline__label {
+    font-size: 11px;
+  }
+
+  .mon-pipeline__timing {
+    font-size: 10px;
+  }
+
+  .mon-kpi-spark {
+    padding: 12px 14px;
+  }
+
+  .mon-kpi-spark__value {
+    font-size: 22px;
+  }
+
+  .mon-task-card {
+    padding: 10px 12px 10px 14px;
+  }
+
+  .mon-task-card__title {
+    font-size: 12px;
+  }
+
+  .mon-task-card__meta {
+    font-size: 10px;
+    gap: 8px;
+  }
+
+  .mon-pipeline__node {
+    gap: 6px;
+  }
+}

@@ -26,25 +26,27 @@ export function TaskDistributionMatrix({
         任務分佈 · L4/L3/L2 × 24h
         {demo || empty ? <span className="ml-1 font-normal normal-case">（累積中）</span> : null}
       </p>
-      <div className="mon-matrix">
-        {matrix.map((row, ri) => (
-          <div key={ROW_LABELS[ri]} className="mon-matrix__row">
-            <span className="mon-matrix__row-label">{ROW_LABELS[ri]}</span>
-            {row.map((cell, ci) => (
-              <div
-                key={ci}
-                className="mon-matrix__cell"
-                style={{
-                  background: cell.count > 0
-                    ? matrixToneColor(cell.tone)
-                    : 'var(--console-dim)',
-                  opacity: cell.count > 0 ? Math.min(1, 0.4 + cell.count * 0.15) : 1,
-                }}
-                title={`${ROW_LABELS[ri]} ${ci}:00 — ${cell.count} 任務`}
-              />
-            ))}
-          </div>
-        ))}
+      <div className="mon-matrix-scroll">
+        <div className="mon-matrix">
+          {matrix.map((row, ri) => (
+            <div key={ROW_LABELS[ri]} className="mon-matrix__row">
+              <span className="mon-matrix__row-label">{ROW_LABELS[ri]}</span>
+              {row.map((cell, ci) => (
+                <div
+                  key={ci}
+                  className="mon-matrix__cell"
+                  style={{
+                    background: cell.count > 0
+                      ? matrixToneColor(cell.tone)
+                      : 'var(--console-dim)',
+                    opacity: cell.count > 0 ? Math.min(1, 0.4 + cell.count * 0.15) : 1,
+                  }}
+                  title={`${ROW_LABELS[ri]} ${ci}:00 — ${cell.count} 任務`}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
       <div className="mon-matrix__legend">
         {LEGEND.map((l) => (

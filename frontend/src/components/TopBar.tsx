@@ -127,8 +127,12 @@ export default function TopBar({
           onClick={() => void logoutGate()}
           className="apple-icon-btn text-[10px] font-semibold"
           title={t('gate.signOut')}
+          aria-label={t('gate.signOut')}
         >
-          {t('gate.signOut')}
+          <span className="topbar-signout-text">{t('gate.signOut')}</span>
+          <svg className="topbar-signout-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+            <path d="M6 2.5H3.5a1 1 0 00-1 1V12.5a1 1 0 001 1H6M10.5 11.5L13.5 8.5M13.5 8.5L10.5 5.5M13.5 8.5H6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
 
         <button

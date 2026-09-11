@@ -440,7 +440,7 @@ function SystemMetricsCard({
         </span>
       }
     >
-      <div className="grid grid-cols-3 gap-4 py-2">
+      <div className="grid grid-cols-1 gap-4 py-2 sm:grid-cols-3">
         {[
           { label: '快取', value: `${hitPct}%`, c: hitPct >= 30 ? GREEN : GRAY },
           { label: '成功率', value: `${successRate}%`, c: successRate >= 80 ? GREEN : ORANGE },

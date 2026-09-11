@@ -190,7 +190,10 @@ export default function RoleV3Desk({
   ];
 
   return (
-    <ConsoleThreeColumn className="min-h-0 flex-1">
+    <ConsoleThreeColumn
+      className="min-h-0 flex-1"
+      mobileLabels={{ left: '導覽', center: '監控', right: '詳情' }}
+    >
       <ConsoleLeftRail>
         <div className="shrink-0 border-b border-[var(--console-line)] px-3 py-3">
           <div className="flex items-center gap-2">

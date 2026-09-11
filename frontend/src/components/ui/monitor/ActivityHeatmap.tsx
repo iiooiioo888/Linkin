@@ -28,14 +28,16 @@ export function ActivityHeatmap({
         {rows.map((row, ri) => (
           <div key={ri}>
             <div className="mon-heatmap__label">{labels[ri] ?? `R${ri + 1}`}</div>
-            <div className="mon-heatmap" role="img" aria-label={`活動熱力圖第 ${ri + 1} 行`}>
-              {row.map((cell, ci) => (
-                <div
-                  key={ci}
-                  className={`mon-heatmap__cell mon-heatmap__cell--l${cell.error ? 0 : cell.level}${cell.error ? ' mon-heatmap__cell--err' : ''}`}
-                  title={`活動等級 ${cell.level}${cell.error ? ' · 錯誤' : ''}`}
-                />
-              ))}
+            <div className="mon-heatmap-scroll">
+              <div className="mon-heatmap" role="img" aria-label={`活動熱力圖第 ${ri + 1} 行`}>
+                {row.map((cell, ci) => (
+                  <div
+                    key={ci}
+                    className={`mon-heatmap__cell mon-heatmap__cell--l${cell.error ? 0 : cell.level}${cell.error ? ' mon-heatmap__cell--err' : ''}`}
+                    title={`活動等級 ${cell.level}${cell.error ? ' · 錯誤' : ''}`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         ))}

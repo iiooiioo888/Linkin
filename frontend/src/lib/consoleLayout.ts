@@ -14,7 +14,7 @@ export const consoleLayout = {
   /** 內層滾動區（與 page 同節奏） */
   pageScroll: 'min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 console-col-scroll',
   pagePadding: 'px-4 py-4 sm:px-6',
-  pagePaddingDense: 'px-3 py-3 sm:px-4',
+  pagePaddingDense: 'px-4 py-4 sm:px-4',
   /** 三欄主 grid */
   threeColumn: 'console-three-col',
   colLeft: 'console-col-left',
