@@ -18,16 +18,12 @@ import {
   JUMP_AGENT_EVENT,
   ROUTING_LABEL,
   TIER_LABEL,
-  WORK_ITEM_COLUMNS,
   blankMetrics,
   consumePendingDeskTab,
   consumePendingGrillReveal,
   filterAgentsByDesk,
-  fmtUsd,
-  fmtWhen,
   isLinkinStudioAgent,
   isQuantDeskRole,
-  itemsInColumn,
   pickDefaultAgentId,
   routeDisplayName,
   workItemColumnKey,
@@ -37,70 +33,17 @@ import {
 } from '../lib/agentUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { nodesForRole } from '../lib/rahoUi';
-import type { AgentMonitorData, AgentWorkItem, GrillTree, L0Snapshot, RahoSnapshot, RoleAgent } from '../types';
-import GrillTreePanel from './GrillTreePanel';
+import type { AgentMonitorData, GrillTree, L0Snapshot, RahoSnapshot, RoleAgent } from '../types';
 import RoleSettingsPanel, { CreateRoleModal, draftToPayload, type RoleSettingsDraft } from './RoleSettingsPanel';
 import RoleTasksPanel from './RoleTasksPanel';
+import RoleV3Desk from './RoleV3Desk';
 import { RdCell, RoleDeskHeader, RoleRightPanel, RoleStatsStrip, type RoleDeskTab } from './RoleDeskLayout';
-import { StatusColumnBoard } from './StatusColumnBoard';
 import StrategyCatalogPanel from './StrategyCatalogPanel';
-import { ITEM_STATUS_META } from './TaskPanel';
 import { ConsoleEmpty, ConsoleRdShell, PanelShell } from './ui/ConsoleLayout';
-
-function itemStatus(status: string): { label: string; cls: string } {
-  return ITEM_STATUS_META[status] ?? { label: status, cls: 'bg-gray-700/60 text-gray-300' };
-}
 
 function toDeskTab(tab?: string | null): RoleDeskTab {
   if (tab === 'monitor' || tab === 'settings' || tab === 'quant' || tab === 'list') return tab;
   return 'tasks';
-}
-
-function WorkItemCard({
-  item,
-  expanded,
-  onToggle,
-  compact,
-}: {
-  item: AgentWorkItem;
-  expanded?: boolean;
-  onToggle?: () => void;
-  compact?: boolean;
-}) {
-  const st = itemStatus(item.status);
-  const col = workItemColumnKey(item.status);
-  const running = col === 'executing';
-  const shortId = (item.task_id || item.id || '').replace(/^.*[#-]/, '').slice(-4) || item.id.slice(0, 4);
-  return (
-    <button type="button" onClick={onToggle} className={`rd-tc w-full ${expanded ? 'on' : ''}`}>
-      <div className="rd-tc-t">
-        <span className={`rd-od shrink-0 ${running ? 'run' : col === 'done' ? 'on' : 'off'}`} />
-        <span className="rd-tc-ttl">{item.title}</span>
-        <span className="rd-tc-id">#{shortId}</span>
-      </div>
-      {!compact ? (
-        <p className="rd-tc-d">{item.task_query || item.description || item.task_id}</p>
-      ) : null}
-      <div className="rd-tc-m">
-        <span className={`rd-badge ${running ? 'run' : ''} ${st.cls}`}>{st.label}</span>
-        <span className="rd-tc-meta">{fmtWhen(item.updated_at)}</span>
-        <span className="rd-tc-cost">{fmtUsd(item.cost_usd)}</span>
-      </div>
-      {expanded && (
-        <div className="mt-2 space-y-1.5 border-t border-white/[0.08] pt-2">
-          {item.description && <p className="text-[11px] leading-relaxed text-[#AEAEB2]">{item.description}</p>}
-          {item.output_preview && (
-            <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
-              {item.output_preview}
-            </pre>
-          )}
-          {(item.depends_on?.length ?? 0) > 0 && (
-            <p className="text-[10px] text-[#636366]">依賴 {item.depends_on!.join(', ')}</p>
-          )}
-        </div>
-      )}
-    </button>
-  );
 }
 
 function ExtraGrid({ cells }: { cells: Array<{ label: string; value: string; color?: string }> }) {
@@ -506,12 +449,14 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
       )}
 
       {selected && (
-        <ConsoleRdShell>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <RoleDeskHeader
             agent={selected}
+            agents={agents}
             modelLabel={selectedModelLabel}
             deskTab={deskTab}
             onDeskTab={setDeskTab}
+            onSelectAgent={(id) => openDesk(id)}
             showQuant={quantDesk}
           />
           {(selected.alerts?.length ?? 0) > 0 && (
@@ -520,10 +465,22 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
               {(selected.alerts!.length ?? 0) > 1 ? ` · 另 ${selected.alerts!.length - 1} 則` : ''}
             </div>
           )}
-          <RoleStatsStrip agent={selected} />
 
-          <div className={`rd-body ${deskTab === 'settings' ? 'rd-body--settings' : ''}`}>
-            <div className="rd-tasks">
+          {deskTab === 'tasks' ? (
+            <RoleV3Desk
+              agent={selected}
+              agents={agents}
+              rahoSnap={rahoSnap}
+              grillNodes={selectedGrill}
+              l0={l0}
+              onSelectAgent={(id) => openDesk(id)}
+              onOpenGrill={revealGrill}
+            />
+          ) : (
+            <ConsoleRdShell>
+              <RoleStatsStrip agent={selected} />
+              <div className={`rd-body ${deskTab === 'settings' ? 'rd-body--settings' : ''}`}>
+                <div className="rd-tasks">
               {deskTab === 'settings' ? (
                   <div className="rd-pane">
                     <RoleSettingsPanel
@@ -692,74 +649,33 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                     </section>
                   </div>
                 </>
-              ) : (
-                <>
-                  <div className="rd-th">
-                    <h2>質詢鏈與任用 — {selected.work_items.length}</h2>
-                  </div>
-                  <div id="role-grill-spine" className="rd-grill-fuse">
-                    <GrillTreePanel
-                      embedded
-                      compact
-                      disablePoll
-                      snap={rahoSnap}
-                      focusRoleId={selected.id}
-                      onSelectRole={(id) => openDesk(id, 'tasks')}
-                    />
-                  </div>
-                  <StatusColumnBoard
-                    compact
-                    selectedKey={itemFilter}
-                    onSelect={(key) => setItemFilter(key as WorkItemColumnKey)}
-                    columns={WORK_ITEM_COLUMNS.map((col) => {
-                      const items = itemsInColumn(selected.work_items, col.key);
-                      return {
-                        key: col.key,
-                        label: col.label,
-                        count: items.length,
-                        children: items.map((item) => (
-                          <WorkItemCard
-                            key={`${item.task_id}-${item.id}-${item.kind}`}
-                            item={item}
-                            compact
-                            expanded={expandedId === `${item.task_id}-${item.id}-${item.kind}`}
-                            onToggle={() =>
-                              setExpandedId((cur) => {
-                                const key = `${item.task_id}-${item.id}-${item.kind}`;
-                                return cur === key ? null : key;
-                              })
-                            }
-                          />
-                        )),
-                      };
-                    })}
-                  />
-                </>
-              )}
-            </div>
+              ) : null}
+                </div>
 
-            {deskTab !== 'settings' ? (
-              <RoleRightPanel
-                agent={selected}
-                agents={agents}
-                filter={itemFilter}
-                onFilter={(key) => {
-                  setItemFilter(key);
-                  setDeskTab('tasks');
-                }}
-                onOpen={(id) => openDesk(id)}
-                onOpenItem={(item) => {
-                  setDeskTab('tasks');
-                  setItemFilter(workItemColumnKey(item.status));
-                  setExpandedId(`${item.task_id}-${item.id}-${item.kind}`);
-                }}
-                grillNodes={selectedGrill}
-                l0={l0}
-                onOpenGrill={revealGrill}
-              />
-            ) : null}
-          </div>
-        </ConsoleRdShell>
+                {deskTab !== 'settings' ? (
+                  <RoleRightPanel
+                    agent={selected}
+                    agents={agents}
+                    filter={itemFilter}
+                    onFilter={(key) => {
+                      setItemFilter(key);
+                      setDeskTab('tasks');
+                    }}
+                    onOpen={(id) => openDesk(id)}
+                    onOpenItem={(item) => {
+                      setDeskTab('tasks');
+                      setItemFilter(workItemColumnKey(item.status));
+                      setExpandedId(`${item.task_id}-${item.id}-${item.kind}`);
+                    }}
+                    grillNodes={selectedGrill}
+                    l0={l0}
+                    onOpenGrill={revealGrill}
+                  />
+                ) : null}
+              </div>
+            </ConsoleRdShell>
+          )}
+        </div>
       )}
       {creating && (
         <CreateRoleModal
