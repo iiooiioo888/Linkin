@@ -1322,6 +1322,20 @@ export async function adminResumePublicPool(h: AdminHeaders) {
   return resp.json();
 }
 
+export async function adminSeedContribution(accountId: string, amount: number, note = '', h: AdminHeaders = {}) {
+  const resp = await adminFetch(
+    '/admin/billing/contribution/seed',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: accountId, amount, note }),
+    },
+    h,
+  );
+  if (!resp.ok) throw new Error('注入貢獻積分失敗');
+  return resp.json();
+}
+
 export async function adminGetCacheStats(h: AdminHeaders) {
   const resp = await adminFetch('/admin/billing/cache-stats', {}, h);
   if (!resp.ok) throw new Error('讀取快取統計失敗');

@@ -28,6 +28,7 @@ import {
   installmentScheduleZh,
   earlyUnlockConfirmZh,
   keyFailureAppealNoticeZh,
+  CONTRIBUTION_EMPTY_ZH,
 } from '../../lib/billingUi';
 import type { BillingAppeal, BillingGrant, BillingPoolsDetail, ContributionStatus, PoolLedgerEntry } from '../../types';
 import WalletPanel from '../WalletPanel';
@@ -191,6 +192,7 @@ export default function BillingCreditsHub() {
                 <p className="text-[11px] text-[#636366]">未鎖定 → 已購買（1:0.4）</p>
                 <ConvertForm
                   max={contribution.unlocked}
+                  empty={contribution.unlocked <= 0}
                   preview={(a) => convertPreview(a, contribution.convert_ratio_to_purchased)}
                   onSubmit={(a) => run(() => convertContribution(a), `已轉換 ${fmtCredits(a)} → ${fmtCredits(convertPreview(a))} 已購買`)}
                   busy={busy}
@@ -200,6 +202,7 @@ export default function BillingCreditsHub() {
                 <p className="text-[11px] text-[#636366]">轉鎖倉（30/90/180 天）</p>
                 <LockForm
                   max={contribution.convertible_to_locked}
+                  empty={contribution.convertible_to_locked <= 0}
                   tiers={contribution.lock_tiers}
                   onPreviewChange={setLockPreview}
                   onSubmit={(amount, days) => run(() => lockContribution(amount, days), `已鎖倉 ${fmtCredits(amount)} · ${days} 天`)}
@@ -308,26 +311,32 @@ export default function BillingCreditsHub() {
   );
 }
 
-function ConvertForm({ max, preview, onSubmit, busy }: { max: number; preview: (a: number) => number; onSubmit: (a: number) => void; busy: boolean }) {
+function ConvertForm({ max, empty, preview, onSubmit, busy }: { max: number; empty?: boolean; preview: (a: number) => number; onSubmit: (a: number) => void; busy: boolean }) {
   const [amount, setAmount] = useState('10');
   const a = Number(amount);
+  const disabled = busy || Boolean(empty) || a <= 0 || a > max;
   return (
     <div className="mt-2 space-y-2">
-      <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
+      {empty ? (
+        <p className="rounded border border-[#FFD60A]/20 bg-[#FFD60A]/5 px-2 py-1.5 text-[11px] text-[#FFD60A]">{CONTRIBUTION_EMPTY_ZH}</p>
+      ) : null}
+      <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={empty} className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px] disabled:opacity-40" />
       <p className="text-[10px] text-[#636366]">預覽入帳 {fmtCredits(preview(a))} 已購買（最多 {fmtCredits(max)}）</p>
-      <button type="button" disabled={busy || a <= 0 || a > max} onClick={() => onSubmit(a)} className="text-[12px] text-[#64D2FF]">轉換</button>
+      <button type="button" disabled={disabled} onClick={() => onSubmit(a)} className="text-[12px] text-[#64D2FF] disabled:opacity-40">轉換</button>
     </div>
   );
 }
 
 function LockForm({
   max,
+  empty,
   tiers,
   onSubmit,
   onPreviewChange,
   busy,
 }: {
   max: number;
+  empty?: boolean;
   tiers: Record<string, number>;
   onSubmit: (a: number, d: number) => void;
   onPreviewChange: (p: LockPreview) => void;
@@ -337,6 +346,7 @@ function LockForm({
   const [days, setDays] = useState(30);
   const a = Number(amount);
   const mult = Number(tiers[String(days)] ?? tiers[days] ?? 1.02);
+  const disabled = busy || Boolean(empty) || a <= 0 || a > max;
 
   const emitPreview = (amt: number, d: number) => {
     const m = Number(tiers[String(d)] ?? tiers[d] ?? 1.02);
@@ -349,30 +359,35 @@ function LockForm({
 
   return (
     <div className="mt-2 space-y-2">
+      {empty ? (
+        <p className="rounded border border-[#FFD60A]/20 bg-[#FFD60A]/5 px-2 py-1.5 text-[11px] text-[#FFD60A]">{CONTRIBUTION_EMPTY_ZH}</p>
+      ) : null}
       <input
         type="number"
         value={amount}
+        disabled={empty}
         onChange={(e) => {
           setAmount(e.target.value);
           emitPreview(Number(e.target.value), days);
         }}
-        className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]"
+        className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px] disabled:opacity-40"
       />
       <select
         value={days}
+        disabled={empty}
         onChange={(e) => {
           const d = Number(e.target.value);
           setDays(d);
           emitPreview(a, d);
         }}
-        className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]"
+        className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px] disabled:opacity-40"
       >
         {Object.entries(tiers).map(([d, m]) => (
           <option key={d} value={d}>{d} 天 · 倍率 ×{m}</option>
         ))}
       </select>
       <p className="text-[10px] text-[#636366]">預估獎勵 ×{mult} → +{fmtCredits(a * Math.max(0, mult - 1))}</p>
-      <button type="button" disabled={busy || a <= 0 || a > max} onClick={() => onSubmit(a, days)} className="text-[12px] text-[#64D2FF]">鎖倉</button>
+      <button type="button" disabled={disabled} onClick={() => onSubmit(a, days)} className="text-[12px] text-[#64D2FF] disabled:opacity-40">鎖倉</button>
     </div>
   );
 }

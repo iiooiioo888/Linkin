@@ -251,3 +251,82 @@ def test_shared_pool_excludes_offline_keys(billing_store):
     keys = list_shared_pool_keys(model="default", estimate_credits=10, account_id=uid)
     contributor_keys = [k for k in keys if k.get("key_id") == key_id]
     assert contributor_keys == []
+
+
+def test_settle_credits_contribution_unlocked(billing_store):
+    from backend.billing.pools_service import get_pools_service
+    from backend.billing.pool_types import POOL_CONTRIBUTION_UNLOCKED
+
+    uid = "settle_reward"
+    billing_store.ensure_account(uid, "pro")
+    store = get_pool_store()
+    key_id = _bind_key(uid)
+    snap = store.snapshot_pricing("pro")
+    store.create_task_record("task_settle_rw", uid, 30, 30, snap)
+    store.bind_task_key("task_settle_rw", key_id)
+    before = store.get_balances(uid).get(POOL_CONTRIBUTION_UNLOCKED, 0)
+    result = get_pools_service().settle_task_usage(
+        "task_settle_rw",
+        input_tokens=500,
+        output_tokens=200,
+        key_id=key_id,
+        model="default",
+    )
+    assert result["contributor_reward"]["credited"] is True
+    after = store.get_balances(uid).get(POOL_CONTRIBUTION_UNLOCKED, 0)
+    assert after > before
+    assert store.fault_pool_balance() > 0
+
+
+def test_convert_contribution_ratio_1_to_0_4(billing_store):
+    from backend.billing.pools_service import get_pools_service
+    from backend.billing.pool_types import CONTRIBUTION_UNLOCKED_CONVERT_RATIO, POOL_CONTRIBUTION_UNLOCKED, POOL_PURCHASED
+
+    uid = "convert_user"
+    billing_store.ensure_account(uid, "free")
+    store = get_pool_store()
+    store.credit_pool(uid, POOL_CONTRIBUTION_UNLOCKED, 100, source="admin_seed", origin="test")
+    out = get_pools_service().convert_contribution_unlocked(uid, 50)
+    assert out["converted"] == 50
+    assert out["purchased_credits"] == pytest.approx(50 * CONTRIBUTION_UNLOCKED_CONVERT_RATIO, rel=1e-3)
+    bals = store.get_balances(uid)
+    assert bals.get(POOL_CONTRIBUTION_UNLOCKED, 0) == pytest.approx(50, rel=1e-3)
+    assert bals.get(POOL_PURCHASED, 0) >= 20
+
+
+def test_lock_creates_installments_with_reward_balance(billing_store):
+    from backend.billing.contribution_service import lock_contribution
+
+    uid = "lock_user"
+    billing_store.ensure_account(uid, "free")
+    store = get_pool_store()
+    store.credit_pool(uid, "contribution_unlocked", 200, source="admin_seed", origin="test")
+    locked = lock_contribution(uid, 90, 90)
+    assert locked["installment_id"]
+    inst = store.get_lock_installment(locked["installment_id"])
+    assert inst is not None
+    assert inst["paid_installments"] == 0
+    assert inst["lock_days"] == 90
+    bals = store.get_balances(uid)
+    assert bals.get("contribution_locked", 0) == pytest.approx(90, rel=1e-3)
+
+
+def test_admin_seed_contribution_api(billing_store, monkeypatch):
+    monkeypatch.setenv("LINKIN_AUTH_FORCE", "1")
+    monkeypatch.setenv("LINKIN_GATE_ID", "seed_admin")
+    monkeypatch.setenv("LINKIN_GATE_SECRET", "seed_secret")
+    monkeypatch.setenv("LINKIN_BILLING_DB", billing_store.db_path)
+
+    from backend.main import app
+
+    with TestClient(app) as client:
+        login = client.post("/auth/login", json={"username": "seed_admin", "password": "seed_secret"})
+        headers = {"X-Linkin-Gate": login.json()["token"], "X-Billing-Admin": ""}
+        billing_store.ensure_account("seed_target", "free")
+        resp = client.post(
+            "/admin/billing/contribution/seed",
+            headers=headers,
+            json={"account_id": "seed_target", "amount": 150, "note": "test"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["contribution_unlocked"] == pytest.approx(150, rel=1e-3)

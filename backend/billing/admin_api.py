@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from backend.billing.fault_pool import fault_pool_status
 from backend.billing.pool_store import get_pool_store
+from backend.billing.pool_types import POOL_CONTRIBUTION_UNLOCKED
 from backend.billing.appeals import list_appeals, resolve_appeal
 from backend.billing.pricing_engine import DEFAULT_CREDIT_POLICY, DEFAULT_PRICING_CONFIG
 from backend.billing.vendor_configs import DEFAULT_VENDOR_CONFIGS
@@ -33,6 +34,34 @@ class CreditPolicyBody(BaseModel):
     by_tier: dict[str, Any] = Field(default_factory=dict)
     effective_at: str | None = None
     reason: str = ""
+
+
+class ContributionSeedBody(BaseModel):
+    account_id: str = Field(min_length=1)
+    amount: float = Field(gt=0)
+    note: str = ""
+
+
+@router.post("/contribution/seed")
+def admin_seed_contribution(body: ContributionSeedBody, operator: str = "admin") -> dict[str, Any]:
+    """Admin / dev：注入 contribution_unlocked 供 lock/convert 測試。"""
+    store = get_pool_store()
+    store.ensure_pools(body.account_id.strip())
+    store.credit_pool(
+        body.account_id.strip(),
+        POOL_CONTRIBUTION_UNLOCKED,
+        body.amount,
+        source="admin_seed",
+        description=body.note or f"Admin 種子 by {operator}",
+        origin="admin_dev_seed",
+    )
+    bals = store.get_balances(body.account_id.strip())
+    return {
+        "account_id": body.account_id.strip(),
+        "amount": body.amount,
+        "contribution_unlocked": float(bals.get(POOL_CONTRIBUTION_UNLOCKED, 0)),
+        "operator": operator,
+    }
 
 
 @router.get("/pricing-configs")

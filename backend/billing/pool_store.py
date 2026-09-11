@@ -757,16 +757,21 @@ class PoolStore:
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (gid, account_id, pool_type, amount, amount, expires_at, source, grant_origin, lock_days, lock_multiplier, now),
                 )
-        total = self.total_spendable(account_id)
+            bal_row = conn.execute(
+                "SELECT amount FROM balances WHERE account_id=? AND pool_type=?",
+                (account_id, pool_type),
+            ).fetchone()
+            balance_after = float(bal_row["amount"]) if bal_row else amount
         self.append_ledger(
             account_id,
             "credit",
             amount,
-            total,
+            balance_after,
             pool_type=pool_type,
             source=source,
             description=description or f"入帳 {amount:.4f}",
             task_id=task_id,
+            meta={"origin": grant_origin, "immutable": True},
         )
 
     def create_task_record(
@@ -1762,6 +1767,16 @@ class PoolStore:
             "cache_read_tokens": int(row["cache_read_tokens"]),
             "savings_credits": float(row["savings"]),
         }
+
+    def resolve_contributor_account(self, key_id: str) -> str | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                """SELECT c.account_id FROM api_keys ak
+                   JOIN contributors c ON c.contributor_id = ak.contributor_id
+                   WHERE ak.key_id=? AND ak.status='active' AND c.status='active'""",
+                (key_id.strip(),),
+            ).fetchone()
+        return str(row["account_id"]) if row else None
 
     def ensure_contributor(self, account_id: str) -> str:
         cid = f"ctr_{account_id[:16]}"
