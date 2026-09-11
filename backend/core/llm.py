@@ -131,6 +131,47 @@ def _message_visible_text(message: object | None) -> str:
     return str(content)
 
 
+def _usage_tokens(response: object, *, prompt: str, system: str | None, output_text: str) -> tuple[int, int]:
+    """從 LiteLLM 回應擷取 token 用量；缺省時以字元粗估。"""
+    usage = getattr(response, "usage", None)
+    prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+    completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+    if prompt_tokens <= 0:
+        prompt_tokens = max(1, len(prompt) // 4 + len(system or "") // 4)
+    if completion_tokens <= 0:
+        completion_tokens = max(1, len(output_text) // 4)
+    return prompt_tokens, completion_tokens
+
+
+def _wallet_bill_llm(
+    model: str,
+    *,
+    prompt: str,
+    system: str | None,
+    max_tokens: int | None,
+    input_tokens: int,
+    output_tokens: int,
+    trace_label: str,
+) -> None:
+    from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
+    from backend.billing.metering import meter_llm, precheck_llm
+
+    try:
+        if max_tokens and input_tokens <= 0:
+            precheck_llm(model, max(1, len(prompt) // 4), int(max_tokens))
+        else:
+            precheck_llm(model, input_tokens, output_tokens)
+        meter_llm(
+            model,
+            input_tokens,
+            output_tokens,
+            reference=trace_label or "call_llm",
+            meta={"trace_label": trace_label or ""},
+        )
+    except (InsufficientCreditsError, FeatureNotEntitledError) as exc:
+        raise RuntimeError(exc.message) from exc
+
+
 def _completion_once(
     prompt: str,
     system: str | None = None,
@@ -139,6 +180,7 @@ def _completion_once(
     *,
     route_id: str | None = None,
     max_context_tokens: int | None = None,
+    trace_label: str = "",
     **kwargs,
 ) -> str:
     """單一模型 LLM 呼叫（含重試，不含池級 Failover）。"""
@@ -159,6 +201,7 @@ def _completion_once(
     if params.get("api_base"):
         params["model"] = _ensure_provider_prefix(params["model"])
     extra = _openrouter_extra(target or {})
+    resolved_model = str(params.get("model") or model or "gpt-4o")
 
     retries = MAX_RETRIES if max_retries is None else max(1, int(max_retries))
     last_error: Exception | None = None
@@ -171,7 +214,23 @@ def _completion_once(
                 **extra,
                 **kwargs,
             )
-            return _message_visible_text(response.choices[0].message)
+            text = _message_visible_text(response.choices[0].message)
+            in_tok, out_tok = _usage_tokens(
+                response,
+                prompt=prompt,
+                system=system,
+                output_text=text,
+            )
+            _wallet_bill_llm(
+                resolved_model,
+                prompt=prompt,
+                system=system,
+                max_tokens=kwargs.get("max_tokens"),
+                input_tokens=in_tok,
+                output_tokens=out_tok,
+                trace_label=trace_label,
+            )
+            return text
         except RateLimitError as exc:
             last_error = exc
             wait = RETRY_BACKOFF_SECONDS * attempt
@@ -256,6 +315,7 @@ def call_llm(
             route_id=route_id,
             max_context_tokens=max_context_tokens,
             role_failover_models=role_failover_models,
+            trace_label=trace_label,
             **kwargs,
         )
     except Exception as exc:
@@ -291,6 +351,7 @@ def _call_llm_core(
     route_id: str | None = None,
     max_context_tokens: int | None = None,
     role_failover_models: list[str] | None = None,
+    trace_label: str = "",
     **kwargs,
 ) -> str:
     """呼叫 LLM 並回傳回應文字。
@@ -317,6 +378,7 @@ def _call_llm_core(
             max_retries=max_retries,
             route_id=hop_route,
             max_context_tokens=max_context_tokens,
+            trace_label=trace_label,
             **kwargs,
         )
 
@@ -331,6 +393,7 @@ def _call_llm_core(
                 max_retries=hop_retries,
                 route_id=hop_route_id,
                 max_context_tokens=max_context_tokens,
+                trace_label=trace_label,
                 **kwargs,
             )
         except Exception as exc:
@@ -349,6 +412,7 @@ def _call_llm_core(
         max_retries=max_retries,
         route_id=route_id,
         max_context_tokens=max_context_tokens,
+        trace_label=trace_label,
         **kwargs,
     )
 
@@ -361,6 +425,7 @@ def _call_llm_on_route(
     *,
     route_id: str | None = None,
     max_context_tokens: int | None = None,
+    trace_label: str = "",
     **kwargs,
 ) -> str:
     kwargs.pop("role_failover_models", None)
@@ -408,6 +473,7 @@ def _call_llm_on_route(
                     system=system,
                     models=chain,
                     max_retries=max_retries,
+                    trace_label=trace_label,
                     **call_kw,
                 )
                 if hops > 0:
@@ -425,6 +491,7 @@ def _call_llm_on_route(
             system=system,
             model=resolved_model,
             max_retries=max_retries,
+            trace_label=trace_label,
             **call_kw,
         )
         cache.put(prompt, system, resolved_model, result)
@@ -493,6 +560,7 @@ def call_llm_stream(
     *,
     route_id: str | None = None,
     max_context_tokens: int | None = None,
+    trace_label: str = "",
     **kwargs,
 ):
     """呼叫 LLM 並串流回傳回應片段（生成器）。
@@ -516,11 +584,23 @@ def call_llm_stream(
     if params.get("api_base"):
         params["model"] = _ensure_provider_prefix(params["model"])
     extra = _openrouter_extra(target or {})
+    resolved_model = str(params.get("model") or model or "gpt-4o")
+
+    from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
+    from backend.billing.metering import meter_llm, precheck_llm
 
     retries = MAX_RETRIES if max_retries is None else max(1, int(max_retries))
     last_error: Exception | None = None
     for attempt in range(1, retries + 1):
         try:
+            try:
+                precheck_llm(
+                    resolved_model,
+                    max(1, len(prompt) // 4 + len(system or "") // 4),
+                    int(kwargs.get("max_tokens") or 2048),
+                )
+            except (InsufficientCreditsError, FeatureNotEntitledError) as exc:
+                raise RuntimeError(exc.message) from exc
             response = completion(
                 model=params["model"],
                 messages=messages,
@@ -530,6 +610,7 @@ def call_llm_stream(
                 **kwargs,
             )
             in_think = False
+            collected: list[str] = []
             for chunk in response:
                 delta = chunk.choices[0].delta if chunk.choices else None
                 reasoning = _delta_reasoning(delta)
@@ -538,14 +619,29 @@ def call_llm_stream(
                     if not in_think:
                         yield "<think>"
                         in_think = True
+                    collected.append(reasoning)
                     yield reasoning
                 if content:
                     if in_think:
                         yield "</think>"
                         in_think = False
+                    collected.append(content)
                     yield content
             if in_think:
                 yield "</think>"
+            output_text = "".join(collected)
+            in_tok = max(1, len(prompt) // 4 + len(system or "") // 4)
+            out_tok = max(1, len(output_text) // 4)
+            try:
+                meter_llm(
+                    resolved_model,
+                    in_tok,
+                    out_tok,
+                    reference=trace_label or "stream",
+                    meta={"trace_label": trace_label or "stream"},
+                )
+            except (InsufficientCreditsError, FeatureNotEntitledError) as exc:
+                raise RuntimeError(exc.message) from exc
             return
         except RateLimitError as exc:
             last_error = exc

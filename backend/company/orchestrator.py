@@ -1453,6 +1453,19 @@ class CompanyOrchestrator:
 
                 cost = CostTracker.estimate_cost_rough(model, "high")
                 self.budget.record_cost(cost, complexity="high")
+                try:
+                    from backend.billing.metering import meter_raho_layer
+
+                    _raho_layer = seat_ctx.get("layer")
+                    if _raho_layer is not None:
+                        meter_raho_layer(
+                            f"L{_raho_layer}",
+                            task_id=self.run_id,
+                            reference=item.id,
+                            meta={"role": str(role_type), "item_id": item.id},
+                        )
+                except Exception:
+                    pass
                 item.actual_cost += cost
                 item.artifacts["tokens"] = int(item.artifacts.get("tokens") or 0) + 16000
 

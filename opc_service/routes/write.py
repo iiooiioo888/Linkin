@@ -68,6 +68,13 @@ async def write_tags(req: WriteRequest):
                     result="success" if result["success"] else "failed",
                     detail=result.get("message", ""),
                 )
+                if result.get("success"):
+                    try:
+                        from backend.billing.metering import meter_opc_write
+
+                        meter_opc_write(reference=result["tag_name"], meta={"reason": req.reason or ""})
+                    except Exception:
+                        pass
         except Exception as exc:
             logger.exception("批量写入失败")
             # 降级处理：为每个未处理的条目添加失败结果

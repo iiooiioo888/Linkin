@@ -8,7 +8,7 @@
  * 生產環境可設定 VITE_API_URL 環境變數指向後端位址。
  */
 
-import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, SeatFeedQuery, SeatIOFeed, SeatIORecord, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
+import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, BillingLedgerEntry, BillingSnapshot, BillingUsageEvent, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, SeatFeedQuery, SeatIOFeed, SeatIORecord, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
 import { appendGateQuery } from '../lib/auth';
 
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
@@ -1004,6 +1004,59 @@ export async function startDockerService(service: string): Promise<DockerActionR
 // ═══════════════════════════════════════════════════════════
 // 雲控制台 API
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// 靈境積分帳務 API
+// ═══════════════════════════════════════════════════════════
+
+export async function fetchBilling(): Promise<BillingSnapshot> {
+  const resp = await fetch(apiUrl('/billing'));
+  if (!resp.ok) throw new Error(`讀取帳務失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function fetchBillingLedger(limit = 50): Promise<{ user_id: string; entries: BillingLedgerEntry[] }> {
+  const resp = await fetch(apiUrl(`/billing/ledger?limit=${limit}`));
+  if (!resp.ok) throw new Error(`讀取分類帳失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function fetchBillingUsage(limit = 50): Promise<{ user_id: string; events: BillingUsageEvent[] }> {
+  const resp = await fetch(apiUrl(`/billing/usage?limit=${limit}`));
+  if (!resp.ok) throw new Error(`讀取用量失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function topupBillingCredits(credits: number, note = ''): Promise<unknown> {
+  const resp = await fetch(apiUrl('/billing/topup'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credits, note }),
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `充值失敗（HTTP ${resp.status}）`);
+  }
+  return resp.json();
+}
+
+export async function assignBillingPlan(planId: string): Promise<unknown> {
+  const resp = await fetch(apiUrl('/billing/assign-plan'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plan_id: planId }),
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `方案切換失敗（HTTP ${resp.status}）`);
+  }
+  return resp.json();
+}
+
+/** @deprecated 使用 fetchBilling */
+export const fetchWallet = fetchBilling;
+export const fetchWalletLedger = fetchBillingLedger;
+export const topupWallet = (amountUsd: number, note = '') => topupBillingCredits(amountUsd * 1000, note);
 
 /** 獲取雲端費用摘要。 */
 export async function fetchCloudBilling(): Promise<CloudBilling> {

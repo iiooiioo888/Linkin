@@ -317,6 +317,12 @@ def improve_answer(state: StateInput) -> dict:
     )
     improved = call_llm(prompt, model=model)
     iteration = state.get("iteration", 0) + 1
+    try:
+        from backend.billing.metering import meter_reflection_iteration
+
+        meter_reflection_iteration(1, task_id=str(state.get("session_id") or ""), meta={"node": "improve_answer"})
+    except Exception:
+        pass
     log_node(state, "improve_answer", model=model, iteration=iteration)
     reflections = list(state.get("reflections", []))
     reflections.append(

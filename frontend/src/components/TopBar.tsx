@@ -7,6 +7,7 @@ import { getGateUser, logoutGate } from '../lib/auth';
 import { activityTitle, consoleChromeLabel, consoleChromeTabKey, CONSOLE_CHROME_TABS, isCoreActivity, resolveActivity } from '../lib/monitorTabs';
 import { labSubTabLabel, type LabSubTab } from '../lib/labTabs';
 import type { MonitorTab, ViewKey } from './AppShell';
+import WalletBadge from './WalletBadge';
 
 interface TopBarProps {
   activeView: ViewKey;
@@ -85,6 +86,8 @@ export default function TopBar({
       )}
 
       <div className="ml-auto flex items-center gap-0.5">
+        <WalletBadge onOpenBilling={() => onMonitorTabChange?.('billing')} />
+
         {llmConfigured === false && (
           <button
             type="button"

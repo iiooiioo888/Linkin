@@ -16,8 +16,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+from backend.billing.context import billing_enabled, current_billing_user
+from backend.billing.errors import InsufficientCreditsError
+from backend.billing.metering import meter_recall
+from backend.billing.quota import get_billing_service
+from backend.billing.credits import credits_for_recall
 
 from backend.integrations.base import IntegrationConfig
 from backend.integrations.recall_bridge import assemble_recall_context
@@ -196,6 +202,21 @@ class RecallRequest(BaseModel):
 @router.post("/recall")
 def recall(req: RecallRequest) -> dict[str, Any]:
     """token 節省召回：記憶（MemOS）＋分層上下文（OpenViking）＋知識（WeKnora）。"""
+    wallet_user = current_billing_user() or (req.user_id or "default").strip()
+    svc = get_billing_service()
+    recall_cost = credits_for_recall()
+    if billing_enabled() and recall_cost > 0:
+        try:
+            svc.ensure_can_afford(wallet_user, recall_cost)
+        except InsufficientCreditsError as exc:
+            raise HTTPException(
+                status_code=402,
+                detail=exc.message,
+                headers={
+                    "X-Billing-Code": exc.code,
+                    "X-Billing-Balance-Credits": f"{exc.balance_credits:.4f}",
+                },
+            ) from exc
     out = assemble_recall_context(
         req.query,
         req.history,
@@ -204,6 +225,15 @@ def recall(req: RecallRequest) -> dict[str, Any]:
         knowledge_base_id=req.knowledge_base_id,
         audit_path=req.audit_path,
     )
+    charge_entry = None
+    if billing_enabled() and recall_cost > 0:
+        try:
+            charge_entry = meter_recall(
+                user_id=wallet_user,
+                meta={"query_preview": (req.query or "")[:120]},
+            )
+        except InsufficientCreditsError as exc:
+            raise HTTPException(status_code=402, detail=exc.message) from exc
     return {
         "injection": out.render_injection(),
         "fragments": out.fragments,
@@ -211,6 +241,7 @@ def recall(req: RecallRequest) -> dict[str, Any]:
         "reason_codes": out.reason_codes,
         "degraded_sources": out.degraded_sources,
         "token_report": out.token_report,
+        "billing_credits_charged": recall_cost if charge_entry else 0.0,
     }
 
 

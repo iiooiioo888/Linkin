@@ -19,6 +19,7 @@ from backend.hub.service import (
     create_agent_task,
     get_agent_task,
 )
+from backend.billing.context import billing_user_id
 
 hub_router = APIRouter(prefix="/api/v1", tags=["ai-hub"])
 compat_router = APIRouter(prefix="/v1", tags=["ai-hub-nginx-compat"])
@@ -83,14 +84,18 @@ async def _chat_impl(
         user = authenticate(authorization)
         body = await _read_body(request)
         request_id = x_request_id or str(uuid.uuid4())
-        payload = complete_chat(
-            user,
-            body,
-            strategy=_strategy(x_routing_strategy, body),
-            region=_region(x_client_region, cf_ipcountry),
-            failover_raw=x_failover_config,
-            request_id=request_id,
-        )
+        billing_token = billing_user_id.set(f"hub:{user.id}")
+        try:
+            payload = complete_chat(
+                user,
+                body,
+                strategy=_strategy(x_routing_strategy, body),
+                region=_region(x_client_region, cf_ipcountry),
+                failover_raw=x_failover_config,
+                request_id=request_id,
+            )
+        finally:
+            billing_user_id.reset(billing_token)
         headers = {
             "X-Request-Id": request_id,
             "X-Trace-Id": request_id.replace("-", "")[:32].ljust(32, "0"),
@@ -119,15 +124,19 @@ async def _create_task_impl(
         user = authenticate(authorization)
         body = await _read_body(request)
         request_id = x_request_id or str(uuid.uuid4())
-        task = create_agent_task(
-            user,
-            body,
-            strategy=_strategy(x_routing_strategy, body),
-            region=_region(x_client_region, cf_ipcountry),
-            failover_raw=x_failover_config,
-            idempotency_key=idempotency_key,
-            request_id=request_id,
-        )
+        billing_token = billing_user_id.set(f"hub:{user.id}")
+        try:
+            task = create_agent_task(
+                user,
+                body,
+                strategy=_strategy(x_routing_strategy, body),
+                region=_region(x_client_region, cf_ipcountry),
+                failover_raw=x_failover_config,
+                idempotency_key=idempotency_key,
+                request_id=request_id,
+            )
+        finally:
+            billing_user_id.reset(billing_token)
         body_out = {
             "task_id": task.task_id,
             "status": "queued" if task.status == "queued" else task.status,

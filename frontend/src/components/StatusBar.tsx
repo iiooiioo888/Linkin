@@ -7,6 +7,7 @@ import type { DockerBudget, DockerStatus } from '../types';
 import { useIntegrationsStatus } from '../hooks/useIntegrationsStatus';
 import { jumpToIntegration, summarizeIntegrations } from '../lib/integrationsUi';
 import { useMonitorStore } from '../stores/monitorStore';
+import WalletBadge from './WalletBadge';
 
 interface StatusBarProps {
   llmConfigured: boolean | null;
@@ -131,6 +132,10 @@ export default function StatusBar({ llmConfigured, taskCount, memoryCount }: Sta
             {formatCost(totalCost)}
           </span>
         )}
+
+        <span className="apple-status-item hidden sm:inline-flex">
+          <WalletBadge compact />
+        </span>
 
         <span className="apple-status-item apple-data ml-auto">
           {taskCount} 任務 · {memoryCount} 記憶

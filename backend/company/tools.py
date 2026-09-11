@@ -246,6 +246,7 @@ class ToolRegistry:
 
         try:
             result = tool.execute(**request.args)
+            _maybe_bill_tool(request.tool, role=role)
             return ToolCallResult(tool=request.tool, success=True, result=result)
         except TypeError as exc:
             return ToolCallResult(
@@ -260,6 +261,26 @@ class ToolRegistry:
                 success=False,
                 error=str(exc),
             )
+
+
+def _maybe_bill_tool(tool_name: str, *, role: str | None = None) -> None:
+    try:
+        name = (tool_name or "").lower()
+        if name.startswith("market_") or name in {"archify_strategies", "strategy_preview"}:
+            from backend.billing.metering import meter_quant_call
+
+            meter_quant_call(reference=tool_name, meta={"role": role or ""})
+        elif name.startswith("docker_") and name in {"docker_restart", "docker_stop", "docker_start"}:
+            from backend.billing.metering import emit_usage_event
+
+            emit_usage_event("docker_control", 5.0, reference=tool_name, meta={"role": role or ""})
+        elif name in {"place_block", "break_block", "fill_block", "execute_command"} or "minecraft" in name:
+            from backend.billing.metering import meter_minecraft
+
+            blocks = 0
+            meter_minecraft(tool_name, blocks=blocks, meta={"role": role or ""})
+    except Exception:
+        pass
 
 
 # ═══════════════════════════════════════════════════════════════

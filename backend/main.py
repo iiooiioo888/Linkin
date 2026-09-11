@@ -59,6 +59,9 @@ from backend.hub.api import register_hub
 from backend.hub.monitor import collect_hub_monitor
 from backend.linkin.api import register_linkin
 from backend.middleware.auth_gate import AuthGateMiddleware
+from backend.billing import register_billing
+from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
+from backend.billing.middleware import BillingContextMiddleware
 from backend.modules import register_modules
 from backend.services import lab_tools
 from backend.services.agent_monitor import collect_agent_monitor
@@ -166,6 +169,7 @@ if not allowed_origins:
 
 logger.info("CORS allowed origins: %s", allowed_origins)
 
+app.add_middleware(BillingContextMiddleware)
 app.add_middleware(AuthGateMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -187,6 +191,33 @@ register_integrations(app)
 from backend.company.runtime_api import register_runtime_api
 
 register_runtime_api(app)
+register_billing(app)
+
+
+@app.exception_handler(InsufficientCreditsError)
+async def billing_insufficient_handler(_request: Request, exc: InsufficientCreditsError):
+    return JSONResponse(
+        status_code=402,
+        content={
+            "detail": exc.message,
+            "code": exc.code,
+            "balance_credits": exc.balance_credits,
+            "required_credits": exc.required_credits,
+        },
+    )
+
+
+@app.exception_handler(FeatureNotEntitledError)
+async def billing_feature_handler(_request: Request, exc: FeatureNotEntitledError):
+    return JSONResponse(
+        status_code=403,
+        content={
+            "detail": exc.message,
+            "code": exc.code,
+            "feature": exc.feature,
+            "plan_id": exc.plan_id,
+        },
+    )
 
 
 class ChatRequest(BaseModel):
@@ -2141,9 +2172,19 @@ async def lab_archify_render(body: ArchifyRenderRequest):
         raise HTTPException(status_code=502, detail=str(orig)) from orig
 
 
+def _require_quant_pack() -> None:
+    from backend.billing.context import current_billing_user
+    from backend.billing.metering import meter_quant_call, require_feature
+    from backend.billing.plans import PACK_QUANT
+
+    require_feature(PACK_QUANT, current_billing_user())
+    meter_quant_call(reference="lab_quant")
+
+
 @app.get("/lab/archify/strategies")
 async def lab_archify_strategies():
     """Archify — 策略庫總覽／分類拓撲 IR（全部策略可視化）。"""
+    _require_quant_pack()
     from backend.company.quant_strategy_maps import strategy_catalog_maps
 
     return strategy_catalog_maps()
@@ -2152,6 +2193,7 @@ async def lab_archify_strategies():
 @app.get("/lab/archify/strategies/{strategy_id}")
 async def lab_archify_strategy(strategy_id: str):
     """Archify — 單策略工作流／生命週期 IR。"""
+    _require_quant_pack()
     from backend.company.quant_strategy_maps import strategy_maps
 
     payload = strategy_maps(strategy_id)
@@ -2163,6 +2205,7 @@ async def lab_archify_strategy(strategy_id: str):
 @app.get("/lab/quant/strategies")
 async def lab_quant_strategies(category: str = "", query: str = "", status: str = ""):
     """stock-quant 策略庫分類樹（實驗室瀏覽；角色仍用 market_strategy_catalog）。"""
+    _require_quant_pack()
     from backend.company.quant_strategy_catalog import market_strategy_catalog
 
     return market_strategy_catalog(
@@ -2176,6 +2219,7 @@ async def lab_quant_strategies(category: str = "", query: str = "", status: str 
 @app.get("/lab/quant/preview")
 async def lab_quant_preview(strategy: str, symbol: str = "600519"):
     """策略工作流 IR + 回測權益／收盤曲線（實驗室圖表）。"""
+    _require_quant_pack()
     from backend.company.quant_strategy_maps import strategy_preview
 
     payload = strategy_preview(strategy, symbol=symbol)
@@ -2195,6 +2239,7 @@ async def lab_quant_capital_flow(
     enable_t1: bool = False,
 ):
     """策略資金流三視圖：瀑布 Mermaid、狀態機 Mermaid、時間軸表。"""
+    _require_quant_pack()
     from backend.company.quant_capital_flow_maps import strategy_capital_flow
 
     payload = strategy_capital_flow(

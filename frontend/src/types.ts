@@ -1,3 +1,54 @@
+/** 靈境積分帳戶 */
+export interface BillingAccount {
+  user_id: string;
+  balance_credits: number;
+  plan_id: string;
+  plan_name_zh: string;
+  byok: boolean;
+  monthly_quota_credits: number;
+  monthly_used_credits: number;
+  monthly_remaining_credits: number;
+  period_key: string;
+  concurrency_limit: number;
+  low_balance: boolean;
+  features: string[];
+}
+
+export interface BillingLedgerEntry {
+  id: string;
+  amount_credits: number;
+  balance_after_credits: number;
+  kind: 'credit' | 'debit';
+  source: string;
+  reference: string;
+  meta: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface BillingUsageEvent {
+  id: string;
+  event_type: string;
+  credits: number;
+  quantity: number;
+  unit: string;
+  task_id: string;
+  reference: string;
+  meta: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface BillingSnapshot {
+  account: BillingAccount;
+  plans: Record<string, unknown>[];
+  rate_card: Record<string, unknown>;
+  enterprise: Record<string, unknown>;
+}
+
+/** @deprecated 使用 BillingAccount */
+export type WalletAccount = BillingAccount & { balance_usd?: number; currency?: string };
+export type WalletLedgerEntry = BillingLedgerEntry & { amount_usd?: number; balance_after_usd?: number };
+export type WalletSnapshot = BillingSnapshot;
+
 /** 多維度評估（優化 #1） */
 export interface DimensionScore {
   score: number;
