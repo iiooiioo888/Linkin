@@ -101,10 +101,15 @@ body.scroll-lock {
 }
 
 .console-hdr-tabs {
-  display: flex;
   min-width: 0;
   align-items: center;
   gap: 2px;
+}
+
+@media (min-width: 768px) {
+  .console-hdr-tabs {
+    display: flex;
+  }
 }
 
 .console-hdr-tab {
