@@ -20,6 +20,8 @@ from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
+_clamp_warned: set[tuple[str, str]] = set()  # 節流：每個 (請求模型, 替代模型) 只記一次 INFO
+
 FORBIDDEN_RE = re.compile(r"(?i)claude|anthropic|opus-|sonnet-|haiku-|fable")
 
 VENDOR_STATIC: dict[str, tuple[str, ...]] = {
@@ -252,7 +254,14 @@ def _clamp_against(requested: str | None, runtime: dict[str, Any]) -> str:
     if hit:
         return hit
     if allowed:
-        logger.info("模型 %s 不在目前 API 可用池，改用 %s", requested, fallback)
+        key = (requested, fallback)
+        if key not in _clamp_warned:
+            if len(_clamp_warned) > 200:  # 防無界增長
+                _clamp_warned.clear()
+            _clamp_warned.add(key)
+            logger.info("模型 %s 不在目前 API 可用池，改用 %s", requested, fallback)
+        else:
+            logger.debug("模型 %s 不在目前 API 可用池，改用 %s（重複）", requested, fallback)
         return fallback if _model_in_pool(fallback, allowed) else allowed[0]
     kind = classify_provider(str(runtime.get("api_base") or ""), fallback)
     static_ids = [row["id"] for row in static_catalog(kind)]

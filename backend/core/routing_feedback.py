@@ -23,6 +23,7 @@ _DEFAULT_PATH = (
 _FEEDBACK_PATH = Path(os.getenv("EVOL_ROUTING_FEEDBACK_PATH", str(_DEFAULT_PATH)))
 _MAX_RECORDS = int(os.getenv("EVOL_ROUTING_FEEDBACK_MAX", "200"))
 _LENGTH_BIAS = float(os.getenv("EVOL_ROUTING_LENGTH_BIAS", "0"))  # 額外字數門檻偏移
+_last_threshold_log: tuple[str, int, int] | None = None  # 節流：僅在門檻變動時記 INFO
 _WEIGHT_MIN_SAMPLES = int(os.getenv("EVOL_ROUTING_WEIGHT_MIN", "5"))
 _WEIGHT_MARGIN = float(os.getenv("EVOL_ROUTING_WEIGHT_MARGIN", "0.15"))
 
@@ -109,18 +110,27 @@ def adaptive_length_threshold(base_length: int = 200) -> int:
     ]
 
     adjusted = base_length + int(_LENGTH_BIAS)
+    global _last_threshold_log
     if len(simple_miss) >= 3:
         adjusted += 30
-        logger.info(
-            "路由自適應：simple 低分 %d 次，字數門檻 %d → %d",
-            len(simple_miss), base_length, adjusted,
-        )
+        if _last_threshold_log != ("simple", base_length, adjusted):
+            logger.info(
+                "路由自適應：simple 低分 %d 次，字數門檻 %d → %d",
+                len(simple_miss), base_length, adjusted,
+            )
+            _last_threshold_log = ("simple", base_length, adjusted)
+        else:
+            logger.debug("路由自適應（重複）：simple 低分 %d 次，門檻維持 %d", len(simple_miss), adjusted)
     elif len(company_over) >= 5:
         adjusted = max(80, adjusted - 20)
-        logger.info(
-            "路由自適應：company 過度路由 %d 次，字數門檻 %d → %d",
-            len(company_over), base_length, adjusted,
-        )
+        if _last_threshold_log != ("company", base_length, adjusted):
+            logger.info(
+                "路由自適應：company 過度路由 %d 次，字數門檻 %d → %d",
+                len(company_over), base_length, adjusted,
+            )
+            _last_threshold_log = ("company", base_length, adjusted)
+        else:
+            logger.debug("路由自適應（重複）：company 過度路由 %d 次，門檻維持 %d", len(company_over), adjusted)
 
     return adjusted
 

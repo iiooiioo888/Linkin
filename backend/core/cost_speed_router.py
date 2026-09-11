@@ -81,12 +81,12 @@ def _builtin_defaults() -> dict[str, Any]:
             },
         },
         "stage_models": {
-            "simple": {"generate": "qwen-turbo", "evaluate": "qwen-turbo", "reflect": "deepseek-v4-flash"},
-            "medium": {"generate": "qwen-plus", "evaluate": "qwen-turbo", "reflect": "deepseek-v4-flash"},
+            "simple": {"generate": "qwen3.8-flash", "evaluate": "qwen3.8-flash", "reflect": "deepseek-v4-flash-0731"},
+            "medium": {"generate": "qwen3.7-plus", "evaluate": "qwen3.8-flash", "reflect": "deepseek-v4-flash-0731"},
             "complex": {
-                "generate": "deepseek-v4-pro",
-                "evaluate": "qwen-turbo",
-                "reflect": "deepseek-v4-pro",
+                "generate": "qwen3.8-max",
+                "evaluate": "qwen3.7-plus",
+                "reflect": "qwen3.8-max",
             },
         },
         "models": {},

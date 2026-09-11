@@ -25,38 +25,43 @@
   },
   "stage_models": {
     "simple": {
-      "generate": "qwen-turbo",
-      "evaluate": "qwen-turbo",
-      "reflect": "deepseek-v4-flash",
-      "improve": "qwen-turbo",
-      "cross_eval": "qwen-turbo",
-      "decompose": "deepseek-v4-flash"
+      "generate": "qwen3.8-flash",
+      "evaluate": "qwen3.8-flash",
+      "reflect": "deepseek-v4-flash-0731",
+      "improve": "qwen3.8-flash",
+      "cross_eval": "qwen3.8-flash",
+      "decompose": "deepseek-v4-flash-0731"
     },
     "medium": {
-      "generate": "qwen-plus",
-      "evaluate": "qwen-turbo",
-      "reflect": "deepseek-v4-flash",
-      "improve": "qwen-plus",
-      "cross_eval": "qwen-turbo",
-      "decompose": "deepseek-v4-flash"
+      "generate": "qwen3.7-plus",
+      "evaluate": "qwen3.8-flash",
+      "reflect": "deepseek-v4-flash-0731",
+      "improve": "qwen3.7-plus",
+      "cross_eval": "qwen3.8-flash",
+      "decompose": "deepseek-v4-flash-0731"
     },
     "complex": {
-      "generate": "deepseek-v4-pro",
-      "evaluate": "qwen-turbo",
-      "reflect": "deepseek-v4-pro",
-      "improve": "deepseek-v4-flash",
-      "cross_eval": "qwen-turbo",
-      "decompose": "deepseek-v4-pro"
+      "generate": "qwen3.8-max",
+      "evaluate": "qwen3.7-plus",
+      "reflect": "qwen3.8-max",
+      "improve": "deepseek-v4-flash-0731",
+      "cross_eval": "qwen3.7-plus",
+      "decompose": "qwen3.8-max"
     }
   },
   "models": {
-    "qwen-turbo": { "cost_score": 1, "speed_score": 9, "label": "便宜快速" },
-    "qwen-plus": { "cost_score": 3, "speed_score": 7, "label": "均衡" },
-    "deepseek-v4-flash": { "cost_score": 2, "speed_score": 8, "label": "日常推理" },
+    "qwen3.8-flash": { "cost_score": 1, "speed_score": 9, "label": "便宜快速" },
+    "qwen3.7-plus": { "cost_score": 3, "speed_score": 7, "label": "均衡" },
+    "deepseek-v4-flash-0731": { "cost_score": 2, "speed_score": 8, "label": "日常推理" },
+    "qwen3.8-max": { "cost_score": 7, "speed_score": 5, "label": "高質量" },
     "deepseek-v4-pro": { "cost_score": 6, "speed_score": 4, "label": "深度推理" },
+    "glm-5.2": { "cost_score": 4, "speed_score": 6, "label": "通用" },
+    "qwen-turbo": { "cost_score": 1, "speed_score": 9, "label": "便宜快速（已下線，僅相容）" },
+    "qwen-plus": { "cost_score": 3, "speed_score": 7, "label": "均衡（已下線，僅相容）" },
+    "deepseek-v4-flash": { "cost_score": 2, "speed_score": 8, "label": "日常推理（已下線，僅相容）" },
     "deepseek-v4-flash-vision-exp": { "cost_score": 3, "speed_score": 7, "label": "多模態實驗" },
     "kimi-k3": { "cost_score": 5, "speed_score": 6, "label": "长上下文" },
-    "gpt-4o-mini": { "cost_score": 4, "speed_score": 8, "label": "通用轻量" },
-    "gpt-4o": { "cost_score": 8, "speed_score": 7, "label": "高质量" }
+    "gpt-4o-mini": { "cost_score": 4, "speed_score": 8, "label": "通用轻量（已退役）" },
+    "gpt-4o": { "cost_score": 8, "speed_score": 7, "label": "高质量（已退役）" }
   }
 }

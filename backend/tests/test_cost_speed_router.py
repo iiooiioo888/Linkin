@@ -58,7 +58,7 @@ class TestCostSpeedRouting:
             query="什麼是 Python？",
             complexity="simple",
         )
-        assert model == "qwen-turbo"
+        assert model == "qwen3.8-flash"
 
     def test_clamp_to_allowed_pool(self, monkeypatch):
         save_runtime_config(
