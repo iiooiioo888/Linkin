@@ -1169,6 +1169,7 @@ export default function App() {
           <MonitorView
             onOpenTask={handleDashboardOpenTask}
             onOpenTrace={handleOpenTrace}
+            messages={activeSession?.messages ?? []}
             activeTab={monitorTab}
             onTabChange={handleMonitorTabChange}
             focusAgentId={focusAgentId}

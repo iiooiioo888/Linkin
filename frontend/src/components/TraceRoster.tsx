@@ -32,6 +32,8 @@ export default function TraceRoster({ selectedTaskId, onPick }: TraceRosterProps
 
   useEffect(() => {
     void loadTraces();
+    const t = setInterval(() => void loadTraces(), 8000);
+    return () => clearInterval(t);
   }, [loadTraces]);
 
   const filtered = traces.filter((t) => {

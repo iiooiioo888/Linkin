@@ -12,6 +12,7 @@ import {
   type Node,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { mapPhaseToDagNodeId } from '../lib/animLive';
 
 const BLUE = '#007AFF';
 const GREEN = '#34C759';
@@ -40,20 +41,6 @@ const LINKS: Array<[string, string]> = [
   ['improve', 'gen'],
 ];
 
-function phaseIndex(phase: string | null | undefined): string | null {
-  if (!phase) return null;
-  const p = phase.toLowerCase();
-  if (p.includes('sense') || p.includes('感知')) return 'sense';
-  if (p.includes('route') || p.includes('路由')) return 'route';
-  if (p.includes('compan') || p.includes('公司') || p.includes('orchestr')) return 'company';
-  if (p.includes('generat') || p.includes('生成')) return 'gen';
-  if (p.includes('evaluat') || p.includes('評估')) return 'eval';
-  if (p.includes('reflect') || p.includes('反思')) return 'reflect';
-  if (p.includes('improv') || p.includes('改進')) return 'improve';
-  if (p.includes('output') || p.includes('輸出') || p.includes('done')) return 'out';
-  return null;
-}
-
 export default function PipelineDag({
   phase,
   height = 280,
@@ -61,7 +48,7 @@ export default function PipelineDag({
   phase?: string | null;
   height?: number;
 }) {
-  const active = phaseIndex(phase);
+  const active = mapPhaseToDagNodeId(phase);
 
   const nodes: Node[] = useMemo(
     () =>

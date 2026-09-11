@@ -13,20 +13,11 @@ import {
   pickBusyAgents,
 } from '../lib/animLive';
 import { LAB_INTEGRATION_TABS, type LabSubTab } from '../lib/labTabs';
-import { filterAgentsByDesk, requestRoleSettingsDesk } from '../lib/agentUi';
+import { filterAgentsByDesk, PIPELINE_STAGES, requestRoleSettingsDesk } from '../lib/agentUi';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { MonitorTab } from './AppShell';
 import IntegrationsStrip from './IntegrationsStrip';
 import { consoleLayout } from './ui/ConsoleLayout';
-
-const PIPELINE = [
-  { id: 'sense', label: '感知' },
-  { id: 'route', label: '路由' },
-  { id: 'gen', label: '生成' },
-  { id: 'eval', label: '評估' },
-  { id: 'reflect', label: '反思' },
-  { id: 'out', label: '輸出' },
-];
 
 const BLUE = '#0A84FF';
 const GREEN = '#30D158';
@@ -237,16 +228,17 @@ function RingMetric({
 
 function PipelineCard({
   feed,
+  backgroundPhase,
   dock,
   onOpen,
 }: {
   feed: AnimLiveFeed;
+  backgroundPhase?: string | null;
   dock?: boolean;
   onOpen?: () => void;
 }) {
-  const liveIdx =
-    mapPhaseToPipelineIndex(feed.streamPhase) ?? mapPhaseToPipelineIndex(feed.taskPhase);
-  const phase = feed.streamPhase || feed.taskPhase;
+  const phase = feed.streamPhase || feed.taskPhase || backgroundPhase || null;
+  const liveIdx = mapPhaseToPipelineIndex(phase);
 
   return (
     <FrostCard
@@ -259,12 +251,12 @@ function PipelineCard({
       }
     >
       <div className={`flex items-center gap-1 ${dock ? 'py-1' : 'py-3'} sm:gap-2`}>
-        {PIPELINE.map((n, i) => {
+        {PIPELINE_STAGES.map((n, i) => {
           const active = liveIdx != null && i === liveIdx;
           const done = liveIdx != null && i < liveIdx;
           return (
             <div key={n.id} className="relative flex min-w-0 flex-1 flex-col items-center">
-              {i < PIPELINE.length - 1 && (
+              {i < PIPELINE_STAGES.length - 1 && (
                 <div
                   className={`absolute left-[52%] ${dock ? 'top-[11px]' : 'top-[13px]'} h-[2px] w-[96%]`}
                   style={{ background: done ? GREEN : 'rgba(255,255,255,0.1)' }}
@@ -711,6 +703,7 @@ function LabToolsCard({
 
 export default function LiveBoard({
   feed,
+  backgroundPhase,
   density = 'page',
   onOpenLab,
   onOpenTab,
@@ -718,6 +711,7 @@ export default function LiveBoard({
   onOpenAgent,
 }: {
   feed: AnimLiveFeed;
+  backgroundPhase?: string | null;
   density?: LiveBoardDensity;
 } & LiveBoardNav) {
   const dock = density === 'dock';
@@ -776,7 +770,12 @@ export default function LiveBoard({
               onOpenTab={onOpenTab}
             />
             <div className="lb-span-2">
-              <PipelineCard feed={feed} dock onOpen={() => onOpenTab?.('pipeline')} />
+              <PipelineCard
+                feed={feed}
+                backgroundPhase={backgroundPhase}
+                dock
+                onOpen={() => onOpenTab?.('pipeline')}
+              />
             </div>
             <BudgetCard feed={feed} dock onOpen={() => onOpenTab?.('models')} />
             <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
@@ -800,7 +799,11 @@ export default function LiveBoard({
               onOpenTab={onOpenTab}
             />
             <div className="lb-span-2">
-              <PipelineCard feed={feed} onOpen={() => onOpenTab?.('pipeline')} />
+              <PipelineCard
+                feed={feed}
+                backgroundPhase={backgroundPhase}
+                onOpen={() => onOpenTab?.('pipeline')}
+              />
             </div>
             <BudgetCard feed={feed} onOpen={() => onOpenTab?.('models')} />
             <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />

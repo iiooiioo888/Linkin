@@ -9,7 +9,7 @@ import { buildAnimLiveFeed } from '../lib/animLive';
 import { isLinkinStudioAgent } from '../lib/agentUi';
 import { jumpToL0Kernel } from '../lib/rahoUi';
 import { useMonitorStore } from '../stores/monitorStore';
-import type { L0Snapshot, TaskProgress } from '../types';
+import type { ChatMessage, L0Snapshot, TaskProgress } from '../types';
 import type { MonitorTab } from './AppShell';
 import type { LabSubTab } from '../lib/labTabs';
 import { moduleIdForTab } from '../lib/worldModules';
@@ -37,6 +37,7 @@ const BillingCreditsHub = lazy(() => import('./billing/BillingCreditsHub'));
 interface MonitorViewProps {
   onOpenTask: (task: TaskProgress) => void;
   onOpenTrace?: (taskId: string) => void;
+  messages?: ChatMessage[];
   activeTab: MonitorTab;
   onTabChange: (tab: MonitorTab) => void;
   focusAgentId: string | null;
@@ -56,11 +57,13 @@ function PanelFallback() {
 }
 
 function LiveTab({
+  messages = [],
   onOpenLab,
   onOpenTab,
   onOpenTraces,
   onOpenAgent,
 }: {
+  messages?: ChatMessage[];
   onOpenLab?: (sub: LabSubTab) => void;
   onOpenTab?: (tab: MonitorTab) => void;
   onOpenTraces?: () => void;
@@ -74,11 +77,17 @@ function LiveTab({
   const connected = useMonitorStore((s) => s.connected);
   const error = useMonitorStore((s) => s.error);
 
+  const dashboard = useMonitorStore((s) => s.dashboard);
+  const backgroundPhase = dashboard?.tasks?.find(
+    (t) => t.status === 'running' || t.status === 'pending',
+  )?.phase;
+
   const liveFeed = buildAnimLiveFeed({
     agents,
     optimization,
     billing,
     llmOps,
+    messages,
     updatedAt: generatedAt,
   });
   const [l0, setL0] = useState<L0Snapshot | null>(null);
@@ -121,6 +130,7 @@ function LiveTab({
       ) : null}
       <LiveBoard
         feed={liveFeed}
+        backgroundPhase={backgroundPhase}
         onOpenLab={onOpenLab}
         onOpenTab={onOpenTab}
         onOpenTraces={onOpenTraces}
@@ -133,6 +143,7 @@ function LiveTab({
 export default function MonitorView({
   onOpenTask,
   onOpenTrace,
+  messages = [],
   activeTab,
   onTabChange,
   focusAgentId,
@@ -165,6 +176,7 @@ export default function MonitorView({
       <Suspense fallback={<PanelFallback />}>
         {tab === 'live' && (
           <LiveTab
+            messages={messages}
             onOpenLab={(sub) => {
               onTabChange('lab');
               onLabSubTabChange(sub);
@@ -188,7 +200,9 @@ export default function MonitorView({
         {tab === 'agents' && (
           <AgentsMonitorPanel focusAgentId={focusAgentId} onFocusAgent={onFocusAgent} deskScope="console" />
         )}
-        {tab === 'pipeline' && <PipelineView onGoTasks={() => onTabChange('tasks')} />}
+        {tab === 'pipeline' && (
+          <PipelineView messages={messages} onGoTasks={() => onTabChange('tasks')} />
+        )}
         {tab === 'metrics' && <SystemMetricsPanel />}
         {tab === 'models' && <ModelCallPanel />}
         {tab === 'credits' && <BillingCreditsHub />}

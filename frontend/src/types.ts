@@ -291,10 +291,16 @@ export interface TaskProgress {
 }
 
 /** RAHO 用戶 Grill-Me 狀態 */
+export interface GrillChoice {
+  key: string;
+  label: string;
+}
+
 export interface GrillQuestion {
   question: string;
   why?: string;
   dimension?: string;
+  choices?: GrillChoice[];
 }
 
 export interface AuditorScores {

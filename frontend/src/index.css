@@ -2210,11 +2210,19 @@ body.scroll-lock {
 }
 
 .rd-grill-fuse {
+  display: flex;
+  flex-direction: column;
   flex: 0 0 auto;
-  max-height: 46vh;
-  overflow-y: auto;
+  min-height: 0;
+  max-height: min(46vh, 340px);
+  overflow: hidden;
   border-bottom: 1px solid var(--apple-hairline);
-  padding: 4px 14px 8px;
+  padding: 6px 14px 10px;
+}
+
+.rd-grill-fuse > * {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .rd-grill-fuse .raho-org {
@@ -3125,7 +3133,18 @@ body.scroll-lock {
 }
 
 .raho-legend--4 {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.raho-legend--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.raho-legend--compact .raho-legend-col {
+  padding: 5px 7px;
 }
 
 .raho-legend-col {
@@ -3608,9 +3627,41 @@ body.scroll-lock {
   font-style: normal;
 }
 
-.raho-grill-composer textarea {
+.raho-grill-current-q {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #f5f5f7;
+  white-space: pre-wrap;
+}
+
+.raho-grill-current-why {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #8e8e93;
+}
+
+.raho-grill-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.raho-grill-choice {
   width: 100%;
-  margin-top: 12px;
+  text-align: left;
+}
+
+.raho-grill-choice.is-vague {
+  border-color: rgba(255, 159, 10, 0.35);
+  background: rgba(255, 159, 10, 0.08);
+}
+
+.raho-grill-composer textarea,
+.raho-grill-custom textarea {
+  width: 100%;
+  margin-top: 8px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: #1c1c1e;
@@ -3620,11 +3671,24 @@ body.scroll-lock {
   resize: none;
 }
 
+.raho-grill-custom {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .raho-grill-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 8px;
+}
+
+.raho-btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #aeaeb2;
 }
 
 .raho-battle-card {

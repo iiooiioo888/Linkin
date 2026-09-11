@@ -936,6 +936,7 @@ class TaskManager:
     async def _run_company_task(self, record: TaskRecord) -> None:
         """公司運行時路徑：多角色分工 → 反思迴圈。"""
         tracer = TraceLogger(record.task_id)
+        self._set_phase(record, "starting", template=record.template)
         tracer.log_phase_change("starting", data={"template": record.template})
         # 角色 I/O 上下文：綁定 task_id 供事件鏡像/席位軌跡歸屬（公司協程內自動繼承）
         from backend.core import llm_trace

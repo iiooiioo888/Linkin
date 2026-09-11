@@ -97,6 +97,35 @@ class TestScoring:
         assert len(QUESTION_BANK) == 16
 
 
+class TestGrillChoices:
+    def test_start_emits_selectable_choices(self):
+        started = auditor_start("打造完整成長策略")
+        q = started["question"]
+        assert q
+        assert len(q.get("choices") or []) >= 2
+        keys = {c["key"] for c in q["choices"]}
+        assert "vague" in keys
+        assert all(c.get("label") for c in q["choices"])
+
+    def test_turn_with_selected_choice_advances(self):
+        started = auditor_start("打造完整成長策略")
+        sid = started["session_id"]
+        rich = next(c for c in started["question"]["choices"] if c["key"] != "vague")
+        nxt = auditor_turn(sid, rich["label"])
+        assert nxt["locked"] is False
+        assert nxt.get("question")
+        assert len(nxt["question"].get("choices") or []) >= 2
+
+    def test_vague_choice_still_scores_poorly(self):
+        started = auditor_start("打造完整成長策略")
+        sid = started["session_id"]
+        vague = next(c for c in started["question"]["choices"] if c["key"] == "vague")
+        nxt = auditor_turn(sid, vague["label"])
+        assert nxt["locked"] is False
+        assert nxt["terminated"] is False
+        assert "量化失敗" in (nxt["question"]["question"] if nxt.get("question") else "")
+
+
 class TestGateway:
     def test_first_turn_never_approves(self):
         started = auditor_start("目前需 4 小時，目標壓縮至 0.5 小時，準確率不得低於 95%。")

@@ -147,8 +147,15 @@ export const PIPELINE_STAGES = [
   { id: 'out', label: '輸出' },
 ] as const;
 
-export function pipelineStageColumn(index: number, activeIndex: number | null): WorkItemColumnKey {
-  if (activeIndex == null) return 'queue';
+export function pipelineStageColumn(
+  index: number,
+  activeIndex: number | null,
+  opts?: { phaseKnown?: boolean },
+): WorkItemColumnKey {
+  if (activeIndex == null) {
+    if (opts?.phaseKnown === false && index === 0) return 'executing';
+    return 'queue';
+  }
   if (index < activeIndex) return 'done';
   if (index === activeIndex) return 'executing';
   return 'queue';
