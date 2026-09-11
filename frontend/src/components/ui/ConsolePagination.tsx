@@ -31,19 +31,19 @@ export function ConsolePagination({
         type="button"
         disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
-        className={cn(btnCls, 'bg-white/[0.04] text-[#AEAEB2] hover:text-[#F5F5F7]')}
+        className={cn(btnCls, 'border border-[var(--console-line)] bg-[var(--console-card)] text-[var(--console-sub)] hover:text-[var(--console-ink)]')}
       >
         上一頁
       </button>
-      <span className="min-w-[4.5rem] text-center text-[11px] tabular-nums text-[#8E8E93]">
+      <span className="min-w-[4.5rem] text-center text-[11px] tabular-nums text-[var(--console-sub)]">
         第 {page} 頁
-        <span className="text-[#636366]"> / {totalPages}</span>
+        <span className="text-[var(--console-faint)]"> / {totalPages}</span>
       </span>
       <button
         type="button"
         disabled={page >= totalPages}
         onClick={() => onPageChange(page + 1)}
-        className={cn(btnCls, 'bg-[#007AFF]/20 text-[#64D2FF] hover:bg-[#007AFF]/30')}
+        className={cn(btnCls, 'border border-[var(--console-blue)]/30 bg-[var(--console-blue)]/10 text-[var(--console-blue)] hover:bg-[var(--console-blue)]/20')}
       >
         下一頁
       </button>
