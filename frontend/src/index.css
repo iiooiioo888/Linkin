@@ -28,30 +28,38 @@
   --app-statusbar-height: 22px;
   --mobile-tab-bar-height: 56px;
 
-  /* ---- 控制台 OCD 三欄設計 tokens（8pt grid · zinc + indigo） ---- */
+  /* ---- 控制台 OCD 三欄設計 tokens（8pt grid · gold/dark v3） ---- */
   --u: 8px;
   --u2: 16px;
   --u3: 24px;
   --u4: 32px;
   --u6: 48px;
-  --console-bg: #0e0e10;
-  --console-sidebar: #131316;
-  --console-card: #18181b;
-  --console-card-elevated: #1f1f23;
-  --console-line: #2a2a30;
-  --console-line-strong: #3f3f46;
+  --console-bg: #08080a;
+  --console-sidebar: #0c0c0f;
+  --console-card: #121216;
+  --console-card-elevated: #18181d;
+  --console-line: #1f1f25;
+  --console-line-strong: #2a2a32;
   --console-line-hi: var(--console-line-strong);
-  --console-ink: #e4e4e7;
-  --console-sub: #a1a1aa;
-  --console-faint: #52525b;
-  --console-accent: #6366f1;
-  --console-accent-soft: #818cf8;
-  --console-green: #34d399;
-  --console-blue: #38bdf8;
-  --console-amber: #fbbf24;
-  --console-danger: #f87171;
-  --console-col-left: calc(var(--u) * 28);
-  --console-col-right: calc(var(--u) * 35);
+  --console-ink: #e6e6ea;
+  --console-sub: #82828c;
+  --console-faint: #45454e;
+  --console-dim: #2e2e36;
+  --console-accent: #c9a961;
+  --console-accent-soft: #6e5a32;
+  --console-green: #6fa87f;
+  --console-green-dk: #2e4a38;
+  --console-blue: #7a92b8;
+  --console-blue-dk: #2e3d52;
+  --console-amber: #c9a961;
+  --console-danger: #b88080;
+  --console-danger-dk: #4a2e2e;
+  --console-purple: #9184b5;
+  --console-purple-dk: #3d3452;
+  --console-cyan: #7aa8b8;
+  --console-cyan-dk: #2e4450;
+  --console-col-left: 216px;
+  --console-col-right: 304px;
   --console-gap: var(--u2);
   --console-pad: var(--u2);
 }
@@ -74,14 +82,19 @@ body {
   background-color: var(--apple-canvas);
   color: var(--apple-light);
   font-family:
+    'Inter',
     -apple-system,
     BlinkMacSystemFont,
     'SF Pro Text',
     'Segoe UI',
     'PingFang TC',
     'Microsoft JhengHei',
+    ui-monospace,
+    monospace,
     sans-serif;
+  font-size: 12px;
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.011em;
 }
@@ -391,9 +404,23 @@ body.scroll-lock {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.console-dense-grid--6 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 @media (min-width: 768px) {
   .console-dense-grid--4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .console-dense-grid--6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .console-dense-grid--6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
@@ -458,28 +485,37 @@ body.scroll-lock {
 }
 
 .console-hdr-tab {
+  position: relative;
   border: none;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   padding: 6px 10px;
   color: var(--console-sub);
   cursor: pointer;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 .console-hdr-tab:hover {
-  background: color-mix(in srgb, var(--console-ink) 4%, transparent);
   color: var(--console-ink);
 }
 
 .console-hdr-tab.on {
-  background: color-mix(in srgb, var(--console-accent) 14%, transparent);
   color: var(--console-ink);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--console-accent) 28%, transparent);
+}
+
+.console-hdr-tab.on::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--console-accent);
 }
 
 /* 側欄／設定分區共用：一律標題＋說明＋金邊，名冊展開也不改成單行、不收起 */

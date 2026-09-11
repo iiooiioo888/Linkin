@@ -9,6 +9,18 @@ import { navPathForTab } from '../lib/monitorTabs';
 import type { OptimizationMonitorData } from '../types';
 import { RoadmapTable } from './ChatMonitorCards';
 import {
+  buildActivityHeatmap,
+  buildSparkSeries24,
+  buildStatusStack,
+} from '../lib/monitorData';
+import {
+  ActivityHeatmap,
+  KpiSparkCard,
+  MiniProgressBar,
+  ResourceGauges,
+  StackBar,
+} from './ui/monitor';
+import {
   ConsoleCard,
   ConsoleCardHeader,
   ConsoleCenterColumn,
@@ -18,13 +30,14 @@ import {
   ConsoleRightRail,
   ConsoleSnippetList,
   ConsoleThreeColumn,
-  KpiCard,
-  KpiGrid4,
+  KpiGrid6,
   PanelAlert,
   PanelShell,
   SectionHeader,
+  WarnBar,
   consoleLayout,
 } from './ui/ConsoleLayout';
+import { useMonitorStore } from '../stores/monitorStore';
 
 type MetricRow = {
   name: string;
@@ -49,23 +62,6 @@ function statusClass(status: MetricRow['status']): string {
   }
 }
 
-function Gauge({ value, min, max }: { value: number | null; min: number; max: number }) {
-  const span = max - min || 1;
-  const pct = value == null ? 0 : Math.min(100, Math.max(0, ((value - min) / span) * 100));
-  const hot = pct >= 85;
-  return (
-    <div className="console-progress-track w-24">
-      <div
-        className={cn('console-progress-fill', hot && 'console-progress-fill--hot')}
-        style={{ width: `${pct}%` }}
-      />
-    </div>
-  );
-}
-
-function cn(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(' ');
-}
 
 function buildMetricRows(data: OptimizationMonitorData | null): MetricRow[] {
   if (!data) return [];
@@ -192,6 +188,7 @@ function buildMetricRows(data: OptimizationMonitorData | null): MetricRow[] {
 }
 
 export default function SystemMetricsPanel() {
+  const dashboard = useMonitorStore((s) => s.dashboard);
   const [data, setData] = useState<OptimizationMonitorData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -222,6 +219,14 @@ export default function SystemMetricsPanel() {
   const activeCount = data?.roadmap?.filter((r) => r.status === 'active').length ?? 0;
   const recentCycles = reflectionTrace?.recent_cycles ?? [];
   const systemHealthy = (sys?.success_rate ?? 0) >= 70 && hitPct >= 20;
+  const tasks = dashboard?.tasks ?? [];
+  const heatmap = buildActivityHeatmap(tasks);
+  const heatmapEmpty = heatmap.every((r) => r.every((c) => c.level === 0 && !c.error));
+  const spark = buildSparkSeries24(data, tasks);
+  const statusStack = buildStatusStack(sys ?? {});
+  const edge = data?.edge_cache ?? data?.opc_edge;
+  const cacheCapPct = edge?.max_size ? ((edge.entry_count ?? 0) / edge.max_size) * 100 : 0;
+  const capacityFull = cacheCapPct >= 100;
 
   const quickActions = [
     { label: 'API 路由', href: '#/monitor/llm' },
@@ -283,20 +288,62 @@ export default function SystemMetricsPanel() {
           </div>
           <ConsoleColumnScroll>
             {error ? <PanelAlert className="mb-3">{error}</PanelAlert> : null}
+            {capacityFull ? (
+              <WarnBar className="mb-3">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--console-amber)]" />
+                快取容量已達 100%（{edge?.entry_count ?? 0}/{edge?.max_size ?? 512}）— 建議清理或調高上限
+              </WarnBar>
+            ) : null}
 
-            <KpiGrid4>
+            <KpiGrid6>
               {[
                 { label: '快取命中', value: `${hitPct}%`, accent: true },
-                { label: '任務成功率', value: `${sys?.success_rate ?? 0}%` },
+                { label: '任務成功率', value: `${sys?.success_rate ?? 0}%`, unit: '%' },
                 {
                   label: '反思均輪次',
                   value: reflectionTrace?.avg_iterations != null ? String(reflectionTrace.avg_iterations) : '—',
                 },
                 { label: 'Trace', value: String(data?.trace.trace_count ?? 0) },
+                { label: '執行中', value: String(sys?.tasks_running ?? 0) },
+                { label: '迭代總計', value: String(sys?.total_iterations ?? 0) },
               ].map((kpi) => (
-                <KpiCard key={kpi.label} label={kpi.label} value={kpi.value} accent={kpi.accent} />
+                <KpiSparkCard
+                  key={kpi.label}
+                  label={kpi.label}
+                  value={kpi.value}
+                  unit={kpi.unit}
+                  spark={spark}
+                  accent={kpi.accent}
+                />
               ))}
-            </KpiGrid4>
+            </KpiGrid6>
+
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              <ConsoleCard>
+                <ConsoleCardHeader>活動熱力圖</ConsoleCardHeader>
+                <div className="p-3">
+                  <ActivityHeatmap rows={heatmap} demo={heatmapEmpty} />
+                </div>
+              </ConsoleCard>
+              <ConsoleCard>
+                <ConsoleCardHeader>資源概覽</ConsoleCardHeader>
+                <div className="p-3">
+                  <ResourceGauges
+                    gauges={[
+                      { label: 'MEM', pct: Math.min(100, Math.round(cacheCapPct)), color: 'var(--console-green)' },
+                      { label: 'CPU', pct: Math.min(100, sys?.tasks_running ? 40 + (sys.tasks_running * 10) : 12), color: 'var(--console-blue)' },
+                      { label: 'NET', pct: Math.min(100, Math.round((data?.trace.trace_count ?? 0) / 2)), color: 'var(--console-cyan)' },
+                    ]}
+                  />
+                  {statusStack.length > 0 ? (
+                    <div className="mt-4">
+                      <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">任務狀態</p>
+                      <StackBar segments={statusStack} />
+                    </div>
+                  ) : null}
+                </div>
+              </ConsoleCard>
+            </div>
 
             <ConsoleCard className="mt-3 overflow-x-auto">
               <table className="w-full min-w-[640px] text-left">
@@ -321,10 +368,10 @@ export default function SystemMetricsPanel() {
                       </td>
                       <td className="py-2 pr-3">
                         {row.pct != null ? (
-                          <>
-                            <Gauge value={row.pct} min={0} max={100} />
-                            <p className="mt-0.5 text-[10px] text-[var(--console-faint)]">0–100</p>
-                          </>
+                          <MiniProgressBar
+                            value={row.pct}
+                            good={row.status === 'good'}
+                          />
                         ) : (
                           <span className="text-[10px] text-[var(--console-faint)]">—</span>
                         )}

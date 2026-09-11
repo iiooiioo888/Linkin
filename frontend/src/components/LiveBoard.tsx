@@ -14,10 +14,13 @@ import {
 } from '../lib/animLive';
 import { LAB_INTEGRATION_TABS, type LabSubTab } from '../lib/labTabs';
 import { filterAgentsByDesk, PIPELINE_STAGES, requestRoleSettingsDesk } from '../lib/agentUi';
+import { buildStatusStack, buildTaskDistributionMatrix } from '../lib/monitorData';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { MonitorTab } from './AppShell';
 import IntegrationsStrip from './IntegrationsStrip';
 import { consoleLayout } from './ui/ConsoleLayout';
+import { KpiSparkCard, PipelineTimeline, StackBar, TaskDistributionMatrix } from './ui/monitor';
+import { useMonitorStore } from '../stores/monitorStore';
 
 const BLUE = 'var(--console-accent)';
 const GREEN = 'var(--console-green)';
@@ -239,6 +242,12 @@ function PipelineCard({
 }) {
   const phase = feed.streamPhase || feed.taskPhase || backgroundPhase || null;
   const liveIdx = mapPhaseToPipelineIndex(phase);
+  const nodes = PIPELINE_STAGES.map((n, i) => ({
+    id: n.id,
+    label: n.label,
+    state: liveIdx == null ? 'pending' as const : i < liveIdx ? 'done' as const : i === liveIdx ? 'active' as const : 'pending' as const,
+    timingMs: liveIdx != null && i === liveIdx && feed.live ? 120 : liveIdx != null && i < liveIdx ? 80 + i * 40 : null,
+  }));
 
   return (
     <FrostCard
@@ -250,43 +259,8 @@ function PipelineCard({
         </span>
       }
     >
-      <div className={`flex items-center gap-1 ${dock ? 'py-1' : 'py-3'} sm:gap-2`}>
-        {PIPELINE_STAGES.map((n, i) => {
-          const active = liveIdx != null && i === liveIdx;
-          const done = liveIdx != null && i < liveIdx;
-          return (
-            <div key={n.id} className="relative flex min-w-0 flex-1 flex-col items-center">
-              {i < PIPELINE_STAGES.length - 1 && (
-                <div
-                  className={`absolute left-[52%] ${dock ? 'top-[11px]' : 'top-[13px]'} h-[2px] w-[96%]`}
-                  style={{ background: done ? GREEN : 'rgba(255,255,255,0.1)' }}
-                />
-              )}
-              <div
-                className={`relative z-[1] flex items-center justify-center rounded-full ${
-                  dock ? 'h-6 w-6' : 'h-7 w-7'
-                }`}
-                style={{
-                  background: active ? BLUE : done ? `${GREEN}33` : 'rgba(255,255,255,0.06)',
-                  boxShadow: active ? `0 0 0 3px ${BLUE}33` : undefined,
-                }}
-              >
-                <span
-                  className="text-[9px] font-semibold"
-                  style={{ color: active ? '#fff' : done ? GREEN : GRAY }}
-                >
-                  {i + 1}
-                </span>
-              </div>
-              <span
-                className={`mt-2 font-medium ${dock ? 'text-[9px]' : 'text-[10px]'}`}
-                style={{ color: active ? '#fff' : 'var(--console-sub)' }}
-              >
-                {n.label}
-              </span>
-            </div>
-          );
-        })}
+      <div className={dock ? 'py-1' : 'py-3'}>
+        <PipelineTimeline nodes={nodes} />
       </div>
     </FrostCard>
   );
@@ -701,6 +675,32 @@ function LabToolsCard({
   );
 }
 
+function OverviewKpiRow({ feed }: { feed: AnimLiveFeed }) {
+  const dashboard = useMonitorStore((s) => s.dashboard);
+  const tasks = dashboard?.tasks ?? [];
+  const opt = feed.optimization;
+  const hitPct = Math.round((opt?.llm_cache.hit_rate ?? 0) * 100);
+  const successRate = opt?.system_stats?.success_rate ?? 0;
+  const spark = Array.from({ length: 24 }, (_, h) =>
+    tasks.filter((t) => new Date(t.created_at * 1000).getHours() === h).length,
+  );
+
+  return (
+    <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      {[
+        { label: '快取命中', value: `${hitPct}%`, accent: true },
+        { label: '成功率', value: `${successRate}%` },
+        { label: '執行中', value: String(feed.runningTasks) },
+        { label: '角色', value: String(feed.agents.length) },
+        { label: 'Trace', value: String(opt?.trace.trace_count ?? 0) },
+        { label: 'API', value: String(feed.llmOps?.api_routes?.length ?? 0) },
+      ].map((kpi) => (
+        <KpiSparkCard key={kpi.label} label={kpi.label} value={kpi.value} spark={spark} accent={kpi.accent} />
+      ))}
+    </div>
+  );
+}
+
 export default function LiveBoard({
   feed,
   backgroundPhase,
@@ -715,9 +715,18 @@ export default function LiveBoard({
   density?: LiveBoardDensity;
 } & LiveBoardNav) {
   const dock = density === 'dock';
+  const dashboard = useMonitorStore((s) => s.dashboard);
   const consoleFeed = useMemo(
     () => ({ ...feed, agents: filterAgentsByDesk(feed.agents, 'console') }),
     [feed],
+  );
+  const taskMatrix = useMemo(
+    () => buildTaskDistributionMatrix(dashboard?.tasks ?? []),
+    [dashboard?.tasks],
+  );
+  const statusStack = useMemo(
+    () => buildStatusStack(dashboard?.stats ?? {}),
+    [dashboard?.stats],
   );
   const updated = consoleFeed.updatedAt
     ? new Date(consoleFeed.updatedAt).toLocaleTimeString('zh-TW', {
@@ -758,6 +767,13 @@ export default function LiveBoard({
         )}
 
         {!dock && <WorkflowStrip feed={consoleFeed} onOpenTab={onOpenTab} />}
+        {!dock && <OverviewKpiRow feed={consoleFeed} />}
+        {!dock && statusStack.length > 0 ? (
+          <div className="mb-3 rounded-xl border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-2">
+            <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">任務狀態比例</p>
+            <StackBar segments={statusStack} />
+          </div>
+        ) : null}
 
         {dock ? (
           <div className="lb-dock-grid">
@@ -807,6 +823,11 @@ export default function LiveBoard({
             </div>
             <BudgetCard feed={feed} onOpen={() => onOpenTab?.('models')} />
             <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
+            <div className="lb-span-2">
+              <FrostCard title="任務分佈矩陣">
+                <TaskDistributionMatrix matrix={taskMatrix} demo={taskMatrix.every((r) => r.every((c) => c.count === 0))} />
+              </FrostCard>
+            </div>
             <div className="lb-span-2">
               <EventsCard feed={consoleFeed} onOpen={onOpenTraces} />
             </div>
