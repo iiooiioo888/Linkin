@@ -6,12 +6,14 @@ import sqlite3
 import threading
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
 from backend.billing.plans import get_plan
 from backend.billing.pool_types import (
+    CONTRIBUTION_UNLOCKED_DECAY,
+    CONTRIBUTION_UNLOCKED_HALF_LIFE_MONTHS,
     POOL_CONTRIBUTION_LOCKED,
     POOL_CONTRIBUTION_UNLOCKED,
     POOL_LOCKED,
@@ -212,11 +214,70 @@ CREATE TABLE IF NOT EXISTS api_keys (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS users (
+    user_id TEXT PRIMARY KEY,
+    email TEXT,
+    display_name TEXT,
+    kyc_status TEXT NOT NULL DEFAULT 'none',
+    kyc_level INTEGER NOT NULL DEFAULT 0,
+    kyc_meta_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS key_health (
+    key_id TEXT PRIMARY KEY,
+    contributor_id TEXT,
+    health_score REAL NOT NULL DEFAULT 1.0,
+    failure_count INTEGER NOT NULL DEFAULT 0,
+    last_failure_at TEXT,
+    last_failure_reason TEXT,
+    balance_exhausted_count INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'healthy',
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS subtasks (
+    subtask_id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    parent_subtask_id TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    estimate_credits REAL NOT NULL DEFAULT 0,
+    settled_credits REAL NOT NULL DEFAULT 0,
+    key_id TEXT,
+    meta_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cache_prefixes (
+    prefix_id TEXT PRIMARY KEY,
+    account_id TEXT,
+    key_id TEXT,
+    prefix_hash TEXT NOT NULL,
+    hit_count INTEGER NOT NULL DEFAULT 0,
+    savings_credits REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS key_cache_profile (
+    key_id TEXT PRIMARY KEY,
+    cache_prefix_count INTEGER NOT NULL DEFAULT 0,
+    total_hits INTEGER NOT NULL DEFAULT 0,
+    affinity_score REAL NOT NULL DEFAULT 0,
+    profile_json TEXT NOT NULL DEFAULT '{}',
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS fault_pool (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     amount REAL NOT NULL,
     reason TEXT NOT NULL,
+    account_id TEXT,
     task_id TEXT,
+    installment_id TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -230,7 +291,17 @@ CREATE TABLE IF NOT EXISTS lock_installments (
     lock_multiplier REAL NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',
     next_due_at TEXT,
+    key_id TEXT,
+    interval_days INTEGER NOT NULL DEFAULT 30,
+    forfeited_amount REAL NOT NULL DEFAULT 0,
+    failure_reason TEXT,
+    appeal_deadline TEXT,
     created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS contribution_decay_log (
+    account_id TEXT PRIMARY KEY,
+    last_decay_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS cache_stats (
@@ -246,6 +317,9 @@ CREATE INDEX IF NOT EXISTS idx_grants_account_pool ON grants(account_id, pool_ty
 CREATE INDEX IF NOT EXISTS idx_pool_ledger_account ON pool_ledger(account_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_tasks_account ON tasks(account_id);
 CREATE INDEX IF NOT EXISTS idx_pool_usage_task ON pool_usage_events(task_id);
+CREATE INDEX IF NOT EXISTS idx_subtasks_task ON subtasks(task_id);
+CREATE INDEX IF NOT EXISTS idx_cache_prefixes_key ON cache_prefixes(key_id);
+CREATE INDEX IF NOT EXISTS idx_lock_installments_account ON lock_installments(account_id, status);
 """
 
 
@@ -256,6 +330,26 @@ def _utc_now() -> str:
 def _month_key(dt: datetime | None = None) -> str:
     d = dt or datetime.now(timezone.utc)
     return d.strftime("%Y-%m")
+
+
+def _parse_iso(ts: str) -> datetime:
+    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+
+
+def _installment_interval_days(lock_days: int) -> int:
+    return max(1, lock_days // 3)
+
+
+def _installment_reward_total(total_amount: float, lock_multiplier: float) -> float:
+    return round(total_amount * max(0.0, lock_multiplier - 1.0), 4)
+
+
+def _installment_reward_per_period(total_amount: float, lock_multiplier: float) -> float:
+    return round(_installment_reward_total(total_amount, lock_multiplier) / 3.0, 4)
+
+
+EARLY_UNLOCK_PRINCIPAL_PENALTY_RATIO = 0.05
+KEY_FAILURE_APPEAL_WINDOW_DAYS = 30
 
 
 class PoolStore:
@@ -300,6 +394,17 @@ class PoolStore:
             "ALTER TABLE tasks ADD COLUMN run_mode TEXT NOT NULL DEFAULT 'normal'",
             "ALTER TABLE tasks ADD COLUMN lock_multiplier REAL NOT NULL DEFAULT 1.0",
             "ALTER TABLE tasks ADD COLUMN rollover_policy_version INTEGER",
+            "ALTER TABLE lock_installments ADD COLUMN key_id TEXT",
+            "ALTER TABLE lock_installments ADD COLUMN interval_days INTEGER NOT NULL DEFAULT 30",
+            "ALTER TABLE lock_installments ADD COLUMN forfeited_amount REAL NOT NULL DEFAULT 0",
+            "ALTER TABLE lock_installments ADD COLUMN failure_reason TEXT",
+            "ALTER TABLE lock_installments ADD COLUMN appeal_deadline TEXT",
+            "ALTER TABLE billing_appeals ADD COLUMN appeal_kind TEXT NOT NULL DEFAULT 'general'",
+            "ALTER TABLE billing_appeals ADD COLUMN installment_id TEXT",
+            "ALTER TABLE billing_appeals ADD COLUMN forfeiture_amount REAL",
+            "ALTER TABLE billing_appeals ADD COLUMN appeal_deadline TEXT",
+            "ALTER TABLE fault_pool ADD COLUMN account_id TEXT",
+            "ALTER TABLE fault_pool ADD COLUMN installment_id TEXT",
         ):
             try:
                 conn.execute(stmt)
@@ -781,6 +886,211 @@ class PoolStore:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    def ensure_user_profile(self, account_id: str, *, email: str | None = None, display_name: str | None = None) -> None:
+        """同步 users 表（KYC stub）；account_id 與 accounts.user_id 對應。"""
+        now = _utc_now()
+        aid = account_id.strip()
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT OR IGNORE INTO users(user_id, email, display_name, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (aid, email, display_name, now, now),
+            )
+            if email or display_name:
+                conn.execute(
+                    """UPDATE users SET email=COALESCE(?, email), display_name=COALESCE(?, display_name),
+                       updated_at=? WHERE user_id=?""",
+                    (email, display_name, now, aid),
+                )
+
+    def record_key_health_event(
+        self,
+        key_id: str,
+        *,
+        event: str,
+        contributor_id: str | None = None,
+        reason: str = "",
+    ) -> dict[str, Any]:
+        """記錄 Key 健康事件；區分 key_failure 與 balance_exhausted。"""
+        now = _utc_now()
+        with self._conn() as conn:
+            row = conn.execute("SELECT * FROM key_health WHERE key_id=?", (key_id,)).fetchone()
+            if row:
+                failure_count = int(row["failure_count"])
+                balance_exhausted_count = int(row["balance_exhausted_count"])
+                health_score = float(row["health_score"])
+            else:
+                failure_count = 0
+                balance_exhausted_count = 0
+                health_score = 1.0
+            if event == "key_failure":
+                failure_count += 1
+                health_score = max(0.0, health_score - 0.15)
+                status = "degraded" if health_score >= 0.5 else "unhealthy"
+                last_failure_reason = reason or "key_failure"
+            elif event == "balance_exhausted":
+                balance_exhausted_count += 1
+                status = "healthy"
+                last_failure_reason = reason or "balance_exhausted"
+            else:
+                status = "healthy"
+                last_failure_reason = reason
+            conn.execute(
+                """INSERT INTO key_health(key_id, contributor_id, health_score, failure_count,
+                   last_failure_at, last_failure_reason, balance_exhausted_count, status, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(key_id) DO UPDATE SET
+                   contributor_id=COALESCE(excluded.contributor_id, key_health.contributor_id),
+                   health_score=excluded.health_score,
+                   failure_count=excluded.failure_count,
+                   last_failure_at=excluded.last_failure_at,
+                   last_failure_reason=excluded.last_failure_reason,
+                   balance_exhausted_count=excluded.balance_exhausted_count,
+                   status=excluded.status,
+                   updated_at=excluded.updated_at""",
+                (
+                    key_id,
+                    contributor_id,
+                    health_score,
+                    failure_count,
+                    now if event == "key_failure" else None,
+                    last_failure_reason,
+                    balance_exhausted_count,
+                    status,
+                    now,
+                ),
+            )
+        return {
+            "key_id": key_id,
+            "event": event,
+            "failure_count": failure_count,
+            "balance_exhausted_count": balance_exhausted_count,
+            "health_score": health_score,
+            "status": status,
+        }
+
+    def upsert_subtask(
+        self,
+        *,
+        subtask_id: str,
+        task_id: str,
+        account_id: str,
+        estimate_credits: float = 0,
+        key_id: str | None = None,
+        parent_subtask_id: str | None = None,
+        status: str = "pending",
+        meta: dict[str, Any] | None = None,
+    ) -> None:
+        now = _utc_now()
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO subtasks(subtask_id, task_id, account_id, parent_subtask_id, status,
+                   estimate_credits, key_id, meta_json, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(subtask_id) DO UPDATE SET
+                   status=excluded.status,
+                   estimate_credits=excluded.estimate_credits,
+                   key_id=COALESCE(excluded.key_id, subtasks.key_id),
+                   meta_json=excluded.meta_json,
+                   updated_at=excluded.updated_at""",
+                (
+                    subtask_id,
+                    task_id,
+                    account_id,
+                    parent_subtask_id,
+                    status,
+                    estimate_credits,
+                    key_id,
+                    json.dumps(meta or {}, ensure_ascii=False),
+                    now,
+                    now,
+                ),
+            )
+
+    def record_cache_prefix_hit(
+        self,
+        *,
+        key_id: str,
+        prefix_hash: str,
+        account_id: str | None = None,
+        savings_credits: float = 0,
+    ) -> str:
+        prefix_id = f"cpf_{uuid.uuid4().hex[:12]}"
+        now = _utc_now()
+        with self._conn() as conn:
+            existing = conn.execute(
+                "SELECT prefix_id, hit_count, savings_credits FROM cache_prefixes WHERE key_id=? AND prefix_hash=?",
+                (key_id, prefix_hash),
+            ).fetchone()
+            if existing:
+                prefix_id = str(existing["prefix_id"])
+                conn.execute(
+                    """UPDATE cache_prefixes SET hit_count=hit_count+1,
+                       savings_credits=savings_credits+?, updated_at=? WHERE prefix_id=?""",
+                    (savings_credits, now, prefix_id),
+                )
+            else:
+                conn.execute(
+                    """INSERT INTO cache_prefixes(prefix_id, account_id, key_id, prefix_hash,
+                       hit_count, savings_credits, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, 1, ?, ?, ?)""",
+                    (prefix_id, account_id, key_id, prefix_hash, savings_credits, now, now),
+                )
+            profile = conn.execute(
+                "SELECT cache_prefix_count, total_hits FROM key_cache_profile WHERE key_id=?",
+                (key_id,),
+            ).fetchone()
+            if profile:
+                conn.execute(
+                    """UPDATE key_cache_profile SET total_hits=total_hits+1,
+                       affinity_score=MIN(1.0, affinity_score + 0.01), updated_at=? WHERE key_id=?""",
+                    (now, key_id),
+                )
+            else:
+                conn.execute(
+                    """INSERT INTO key_cache_profile(key_id, cache_prefix_count, total_hits,
+                       affinity_score, profile_json, updated_at)
+                       VALUES (?, 1, 1, 0.1, '{}', ?)""",
+                    (key_id, now),
+                )
+            prefix_count = conn.execute(
+                "SELECT COUNT(*) AS c FROM cache_prefixes WHERE key_id=?", (key_id,)
+            ).fetchone()["c"]
+            conn.execute(
+                "UPDATE key_cache_profile SET cache_prefix_count=? WHERE key_id=?",
+                (int(prefix_count), key_id),
+            )
+        return prefix_id
+
+    def record_fault_pool(
+        self,
+        amount: float,
+        reason: str,
+        *,
+        account_id: str | None = None,
+        task_id: str | None = None,
+        installment_id: str | None = None,
+    ) -> None:
+        if amount <= 0:
+            return
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO fault_pool(amount, reason, account_id, task_id, installment_id, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (amount, reason, account_id, task_id, installment_id, _utc_now()),
+            )
+
+    def _primary_contributor_key(self, account_id: str) -> str | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                """SELECT ak.key_id FROM api_keys ak
+                   JOIN contributors c ON c.contributor_id = ak.contributor_id
+                   WHERE c.account_id=? AND ak.status='active'
+                   ORDER BY ak.created_at DESC LIMIT 1""",
+                (account_id.strip(),),
+            ).fetchone()
+        return str(row["key_id"]) if row else None
+
     def create_lock_installment(
         self,
         account_id: str,
@@ -789,17 +1099,57 @@ class PoolStore:
         per_installment: float,
         lock_days: int,
         lock_multiplier: float,
+        key_id: str | None = None,
     ) -> str:
         iid = f"ins_{uuid.uuid4().hex[:12]}"
-        now = _utc_now()
+        now_dt = datetime.now(timezone.utc).replace(microsecond=0)
+        now = now_dt.isoformat()
+        interval = _installment_interval_days(lock_days)
+        first_due = (now_dt + timedelta(days=interval)).isoformat()
+        bound_key = key_id or self._primary_contributor_key(account_id)
         with self._conn() as conn:
             conn.execute(
                 """INSERT INTO lock_installments(installment_id, account_id, total_amount, per_installment,
-                   paid_installments, lock_days, lock_multiplier, status, next_due_at, created_at)
-                   VALUES (?, ?, ?, ?, 0, ?, ?, 'active', ?, ?)""",
-                (iid, account_id, total, per_installment, lock_days, lock_multiplier, now, now),
+                   paid_installments, lock_days, lock_multiplier, status, next_due_at, key_id, interval_days,
+                   forfeited_amount, created_at)
+                   VALUES (?, ?, ?, ?, 0, ?, ?, 'active', ?, ?, ?, 0, ?)""",
+                (
+                    iid,
+                    account_id,
+                    total,
+                    per_installment,
+                    lock_days,
+                    lock_multiplier,
+                    first_due,
+                    bound_key,
+                    interval,
+                    now,
+                ),
             )
         return iid
+
+    def _installment_row_dict(self, row: sqlite3.Row) -> dict[str, Any]:
+        d = dict(row)
+        paid = int(d.get("paid_installments") or 0)
+        total = float(d["total_amount"])
+        mult = float(d["lock_multiplier"])
+        reward_total = _installment_reward_total(total, mult)
+        reward_paid = round(reward_total * paid / 3.0, 4)
+        remaining = max(0, 3 - paid)
+        d["reward_total"] = reward_total
+        d["reward_paid"] = reward_paid
+        d["reward_remaining"] = round(reward_total - reward_paid, 4)
+        principal_paid = round(float(d["per_installment"]) * paid, 4)
+        d["principal_remaining"] = round(max(0.0, total - principal_paid), 4)
+        d["progress_zh"] = f"已解鎖 {paid}/3 期"
+        if d.get("next_due_at"):
+            d["schedule_zh"] = f"下期 {d['next_due_at'][:10]}（每 {d.get('interval_days', 30)} 天）"
+        return d
+
+    def get_lock_installment(self, installment_id: str) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute("SELECT * FROM lock_installments WHERE installment_id=?", (installment_id,)).fetchone()
+        return self._installment_row_dict(row) if row else None
 
     def list_lock_installments(self, account_id: str) -> list[dict[str, Any]]:
         with self._conn() as conn:
@@ -807,42 +1157,246 @@ class PoolStore:
                 "SELECT * FROM lock_installments WHERE account_id=? ORDER BY created_at DESC",
                 (account_id.strip(),),
             ).fetchall()
-        out = []
-        for r in rows:
-            d = dict(r)
-            d["progress_zh"] = f"已解鎖 {d['paid_installments']}/3 期"
-            out.append(d)
-        return out
+        return [self._installment_row_dict(r) for r in rows]
 
-    def process_lock_installments(self, account_id: str | None = None) -> list[dict[str, Any]]:
+    def _pay_installment_period(self, conn: sqlite3.Connection, row: sqlite3.Row, now: str) -> dict[str, Any] | None:
+        aid = row["account_id"]
+        paid = int(row["paid_installments"])
+        total = float(row["total_amount"])
+        mult = float(row["lock_multiplier"])
+        per = float(row["per_installment"])
+        remaining_periods = max(1, 3 - paid)
+        principal = per if remaining_periods > 1 else round(total - per * paid, 4)
+        reward_total = _installment_reward_total(total, mult)
+        reward_paid = round(reward_total * paid / 3.0, 4)
+        reward = round(reward_total - reward_paid, 4) if remaining_periods == 1 else _installment_reward_per_period(total, mult)
+        total_pay = round(principal + reward, 4)
+        if not self.atomic_debit_pool(conn, aid, POOL_CONTRIBUTION_LOCKED, principal, now):
+            return None
+        conn.execute(
+            """INSERT INTO balances(account_id, pool_type, amount, updated_at) VALUES (?, ?, ?, ?)
+               ON CONFLICT(account_id, pool_type) DO UPDATE SET
+               amount = balances.amount + excluded.amount, updated_at = excluded.updated_at""",
+            (aid, POOL_PURCHASED, total_pay, now),
+        )
+        paid = paid + 1
+        status = "completed" if paid >= 3 else "active"
+        interval = int(row["interval_days"] or _installment_interval_days(int(row["lock_days"])))
+        next_due = None if status == "completed" else (
+            _parse_iso(now) + timedelta(days=interval)
+        ).replace(microsecond=0).isoformat()
+        conn.execute(
+            """UPDATE lock_installments SET paid_installments=?, status=?, next_due_at=?
+               WHERE installment_id=?""",
+            (paid, status, next_due, row["installment_id"]),
+        )
+        return {
+            "installment_id": row["installment_id"],
+            "principal_paid": principal,
+            "reward_paid": reward,
+            "total_paid": total_pay,
+            "installment": paid,
+            "status": status,
+        }
+
+    def process_lock_installments(
+        self,
+        account_id: str | None = None,
+        *,
+        force: bool = False,
+    ) -> list[dict[str, Any]]:
+        """處理到期分期（3 期）；force=True 時忽略到期時間（手動觸發）。"""
         results: list[dict[str, Any]] = []
         now = _utc_now()
+        now_dt = _parse_iso(now)
         with self._conn() as conn:
             q = "SELECT * FROM lock_installments WHERE status='active' AND paid_installments < 3"
-            params: tuple = ()
+            params: list[Any] = []
             if account_id:
                 q += " AND account_id=?"
-                params = (account_id.strip(),)
-            rows = conn.execute(q, params).fetchall()
+                params.append(account_id.strip())
+            rows = conn.execute(q, tuple(params)).fetchall()
             for row in rows:
-                aid = row["account_id"]
-                pay = float(row["per_installment"])
-                if not self.atomic_debit_pool(conn, aid, POOL_CONTRIBUTION_LOCKED, pay, now):
-                    continue
+                if not force:
+                    due_at = row["next_due_at"]
+                    if due_at and _parse_iso(str(due_at)) > now_dt:
+                        continue
+                paid = self._pay_installment_period(conn, row, now)
+                if paid:
+                    results.append(paid)
+        return results
+
+    def _unpaid_installment_amounts(self, row: sqlite3.Row) -> tuple[float, float, float]:
+        paid = int(row["paid_installments"])
+        total = float(row["total_amount"])
+        mult = float(row["lock_multiplier"])
+        per = float(row["per_installment"])
+        principal_paid = round(per * paid, 4)
+        principal = round(max(0.0, total - principal_paid), 4)
+        reward_total = _installment_reward_total(total, mult)
+        reward_paid = round(reward_total * paid / 3.0, 4)
+        reward = round(max(0.0, reward_total - reward_paid), 4)
+        return principal, reward, round(principal + reward, 4)
+
+    def forfeit_installment_key_failure(
+        self,
+        installment_id: str,
+        *,
+        task_id: str | None = None,
+        key_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Key 故障：僅沒收未付分期（已付保留）；開啟 30 天申訴窗口。"""
+        now_dt = datetime.now(timezone.utc).replace(microsecond=0)
+        now = now_dt.isoformat()
+        appeal_deadline = (now_dt + timedelta(days=KEY_FAILURE_APPEAL_WINDOW_DAYS)).isoformat()
+        with self._conn() as conn:
+            row = conn.execute("SELECT * FROM lock_installments WHERE installment_id=?", (installment_id,)).fetchone()
+            if not row or row["status"] != "active":
+                raise ValueError("分期不存在或已結束")
+            unpaid_principal, unpaid_reward, forfeit_total = self._unpaid_installment_amounts(row)
+            aid = row["account_id"]
+            if unpaid_principal > 0:
+                if not self.atomic_debit_pool(conn, aid, POOL_CONTRIBUTION_LOCKED, unpaid_principal, now):
+                    locked_row = conn.execute(
+                        "SELECT amount FROM balances WHERE account_id=? AND pool_type=?",
+                        (aid, POOL_CONTRIBUTION_LOCKED),
+                    ).fetchone()
+                    avail = float(locked_row["amount"]) if locked_row else 0.0
+                    if avail > 0:
+                        self.atomic_debit_pool(conn, aid, POOL_CONTRIBUTION_LOCKED, avail, now)
+                        forfeit_total = round(avail + unpaid_reward, 4)
+            conn.execute(
+                """UPDATE lock_installments SET status='forfeited_key_failure', failure_reason='key_failure',
+                   forfeited_amount=?, appeal_deadline=?, next_due_at=NULL WHERE installment_id=?""",
+                (forfeit_total, appeal_deadline, installment_id),
+            )
+            conn.execute(
+                """INSERT INTO fault_pool(amount, reason, account_id, task_id, installment_id, created_at)
+                   VALUES (?, 'key_failure_forfeiture', ?, ?, ?, ?)""",
+                (forfeit_total, aid, task_id, installment_id, now),
+            )
+        return {
+            "installment_id": installment_id,
+            "forfeited_amount": forfeit_total,
+            "unpaid_principal": unpaid_principal,
+            "unpaid_reward": unpaid_reward,
+            "appeal_deadline": appeal_deadline,
+            "failure_reason": "key_failure",
+        }
+
+    def forfeit_installments_for_key_failure(
+        self,
+        key_id: str,
+        *,
+        task_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT installment_id FROM lock_installments WHERE status='active' AND key_id=?",
+                (key_id,),
+            ).fetchall()
+        for row in rows:
+            results.append(
+                self.forfeit_installment_key_failure(str(row["installment_id"]), task_id=task_id, key_id=key_id)
+            )
+        return results
+
+    def early_unlock_installment(self, account_id: str, installment_id: str) -> dict[str, Any]:
+        """提前解鎖：沒收全部未付獎勵 + 5% 本金 → fault_pool；剩餘本金退回未鎖池。"""
+        now = _utc_now()
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM lock_installments WHERE installment_id=? AND account_id=?",
+                (installment_id, account_id.strip()),
+            ).fetchone()
+            if not row or row["status"] != "active":
+                raise ValueError("分期不存在或不可提前解鎖")
+            unpaid_principal, unpaid_reward, _ = self._unpaid_installment_amounts(row)
+            penalty = round(float(row["total_amount"]) * EARLY_UNLOCK_PRINCIPAL_PENALTY_RATIO, 4)
+            forfeit = round(unpaid_reward + penalty, 4)
+            return_principal = round(max(0.0, unpaid_principal - penalty), 4)
+            if unpaid_principal > 0:
+                if not self.atomic_debit_pool(conn, account_id, POOL_CONTRIBUTION_LOCKED, unpaid_principal, now):
+                    raise ValueError("鎖倉餘額不足")
+            if return_principal > 0:
                 conn.execute(
                     """INSERT INTO balances(account_id, pool_type, amount, updated_at) VALUES (?, ?, ?, ?)
                        ON CONFLICT(account_id, pool_type) DO UPDATE SET
                        amount = balances.amount + excluded.amount, updated_at = excluded.updated_at""",
-                    (aid, POOL_PURCHASED, pay, now),
+                    (account_id, POOL_CONTRIBUTION_UNLOCKED, return_principal, now),
                 )
-                paid = int(row["paid_installments"]) + 1
-                status = "completed" if paid >= 3 else "active"
+            conn.execute(
+                """UPDATE lock_installments SET status='early_unlocked', failure_reason='early_unlock',
+                   forfeited_amount=?, next_due_at=NULL WHERE installment_id=?""",
+                (forfeit, installment_id),
+            )
+            conn.execute(
+                """INSERT INTO fault_pool(amount, reason, account_id, installment_id, created_at)
+                   VALUES (?, 'early_unlock_penalty', ?, ?, ?)""",
+                (forfeit, account_id, installment_id, now),
+            )
+        return {
+            "installment_id": installment_id,
+            "forfeited_amount": forfeit,
+            "returned_principal": return_principal,
+            "penalty_principal": penalty,
+            "forfeited_reward": unpaid_reward,
+        }
+
+    def run_contribution_decay(self) -> list[dict[str, Any]]:
+        """未鎖定貢獻積分半衰期：每 3 個月 ×0.8。"""
+        results: list[dict[str, Any]] = []
+        now_dt = datetime.now(timezone.utc).replace(microsecond=0)
+        now = now_dt.isoformat()
+        cutoff = now_dt - timedelta(days=CONTRIBUTION_UNLOCKED_HALF_LIFE_MONTHS * 30)
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT account_id, amount FROM balances WHERE pool_type=? AND amount > 0",
+                (POOL_CONTRIBUTION_UNLOCKED,),
+            ).fetchall()
+            for row in rows:
+                aid = str(row["account_id"])
+                amount = float(row["amount"])
+                log = conn.execute(
+                    "SELECT last_decay_at FROM contribution_decay_log WHERE account_id=?", (aid,)
+                ).fetchone()
+                if log:
+                    last = _parse_iso(str(log["last_decay_at"]))
+                    if last > cutoff:
+                        continue
+                decayed = round(amount * (1.0 - CONTRIBUTION_UNLOCKED_DECAY), 4)
+                new_amount = round(amount - decayed, 4)
                 conn.execute(
-                    "UPDATE lock_installments SET paid_installments=?, status=?, next_due_at=? WHERE installment_id=?",
-                    (paid, status, now, row["installment_id"]),
+                    "UPDATE balances SET amount=?, updated_at=? WHERE account_id=? AND pool_type=?",
+                    (new_amount, now, aid, POOL_CONTRIBUTION_UNLOCKED),
                 )
-                results.append({"installment_id": row["installment_id"], "paid": pay, "installment": paid})
+                conn.execute(
+                    """INSERT INTO contribution_decay_log(account_id, last_decay_at) VALUES (?, ?)
+                       ON CONFLICT(account_id) DO UPDATE SET last_decay_at=excluded.last_decay_at""",
+                    (aid, now),
+                )
+                results.append({"account_id": aid, "before": amount, "decayed": decayed, "after": new_amount})
         return results
+
+    def restore_key_failure_forfeiture(self, installment_id: str, amount: float) -> None:
+        """申訴核准後恢復被沒收積分至未鎖池。"""
+        if amount <= 0:
+            return
+        now = _utc_now()
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT account_id FROM lock_installments WHERE installment_id=?", (installment_id,)
+            ).fetchone()
+            if not row:
+                raise ValueError("分期不存在")
+            aid = str(row["account_id"])
+            conn.execute(
+                """INSERT INTO balances(account_id, pool_type, amount, updated_at) VALUES (?, ?, ?, ?)
+                   ON CONFLICT(account_id, pool_type) DO UPDATE SET
+                   amount = balances.amount + excluded.amount, updated_at = excluded.updated_at""",
+                (aid, POOL_CONTRIBUTION_UNLOCKED, amount, now),
+            )
 
     def record_cache_savings(self, account_id: str, cache_read_tokens: int, savings_credits: float, l3_hit: bool = False) -> None:
         now = _utc_now()

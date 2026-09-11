@@ -1102,11 +1102,22 @@ export async function fetchBillingAppeals(limit = 20) {
   return resp.json() as Promise<{ appeals: import('../types').BillingAppeal[] }>;
 }
 
-export async function submitBillingAppeal(reason: string, detail: string, taskId = '') {
+export async function submitBillingAppeal(
+  reason: string,
+  detail: string,
+  taskId = '',
+  opts: { appealKind?: string; installmentId?: string } = {},
+) {
   const resp = await fetch(apiUrl('/billing/appeals'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reason, detail, task_id: taskId }),
+    body: JSON.stringify({
+      reason,
+      detail,
+      task_id: taskId,
+      appeal_kind: opts.appealKind ?? 'general',
+      installment_id: opts.installmentId ?? '',
+    }),
   });
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}));
@@ -1162,9 +1173,25 @@ export async function bindContributorKey(encryptedKey: string, vendorId = 'self_
   return resp.json();
 }
 
-export async function triggerInstallments() {
-  const resp = await fetch(apiUrl('/billing/contributor/contribution/unlock-installments'), { method: 'POST' });
+export async function triggerInstallments(force = false) {
+  const resp = await fetch(
+    apiUrl(`/billing/contributor/contribution/unlock-installments?force=${force ? 'true' : 'false'}`),
+    { method: 'POST' },
+  );
   if (!resp.ok) throw new Error(`分期處理失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function earlyUnlockContribution(installmentId: string) {
+  const resp = await fetch(apiUrl('/billing/contributor/contribution/early-unlock'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ installment_id: installmentId }),
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `提前解鎖失敗（HTTP ${resp.status}）`);
+  }
   return resp.json();
 }
 

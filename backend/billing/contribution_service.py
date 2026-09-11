@@ -1,10 +1,10 @@
 """貢獻積分：鎖倉、轉換、分期解鎖（v6.0）。"""
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from backend.billing.contribution_threshold import compute_lock_threshold
 from backend.billing.errors import InsufficientCreditsError
 from backend.billing.pool_store import get_pool_store, _utc_now
 from backend.billing.pool_types import (
@@ -15,20 +15,25 @@ from backend.billing.pool_types import (
     POOL_PURCHASED,
 )
 
-# 動態鎖倉閾值：累積未鎖定積分超過此值才建議轉鎖倉
-_LOCK_THRESHOLD_BASE = 50.0
-
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def _plan_id_for_account(account_id: str) -> str:
+    with get_pool_store()._conn() as conn:
+        row = conn.execute("SELECT plan_id FROM accounts WHERE user_id=?", (account_id.strip(),)).fetchone()
+    return str(row["plan_id"]) if row else "free"
+
+
 def contribution_status(account_id: str) -> dict[str, Any]:
     store = get_pool_store()
+    store.ensure_user_profile(account_id)
     bals = store.get_balances(account_id)
     unlocked = float(bals.get(POOL_CONTRIBUTION_UNLOCKED, 0))
     locked = float(bals.get(POOL_CONTRIBUTION_LOCKED, 0))
-    threshold = _LOCK_THRESHOLD_BASE
+    plan_id = _plan_id_for_account(account_id)
+    threshold = compute_lock_threshold(unlocked=unlocked, locked=locked, plan_id=plan_id)
     convertible = max(0.0, unlocked - threshold)
     installments = store.list_lock_installments(account_id)
     return {
@@ -40,7 +45,11 @@ def contribution_status(account_id: str) -> dict[str, Any]:
         "convert_ratio_to_purchased": CONTRIBUTION_UNLOCKED_CONVERT_RATIO,
         "lock_tiers": CONTRIBUTION_LOCK_TIERS,
         "installments": installments,
-        "notice_zh": f"當前累積 {unlocked:.1f} / 閾值 {threshold:.1f}，剩餘 {convertible:.1f} 可轉鎖倉",
+        "threshold_dynamic": True,
+        "notice_zh": (
+            f"當前累積 {unlocked:.1f} / 動態閾值 {threshold:.1f}，"
+            f"剩餘 {convertible:.1f} 可轉鎖倉"
+        ),
     }
 
 
@@ -90,13 +99,21 @@ def lock_contribution(account_id: str, amount: float, lock_days: int) -> dict[st
     }
 
 
-def process_due_installments(account_id: str | None = None) -> list[dict[str, Any]]:
-    """分期解鎖：將到期分期從 locked 轉入 purchased（1:1 本金，倍率已体现在锁仓时）。"""
-    store = get_pool_store()
-    return store.process_lock_installments(account_id)
+def process_due_installments(account_id: str | None = None, *, force: bool = False) -> list[dict[str, Any]]:
+    """分期解鎖：將到期分期從 locked 轉入 purchased（本金 + 獎勵）。"""
+    return get_pool_store().process_lock_installments(account_id, force=force)
+
+
+def early_unlock_contribution(account_id: str, installment_id: str) -> dict[str, Any]:
+    result = get_pool_store().early_unlock_installment(account_id, installment_id)
+    return {**result, **contribution_status(account_id)}
 
 
 def convert_unlocked_to_purchased(account_id: str, amount: float) -> dict[str, Any]:
     from backend.billing.pools_service import get_pools_service
 
     return get_pools_service().convert_contribution_unlocked(account_id, amount)
+
+
+def run_contribution_decay() -> list[dict[str, Any]]:
+    return get_pool_store().run_contribution_decay()

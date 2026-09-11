@@ -151,12 +151,38 @@ async def _lifespan(_app: FastAPI):
                 logger.warning("月末滾存檢查失敗：%s", exc)
 
     rollover_task = asyncio.create_task(_rollover_loop())
+
+    async def _contribution_maintenance_loop() -> None:
+        from backend.billing.contribution_service import process_due_installments, run_contribution_decay
+
+        installment_interval = max(3600, int(os.getenv("LINKIN_INSTALLMENT_CHECK_SEC", "3600")))
+        decay_interval = max(3600, int(os.getenv("LINKIN_DECAY_CHECK_SEC", "86400")))
+        tick = 0
+        while True:
+            try:
+                await asyncio.sleep(installment_interval)
+                tick += 1
+                await asyncio.to_thread(process_due_installments)
+                if tick * installment_interval >= decay_interval:
+                    await asyncio.to_thread(run_contribution_decay)
+                    tick = 0
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.warning("貢獻積分維護檢查失敗：%s", exc)
+
+    contribution_task = asyncio.create_task(_contribution_maintenance_loop())
     try:
         yield
     finally:
+        contribution_task.cancel()
         rollover_task.cancel()
         docker_bill_task.cancel()
         task.cancel()
+        try:
+            await contribution_task
+        except asyncio.CancelledError:
+            pass
         try:
             await rollover_task
         except asyncio.CancelledError:

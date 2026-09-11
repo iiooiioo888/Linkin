@@ -107,6 +107,7 @@ export interface ContributionStatus {
   convert_ratio_to_purchased: number;
   lock_tiers: Record<string, number>;
   installments?: LockInstallment[];
+  threshold_dynamic?: boolean;
   notice_zh?: string;
 }
 
@@ -118,6 +119,16 @@ export interface LockInstallment {
   lock_days: number;
   lock_multiplier: number;
   status: string;
+  next_due_at?: string;
+  interval_days?: number;
+  reward_total?: number;
+  reward_paid?: number;
+  reward_remaining?: number;
+  principal_remaining?: number;
+  forfeited_amount?: number;
+  failure_reason?: string;
+  appeal_deadline?: string;
+  schedule_zh?: string;
   progress_zh?: string;
 }
 
@@ -125,6 +136,10 @@ export interface BillingAppeal {
   appeal_id: string;
   account_id: string;
   task_id?: string;
+  appeal_kind?: string;
+  installment_id?: string;
+  forfeiture_amount?: number;
+  appeal_deadline?: string;
   reason: string;
   detail: string;
   status: string;

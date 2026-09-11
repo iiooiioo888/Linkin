@@ -13,8 +13,19 @@ import {
   bindContributorKey,
   fetchContributorEarnings,
   triggerInstallments,
+  earlyUnlockContribution,
 } from '../../api/client';
-import { fmtCredits, lockThresholdNotice, POOL_LABELS_ZH, rolloverNoticeZh, convertPreview, installmentProgress } from '../../lib/billingUi';
+import {
+  fmtCredits,
+  lockThresholdNotice,
+  POOL_LABELS_ZH,
+  rolloverNoticeZh,
+  convertPreview,
+  installmentProgress,
+  installmentScheduleZh,
+  earlyUnlockConfirmZh,
+  keyFailureAppealNoticeZh,
+} from '../../lib/billingUi';
 import type { BillingAppeal, BillingGrant, BillingPoolsDetail, ContributionStatus } from '../../types';
 import WalletPanel from '../WalletPanel';
 import BillingAdminPanel from './BillingAdminPanel';
@@ -161,7 +172,12 @@ export default function BillingCreditsHub() {
         {sub === 'contribution' && contribution ? (
           <div className="space-y-4 p-6">
             <h2 className="text-[15px] font-semibold text-[#F5F5F7]">貢獻積分 · 鎖倉與轉換</h2>
-            <p className="text-[12px] text-[#8E8E93]">{contribution.notice_zh ?? lockThresholdNotice(contribution.accumulated_unlocked, contribution.convert_threshold, contribution.convertible_to_locked)}</p>
+            <div className="rounded-lg border border-[#64D2FF]/20 bg-[#64D2FF]/5 px-3 py-2 text-[12px] text-[#AEAEB2]">
+              <p>{contribution.notice_zh ?? lockThresholdNotice(contribution.accumulated_unlocked, contribution.convert_threshold, contribution.convertible_to_locked)}</p>
+              {contribution.threshold_dynamic ? (
+                <p className="mt-1 text-[11px] text-[#64D2FF]">閾值依方案與累積貢獻動態調整，非固定 50</p>
+              ) : null}
+            </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
                 <p className="text-[11px] text-[#636366]">未鎖定 → 已購買（1:0.4）</p>
@@ -190,12 +206,47 @@ export default function BillingCreditsHub() {
                 <ul className="space-y-2 text-[11px]">
                   {contribution.installments!.map((ins) => (
                     <li key={ins.installment_id} className="rounded-lg bg-black/20 px-3 py-2">
-                      {ins.lock_days} 天 ×{ins.lock_multiplier} · {installmentProgress(ins.paid_installments)} · {fmtCredits(ins.per_installment)}/期
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[#F5F5F7]">{ins.lock_days} 天 ×{ins.lock_multiplier}</span>
+                        <span>{installmentProgress(ins.paid_installments)}</span>
+                        <span>本金 {fmtCredits(ins.per_installment)}/期</span>
+                        {ins.reward_remaining != null && ins.reward_remaining > 0 ? (
+                          <span className="text-[#30D158]">待發獎勵 {fmtCredits(ins.reward_remaining)}</span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-[#8E8E93]">
+                        {ins.schedule_zh ?? installmentScheduleZh(ins.next_due_at, ins.interval_days ?? 30)}
+                        {ins.status !== 'active' ? ` · ${ins.status}` : ''}
+                      </p>
+                      {ins.failure_reason === 'key_failure' && ins.appeal_deadline ? (
+                        <p className="mt-1 text-[#FF9F9A]">{keyFailureAppealNoticeZh(ins.appeal_deadline)}</p>
+                      ) : null}
+                      {ins.status === 'active' ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          className="mt-2 text-[11px] text-[#FF9F9A]"
+                          onClick={() => {
+                            const reward = ins.reward_remaining ?? 0;
+                            const penalty = ins.total_amount * 0.05;
+                            const returned = Math.max(0, (ins.principal_remaining ?? 0) - penalty);
+                            const msg = earlyUnlockConfirmZh(reward, penalty, returned);
+                            if (window.confirm(msg)) {
+                              void run(
+                                () => earlyUnlockContribution(ins.installment_id),
+                                '已提前解鎖',
+                              );
+                            }
+                          }}
+                        >
+                          提前解鎖（沒收獎勵 + 5% 本金）
+                        </button>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
               )}
-              <button type="button" disabled={busy} className="mt-2 text-[11px] text-[#64D2FF]" onClick={() => void run(() => triggerInstallments(), '已處理到期分期')}>
+              <button type="button" disabled={busy} className="mt-2 text-[11px] text-[#64D2FF]" onClick={() => void run(() => triggerInstallments(false), '已處理到期分期')}>
                 處理到期分期
               </button>
             </section>
@@ -207,13 +258,30 @@ export default function BillingCreditsHub() {
         {sub === 'appeals' ? (
           <div className="space-y-4 p-6">
             <h2 className="text-[15px] font-semibold text-[#F5F5F7]">計費申訴</h2>
-            <AppealForm onSubmit={(r, d, t) => run(() => submitBillingAppeal(r, d, t), '申訴已提交')} busy={busy} />
+            <AppealForm
+              forfeitedInstallments={(contribution?.installments ?? []).filter(
+                (i) => i.status === 'forfeited_key_failure' && i.appeal_deadline,
+              )}
+              onSubmit={(r, d, t, kind, installmentId) =>
+                run(
+                  () => submitBillingAppeal(r, d, t, { appealKind: kind, installmentId }),
+                  '申訴已提交',
+                )
+              }
+              busy={busy}
+            />
             <ul className="space-y-2 text-[11px]">
               {appeals.map((a) => (
                 <li key={a.appeal_id} className="rounded-lg border border-white/[0.06] px-3 py-2">
                   <span className="text-[#F5F5F7]">{a.reason}</span>
                   <span className="ml-2 text-[#8E8E93]">{a.status}</span>
+                  {a.appeal_kind === 'key_failure_forfeiture' ? (
+                    <span className="ml-2 text-[#FF9F9A]">Key 故障沒收</span>
+                  ) : null}
                   <p className="text-[#636366]">{a.detail}</p>
+                  {a.forfeiture_amount != null ? (
+                    <p className="text-[#636366]">沒收金額 {fmtCredits(a.forfeiture_amount)}</p>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -255,16 +323,55 @@ function LockForm({ max, tiers, onSubmit, busy }: { max: number; tiers: Record<s
   );
 }
 
-function AppealForm({ onSubmit, busy }: { onSubmit: (reason: string, detail: string, taskId: string) => void; busy: boolean }) {
+function AppealForm({
+  onSubmit,
+  busy,
+  forfeitedInstallments,
+}: {
+  onSubmit: (reason: string, detail: string, taskId: string, kind: string, installmentId: string) => void;
+  busy: boolean;
+  forfeitedInstallments: import('../../types').LockInstallment[];
+}) {
   const [reason, setReason] = useState('');
   const [detail, setDetail] = useState('');
   const [taskId, setTaskId] = useState('');
+  const [kind, setKind] = useState('general');
+  const [installmentId, setInstallmentId] = useState('');
   return (
-    <div className="flex flex-col gap-2 sm:flex-row">
-      <input placeholder="申訴原因" value={reason} onChange={(e) => setReason(e.target.value)} className="flex-1 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
-      <input placeholder="任務 ID（選填）" value={taskId} onChange={(e) => setTaskId(e.target.value)} className="w-32 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
-      <input placeholder="詳情" value={detail} onChange={(e) => setDetail(e.target.value)} className="flex-1 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
-      <button type="button" disabled={busy || !reason.trim()} onClick={() => onSubmit(reason, detail, taskId)} className="text-[12px] text-[#64D2FF]">提交</button>
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        <select value={kind} onChange={(e) => setKind(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]">
+          <option value="general">一般申訴</option>
+          <option value="key_failure_forfeiture">Key 故障沒收申訴</option>
+        </select>
+        {kind === 'key_failure_forfeiture' ? (
+          <select
+            value={installmentId}
+            onChange={(e) => setInstallmentId(e.target.value)}
+            className="min-w-[12rem] rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]"
+          >
+            <option value="">選擇分期</option>
+            {forfeitedInstallments.map((i) => (
+              <option key={i.installment_id} value={i.installment_id}>
+                {i.installment_id.slice(-8)} · 沒收 {fmtCredits(i.forfeited_amount ?? 0)}
+              </option>
+            ))}
+          </select>
+        ) : null}
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input placeholder="申訴原因" value={reason} onChange={(e) => setReason(e.target.value)} className="flex-1 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
+        <input placeholder="任務 ID（選填）" value={taskId} onChange={(e) => setTaskId(e.target.value)} className="w-32 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
+        <input placeholder="詳情" value={detail} onChange={(e) => setDetail(e.target.value)} className="flex-1 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
+        <button
+          type="button"
+          disabled={busy || !reason.trim() || (kind === 'key_failure_forfeiture' && !installmentId)}
+          onClick={() => onSubmit(reason, detail, taskId, kind, installmentId)}
+          className="text-[12px] text-[#64D2FF]"
+        >
+          提交
+        </button>
+      </div>
     </div>
   );
 }

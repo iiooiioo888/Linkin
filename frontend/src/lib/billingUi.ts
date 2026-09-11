@@ -32,6 +32,29 @@ export function installmentProgress(paid: number, total = 3): string {
   return `已解鎖 ${paid}/${total} 期`;
 }
 
+export function earlyUnlockConfirmZh(
+  forfeitedReward: number,
+  penaltyPrincipal: number,
+  returnedPrincipal: number,
+): string {
+  return (
+    `提前解鎖將沒收未付獎勵 ${fmtCredits(forfeitedReward)}，` +
+    `並扣除本金 5%（${fmtCredits(penaltyPrincipal)}）至故障池，` +
+    `退回 ${fmtCredits(returnedPrincipal)} 至未鎖池。確認？`
+  );
+}
+
+export function installmentScheduleZh(nextDue: string | undefined, intervalDays: number): string {
+  if (!nextDue) return '已全部解鎖';
+  const date = nextDue.slice(0, 10);
+  return `下期 ${date}（每 ${intervalDays} 天一期）`;
+}
+
+export function keyFailureAppealNoticeZh(deadline: string | undefined): string {
+  if (!deadline) return 'Key 故障沒收可於 30 天內申訴';
+  return `Key 故障沒收申訴截止：${deadline.slice(0, 10)}`;
+}
+
 export function parseBillingHttpError(status: number, body: { detail?: string; code?: string }): string {
   if (status === 402) {
     return body.detail || '靈境積分不足，請充值或升級方案後再試';
