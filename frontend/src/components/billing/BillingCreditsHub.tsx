@@ -50,6 +50,7 @@ import {
   ConsoleSection,
   ConsoleSectionNav,
   ConsoleTabBody,
+  ConsoleTabContent,
   KpiCard,
   KpiGrid,
   PanelAlert,
@@ -140,15 +141,21 @@ export default function BillingCreditsHub() {
   const totalPoolBalance = poolBalances.reduce((sum, [, v]) => sum + Number(v), 0);
 
   const sectionBody = (
-    <div className="min-h-0 flex-1 overflow-hidden">
+    <>
       {section === 'overview' ? (
-        <ConsoleSection id="credits-overview" title="總覽" description="方案、餘額、Docker 積分計費、用量與分類帳">
+        <ConsoleSection
+          fill
+          id="credits-overview"
+          title="總覽"
+          description="方案、餘額、Docker 積分計費、用量與分類帳"
+        >
           <WalletPanel embedded />
         </ConsoleSection>
       ) : null}
 
       {section === 'cloud' ? (
         <ConsoleSection
+          fill
           id="credits-cloud"
           title="雲與 Docker"
           description="Compose 容器按時 USD 計費 + 阿里雲 BSS 帳單（需 AccessKey）"
@@ -168,13 +175,14 @@ export default function BillingCreditsHub() {
           }}
         >
           <ConsoleSection
+            fill
             id="credits-pools"
             title="積分池"
             description={pools?.rollover_notice_zh ?? rolloverNoticeZh(0.5, 50000)}
           >
             {poolsPager.page === 1 ? (
               <>
-                <KpiGrid className="lg:grid-cols-3">
+                <KpiGrid fill className="lg:grid-cols-3">
                   {poolBalances.map(([k, v]) => (
                     <KpiCard
                       key={k}
@@ -199,9 +207,9 @@ export default function BillingCreditsHub() {
             ) : null}
 
             {poolsPager.page === 2 ? (
-              <ConsoleCard>
+              <ConsoleCard className="flex min-h-0 flex-1 flex-col">
                 <ConsoleCardHeader>入帳來源（origin）</ConsoleCardHeader>
-                <ConsoleCardBody dense>
+                <ConsoleCardBody dense className="flex min-h-0 flex-1 flex-col">
                   <table className="w-full text-left text-[11px]">
                     <thead className="text-[#8E8E93]">
                       <tr>
@@ -239,9 +247,9 @@ export default function BillingCreditsHub() {
             ) : null}
 
             {poolsPager.page === 3 ? (
-              <ConsoleCard>
+              <ConsoleCard className="flex min-h-0 flex-1 flex-col">
                 <ConsoleCardHeader>滾存紀錄</ConsoleCardHeader>
-                <ConsoleCardBody dense>
+                <ConsoleCardBody dense className="flex min-h-0 flex-1 flex-col">
                   {rolloversPager.slice.length === 0 ? (
                     <p className="text-[11px] text-[#636366]">尚無滾存紀錄</p>
                   ) : (
@@ -288,10 +296,15 @@ export default function BillingCreditsHub() {
             if (p === 3) installmentsPager.reset();
           }}
         >
-          <ConsoleSection id="credits-contribution" title="貢獻轉換" description="未鎖定轉已購買、鎖倉分期與解鎖進度">
+          <ConsoleSection
+            fill
+            id="credits-contribution"
+            title="貢獻轉換"
+            description="未鎖定轉已購買、鎖倉分期與解鎖進度"
+          >
             {contributionPager.page === 1 ? (
               <>
-                <div className="rounded-lg border border-[#64D2FF]/20 bg-[#64D2FF]/5 px-3 py-2 text-[12px] text-[#AEAEB2]">
+                <div className="shrink-0 rounded-lg border border-[#64D2FF]/20 bg-[#64D2FF]/5 px-3 py-2 text-[12px] text-[#AEAEB2]">
                   <p>
                     {contribution.notice_zh ??
                       lockThresholdNotice(
@@ -304,10 +317,10 @@ export default function BillingCreditsHub() {
                     <p className="mt-1 text-[11px] text-[#64D2FF]">閾值依方案與累積貢獻動態調整，非固定 50</p>
                   ) : null}
                 </div>
-                <div className="grid gap-3 lg:grid-cols-2">
-                  <ConsoleCard>
+                <div className={consoleLayout.cardGridFill}>
+                  <ConsoleCard className="flex min-h-0 flex-col">
                     <ConsoleCardHeader>未鎖定 → 已購買（1:0.4）</ConsoleCardHeader>
-                    <ConsoleCardBody>
+                    <ConsoleCardBody className="flex min-h-0 flex-1 flex-col">
                       <ConvertForm
                         max={contribution.unlocked}
                         empty={contribution.unlocked <= 0}
@@ -322,9 +335,9 @@ export default function BillingCreditsHub() {
                       />
                     </ConsoleCardBody>
                   </ConsoleCard>
-                  <ConsoleCard>
+                  <ConsoleCard className="flex min-h-0 flex-col">
                     <ConsoleCardHeader>轉鎖倉（30/90/180 天）</ConsoleCardHeader>
-                    <ConsoleCardBody>
+                    <ConsoleCardBody className="flex min-h-0 flex-1 flex-col">
                       <LockForm
                         max={contribution.convertible_to_locked}
                         empty={contribution.convertible_to_locked <= 0}
@@ -346,9 +359,9 @@ export default function BillingCreditsHub() {
             ) : null}
 
             {contributionPager.page === 3 ? (
-              <ConsoleCard>
+              <ConsoleCard className="flex min-h-0 flex-1 flex-col">
                 <ConsoleCardHeader>分期解鎖進度</ConsoleCardHeader>
-                <ConsoleCardBody dense>
+                <ConsoleCardBody dense className="flex min-h-0 flex-1 flex-col">
                   {installmentsPager.slice.length === 0 ? (
                     <p className="text-[11px] text-[#636366]">尚無鎖倉分期</p>
                   ) : (
@@ -422,6 +435,7 @@ export default function BillingCreditsHub() {
           onPageChange={contributorPager.setPage}
         >
           <ConsoleSection
+            fill
             id="credits-contributor"
             title="貢獻者"
             description="共享池 API Key 綁定與健康度（AES-256 加密代理）"
@@ -445,9 +459,9 @@ export default function BillingCreditsHub() {
             if (p === 2) appealsListPager.reset();
           }}
         >
-          <ConsoleSection id="credits-appeals" title="申訴" description="計費申訴與 Key 故障沒收申訴">
+          <ConsoleSection fill id="credits-appeals" title="申訴" description="計費申訴與 Key 故障沒收申訴">
             {appealsPager.page === 1 ? (
-              <ConsoleCard>
+              <ConsoleCard className="flex min-h-0 flex-1 flex-col">
                 <ConsoleCardHeader>提交申訴</ConsoleCardHeader>
                 <ConsoleCardBody>
                   <AppealForm
@@ -463,9 +477,9 @@ export default function BillingCreditsHub() {
               </ConsoleCard>
             ) : null}
             {appealsPager.page === 2 ? (
-              <ConsoleCard>
+              <ConsoleCard className="flex min-h-0 flex-1 flex-col">
                 <ConsoleCardHeader>申訴紀錄</ConsoleCardHeader>
-                <ConsoleCardBody dense>
+                <ConsoleCardBody dense className="flex min-h-0 flex-1 flex-col">
                   {appealsListPager.slice.length === 0 ? (
                     <p className="text-[11px] text-[#636366]">尚無申訴</p>
                   ) : (
@@ -499,11 +513,16 @@ export default function BillingCreditsHub() {
       ) : null}
 
       {section === 'admin' ? (
-        <ConsoleSection id="credits-admin" title="管理" description="定價、政策、廠商、Fault Pool 與路由（需 Admin Secret）">
+        <ConsoleSection
+          fill
+          id="credits-admin"
+          title="管理"
+          description="定價、政策、廠商、Fault Pool 與路由（需 Admin Secret）"
+        >
           <BillingAdminPanel onMsg={setMsg} embedded />
         </ConsoleSection>
       ) : null}
-    </div>
+    </>
   );
 
   return (
@@ -522,11 +541,12 @@ export default function BillingCreditsHub() {
 
       <ConsoleTabBody>
         <SectionHeader
+          className="shrink-0"
           title="靈境積分中心"
           description="積分帳務、Docker 按時計費、阿里雲 BSS、貢獻鎖倉與管理台 — 分頁切換，無整頁滾動"
           meta="深鏈：#/monitor/credits/pools · #/monitor/billing → 雲與 Docker"
         />
-        {sectionBody}
+        <ConsoleTabContent>{sectionBody}</ConsoleTabContent>
       </ConsoleTabBody>
     </PanelShell>
   );
@@ -763,17 +783,17 @@ function ContributorPanel({
   const keysPager = usePagination(keys, 4);
 
   return (
-    <div className="space-y-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
       {page === 1 ? (
         <>
-          <KpiGrid>
+          <KpiGrid fill>
             <KpiCard label="未鎖收益" value={fmtCredits(Number(earnings?.unlocked_earnings ?? 0))} />
             <KpiCard label="鎖倉收益" value={fmtCredits(Number(earnings?.locked_earnings ?? 0))} />
             <KpiCard label="已綁 Key" value={keys.length} />
           </KpiGrid>
-          <ConsoleCard>
+          <ConsoleCard className="flex min-h-0 flex-1 flex-col">
             <ConsoleCardHeader>綁定共享池 API Key</ConsoleCardHeader>
-            <ConsoleCardBody>
+            <ConsoleCardBody className="flex min-h-0 flex-1 flex-col">
               <p className="mb-2 text-[11px] text-[#8E8E93]">
                 綁定 Key 共享調用權（非積分）。AES-256 加密代理、零日誌；僅 self_host / resale_allowed 廠商。
               </p>
@@ -844,9 +864,9 @@ function ContributorPanel({
       ) : null}
 
       {page === 2 ? (
-        <ConsoleCard>
+        <ConsoleCard className="flex min-h-0 flex-1 flex-col">
           <ConsoleCardHeader>Key 健康度</ConsoleCardHeader>
-          <ConsoleCardBody dense>
+          <ConsoleCardBody dense className="flex min-h-0 flex-1 flex-col">
             {keysPager.slice.length === 0 ? (
               <p className="text-[11px] text-[#636366]">尚無綁定 Key</p>
             ) : (

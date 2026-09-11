@@ -49,7 +49,7 @@ interface MonitorViewProps {
 
 function PanelFallback() {
   return (
-    <div className="flex flex-1 items-center justify-center text-[12px] text-[#8E8E93]">
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center text-[12px] text-[#8E8E93]">
       載入模組…
     </div>
   );
@@ -159,7 +159,7 @@ export default function MonitorView({
 
   if (moduleId) {
     return (
-      <div className="flex flex-1 flex-col overflow-hidden apple-canvas">
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden apple-canvas">
         <ModuleWorkspace
           moduleId={moduleId}
           page={tab}
@@ -171,8 +171,9 @@ export default function MonitorView({
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden apple-canvas">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden apple-canvas">
       <Suspense fallback={<PanelFallback />}>
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         {tab === 'live' && (
           <LiveTab
             messages={messages}
@@ -240,6 +241,7 @@ export default function MonitorView({
         )}
         {tab === 'integrations' && <IntegrationsPanel />}
         {tab === 'skills' && <SkillsMcpPanel />}
+        </div>
       </Suspense>
     </div>
   );

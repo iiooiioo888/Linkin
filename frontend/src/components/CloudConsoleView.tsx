@@ -30,7 +30,7 @@ export default function CloudConsoleView({ embedded = false }: { embedded?: bool
   const activeId = CLOUD_SECTIONS.find((s) => s.key === tab)?.id ?? CLOUD_SECTIONS[0].id;
 
   const content = (
-    <div className={consoleLayout.sectionStack + ' min-h-0 flex-1 overflow-hidden'}>
+    <div className={consoleLayout.pageContent}>
       {!embedded ? (
         <button
           type="button"
@@ -42,22 +42,22 @@ export default function CloudConsoleView({ embedded = false }: { embedded?: bool
       ) : null}
 
       {tab === 'monitoring' ? (
-        <ConsoleSection id="cloud-monitoring" title="資源監控" description="CPU · 記憶體 · 網路">
+        <ConsoleSection fill id="cloud-monitoring" title="資源監控" description="CPU · 記憶體 · 網路">
           <MonitoringPanel embedded />
         </ConsoleSection>
       ) : null}
       {tab === 'instances' ? (
-        <ConsoleSection id="cloud-instances" title="實例管理" description="容器啟停 · 日誌">
+        <ConsoleSection fill id="cloud-instances" title="實例管理" description="容器啟停 · 日誌">
           <DockerView embedded />
         </ConsoleSection>
       ) : null}
       {tab === 'alerts' ? (
-        <ConsoleSection id="cloud-alerts" title="告警中心" description="閾值規則 · 歷史">
+        <ConsoleSection fill id="cloud-alerts" title="告警中心" description="閾值規則 · 歷史">
           <AlertsPanel embedded />
         </ConsoleSection>
       ) : null}
       {tab === 'events' ? (
-        <ConsoleSection id="cloud-events" title="事件時間線" description="start · stop · restart">
+        <ConsoleSection fill id="cloud-events" title="事件時間線" description="start · stop · restart">
           <EventsPanel embedded />
         </ConsoleSection>
       ) : null}

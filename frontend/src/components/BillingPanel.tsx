@@ -174,9 +174,15 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
   const show = (page: number) => !embedded || embeddedPager.page === page;
 
   const body = (
-      <PanelSection>
+      <PanelSection className={embedded ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : undefined}>
       {show(1) && (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={
+          embedded
+            ? 'grid min-h-0 flex-1 grid-cols-1 auto-rows-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-h-0'
+            : 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'
+        }
+      >
         <StatCard
           label="今日費用"
           value={billing ? formatCost(billing.today_total) : '--'}

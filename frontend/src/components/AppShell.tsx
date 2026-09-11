@@ -236,7 +236,7 @@ export default function AppShell({
         />
 
         {/* 主内容区 */}
-        <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+        <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col">{children}</main>
 
         {/* 右侧 OPC 面板（滑动式） */}
         <RightPanel
