@@ -387,3 +387,76 @@ def test_billing_api(billing_store, monkeypatch):
         assert len(body["plans"]) == 3
         topup = client.post("/billing/topup", headers=headers, json={"credits": 500})
         assert topup.status_code == 200
+
+
+def test_contributor_api_bind_lock_convert(billing_store, monkeypatch):
+    monkeypatch.setenv("LINKIN_AUTH_FORCE", "1")
+    monkeypatch.setenv("LINKIN_GATE_ID", "contrib_user")
+    monkeypatch.setenv("LINKIN_GATE_SECRET", "contrib_secret")
+    monkeypatch.setenv("LINKIN_BILLING_FORCE", "1")
+    monkeypatch.setenv("LINKIN_BILLING_DB", billing_store.db_path)
+
+    from backend.main import app
+
+    pools = get_pool_store()
+    pools.credit_pool("contrib_user", POOL_CONTRIBUTION_UNLOCKED, 200, source="reward", origin="test")
+
+    with TestClient(app) as client:
+        login = client.post("/auth/login", json={"username": "contrib_user", "password": "contrib_secret"})
+        headers = {"X-Linkin-Gate": login.json()["token"]}
+
+        bind = client.post(
+            "/billing/contributor/bind-key",
+            headers=headers,
+            json={"encrypted_key": "sk-test-key-12345678", "vendor_id": "self_host"},
+        )
+        assert bind.status_code == 200
+        assert bind.json()["status"] == "active"
+
+        earnings = client.get("/billing/contributor/earnings", headers=headers)
+        assert earnings.status_code == 200
+        assert earnings.json()["unlocked_earnings"] == 200
+
+        status = client.get("/billing/contributor/contribution/status", headers=headers)
+        assert status.status_code == 200
+        assert status.json()["unlocked"] == 200
+
+        lock = client.post(
+            "/billing/contributor/contribution/lock",
+            headers=headers,
+            json={"amount": 100, "lock_days": 30},
+        )
+        assert lock.status_code == 200
+        assert lock.json()["locked_amount"] == 100
+
+        convert = client.post("/billing/contribution/convert?amount=50", headers=headers)
+        assert convert.status_code == 200
+        assert convert.json()["converted"] == 50
+
+        pools_resp = client.get("/billing/pools", headers=headers)
+        assert pools_resp.status_code == 200
+        assert "balances" in pools_resp.json()
+
+        grants = client.get("/billing/grants", headers=headers)
+        assert grants.status_code == 200
+        assert len(grants.json()["items"]) >= 1
+
+
+def test_billing_pools_in_snapshot(billing_store, monkeypatch):
+    monkeypatch.setenv("LINKIN_AUTH_FORCE", "1")
+    monkeypatch.setenv("LINKIN_GATE_ID", "pool_user")
+    monkeypatch.setenv("LINKIN_GATE_SECRET", "pool_secret")
+    monkeypatch.setenv("LINKIN_BILLING_FORCE", "1")
+    monkeypatch.setenv("LINKIN_BILLING_DB", billing_store.db_path)
+
+    from backend.main import app
+
+    with TestClient(app) as client:
+        login = client.post("/auth/login", json={"username": "pool_user", "password": "pool_secret"})
+        headers = {"X-Linkin-Gate": login.json()["token"]}
+        resp = client.get("/billing", headers=headers)
+        body = resp.json()
+        assert "pools" in body
+        assert "contribution" in body
+        assert "rollover_notice_zh" in body["pools"] or body["pools"].get("rollover_notice_zh")
+        assert "vendor_preference" in body

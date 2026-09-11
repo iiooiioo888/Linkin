@@ -8,6 +8,7 @@ import os
 billing_user_id: contextvars.ContextVar[str] = contextvars.ContextVar("billing_user_id", default="")
 billing_task_id: contextvars.ContextVar[str] = contextvars.ContextVar("billing_task_id", default="")
 billing_skipped: contextvars.ContextVar[bool] = contextvars.ContextVar("billing_skipped", default=False)
+chat_billing_acc: contextvars.ContextVar[dict | None] = contextvars.ContextVar("chat_billing_acc", default=None)
 
 
 def current_billing_user() -> str:
@@ -30,3 +31,48 @@ def billing_enabled() -> bool:
 
 def default_anonymous_user() -> str:
     return os.getenv("LINKIN_BILLING_ANONYMOUS_USER", "dev").strip() or "dev"
+
+
+def begin_chat_billing() -> contextvars.Token:
+    return chat_billing_acc.set(
+        {
+            "credits_deducted": 0.0,
+            "pricing_version": None,
+            "cache_savings_credits": 0.0,
+            "vendor_id": None,
+            "interrupted": False,
+            "interrupt_reason": "",
+        }
+    )
+
+
+def end_chat_billing(token: contextvars.Token) -> None:
+    chat_billing_acc.reset(token)
+
+
+def chat_billing_snapshot() -> dict | None:
+    acc = chat_billing_acc.get()
+    if not acc:
+        return None
+    return dict(acc)
+
+
+def record_chat_meter(
+    credits: float,
+    *,
+    pricing_version: int | None = None,
+    cache_savings_credits: float = 0.0,
+    vendor_id: str | None = None,
+) -> None:
+    acc = chat_billing_acc.get()
+    if acc is None:
+        return
+    acc["credits_deducted"] = round(float(acc.get("credits_deducted", 0)) + max(0.0, float(credits)), 4)
+    if pricing_version is not None:
+        acc["pricing_version"] = pricing_version
+    if cache_savings_credits:
+        acc["cache_savings_credits"] = round(
+            float(acc.get("cache_savings_credits", 0)) + float(cache_savings_credits), 4
+        )
+    if vendor_id:
+        acc["vendor_id"] = vendor_id

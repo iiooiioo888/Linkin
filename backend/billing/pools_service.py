@@ -185,6 +185,23 @@ class PoolsService:
             key_id=key_id,
             meta=payload,
         )
+        if l3_cache_hit or (cache_read_tokens or cached_tokens):
+            from backend.billing.pricing_engine import compute_cost_with_meta
+
+            meta_cost = compute_cost_with_meta(
+                config,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_read_tokens=cache_read_tokens or cached_tokens,
+                l3_cache_hit=l3_cache_hit,
+            )
+            self.store.record_cache_savings(
+                account_id,
+                cache_read_tokens or cached_tokens,
+                float(meta_cost.get("cache_savings_credits", 0)),
+                l3_hit=l3_cache_hit,
+            )
         return {
             "task_id": task_id,
             "cost_credits": actual,

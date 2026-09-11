@@ -4,12 +4,7 @@
 import { useState } from 'react';
 import { assignBillingPlan, topupBillingCredits } from '../api/client';
 import { useWallet } from '../hooks/useWallet';
-
-function fmtCredits(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 10_000) return `${(n / 1000).toFixed(1)}k`;
-  return n.toFixed(1);
-}
+import { fmtCredits } from '../lib/billingUi';
 
 const EVENT_ZH: Record<string, string> = {
   llm_tokens: 'LLM Token',

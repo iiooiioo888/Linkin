@@ -220,6 +220,28 @@ CREATE TABLE IF NOT EXISTS fault_pool (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS lock_installments (
+    installment_id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    total_amount REAL NOT NULL,
+    per_installment REAL NOT NULL,
+    paid_installments INTEGER NOT NULL DEFAULT 0,
+    lock_days INTEGER NOT NULL,
+    lock_multiplier REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    next_due_at TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cache_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id TEXT,
+    l3_hits INTEGER NOT NULL DEFAULT 0,
+    cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+    savings_credits REAL NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_grants_account_pool ON grants(account_id, pool_type);
 CREATE INDEX IF NOT EXISTS idx_pool_ledger_account ON pool_ledger(account_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_tasks_account ON tasks(account_id);
@@ -740,6 +762,173 @@ class PoolStore:
                 )
                 results.append({"account_id": account_id, "unused": unused, "rolled": rolled, "forfeited": forfeited})
         return results
+
+    def list_grants(self, account_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT grant_id, pool_type, amount, remaining, expires_at, source, origin,
+                   lock_days, lock_multiplier, created_at FROM grants
+                   WHERE account_id=? ORDER BY created_at DESC LIMIT ?""",
+                (account_id.strip(), max(1, min(limit, 200))),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def list_rollover_for_account(self, account_id: str, limit: int = 20) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM rollover_records WHERE account_id=? ORDER BY created_at DESC LIMIT ?",
+                (account_id.strip(), limit),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def create_lock_installment(
+        self,
+        account_id: str,
+        *,
+        total: float,
+        per_installment: float,
+        lock_days: int,
+        lock_multiplier: float,
+    ) -> str:
+        iid = f"ins_{uuid.uuid4().hex[:12]}"
+        now = _utc_now()
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO lock_installments(installment_id, account_id, total_amount, per_installment,
+                   paid_installments, lock_days, lock_multiplier, status, next_due_at, created_at)
+                   VALUES (?, ?, ?, ?, 0, ?, ?, 'active', ?, ?)""",
+                (iid, account_id, total, per_installment, lock_days, lock_multiplier, now, now),
+            )
+        return iid
+
+    def list_lock_installments(self, account_id: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM lock_installments WHERE account_id=? ORDER BY created_at DESC",
+                (account_id.strip(),),
+            ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["progress_zh"] = f"已解鎖 {d['paid_installments']}/3 期"
+            out.append(d)
+        return out
+
+    def process_lock_installments(self, account_id: str | None = None) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        now = _utc_now()
+        with self._conn() as conn:
+            q = "SELECT * FROM lock_installments WHERE status='active' AND paid_installments < 3"
+            params: tuple = ()
+            if account_id:
+                q += " AND account_id=?"
+                params = (account_id.strip(),)
+            rows = conn.execute(q, params).fetchall()
+            for row in rows:
+                aid = row["account_id"]
+                pay = float(row["per_installment"])
+                if not self.atomic_debit_pool(conn, aid, POOL_CONTRIBUTION_LOCKED, pay, now):
+                    continue
+                conn.execute(
+                    """INSERT INTO balances(account_id, pool_type, amount, updated_at) VALUES (?, ?, ?, ?)
+                       ON CONFLICT(account_id, pool_type) DO UPDATE SET
+                       amount = balances.amount + excluded.amount, updated_at = excluded.updated_at""",
+                    (aid, POOL_PURCHASED, pay, now),
+                )
+                paid = int(row["paid_installments"]) + 1
+                status = "completed" if paid >= 3 else "active"
+                conn.execute(
+                    "UPDATE lock_installments SET paid_installments=?, status=?, next_due_at=? WHERE installment_id=?",
+                    (paid, status, now, row["installment_id"]),
+                )
+                results.append({"installment_id": row["installment_id"], "paid": pay, "installment": paid})
+        return results
+
+    def record_cache_savings(self, account_id: str, cache_read_tokens: int, savings_credits: float, l3_hit: bool = False) -> None:
+        now = _utc_now()
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO cache_stats(account_id, l3_hits, cache_read_tokens, savings_credits, updated_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (account_id, 1 if l3_hit else 0, cache_read_tokens, savings_credits, now),
+            )
+
+    def cache_stats_summary(self, account_id: str | None = None) -> dict[str, Any]:
+        with self._conn() as conn:
+            if account_id:
+                row = conn.execute(
+                    """SELECT COALESCE(SUM(l3_hits),0) AS l3_hits,
+                       COALESCE(SUM(cache_read_tokens),0) AS cache_read_tokens,
+                       COALESCE(SUM(savings_credits),0) AS savings
+                       FROM cache_stats WHERE account_id=?""",
+                    (account_id.strip(),),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    """SELECT COALESCE(SUM(l3_hits),0) AS l3_hits,
+                       COALESCE(SUM(cache_read_tokens),0) AS cache_read_tokens,
+                       COALESCE(SUM(savings_credits),0) AS savings FROM cache_stats"""
+                ).fetchone()
+        return {
+            "l3_hits": int(row["l3_hits"]),
+            "cache_read_tokens": int(row["cache_read_tokens"]),
+            "savings_credits": float(row["savings"]),
+        }
+
+    def ensure_contributor(self, account_id: str) -> str:
+        cid = f"ctr_{account_id[:16]}"
+        now = _utc_now()
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT OR IGNORE INTO contributors(contributor_id, account_id, status, created_at)
+                   VALUES (?, ?, 'active', ?)""",
+                (cid, account_id.strip(), now),
+            )
+        return cid
+
+    def bind_contributor_key(self, account_id: str, encrypted_key: str, limits: dict | None = None) -> dict[str, Any]:
+        import json
+
+        cid = self.ensure_contributor(account_id)
+        kid = f"key_{uuid.uuid4().hex[:12]}"
+        now = _utc_now()
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO api_keys(key_id, contributor_id, encrypted_key, limits_json, status, created_at)
+                   VALUES (?, ?, ?, ?, 'active', ?)""",
+                (kid, cid, encrypted_key, json.dumps(limits or {}, ensure_ascii=False), now),
+            )
+        return {"contributor_id": cid, "key_id": kid, "status": "active"}
+
+    def contributor_earnings(self, account_id: str) -> dict[str, Any]:
+        bals = self.get_balances(account_id)
+        with self._conn() as conn:
+            keys = conn.execute(
+                """SELECT key_id, status, created_at FROM api_keys
+                   WHERE contributor_id IN (SELECT contributor_id FROM contributors WHERE account_id=?)""",
+                (account_id.strip(),),
+            ).fetchall()
+        return {
+            "contributor_id": f"ctr_{account_id[:16]}",
+            "unlocked_earnings": float(bals.get(POOL_CONTRIBUTION_UNLOCKED, 0)),
+            "locked_earnings": float(bals.get(POOL_CONTRIBUTION_LOCKED, 0)),
+            "keys": [dict(k) for k in keys],
+        }
+
+    def pools_detail(self, account_id: str, plan_id: str = "free") -> dict[str, Any]:
+        policy = self.active_credit_policy(plan_id)
+        return {
+            "balances": self.get_balances(account_id),
+            "spendable": self.total_spendable(account_id),
+            "grants": self.list_grants(account_id),
+            "rollover_records": self.list_rollover_for_account(account_id),
+            "rollover_notice_zh": (
+                f"月贈送積分將於每月初按 {int(policy['monthly_rollover_ratio']*100)}% 滾入已購買池，"
+                f"上限 {policy['rollover_cap']:.0f}，剩餘作廢"
+            ),
+            "rollover_policy_version": policy["version"],
+            "cache_stats": self.cache_stats_summary(account_id),
+        }
 
     def list_pool_ledger(self, account_id: str, limit: int = 50) -> list[dict[str, Any]]:
         with self._conn() as conn:

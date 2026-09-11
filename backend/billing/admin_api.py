@@ -194,12 +194,17 @@ def admin_resolve_appeal(appeal_id: str, note: str = "") -> dict[str, Any]:
     return resolve_appeal(appeal_id, note=note)
 
 
+@router.get("/cache-stats")
+def cache_stats(account_id: str | None = None) -> dict[str, Any]:
+    return get_pool_store().cache_stats_summary(account_id)
+
+
 @router.get("/fault-pool")
 def fault_pool_stats() -> dict[str, Any]:
-    """Phase 2 stub。"""
     with get_pool_store()._conn() as conn:
-        row = conn.execute("SELECT COALESCE(SUM(amount), 0) AS total FROM fault_pool").fetchone()
-    return {"total": float(row["total"]), "phase": "stub"}
+        row = conn.execute("SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS entries FROM fault_pool").fetchone()
+        recent = conn.execute("SELECT * FROM fault_pool ORDER BY created_at DESC LIMIT 20").fetchall()
+    return {"total": float(row["total"]), "entries": int(row["entries"]), "recent": [dict(r) for r in recent]}
 
 
 @router.get("/task-ledger/{task_id}")

@@ -177,7 +177,20 @@ def meter_llm(
             "pricing_version": pools.active_pricing_config()["version"],
         }
     )
-    return emit_usage_event("llm_tokens", credits, user_id=uid, task_id=tid, reference=reference, meta=m, quantity=input_tokens + output_tokens, unit="token")
+    event = emit_usage_event(
+        "llm_tokens", credits, user_id=uid, task_id=tid, reference=reference, meta=m, quantity=input_tokens + output_tokens, unit="token"
+    )
+    if not tid and event:
+        from backend.billing.context import record_chat_meter
+
+        savings = float(m.get("cache_savings_credits") or 0)
+        record_chat_meter(
+            credits,
+            pricing_version=m.get("pricing_version"),
+            cache_savings_credits=savings,
+            vendor_id=vendor_id or m.get("vendor_id"),
+        )
+    return event
 
 
 def precheck_llm(

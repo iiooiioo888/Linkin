@@ -1070,6 +1070,9 @@ async def chat_stream(req: ChatRequest):
     chat_tracer = TraceLogger(session_id)
 
     async def event_stream():
+        from backend.billing.context import begin_chat_billing, chat_billing_snapshot, end_chat_billing
+
+        billing_token = begin_chat_billing()
         state: dict[str, Any] = {
             "query": req.query,
             "session_id": session_id,
@@ -1249,10 +1252,33 @@ async def chat_stream(req: ChatRequest):
             state["final_answer"] = final_answer
             await asyncio.to_thread(nodes.save_memory, state)
 
-            yield f"event: done\ndata: {json_mod.dumps({'answer': final_answer, 'thinking': state.get('thinking', ''), 'score': state.get('score'), 'iteration': state.get('iteration', 0)}, ensure_ascii=False)}\n\n"
+            done_payload: dict[str, Any] = {
+                "answer": final_answer,
+                "thinking": state.get("thinking", ""),
+                "score": state.get("score"),
+                "iteration": state.get("iteration", 0),
+            }
+            billing_snap = chat_billing_snapshot()
+            if billing_snap:
+                done_payload["billing"] = billing_snap
+            yield f"event: done\ndata: {json_mod.dumps(done_payload, ensure_ascii=False)}\n\n"
         except Exception as exc:
             logger.error("串流聊天失敗：%s", exc)
-            yield f"event: error\ndata: {json_mod.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"
+            from backend.billing.errors import InsufficientCreditsError
+
+            err_msg = str(exc)
+            interrupted = False
+            if isinstance(exc.__cause__, InsufficientCreditsError):
+                err_msg = exc.__cause__.message
+            elif "靈境積分不足" in err_msg or "INSUFFICIENT_CREDITS" in err_msg:
+                interrupted = True
+            snap = chat_billing_snapshot()
+            if snap and interrupted:
+                snap = {**snap, "interrupted": True, "interrupt_reason": err_msg}
+                yield f"event: billing\ndata: {json_mod.dumps(snap, ensure_ascii=False)}\n\n"
+            yield f"event: error\ndata: {json_mod.dumps({'error': err_msg, 'code': 'INSUFFICIENT_CREDITS' if interrupted else 'CHAT_ERROR'}, ensure_ascii=False)}\n\n"
+        finally:
+            end_chat_billing(billing_token)
 
     return StreamingResponse(
         event_stream(),

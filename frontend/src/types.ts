@@ -58,8 +58,66 @@ export interface BillingDockerSummary {
   total_docker_credits_spent?: number;
 }
 
+export interface BillingPoolsDetail {
+  balances: Record<string, number>;
+  spendable: number;
+  grants: BillingGrant[];
+  rollover_records: Record<string, unknown>[];
+  rollover_notice_zh: string;
+  rollover_policy_version: number;
+  cache_stats?: { l3_hits: number; cache_read_tokens: number; savings_credits: number };
+}
+
+export interface BillingGrant {
+  grant_id: string;
+  pool_type: string;
+  amount: number;
+  remaining: number;
+  source: string;
+  origin: string;
+  lock_days?: number;
+  lock_multiplier?: number;
+  created_at: string;
+}
+
+export interface ContributionStatus {
+  unlocked: number;
+  locked: number;
+  convert_threshold: number;
+  accumulated_unlocked: number;
+  convertible_to_locked: number;
+  convert_ratio_to_purchased: number;
+  lock_tiers: Record<string, number>;
+  installments?: LockInstallment[];
+  notice_zh?: string;
+}
+
+export interface LockInstallment {
+  installment_id: string;
+  total_amount: number;
+  per_installment: number;
+  paid_installments: number;
+  lock_days: number;
+  lock_multiplier: number;
+  status: string;
+  progress_zh?: string;
+}
+
+export interface BillingAppeal {
+  appeal_id: string;
+  account_id: string;
+  task_id?: string;
+  reason: string;
+  detail: string;
+  status: string;
+  created_at: string;
+}
+
 export interface BillingSnapshot {
   account: BillingAccount;
+  pools?: BillingPoolsDetail;
+  contribution?: ContributionStatus;
+  vendor_preference?: { version: number; config: Record<string, unknown> };
   plans: Record<string, unknown>[];
   rate_card: Record<string, unknown>;
   enterprise: Record<string, unknown>;
@@ -634,6 +692,8 @@ export interface ChatMessage {
     iteration?: number;
     /** 多維度評估結果（優化 #1） */
     multiDim?: MultiDimEvaluation;
+    /** 靈境積分扣款摘要（v6.0） */
+    billingFootnote?: string;
   };
 }
 

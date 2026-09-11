@@ -53,11 +53,15 @@ def _admin_allowed(request: Request) -> bool:
 
 
 def _account_payload(request: Request) -> dict[str, Any]:
+    from backend.billing.contribution_service import contribution_status
     from backend.billing.docker_meter import get_docker_billing_tracker
+    from backend.billing.pool_store import get_pool_store
 
     user_id = _resolve_user(request)
     svc = get_billing_service()
     account = svc.get_account(user_id)
+    pools = get_pool_store().pools_detail(user_id, account.get("plan_id", "free"))
+    contribution = contribution_status(user_id)
     docker = get_docker_billing_tracker().summary(user_id=user_id)
     docker_charges = [
         e for e in svc.usage_events(user_id, limit=100) if e.get("event_type") in {"docker_runtime", "docker"}
@@ -65,9 +69,12 @@ def _account_payload(request: Request) -> dict[str, Any]:
     docker_credits_spent = round(sum(float(e.get("credits") or 0) for e in docker_charges), 4)
     return {
         "account": account,
+        "pools": pools,
+        "contribution": contribution,
         "plans": list_plans_public(),
         "rate_card": public_rate_card(),
         "enterprise": enterprise_status(),
+        "vendor_preference": get_pool_store().active_vendor_config(),
         "docker": {
             **docker,
             "recent_docker_events": docker_charges[:15],
@@ -130,14 +137,39 @@ def list_my_appeals(request: Request, limit: int = 20) -> dict[str, Any]:
     return {"appeals": list_appeals(user_id, limit=limit)}
 
 
+@router.get("/pools")
+def get_pools(request: Request) -> dict[str, Any]:
+    from backend.billing.pool_store import get_pool_store
+
+    user_id = _resolve_user(request)
+    acct = get_billing_service().get_account(user_id)
+    return get_pool_store().pools_detail(user_id, acct.get("plan_id", "free"))
+
+
+@router.get("/rollover-records")
+def my_rollover_records(request: Request, limit: int = 20) -> dict[str, Any]:
+    from backend.billing.pool_store import get_pool_store
+
+    user_id = _resolve_user(request)
+    return {"items": get_pool_store().list_rollover_for_account(user_id, limit)}
+
+
+@router.get("/grants")
+def my_grants(request: Request, limit: int = 50) -> dict[str, Any]:
+    from backend.billing.pool_store import get_pool_store
+
+    user_id = _resolve_user(request)
+    return {"items": get_pool_store().list_grants(user_id, limit)}
+
+
 @router.post("/contribution/convert")
 def convert_contribution(request: Request, amount: float) -> dict[str, Any]:
-    from backend.billing.pools_service import get_pools_service
+    from backend.billing.contribution_service import convert_unlocked_to_purchased
 
     user_id = _resolve_user(request)
     if amount <= 0:
         raise HTTPException(status_code=422, detail="轉換數量須大於 0")
-    return get_pools_service().convert_contribution_unlocked(user_id, amount)
+    return convert_unlocked_to_purchased(user_id, amount)
 
 
 @wallet_router.get("")
@@ -173,9 +205,9 @@ def transfer_forbidden() -> dict[str, Any]:
 
 def register_billing(app) -> None:
     from backend.billing.admin_api import router as admin_router
-    from backend.billing.phase2_stubs import router as phase2_router
+    from backend.billing.contributor_api import router as contributor_router
 
     app.include_router(router)
     app.include_router(wallet_router)
     app.include_router(admin_router)
-    app.include_router(phase2_router)
+    app.include_router(contributor_router)

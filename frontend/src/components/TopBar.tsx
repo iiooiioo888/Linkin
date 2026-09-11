@@ -86,7 +86,7 @@ export default function TopBar({
       )}
 
       <div className="ml-auto flex items-center gap-0.5">
-        <WalletBadge onOpenBilling={() => onMonitorTabChange?.('billing')} />
+        <WalletBadge onOpenBilling={() => onMonitorTabChange?.('credits')} />
 
         {llmConfigured === false && (
           <button
