@@ -16,6 +16,10 @@
 
 [`monitor-dashboard-v3.html`](monitor-dashboard-v3.html) — gold/dark token、三欄 `216px / 1fr / 304px`、監控視覺元件結構參考。實作對應 `frontend/src/index.css`、`frontend/src/lib/consoleColors.ts`、`frontend/src/components/ui/monitor/`。
 
+## 登入 OPC v3
+
+[`login-opc-v3.html`](login-opc-v3.html) — gold/dark 登入卡、分層 OPC 金字塔標誌（L4 金鑽 / L3 藍三角 / L2 青點 + 紅探詢鑽）、角色網路動態背景。實作對應 `frontend/src/components/LoginGate.tsx`、`frontend/src/components/login/`。
+
 ## 相關入口
 
 | 主題 | 文件 |
