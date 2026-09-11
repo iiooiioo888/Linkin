@@ -23,7 +23,7 @@ export default function WalletBadge({ onOpenBilling, compact = false, minimal = 
     <button
       type="button"
       onClick={onOpenBilling}
-      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] tabular-nums transition-colors ${
+      className={`wallet-badge-btn inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] tabular-nums transition-colors ${
         low
           ? 'border-[color-mix(in_srgb,var(--console-amber)_35%,transparent)] bg-[color-mix(in_srgb,var(--console-amber)_10%,transparent)] console-status-amber hover:bg-[color-mix(in_srgb,var(--console-amber)_16%,transparent)]'
           : 'border-[color-mix(in_srgb,var(--console-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] console-status-accent hover:bg-[color-mix(in_srgb,var(--console-accent)_16%,transparent)]'

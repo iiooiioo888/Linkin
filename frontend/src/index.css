@@ -203,6 +203,77 @@ body.scroll-lock {
   }
 }
 
+/* 窄螢幕三欄：分頁切換單欄（由 ConsoleThreeColumn 注入 class） */
+@media (max-width: 1023px) {
+  .console-three-col--mobile-tabs {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .console-three-col--mobile-tabs.console-three-col {
+    display: flex;
+  }
+
+  .console-three-col--mobile-tabs .console-col-left,
+  .console-three-col--mobile-tabs .console-col-center,
+  .console-three-col--mobile-tabs .console-col-right {
+    display: none;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    border-right: none;
+    border-top: none;
+  }
+
+  .console-three-col--mobile-tabs.console-three-col--show-left .console-col-left {
+    display: flex;
+  }
+
+  .console-three-col--mobile-tabs.console-three-col--show-center .console-col-center {
+    display: flex;
+  }
+
+  .console-three-col--mobile-tabs.console-three-col--show-right .console-col-right {
+    display: flex;
+    border-top: 1px solid var(--console-line);
+  }
+
+  .console-mobile-col-tabs {
+    display: flex;
+    flex-shrink: 0;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--console-line);
+    background: var(--console-sidebar);
+  }
+
+  .console-mobile-col-tab {
+    display: flex;
+    min-height: 44px;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    padding: 8px 10px;
+    color: var(--console-sub);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+
+  .console-mobile-col-tab.on {
+    border-color: var(--console-line-strong);
+    background: var(--console-card);
+    color: var(--console-ink);
+  }
+}
+
 .console-col-scroll {
   min-height: 0;
   flex: 1 1 auto;
@@ -406,6 +477,41 @@ body.scroll-lock {
 
 .console-dense-grid--6 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 767px) {
+  .console-dense-grid {
+    gap: 16px;
+  }
+
+  .console-dense-grid--3 {
+    grid-template-columns: 1fr;
+  }
+
+  .console-dense-grid--4,
+  .console-dense-grid--6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .console-kpi-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .console-dense-card__head {
+    font-size: 11px;
+  }
+
+  .console-rail-nav {
+    gap: 4px;
+    padding: 12px;
+  }
+
+  .console-rail-item {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
 }
 
 @media (min-width: 768px) {
@@ -916,6 +1022,10 @@ body.scroll-lock {
 
 .apple-field:disabled {
   opacity: 0.45;
+}
+
+.topbar-signout-icon {
+  display: none;
 }
 
 .apple-icon-btn {
@@ -1523,9 +1633,38 @@ body.scroll-lock {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 500;
-    line-height: 1.1;
+    line-height: 1.2;
+  }
+
+  .app-topbar {
+    gap: 4px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .app-topbar > .flex.shrink-0 {
+    gap: 2px;
+  }
+
+  .app-topbar .wallet-badge-btn {
+    min-height: 36px;
+    max-width: 72px;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .app-topbar .wallet-badge-btn .apple-dot {
+    display: none;
+  }
+
+  .app-topbar .topbar-signout-text {
+    display: none;
+  }
+
+  .app-topbar .topbar-signout-icon {
+    display: block;
   }
 
   .right-panel-drawer.is-open {
@@ -1885,6 +2024,37 @@ body.scroll-lock {
 
 .rd-board--compact .rd-tc {
   padding: 8px 9px;
+}
+
+@media (max-width: 767px) {
+  .rd-board {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    overflow-x: visible;
+    overflow-y: visible;
+    padding: 12px 12px 16px;
+  }
+
+  .rd-board--compact {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    gap: 12px;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .rd-board--compact .rd-col-h {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+
+  .rd-board--compact .rd-col-list {
+    max-height: none;
+  }
+
+  .rd-board--compact .rd-tc {
+    padding: 10px 12px;
+  }
 }
 
 .rd-col {

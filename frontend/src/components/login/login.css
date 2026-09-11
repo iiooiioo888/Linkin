@@ -34,6 +34,16 @@
   height: 100%;
   pointer-events: none;
   z-index: 0;
+  opacity: 0.55;
+}
+
+.login-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 60% at 50% 45%, rgba(10, 10, 13, 0.35) 0%, rgba(10, 10, 13, 0.82) 100%);
 }
 
 .login-card {
@@ -269,6 +279,59 @@
 
 .login-footer__secure {
   color: var(--login-sub);
+}
+
+@media (max-width: 767px) {
+  .login-bg-canvas {
+    opacity: 0.4;
+  }
+
+  .login-card {
+    background: color-mix(in srgb, var(--login-card) 97%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--login-accent) 14%, transparent),
+      0 24px 64px rgba(0, 0, 0, 0.7);
+  }
+
+  .login-field {
+    height: 44px;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .login-submit {
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .login-remember {
+    min-height: 44px;
+    font-size: 12px;
+  }
+
+  .login-remember input {
+    width: 18px;
+    height: 18px;
+  }
+
+  .login-forgot {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .login-label {
+    font-size: 12px;
+  }
+
+  .login-status {
+    font-size: 11px;
+  }
+
+  .login-footer {
+    font-size: 10px;
+  }
 }
 
 @media (max-width: 480px) {

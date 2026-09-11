@@ -10,7 +10,10 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { consoleLayout } from '../../lib/consoleLayout';
+
+type ConsoleMobilePane = 'left' | 'center' | 'right';
 
 export function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -41,10 +44,50 @@ export function PanelShell({
   );
 }
 
-/** OCD 三欄主 grid — 左 216 / 中 1fr / 右 304（≥1440） */
-export function ConsoleThreeColumn({ className, children, ...rest }: DivProps) {
+/** OCD 三欄主 grid — 左 216 / 中 1fr / 右 304（≥1440）；<1024 單欄 + 分頁切換 */
+export function ConsoleThreeColumn({
+  className,
+  children,
+  mobileLabels,
+  ...rest
+}: DivProps & {
+  mobileLabels?: Partial<Record<ConsoleMobilePane, string>>;
+}) {
+  const isWideConsole = useMediaQuery('(min-width: 1024px)', true);
+  const [mobilePane, setMobilePane] = useState<ConsoleMobilePane>('center');
+
+  const labels: Record<ConsoleMobilePane, string> = {
+    left: mobileLabels?.left ?? '導覽',
+    center: mobileLabels?.center ?? '主視圖',
+    right: mobileLabels?.right ?? '詳情',
+  };
+
   return (
-    <div className={cn(consoleLayout.threeColumn, className)} {...rest}>
+    <div
+      className={cn(
+        consoleLayout.threeColumn,
+        !isWideConsole && 'console-three-col--mobile-tabs',
+        !isWideConsole && `console-three-col--show-${mobilePane}`,
+        className,
+      )}
+      {...rest}
+    >
+      {!isWideConsole ? (
+        <nav className="console-mobile-col-tabs" role="tablist" aria-label="欄位切換">
+          {(['left', 'center', 'right'] as ConsoleMobilePane[]).map((pane) => (
+            <button
+              key={pane}
+              type="button"
+              role="tab"
+              aria-selected={mobilePane === pane}
+              className={cn('console-mobile-col-tab', mobilePane === pane && 'on')}
+              onClick={() => setMobilePane(pane)}
+            >
+              {labels[pane]}
+            </button>
+          ))}
+        </nav>
+      ) : null}
       {children}
     </div>
   );
