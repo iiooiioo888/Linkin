@@ -142,7 +142,7 @@ export default function RoleV3Desk({
   agent,
   agents,
   rahoSnap,
-  grillNodes,
+  grillNodes: _grillNodes,
   l0,
   onSelectAgent,
   onOpenGrill,
@@ -453,7 +453,7 @@ export default function RoleV3Desk({
                     {capPct}%
                   </span>
                 </div>
-                <MiniProgressBar value={capPct} hot={capPct >= 90} good={capPct < 60} />
+                <MiniProgressBar value={capPct} hotThreshold={90} good={capPct < 60} />
                 <div className={consoleLayout.snippetRow}>
                   <span>Token I/O</span>
                   <span className="font-mono text-[9px]">{m.tokens_in ?? 0} / {m.tokens_out ?? 0}</span>

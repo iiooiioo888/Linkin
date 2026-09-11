@@ -259,7 +259,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   const [data, setData] = useState<AgentMonitorData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>(focusAgentId || '');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [, setExpandedId] = useState<string | null>(null);
   const [itemFilter, setItemFilter] = useState<WorkItemColumnKey>('executing');
   const [deskTab, setDeskTab] = useState<RoleDeskTab>('tasks');
   const [creating, setCreating] = useState(false);
