@@ -6,9 +6,11 @@ import { useWallet } from '../hooks/useWallet';
 interface WalletBadgeProps {
   onOpenBilling?: () => void;
   compact?: boolean;
+  /** 行動端頂欄：僅顯示數值，避免與導覽搶寬度 */
+  minimal?: boolean;
 }
 
-export default function WalletBadge({ onOpenBilling, compact = false }: WalletBadgeProps) {
+export default function WalletBadge({ onOpenBilling, compact = false, minimal = false }: WalletBadgeProps) {
   const { account } = useWallet(compact ? 12000 : 8000);
   const credits = account?.balance_credits ?? null;
   const low = account?.low_balance ?? false;
@@ -29,7 +31,7 @@ export default function WalletBadge({ onOpenBilling, compact = false }: WalletBa
       title={low ? '積分偏低，點擊前往帳務中心' : '點擊查看靈境積分'}
     >
       <span className={low ? 'apple-dot apple-dot--warn' : 'apple-dot apple-dot--ok'} />
-      {compact ? `${label} 積分` : `積分 ${label}`}
+      {minimal ? label : compact ? `${label} 積分` : `積分 ${label}`}
     </button>
   );
 }

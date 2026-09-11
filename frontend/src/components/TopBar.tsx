@@ -47,52 +47,66 @@ export default function TopBar({
           ? `${activityTitle(activity)} · ${path}`
           : t('nav.console');
 
+  const chromeTabLabel = chromeKey
+    ? CONSOLE_CHROME_TABS.find((tab) => tab.key === chromeKey)?.label
+    : null;
+
   return (
     <header className="app-topbar flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.06] apple-chrome px-3">
-      <button
-        onClick={onToggleSidebar}
-        className="apple-icon-btn md:hidden"
-        aria-label="切換側邊欄"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-          <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
-      </button>
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+        <button
+          onClick={onToggleSidebar}
+          className="apple-icon-btn shrink-0 md:hidden"
+          aria-label="切換側邊欄"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+            <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+        </button>
 
-      <span className="text-[13px] font-semibold text-[#F5F5F7]">靈境·Linkin</span>
-      {activity === 'console' && onMonitorTabChange ? (
-        <>
-          <nav className="console-hdr-tabs ml-2 hidden min-w-0 sm:flex" aria-label="控制台主入口">
-            {CONSOLE_CHROME_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => onMonitorTabChange(tab.key)}
-                className={`console-hdr-tab ${chromeKey === tab.key ? 'on' : ''}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-          {path && chromeKey && chromeKey !== monitorTab ? (
-            <span className="hidden min-w-0 truncate text-[11px] text-[#636366] lg:inline">· {path}</span>
-          ) : null}
-        </>
-      ) : (
-        <>
-          <span className="hidden text-[11px] text-[#636366] sm:inline">— Evoloop 運行時</span>
-          <span className="min-w-0 truncate text-[12px] text-[#636366]">· {viewLabel}</span>
-        </>
-      )}
+        <span className="shrink-0 text-[13px] font-semibold text-[#F5F5F7]">靈境·Linkin</span>
+        {activity === 'console' && onMonitorTabChange ? (
+          <>
+            <nav className="console-hdr-tabs ml-2 hidden min-w-0 md:flex" aria-label="控制台主入口">
+              {CONSOLE_CHROME_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => onMonitorTabChange(tab.key)}
+                  className={`console-hdr-tab ${chromeKey === tab.key ? 'on' : ''}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+            {chromeTabLabel ? (
+              <span className="min-w-0 truncate text-[11px] text-[#636366] md:hidden">· {chromeTabLabel}</span>
+            ) : null}
+            {path && chromeKey && chromeKey !== monitorTab ? (
+              <span className="hidden min-w-0 truncate text-[11px] text-[#636366] lg:inline">· {path}</span>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <span className="hidden text-[11px] text-[#636366] md:inline">— Evoloop 運行時</span>
+            <span className="min-w-0 truncate text-[12px] text-[#636366]">· {viewLabel}</span>
+          </>
+        )}
+      </div>
 
-      <div className="ml-auto flex items-center gap-0.5">
-        <WalletBadge onOpenBilling={() => onMonitorTabChange?.('credits')} />
+      <div className="flex shrink-0 items-center gap-0.5">
+        <span className="md:hidden">
+          <WalletBadge minimal onOpenBilling={() => onMonitorTabChange?.('credits')} />
+        </span>
+        <span className="hidden md:inline-flex">
+          <WalletBadge onOpenBilling={() => onMonitorTabChange?.('credits')} />
+        </span>
 
         {llmConfigured === false && (
           <button
             type="button"
             onClick={onOpenSettings}
-            className="mr-1 hidden items-center gap-1.5 text-[10px] text-[#FF9F0A] sm:flex"
+            className="mr-1 hidden items-center gap-1.5 text-[10px] text-[#FF9F0A] md:flex"
             title="開啟 API 設定"
           >
             <span className="apple-dot apple-dot--warn" />
@@ -101,7 +115,7 @@ export default function TopBar({
         )}
 
         {getGateUser() ? (
-          <span className="hidden max-w-[88px] truncate px-1 text-[10px] text-[#636366] sm:inline" title={getGateUser() ?? ''}>
+          <span className="hidden max-w-[88px] truncate px-1 text-[10px] text-[#636366] md:inline" title={getGateUser() ?? ''}>
             {getGateUser()}
           </span>
         ) : null}
@@ -118,7 +132,7 @@ export default function TopBar({
         <button
           type="button"
           onClick={() => setLocale(i18n.language === 'en' ? 'zh-TW' : 'en')}
-          className="apple-icon-btn text-[10px] font-semibold"
+          className="apple-icon-btn hidden text-[10px] font-semibold md:inline-flex"
           title="Language"
         >
           {i18n.language === 'en' ? 'EN' : '繁'}
@@ -127,7 +141,7 @@ export default function TopBar({
         {rightPanelOpen && (
           <button
             onClick={onRightPanelToggle}
-            className="apple-icon-btn apple-icon-btn--active text-[10px] font-medium"
+            className="apple-icon-btn apple-icon-btn--active hidden text-[10px] font-medium md:inline-flex"
             title="關閉 OPC"
           >
             OPC
@@ -136,7 +150,7 @@ export default function TopBar({
 
         <button
           onClick={onOpenSettings}
-          className="apple-icon-btn"
+          className="apple-icon-btn shrink-0"
           title="設定"
           aria-label="設定"
         >
