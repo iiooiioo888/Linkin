@@ -490,7 +490,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
         .join(' · ')
     : '';
   return (
-    <PanelShell scroll={false} className="text-[#f7f8f8]">
+    <PanelShell scroll={false}>
       {error && (
         <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-6 py-2 text-[11px] text-amber-100">
           {error} · 已顯示角色目錄，後端恢復後會自動帶入任務

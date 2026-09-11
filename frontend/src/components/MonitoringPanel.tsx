@@ -182,7 +182,7 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
               onClick={() => setRange(opt.value)}
               className={`rounded-md px-3 py-1 text-[11px] transition-colors ${
                 range === opt.value
-                  ? 'bg-blue-500/20 text-blue-300'
+                  ? 'bg-blue-500/20 console-status-blue'
                   : 'text-gray-500 hover:text-gray-300'
               }`}
             >
@@ -201,7 +201,7 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
 
       {/* 錯誤提示 */}
       {error && (
-        <div className="rounded-lg bg-red-500/15 px-4 py-2 text-sm text-red-300">
+        <div className="rounded-lg bg-red-500/15 px-4 py-2 text-sm console-status-danger">
           ⚠ {error}
         </div>
       )}

@@ -25,8 +25,8 @@ export default function WalletBadge({ onOpenBilling, compact = false, minimal = 
       onClick={onOpenBilling}
       className={`inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${
         low
-          ? 'text-[#FF9F0A] hover:bg-[#FF9F0A]/10'
-          : 'text-[#64D2FF] hover:bg-[#64D2FF]/10'
+          ? 'console-status-amber hover:bg-[color-mix(in_srgb,var(--console-amber)_10%,transparent)]'
+          : 'console-status-blue hover:bg-[color-mix(in_srgb,var(--console-blue)_10%,transparent)]'
       }`}
       title={low ? '積分偏低，點擊前往帳務中心' : '點擊查看靈境積分'}
     >

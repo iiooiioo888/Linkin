@@ -30,21 +30,21 @@ function StatCard({
 }) {
   const valueCls =
     accent === 'green'
-      ? 'text-[#34C759]'
+      ? 'console-status-green'
       : accent === 'amber'
         ? 'text-[#FF9500]'
         : accent === 'blue'
-          ? 'text-[#007AFF]'
+          ? 'console-status-blue'
           : accent === 'orange'
             ? 'text-[#FF9500]'
             : accent === 'violet'
-              ? 'text-[#64D2FF]'
-              : 'text-[#F5F5F7]';
+              ? 'console-status-blue'
+              : 'text-[var(--console-ink)]';
   return (
     <div className="apple-card apple-card--pad">
       <p className="apple-title">{label}</p>
       <p className={`apple-data mt-2 text-[26px] ${valueCls}`}>{value}</p>
-      {hint && <p className="mt-2 text-[11px] font-normal text-[#8E8E93]">{hint}</p>}
+      {hint && <p className="mt-2 text-[11px] font-normal text-[var(--console-sub)]">{hint}</p>}
     </div>
   );
 }
@@ -65,7 +65,7 @@ function SectionCard({
       <div className={`flex flex-wrap items-center justify-between gap-2 ${consoleLayout.cardHeader} normal-case tracking-normal`}>
         <div>
           <h3 className="apple-heading text-[14px]">{title}</h3>
-          {hint && <p className="mt-1 text-[11px] font-normal text-[#8E8E93]">{hint}</p>}
+          {hint && <p className="mt-1 text-[11px] font-normal text-[var(--console-sub)]">{hint}</p>}
         </div>
         {action}
       </div>
@@ -89,7 +89,7 @@ function ServiceCostCard({ svc, maxCost }: { svc: CloudServiceCost; maxCost: num
               className={`rounded px-1.5 py-0.5 text-[10px] ${
                 isAliyun
                   ? 'bg-orange-500/15 text-orange-300'
-                  : 'bg-blue-500/15 text-blue-300'
+                  : 'bg-[color-mix(in_srgb,var(--console-blue)_15%,transparent)] console-status-blue'
               }`}
             >
               {isAliyun ? '阿里雲' : 'Docker'}
@@ -106,7 +106,7 @@ function ServiceCostCard({ svc, maxCost }: { svc: CloudServiceCost; maxCost: num
             )}
           </div>
         </div>
-        <span className="shrink-0 font-mono text-sm font-semibold text-amber-300">
+        <span className="shrink-0 font-mono text-sm font-semibold console-status-amber">
           {formatCost(svc.cost)}
         </span>
       </div>
@@ -242,7 +242,7 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
       )}
 
       {show(2) && error && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/15 px-4 py-2 text-sm text-red-300">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/15 px-4 py-2 text-sm console-status-danger">
           ⚠ {error}
           <button onClick={() => void refresh()} className="ml-3 underline">
             重試
@@ -258,9 +258,9 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
             <span
               className={`rounded px-2 py-0.5 text-[11px] ${
                 aliyun.configured && aliyun.ok
-                  ? 'bg-green-500/15 text-green-300'
+                  ? 'bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] console-status-green'
                   : aliyun.configured
-                    ? 'bg-amber-500/15 text-amber-300'
+                    ? 'bg-[color-mix(in_srgb,var(--console-amber)_15%,transparent)] console-status-amber'
                     : 'bg-gray-700/50 text-gray-400'
               }`}
             >
@@ -370,7 +370,7 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
           ) : null}
           <div className="mt-3 flex items-center justify-between rounded-lg border border-gray-800 bg-gray-950/40 px-3 py-2.5">
             <span className="text-sm font-medium text-gray-300">雲資源總計</span>
-            <span className="text-sm font-bold text-amber-300">{formatCost(billing.total_now)}</span>
+            <span className="text-sm font-bold console-status-amber">{formatCost(billing.total_now)}</span>
           </div>
         </SectionCard>
       )}

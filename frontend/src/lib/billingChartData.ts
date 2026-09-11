@@ -1,6 +1,7 @@
 /** 貢獻積分圖表資料轉換（純函式，可單測）。 */
 
 import type { ContributionStatus, LockInstallment } from '../types';
+import { consoleColors } from './consoleColors';
 
 export const DECAY_HALF_LIFE_MONTHS = 3;
 export const DECAY_FACTOR = 0.8;
@@ -21,10 +22,10 @@ export function contributionPoolSlices(
 ): Array<{ name: string; value: number; color: string }> {
   const thresholdReserve = Math.max(0, contribution.unlocked - contribution.convertible_to_locked);
   return [
-    { name: '可轉鎖倉', value: contribution.convertible_to_locked, color: '#64D2FF' },
-    { name: '閾值保留', value: thresholdReserve, color: '#8E8E93' },
-    { name: '已鎖倉', value: contribution.locked, color: '#30D158' },
-    { name: '已轉已購買', value: purchasedFromContribution, color: '#FF9F0A' },
+    { name: '可轉鎖倉', value: contribution.convertible_to_locked, color: consoleColors.blue },
+    { name: '閾值保留', value: thresholdReserve, color: consoleColors.sub },
+    { name: '已鎖倉', value: contribution.locked, color: consoleColors.green },
+    { name: '已轉已購買', value: purchasedFromContribution, color: consoleColors.amber },
   ];
 }
 

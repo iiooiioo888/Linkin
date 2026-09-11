@@ -29,16 +29,16 @@ import {
 const REFRESH_INTERVAL = 8000; // 8 秒自动刷新
 
 const STATUS_COLORS: Record<string, string> = {
-  running: 'bg-green-500/20 text-green-300',
-  exited: 'bg-red-500/20 text-red-300',
+  running: 'bg-green-500/20 console-status-green',
+  exited: 'bg-red-500/20 console-status-danger',
   restarting: 'bg-yellow-500/20 text-yellow-300',
   paused: 'bg-gray-500/20 text-gray-400',
-  removing: 'bg-red-500/20 text-red-300',
+  removing: 'bg-red-500/20 console-status-danger',
 };
 
 const HEALTH_COLORS: Record<string, string> = {
-  healthy: 'bg-green-500/20 text-green-300',
-  unhealthy: 'bg-red-500/20 text-red-300',
+  healthy: 'bg-green-500/20 console-status-green',
+  unhealthy: 'bg-red-500/20 console-status-danger',
   starting: 'bg-yellow-500/20 text-yellow-300',
   unknown: 'bg-gray-500/20 text-gray-400',
 };
@@ -121,7 +121,7 @@ function ContainerCard({
         <div className="flex items-center gap-2">
           {/* 按時計費標籤 */}
           {isReal && isRunning && (
-            <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-300">
+            <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium console-status-amber">
               {formatRate(hourlyRate)} · {hours}h
             </span>
           )}
@@ -157,7 +157,7 @@ function ContainerCard({
           </div>
           <div className="text-center">
             <p className="text-[10px] uppercase text-amber-400">费用</p>
-            <p className="text-xs font-semibold text-amber-300">{formatCost(cost)}</p>
+            <p className="text-xs font-semibold console-status-amber">{formatCost(cost)}</p>
           </div>
         </div>
       )}
@@ -171,7 +171,7 @@ function ContainerCard({
           </div>
           <div className="mt-1 flex items-center justify-between">
             <span className="text-[10px] uppercase text-amber-400">累计费用</span>
-            <span className="text-xs font-semibold text-amber-300">{formatCost(cost)}</span>
+            <span className="text-xs font-semibold console-status-amber">{formatCost(cost)}</span>
           </div>
         </div>
       )}
@@ -230,8 +230,8 @@ function ContainerCard({
                 disabled={isBusy}
                 className={`rounded-md px-2.5 py-1 text-[11px] transition-colors disabled:opacity-40 ${
                   confirming === `stop-${container.service}`
-                    ? 'bg-red-500/20 text-red-300'
-                    : 'bg-gray-800 text-gray-400 hover:bg-red-500/10 hover:text-red-300'
+                    ? 'bg-red-500/20 console-status-danger'
+                    : 'bg-gray-800 text-gray-400 hover:bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] hover:console-status-danger'
                 }`}
               >
                 {confirming === `stop-${container.service}` ? '⚠ 确认停止?' : '⏹ 停止'}
@@ -252,8 +252,8 @@ function ContainerCard({
               disabled={isBusy}
               className={`rounded-md px-2.5 py-1 text-[11px] transition-colors disabled:opacity-40 ${
                 confirming === `start-${container.service}`
-                  ? 'bg-green-500/20 text-green-300'
-                  : 'bg-gray-800 text-gray-400 hover:bg-green-500/10 hover:text-green-300'
+                  ? 'bg-green-500/20 console-status-green'
+                  : 'bg-gray-800 text-gray-400 hover:bg-green-500/10 hover:console-status-green'
               }`}
             >
               {confirming === `start-${container.service}` ? '✓ 确认启动?' : '▶ 启动'}
@@ -277,12 +277,12 @@ function HealthBar({ health }: { health: DockerHealth }) {
       <div className="flex items-center gap-3">
         <span className="flex items-center gap-1.5 text-xs">
           <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
-          <span className="text-green-300">{healthy} 健康</span>
+          <span className="console-status-green">{healthy} 健康</span>
         </span>
         {unhealthy > 0 && (
           <span className="flex items-center gap-1.5 text-xs">
             <span className="inline-block h-2 w-2 rounded-full bg-red-400" />
-            <span className="text-red-300">{unhealthy} 异常</span>
+            <span className="console-status-danger">{unhealthy} 异常</span>
           </span>
         )}
         <span className="text-xs text-gray-500">共 {total} 服务</span>
@@ -290,8 +290,8 @@ function HealthBar({ health }: { health: DockerHealth }) {
       <span
         className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-medium ${
           health.all_healthy
-            ? 'bg-green-500/20 text-green-300'
-            : 'bg-red-500/20 text-red-300'
+            ? 'bg-green-500/20 console-status-green'
+            : 'bg-red-500/20 console-status-danger'
         }`}
       >
         {health.all_healthy ? '全部健康' : '存在异常'}
@@ -517,8 +517,8 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
         <div
           className={`${embedded ? '' : 'mx-4 mt-3 '}rounded-lg px-4 py-2 text-sm ${
             actionMessage.ok
-              ? 'bg-green-500/15 text-green-300'
-              : 'bg-red-500/15 text-red-300'
+              ? 'bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] console-status-green'
+              : 'bg-red-500/15 console-status-danger'
           }`}
         >
           {actionMessage.text}
@@ -527,7 +527,7 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
 
       {/* 错误横幅 */}
       {error && (
-        <div className="mx-4 mt-3 rounded-lg bg-red-500/15 px-4 py-2 text-sm text-red-300">
+        <div className="mx-4 mt-3 rounded-lg bg-red-500/15 px-4 py-2 text-sm console-status-danger">
           ⚠ {error}
           <button
             onClick={() => void refresh()}
@@ -575,13 +575,13 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
         {status?.hourly_rates && (
           <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2.5">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
-              <span className="text-[11px] font-semibold text-amber-300">💰 按時計費</span>
+              <span className="text-[11px] font-semibold console-status-amber">💰 按時計費</span>
               {Object.entries(status.hourly_rates).map(([svc, rate]) => (
                 <span key={svc} className="text-[11px] text-gray-500">
                   {svc} {formatRate(rate)}
                 </span>
               ))}
-              <span className="ml-auto text-[11px] font-semibold text-amber-300">
+              <span className="ml-auto text-[11px] font-semibold console-status-amber">
                 累计 {formatCost(sortedContainers.reduce((sum, c) => {
                   const rate = status.hourly_rates[c.service] ?? 0.01;
                   return sum + calcCost(c.uptime_seconds, rate);
@@ -598,7 +598,7 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                 公司預算
               </p>
-              <span className="font-mono text-xs text-amber-300">
+              <span className="font-mono text-xs console-status-amber">
                 Docker {formatCost(budget.total_docker_cost)} · 合計{' '}
                 {formatCost(budget.company_budget.total_spent)} · 壓力{' '}
                 {Math.round((budget.company_budget.budget_pressure ?? 0) * 100)}%
@@ -617,7 +617,7 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
                       {s.priority} · {s.service} {s.action}
                     </span>
                     <span className="text-gray-500">{s.reason}</span>
-                    <span className="font-mono text-green-300">
+                    <span className="font-mono console-status-green">
                       -{formatCost(s.estimated_saving_per_hour)}/h
                     </span>
                   </div>
@@ -625,7 +625,7 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
               </div>
             )}
             {(budget.company_budget.auto_optimized?.stopped?.length ?? 0) > 0 && (
-              <p className="mt-2 text-[11px] text-amber-300">
+              <p className="mt-2 text-[11px] console-status-amber">
                 已自動停止：{budget.company_budget.auto_optimized.stopped.join(', ')}
               </p>
             )}

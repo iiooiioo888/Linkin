@@ -97,7 +97,7 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
         {!embedded ? <h3 className="text-sm font-medium text-gray-200">告警規則</h3> : <span />}
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="rounded-lg bg-blue-500/20 px-3 py-1.5 text-xs text-blue-300 transition-colors hover:bg-blue-500/30"
+          className="rounded-lg bg-blue-500/20 px-3 py-1.5 text-xs console-status-blue transition-colors hover:bg-blue-500/30"
         >
           {showForm ? '取消' : '+ 新增規則'}
         </button>
@@ -105,7 +105,7 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
 
       {/* 錯誤提示 */}
       {error && (
-        <div className="rounded-lg bg-red-500/15 px-4 py-2 text-sm text-red-300">
+        <div className="rounded-lg bg-red-500/15 px-4 py-2 text-sm console-status-danger">
           ⚠ {error}
           <button onClick={() => void refresh()} className="ml-3 underline">重試</button>
         </div>
@@ -157,7 +157,7 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
           <button
             onClick={() => void handleCreate()}
             disabled={saving || !formName.trim()}
-            className="mt-3 rounded-lg bg-green-500/20 px-4 py-1.5 text-xs text-green-300 transition-colors hover:bg-green-500/30 disabled:opacity-40"
+            className="mt-3 rounded-lg bg-green-500/20 px-4 py-1.5 text-xs console-status-green transition-colors hover:bg-green-500/30 disabled:opacity-40"
           >
             {saving ? '創建中...' : '✓ 創建'}
           </button>
@@ -218,7 +218,7 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
                 </button>
                 <button
                   onClick={() => void handleDelete(rule.id)}
-                  className="rounded-md bg-red-500/10 px-2.5 py-1 text-[11px] text-red-400 transition-colors hover:bg-red-500/20"
+                  className="rounded-md bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] px-2.5 py-1 text-[11px] text-red-400 transition-colors hover:bg-red-500/20"
                 >
                   刪除
                 </button>
@@ -248,7 +248,7 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
                 className="flex items-center justify-between rounded-md bg-gray-950/60 px-3 py-1.5"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-medium text-red-300">{h.rule_name}</span>
+                  <span className="text-[11px] font-medium console-status-danger">{h.rule_name}</span>
                   <span className="text-[11px] text-gray-500">
                     {h.service} · {h.metric}={h.value}
                     {h.metric === 'cpu' ? '%' : 'MB'} &gt; {h.threshold}

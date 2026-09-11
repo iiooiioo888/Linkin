@@ -62,14 +62,14 @@ export default function ContributionCharts({
     {
       id: 'unlocked',
       name: '未鎖定餘額',
-      color: '#64D2FF',
+      color: 'var(--console-blue)',
       points: decayPoints.map((p) => ({ x: p.month, y: p.value })),
     },
   ];
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-      <h3 className="shrink-0 text-[13px] font-medium text-[#F5F5F7]">圖表分析</h3>
+      <h3 className="shrink-0 text-[13px] font-medium text-[var(--console-ink)]">圖表分析</h3>
       <div className={`${consoleLayout.cardGridFill} grid-cols-1 lg:grid-cols-2`}>
         {/* 1. 貢獻池分布 */}
         <ChartCard title="貢獻池分布" subtitle="未鎖 / 可轉鎖 / 已鎖 / 已轉已購買">
@@ -123,7 +123,7 @@ export default function ContributionCharts({
               { subCategory: '罰沒/罰金', values: [0, projection.earlyPenalty + projection.earlyForfeitReward] },
             ]}
           />
-          <p className="mt-1 text-[10px] text-[#636366]">
+          <p className="mt-1 text-[10px] text-[var(--console-faint)]">
             到期淨收益 {fmtCredits(projection.netIfHold)} · 提前解鎖淨退回 {fmtCredits(projection.netIfEarly)}
           </p>
         </ChartCard>
@@ -141,7 +141,7 @@ export default function ContributionCharts({
             height={200}
             series={decaySeries}
           />
-          <p className="mt-1 text-[10px] text-[#636366]">
+          <p className="mt-1 text-[10px] text-[var(--console-faint)]">
             當前 {fmtCredits(contribution.unlocked)} → 12 月後約 {fmtCredits(decayPoints.at(-1)?.value ?? 0)}
           </p>
         </ChartCard>
@@ -161,7 +161,7 @@ function ChartCard({
 }) {
   return (
     <div className={consoleLayout.insetCard}>
-      <p className="text-[12px] font-medium text-[#F5F5F7]">{title}</p>
+      <p className="text-[12px] font-medium text-[var(--console-ink)]">{title}</p>
       {subtitle ? <p className={consoleLayout.meta}>{subtitle}</p> : null}
       <div className="mt-2">{children}</div>
     </div>
@@ -169,5 +169,5 @@ function ChartCard({
 }
 
 function EmptyHint({ children }: { children: ReactNode }) {
-  return <p className="mb-1 text-center text-[10px] text-[#636366]">{children}</p>;
+  return <p className="mb-1 text-center text-[10px] text-[var(--console-faint)]">{children}</p>;
 }

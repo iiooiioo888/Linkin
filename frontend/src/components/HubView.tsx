@@ -134,11 +134,11 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
   const usableModels = (catalog?.models ?? []).filter((m) => m.available_in_pool !== false);
 
   return (
-    <div className="flex h-full min-h-0 flex-col apple-canvas text-[#f7f8f8]">
+    <div className="flex h-full min-h-0 flex-col apple-canvas text-[var(--console-ink)]">
       {!embedded && (
         <div className="border-b border-white/[0.08] px-5 py-3">
           <h1 className="text-sm font-semibold tracking-tight">AI Hub 多模型編排</h1>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
+          <p className="mt-0.5 text-[11px] text-[var(--console-sub)]">
             {catalog?.pool_lock?.lock_message
               || '旗艦 GPT-5.6 Sol · 多模態 Gemini 3.1 Pro · 不含 Anthropic / Claude'}
           </p>
@@ -147,10 +147,10 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-[minmax(280px,360px)_1fr]">
         <section className="overflow-y-auto border-b border-white/[0.08] p-4 lg:border-b-0 lg:border-r">
-          <div className="mb-3 flex gap-1 rounded-lg bg-[#141516] p-1">
+          <div className="mb-3 flex gap-1 rounded-lg bg-[var(--console-card)] p-1">
             <button
               className={`flex-1 rounded-md px-2 py-1.5 text-xs ${
-                mode === 'chat' ? 'bg-[#007AFF] text-white' : 'text-[#8a8f98]'
+                mode === 'chat' ? 'bg-[var(--console-blue)] text-white' : 'text-[var(--console-sub)]'
               }`}
               onClick={() => {
                 setMode('chat');
@@ -161,7 +161,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
             </button>
             <button
               className={`flex-1 rounded-md px-2 py-1.5 text-xs ${
-                mode === 'agent' ? 'bg-[#007AFF] text-white' : 'text-[#8a8f98]'
+                mode === 'agent' ? 'bg-[var(--console-blue)] text-white' : 'text-[var(--console-sub)]'
               }`}
               onClick={() => {
                 setMode('agent');
@@ -172,11 +172,11 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
             </button>
           </div>
 
-          <label className="mb-2 block text-[11px] text-[#8a8f98]">路由策略</label>
+          <label className="mb-2 block text-[11px] text-[var(--console-sub)]">路由策略</label>
           <select
             value={strategy}
             onChange={(e) => setStrategy(e.target.value)}
-            className="mb-3 w-full rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-xs"
+            className="mb-3 w-full rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-xs"
           >
             {STRATEGIES.map((s) => (
               <option key={s.value} value={s.value}>
@@ -185,11 +185,11 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
             ))}
           </select>
 
-          <label className="mb-2 block text-[11px] text-[#8a8f98]">屬地</label>
+          <label className="mb-2 block text-[11px] text-[var(--console-sub)]">屬地</label>
           <select
             value={region}
             onChange={(e) => setRegion(e.target.value)}
-            className="mb-3 w-full rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-xs"
+            className="mb-3 w-full rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-xs"
           >
             {REGIONS.map((r) => (
               <option key={r.value} value={r.value}>
@@ -200,11 +200,11 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
 
           {strategy === 'manual' && (
             <>
-              <label className="mb-2 block text-[11px] text-[#8a8f98]">模型</label>
+              <label className="mb-2 block text-[11px] text-[var(--console-sub)]">模型</label>
               <select
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                className="mb-3 w-full rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-xs"
+                className="mb-3 w-full rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-xs"
               >
                 {(usableModels.length ? usableModels : [{ id: 'gpt-5.6-sol' }]).map((m) => (
                   <option key={m.id} value={m.id}>
@@ -218,7 +218,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
 
           {mode === 'agent' && (
             <div className="mb-3">
-              <p className="mb-2 text-[11px] text-[#8a8f98]">工具（可多選；寫入 OPC 禁止）</p>
+              <p className="mb-2 text-[11px] text-[var(--console-sub)]">工具（可多選；寫入 OPC 禁止）</p>
               <div className="space-y-1">
                 {TOOL_OPTIONS.map((opt) => (
                   <label key={opt.id} className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
@@ -240,37 +240,37 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
             </div>
           )}
 
-          <label className="mb-2 block text-[11px] text-[#8a8f98]">提示詞</label>
+          <label className="mb-2 block text-[11px] text-[var(--console-sub)]">提示詞</label>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows={6}
-            className="mb-3 w-full resize-y rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-xs leading-relaxed"
+            className="mb-3 w-full resize-y rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-xs leading-relaxed"
           />
 
           <button
             onClick={onSubmit}
             disabled={busy || !prompt.trim()}
-            className="w-full rounded-md bg-[#007AFF] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+            className="w-full rounded-md bg-[var(--console-blue)] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
             {busy ? '編排中…' : mode === 'chat' ? '送出推論' : '建立 Agent 任務'}
           </button>
 
           {catalog && (
             <div className="mt-4">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#62666d]">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
                 模型目錄（灰字＝目前 API 不可用）
               </p>
               <ul className="space-y-1">
                 {catalog.models.map((m) => (
                   <li
                     key={m.id}
-                    className={`flex items-center justify-between rounded border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] ${
+                    className={`flex items-center justify-between rounded border border-white/[0.08] bg-[var(--console-card)] px-2 py-1 text-[11px] ${
                       m.available_in_pool === false ? 'opacity-40' : ''
                     }`}
                   >
                     <span className="text-[#d0d6e0]">{m.id}</span>
-                    <span className="max-w-[220px] truncate text-right text-[#62666d]" title={hubPriceLine(m)}>
+                    <span className="max-w-[220px] truncate text-right text-[var(--console-faint)]" title={hubPriceLine(m)}>
                       {hubPriceLine(m)}
                     </span>
                   </li>
@@ -282,7 +282,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
 
         <section className="flex min-h-0 flex-col overflow-y-auto p-4">
           {error && (
-            <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            <div className="mb-3 rounded-md border border-red-500/30 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] px-3 py-2 text-xs console-status-danger">
               {error}
             </div>
           )}
@@ -315,12 +315,12 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
           )}
 
           {chatResult?.notice && (
-            <p className="mb-3 text-xs text-amber-300">{chatResult.notice}</p>
+            <p className="mb-3 text-xs console-status-amber">{chatResult.notice}</p>
           )}
 
           {agentTask?.result?.tool_traces && agentTask.result.tool_traces.length > 0 && (
             <div className="mb-3 apple-card apple-card--tight !p-0 p-3">
-              <p className="mb-2 text-[11px] font-medium text-[#8a8f98]">工具追蹤</p>
+              <p className="mb-2 text-[11px] font-medium text-[var(--console-sub)]">工具追蹤</p>
               {agentTask.result.tool_traces.map((t, i) => (
                 <pre
                   key={`${t.tool}-${i}`}
@@ -338,7 +338,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
             {content ? (
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#d0d6e0]">{content}</p>
             ) : (
-              <p className="text-xs text-[#62666d]">
+              <p className="text-xs text-[var(--console-faint)]">
                 結果會顯示於此。Agent 會依工具呼叫 StocksX / LittleCrawler / StoryForge / PysdnOPC
                 讀取，再由 GPT-5.6 Sol 生成；限流則降級 Qwen3.5-Max。工業寫入必須走 opc_service 護欄。
               </p>
@@ -352,8 +352,8 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
-    <span className="rounded-full border border-white/[0.08] bg-[#141516] px-2.5 py-0.5 text-[#8a8f98]">
-      {label} <span className="text-[#f7f8f8]">{value}</span>
+    <span className="rounded-full border border-white/[0.08] bg-[var(--console-card)] px-2.5 py-0.5 text-[var(--console-sub)]">
+      {label} <span className="text-[var(--console-ink)]">{value}</span>
     </span>
   );
 }

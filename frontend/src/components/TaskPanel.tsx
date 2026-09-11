@@ -154,12 +154,12 @@ export function RoleIcon({ status }: { status: RoleStatus }) {
 
 export const ITEM_STATUS_META: Record<string, { label: string; cls: string; bar: string }> = {
   planning: { label: '規劃中', cls: 'bg-gray-700/60 text-gray-300', bar: 'bg-gray-500' },
-  ready: { label: '就緒', cls: 'bg-blue-500/15 text-blue-300', bar: 'bg-blue-400' },
+  ready: { label: '就緒', cls: 'bg-[color-mix(in_srgb,var(--console-blue)_15%,transparent)] console-status-blue', bar: 'bg-blue-400' },
   executing: { label: '執行中', cls: 'bg-yellow-500/15 text-yellow-300', bar: 'bg-yellow-400' },
   in_review: { label: '審查中', cls: 'bg-purple-500/15 text-purple-300', bar: 'bg-purple-400' },
   rework: { label: '修改中', cls: 'bg-orange-500/15 text-orange-300', bar: 'bg-orange-400' },
-  done: { label: '已完成', cls: 'bg-green-500/15 text-green-300', bar: 'bg-green-400' },
-  blocked: { label: '阻塞', cls: 'bg-red-500/15 text-red-300', bar: 'bg-red-400' },
+  done: { label: '已完成', cls: 'bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] console-status-green', bar: 'bg-green-400' },
+  blocked: { label: '阻塞', cls: 'bg-red-500/15 console-status-danger', bar: 'bg-red-400' },
   cancelled: { label: '已取消', cls: 'bg-gray-600/40 text-gray-400 line-through', bar: 'bg-gray-500' },
 };
 
@@ -334,7 +334,7 @@ export default function TaskPanel({
         {running && !task.cancel_requested && onCancel && (
           <button
             onClick={() => onCancel(task.task_id)}
-            className="ml-auto shrink-0 rounded border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-300 transition-colors hover:bg-red-500/20"
+            className="ml-auto shrink-0 rounded border border-red-500/40 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] px-1.5 py-0.5 text-[10px] console-status-danger transition-colors hover:bg-red-500/20"
           >
             ✕ 取消
           </button>
@@ -350,7 +350,7 @@ export default function TaskPanel({
               onResume(task.task_id);
             }}
             disabled={resuming}
-            className="ml-auto shrink-0 rounded border border-[#007AFF]/50 bg-[#007AFF]/10 px-1.5 py-0.5 text-[10px] text-[#64D2FF] transition-colors hover:bg-[#007AFF]/20 disabled:opacity-50"
+            className="ml-auto shrink-0 rounded border border-[var(--console-blue)]/50 bg-[var(--console-blue)]/10 px-1.5 py-0.5 text-[10px] console-status-blue transition-colors hover:bg-[var(--console-blue)]/20 disabled:opacity-50"
           >
             {resuming ? '恢復中...' : '▶ 斷點續跑'}
           </button>
@@ -385,7 +385,7 @@ export default function TaskPanel({
               />
               <span
                 className={`whitespace-nowrap text-[10px] ${
-                  active ? 'text-blue-300' : phasePassed(i) ? 'text-gray-300' : 'text-gray-600'
+                  active ? 'console-status-blue' : phasePassed(i) ? 'text-gray-300' : 'text-gray-600'
                 }`}
               >
                 {p.label}
@@ -407,7 +407,7 @@ export default function TaskPanel({
                 <span className="text-gray-600">|</span>
                 <span className="text-gray-400">
                   預計剩餘{' '}
-                  <span className="font-medium text-blue-300">≈ {formatDuration(eta.remainingSec)}</span>
+                  <span className="font-medium console-status-blue">≈ {formatDuration(eta.remainingSec)}</span>
                 </span>
                 {eta.totalSec != null && (
                   <span className="text-gray-500">（全程 ≈ {formatDuration(eta.totalSec)}）</span>
@@ -429,7 +429,7 @@ export default function TaskPanel({
 
       {/* ── 錯誤訊息 ── */}
       {failed && task.error && (
-        <p className="mt-2 rounded-lg border border-red-500/25 bg-red-500/10 px-2.5 py-1.5 leading-relaxed text-red-300">⚠️ {task.error}</p>
+        <p className="mt-2 rounded-lg border border-red-500/25 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] px-2.5 py-1.5 leading-relaxed console-status-danger">⚠️ {task.error}</p>
       )}
 
       {/* ── Agent 工具調用狀態 ── */}
@@ -464,7 +464,7 @@ export default function TaskPanel({
                     : role.status === 'done'
                       ? 'border-green-500/40 bg-green-500/10 text-green-200'
                       : role.status === 'failed'
-                        ? 'border-red-500/40 bg-red-500/10 text-red-200'
+                        ? 'border-red-500/40 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] text-red-200'
                         : role.status === 'waiting'
                           ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200'
                           : 'border-gray-700/70 bg-gray-800/40 text-gray-500'
@@ -507,14 +507,14 @@ export default function TaskPanel({
                       </div>
                       {item.thinking?.trim() && (
                         <details className="mt-1.5">
-                          <summary className="cursor-pointer text-[10px] text-[#636366]">思考過程</summary>
-                          <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-[#8E8E93]">
+                          <summary className="cursor-pointer text-[10px] text-[var(--console-faint)]">思考過程</summary>
+                          <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-[var(--console-sub)]">
                             {item.thinking}
                           </pre>
                         </details>
                       )}
                       {item.output?.trim() && (
-                        <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[#8E8E93]">
+                        <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[var(--console-sub)]">
                           {item.output}
                         </p>
                       )}
@@ -533,7 +533,7 @@ export default function TaskPanel({
           {evaluations.map((e, i) => (
             <span key={i} className="rounded-full bg-gray-800 px-2 py-0.5 text-[11px] text-gray-300">
               第 {Number(e.data.iteration ?? 0) + 1} 次：
-              <span className="ml-1 font-medium text-blue-300">{String(e.data.score ?? '?')} 分</span>
+              <span className="ml-1 font-medium console-status-blue">{String(e.data.score ?? '?')} 分</span>
             </span>
           ))}
         </div>
@@ -588,7 +588,7 @@ export default function TaskPanel({
             onClick={() => onOpenContext(task.task_id)}
             data-testid="task-open-context"
             title="在對話底部詳細區開啟 Context"
-            className="flex-1 rounded-lg border border-[#64D2FF]/35 bg-[#64D2FF]/10 py-1.5 text-[11px] font-medium text-[#64D2FF] transition-all duration-200 hover:border-[#64D2FF]/70 hover:bg-[#64D2FF]/18 active:scale-[0.98]"
+            className="flex-1 rounded-lg border border-[var(--console-blue)]/35 bg-[var(--console-blue)]/10 py-1.5 text-[11px] font-medium console-status-blue transition-all duration-200 hover:border-[var(--console-blue)]/70 hover:bg-[var(--console-blue)]/18 active:scale-[0.98]"
           >
             Context 詳細區
           </button>
@@ -596,7 +596,7 @@ export default function TaskPanel({
         {onOpenFull && (
           <button
             onClick={onOpenFull}
-            className="flex-1 rounded-lg border border-gray-700/70 bg-gray-800/40 py-1.5 text-[11px] font-medium text-gray-300 transition-all duration-200 hover:border-blue-500/70 hover:bg-blue-500/10 hover:text-blue-300 active:scale-[0.98]"
+            className="flex-1 rounded-lg border border-gray-700/70 bg-gray-800/40 py-1.5 text-[11px] font-medium text-gray-300 transition-all duration-200 hover:border-blue-500/70 hover:bg-blue-500/10 hover:console-status-blue active:scale-[0.98]"
           >
             ⛶ 開啟任務頁面
           </button>
@@ -604,7 +604,7 @@ export default function TaskPanel({
         {onOpenTrace && (
           <button
             onClick={() => onOpenTrace(task.task_id)}
-            className="flex-1 rounded-lg border border-gray-700/70 bg-gray-800/40 py-1.5 text-[11px] font-medium text-gray-300 transition-all duration-200 hover:border-[#007AFF]/70 hover:bg-[#007AFF]/10 hover:text-[#64D2FF] active:scale-[0.98]"
+            className="flex-1 rounded-lg border border-gray-700/70 bg-gray-800/40 py-1.5 text-[11px] font-medium text-gray-300 transition-all duration-200 hover:border-[var(--console-blue)]/70 hover:bg-[var(--console-blue)]/10 hover:console-status-blue active:scale-[0.98]"
           >
             📜 思考過程
           </button>

@@ -18,29 +18,29 @@ export const COMPOSITION_META: Record<
   CompositionKey,
   { label: string; color: string; short: string }
 > = {
-  system: { label: '系統提示', color: '#64D2FF', short: 'Sys' },
+  system: { label: '系統提示', color: 'var(--console-blue)', short: 'Sys' },
   tools: { label: '工具綱要', color: '#BF5AF2', short: 'Tools' },
-  user: { label: '用戶訊息', color: '#30D158', short: 'User' },
-  injected: { label: '注入上下文', color: '#FF9F0A', short: 'Inj' },
+  user: { label: '用戶訊息', color: 'var(--console-green)', short: 'User' },
+  injected: { label: '注入上下文', color: 'var(--console-amber)', short: 'Inj' },
   assistant: { label: '助手回覆', color: '#0A84FF', short: 'Asst' },
-  tool_results: { label: '工具結果', color: '#FF453A', short: 'Res' },
+  tool_results: { label: '工具結果', color: 'var(--console-danger)', short: 'Res' },
 };
 
 export const EVENT_KIND_META: Record<
   ContextEventKind,
   { label: string; tone: string }
 > = {
-  inject: { label: 'Inject', tone: 'text-[#FF9F0A]' },
-  compact: { label: 'Compact', tone: 'text-[#64D2FF]' },
-  prune: { label: 'Prune', tone: 'text-[#FF453A]' },
+  inject: { label: 'Inject', tone: 'console-status-amber' },
+  compact: { label: 'Compact', tone: 'console-status-blue' },
+  prune: { label: 'Prune', tone: 'console-status-danger' },
   switch: { label: 'Switch', tone: 'text-[#BF5AF2]' },
-  mode: { label: 'Mode', tone: 'text-[#8E8E93]' },
+  mode: { label: 'Mode', tone: 'text-[var(--console-sub)]' },
 };
 
 export const FILE_PURPOSE_META: Record<FilePurpose, { label: string; tone: string }> = {
-  read: { label: 'Read', tone: 'text-[#64D2FF]' },
-  written: { label: 'Written', tone: 'text-[#30D158]' },
-  searched: { label: 'Searched', tone: 'text-[#FF9F0A]' },
+  read: { label: 'Read', tone: 'console-status-blue' },
+  written: { label: 'Written', tone: 'console-status-green' },
+  searched: { label: 'Searched', tone: 'console-status-amber' },
   images: { label: 'Images', tone: 'text-[#BF5AF2]' },
 };
 

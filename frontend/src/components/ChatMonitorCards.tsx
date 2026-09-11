@@ -5,13 +5,13 @@
 import { useState, type ReactNode } from 'react';
 
 const ACCENT_CLS: Record<string, string> = {
-  green: 'text-[#34C759]',
+  green: 'console-status-green',
   amber: 'text-[#FF9500]',
-  blue: 'text-[#007AFF]',
+  blue: 'console-status-blue',
   orange: 'text-[#FF9500]',
-  violet: 'text-[#64D2FF]',
+  violet: 'console-status-blue',
   red: 'text-[#FF3B30]',
-  cyan: 'text-[#64D2FF]',
+  cyan: 'console-status-blue',
 };
 
 export function TopKpi({
@@ -34,10 +34,10 @@ export function TopKpi({
       }`}
     >
       <p className="apple-title">{label}</p>
-      <p className={`apple-data mt-2 truncate text-[22px] leading-none ${accent || 'text-[#F5F5F7]'}`}>
+      <p className={`apple-data mt-2 truncate text-[22px] leading-none ${accent || 'text-[var(--console-ink)]'}`}>
         {value}
       </p>
-      {hint && <p className="mt-2 truncate text-[11px] font-normal text-[#8E8E93]">{hint}</p>}
+      {hint && <p className="mt-2 truncate text-[11px] font-normal text-[var(--console-sub)]">{hint}</p>}
     </div>
   );
 }
@@ -56,10 +56,10 @@ export function MiniKpi({
   return (
     <div className="apple-card apple-card--tight apple-card--pad transition-colors duration-200 hover:border-white/15">
       <p className="apple-title !text-[10px]">{label}</p>
-      <p className={`apple-data mt-1.5 text-[15px] ${accent ? ACCENT_CLS[accent] : 'text-[#F5F5F7]'}`}>
+      <p className={`apple-data mt-1.5 text-[15px] ${accent ? ACCENT_CLS[accent] : 'text-[var(--console-ink)]'}`}>
         {value}
       </p>
-      {hint && <p className="mt-1 truncate text-[10px] font-normal text-[#636366]">{hint}</p>}
+      {hint && <p className="mt-1 truncate text-[10px] font-normal text-[var(--console-faint)]">{hint}</p>}
     </div>
   );
 }
@@ -100,15 +100,15 @@ export function MonitorSection({
             <span
               className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide ${
                 badge === 'LIVE'
-                  ? 'bg-[#34C759]/15 text-[#34C759]'
-                  : 'bg-white/5 text-[#8E8E93]'
+                  ? 'bg-[#34C759]/15 console-status-green'
+                  : 'bg-white/5 text-[var(--console-sub)]'
               }`}
             >
               {badge}
             </span>
           )}
         </div>
-        <span className="shrink-0 text-[10px] font-normal text-[#636366]">
+        <span className="shrink-0 text-[10px] font-normal text-[var(--console-faint)]">
           {hint ? `${hint} · ` : ''}{open ? '收合' : '展開'}
         </span>
       </button>
@@ -132,12 +132,12 @@ export function HealthPill({
 }) {
   const dotCls =
     ok === null ? 'apple-dot' : ok ? 'apple-dot apple-dot--ok' : 'apple-dot apple-dot--err';
-  const text = ok === null ? 'text-[#8E8E93]' : ok ? 'text-[#34C759]' : 'text-[#FF3B30]';
+  const text = ok === null ? 'text-[var(--console-sub)]' : ok ? 'console-status-green' : 'text-[#FF3B30]';
   return (
     <div className="apple-inset flex items-center gap-2.5 px-3 py-2">
       <span className={dotCls} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[12px] font-bold text-[#F5F5F7]">{label}</p>
+        <p className="truncate text-[12px] font-bold text-[var(--console-ink)]">{label}</p>
         {detail && <p className={`truncate text-[11px] font-normal ${text}`}>{detail}</p>}
       </div>
     </div>
@@ -153,7 +153,7 @@ export function LiveTicker({
   return (
     <div className="apple-chrome shrink-0 overflow-hidden border-t">
       <div className="flex items-center gap-3 px-4 py-2">
-        <span className="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-bold uppercase tracking-wider text-[#34C759]">
+        <span className="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-bold uppercase tracking-wider console-status-green">
           <span className="apple-dot apple-dot--live" />
           LIVE
         </span>
@@ -161,7 +161,7 @@ export function LiveTicker({
           <div className="flex gap-5 whitespace-nowrap">
             {items.map((it) => (
               <span key={it.key} className={`text-[11px] font-normal ${it.accent || 'text-[#AEAEB2]'}`}>
-                {it.ts && <span className="mr-1 font-mono text-[#636366]">{it.ts}</span>}
+                {it.ts && <span className="mr-1 font-mono text-[var(--console-faint)]">{it.ts}</span>}
                 {it.text}
               </span>
             ))}
@@ -173,7 +173,7 @@ export function LiveTicker({
 }
 
 const ROADMAP_TONE: Record<string, string> = {
-  P0: 'border-[#007AFF]/35 bg-[#007AFF]/10',
+  P0: 'border-[var(--console-blue)]/35 bg-[var(--console-blue)]/10',
   P1: 'border-[#34C759]/30 bg-[#34C759]/08',
   P2: 'border-[#FF9500]/30 bg-[#FF9500]/08',
   P3: 'border-white/10 bg-white/[0.03]',
@@ -210,19 +210,19 @@ export function RoadmapChip({
       title={benefit}
     >
       <div className="flex items-center justify-between gap-1">
-        <span className="text-[9px] font-bold text-[#8E8E93]">{priority}</span>
-        <span className={`text-[9px] font-normal ${active ? 'text-[#34C759]' : 'text-[#636366]'}`}>
+        <span className="text-[9px] font-bold text-[var(--console-sub)]">{priority}</span>
+        <span className={`text-[9px] font-normal ${active ? 'console-status-green' : 'text-[var(--console-faint)]'}`}>
           {roadmapStatusText(enabled, status)}
         </span>
       </div>
-      <p className={`mt-1 truncate font-bold ${compact ? 'text-[11px]' : 'text-[12px]'} text-[#F5F5F7]`}>
+      <p className={`mt-1 truncate font-bold ${compact ? 'text-[11px]' : 'text-[12px]'} text-[var(--console-ink)]`}>
         {label}
       </p>
       {metric && (
-        <p className="apple-data mt-1 truncate text-[10px] text-[#636366]">{metric}</p>
+        <p className="apple-data mt-1 truncate text-[10px] text-[var(--console-faint)]">{metric}</p>
       )}
       {benefit && !compact && !metric && (
-        <p className="mt-1 truncate text-[10px] font-normal text-[#636366]">{benefit}</p>
+        <p className="mt-1 truncate text-[10px] font-normal text-[var(--console-faint)]">{benefit}</p>
       )}
     </div>
   );
@@ -256,7 +256,7 @@ export function RoadmapTable({
   return (
     <div className="overflow-x-auto rounded-2xl border border-white/[0.08]">
       <table className="w-full text-left">
-        <thead className="bg-black/25 text-[10px] font-bold uppercase tracking-wider text-[#8E8E93]">
+        <thead className="bg-black/25 text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">
           <tr>
             <th className="px-3 py-2">優先</th>
             <th className="px-3 py-2">項目</th>
@@ -266,14 +266,14 @@ export function RoadmapTable({
         <tbody>
           {items.map((it) => (
             <tr key={it.id} className="border-t border-white/[0.06]">
-              <td className="apple-data px-3 py-2.5 text-[11px] text-[#007AFF]">{it.priority}</td>
-              <td className="px-3 py-2.5 text-[12px] font-bold text-[#F5F5F7]">
+              <td className="apple-data px-3 py-2.5 text-[11px] console-status-blue">{it.priority}</td>
+              <td className="px-3 py-2.5 text-[12px] font-bold text-[var(--console-ink)]">
                 {it.label}
                 {it.benefit && (
-                  <span className="mt-0.5 block text-[11px] font-normal text-[#636366]">{it.benefit}</span>
+                  <span className="mt-0.5 block text-[11px] font-normal text-[var(--console-faint)]">{it.benefit}</span>
                 )}
               </td>
-              <td className="px-3 py-2.5 text-[11px] font-normal text-[#8E8E93]">
+              <td className="px-3 py-2.5 text-[11px] font-normal text-[var(--console-sub)]">
                 {roadmapStatusText(it.enabled, it.status)}
               </td>
             </tr>

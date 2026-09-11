@@ -39,17 +39,17 @@ import { openChatContextDetail } from '../lib/contextUi';
 import { PanelSection, PanelShell, consoleLayout } from './ui/ConsoleLayout';
 
 const inputCls =
-  'w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[#F5F5F7] outline-none focus:border-[#64D2FF]/50';
+  'w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[var(--console-ink)] outline-none focus:border-[var(--console-blue)]/50';
 const btnCls =
-  'rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2.5 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8] disabled:opacity-40';
+  'rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2.5 py-1 text-[11px] text-[var(--console-sub)] hover:text-[var(--console-ink)] disabled:opacity-40';
 const btnPrimaryCls =
-  'rounded-xl border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-2.5 py-1 text-[11px] text-[#64D2FF] disabled:opacity-40';
+  'rounded-xl border border-[var(--console-blue)]/40 bg-[var(--console-blue)]/10 px-2.5 py-1 text-[11px] console-status-blue disabled:opacity-40';
 const cardCls = consoleLayout.insetCard;
 
 function ErrorBar({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+    <div className="mb-3 rounded-md border border-red-500/30 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] px-3 py-2 text-xs console-status-danger">
       {message}
     </div>
   );
@@ -58,16 +58,16 @@ function ErrorBar({ message }: { message: string | null }) {
 function OkBar({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+    <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs console-status-green">
       {message}
     </div>
   );
 }
 
 function healthTone(item: IntegrationStatus): string {
-  if (!item.enabled) return 'text-[#636366]';
-  if (item.health?.ok === false) return 'text-[#FF453A]';
-  return 'text-[#30D158]';
+  if (!item.enabled) return 'text-[var(--console-faint)]';
+  if (item.health?.ok === false) return 'console-status-danger';
+  return 'console-status-green';
 }
 
 function healthLabel(item: IntegrationStatus): string {
@@ -121,14 +121,14 @@ function IntegrationCard({
       ref={ref}
       id={`integ-${item.name}`}
       className={`${cardCls}${focused ? ' integ-panel-focus' : ''}`}
-      style={{ ['--integ-accent' as string]: meta?.accent || '#64D2FF' }}
+      style={{ ['--integ-accent' as string]: meta?.accent || 'var(--console-blue)' }}
     >
       <div className="flex items-start gap-3">
         <div
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] text-[16px]"
           style={{
             color: meta?.accent,
-            background: `color-mix(in srgb, ${meta?.accent || '#64D2FF'} 14%, transparent)`,
+            background: `color-mix(in srgb, ${meta?.accent || 'var(--console-blue)'} 14%, transparent)`,
           }}
           aria-hidden
         >
@@ -136,21 +136,21 @@ function IntegrationCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[13px] font-semibold text-[#F5F5F7]">{item.display_name || item.name}</h3>
+            <h3 className="text-[13px] font-semibold text-[var(--console-ink)]">{item.display_name || item.name}</h3>
             <span className={`text-[10px] ${healthTone(item)}`}>{healthLabel(item)}</span>
             {item.docs_url ? (
               <a
                 href={item.docs_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-white/[0.08] px-2 py-0.5 text-[10px] text-[#8E8E93] hover:text-[#64D2FF]"
+                className="rounded-full border border-white/[0.08] px-2 py-0.5 text-[10px] text-[var(--console-sub)] hover:console-status-blue"
               >
                 文件 ↗
               </a>
             ) : null}
           </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-[#8E8E93]">{item.summary}</p>
-          <p className="mt-1 font-mono text-[10px] text-[#636366]">{item.base_url}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-[var(--console-sub)]">{item.summary}</p>
+          <p className="mt-1 font-mono text-[10px] text-[var(--console-faint)]">{item.base_url}</p>
         </div>
         <label className="flex shrink-0 cursor-pointer items-center gap-2 text-[11px] text-[#AEAEB2]">
           <span>{item.enabled ? '啟用' : '關閉'}</span>
@@ -171,7 +171,7 @@ function IntegrationCard({
           {open ? <div className="mt-3 space-y-3">{children}</div> : null}
         </div>
       ) : (
-        <p className="mt-2 text-[10px] text-[#636366]">啟用後才可發出網路請求（顯式動作）。</p>
+        <p className="mt-2 text-[10px] text-[var(--console-faint)]">啟用後才可發出網路請求（顯式動作）。</p>
       )}
     </article>
   );
@@ -210,8 +210,8 @@ function RecallWorkbench({ enabled }: { enabled: boolean }) {
     <section className={cardCls}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-[13px] font-semibold text-[#F5F5F7]">召回試跑</h3>
-          <p className="text-[11px] text-[#8E8E93]">MemOS ＋ OpenViking ＋ WeKnora → 注入片段（不經 LLM）</p>
+          <h3 className="text-[13px] font-semibold text-[var(--console-ink)]">召回試跑</h3>
+          <p className="text-[11px] text-[var(--console-sub)]">MemOS ＋ OpenViking ＋ WeKnora → 注入片段（不經 LLM）</p>
         </div>
         <button type="button" className="text-[11px] text-[#0A84FF]" onClick={jumpToL0Kernel}>
           開啟 L0 核心 →
@@ -219,16 +219,16 @@ function RecallWorkbench({ enabled }: { enabled: boolean }) {
       </div>
       <ErrorBar message={error} />
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="block text-[10px] text-[#8E8E93]">
+        <label className="block text-[10px] text-[var(--console-sub)]">
           查詢
           <textarea className={`${inputCls} mt-1 min-h-[64px]`} value={query} onChange={(e) => setQuery(e.target.value)} />
         </label>
         <div className="space-y-2">
-          <label className="block text-[10px] text-[#8E8E93]">
+          <label className="block text-[10px] text-[var(--console-sub)]">
             MemOS cube IDs（逗號分隔）
             <input className={`${inputCls} mt-1`} value={cubeIds} onChange={(e) => setCubeIds(e.target.value)} />
           </label>
-          <label className="block text-[10px] text-[#8E8E93]">
+          <label className="block text-[10px] text-[var(--console-sub)]">
             WeKnora knowledge_base_id
             <input className={`${inputCls} mt-1`} value={kbId} onChange={(e) => setKbId(e.target.value)} />
           </label>
@@ -239,7 +239,7 @@ function RecallWorkbench({ enabled }: { enabled: boolean }) {
           {busy ? '召回中…' : '執行召回'}
         </button>
       </div>
-      {!enabled ? <p className="mt-2 text-[10px] text-[#636366]">請先啟用至少一個召回類整合。</p> : null}
+      {!enabled ? <p className="mt-2 text-[10px] text-[var(--console-faint)]">請先啟用至少一個召回類整合。</p> : null}
       {result ? (
         <div className="mt-3 space-y-2">
           <div className="flex flex-wrap gap-2 text-[10px] text-[#AEAEB2]">
@@ -304,15 +304,15 @@ function YaoActions() {
           列出任務
         </button>
       </div>
-      <label className="block text-[10px] text-[#8E8E93]">
+      <label className="block text-[10px] text-[var(--console-sub)]">
         workspace_id
         <input className={`${inputCls} mt-1`} value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} />
       </label>
-      <label className="block text-[10px] text-[#8E8E93]">
+      <label className="block text-[10px] text-[var(--console-sub)]">
         任務標題
         <input className={`${inputCls} mt-1`} value={title} onChange={(e) => setTitle(e.target.value)} />
       </label>
-      <label className="block text-[10px] text-[#8E8E93]">
+      <label className="block text-[10px] text-[var(--console-sub)]">
         任務 prompt
         <textarea className={`${inputCls} mt-1 min-h-[56px]`} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
       </label>
@@ -373,12 +373,12 @@ function OuroborosActions() {
     <div className="space-y-2">
       <ErrorBar message={error} />
       <OkBar message={message} />
-      <label className="block text-[10px] text-[#8E8E93]">
+      <label className="block text-[10px] text-[var(--console-sub)]">
         目標 goal
         <textarea className={`${inputCls} mt-1 min-h-[56px]`} value={goal} onChange={(e) => setGoal(e.target.value)} />
       </label>
       <div className="flex flex-wrap items-end gap-2">
-        <label className="block text-[10px] text-[#8E8E93]">
+        <label className="block text-[10px] text-[var(--console-sub)]">
           ambiguity（≤0.2 才准 Seed）
           <input className={`${inputCls} mt-1 w-28`} value={ambiguity} onChange={(e) => setAmbiguity(e.target.value)} />
         </label>
@@ -415,7 +415,7 @@ function OuroborosActions() {
           啟動 auto
         </button>
       </div>
-      <label className="block text-[10px] text-[#8E8E93]">
+      <label className="block text-[10px] text-[var(--console-sub)]">
         execution_id（評估）
         <input className={`${inputCls} mt-1`} value={executionId} onChange={(e) => setExecutionId(e.target.value)} />
       </label>
@@ -467,11 +467,11 @@ function OpenPencilActions() {
       <button type="button" className={btnCls} disabled={busy} onClick={() => void run(() => openpencilListProjects(), '已列出專案')}>
         列出專案
       </button>
-      <label className="block text-[10px] text-[#8E8E93]">
+      <label className="block text-[10px] text-[var(--console-sub)]">
         設計 prompt
         <textarea className={`${inputCls} mt-1 min-h-[56px]`} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
       </label>
-      <label className="block text-[10px] text-[#8E8E93]">
+      <label className="block text-[10px] text-[var(--console-sub)]">
         style（可選）
         <input className={`${inputCls} mt-1`} value={style} onChange={(e) => setStyle(e.target.value)} />
       </label>
@@ -558,7 +558,7 @@ export default function IntegrationsPanel() {
     if (name === 'openpencil') return <OpenPencilActions />;
     const meta = INTEGRATION_META[name as IntegrationName];
     return (
-      <p className="text-[11px] text-[#8E8E93]">
+      <p className="text-[11px] text-[var(--console-sub)]">
         {meta?.hint || '此整合經「召回試跑」編排'}；亦可於 L0 核心面板查看注入結果。
       </p>
     );
@@ -615,8 +615,8 @@ export default function IntegrationsPanel() {
         {byGroup.map(({ group, meta, items: groupItems }) => (
           <section key={group}>
             <div className="mb-2">
-              <h3 className="text-[12px] font-semibold tracking-wide text-[#F5F5F7]">{meta.label}</h3>
-              <p className="text-[10px] text-[#636366]">{meta.hint}</p>
+              <h3 className="text-[12px] font-semibold tracking-wide text-[var(--console-ink)]">{meta.label}</h3>
+              <p className="text-[10px] text-[var(--console-faint)]">{meta.hint}</p>
             </div>
             <div className={consoleLayout.cardGrid}>
               {groupItems.map((item) => (

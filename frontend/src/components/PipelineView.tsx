@@ -99,17 +99,17 @@ export default function PipelineView({ onGoTasks, messages = [] }: PipelineViewP
     {
       label: '當前',
       value: currentLabel,
-      valueClassName: phase || feed.live ? 'text-[#34C759]' : undefined,
+      valueClassName: phase || feed.live ? 'console-status-green' : undefined,
     },
     { label: '隊列', value: stageByCol.queue.length },
     { label: '執行中', value: stageByCol.executing.length },
-    { label: '已完成', value: stageByCol.done.length, valueClassName: stageByCol.done.length ? 'text-[#34C759]' : undefined },
+    { label: '已完成', value: stageByCol.done.length, valueClassName: stageByCol.done.length ? 'console-status-green' : undefined },
     { label: '門檻', value: optimization?.reflection?.pass_threshold ?? '—' },
     { label: '路徑', value: feed.resolvedPath || '—', valueClassName: 'truncate text-sm' },
   ];
 
   return (
-    <PanelShell scroll={false} className="text-[#f7f8f8]">
+    <PanelShell scroll={false}>
       <ConsoleRdShell>
         <ConsoleRdToolbar
           title={`管線 — ${PIPELINE_STAGES.length} 階`}
