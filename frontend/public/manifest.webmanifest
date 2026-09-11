@@ -1,0 +1,19 @@
+{
+  "name": "靈境·Linkin",
+  "short_name": "Linkin",
+  "description": "Evoloop 運行時 — 對話、控制台、世界模組",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0d0d0f",
+  "theme_color": "#0d0d0f",
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

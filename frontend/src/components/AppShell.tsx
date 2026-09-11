@@ -6,6 +6,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useIsDesktop } from '../hooks/useMediaQuery';
 import type { ChatSession } from '../types';
 import type { LabSubTab } from '../lib/labTabs';
 import {
@@ -120,12 +122,15 @@ export default function AppShell({
   children,
   forceCloseSidebar = false,
 }: AppShellProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const isDesktop = useIsDesktop();
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches,
+  );
 
-  // 切主視圖時展開側欄（功能清單／名冊）
+  // 切主視圖時：桌面展開側欄；行動端維持關閉以免遮罩蓋住主內容
   useEffect(() => {
-    setSidebarOpen(true);
-  }, [activeView]);
+    setSidebarOpen(isDesktop);
+  }, [activeView, isDesktop]);
 
   // L5 決策列出現時關閉側欄，否則手機遮罩會蓋住 portal 以外的點擊目標
   useEffect(() => {
@@ -145,9 +150,11 @@ export default function AppShell({
     lastTabByActivity.current[activity] = monitorTab;
   }, [activity, activeView, monitorTab]);
 
+  useBodyScrollLock(!isDesktop && sidebarOpen);
+
   const handleActivityChange = useCallback(
     (next: ActivityKey) => {
-      setSidebarOpen(true);
+      if (isDesktop) setSidebarOpen(true);
       if (next === activity) return;
       if (next === 'chat') {
         onViewChange('chat');
@@ -176,11 +183,11 @@ export default function AppShell({
       }
       onMonitorTabChange(defaultTabForActivity('console'));
     },
-    [activity, activeView, monitorTab, onMonitorTabChange, onViewChange],
+    [activity, activeView, isDesktop, monitorTab, onMonitorTabChange, onViewChange],
   );
 
   return (
-    <div className="flex h-dvh flex-col apple-canvas text-[#F5F5F7]">
+    <div className="app-shell flex h-dvh flex-col apple-canvas text-[#F5F5F7]">
       {/* ══ 顶栏 ══ */}
       <TopBar
         activeView={activeView}
@@ -198,9 +205,9 @@ export default function AppShell({
       />
 
       {/* ══ 中间区域：ActivityBar + SidePanel + Main + RightPanel ══ */}
-      <div className="flex min-h-0 flex-1">
-        {/* 活动栏 */}
-        <ActivityBar activity={activity} onActivityChange={handleActivityChange} />
+      <div className="app-shell__body flex min-h-0 flex-1">
+        {/* 桌面左側活動欄 */}
+        <ActivityBar activity={activity} onActivityChange={handleActivityChange} placement="sidebar" />
 
         {/* 侧面板（移动端覆盖层） */}
         <SidePanel
@@ -236,6 +243,9 @@ export default function AppShell({
           onClose={onRightPanelClose}
         />
       </div>
+
+      {/* 行動端底部 Tab 列 */}
+      <ActivityBar activity={activity} onActivityChange={handleActivityChange} placement="bottom" />
 
       {/* ══ 底部状态栏 ══ */}
       <StatusBar

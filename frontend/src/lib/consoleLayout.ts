@@ -1,17 +1,17 @@
 /**
  * 控制台版面節奏（DESIGN.md：canvas #010102、surface #0f1011、hairline、dense rhythm）。
  *
- * 頁面 px-6 py-4（不縮）· 區塊 stack gap-3 · 卡片 p-3 · KPI px-3 py-2 · 空狀態 py-12
+ * 頁面 px-4 sm:px-6 py-4 · 區塊 stack gap-3 · 卡片 p-3 · KPI px-3 py-2 · 空狀態 py-12
  */
 export const consoleLayout = {
   /** 可滾動頁面根（多數監控分頁） */
-  page: 'flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas px-6 py-4 text-[#f7f8f8]',
+  page: 'flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden apple-canvas px-4 py-4 text-[#f7f8f8] sm:px-6',
   /** 不可滾動外殼（內含子面板自管滾動） */
   pageShell: 'flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas',
   /** 內層滾動區（與 page 同節奏） */
-  pageScroll: 'min-h-0 flex-1 overflow-y-auto px-6 py-4',
-  pagePadding: 'px-6 py-4',
-  pagePaddingDense: 'px-4 py-4',
+  pageScroll: 'min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6',
+  pagePadding: 'px-4 py-4 sm:px-6',
+  pagePaddingDense: 'px-3 py-4 sm:px-4',
   /** 區塊垂直堆疊 */
   sectionStack: 'space-y-3',
   sectionGap: 'gap-3',
@@ -19,11 +19,11 @@ export const consoleLayout = {
   kpiGrid: 'grid grid-cols-2 gap-1.5 lg:grid-cols-4',
   /** 管線／角色工作台指標帶（6 格；px-6 為頁面邊距，py-3 為帶內垂直節奏） */
   kpiStrip6:
-    'grid shrink-0 grid-cols-2 gap-1.5 border-b border-white/[0.06] px-6 py-3 sm:grid-cols-3 lg:grid-cols-6',
+    'grid shrink-0 grid-cols-2 gap-1.5 overflow-x-auto border-b border-white/[0.06] px-4 py-3 sm:grid-cols-3 sm:px-6 lg:grid-cols-6',
   /** rd-shell 控制台外殼（內層 rd-* 骨架保留，僅對齊外緣節奏） */
   rdShell: 'console-rd-shell rd-shell',
   rdToolbar:
-    'flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] px-6 py-4',
+    'flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] px-4 py-3 sm:px-6 sm:py-4',
   /** 雙欄卡片格 */
   cardGrid: 'grid gap-3 lg:grid-cols-2',
   /** apple-card 外殼（表頭＋內容分離時 !p-0） */
@@ -39,7 +39,7 @@ export const consoleLayout = {
   emptySm: 'py-8 text-center',
   maxContent: 'mx-auto w-full max-w-6xl',
   tabBar:
-    'flex shrink-0 items-center gap-2 overflow-x-auto border-b border-white/[0.06] px-6 py-3',
+    'flex shrink-0 items-center gap-2 overflow-x-auto border-b border-white/[0.06] px-4 py-3 sm:px-6',
   toolbar: 'flex flex-wrap items-center justify-between gap-2',
   title: 'text-sm font-semibold',
   subtitle: 'mt-0.5 text-[11px] text-[#8a8f98]',
