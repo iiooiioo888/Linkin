@@ -41,18 +41,36 @@ export interface BillingUsageEvent {
   created_at: string;
 }
 
+export interface BillingDockerPlanTerms {
+  plan_id: string;
+  plan_name_zh: string;
+  rate_multiplier: number;
+  included_hours_per_month: number;
+  included_hours_used: number;
+  included_hours_remaining: number;
+  description_zh: string;
+  base_hourly_rates_usd?: Record<string, number>;
+}
+
 export interface BillingDockerSummary {
   user_id: string;
+  plan_id?: string;
+  plan_terms?: BillingDockerPlanTerms;
   running_services: Array<{
     service: string;
     owner: string;
     rate_per_hour_usd: number;
+    base_rate_per_hour_usd?: number;
+    rate_multiplier?: number;
     credits_per_hour: number;
     uptime_hours: number;
     is_core: boolean;
+    is_mine?: boolean;
   }>;
   projected_hourly_usd: number;
   projected_hourly_credits: number;
+  projected_billable_hourly_usd?: number;
+  projected_billable_hourly_credits?: number;
   tick_interval_sec: number;
   recent_docker_events?: BillingUsageEvent[];
   total_docker_credits_spent?: number;

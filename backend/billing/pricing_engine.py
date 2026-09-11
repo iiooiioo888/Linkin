@@ -200,5 +200,11 @@ DEFAULT_PRICING_CONFIG = merge_config(None)
 DEFAULT_CREDIT_POLICY: dict[str, Any] = {
     "monthly_rollover_ratio": 0.5,
     "rollover_cap": 50000,
-    "by_tier": {},
+    "by_tier": {
+        "free": {"monthly_rollover_ratio": 0.3, "rollover_cap": 5000},
+        "starter": {"monthly_rollover_ratio": 0.4, "rollover_cap": 15000},
+        "pro": {"monthly_rollover_ratio": 0.5, "rollover_cap": 50000},
+        "business": {"monthly_rollover_ratio": 0.6, "rollover_cap": 200000},
+        "enterprise": {"monthly_rollover_ratio": 0.7, "rollover_cap": 1000000},
+    },
 }

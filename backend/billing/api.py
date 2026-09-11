@@ -12,7 +12,7 @@ from backend.auth.gate import gate_enabled
 from backend.billing.context import current_billing_user, default_anonymous_user
 from backend.billing.credits import public_rate_card
 from backend.billing.enterprise import enterprise_status
-from backend.billing.plans import list_plans_public
+from backend.billing.plans import is_public_plan_id, list_plans_public, normalize_plan_id
 from backend.billing.quota import get_billing_service
 
 router = APIRouter(prefix="/billing", tags=["billing"])
@@ -27,7 +27,7 @@ class TopupRequest(BaseModel):
 
 
 class AssignPlanRequest(BaseModel):
-    plan_id: str = Field(description="free / pro / enterprise")
+    plan_id: str = Field(description="free / starter / pro / business / enterprise")
 
 
 class AppealRequest(BaseModel):
@@ -114,10 +114,16 @@ def topup(req: TopupRequest, request: Request) -> dict[str, Any]:
 def assign_plan(req: AssignPlanRequest, request: Request) -> dict[str, Any]:
     if not _admin_allowed(request):
         raise HTTPException(status_code=403, detail="無權限指派方案")
+    plan_id = normalize_plan_id(req.plan_id)
     if req.plan_id.strip().lower() == "team":
-        raise HTTPException(status_code=400, detail="團隊版已取消，請選擇 free / pro / enterprise")
+        plan_id = "business"
+    if not is_public_plan_id(plan_id):
+        raise HTTPException(
+            status_code=400,
+            detail="無效方案，請選擇 free / starter / pro / business / enterprise",
+        )
     user_id = _resolve_user(request)
-    account = get_billing_service().set_plan(user_id, req.plan_id)
+    account = get_billing_service().set_plan(user_id, plan_id)
     return {"account": account}
 
 

@@ -119,6 +119,18 @@ def credits_for_recall() -> float:
 
 
 def public_rate_card() -> dict[str, Any]:
+    from backend.billing.docker_pricing import base_hourly_rates
+    from backend.billing.plans import PLAN_ORDER, get_plan
+
+    docker_tiers = {}
+    for pid in PLAN_ORDER:
+        plan = get_plan(pid)
+        docker_tiers[pid] = {
+            "name_zh": plan.get("name_zh", pid),
+            "rate_multiplier": plan.get("docker_rate_multiplier", 1.0),
+            "included_hours_per_month": plan.get("docker_included_hours_per_month", 0),
+            "description_zh": plan.get("docker_description_zh", ""),
+        }
     return {
         "unit": "靈境積分（Linkin Credit）",
         "baseline_tokens_per_credit": BASELINE_TOKENS_PER_CREDIT,
@@ -130,6 +142,8 @@ def public_rate_card() -> dict[str, Any]:
         "opc_read": OPC_READ_CREDITS,
         "mc_fill_per_1k_blocks": MC_FILL_CREDITS_PER_1000_BLOCKS,
         "docker_usd_to_credits": DOCKER_USD_TO_CREDITS,
+        "docker_base_hourly_rates_usd": base_hourly_rates(),
+        "docker_tiers": docker_tiers,
         "recall": RECALL_CREDITS,
         "storage_gb_month": VECTOR_STORAGE_CREDITS_PER_GB_MONTH,
     }

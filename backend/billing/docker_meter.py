@@ -2,7 +2,7 @@
 
 策略：
 - 用戶透過 API/工具 start/restart 時記錄 service → owner，並預檢餘額
-- 背景 tick 依 uptime 增量結算（rate × Δhours → 積分）
+- 背景 tick 依 uptime 增量結算（方案費率 × Δhours → 積分；含額內時數免費）
 - stop 時最終結算並清除 owner
 - 積分不足時拒絕新啟動；已運行容器在 tick 結算失敗時停止非核心服務
 """
@@ -13,14 +13,20 @@ import logging
 import os
 import threading
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from backend.billing.context import billing_enabled, current_billing_user, default_anonymous_user
 from backend.billing.credits import credits_for_docker_usd
+from backend.billing.docker_pricing import (
+    base_hourly_rates,
+    compute_docker_charge_usd,
+    get_effective_hourly_rate,
+    get_plan_docker_terms,
+)
 from backend.billing.errors import InsufficientCreditsError
 from backend.billing.metering import meter_docker
 from backend.billing.quota import get_billing_service
-from backend.company.docker_tools import get_service_hourly_rate
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +34,10 @@ logger = logging.getLogger(__name__)
 _CORE_SERVICES = frozenset({"backend", "redis", "chroma"})
 _TICK_SEC = float(os.getenv("LINKIN_DOCKER_BILLING_INTERVAL_SEC", "30"))
 _MIN_START_MINUTES = float(os.getenv("LINKIN_DOCKER_MIN_START_RESERVE_MIN", "5"))
+
+
+def _month_key() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m")
 
 
 class DockerBillingTracker:
@@ -39,7 +49,35 @@ class DockerBillingTracker:
         self._billed_uptime: dict[str, dict[str, float]] = {}
         # service -> owner user_id（API start/restart 記錄）
         self._owners: dict[str, str] = {}
+        # user_id -> 當月已消耗含額 Docker 小時
+        self._included_used_hours: dict[str, float] = {}
+        self._included_period: dict[str, str] = {}
         self._last_tick: float = 0.0
+
+    def _plan_id_for_user(self, user_id: str) -> str:
+        acct = get_billing_service().get_account(user_id)
+        if acct:
+            return str(acct.get("plan_id") or "free")
+        return "free"
+
+    def _included_used(self, user_id: str) -> float:
+        uid = user_id.strip()
+        period = _month_key()
+        with self._lock:
+            if self._included_period.get(uid) != period:
+                self._included_period[uid] = period
+                self._included_used_hours[uid] = 0.0
+            return float(self._included_used_hours.get(uid, 0.0))
+
+    def _add_included_used(self, user_id: str, free_hours: float) -> float:
+        uid = user_id.strip()
+        period = _month_key()
+        with self._lock:
+            if self._included_period.get(uid) != period:
+                self._included_period[uid] = period
+                self._included_used_hours[uid] = 0.0
+            self._included_used_hours[uid] = float(self._included_used_hours.get(uid, 0.0)) + max(0.0, free_hours)
+            return self._included_used_hours[uid]
 
     def assign_owner(self, service: str, user_id: str) -> None:
         with self._lock:
@@ -54,11 +92,12 @@ class DockerBillingTracker:
             return self._owners.pop(service, None)
 
     def ensure_can_start(self, service: str, user_id: str | None = None) -> None:
-        """啟動前預檢：至少保留 N 分鐘運行費率對應積分。"""
+        """啟動前預檢：至少保留 N 分鐘運行費率對應積分（依方案費率）。"""
         if not billing_enabled() and not user_id:
             return
         uid = (user_id or current_billing_user() or default_anonymous_user()).strip()
-        rate = get_service_hourly_rate(service)
+        plan_id = self._plan_id_for_user(uid)
+        rate = get_effective_hourly_rate(service, plan_id)
         reserve_usd = rate * (_MIN_START_MINUTES / 60.0)
         credits = credits_for_docker_usd(reserve_usd)
         if credits <= 0:
@@ -96,29 +135,45 @@ class DockerBillingTracker:
             user_state[service] = current
 
         delta_h = delta_s / 3600.0
-        rate = get_service_hourly_rate(service)
-        cost_usd = rate * delta_h
-        if cost_usd <= 0:
+        plan_id = self._plan_id_for_user(uid)
+        included_before = self._included_used(uid)
+        charge = compute_docker_charge_usd(service, delta_h, plan_id, included_before)
+        cost_usd = float(charge["cost_usd"])
+        free_hours = float(charge["free_hours"])
+        if free_hours > 0:
+            self._add_included_used(uid, free_hours)
+
+        if cost_usd <= 0 and free_hours <= 0:
             return None
 
-        entry = meter_docker(
-            service,
-            delta_h,
-            cost_usd,
-            user_id=uid,
-            reference=f"docker:{service}",
-            meta={
-                "service": service,
-                "cost_usd": round(cost_usd, 6),
-                "delta_hours": round(delta_h, 6),
-                "rate_per_hour_usd": rate,
-                "final": final,
-            },
-        )
+        entry = None
+        if cost_usd > 0:
+            entry = meter_docker(
+                service,
+                charge["billable_hours"],
+                cost_usd,
+                user_id=uid,
+                reference=f"docker:{service}",
+                meta={
+                    "service": service,
+                    "plan_id": plan_id,
+                    "cost_usd": round(cost_usd, 6),
+                    "delta_hours": round(delta_h, 6),
+                    "billable_hours": charge["billable_hours"],
+                    "free_hours": free_hours,
+                    "base_rate_per_hour_usd": charge["base_rate_per_hour_usd"],
+                    "rate_per_hour_usd": charge["effective_rate_per_hour_usd"],
+                    "rate_multiplier": charge["rate_multiplier"],
+                    "final": final,
+                },
+            )
         return {
             "service": service,
             "user_id": uid,
+            "plan_id": plan_id,
             "delta_hours": round(delta_h, 6),
+            "billable_hours": charge["billable_hours"],
+            "free_hours": free_hours,
             "cost_usd": round(cost_usd, 6),
             "credits": credits_for_docker_usd(cost_usd),
             "entry": entry,
@@ -209,10 +264,25 @@ class DockerBillingTracker:
                 logger.debug("停止容器 %s 失敗：%s", svc, exc)
         return stopped
 
+    def plan_terms(self, user_id: str | None = None) -> dict[str, Any]:
+        uid = (user_id or current_billing_user() or default_anonymous_user()).strip()
+        plan_id = self._plan_id_for_user(uid)
+        terms = get_plan_docker_terms(plan_id)
+        used = self._included_used(uid)
+        allowance = float(terms["included_hours_per_month"])
+        return {
+            **terms,
+            "included_hours_used": round(used, 4),
+            "included_hours_remaining": round(max(0.0, allowance - used), 4),
+            "base_hourly_rates_usd": base_hourly_rates(),
+        }
+
     def summary(self, user_id: str | None = None) -> dict[str, Any]:
         from backend.services.docker_manager import get_docker_manager
 
         uid = (user_id or current_billing_user() or default_anonymous_user()).strip()
+        plan_id = self._plan_id_for_user(uid)
+        plan_terms = self.plan_terms(uid)
         dm = get_docker_manager()
         running: list[dict[str, Any]] = []
         projected_hourly_usd = 0.0
@@ -223,23 +293,44 @@ class DockerBillingTracker:
                     continue
                 if not str(c.get("status", "")).startswith("Up"):
                     continue
-                rate = get_service_hourly_rate(svc)
-                projected_hourly_usd += rate
+                owner = self.owner_of(svc)
+                owner_plan = self._plan_id_for_user(owner) if owner else plan_id
+                rate = get_effective_hourly_rate(svc, owner_plan)
+                from backend.company.docker_tools import get_service_hourly_rate
+
+                base_rate = get_service_hourly_rate(svc)
+                is_mine = owner == uid
+                if is_mine:
+                    projected_hourly_usd += rate
                 running.append(
                     {
                         "service": svc,
-                        "owner": self.owner_of(svc),
+                        "owner": owner,
                         "rate_per_hour_usd": rate,
+                        "base_rate_per_hour_usd": base_rate,
+                        "rate_multiplier": get_plan_docker_terms(owner_plan)["rate_multiplier"],
                         "credits_per_hour": credits_for_docker_usd(rate),
                         "uptime_hours": round(float(c.get("uptime_seconds", 0)) / 3600.0, 4),
                         "is_core": svc in _CORE_SERVICES,
+                        "is_mine": is_mine,
                     }
                 )
+        included_remaining = float(plan_terms["included_hours_remaining"])
+        # 若仍有含額，預估時費可能為 0（直到含額用完）
+        projected_billable_usd = projected_hourly_usd if included_remaining <= 0 else 0.0
+        if included_remaining > 0 and projected_hourly_usd > 0:
+            # 含額未用完：顯示牌價但標記含額內可能免費
+            projected_billable_usd = 0.0
+
         return {
             "user_id": uid,
+            "plan_id": plan_id,
+            "plan_terms": plan_terms,
             "running_services": running,
             "projected_hourly_usd": round(projected_hourly_usd, 4),
             "projected_hourly_credits": credits_for_docker_usd(projected_hourly_usd),
+            "projected_billable_hourly_usd": round(projected_billable_usd, 4),
+            "projected_billable_hourly_credits": credits_for_docker_usd(projected_billable_usd),
             "tick_interval_sec": _TICK_SEC,
             "last_tick_monotonic": self._last_tick,
         }
