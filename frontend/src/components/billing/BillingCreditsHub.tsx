@@ -13,6 +13,8 @@ import {
   submitBillingAppeal,
   bindContributorKey,
   fetchContributorEarnings,
+  fetchContributorKeys,
+  fetchContributorKeyHealth,
   triggerInstallments,
   earlyUnlockContribution,
 } from '../../api/client';
@@ -430,27 +432,63 @@ function AppealForm({
 
 function ContributorPanel({ onMsg, busy, setBusy }: { onMsg: (m: string) => void; busy: boolean; setBusy: (b: boolean) => void }) {
   const [earnings, setEarnings] = useState<Record<string, unknown> | null>(null);
+  const [keys, setKeys] = useState<Record<string, unknown>[]>([]);
   const [keyVal, setKeyVal] = useState('');
+  const [orgId, setOrgId] = useState('');
+  const [dailyCap, setDailyCap] = useState('1000000');
+  const [concurrency, setConcurrency] = useState('2');
+  const [vendorId, setVendorId] = useState('self_host');
+
+  const refresh = useCallback(async () => {
+    const [e, k] = await Promise.all([fetchContributorEarnings(), fetchContributorKeys()]);
+    setEarnings(e);
+    setKeys((k.items as Record<string, unknown>[]) ?? []);
+  }, []);
 
   useEffect(() => {
-    void fetchContributorEarnings().then(setEarnings).catch((e) => onMsg(String(e)));
-  }, [onMsg]);
+    void refresh().catch((err) => onMsg(err instanceof Error ? err.message : String(err)));
+  }, [refresh, onMsg]);
+
+  const healthColor = (status: string | undefined) => {
+    if (status === 'healthy') return 'text-[#30D158]';
+    if (status === 'degraded') return 'text-[#FFD60A]';
+    return 'text-[#FF9F9A]';
+  };
 
   return (
     <div className="space-y-4 p-6">
-      <h2 className="text-[15px] font-semibold text-[#F5F5F7]">貢獻者 · API Key</h2>
-      <p className="text-[12px] text-[#8E8E93]">綁定 Key 共享調用權（非積分）。平台加密代理，收益進貢獻池。</p>
+      <h2 className="text-[15px] font-semibold text-[#F5F5F7]">貢獻者 · 共享池 API Key</h2>
+      <p className="text-[12px] text-[#8E8E93]">
+        綁定 Key 共享調用權（非積分）。AES-256 加密代理、零日誌；僅 self_host / resale_allowed 廠商。
+      </p>
       <div className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
         <p className="text-[11px] text-[#636366]">未鎖收益 {fmtCredits(Number(earnings?.unlocked_earnings ?? 0))} · 鎖倉 {fmtCredits(Number(earnings?.locked_earnings ?? 0))}</p>
-        <input placeholder="加密 Key（開發用明文佔位）" value={keyVal} onChange={(e) => setKeyVal(e.target.value)} className="mt-2 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]" />
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <input placeholder="API Key" value={keyVal} onChange={(e) => setKeyVal(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px] sm:col-span-2" />
+          <input placeholder="組織 ID（同 org 優先）" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]" />
+          <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]">
+            <option value="self_host">自架</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI</option>
+          </select>
+          <input type="number" placeholder="日 Token 上限" value={dailyCap} onChange={(e) => setDailyCap(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]" />
+          <input type="number" placeholder="並發" value={concurrency} onChange={(e) => setConcurrency(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]" />
+        </div>
         <button
           type="button"
           disabled={busy || keyVal.length < 8}
           className="mt-2 text-[12px] text-[#64D2FF]"
           onClick={() => {
             setBusy(true);
-            bindContributorKey(keyVal)
-              .then(() => onMsg('Key 已綁定'))
+            bindContributorKey(keyVal, {
+              vendorId,
+              orgId,
+              dailyTokenCap: Number(dailyCap) || 0,
+              concurrency: Number(concurrency) || 1,
+              tosClass: vendorId === 'self_host' ? 'self_host' : 'resale_allowed',
+              models: ['default'],
+            })
+              .then(() => { onMsg('Key 已綁定（AES-256 加密）'); return refresh(); })
               .catch((e) => onMsg(e instanceof Error ? e.message : '失敗'))
               .finally(() => setBusy(false));
           }}
@@ -458,11 +496,34 @@ function ContributorPanel({ onMsg, busy, setBusy }: { onMsg: (m: string) => void
           綁定 Key
         </button>
       </div>
-      <ul className="text-[11px] text-[#AEAEB2]">
-        {(earnings?.keys as { key_id: string; status: string }[] | undefined)?.map((k) => (
-          <li key={k.key_id}>{k.key_id} · {k.status}</li>
-        ))}
-      </ul>
+      <section>
+        <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">Key 健康度</h3>
+        {keys.length === 0 ? (
+          <p className="text-[11px] text-[#636366]">尚無綁定 Key</p>
+        ) : (
+          <ul className="space-y-2 text-[11px]">
+            {keys.map((k) => (
+              <li key={String(k.key_id)} className="rounded-lg border border-white/[0.06] px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[#F5F5F7]">{String(k.key_id).slice(-10)}</span>
+                  <span className={healthColor(String(k.health_status ?? k.status))}>
+                    {String(k.health_status ?? k.status ?? 'healthy')}
+                  </span>
+                  <span className="text-[#636366]">分數 {Number(k.health_score ?? 1).toFixed(2)}</span>
+                  <span className="text-[#636366]">今日 {Number(k.daily_usage ?? 0).toLocaleString()} tok</span>
+                </div>
+                <button
+                  type="button"
+                  className="mt-1 text-[10px] text-[#64D2FF]"
+                  onClick={() => void fetchContributorKeyHealth(String(k.key_id)).then((h) => onMsg(`成功率 ${(Number(h.success_rate) * 100).toFixed(1)}% · 延遲 ${h.avg_latency_ms}ms`))}
+                >
+                  重新檢查
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

@@ -34,6 +34,7 @@ def begin_billed_task(
         tid,
         estimate_credits=reserve["reserved_credits"],
         model=model,
+        account_id=user_id,
     )
     return {**reserve, **binding}
 

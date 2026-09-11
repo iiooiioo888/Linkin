@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.billing.fault_pool import fault_pool_status
 from backend.billing.pool_store import get_pool_store
 from backend.billing.appeals import list_appeals, resolve_appeal
 from backend.billing.pricing_engine import DEFAULT_CREDIT_POLICY, DEFAULT_PRICING_CONFIG
@@ -204,10 +205,51 @@ def cache_stats(account_id: str | None = None) -> dict[str, Any]:
 
 @router.get("/fault-pool")
 def fault_pool_stats() -> dict[str, Any]:
+    status = fault_pool_status()
     with get_pool_store()._conn() as conn:
-        row = conn.execute("SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS entries FROM fault_pool").fetchone()
+        legacy = conn.execute("SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS entries FROM fault_pool").fetchone()
         recent = conn.execute("SELECT * FROM fault_pool ORDER BY created_at DESC LIMIT 20").fetchall()
-    return {"total": float(row["total"]), "entries": int(row["entries"]), "recent": [dict(r) for r in recent]}
+    return {
+        **status,
+        "legacy_total": float(legacy["total"]),
+        "legacy_entries": int(legacy["entries"]),
+        "recent_inflows": [dict(r) for r in recent],
+    }
+
+
+@router.get("/routing/stats")
+def routing_stats(limit: int = 30) -> dict[str, Any]:
+    store = get_pool_store()
+    with store._conn() as conn:
+        rows = conn.execute(
+            """SELECT routing_mode, COUNT(*) AS c FROM routing_decisions
+               GROUP BY routing_mode ORDER BY c DESC"""
+        ).fetchall()
+        recent = conn.execute(
+            "SELECT decision_id, task_id, account_id, routing_mode, created_at FROM routing_decisions ORDER BY created_at DESC LIMIT ?",
+            (max(1, min(limit, 100)),),
+        ).fetchall()
+    return {
+        "by_mode": [dict(r) for r in rows],
+        "recent": [dict(r) for r in recent],
+        "public_pool_paused": store.get_routing_runtime("public_pool_paused", False),
+        "platform_take_rate": store.get_routing_runtime("platform_take_rate", 0.08),
+    }
+
+
+@router.get("/routing/task/{task_id}")
+def routing_for_task(task_id: str) -> dict[str, Any]:
+    decision = get_pool_store().get_routing_decision(task_id)
+    if not decision:
+        raise HTTPException(404, "尚無路由決策紀錄")
+    return decision
+
+
+@router.post("/fault-pool/resume-public")
+def resume_public_pool(operator: str = "admin") -> dict[str, Any]:
+    store = get_pool_store()
+    store.set_routing_runtime("public_pool_paused", False)
+    return {"public_pool_paused": False, "operator": operator}
 
 
 @router.get("/task-ledger/{task_id}")
@@ -222,9 +264,11 @@ def task_ledger(task_id: str) -> dict[str, Any]:
             "SELECT * FROM pool_usage_events WHERE task_id=? ORDER BY created_at", (task_id,)
         ).fetchall()
         binding = conn.execute("SELECT * FROM task_key_binding WHERE task_id=?", (task_id,)).fetchone()
+    routing = store.get_routing_decision(task_id)
     return {
         "task": dict(task) if task else None,
         "ledger": [dict(r) for r in ledger],
         "usage_events": [dict(r) for r in usage],
         "key_binding": dict(binding) if binding else None,
+        "routing": routing,
     }

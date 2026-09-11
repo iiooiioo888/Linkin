@@ -24,7 +24,7 @@ from backend.billing.pool_types import (
 from backend.billing.vendor_configs import DEFAULT_VENDOR_CONFIGS
 from backend.billing.pricing_engine import DEFAULT_CREDIT_POLICY, DEFAULT_PRICING_CONFIG
 
-_DB_LOCK = threading.Lock()
+_DB_LOCK = threading.RLock()
 _DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "billing.sqlite3"
 _POOL_SCHEMA = """
 CREATE TABLE IF NOT EXISTS balances (
@@ -320,6 +320,63 @@ CREATE INDEX IF NOT EXISTS idx_pool_usage_task ON pool_usage_events(task_id);
 CREATE INDEX IF NOT EXISTS idx_subtasks_task ON subtasks(task_id);
 CREATE INDEX IF NOT EXISTS idx_cache_prefixes_key ON cache_prefixes(key_id);
 CREATE INDEX IF NOT EXISTS idx_lock_installments_account ON lock_installments(account_id, status);
+
+CREATE TABLE IF NOT EXISTS fault_pool_ledger (
+    entry_id TEXT PRIMARY KEY,
+    entry_type TEXT NOT NULL,
+    amount REAL NOT NULL,
+    balance_after REAL NOT NULL,
+    reason TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT '',
+    account_id TEXT,
+    task_id TEXT,
+    installment_id TEXT,
+    meta_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS fault_pool_alerts (
+    alert_id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    message_zh TEXT NOT NULL,
+    balance REAL NOT NULL DEFAULT 0,
+    acknowledged INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS routing_runtime (
+    key TEXT PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS routing_decisions (
+    decision_id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    account_id TEXT,
+    routing_mode TEXT NOT NULL,
+    decision_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS task_key_splits (
+    task_id TEXT PRIMARY KEY,
+    split_mode TEXT NOT NULL,
+    keys_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS key_daily_usage (
+    key_id TEXT NOT NULL,
+    day_key TEXT NOT NULL,
+    tokens_used INTEGER NOT NULL DEFAULT 0,
+    credits_used REAL NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (key_id, day_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_routing_decisions_task ON routing_decisions(task_id);
+CREATE INDEX IF NOT EXISTS idx_fault_pool_ledger_created ON fault_pool_ledger(created_at);
 """
 
 
@@ -1079,6 +1136,254 @@ class PoolStore:
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (amount, reason, account_id, task_id, installment_id, _utc_now()),
             )
+        self.fault_pool_credit(
+            amount,
+            reason,
+            account_id=account_id,
+            task_id=task_id,
+            installment_id=installment_id,
+            source="legacy_inflow",
+        )
+
+    def fault_pool_balance(self) -> float:
+        with self._conn() as conn:
+            row = conn.execute(
+                """SELECT COALESCE(SUM(CASE WHEN entry_type='credit' THEN amount ELSE -amount END), 0) AS bal
+                   FROM fault_pool_ledger"""
+            ).fetchone()
+        if row and row["bal"] is not None:
+            return round(float(row["bal"]), 4)
+        with self._conn() as conn:
+            legacy = conn.execute("SELECT COALESCE(SUM(amount), 0) AS t FROM fault_pool").fetchone()
+        return round(float(legacy["t"] or 0), 4)
+
+    def fault_pool_credit(
+        self,
+        amount: float,
+        reason: str,
+        *,
+        account_id: str | None = None,
+        task_id: str | None = None,
+        installment_id: str | None = None,
+        source: str = "platform_take",
+        meta: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if amount <= 0:
+            return {"entry_id": None, "amount": 0.0, "balance_after": self.fault_pool_balance()}
+        entry_id = f"fp_{uuid.uuid4().hex[:12]}"
+        now = _utc_now()
+        balance_after = round(self.fault_pool_balance() + amount, 4)
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO fault_pool_ledger(entry_id, entry_type, amount, balance_after, reason, source,
+                   account_id, task_id, installment_id, meta_json, created_at)
+                   VALUES (?, 'credit', ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    entry_id,
+                    amount,
+                    balance_after,
+                    reason,
+                    source,
+                    account_id,
+                    task_id,
+                    installment_id,
+                    json.dumps(meta or {}, ensure_ascii=False),
+                    now,
+                ),
+            )
+        return {"entry_id": entry_id, "amount": amount, "balance_after": balance_after, "entry_type": "credit"}
+
+    def fault_pool_debit(
+        self,
+        amount: float,
+        reason: str,
+        *,
+        account_id: str | None = None,
+        task_id: str | None = None,
+        installment_id: str | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if amount <= 0:
+            return {"entry_id": None, "amount": 0.0, "disbursed": 0.0, "balance_after": self.fault_pool_balance()}
+        balance = self.fault_pool_balance()
+        disbursed = min(amount, balance)
+        if disbursed <= 0:
+            return {"entry_id": None, "amount": amount, "disbursed": 0.0, "balance_after": balance, "shortfall": amount}
+        entry_id = f"fp_{uuid.uuid4().hex[:12]}"
+        now = _utc_now()
+        balance_after = round(balance - disbursed, 4)
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO fault_pool_ledger(entry_id, entry_type, amount, balance_after, reason, source,
+                   account_id, task_id, installment_id, meta_json, created_at)
+                   VALUES (?, 'debit', ?, ?, ?, 'disbursement', ?, ?, ?, ?, ?)""",
+                (
+                    entry_id,
+                    disbursed,
+                    balance_after,
+                    reason,
+                    account_id,
+                    task_id,
+                    installment_id,
+                    json.dumps(meta or {}, ensure_ascii=False),
+                    now,
+                ),
+            )
+        return {
+            "entry_id": entry_id,
+            "amount": amount,
+            "disbursed": disbursed,
+            "balance_after": balance_after,
+            "shortfall": round(amount - disbursed, 4),
+            "entry_type": "debit",
+        }
+
+    def list_fault_pool_ledger(self, limit: int = 50) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM fault_pool_ledger ORDER BY created_at DESC LIMIT ?", (max(1, min(limit, 200)),)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def fault_pool_summary_by_reason(self) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT reason, entry_type,
+                   SUM(amount) AS total, COUNT(*) AS entries
+                   FROM fault_pool_ledger GROUP BY reason, entry_type ORDER BY total DESC"""
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def record_fault_pool_alert(self, *, kind: str, message_zh: str, balance: float) -> str:
+        alert_id = f"fpa_{uuid.uuid4().hex[:10]}"
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO fault_pool_alerts(alert_id, kind, message_zh, balance, created_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (alert_id, kind, message_zh, balance, _utc_now()),
+            )
+        return alert_id
+
+    def list_fault_pool_alerts(self, limit: int = 20) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM fault_pool_alerts ORDER BY created_at DESC LIMIT ?", (max(1, min(limit, 100)),)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_routing_runtime(self, key: str, default: Any = None) -> Any:
+        with self._conn() as conn:
+            row = conn.execute("SELECT value_json FROM routing_runtime WHERE key=?", (key,)).fetchone()
+        if not row:
+            return default
+        try:
+            return json.loads(row["value_json"])
+        except json.JSONDecodeError:
+            return default
+
+    def set_routing_runtime(self, key: str, value: Any) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO routing_runtime(key, value_json, updated_at) VALUES (?, ?, ?)
+                   ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at""",
+                (key, json.dumps(value, ensure_ascii=False), _utc_now()),
+            )
+
+    def log_routing_decision(self, decision: dict[str, Any]) -> str:
+        decision_id = f"rd_{uuid.uuid4().hex[:12]}"
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO routing_decisions(decision_id, task_id, account_id, routing_mode, decision_json, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    decision_id,
+                    decision.get("task_id", ""),
+                    decision.get("account_id"),
+                    decision.get("routing_mode", "single"),
+                    json.dumps(decision, ensure_ascii=False),
+                    _utc_now(),
+                ),
+            )
+        return decision_id
+
+    def get_routing_decision(self, task_id: str) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM routing_decisions WHERE task_id=? ORDER BY created_at DESC LIMIT 1",
+                (task_id,),
+            ).fetchone()
+        if not row:
+            return None
+        try:
+            payload = json.loads(row["decision_json"])
+        except json.JSONDecodeError:
+            payload = {}
+        return {"decision_id": row["decision_id"], **payload, "created_at": row["created_at"]}
+
+    def save_task_key_split(self, task_id: str, keys: list[dict[str, Any]], *, split_mode: str) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT OR REPLACE INTO task_key_splits(task_id, split_mode, keys_json, created_at)
+                   VALUES (?, ?, ?, ?)""",
+                (task_id, split_mode, json.dumps(keys, ensure_ascii=False), _utc_now()),
+            )
+
+    def get_key_daily_usage(self, key_id: str, day_key: str | None = None) -> float:
+        dk = day_key or datetime.now(timezone.utc).strftime("%Y%m%d")
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT tokens_used FROM key_daily_usage WHERE key_id=? AND day_key=?",
+                (key_id, dk),
+            ).fetchone()
+        return float(row["tokens_used"]) if row else 0.0
+
+    def increment_key_usage(self, key_id: str, *, tokens: int = 0, credits: float = 0) -> None:
+        dk = datetime.now(timezone.utc).strftime("%Y%m%d")
+        now = _utc_now()
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO key_daily_usage(key_id, day_key, tokens_used, credits_used, updated_at)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(key_id, day_key) DO UPDATE SET
+                   tokens_used = key_daily_usage.tokens_used + excluded.tokens_used,
+                   credits_used = key_daily_usage.credits_used + excluded.credits_used,
+                   updated_at = excluded.updated_at""",
+                (key_id, dk, tokens, credits, now),
+            )
+
+    def get_key_concurrency(self, key_id: str) -> int:
+        with self._conn() as conn:
+            row = conn.execute(
+                """SELECT COUNT(*) AS c FROM task_key_binding tkb
+                   JOIN tasks t ON t.task_id = tkb.task_id
+                   WHERE tkb.key_id=? AND t.status IN ('pending', 'running', 'active')""",
+                (key_id,),
+            ).fetchone()
+        return int(row["c"] or 0) if row else 0
+
+    def list_contributor_keys_with_health(self, account_id: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT ak.key_id, ak.status, ak.limits_json, ak.org_id, ak.created_at,
+                          kh.health_score, kh.status AS health_status, kh.failure_count,
+                          kh.balance_exhausted_count, kh.last_failure_reason, kh.updated_at AS health_updated_at
+                   FROM api_keys ak
+                   JOIN contributors c ON c.contributor_id = ak.contributor_id
+                   LEFT JOIN key_health kh ON kh.key_id = ak.key_id
+                   WHERE c.account_id=? ORDER BY ak.created_at DESC""",
+                (account_id.strip(),),
+            ).fetchall()
+        out: list[dict[str, Any]] = []
+        for r in rows:
+            item = dict(r)
+            try:
+                item["limits"] = json.loads(r["limits_json"] or "{}")
+            except json.JSONDecodeError:
+                item["limits"] = {}
+            item.pop("limits_json", None)
+            item["daily_usage"] = self.get_key_daily_usage(str(r["key_id"]))
+            out.append(item)
+        return out
 
     def _primary_contributor_key(self, account_id: str) -> str | None:
         with self._conn() as conn:
@@ -1192,11 +1497,13 @@ class PoolStore:
         )
         return {
             "installment_id": row["installment_id"],
+            "account_id": str(aid),
             "principal_paid": principal,
             "reward_paid": reward,
             "total_paid": total_pay,
             "installment": paid,
             "status": status,
+            "reward_pending_fault_pool": reward,
         }
 
     def process_lock_installments(
@@ -1224,6 +1531,16 @@ class PoolStore:
                 paid = self._pay_installment_period(conn, row, now)
                 if paid:
                     results.append(paid)
+        for paid in results:
+            pending = float(paid.pop("reward_pending_fault_pool", 0) or 0)
+            if pending > 0:
+                from backend.billing.fault_pool import disburse_for_lock_reward
+
+                paid["fault_pool_reward"] = disburse_for_lock_reward(
+                    pending,
+                    account_id=str(paid.get("account_id", "")),
+                    installment_id=str(paid.get("installment_id", "")),
+                )
         return results
 
     def _unpaid_installment_amounts(self, row: sqlite3.Row) -> tuple[float, float, float]:
@@ -1270,6 +1587,15 @@ class PoolStore:
                    forfeited_amount=?, appeal_deadline=?, next_due_at=NULL WHERE installment_id=?""",
                 (forfeit_total, appeal_deadline, installment_id),
             )
+        self.fault_pool_credit(
+            forfeit_total,
+            "key_failure_forfeiture",
+            account_id=aid,
+            task_id=task_id,
+            installment_id=installment_id,
+            source="lock_penalty",
+        )
+        with self._conn() as conn:
             conn.execute(
                 """INSERT INTO fault_pool(amount, reason, account_id, task_id, installment_id, created_at)
                    VALUES (?, 'key_failure_forfeiture', ?, ?, ?, ?)""",
@@ -1331,6 +1657,14 @@ class PoolStore:
                    forfeited_amount=?, next_due_at=NULL WHERE installment_id=?""",
                 (forfeit, installment_id),
             )
+        self.fault_pool_credit(
+            forfeit,
+            "early_unlock_penalty",
+            account_id=account_id,
+            installment_id=installment_id,
+            source="lock_penalty",
+        )
+        with self._conn() as conn:
             conn.execute(
                 """INSERT INTO fault_pool(amount, reason, account_id, installment_id, created_at)
                    VALUES (?, 'early_unlock_penalty', ?, ?, ?)""",
@@ -1440,19 +1774,48 @@ class PoolStore:
             )
         return cid
 
-    def bind_contributor_key(self, account_id: str, encrypted_key: str, limits: dict | None = None) -> dict[str, Any]:
-        import json
+    def bind_contributor_key(
+        self,
+        account_id: str,
+        encrypted_key: str,
+        limits: dict | None = None,
+        *,
+        org_id: str | None = None,
+        plaintext_key: str | None = None,
+    ) -> dict[str, Any]:
+        from backend.billing.key_crypto import encrypt_api_key
 
         cid = self.ensure_contributor(account_id)
         kid = f"key_{uuid.uuid4().hex[:12]}"
         now = _utc_now()
+        limits_payload = dict(limits or {})
+        if org_id:
+            limits_payload.setdefault("org_id", org_id)
+        raw = plaintext_key or encrypted_key
+        if not raw.startswith("enc1:") and not raw.startswith("enc256:"):
+            stored = encrypt_api_key(raw)
+        else:
+            stored = raw
+        resolved_org = org_id or limits_payload.get("org_id")
         with self._conn() as conn:
             conn.execute(
-                """INSERT INTO api_keys(key_id, contributor_id, encrypted_key, limits_json, status, created_at)
-                   VALUES (?, ?, ?, ?, 'active', ?)""",
-                (kid, cid, encrypted_key, json.dumps(limits or {}, ensure_ascii=False), now),
+                """INSERT INTO api_keys(key_id, contributor_id, org_id, encrypted_key, limits_json, status, created_at)
+                   VALUES (?, ?, ?, ?, ?, 'active', ?)""",
+                (kid, cid, resolved_org, stored, json.dumps(limits_payload, ensure_ascii=False), now),
             )
-        return {"contributor_id": cid, "key_id": kid, "status": "active"}
+            conn.execute(
+                """INSERT OR IGNORE INTO key_health(key_id, contributor_id, health_score, status, updated_at)
+                   VALUES (?, ?, 1.0, 'healthy', ?)""",
+                (kid, cid, now),
+            )
+        return {
+            "contributor_id": cid,
+            "key_id": kid,
+            "status": "active",
+            "org_id": resolved_org,
+            "limits": limits_payload,
+            "encrypted": True,
+        }
 
     def contributor_earnings(self, account_id: str) -> dict[str, Any]:
         bals = self.get_balances(account_id)
