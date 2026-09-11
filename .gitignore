@@ -86,6 +86,13 @@ htmlcov/
 .qoder/
 .qwen/
 
+# Per-agent skill copies from `npx skills add` (canonical: .agents/skills/ + skills-lock.json)
+/.claude/skills/
+/.posit/
+/agent/skills/
+/skills/
+/data/skills/
+
 # Nested leftover clone of upstream EvoLoop (this repo is Linkin)
 /Evoloop/
 
