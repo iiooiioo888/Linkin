@@ -77,7 +77,7 @@ function MiniLineChart({
   );
 }
 
-export default function MonitoringPanel() {
+export default function MonitoringPanel({ embedded = false }: { embedded?: boolean }) {
   const [monitoring, setMonitoring] = useState<CloudMonitoring | null>(null);
   const [range, setRange] = useState<string>('1h');
   const [loading, setLoading] = useState(true);
@@ -164,10 +164,10 @@ export default function MonitoringPanel() {
   }, [netRxSeries]);
 
   return (
-    <div className="flex-1 space-y-4 overflow-auto p-4">
+    <div className={embedded ? 'space-y-3' : 'flex-1 space-y-4 overflow-auto p-4'}>
       {/* 時間範圍選擇器 */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-200">資源監控</h3>
+        {!embedded ? <h3 className="text-sm font-medium text-gray-200">資源監控</h3> : <span />}
         <div className="flex items-center gap-1 rounded-lg bg-gray-900 p-0.5">
           {RANGE_OPTIONS.map((opt) => (
             <button

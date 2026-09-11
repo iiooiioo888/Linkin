@@ -60,7 +60,6 @@ export const MONITOR_AUDIT_TABS: MonitorTabItem[] = [
 export const MONITOR_BILLING_TABS: MonitorTabItem[] = [
   { key: 'credits', icon: '◎', label: '靈境積分' },
   { key: 'models', icon: '◉', label: 'AI 用量' },
-  { key: 'billing', icon: '💰', label: '雲與 Docker' },
 ];
 
 export const MONITOR_SETUP_TABS: MonitorTabItem[] = [
@@ -107,9 +106,8 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     id: 'billing',
     label: '計費',
     items: [
-      { key: 'credits', icon: '◎', label: '靈境積分', hint: '多池餘額、貢獻、申訴與管理' },
+      { key: 'credits', icon: '◎', label: '靈境積分', hint: '積分、Docker/阿里雲帳單、貢獻與管理' },
       { key: 'models', icon: '◉', label: 'AI 用量', hint: 'Token 延遲與模型成本' },
-      { key: 'billing', icon: '💰', label: '雲與 Docker', hint: '容器按時與雲帳單' },
     ],
   },
   {
@@ -177,8 +175,9 @@ export const CONSOLE_TAB_ALIASES: Record<string, MonitorTab> = {
   task: 'tasks',
   dashboard: 'tasks',
   hub: 'ops',
-  cloud: 'billing',
-  docker: 'billing',
+  cloud: 'credits',
+  docker: 'credits',
+  billing: 'credits',
   credits: 'credits',
   wallet: 'credits',
   usage: 'models',
@@ -218,7 +217,7 @@ export const CONSOLE_CHROME_TABS: Array<{ key: MonitorTab; label: string; match:
   { key: 'tasks', label: '執行', match: ['tasks', 'pipeline'] },
   { key: 'agents', label: '角色', match: ['agents'] },
   { key: 'feedback', label: '審計', match: ['feedback', 'metrics'] },
-  { key: 'billing', label: '計費', match: ['billing', 'models', 'credits'] },
+  { key: 'credits', label: '計費', match: ['credits', 'models', 'billing'] },
   { key: 'llm', label: '系統', match: ['llm', 'ops', 'memory', 'context', 'integrations', 'skills'] },
 ];
 

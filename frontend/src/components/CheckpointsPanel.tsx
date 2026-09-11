@@ -24,7 +24,7 @@ function fmtTime(iso: string): string {
   return d.toLocaleString('zh-TW', { hour12: false });
 }
 
-export default function CheckpointsPanel() {
+export default function CheckpointsPanel({ embedded = false }: { embedded?: boolean }) {
   const [items, setItems] = useState<CheckpointSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,18 +63,25 @@ export default function CheckpointsPanel() {
     }
   };
 
-  return (
-    <PanelShell>
+  const body = (
       <PanelSection>
-        <SectionHeader
-          title="斷點檢查點"
-          description={`公司運行時中斷後可從此續跑 · ${items.length} 筆`}
-          actions={
+        {!embedded ? (
+          <SectionHeader
+            title="斷點檢查點"
+            description={`公司運行時中斷後可從此續跑 · ${items.length} 筆`}
+            actions={
+              <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
+                {loading ? '同步中' : '重新整理'}
+              </button>
+            }
+          />
+        ) : (
+          <div className="flex justify-end">
             <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
               {loading ? '同步中' : '重新整理'}
             </button>
-          }
-        />
+          </div>
+        )}
 
         {error ? <PanelAlert>{error}</PanelAlert> : null}
         {notice ? <PanelAlert tone="notice">{notice}</PanelAlert> : null}
@@ -147,6 +154,8 @@ export default function CheckpointsPanel() {
           </ConsoleCard>
         )}
       </PanelSection>
-    </PanelShell>
   );
+
+  if (embedded) return body;
+  return <PanelShell>{body}</PanelShell>;
 }

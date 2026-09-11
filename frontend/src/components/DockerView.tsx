@@ -373,7 +373,7 @@ function LogModal({
 // 主组件
 // ═══════════════════════════════════════════════════════════
 
-export default function DockerView() {
+export default function DockerView({ embedded = false }: { embedded?: boolean }) {
   const [status, setStatus] = useState<DockerStatus | null>(null);
   const [stats, setStats] = useState<Record<string, DockerContainerStats> | null>(null);
   const [budget, setBudget] = useState<DockerBudget | null>(null);
@@ -506,11 +506,11 @@ export default function DockerView() {
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-auto">
+    <div className={embedded ? 'space-y-3' : 'flex flex-1 flex-col overflow-auto'}>
       {/* 操作消息横幅 */}
       {actionMessage && (
         <div
-          className={`mx-4 mt-3 rounded-lg px-4 py-2 text-sm ${
+          className={`${embedded ? '' : 'mx-4 mt-3 '}rounded-lg px-4 py-2 text-sm ${
             actionMessage.ok
               ? 'bg-green-500/15 text-green-300'
               : 'bg-red-500/15 text-red-300'

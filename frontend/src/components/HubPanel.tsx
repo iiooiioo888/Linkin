@@ -1,11 +1,10 @@
 /**
  * HubPanel — AI Hub 統一面板（操作台 + 監控）。
- *
- * 合併原 ActivityBar「AI Hub」視圖與監控中心 Hub 分頁，避免兩套入口。
  */
 import { useState } from 'react';
 import HubMonitorPanel from './HubMonitorPanel';
 import HubView from './HubView';
+import { ConsoleCard, ConsoleCardBody, ConsoleCardHeader } from './ui/ConsoleLayout';
 
 type HubMode = 'console' | 'monitor';
 
@@ -14,8 +13,27 @@ const MODES: { key: HubMode; icon: string; label: string }[] = [
   { key: 'monitor', icon: '📡', label: '監控' },
 ];
 
-export default function HubPanel() {
+export default function HubPanel({ embedded = false }: { embedded?: boolean }) {
   const [mode, setMode] = useState<HubMode>('console');
+
+  if (embedded) {
+    return (
+      <div className="space-y-3">
+        <ConsoleCard>
+          <ConsoleCardHeader>操作台</ConsoleCardHeader>
+          <ConsoleCardBody dense>
+            <HubView embedded />
+          </ConsoleCardBody>
+        </ConsoleCard>
+        <ConsoleCard>
+          <ConsoleCardHeader>監控</ConsoleCardHeader>
+          <ConsoleCardBody dense>
+            <HubMonitorPanel embedded />
+          </ConsoleCardBody>
+        </ConsoleCard>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas">

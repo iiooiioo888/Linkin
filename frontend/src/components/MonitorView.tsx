@@ -31,7 +31,6 @@ const L0Panel = lazy(() => import('./L0Panel'));
 const SkillsMcpPanel = lazy(() => import('./SkillsMcpPanel'));
 const IntegrationsPanel = lazy(() => import('./IntegrationsPanel'));
 const ContextPanel = lazy(() => import('./ContextPanel'));
-const BillingPanel = lazy(() => import('./BillingPanel'));
 const BillingCreditsHub = lazy(() => import('./billing/BillingCreditsHub'));
 
 interface MonitorViewProps {
@@ -205,8 +204,7 @@ export default function MonitorView({
         )}
         {tab === 'metrics' && <SystemMetricsPanel />}
         {tab === 'models' && <ModelCallPanel />}
-        {tab === 'credits' && <BillingCreditsHub />}
-        {tab === 'billing' && <BillingPanel />}
+        {(tab === 'credits' || tab === 'billing') && <BillingCreditsHub />}
         {tab === 'feedback' && <UserFeedbackPanel />}
         {tab === 'lab' && (
           <LabPanel activeTab={labSubTab} onTabChange={onLabSubTabChange} />

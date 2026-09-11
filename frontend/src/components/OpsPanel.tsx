@@ -1,50 +1,66 @@
 /**
- * 基礎設施合併面板：AI Hub · 雲 · 檢查點 · 連接池。
- * API 路由已升為控制台一級頁面（配置 → API 路由）。
+ * 基礎設施合併面板 — 單頁滾動：AI Hub · 雲端 · 檢查點 · 連接池
  */
-import { useState } from 'react';
+import { useRef } from 'react';
 import CheckpointsPanel from './CheckpointsPanel';
 import CloudConsoleView from './CloudConsoleView';
 import DbPoolPanel from './DbPoolPanel';
 import HubPanel from './HubPanel';
-import { PanelShell, PanelTabBar } from './ui/ConsoleLayout';
+import {
+  ConsoleSection,
+  ConsoleSectionNav,
+  PanelScroll,
+  PanelSection,
+  PanelShell,
+  SectionHeader,
+  useScrollToSection,
+  useSectionScrollSpy,
+  consoleLayout,
+} from './ui/ConsoleLayout';
 
-type OpsTab = 'hub' | 'cloud' | 'checkpoints' | 'dbpool';
+const OPS_SECTIONS = [
+  { id: 'ops-hub', label: 'AI Hub' },
+  { id: 'ops-cloud', label: '雲端' },
+  { id: 'ops-checkpoints', label: '檢查點' },
+  { id: 'ops-dbpool', label: '連接池' },
+] as const;
 
 export default function OpsPanel() {
-  const [tab, setTab] = useState<OpsTab>('hub');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollTo = useScrollToSection(scrollRef);
+  const activeId = useSectionScrollSpy(OPS_SECTIONS.map((s) => s.id), scrollRef);
 
   return (
     <PanelShell scroll={false}>
-      <PanelTabBar>
-        {(
-          [
-            ['hub', 'AI Hub'],
-            ['cloud', '雲端'],
-            ['checkpoints', '檢查點'],
-            ['dbpool', '連接池'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={`rounded-full px-3.5 py-1.5 text-[12px] font-bold transition-colors ${
-              tab === key
-                ? 'bg-[#007AFF] text-white'
-                : 'bg-white/[0.04] text-[#AEAEB2] hover:text-[#F5F5F7]'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </PanelTabBar>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {tab === 'hub' && <HubPanel />}
-        {tab === 'cloud' && <CloudConsoleView />}
-        {tab === 'checkpoints' && <CheckpointsPanel />}
-        {tab === 'dbpool' && <DbPoolPanel />}
-      </div>
+      <ConsoleSectionNav
+        sections={OPS_SECTIONS.map((s) => ({ id: s.id, label: s.label }))}
+        activeId={activeId}
+        onSelect={(id) => scrollTo(id)}
+      />
+      <PanelScroll ref={scrollRef}>
+        <PanelSection className={consoleLayout.sectionGapLg}>
+          <SectionHeader
+            title="基礎設施"
+            description="AI Hub、雲端運維、斷點續跑與資料庫連接池 — 同一頁連續瀏覽"
+          />
+
+          <ConsoleSection id="ops-hub" title="AI Hub" description="模型目錄、探針與熔斷操作台">
+            <HubPanel embedded />
+          </ConsoleSection>
+
+          <ConsoleSection id="ops-cloud" title="雲端" description="容器監控、實例、告警與事件">
+            <CloudConsoleView embedded />
+          </ConsoleSection>
+
+          <ConsoleSection id="ops-checkpoints" title="檢查點" description="公司運行時中斷後可從此續跑">
+            <CheckpointsPanel embedded />
+          </ConsoleSection>
+
+          <ConsoleSection id="ops-dbpool" title="連接池" description="SQLite 連接池狀態與健康檢查">
+            <DbPoolPanel embedded />
+          </ConsoleSection>
+        </PanelSection>
+      </PanelScroll>
     </PanelShell>
   );
 }

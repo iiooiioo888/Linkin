@@ -21,7 +21,7 @@ const EVENT_ZH: Record<string, string> = {
   plan_quota: '方案配額',
 };
 
-export default function WalletPanel() {
+export default function WalletPanel({ embedded = false }: { embedded?: boolean }) {
   const { account, ledger, usage, plans, docker, loading, error, refresh } = useWallet(6000);
   const dockerLedger = ledger.filter((row) => row.source === 'docker' || row.reference.startsWith('docker:'));
   const dockerUsage = usage.filter((row) => row.event_type === 'docker_runtime');
@@ -62,13 +62,15 @@ export default function WalletPanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-6">
-      <header>
-        <h2 className="text-[15px] font-semibold text-[#F5F5F7]">靈境積分 · 帳務中心</h2>
-        <p className="mt-1 text-[12px] text-[#8E8E93]">
-          訂閱方案 + 用量計費 + 功能包。1 積分 ≈ 1,000 baseline tokens（依模型倍率調整）。
-        </p>
-      </header>
+    <div className={embedded ? 'space-y-3' : 'flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-6'}>
+      {!embedded ? (
+        <header>
+          <h2 className="text-[15px] font-semibold text-[#F5F5F7]">靈境積分 · 帳務中心</h2>
+          <p className="mt-1 text-[12px] text-[#8E8E93]">
+            訂閱方案 + 用量計費 + 功能包。1 積分 ≈ 1,000 baseline tokens（依模型倍率調整）。
+          </p>
+        </header>
+      ) : null}
 
       {error ? (
         <div className="rounded-lg border border-[#FF453A]/30 bg-[#FF453A]/10 px-3 py-2 text-[12px] text-[#FF9F9A]">{error}</div>

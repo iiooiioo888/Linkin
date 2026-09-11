@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { createAlertRule, deleteAlertRule, fetchCloudAlerts, toggleAlertRule } from '../api/client';
 import type { CloudAlertRecord, CloudAlertRule } from '../types';
 
-export default function AlertsPanel() {
+export default function AlertsPanel({ embedded = false }: { embedded?: boolean }) {
   const [rules, setRules] = useState<CloudAlertRule[]>([]);
   const [history, setHistory] = useState<CloudAlertRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,10 +85,10 @@ export default function AlertsPanel() {
   );
 
   return (
-    <div className="flex-1 space-y-4 overflow-auto p-4">
+    <div className={embedded ? 'space-y-3' : 'flex-1 space-y-4 overflow-auto p-4'}>
       {/* 標題欄 */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-200">告警規則</h3>
+        {!embedded ? <h3 className="text-sm font-medium text-gray-200">告警規則</h3> : <span />}
         <button
           onClick={() => setShowForm((v) => !v)}
           className="rounded-lg bg-blue-500/20 px-3 py-1.5 text-xs text-blue-300 transition-colors hover:bg-blue-500/30"
