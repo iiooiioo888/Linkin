@@ -244,8 +244,10 @@ export default function AppShell({
         />
       </div>
 
-      {/* 行動端底部 Tab 列 */}
-      <ActivityBar activity={activity} onActivityChange={handleActivityChange} placement="bottom" />
+      {/* 行動端底部 Tab 列（桌面僅左側垂直欄） */}
+      {!isDesktop && (
+        <ActivityBar activity={activity} onActivityChange={handleActivityChange} placement="bottom" />
+      )}
 
       {/* ══ 底部状态栏 ══ */}
       <StatusBar
