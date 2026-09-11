@@ -12,6 +12,10 @@
 
 請勿把架構／API／RAHO 說明寫進根 `DESIGN.md`，以免與視覺 Token 格式衝突（該檔需維持可被 `npx @google/design.md lint` 檢查的結構）。
 
+## 監控級儀表板 v3
+
+[`monitor-dashboard-v3.html`](monitor-dashboard-v3.html) — gold/dark token、三欄 `216px / 1fr / 304px`、監控視覺元件結構參考。實作對應 `frontend/src/index.css`、`frontend/src/lib/consoleColors.ts`、`frontend/src/components/ui/monitor/`。
+
 ## 相關入口
 
 | 主題 | 文件 |

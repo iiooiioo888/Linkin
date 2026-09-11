@@ -1,7 +1,7 @@
 /**
  * 控制台版面節奏 — OCD 三欄 dense 設計（8pt grid、~100vh 單頁）。
  *
- * 桌面 ≥1440：左 224px · 中 1fr · 右 280px
+ * 桌面 ≥1440：左 216px · 中 1fr · 右 304px
  */
 export const consoleLayout = {
   /** 可滾動頁面根（多數監控分頁） */
@@ -28,11 +28,17 @@ export const consoleLayout = {
   kpiGrid: 'console-dense-grid console-dense-grid--3 console-dense-grid--equal-rows',
   /** KPI／統計列（4 欄 — 系統總覽） */
   kpiGrid4: 'console-dense-grid console-dense-grid--4 console-dense-grid--equal-rows',
+  /** KPI／統計列（6 欄 — 監控密度） */
+  kpiGrid6: 'console-dense-grid console-dense-grid--6 console-dense-grid--equal-rows',
   /** KPI 格填滿可用高度（分頁內無滾動） */
   kpiGridFill:
     'console-dense-grid console-dense-grid--3 console-dense-grid--equal-rows min-h-0 flex-1 [&>*]:min-h-0',
   kpiGrid4Fill:
     'console-dense-grid console-dense-grid--4 console-dense-grid--equal-rows min-h-0 flex-1 [&>*]:min-h-0',
+  kpiGrid6Fill:
+    'console-dense-grid console-dense-grid--6 console-dense-grid--equal-rows min-h-0 flex-1 [&>*]:min-h-0',
+  warnBar:
+    'flex items-center gap-2 rounded border border-[var(--console-amber)]/40 bg-[var(--console-amber)]/10 px-3 py-1.5 text-[11px] text-[var(--console-amber)]',
   /** 巨型 KPI 列（≤3 個） */
   giantKpiRow: 'console-kpi-row shrink-0',
   /** 管線／角色工作台指標帶 */

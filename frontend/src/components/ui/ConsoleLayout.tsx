@@ -41,7 +41,7 @@ export function PanelShell({
   );
 }
 
-/** OCD 三欄主 grid — 左 224 / 中 1fr / 右 280（≥1440） */
+/** OCD 三欄主 grid — 左 216 / 中 1fr / 右 304（≥1440） */
 export function ConsoleThreeColumn({ className, children, ...rest }: DivProps) {
   return (
     <div className={cn(consoleLayout.threeColumn, className)} {...rest}>
@@ -310,6 +310,24 @@ export function KpiGrid4({ fill, className, children, ...rest }: DivProps & { fi
       {children}
     </div>
   );
+}
+
+export function KpiGrid6({ fill, className, children, ...rest }: DivProps & { fill?: boolean }) {
+  return (
+    <div className={cn(fill ? consoleLayout.kpiGrid6Fill : consoleLayout.kpiGrid6, className)} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+export function WarnBar({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={cn(consoleLayout.warnBar, className)}>{children}</div>;
 }
 
 export function KpiCard({

@@ -15,8 +15,10 @@ import TaskPanel, {
   STANDARD_PHASES,
   phaseIndex,
 } from './TaskPanel';
+import { buildStatusStack, buildTaskDistributionMatrix, taskPriority } from '../lib/monitorData';
 import ErrorState from './ui/ErrorState';
-import { consoleLayout } from './ui/ConsoleLayout';
+import { StackBar, TaskDistributionMatrix, TaskPriorityCard } from './ui/monitor';
+import { WarnBar, consoleLayout } from './ui/ConsoleLayout';
 
 interface TasksMonitorPanelProps {
   focusTaskId: string | null;
@@ -108,25 +110,27 @@ function TaskCard({
 }) {
   const meta = STATUS_META[task.status] ?? STATUS_META.pending;
   const path = PATH_META[task.resolved_path] ?? PATH_META.simple;
-  const col = taskColumnKey(task.status);
-  const running = col === 'running';
   const shortId = task.task_id.replace(/^.*[#-]/, '').slice(-4) || task.task_id.slice(0, 4);
+  const priority = taskPriority(task);
 
   return (
-    <button type="button" onClick={onClick} className={`rd-tc w-full ${active ? 'on' : ''}`}>
-      <div className="rd-tc-t">
-        <span className={`rd-od shrink-0 ${running ? 'run' : col === 'done' ? 'on' : 'off'}`} />
-        <span className="rd-tc-ttl">{task.query || '（無標題）'}</span>
-        <span className="rd-tc-id">#{shortId}</span>
-      </div>
-      <p className="rd-tc-d">{path.label} · {relTime(task.created_at)}</p>
-      <div className="rd-tc-m">
-        <span className={`rd-badge ${running ? 'run' : ''}`}>{meta.label}</span>
-        <span className="rd-tc-meta">{path.icon}</span>
-        {task.score != null ? <span className="rd-tc-cost">{Math.round(task.score * 100) / 100} 分</span> : null}
-      </div>
+    <TaskPriorityCard
+      priority={priority}
+      title={task.query || '（無標題）'}
+      active={active}
+      onClick={onClick}
+      meta={
+        <>
+          <span>{meta.label}</span>
+          <span>{path.icon} {path.label}</span>
+          <span>#{shortId}</span>
+          <span>{relTime(task.created_at)}</span>
+          {task.score != null ? <span>{Math.round(task.score * 100) / 100} 分</span> : null}
+        </>
+      }
+    >
       <PhaseStrip task={task} />
-    </button>
+    </TaskPriorityCard>
   );
 }
 
@@ -204,6 +208,9 @@ export default function TasksMonitorPanel({
   const queueCount = tasksInColumn(tasks, 'queue').length;
   const runningCount = tasksInColumn(tasks, 'running').length;
   const doneCount = tasksInColumn(tasks, 'done').length;
+  const statusStack = buildStatusStack(stats ?? {});
+  const taskMatrix = buildTaskDistributionMatrix(tasks);
+  const capacityWarn = runningCount >= 10;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas">
@@ -219,6 +226,20 @@ export default function TasksMonitorPanel({
           <ErrorState kind="partial" message={storeError} compact />
         </div>
       )}
+
+      {capacityWarn ? (
+        <div className="shrink-0 px-4 py-2">
+          <WarnBar>
+            執行中任務達 {runningCount} 項 — 建議檢查容量與佇列
+          </WarnBar>
+        </div>
+      ) : null}
+
+      {statusStack.length > 0 ? (
+        <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-2">
+          <StackBar segments={statusStack} />
+        </div>
+      ) : null}
 
       <div className="rd-stats">
         <div className="rd-stat">
@@ -249,6 +270,11 @@ export default function TasksMonitorPanel({
 
       <div className="rd-body">
         <div className={`rd-tasks ${focusTaskId ? 'lg:max-w-none' : ''}`}>
+          {!focusTaskId && tasks.length > 0 ? (
+            <div className="mb-3 rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] p-3">
+              <TaskDistributionMatrix matrix={taskMatrix} demo={taskMatrix.every((r) => r.every((c) => c.count === 0))} />
+            </div>
+          ) : null}
           <StatusColumnBoard
             selectedKey={filter}
             onSelect={(key) => setFilter(key as TaskColumnKey)}

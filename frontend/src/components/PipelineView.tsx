@@ -13,6 +13,7 @@ import type { ChatMessage, MultiDimEvaluation } from '../types';
 import PipelineDag from './PipelineDag';
 import { IterationTrend, ReflectionRadar } from './ReflectionCharts';
 import { StatusColumnBoard } from './StatusColumnBoard';
+import { PipelineTimeline } from './ui/monitor';
 import {
   ConsoleCard,
   ConsoleCardBody,
@@ -157,8 +158,26 @@ export default function PipelineView({ onGoTasks, messages = [] }: PipelineViewP
                 };
               })}
             />
-            <div className="rd-pane">
-              <PipelineDag phase={phase} height={260} />
+            <div className="rd-pane space-y-3">
+              <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] p-3">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">管線節點 · 耗時</p>
+                <PipelineTimeline
+                  nodes={PIPELINE_STAGES.map((stage, index) => ({
+                    id: stage.id,
+                    label: stage.label,
+                    state:
+                      activeIndex == null
+                        ? 'pending'
+                        : index < activeIndex!
+                          ? 'done'
+                          : index === activeIndex
+                            ? 'active'
+                            : 'pending',
+                    timingMs: index === activeIndex ? 150 : index < (activeIndex ?? -1) ? 90 + index * 35 : null,
+                  }))}
+                />
+              </div>
+              <PipelineDag phase={phase} height={220} />
             </div>
           </div>
 

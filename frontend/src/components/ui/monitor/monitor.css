@@ -1,0 +1,400 @@
+/* 監控級儀表板 v3 — 可重用視覺元件 */
+
+.mon-heatmap {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 2px;
+}
+
+.mon-heatmap__row {
+  display: contents;
+}
+
+.mon-heatmap__label {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+  color: var(--console-faint);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mon-heatmap__cell {
+  aspect-ratio: 1;
+  min-width: 0;
+  border-radius: 2px;
+  background: var(--console-dim);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.mon-heatmap__cell:hover {
+  transform: scale(1.15);
+  z-index: 1;
+  box-shadow: 0 0 0 1px var(--console-line-hi);
+}
+
+.mon-heatmap__cell--l0 { background: var(--console-dim); }
+.mon-heatmap__cell--l1 { background: color-mix(in srgb, var(--console-green) 25%, var(--console-dim)); }
+.mon-heatmap__cell--l2 { background: color-mix(in srgb, var(--console-green) 45%, var(--console-dim)); }
+.mon-heatmap__cell--l3 { background: color-mix(in srgb, var(--console-green) 65%, var(--console-dim)); }
+.mon-heatmap__cell--l4 { background: var(--console-green); }
+.mon-heatmap__cell--err { background: var(--console-danger); }
+
+.mon-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.mon-gauge__ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.mon-gauge__ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--gauge-color, var(--console-accent)) calc(var(--gauge-pct, 0) * 1%),
+    var(--console-dim) 0
+  );
+  mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+}
+
+.mon-gauge__val {
+  position: relative;
+  z-index: 1;
+  color: var(--console-ink);
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mon-gauge__lbl {
+  color: var(--console-sub);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mon-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mon-matrix__row {
+  display: grid;
+  grid-template-columns: 36px repeat(24, 1fr);
+  gap: 2px;
+  align-items: center;
+}
+
+.mon-matrix__row-label {
+  color: var(--console-faint);
+  font-size: 9px;
+  font-weight: 600;
+  text-align: right;
+  padding-right: 4px;
+}
+
+.mon-matrix__cell {
+  aspect-ratio: 1;
+  min-width: 0;
+  border-radius: 2px;
+  background: var(--console-dim);
+  transition: transform 0.12s ease;
+  cursor: default;
+}
+
+.mon-matrix__cell:hover {
+  transform: scale(1.2);
+  z-index: 1;
+}
+
+.mon-matrix__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.mon-matrix__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--console-faint);
+  font-size: 9px;
+}
+
+.mon-matrix__legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.mon-pipeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.mon-pipeline__node {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.mon-pipeline__connector {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--console-dim);
+  z-index: 0;
+}
+
+.mon-pipeline__connector--done {
+  background: var(--console-green);
+}
+
+.mon-pipeline__connector--active {
+  background: linear-gradient(90deg, var(--console-green) 50%, var(--console-blue) 50%);
+}
+
+.mon-pipeline__dot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--console-dim);
+  color: var(--console-faint);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.mon-pipeline__dot--done {
+  background: color-mix(in srgb, var(--console-green) 30%, transparent);
+  color: var(--console-green);
+}
+
+.mon-pipeline__dot--active {
+  background: var(--console-blue);
+  color: var(--console-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--console-blue) 25%, transparent);
+}
+
+.mon-pipeline__label {
+  color: var(--console-sub);
+  font-size: 9px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.mon-pipeline__timing {
+  color: var(--console-faint);
+  font-family: ui-monospace, monospace;
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mon-kpi-spark {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--console-line);
+  border-radius: 8px;
+  background: var(--console-card);
+}
+
+.mon-kpi-spark__label {
+  color: var(--console-faint);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mon-kpi-spark__value {
+  margin-top: 4px;
+  color: var(--console-ink);
+  font-family: ui-monospace, monospace;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.mon-kpi-spark__value--accent {
+  color: var(--console-accent);
+}
+
+.mon-kpi-spark__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 20px;
+  margin-top: 8px;
+}
+
+.mon-kpi-spark__bar {
+  flex: 1 1 0;
+  min-width: 2px;
+  border-radius: 1px 1px 0 0;
+  background: var(--console-dim);
+}
+
+.mon-kpi-spark__bar--on {
+  background: color-mix(in srgb, var(--console-blue) 60%, var(--console-dim));
+}
+
+.mon-kpi-spark__bar--accent {
+  background: var(--console-accent);
+}
+
+.mon-stack-bar {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--console-dim);
+}
+
+.mon-stack-bar__seg {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.mon-mini-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mon-mini-progress__track {
+  flex: 1 1 auto;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--console-dim);
+}
+
+.mon-mini-progress__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--console-accent-soft);
+  transition: width 0.3s ease;
+}
+
+.mon-mini-progress__fill--hot {
+  background: var(--console-danger);
+}
+
+.mon-mini-progress__fill--good {
+  background: var(--console-green);
+}
+
+.mon-mini-progress__val {
+  flex-shrink: 0;
+  min-width: 28px;
+  color: var(--console-faint);
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.mon-skill-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 6px;
+  border: 1px solid var(--console-line);
+  border-radius: 999px;
+  background: var(--console-card-elevated);
+  color: var(--console-sub);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.mon-skill-tag__dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.mon-task-card {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px 8px 12px;
+  border: 1px solid var(--console-line);
+  border-radius: 8px;
+  background: var(--console-card);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.mon-task-card::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--console-dim);
+}
+
+.mon-task-card--p1::before { background: var(--console-danger); }
+.mon-task-card--p2::before { background: var(--console-accent); }
+.mon-task-card--p3::before { background: var(--console-dim); }
+
+.mon-task-card:hover {
+  border-color: var(--console-line-hi);
+  background: var(--console-card-elevated);
+}
+
+.mon-task-card.on {
+  border-color: color-mix(in srgb, var(--console-accent) 40%, var(--console-line));
+  background: var(--console-card-elevated);
+}
+
+.mon-task-card__title {
+  color: var(--console-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.mon-task-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--console-faint);
+  font-size: 9px;
+}
