@@ -214,6 +214,7 @@ export default function BillingAdminPanel({
       )}
 
       {show(4) && (
+      <>
       <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
         <h3 className="text-[13px] font-medium text-[#F5F5F7]">Dev · 注入貢獻積分</h3>
         <p className="mt-1 text-[11px] text-[#8E8E93]">共享池上線前測試 lock/convert 用（contribution_unlocked）</p>
@@ -243,6 +244,7 @@ export default function BillingAdminPanel({
           重新整理
         </button>
       </section>
+      </>
       )}
 
       {show(5) && (
