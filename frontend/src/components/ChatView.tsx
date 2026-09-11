@@ -6,6 +6,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, TaskProgress } from '../types';
 import { cancelTask, fetchTask, resumeTask } from '../api/client';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import InputBar from './InputBar';
 import type { SendOptions } from './InputBar';
 import MessageList from './MessageList';
@@ -103,6 +105,14 @@ export default function ChatView({
     (m) => m.battle?.status === 'ESCALATE_TO_USER' && m.battle.waiting_for_user_decision,
   );
   const showMonitor = Boolean(live);
+  const isMobile = useMediaQuery('(max-width: 767px)');
+  const [monitorSheetOpen, setMonitorSheetOpen] = useState(false);
+
+  useEffect(() => {
+    if (!showMonitor) setMonitorSheetOpen(false);
+  }, [showMonitor]);
+
+  useBodyScrollLock(isMobile && monitorSheetOpen);
 
   /** 對話詳細區預設 Context（dsh-context）；其餘分頁可切 */
   const [bottomTab, setBottomTab] = useState<BottomTab>('context');
@@ -282,13 +292,26 @@ export default function ChatView({
   );
 
   return (
-    <div className={`ws${!showMonitor ? ' is-chat-only' : ''}`}>
+    <div
+      className={`ws${!showMonitor ? ' is-chat-only' : ' has-monitor'}${monitorSheetOpen ? ' is-monitor-open' : ''}`}
+    >
       <div className="ws-main">
         <nav className="ws-nav">
           <div className="ws-crumb">
             對話 / <strong>{title || (showMonitor ? '進行中任務' : '會話')}</strong>
           </div>
           <div className="ws-nav-acts">
+            {showMonitor && isMobile && (
+              <button
+                type="button"
+                className="ws-btn ws-btn-primary md:hidden touch-manipulation"
+                onClick={() => setMonitorSheetOpen((v) => !v)}
+                data-testid="chat-monitor-sheet-toggle"
+                aria-expanded={monitorSheetOpen}
+              >
+                監控
+              </button>
+            )}
             <button
               type="button"
               className="ws-btn"
@@ -341,6 +364,14 @@ export default function ChatView({
         />
         {composer}
       </div>
+      {isMobile && monitorSheetOpen && showMonitor && (
+        <button
+          type="button"
+          className="ws-monitor-backdrop md:hidden"
+          aria-label="關閉任務監控"
+          onClick={() => setMonitorSheetOpen(false)}
+        />
+      )}
       {live && task && (
         <ChatTaskMonitor
           task={task}

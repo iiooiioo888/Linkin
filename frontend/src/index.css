@@ -20,16 +20,30 @@
   --apple-radius: 10px;
   --apple-radius-lg: 14px;
   --content-max: 680px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --app-topbar-height: 40px;
+  --app-statusbar-height: 22px;
+  --mobile-tab-bar-height: 56px;
+}
+
+html {
+  overflow-x: hidden;
 }
 
 html,
 body,
 #root {
   height: 100%;
+  max-width: 100%;
 }
 
 body {
   margin: 0;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
   background-color: var(--apple-canvas);
   color: var(--apple-light);
   font-family:
@@ -43,6 +57,35 @@ body {
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.011em;
+}
+
+body.scroll-lock {
+  overflow: hidden;
+  touch-action: none;
+}
+
+.app-shell {
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app-topbar {
+  height: calc(var(--app-topbar-height) + var(--safe-area-top));
+  padding-top: var(--safe-area-top);
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+
+.app-shell__body {
+  padding-bottom: calc(var(--mobile-tab-bar-height) + var(--safe-area-bottom));
+}
+
+@media (min-width: 768px) {
+  .app-shell__body {
+    padding-bottom: 0;
+  }
 }
 
 .apple-canvas {
@@ -362,12 +405,18 @@ body {
 .apple-input-bar {
   border-top: 1px solid var(--apple-hairline);
   background: linear-gradient(to top, rgba(13, 13, 15, 0.98), rgba(13, 13, 15, 0.92));
-  padding: 8px 16px 12px;
+  padding: 8px 16px calc(12px + var(--safe-area-bottom));
 }
 
 @media (min-width: 640px) {
   .apple-input-bar {
     padding: 12px 24px 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .apple-input-bar {
+    padding-bottom: 16px;
   }
 }
 
@@ -552,13 +601,13 @@ body {
 
 .apple-status-bar {
   display: flex;
-  height: 22px;
+  height: var(--app-statusbar-height);
   shrink: 0;
   align-items: center;
   justify-content: space-between;
   border-top: 1px solid var(--apple-hairline);
   background: rgba(22, 22, 24, 0.95);
-  padding: 0 12px;
+  padding: 0 calc(12px + var(--safe-area-right)) 0 calc(12px + var(--safe-area-left));
   font-size: 10px;
   color: var(--apple-tertiary);
 }
@@ -1015,10 +1064,120 @@ body {
   animation: activity-indicator-in 0.2s ease-out both;
 }
 
-/* SidePanel 桌面端常显 */
+/* SidePanel 行動端抽屜定位（桌面 md:static 覆寫） */
+.side-panel-drawer {
+  top: calc(var(--app-topbar-height) + var(--safe-area-top));
+  bottom: calc(var(--mobile-tab-bar-height) + var(--app-statusbar-height) + var(--safe-area-bottom));
+  left: 0;
+}
+
 @media (min-width: 768px) {
-  .side-panel-desktop {
-    transform: translateX(0) !important;
+  .side-panel-drawer {
+    top: auto;
+    bottom: auto;
+    left: auto;
+  }
+}
+
+/* 行動端底部主活動 Tab */
+.activity-bar-bottom {
+  position: fixed;
+  right: 0;
+  bottom: calc(var(--app-statusbar-height) + var(--safe-area-bottom));
+  left: 0;
+  z-index: 40;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 2px;
+  height: var(--mobile-tab-bar-height);
+  border-top: 1px solid var(--apple-hairline);
+  background: rgba(13, 13, 15, 0.94);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  padding: 0 var(--safe-area-right) 0 var(--safe-area-left);
+}
+
+.activity-tab-bottom {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  padding: 4px 2px;
+  color: var(--apple-tertiary);
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.activity-tab-bottom.is-active {
+  color: var(--apple-label);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.activity-tab-bottom__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.activity-tab-bottom__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+/* 行動端 OPC 右欄改為全屏抽屜 */
+@media (max-width: 767px) {
+  .right-panel-drawer.is-open {
+    position: fixed;
+    top: calc(var(--app-topbar-height) + var(--safe-area-top));
+    right: 0;
+    bottom: calc(var(--mobile-tab-bar-height) + var(--app-statusbar-height) + var(--safe-area-bottom));
+    z-index: 35;
+    width: min(100%, 24rem) !important;
+    max-width: 100%;
+    border-left: 1px solid var(--apple-hairline);
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.45);
+  }
+
+  .apple-icon-btn {
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .apple-send-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .ws-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .console-rd-shell .rd-header,
+  .console-rd-shell .rd-th,
+  .console-rd-shell .rd-stats {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .console-rd-shell .rd-pane,
+  .console-rd-shell .rd-rp {
+    padding: 12px;
   }
 }
 
@@ -5252,6 +5411,50 @@ body {
     max-height: 42vh;
     border-left: 0;
     border-top: 1px solid var(--ws-border);
+  }
+}
+
+/* 行動端：任務監控改為底部抽屜，預設隱藏 */
+@media (max-width: 767px) {
+  .ws.has-monitor {
+    flex-direction: column;
+  }
+
+  .ws.has-monitor .ws-side {
+    display: none;
+    width: 100%;
+    min-width: 0;
+    max-height: none;
+    border-left: 0;
+    border-top: 0;
+  }
+
+  .ws.has-monitor.is-monitor-open .ws-side {
+    display: flex;
+    position: fixed;
+    top: calc(var(--app-topbar-height) + var(--safe-area-top));
+    right: 0;
+    bottom: calc(var(--mobile-tab-bar-height) + var(--app-statusbar-height) + var(--safe-area-bottom));
+    left: 0;
+    z-index: 45;
+    width: 100%;
+    max-height: none;
+    border-top: 1px solid var(--ws-border);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  .ws-monitor-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    border: none;
+    background: rgba(0, 0, 0, 0.45);
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .ws-chat .apple-input-bar {
+    padding-bottom: calc(12px + var(--safe-area-bottom));
   }
 }
 

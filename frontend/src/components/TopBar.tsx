@@ -47,7 +47,7 @@ export default function TopBar({
           : t('nav.console');
 
   return (
-    <header className="flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.06] apple-chrome px-3">
+    <header className="app-topbar flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.06] apple-chrome px-3">
       <button
         onClick={onToggleSidebar}
         className="apple-icon-btn md:hidden"

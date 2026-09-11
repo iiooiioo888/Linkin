@@ -771,11 +771,15 @@ export default function SidePanel({
   return (
     <>
       {open && (
-        <div className="fixed inset-0 z-20 bg-black/50 md:hidden" onClick={onClose} />
+        <div
+          className="side-panel-backdrop fixed inset-0 z-20 bg-black/50 md:hidden"
+          onClick={onClose}
+          aria-hidden
+        />
       )}
 
       <aside
-        className={`fixed inset-y-10 left-11 z-30 flex w-60 flex-col overflow-hidden border-r border-white/[0.06] apple-chrome transition-transform md:static md:translate-x-0 ${
+        className={`side-panel-drawer fixed z-30 flex w-[min(280px,88vw)] flex-col overflow-hidden border-r border-white/[0.06] apple-chrome transition-transform md:static md:w-60 md:translate-x-0 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

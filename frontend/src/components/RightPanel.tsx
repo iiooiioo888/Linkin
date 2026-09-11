@@ -66,8 +66,8 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
       )}
 
       <aside
-        className={`shrink-0 overflow-hidden border-l border-gray-800 bg-gray-900 transition-all duration-300 ease-in-out ${
-          panelOpen ? 'w-80 md:w-96' : 'w-0 border-l-0'
+        className={`right-panel-drawer shrink-0 overflow-hidden border-l border-gray-800 bg-gray-900 transition-all duration-300 ease-in-out md:relative md:static ${
+          panelOpen ? 'is-open w-80 md:w-96' : 'w-0 border-l-0'
         }`}
       >
         {task && (
