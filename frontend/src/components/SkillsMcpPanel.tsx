@@ -17,6 +17,7 @@ import {
   probeMcpServer,
   saveMcpServer,
   saveSkill,
+  syncAgentSkillPacks,
   toggleMcpServer,
   toggleSkill,
   type McpServerRecord,
@@ -45,6 +46,31 @@ function ErrorBar({ message }: { message: string | null }) {
 function OkBar({ message }: { message: string | null }) {
   if (!message) return null;
   return <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs console-status-green">{message}</div>;
+}
+
+const SKILL_TYPE_LABELS: Record<string, string> = {
+  'agent-pack': 'Agent 包',
+  'cli-stub': 'CLI 參考',
+  'cursor-only': 'Cursor 專用',
+  custom: '自訂',
+};
+
+function SkillTypeBadge({ skill }: { skill: SkillRecord }) {
+  const type = skill.skill_type || 'custom';
+  const label = SKILL_TYPE_LABELS[type] || type;
+  const tone =
+    type === 'cursor-only'
+      ? 'bg-amber-500/15 text-amber-300'
+      : type === 'cli-stub'
+        ? 'bg-sky-500/15 text-sky-300'
+        : type === 'agent-pack'
+          ? 'bg-violet-500/15 text-violet-300'
+          : 'bg-white/[0.06] text-[var(--console-faint)]';
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${tone}`} title={skill.source_path || undefined}>
+      {label}
+    </span>
+  );
 }
 
 // ══════════════ 技能庫 ══════════════
@@ -158,6 +184,26 @@ function SkillsSection() {
     }
   };
 
+  const onSyncAgentPacks = async () => {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const report = await syncAgentSkillPacks();
+      const s = report.skills;
+      setMessage(
+        `已同步 Agent 技能包：新增 ${s.created}、更新 ${s.updated}、未變 ${s.unchanged}（目錄共 ${s.total_catalog} 條）；MCP 範本 +${report.mcp.created} ~${report.mcp.updated}`,
+      );
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const managedCount = skills.filter((s) => s.managed).length;
+
   return (
     <div>
       <ErrorBar message={error} />
@@ -165,9 +211,13 @@ function SkillsSection() {
 
       <div className="mb-4 flex items-center justify-between">
         <p className="text-[11px] text-[var(--console-sub)]">
-          技能會注入角色的系統提示詞（參考資料區塊）；停用即不注入。共 {skills.length} 條，啟用 {skills.filter((s) => s.enabled).length} 條。
+          技能會注入角色的系統提示詞（參考資料區塊）；停用即不注入。共 {skills.length} 條，啟用 {skills.filter((s) => s.enabled).length} 條
+          {managedCount > 0 ? `（含 ${managedCount} 條來自 .agents/skills/）` : ''}。
         </p>
         <div className="flex gap-2">
+          <button type="button" className={btnCls} disabled={busy} onClick={() => void onSyncAgentPacks()} title="從 .agents/skills/ 匯入／更新">
+            同步 Agent 包
+          </button>
           <button type="button" className={btnCls} onClick={() => void onPreview()}>預覽注入區塊</button>
           <button type="button" className={btnCls} onClick={() => void load()}>重新整理</button>
           {!editing && (
@@ -231,10 +281,14 @@ function SkillsSection() {
                 <p className="text-[13px] font-medium text-[var(--console-ink)]">{s.name}</p>
                 <p className="font-mono text-[10px] text-[var(--console-faint)]">{s.id}</p>
               </div>
-              <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${s.enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-[var(--console-faint)]'}`}>
-                {s.enabled ? '啟用' : '停用'}
-              </span>
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                <SkillTypeBadge skill={s} />
+                <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${s.enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-[var(--console-faint)]'}`}>
+                  {s.enabled ? '啟用' : '停用'}
+                </span>
+              </div>
             </div>
+            {s.source && <p className="mb-1 text-[10px] text-[var(--console-faint)]">來源：{s.source}</p>}
             {s.description && <p className="mb-1 text-[11px] text-[var(--console-sub)]">{s.description}</p>}
             {s.trigger && <p className="mb-1 text-[10px] console-status-blue/80">適用：{s.trigger}</p>}
             <pre className="mb-2 max-h-24 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 font-mono text-[10px] leading-relaxed text-[var(--console-sub)]">{s.content}</pre>

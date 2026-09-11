@@ -377,6 +377,79 @@ class McpRegistry:
             self._load_locked()
             return self._servers.get(server_id)
 
+    def sync_managed(
+        self,
+        *,
+        server_id: str,
+        name: str,
+        transport: str,
+        command: str = "",
+        env: dict[str, str] | None = None,
+        url: str = "",
+        headers: dict[str, str] | None = None,
+        enabled: bool = False,
+        allowed_tools: builtins.list[str] | None = None,
+        readonly: bool = True,
+        timeout: float = DEFAULT_TIMEOUT,
+        description: str = "",
+    ) -> tuple[McpServer, str]:
+        """由 manifest 同步 MCP 設定；不覆蓋使用者手動建立的同名 server。
+
+        若已存在且 id 相同：更新連線參數但保留 enabled 狀態與 last_probe。
+        回傳 (server, action)，action 為 created | updated | unchanged。
+        """
+        name = (name or "").strip()
+        transport = (transport or "stdio").strip().lower()
+        if transport not in ("stdio", "sse", "http"):
+            raise ValueError("transport 只能是 stdio / sse / http")
+        if not name:
+            raise ValueError("server 名稱不可為空")
+        if transport == "stdio" and not command.strip():
+            raise ValueError("stdio server 需要 command")
+        if transport in ("sse", "http") and not url.strip():
+            raise ValueError(f"{transport} server 需要 url")
+        now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        with self._lock:
+            self._load_locked()
+            old = self._servers.get(server_id)
+            unchanged = (
+                old
+                and old.name == name
+                and old.transport == transport
+                and old.command == command.strip()
+                and old.url == url.strip()
+                and old.env == dict(env or {})
+                and old.headers == dict(headers or {})
+                and old.readonly == bool(readonly)
+                and old.timeout == max(2.0, min(float(timeout or DEFAULT_TIMEOUT), 300.0))
+                and (old.allowed_tools or []) == [str(t).strip() for t in (allowed_tools or []) if str(t).strip()]
+            )
+            if unchanged:
+                return old, "unchanged"
+            srv = McpServer(
+                id=server_id,
+                name=name,
+                transport=transport,
+                command=command.strip(),
+                env=dict(env or {}),
+                url=url.strip(),
+                headers=dict(headers or {}),
+                enabled=old.enabled if old else bool(enabled),
+                allowed_tools=[str(t).strip() for t in (allowed_tools or []) if str(t).strip()],
+                readonly=bool(readonly),
+                timeout=max(2.0, min(float(timeout or DEFAULT_TIMEOUT), 300.0)),
+                created_at=old.created_at if old else now,
+                updated_at=now,
+                last_probe=old.last_probe if old else {},
+            )
+            action = "updated" if old else "created"
+            self._servers[server_id] = srv
+            self._save_locked()
+            self._mounted = {m for m in self._mounted if not m.startswith(f"{server_id}::")}
+            if description:
+                logger.debug("MCP manifest %s: %s", server_id, description)
+            return srv, action
+
     def upsert(
         self,
         name: str,

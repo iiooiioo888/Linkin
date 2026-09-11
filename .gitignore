@@ -172,6 +172,10 @@ backend/data/company_runs/run_*.jsonl
 # Runtime routing telemetry (not seed assets)
 backend/data/routing_feedback.json
 
+# Skills / MCP runtime catalogs (seeded from .agents/skills/ on boot)
+backend/data/skills.json
+backend/data/mcp_servers.json
+
 # Minecraft MCP 執行期稽核（非正式種子）
 # Runtime sponge schematics (generated / imported binaries)
 *.schem

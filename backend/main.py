@@ -126,6 +126,11 @@ async def _lifespan(_app: FastAPI):
         from backend.company.tools import tool_registry
 
         skills_store.load()
+        from backend.company.agent_skills_sync import sync_on_boot
+
+        boot_report = await asyncio.to_thread(sync_on_boot)
+        if boot_report is not None:
+            logger.info("Agent 技能包啟動同步：%s", boot_report.to_dict())
         mounted = await asyncio.to_thread(mcp_registry.mount_tools, tool_registry)
         if mounted:
             logger.info("啟動掛載 MCP 工具 %d 個", len(mounted))
@@ -2493,6 +2498,15 @@ async def delete_skill(skill_id: str):
 async def preview_skill_prompt(role: str | None = None):
     """預覽某角色實際會被注入的技能區塊（除錯用）。"""
     return {"role": role or "*", "prompt": skills_store.render_prompt(role)}
+
+
+@app.post("/skills/sync-agent-packs")
+async def sync_agent_skill_packs():
+    """從 .agents/skills/ 與 agent_mcp_manifest 同步技能庫與 MCP 註冊表。"""
+    from backend.company.agent_skills_sync import sync_agent_skills
+
+    report = await asyncio.to_thread(sync_agent_skills)
+    return {"ok": True, **report.to_dict()}
 
 
 # ═══════════════════════════════════════════════════════════

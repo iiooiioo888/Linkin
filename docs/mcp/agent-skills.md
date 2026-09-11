@@ -4,6 +4,21 @@
 
 完整技能清單與安裝方式見 [README — Agent skills](../../README.md#agent-skills)。
 
+## Linkin 運行時同步
+
+`.agents/skills/` 僅供 Cursor / CLI 使用時，**不會**自動出現在 Linkin UI。後端透過 `backend/company/agent_skills_sync.py` 將目錄掃描結果 upsert 至：
+
+- `backend/data/skills.json` — 技能 API、`SkillsMcpPanel`、orchestrator `inject_skills()`
+- `backend/data/mcp_servers.json` — 由 `backend/data/agent_mcp_manifest.json` 匯入的可選 MCP（預設停用）
+
+觸發方式：
+
+1. **啟動時**（預設開啟）：`LINKIN_SYNC_AGENT_SKILLS` 未設為 `false`
+2. **手動**：`python -m backend.scripts.sync_agent_skills`
+3. **API / UI**：`POST /skills/sync-agent-packs` 或控制台「同步 Agent 包」
+
+驗證路徑：前端 `/#/monitor/skills` → 技能分頁應顯示 ~102 條 managed 技能（來源欄位、類型標籤）。
+
 ## 技能包與 MCP 對照
 
 | 來源 | 技能數 | MCP | 說明 |
