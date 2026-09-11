@@ -18,6 +18,6 @@ export async function passGate(page: Page) {
   }
   await field.fill(GATE_ID);
   await page.locator('#gate-secret').fill(GATE_SECRET);
-  await page.getByRole('button', { name: /進入|Enter/ }).click();
+  await page.getByRole('button', { name: /登入|Sign in/ }).click();
   await expect(field).toBeHidden({ timeout: 20_000 });
 }

@@ -58,12 +58,18 @@
     "dismiss": "關閉"
   },
   "gate": {
-    "subtitle": "請登入後進入控制面",
+    "titlePrefix": "重構 ",
+    "subtitle": "多角色編排控制面",
     "account": "帳號",
     "secret": "密碼",
-    "enter": "進入",
+    "enter": "登入",
     "checking": "驗證中…",
     "failed": "核對失敗，請重試",
+    "rememberDevice": "記住此裝置",
+    "forgotPassword": "忘記密碼",
+    "statusCore": "Core",
+    "statusOnline": "Online",
+    "secure": "Secure",
     "signOut": "登出"
   }
 }
