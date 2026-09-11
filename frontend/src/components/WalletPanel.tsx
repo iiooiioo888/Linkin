@@ -88,7 +88,7 @@ export default function WalletPanel() {
           </p>
           {(account?.pool_balances?.contribution_unlocked ?? 0) > 0 ? (
             <p className="mt-1 text-[10px] text-[#64D2FF]">
-              貢獻積分（未鎖）{fmtCredits(account.pool_balances.contribution_unlocked)} · 可 1:0.4 轉已購買
+              貢獻積分（未鎖）{fmtCredits(account?.pool_balances?.contribution_unlocked ?? 0)} · 可 1:0.4 轉已購買
             </p>
           ) : null}
           <p className="mt-1 text-[10px] text-[#636366]">

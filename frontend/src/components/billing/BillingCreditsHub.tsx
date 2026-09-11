@@ -8,7 +8,6 @@ import {
   fetchBillingAppeals,
   fetchBillingGrants,
   fetchBillingRollover,
-  fetchContributorStatus,
   lockContribution,
   submitBillingAppeal,
   bindContributorKey,
