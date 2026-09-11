@@ -4800,6 +4800,7 @@ body.scroll-lock {
 
 .ws-tabs {
   display: flex;
+  min-width: 0;
   gap: 4px;
 }
 
@@ -4816,7 +4817,20 @@ body.scroll-lock {
   font-family: inherit;
   font-size: 11px;
   font-weight: 500;
+  white-space: nowrap;
   transition: all 0.15s;
+}
+
+.ws-tab-label {
+  flex-shrink: 0;
+}
+
+.ws-tab-label--narrow {
+  display: none;
+}
+
+.ws-tab--context .ws-tab-label {
+  flex-shrink: 0;
 }
 
 .ws-tab:hover {
@@ -5455,6 +5469,78 @@ body.scroll-lock {
 
   .ws-chat .apple-input-bar {
     padding-bottom: calc(12px + var(--safe-area-bottom));
+  }
+
+  /* 對話底部詳細區分頁：橫向捲動、單行標籤、不與 composer 重疊 */
+  .ws-bottom.is-off {
+    height: auto;
+    min-height: 44px;
+  }
+
+  .ws-bottom-h {
+    height: auto;
+    min-height: 44px;
+    align-items: stretch;
+    padding: 0;
+    gap: 0;
+  }
+
+  .ws-tabs {
+    flex: 1;
+    min-width: 0;
+    flex-wrap: nowrap;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding: 4px 8px 4px 12px;
+  }
+
+  .ws-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ws-tab {
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .ws-tab-label--wide {
+    display: none;
+  }
+
+  .ws-tab-label--narrow {
+    display: inline;
+  }
+
+  .ws-tab--context {
+    gap: 4px;
+  }
+
+  .ws-tab-badge {
+    flex-shrink: 0;
+    margin-left: 2px;
+  }
+
+  .ws-bottom-close {
+    align-self: center;
+    flex-shrink: 0;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    margin-right: 4px;
+  }
+
+  .ws-bottom.is-context {
+    height: min(42vh, 360px);
+  }
+
+  .ws-main > .apple-input-bar {
+    flex-shrink: 0;
   }
 }
 
