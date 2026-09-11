@@ -140,10 +140,12 @@ function ChainLegend({
   edges,
   onSelectRole,
   focusRoleId,
+  compact,
 }: {
   edges: RahoGrillEdge[];
   onSelectRole?: (roleId: string) => void;
   focusRoleId?: string;
+  compact?: boolean;
 }) {
   const pick = (roleId: string) => {
     if (!roleId || roleId === 'user') return;
@@ -154,7 +156,7 @@ function ChainLegend({
     jumpToRoleDesk(roleId);
   };
   return (
-    <div className="raho-legend raho-legend--4">
+    <div className={`raho-legend raho-legend--4${compact ? ' raho-legend--compact' : ''}`}>
       {LEGEND_ORDER.map((direction) => {
         const group = edges.filter((e) => e.direction === direction);
         if (!group.length) return null;
@@ -276,45 +278,58 @@ export default function GrillTreePanel({
   compact = false,
   focusRoleId = '',
   onSelectRole,
+  snap: externalSnap,
+  disablePoll = false,
 }: {
   embedded?: boolean;
   compact?: boolean;
   focusRoleId?: string;
   onSelectRole?: (roleId: string) => void;
+  /** 父層已輪詢時注入快照，避免重複請求 */
+  snap?: RahoSnapshot | null;
+  disablePoll?: boolean;
 } = {}) {
   const [snap, setSnap] = useState<RahoSnapshot>({ trees: [], pending_decisions: [], blocked: [] });
   const [error, setError] = useState<string | null>(null);
+  const resolvedSnap = externalSnap ?? snap;
+
   const reload = useCallback(async () => {
+    if (disablePoll && externalSnap) return;
     try {
       setSnap(await fetchRahoTree());
       setError(null);
     } catch (err) {
       setError((err as Error).message);
     }
-  }, []);
+  }, [disablePoll, externalSnap]);
 
   useEffect(() => {
+    if (disablePoll && externalSnap) return;
     void reload();
     const t = setInterval(() => void reload(), 4000);
     return () => clearInterval(t);
-  }, [reload]);
+  }, [reload, disablePoll, externalSnap]);
 
-  const trees: GrillTree[] = snap.trees ?? [];
-  const pending: RahoPendingDecision[] = snap.pending_decisions ?? [];
-  const blocked = snap.blocked ?? [];
-  const l0: L0Snapshot = snap.l0 ?? {};
+  const trees: GrillTree[] = resolvedSnap.trees ?? [];
+  const pending: RahoPendingDecision[] = resolvedSnap.pending_decisions ?? [];
+  const blocked = resolvedSnap.blocked ?? [];
+  const l0: L0Snapshot = resolvedSnap.l0 ?? {};
   const [detailTab, setDetailTab] = useState<'nodes' | 'l0'>('nodes');
   const [focusNodeId, setFocusNodeId] = useState('');
   const directory = useMemo(() => {
     const next = { ...RAHO_LAYERS };
-    for (const row of snap.directory ?? []) {
+    for (const row of resolvedSnap.directory ?? []) {
       next[row.layer] = row;
     }
     return next;
-  }, [snap.directory]);
+  }, [resolvedSnap.directory]);
+
+  const showNodeTrees = !compact && detailTab === 'nodes';
 
   return (
-    <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${embedded ? 'px-0 py-0' : 'px-5 py-4'}`}>
+    <div
+      className={`flex min-h-0 flex-1 flex-col ${embedded ? 'px-0 py-0' : 'px-5 py-4'} ${compact ? 'overflow-hidden' : 'overflow-y-auto'}`}
+    >
       {embedded ? (
         <div className="mb-3 flex items-end justify-between gap-3">
           <p className="text-[12px] text-[#8E8E93]">
@@ -351,9 +366,10 @@ export default function GrillTreePanel({
         compact={compact}
       />
       <ChainLegend
-        edges={snap.grill_chain?.length ? snap.grill_chain : GRILL_EDGES}
+        edges={resolvedSnap.grill_chain?.length ? resolvedSnap.grill_chain : GRILL_EDGES}
         onSelectRole={onSelectRole}
         focusRoleId={focusRoleId}
+        compact={compact}
       />
       {compact ? null : <L0BiasHint snapshot={l0} compact />}
       <RahoDecisionBar pending={pending} poll variant="embed" onResolved={() => void reload()} />
@@ -373,13 +389,13 @@ export default function GrillTreePanel({
         <L0Panel snapshot={l0} embed query={trees[0]?.goal || ''} nodeId={focusNodeId} initialTab="memory" />
       ) : null}
 
-      {detailTab === 'nodes' && trees.length === 0 && blocked.length === 0 && pending.length === 0 && (
+      {showNodeTrees && trees.length === 0 && blocked.length === 0 && pending.length === 0 && (
         <p className={`${compact ? 'py-4' : 'py-16'} text-center text-[13px] text-[#636366]`}>
           {compact ? '尚無進行中的質詢。複雜任務啟動後會掛在此角色上。' : '尚無質詢鏈。複雜任務啟動後會在此展開。'}
         </p>
       )}
 
-      {detailTab === 'nodes' ? <div className="space-y-4">
+      {showNodeTrees ? <div className="space-y-4">
         {trees.map((tree) => (
           <article key={tree.tree_id} className="rounded-xl border border-white/[0.06] bg-[#1C1C1E] p-4">
             <div className="mb-3 flex items-center justify-between gap-2">

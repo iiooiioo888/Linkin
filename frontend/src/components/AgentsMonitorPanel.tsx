@@ -37,7 +37,7 @@ import {
 } from '../lib/agentUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { nodesForRole } from '../lib/rahoUi';
-import type { AgentMonitorData, AgentWorkItem, GrillTree, L0Snapshot, RoleAgent } from '../types';
+import type { AgentMonitorData, AgentWorkItem, GrillTree, L0Snapshot, RahoSnapshot, RoleAgent } from '../types';
 import GrillTreePanel from './GrillTreePanel';
 import RoleSettingsPanel, { CreateRoleModal, draftToPayload, type RoleSettingsDraft } from './RoleSettingsPanel';
 import RoleTasksPanel from './RoleTasksPanel';
@@ -326,6 +326,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   const [didAutoOpen, setDidAutoOpen] = useState(false);
   const [appliedDefaultTab, setAppliedDefaultTab] = useState(false);
   const [grillTrees, setGrillTrees] = useState<GrillTree[]>([]);
+  const [rahoSnap, setRahoSnap] = useState<RahoSnapshot | null>(null);
   const [l0, setL0] = useState<L0Snapshot | null>(null);
 
   const refresh = useCallback(async () => {
@@ -341,9 +342,11 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
     }
     try {
       const snap = await fetchRahoTree();
+      setRahoSnap(snap);
       setGrillTrees(snap.trees ?? []);
       setL0(snap.l0 ?? null);
     } catch {
+      setRahoSnap(null);
       setGrillTrees([]);
       setL0(null);
     }
@@ -414,6 +417,11 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
         setDeskTab(toDeskTab(nextTab));
         setAppliedDefaultTab(true);
       }
+      if (consumePendingGrillReveal()) {
+        window.requestAnimationFrame(() => {
+          document.getElementById('role-grill-spine')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
     };
     window.addEventListener(JUMP_AGENT_EVENT, onJump);
     return () => window.removeEventListener(JUMP_AGENT_EVENT, onJump);
@@ -468,7 +476,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
     if (!selected) return;
     if (!consumePendingGrillReveal()) return;
     revealGrill();
-  }, [selected?.id]);
+  }, [selected?.id, deskTab]);
 
   const selectedRoute = selected
     ? (data?.catalog_meta?.api_routes ?? []).find((r) => r.id === selected.preferred_provider)
@@ -693,11 +701,14 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                     <GrillTreePanel
                       embedded
                       compact
+                      disablePoll
+                      snap={rahoSnap}
                       focusRoleId={selected.id}
                       onSelectRole={(id) => openDesk(id, 'tasks')}
                     />
                   </div>
                   <StatusColumnBoard
+                    compact
                     selectedKey={itemFilter}
                     onSelect={(key) => setItemFilter(key as WorkItemColumnKey)}
                     columns={WORK_ITEM_COLUMNS.map((col) => {

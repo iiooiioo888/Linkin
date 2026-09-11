@@ -51,17 +51,33 @@ export interface AnimLiveFeed {
   live: boolean;
 }
 
-const PIPELINE_PHASE_MAP: Array<{ keys: string[]; index: number }> = [
-  { keys: ['sense', '感知', 'opc_sense', 'perceive'], index: 0 },
-  { keys: ['route', 'routing', 'complexity', '路由', 'decompose'], index: 1 },
-  { keys: ['generate', 'gen', '生成', 'draft', 'improve', 'execute', 'assigned'], index: 2 },
-  { keys: ['evaluate', 'eval', 'score', '評估', 'cross_eval', 'review'], index: 3 },
-  { keys: ['reflect', 'reflection', '反思'], index: 4 },
+/** 管線階段對照（順序敏感：較具體的規則放前面，避免子字串誤判）。 */
+const PIPELINE_PHASE_RULES: Array<{ pattern: RegExp; index: number }> = [
   {
-    keys: ['output', 'finalize', 'synthesize', 'archive', 'done', '輸出', 'complete', 'final_review'],
+    pattern:
+      /\b(improve_answer|improve|synthesize|final_review|decide_final|enforce_|save_memory|archive_state|early_stop|finalize|archive|\bdone\b|輸出|complete|output)\b/i,
     index: 5,
   },
+  { pattern: /\b(reflect|reflection|反思)\b/i, index: 4 },
+  { pattern: /\b(evaluate_answer|evaluate|cross_eval|評估)\b/i, index: 3 },
+  {
+    pattern:
+      /\b(execute_review|execute|generate_initial|generate|gen|生成|draft|assigned|work_item|act_opc|run_company|company_start|company_done)\b/i,
+    index: 2,
+  },
+  {
+    pattern:
+      /\b(route_by_complexity|campaign_plan|decompose|analyze_opc|diagnose_opc|decide_opc|路由|complexity|starting|resuming)\b/i,
+    index: 1,
+  },
+  {
+    pattern:
+      /\b(retrieve_memories|enhance_recall(?:_context)?|enhance_opc(?:_context)?|enhance_linkin(?:_context)?|sense_opc|preprocess_opc|perceive|opc_sense|感知|sense)\b/i,
+    index: 0,
+  },
 ];
+
+const PIPELINE_DAG_IDS = ['sense', 'route', 'gen', 'eval', 'reflect', 'out'] as const;
 
 const TIER_WEIGHT: Record<string, number> = {
   nano: 1,
@@ -74,11 +90,33 @@ const TIER_WEIGHT: Record<string, number> = {
 
 export function mapPhaseToPipelineIndex(phase?: string | null): number | null {
   if (!phase) return null;
-  const p = phase.toLowerCase();
-  for (const row of PIPELINE_PHASE_MAP) {
-    if (row.keys.some((k) => p.includes(k.toLowerCase()))) return row.index;
+  const p = phase.trim();
+  if (!p) return null;
+  for (const row of PIPELINE_PHASE_RULES) {
+    if (row.pattern.test(p)) return row.index;
   }
   return null;
+}
+
+/** DAG 節點 id（與 PipelineDag STAGES 對齊；公司執行與改進迴圈有獨立節點）。 */
+export function mapPhaseToDagNodeId(phase?: string | null): string | null {
+  if (!phase) return null;
+  const p = phase.toLowerCase();
+  if (/compan|orchestr|公司/.test(p)) return 'company';
+  const idx = mapPhaseToPipelineIndex(phase);
+  if (idx == null) return null;
+  if (idx === 2 && /execute_review|campaign_plan|decompose|work_item|run_company|company_/.test(p)) {
+    return 'company';
+  }
+  if (idx === 5 && /\bimprove/.test(p)) return 'improve';
+  return PIPELINE_DAG_IDS[idx] ?? null;
+}
+
+export function pipelinePhaseLabel(phase?: string | null): string | null {
+  const idx = mapPhaseToPipelineIndex(phase);
+  if (idx == null) return phase?.trim() || null;
+  const labels = ['感知', '路由', '生成', '評估', '反思', '輸出'];
+  return labels[idx] ?? null;
 }
 
 export function tierWeight(tier?: string | null): number {
@@ -195,6 +233,18 @@ function activeTaskFromMessages(messages: ChatMessage[]): TaskProgress | null {
   return running?.taskState ?? null;
 }
 
+function latestPhaseFromMessages(messages: ChatMessage[]): {
+  streamPhase: string | null;
+  taskPhase: string | null;
+} {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.streamPhase) return { streamPhase: m.streamPhase, taskPhase: m.taskState?.phase ?? null };
+    if (m.taskState?.phase) return { streamPhase: null, taskPhase: m.taskState.phase };
+  }
+  return { streamPhase: null, taskPhase: null };
+}
+
 export function buildAnimLiveFeed(opts: {
   agents?: AgentMonitorData | null;
   optimization?: OptimizationMonitorData | null;
@@ -206,6 +256,7 @@ export function buildAnimLiveFeed(opts: {
   const messages = opts.messages ?? [];
   const task = activeTaskFromMessages(messages);
   const streamingMsg = messages.find((m) => m.streaming);
+  const latestPhase = latestPhaseFromMessages(messages);
   const roster = opts.agents?.agents ?? [];
   const active = pickActiveAgents(roster);
   const runningTasks = messages.filter(
@@ -221,8 +272,8 @@ export function buildAnimLiveFeed(opts: {
   );
 
   return {
-    streamPhase: streamingMsg?.streamPhase ?? null,
-    taskPhase: task?.phase ?? null,
+    streamPhase: streamingMsg?.streamPhase ?? latestPhase.streamPhase,
+    taskPhase: task?.phase ?? latestPhase.taskPhase,
     resolvedPath: task?.resolved_path || null,
     runningTasks,
     agents: roster,

@@ -2,14 +2,14 @@
  * 管線視圖：與角色／任務同一套骨架（標題列、指標帶、三欄、右側資訊）。
  */
 import { useMemo } from 'react';
-import { buildAnimLiveFeed, mapPhaseToPipelineIndex } from '../lib/animLive';
+import { buildAnimLiveFeed, mapPhaseToPipelineIndex, pipelinePhaseLabel } from '../lib/animLive';
 import {
   PIPELINE_STAGES,
   WORK_ITEM_COLUMNS,
   pipelineStageColumn,
 } from '../lib/agentUi';
 import { useMonitorStore } from '../stores/monitorStore';
-import type { MultiDimEvaluation } from '../types';
+import type { ChatMessage, MultiDimEvaluation } from '../types';
 import PipelineDag from './PipelineDag';
 import { IterationTrend, ReflectionRadar } from './ReflectionCharts';
 import { StatusColumnBoard } from './StatusColumnBoard';
@@ -27,9 +27,10 @@ import {
 
 interface PipelineViewProps {
   onGoTasks?: () => void;
+  messages?: ChatMessage[];
 }
 
-export default function PipelineView({ onGoTasks }: PipelineViewProps) {
+export default function PipelineView({ onGoTasks, messages = [] }: PipelineViewProps) {
   const agents = useMonitorStore((s) => s.agents);
   const optimization = useMonitorStore((s) => s.optimization);
   const billing = useMonitorStore((s) => s.billing);
@@ -42,8 +43,9 @@ export default function PipelineView({ onGoTasks }: PipelineViewProps) {
         optimization,
         billing,
         llmOps,
+        messages,
       }),
-    [agents, optimization, billing, llmOps],
+    [agents, optimization, billing, llmOps, messages],
   );
 
   // 對話區沒有串流任務時，退回監控快照裡執行中／佇列中的後台任務階段
@@ -56,8 +58,12 @@ export default function PipelineView({ onGoTasks }: PipelineViewProps) {
 
   const phase = feed.streamPhase || feed.taskPhase || backgroundPhase;
   const activeIndex = mapPhaseToPipelineIndex(phase);
-  const currentLabel =
-    activeIndex != null ? PIPELINE_STAGES[activeIndex]?.label : '待命';
+  const phaseKnown = !phase || activeIndex != null;
+  const currentLabel = phase
+    ? pipelinePhaseLabel(phase) ?? phase
+    : feed.live
+      ? '執行中'
+      : '待命';
 
   const multiDim: MultiDimEvaluation | null = useMemo(() => {
     const dims = optimization?.reflection;
@@ -84,13 +90,17 @@ export default function PipelineView({ onGoTasks }: PipelineViewProps) {
   const stageByCol = useMemo(() => {
     const grouped = { queue: [] as typeof PIPELINE_STAGES[number][], executing: [] as typeof PIPELINE_STAGES[number][], done: [] as typeof PIPELINE_STAGES[number][] };
     PIPELINE_STAGES.forEach((stage, index) => {
-      grouped[pipelineStageColumn(index, activeIndex)].push(stage);
+      grouped[pipelineStageColumn(index, activeIndex, { phaseKnown })].push(stage);
     });
     return grouped;
-  }, [activeIndex]);
+  }, [activeIndex, phaseKnown]);
 
   const kpis = [
-    { label: '當前', value: currentLabel, valueClassName: activeIndex != null ? 'text-[#34C759]' : undefined },
+    {
+      label: '當前',
+      value: currentLabel,
+      valueClassName: phase || feed.live ? 'text-[#34C759]' : undefined,
+    },
     { label: '隊列', value: stageByCol.queue.length },
     { label: '執行中', value: stageByCol.executing.length },
     { label: '已完成', value: stageByCol.done.length, valueClassName: stageByCol.done.length ? 'text-[#34C759]' : undefined },

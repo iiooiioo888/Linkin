@@ -1,8 +1,9 @@
 /**
  * GrillUserCard — L4 需求審計官：四階段烤問 + 五維鎖定對話卡。
+ * 主路徑為點選方案（與 RahoDecisionBar 一致），非自由輸入。
  */
 import { useState } from 'react';
-import type { AuditorScores, GrillUserState } from '../types';
+import type { AuditorScores, GrillChoice, GrillUserState } from '../types';
 import { L0BiasHint } from './L0BiasHint';
 
 interface GrillUserCardProps {
@@ -40,8 +41,13 @@ function dimValue(scores: AuditorScores | undefined, key: keyof AuditorScores): 
   return typeof raw === 'number' ? raw : 0;
 }
 
+function choiceKey(c: GrillChoice, idx: number): string {
+  return String(c.key || c.label || idx);
+}
+
 export default function GrillUserCard({ grill, disabled, onAnswer }: GrillUserCardProps) {
-  const [text, setText] = useState('');
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customText, setCustomText] = useState('');
   const pct = Math.round((grill.confidence ?? 0) * 100);
   const locked = Boolean(grill.locked);
   const terminated = Boolean(grill.terminated);
@@ -50,12 +56,22 @@ export default function GrillUserCard({ grill, disabled, onAnswer }: GrillUserCa
   const userRounds = grill.user_rounds ?? (grill.history ?? []).filter((t) => t.role === 'user').length;
   const maxTurns = grill.max_turns ?? 10;
   const phaseRounds = grill.phase_rounds ?? 0;
+  const choices = grill.question?.choices ?? [];
 
-  const submit = () => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+  const pickChoice = (choice: GrillChoice) => {
+    const label = String(choice.label || '').trim();
+    if (!label || disabled) return;
+    onAnswer(label, false);
+    setCustomOpen(false);
+    setCustomText('');
+  };
+
+  const submitCustom = () => {
+    const trimmed = customText.trim();
+    if (!trimmed || disabled) return;
     onAnswer(trimmed, false);
-    setText('');
+    setCustomText('');
+    setCustomOpen(false);
   };
 
   return (
@@ -93,7 +109,7 @@ export default function GrillUserCard({ grill, disabled, onAnswer }: GrillUserCa
           : locked
             ? plannerCaption(grill.planner) ||
               '五維達標。戰術指令已核發，即將交給 Dynamic Planner 與 L3 戰術指揮官。'
-            : `${grill.phase_label || 'Phase 1 基礎錨定'} · 模糊回答（大概／盡量／好一點）視為無效。`}
+            : `${grill.phase_label || 'Phase 1 基礎錨定'} · 請點選最符合的一項；模糊選項仍會被視為無效。`}
       </p>
       <L0BiasHint snapshot={grill.l0} compact />
       <div className="raho-grill-dims">
@@ -136,24 +152,62 @@ export default function GrillUserCard({ grill, disabled, onAnswer }: GrillUserCa
       ) : null}
       {!closed && (
         <div className="raho-grill-composer">
-          <textarea
-            value={text}
-            disabled={disabled}
-            rows={3}
-            placeholder="請給數字、時程、邊界與備案。禁止大概／盡量／你看著辦。"
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-          />
+          {grill.question?.question ? (
+            <p className="raho-grill-current-q">{grill.question.question}</p>
+          ) : null}
+          {grill.question?.why ? <p className="raho-grill-current-why">{grill.question.why}</p> : null}
+          {choices.length > 0 ? (
+            <div className="raho-grill-choices" role="listbox" aria-label="審計回答選項">
+              {choices.map((c, idx) => (
+                <button
+                  key={choiceKey(c, idx)}
+                  type="button"
+                  disabled={disabled}
+                  className={`raho-decision-choice raho-grill-choice${c.key === 'vague' ? ' is-vague' : ''}`}
+                  onClick={() => pickChoice(c)}
+                >
+                  {c.label || c.key}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[12px] text-[#8E8E93]">載入選項中…</p>
+          )}
           <div className="raho-grill-actions">
-            <button type="button" disabled={disabled || !text.trim()} className="raho-btn" onClick={submit}>
-              回答並接受審查
+            <button
+              type="button"
+              className="raho-btn raho-btn--ghost"
+              disabled={disabled}
+              onClick={() => setCustomOpen((v) => !v)}
+            >
+              {customOpen ? '收起自訂' : '其他（簡短補充）'}
             </button>
           </div>
+          {customOpen ? (
+            <div className="raho-grill-custom">
+              <textarea
+                value={customText}
+                disabled={disabled}
+                rows={2}
+                placeholder="僅在選項都不適用時補充；仍須含數字、時程或邊界。"
+                onChange={(e) => setCustomText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    submitCustom();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                disabled={disabled || !customText.trim()}
+                className="raho-btn"
+                onClick={submitCustom}
+              >
+                送出補充
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

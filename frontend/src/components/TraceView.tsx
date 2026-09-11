@@ -1,6 +1,6 @@
 /** TraceView — 執行軌跡：與任務／角色同一套骨架（指標帶 + 三欄 + 時間線）。 */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchTaskTrace } from '../api/client';
+import { fetchTask, fetchTaskTrace } from '../api/client';
 import { WORK_ITEM_COLUMNS, fmtWhen, traceEventColumn } from '../lib/agentUi';
 import type { TraceEntry } from '../types';
 import { StatusColumnBoard } from './StatusColumnBoard';
@@ -178,6 +178,32 @@ export default function TraceView({ taskId = null, onTaskIdChange }: TraceViewPr
       setEvents([]);
     }
   }, [taskId, selectedTaskId, loadEvents]);
+
+  useEffect(() => {
+    const activeId = selectedTaskId || taskId;
+    if (!activeId) return;
+    let alive = true;
+    const poll = async () => {
+      try {
+        const task = await fetchTask(activeId);
+        if (!alive) return;
+        if (task.status === 'running' || task.status === 'pending') {
+          const data = await fetchTaskTrace(activeId, 200, 0);
+          if (!alive) return;
+          setEvents(data.events);
+          setError(null);
+        }
+      } catch {
+        // 輪詢失敗保留既有事件
+      }
+    };
+    void poll();
+    const t = setInterval(() => void poll(), 4000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [selectedTaskId, taskId]);
 
   const filteredEvents = filter === 'all' ? events : events.filter((e) => e.event === filter);
   const byCol = useMemo(() => {

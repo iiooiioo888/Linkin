@@ -548,13 +548,17 @@ class GrillQuestion:
     question: str
     why: str = ""
     dimension: str = ""
+    choices: list[dict[str, str]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "question": self.question,
             "why": self.why,
             "dimension": self.dimension,
         }
+        if self.choices:
+            payload["choices"] = self.choices
+        return payload
 
 
 @dataclass

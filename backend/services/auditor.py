@@ -243,6 +243,168 @@ QUESTION_BANK: list[dict[str, Any]] = [
 
 OVER_AUTH_REPLY = "我無法為我無法理解的目標負責，請重新填寫 Phase 2 的量化指標。"
 
+_CHOICE_VAGUE = {"key": "vague", "label": "大概／盡量做好一點就好"}
+
+_CHOICES_BY_DIMENSION: dict[str, list[dict[str, str]]] = {
+    "specificity": [
+        {
+            "key": "before_after",
+            "label": "終端用戶是月營收 >50 萬賣家；介入前每天人工盯盤 4 小時、月損 8 萬，介入後自動競品預警",
+        },
+        {
+            "key": "pain_quant",
+            "label": "現狀每月浪費 120 小時、損失約 8 萬；不做此任務 90 天后損失升到 12 萬",
+        },
+        {
+            "key": "stakeholder",
+            "label": "發起人是終端賣家本人（非老闆拍腦袋）；驗收以日省 3 小時盯盤為準",
+        },
+        _CHOICE_VAGUE,
+    ],
+    "success": [
+        {
+            "key": "xyz",
+            "label": "目前需 4 小時，目標壓縮至 0.5 小時，準確率不得低於 95%，誤報率 <5%",
+        },
+        {
+            "key": "deliverable",
+            "label": "交付可點擊 Prototype + 每日 Excel 預警報表",
+        },
+        {
+            "key": "lock_confirm",
+            "label": "成功是把盯盤從 4 小時壓到 30 分鐘、誤報 <5%；我承擔後果",
+        },
+        _CHOICE_VAGUE,
+    ],
+    "constraints": [
+        {
+            "key": "scope_first",
+            "label": "超支 30% 優先砍功能，其次延後上線，不借貸",
+        },
+        {
+            "key": "team_stack",
+            "label": "2 人 × 每天 4 小時 × 6 週；沿用 Python 3.10、PostgreSQL、Line Notify",
+        },
+        {
+            "key": "budget_deadline",
+            "label": "預算 15~20 萬新台幣，截止 2026-10-15，不可超支借貸",
+        },
+        _CHOICE_VAGUE,
+    ],
+    "risk": [
+        {
+            "key": "api_fallback",
+            "label": "API 斷線時改用手動 CSV 上傳；誤報率 >5% 自動停用推播",
+        },
+        {
+            "key": "human_gate",
+            "label": "AI 與直覺衝突時以人工確認按鈕為準，系統不可自動調價",
+        },
+        {
+            "key": "stop_loss",
+            "label": "上線第一週 KPI 不升反降 >10% 時，產品負責人可按下停止",
+        },
+        _CHOICE_VAGUE,
+    ],
+    "boundary": [
+        {
+            "key": "sacrifice_20",
+            "label": "80% 先做預警與建議，犧牲自動調價這 20%",
+        },
+        {
+            "key": "veto_list",
+            "label": "否決項：誤報導致錯殺價格、未經人工確認自動調價、資料外洩",
+        },
+        {
+            "key": "exclusions",
+            "label": "不做手機 APP、不使用爬蟲，只用官方 API",
+        },
+        _CHOICE_VAGUE,
+    ],
+}
+
+_CHOICES_BY_QUESTION_ID: dict[int, list[dict[str, str]]] = {
+    5: [
+        {"key": "scope", "label": "超支 30% 優先砍功能，其次延後，不借貸"},
+        {"key": "time", "label": "超支 30% 優先延後上線，其次砍功能"},
+        {"key": "cost", "label": "超支 30% 允許借貸補足（最後手段）"},
+        _CHOICE_VAGUE,
+    ],
+    6: [
+        {"key": "prototype", "label": "可點擊 Prototype + 操作說明"},
+        {"key": "excel", "label": "每日 Excel 預警報表（可下載）"},
+        {"key": "memo", "label": "純文字備忘錄（僅在無法做互動原型時）"},
+        _CHOICE_VAGUE,
+    ],
+    7: [
+        {"key": "csv", "label": "API 斷線改用手動 CSV 上傳，24 小內恢復"},
+        {"key": "cache", "label": "使用昨日快取 + 人工補數，標記高風險"},
+        {"key": "pause", "label": "暫停自動推播，全轉人工審核"},
+        _CHOICE_VAGUE,
+    ],
+    8: [
+        {"key": "human", "label": "AI 與直覺衝突時以人工確認為準"},
+        {"key": "ai", "label": "AI 建議為主，人工僅事後抽查"},
+        {"key": "hybrid", "label": "低風險自動、高風險（調價）必須人工"},
+        _CHOICE_VAGUE,
+    ],
+    10: [
+        {"key": "succinct", "label": "把盯盤從 4 小時壓到 30 分鐘、誤報 <5%，預算 15 萬且調價需人工"},
+        {"key": "fan", "label": "復購率從 12% 提升到 18%，單粉成本 ≤3 元，關鍵推播人工審核"},
+        _CHOICE_VAGUE,
+    ],
+    11: [
+        {"key": "confirm", "label": "確認。後果由我承擔，以上作為最終合約依據"},
+        {"key": "revise", "label": "需再修訂一項：成功定義仍以數字驗收為準"},
+        _CHOICE_VAGUE,
+    ],
+    16: [
+        {"key": "lock", "label": "確認鎖定"},
+        {"key": "hold", "label": "暫不鎖定，需補一項量化指標"},
+    ],
+}
+
+_FAN_PHASE3_CHOICES = [
+    {"key": "manual", "label": "改為人工審核後再推播"},
+    {"key": "auto_stop", "label": "5 個老粉退粉即自動停止推播"},
+    {"key": "threshold", "label": "退粉率 >2% 當日停止，次日人工復核"},
+    _CHOICE_VAGUE,
+]
+
+
+def _normalize_choices(
+    raw: list[dict[str, str]] | None,
+    dimension: str,
+    question_id: int | None = None,
+) -> list[dict[str, str]]:
+    if raw:
+        cleaned = [
+            {"key": str(c.get("key") or f"opt{i}"), "label": str(c.get("label") or "").strip()}
+            for i, c in enumerate(raw)
+            if str(c.get("label") or "").strip()
+        ]
+        if cleaned:
+            return cleaned[:4]
+    if question_id is not None and question_id in _CHOICES_BY_QUESTION_ID:
+        return list(_CHOICES_BY_QUESTION_ID[question_id])
+    return list(_CHOICES_BY_DIMENSION.get(dimension, _CHOICES_BY_DIMENSION["specificity"]))
+
+
+def _make_question(
+    question: str,
+    *,
+    why: str = "",
+    dimension: str = "specificity",
+    choices: list[dict[str, str]] | None = None,
+    question_id: int | None = None,
+) -> GrillQuestion:
+    return GrillQuestion(
+        question=question,
+        why=why,
+        dimension=dimension,
+        choices=_normalize_choices(choices, dimension, question_id),
+    )
+
 FAN_PHASE2_QUESTION = (
     "量化失敗。請填入數字：\n\n"
     "① 目前的「復購率（回購人數 / 總人數）」是 ___ %，目標提升到 ___ %？\n\n"
@@ -283,10 +445,11 @@ def _contextual_first_question(query: str) -> GrillQuestion | None:
     """粉絲／管粉類模糊需求：第一問直接用規格範例話術，不先丟題庫 Q1。"""
     text = (query or "").strip()
     if any(verb in text for verb in ("管粉絲", "管粉丝", "管粉", "自動管", "自动管", "幫我管", "帮我管")):
-        return GrillQuestion(
+        return _make_question(
             "收到需求。我不接受「管粉絲」這個模糊動詞。請用「最終用戶（粉絲）」的視角描述：在你介入前他們得不到什麼？在你介入後他們獲得了什麼具體好處？",
             why="沒有前後對照，目標只是口號。",
             dimension="specificity",
+            question_id=1,
         )
     return None
 
@@ -548,19 +711,21 @@ def _scenario_next(sess: UserGrillSession) -> GrillQuestion | None:
         sess.phase = 2
         sess.phase_rounds = 0
         sess.asked_ids.append(4)
-        return GrillQuestion(
+        return _make_question(
             FAN_PHASE2_QUESTION,
             why="效率必須是可驗收的三段數字。",
             dimension="success",
+            question_id=4,
         )
     if 4 in sess.asked_ids and 7 not in sess.asked_ids and _QUANT.search(last):
         sess.phase = 3
         sess.phase_rounds = 0
         sess.asked_ids.append(7)
-        return GrillQuestion(
+        return _make_question(
             FAN_PHASE3_QUESTION,
             why="沒有備案就等於把失敗外包給運氣。",
             dimension="risk",
+            choices=_FAN_PHASE3_CHOICES,
         )
     if (
         7 in sess.asked_ids
@@ -571,10 +736,11 @@ def _scenario_next(sess: UserGrillSession) -> GrillQuestion | None:
         sess.phase = 4
         sess.phase_rounds = 0
         sess.asked_ids.append(10)
-        return GrillQuestion(
+        return _make_question(
             _synthesize_fan_lock(sess),
             why="複誦才能暴露殘餘歧義。",
             dimension="success",
+            question_id=10,
         )
     return None
 
@@ -596,15 +762,33 @@ def _next_question(sess: UserGrillSession) -> GrillQuestion:
     for item in QUESTION_BANK:
         if item["phase"] == phase and item["id"] not in asked:
             sess.asked_ids.append(item["id"])
-            return GrillQuestion(item["question"], why=item["why"], dimension=item["dimension"])
+            return _make_question(
+                item["question"],
+                why=item["why"],
+                dimension=item["dimension"],
+                choices=item.get("choices"),
+                question_id=item["id"],
+            )
     for item in QUESTION_BANK:
         if item["id"] not in asked:
             sess.phase = int(item["phase"])
             sess.phase_rounds = 0
             sess.asked_ids.append(item["id"])
-            return GrillQuestion(item["question"], why=item["why"], dimension=item["dimension"])
+            return _make_question(
+                item["question"],
+                why=item["why"],
+                dimension=item["dimension"],
+                choices=item.get("choices"),
+                question_id=item["id"],
+            )
     item = QUESTION_BANK[9]  # Phase 4 複誦
-    return GrillQuestion(item["question"], why=item["why"], dimension=item["dimension"])
+    return _make_question(
+        item["question"],
+        why=item["why"],
+        dimension=item["dimension"],
+        choices=item.get("choices"),
+        question_id=item["id"],
+    )
 
 
 def _llm_question(query: str, transcript: str, gaps: list[str], phase: int) -> GrillQuestion | None:
@@ -618,7 +802,10 @@ def _llm_question(query: str, transcript: str, gaps: list[str], phase: int) -> G
             f"【對話】\n{transcript or '（尚無）'}\n\n"
             "一次只問一個具體、可證偽的問題。禁止說『明白了』。"
             "若用戶回答含『大概／盡量／好一點』，要求量化。"
-            "只輸出 JSON：{\"question\":\"...\",\"why\":\"...\",\"dimension\":\"specificity|boundary|constraints|risk|success\"}"
+            "只輸出 JSON：{\"question\":\"...\",\"why\":\"...\","
+            "\"dimension\":\"specificity|boundary|constraints|risk|success\","
+            "\"choices\":[{\"key\":\"a\",\"label\":\"...\"},{\"key\":\"b\",\"label\":\"...\"}]}"
+            "（choices 2~4 項，含一項明確模糊選項供用戶自選，其餘為可驗收答案）"
         )
         from backend.company.raho.l0 import inject_l0
 
@@ -630,10 +817,13 @@ def _llm_question(query: str, transcript: str, gaps: list[str], phase: int) -> G
         question = str(data.get("question") or "").strip()
         if not question:
             return None
-        return GrillQuestion(
+        raw_choices = data.get("choices")
+        choices = raw_choices if isinstance(raw_choices, list) else None
+        return _make_question(
             question,
             why=str(data.get("why") or ""),
             dimension=str(data.get("dimension") or "specificity"),
+            choices=choices,
         )
     except Exception as exc:
         logger.debug("需求審計官 LLM 降級為題庫：%s", exc)
@@ -933,7 +1123,7 @@ def _terminate(sess: UserGrillSession, reason: str) -> dict[str, Any]:
     sess.termination_reason = reason
     report = _failure_report(sess, reason)
     sess.turns.append({"role": "assistant", "content": report, "dimension": "terminate", "why": reason})
-    question = GrillQuestion(report, why=reason, dimension="terminate")
+    question = _make_question(report, why=reason, dimension="terminate", choices=[])
     _trace_close(sess, reason or "需求審計失敗", "blocked")
     return _pack(sess, question, closed=True, terminated=True, reason=reason)
 
@@ -1006,7 +1196,13 @@ def _ask_next(sess: UserGrillSession, *, prefix: str = "") -> dict[str, Any]:
             if 1 not in sess.asked_ids:
                 sess.asked_ids.append(1)
             text = _with_phase_tag(contextual.question, phase)
-            question = GrillQuestion(text, why=contextual.why, dimension=contextual.dimension)
+            question = _make_question(
+                text,
+                why=contextual.why,
+                dimension=contextual.dimension,
+                choices=contextual.choices,
+                question_id=1,
+            )
             sess.phase_rounds = int(sess.phase_rounds or 0) + 1
             _append_assistant(sess, question)
             _trace_l4_question(sess, question)
@@ -1018,7 +1214,12 @@ def _ask_next(sess: UserGrillSession, *, prefix: str = "") -> dict[str, Any]:
         if prefix and prefix.rstrip("：:") not in text:
             text = f"{prefix}{text}" if not text.startswith("量化失敗") else text
         text = _with_phase_tag(text, phase)
-        question = GrillQuestion(text, why=scenario.why, dimension=scenario.dimension)
+        question = _make_question(
+            text,
+            why=scenario.why,
+            dimension=scenario.dimension,
+            choices=scenario.choices,
+        )
         sess.phase_rounds = int(sess.phase_rounds or 0) + 1
         _append_assistant(sess, question)
         _trace_l4_question(sess, question)
@@ -1036,7 +1237,12 @@ def _ask_next(sess: UserGrillSession, *, prefix: str = "") -> dict[str, Any]:
         if hook and hook not in text:
             text = f"{hook}{text}"
     text = _with_phase_tag(text, phase)
-    question = GrillQuestion(text, why=question.why, dimension=question.dimension)
+    question = _make_question(
+        text,
+        why=question.why,
+        dimension=question.dimension,
+        choices=question.choices,
+    )
     sess.phase_rounds = int(sess.phase_rounds or 0) + 1
     _append_assistant(sess, question)
     _trace_l4_question(sess, question)
