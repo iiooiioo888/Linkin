@@ -6,6 +6,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchCheckpoints, resumeTask } from '../api/client';
 import type { CheckpointSummary } from '../types';
+import { usePagination } from '../lib/pagination';
+import { ConsolePagination } from './ui/ConsolePagination';
 import {
   ConsoleCard,
   ConsoleEmpty,
@@ -48,6 +50,8 @@ export default function CheckpointsPanel({ embedded = false }: { embedded?: bool
     const timer = setInterval(() => void refresh(), 12000);
     return () => clearInterval(timer);
   }, [refresh]);
+
+  const listPager = usePagination(items, embedded ? 4 : items.length || 1);
 
   const onResume = async (taskId: string) => {
     setResuming(taskId);
@@ -124,7 +128,7 @@ export default function CheckpointsPanel({ embedded = false }: { embedded?: bool
               </tr>
             </thead>
             <tbody>
-              {items.map((c) => (
+              {(embedded ? listPager.slice : items).map((c) => (
                 <tr key={c.task_id} className="border-b border-white/[0.08] last:border-0">
                   <td className="px-3 py-2 font-mono text-[11px] text-[#64D2FF]">
                     {c.task_id.slice(0, 12)}
@@ -153,6 +157,9 @@ export default function CheckpointsPanel({ embedded = false }: { embedded?: bool
           </table>
           </ConsoleCard>
         )}
+        {embedded && items.length > 0 ? (
+          <ConsolePagination page={listPager.page} totalPages={listPager.pages} onPageChange={listPager.setPage} />
+        ) : null}
       </PanelSection>
   );
 

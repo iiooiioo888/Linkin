@@ -11,6 +11,8 @@ import {
   runDbHealthCheck,
   type DbPoolStats,
 } from '../api/client';
+import { usePagination } from '../lib/pagination';
+import { ConsolePagination } from './ui/ConsolePagination';
 import { PanelScroll, PanelShell, SectionHeader, consoleLayout } from './ui/ConsoleLayout';
 
 export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }) {
@@ -70,6 +72,8 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
     const interval = setInterval(loadStats, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const connPager = usePagination(stats?.connections ?? [], embedded ? 5 : (stats?.connections?.length ?? 0) || 1);
 
   const body = (
       <div className="flex flex-col gap-3">
@@ -145,7 +149,7 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#62666d]">
               連接詳情
             </h2>
-            <div className="overflow-y-auto rounded-lg border border-white/[0.08] bg-[#141516]">
+            <div className="rounded-lg border border-white/[0.08] bg-[#141516]">
               <table className="w-full text-left text-[11px]">
                 <thead className="sticky top-0 bg-[#1C1C1E]">
                   <tr>
@@ -159,7 +163,7 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.connections.map((conn) => (
+                  {(embedded ? connPager.slice : stats.connections).map((conn) => (
                     <tr
                       key={conn.id}
                       className="border-t border-white/[0.08] hover:bg-[#1C1C1E]"
@@ -198,6 +202,9 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
                 </tbody>
               </table>
             </div>
+            {embedded ? (
+              <ConsolePagination page={connPager.page} totalPages={connPager.pages} onPageChange={connPager.setPage} className="!border-0" />
+            ) : null}
           </div>
         )}
 

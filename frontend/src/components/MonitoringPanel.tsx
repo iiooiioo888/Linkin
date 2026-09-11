@@ -7,8 +7,10 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchCloudMonitoring } from '../api/client';
+import { useFixedPages, usePagination } from '../lib/pagination';
 import type { CloudMonitoring } from '../types';
 import LcLineChart from './charts/LcLineChart';
+import { ConsolePageFrame, ConsolePagination } from './ui/ConsolePagination';
 
 const RANGE_OPTIONS = [
   { value: '1h', label: '1 小時' },
@@ -163,7 +165,12 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
     return Math.max(m, 1);
   }, [netRxSeries]);
 
-  return (
+  const chartPager = useFixedPages(3);
+  const svcPager = usePagination(services, embedded ? 2 : services.length || 1);
+  const showChart = (n: number) => !embedded || chartPager.page === n;
+  const visibleServices = embedded ? svcPager.slice : services;
+
+  const body = (
     <div className={embedded ? 'space-y-3' : 'flex-1 space-y-4 overflow-auto p-4'}>
       {/* 時間範圍選擇器 */}
       <div className="flex items-center justify-between">
@@ -217,11 +224,11 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
       )}
 
       {/* CPU 圖表 */}
-      {services.length > 0 && (
+      {services.length > 0 && showChart(1) && (
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase text-gray-500">CPU 使用率 (%)</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {services.map((svc) => (
+            {visibleServices.map((svc) => (
               <MiniLineChart
                 key={`cpu-${svc}`}
                 points={cpuSeries[svc]}
@@ -233,15 +240,18 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
               />
             ))}
           </div>
+          {embedded ? (
+            <ConsolePagination page={svcPager.page} totalPages={svcPager.pages} onPageChange={svcPager.setPage} className="!border-0" />
+          ) : null}
         </div>
       )}
 
       {/* 記憶體圖表 */}
-      {services.length > 0 && (
+      {services.length > 0 && showChart(2) && (
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase text-gray-500">記憶體 (MB)</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {services.map((svc) => (
+            {visibleServices.map((svc) => (
               <MiniLineChart
                 key={`mem-${svc}`}
                 points={memSeries[svc]}
@@ -253,15 +263,18 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
               />
             ))}
           </div>
+          {embedded ? (
+            <ConsolePagination page={svcPager.page} totalPages={svcPager.pages} onPageChange={svcPager.setPage} className="!border-0" />
+          ) : null}
         </div>
       )}
 
       {/* 網路圖表 */}
-      {services.length > 0 && (
+      {services.length > 0 && showChart(3) && (
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase text-gray-500">網路接收 (MB)</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {services.map((svc) => (
+            {visibleServices.map((svc) => (
               <MiniLineChart
                 key={`net-${svc}`}
                 points={netRxSeries[svc]}
@@ -273,8 +286,27 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
               />
             ))}
           </div>
+          {embedded ? (
+            <ConsolePagination page={svcPager.page} totalPages={svcPager.pages} onPageChange={svcPager.setPage} className="!border-0" />
+          ) : null}
         </div>
       )}
     </div>
   );
+
+  if (embedded) {
+    return (
+      <ConsolePageFrame
+        page={chartPager.page}
+        totalPages={chartPager.pages}
+        onPageChange={(p) => {
+          chartPager.setPage(p);
+          svcPager.reset();
+        }}
+      >
+        {body}
+      </ConsolePageFrame>
+    );
+  }
+  return body;
 }

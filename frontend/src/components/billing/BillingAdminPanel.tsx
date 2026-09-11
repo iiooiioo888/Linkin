@@ -20,6 +20,8 @@ import {
   adminGetTaskLedger,
 } from '../../api/client';
 import { fmtCredits } from '../../lib/billingUi';
+import { useFixedPages, usePagination } from '../../lib/pagination';
+import { ConsolePageFrame, ConsolePagination } from '../ui/ConsolePagination';
 
 const ADMIN_KEY_STORAGE = 'linkin_billing_admin_secret';
 
@@ -87,8 +89,17 @@ export default function BillingAdminPanel({
   }, [load, secret]);
 
   const faultBalance = Number(fault?.balance ?? fault?.total ?? 0);
+  const embeddedPager = useFixedPages(5);
+  const appealsPager = usePagination(appeals, 5);
+  const routingRecent = usePagination(
+    (routing?.recent as { task_id: string; routing_mode: string; created_at: string }[]) ?? [],
+    5,
+  );
+  const faultLedgerPager = usePagination(fault?.ledger_recent ?? [], 5);
 
-  return (
+  const show = (p: number) => !embedded || embeddedPager.page === p;
+
+  const body = (
     <div className={embedded ? 'space-y-3' : 'space-y-4 p-6'}>
       {!embedded ? (
         <header>
@@ -104,11 +115,14 @@ export default function BillingAdminPanel({
         className="max-w-md rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]"
       />
 
+      {show(1) && (
       <section className="grid gap-3 lg:grid-cols-2">
         <AdminList title="定價配置" items={pricing} onActivate={(v) => adminActivatePricing(v, headers()).then(() => load())} versionKey="version" />
         <AdminList title="積分政策" items={policies} onActivate={(v) => adminActivateCreditPolicy(v, headers()).then(() => load())} versionKey="version" />
       </section>
+      )}
 
+      {show(2) && (
       <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
         <h3 className="text-[13px] font-medium text-[#F5F5F7]">廠商配置 · 路由權重 标准/优选/战略</h3>
         <p className="text-[11px] text-[#8E8E93]">活躍版本 v{(vendors.active as { version?: number })?.version ?? '—'}</p>
@@ -123,7 +137,9 @@ export default function BillingAdminPanel({
           ))}
         </ul>
       </section>
+      )}
 
+      {show(3) && (
       <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -153,11 +169,11 @@ export default function BillingAdminPanel({
             ))}
           </ul>
         ) : null}
-        {(fault?.ledger_recent ?? []).length > 0 ? (
+        {faultLedgerPager.slice.length > 0 ? (
           <table className="mt-3 w-full text-left text-[10px]">
             <thead className="text-[#636366]"><tr><th>類型</th><th>原因</th><th>金額</th><th>餘額</th></tr></thead>
             <tbody>
-              {fault!.ledger_recent!.slice(0, 5).map((row, i) => (
+              {faultLedgerPager.slice.map((row, i) => (
                 <tr key={i} className="border-t border-white/[0.04]">
                   <td>{row.entry_type}</td>
                   <td>{row.reason}</td>
@@ -168,8 +184,13 @@ export default function BillingAdminPanel({
             </tbody>
           </table>
         ) : null}
+        {embedded ? (
+          <ConsolePagination page={faultLedgerPager.page} totalPages={faultLedgerPager.pages} onPageChange={faultLedgerPager.setPage} className="!border-0" />
+        ) : null}
       </section>
+      )}
 
+      {show(4) && (
       <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
         <h3 className="text-[13px] font-medium text-[#F5F5F7]">路由決策統計</h3>
         <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
@@ -179,15 +200,20 @@ export default function BillingAdminPanel({
             </span>
           ))}
         </div>
-        <ul className="mt-2 max-h-32 overflow-auto text-[10px] text-[#AEAEB2]">
-          {((routing?.recent as { task_id: string; routing_mode: string; created_at: string }[]) ?? []).map((r) => (
+        <ul className="mt-2 text-[10px] text-[#AEAEB2]">
+          {routingRecent.slice.map((r) => (
             <li key={r.task_id + r.created_at} className="border-t border-white/[0.04] py-1">
               {r.task_id.slice(-12)} · {r.routing_mode} · {r.created_at.slice(0, 19)}
             </li>
           ))}
         </ul>
+        {embedded ? (
+          <ConsolePagination page={routingRecent.page} totalPages={routingRecent.pages} onPageChange={routingRecent.setPage} className="!border-0" />
+        ) : null}
       </section>
+      )}
 
+      {show(4) && (
       <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
         <h3 className="text-[13px] font-medium text-[#F5F5F7]">Dev · 注入貢獻積分</h3>
         <p className="mt-1 text-[11px] text-[#8E8E93]">共享池上線前測試 lock/convert 用（contribution_unlocked）</p>
@@ -217,11 +243,13 @@ export default function BillingAdminPanel({
           重新整理
         </button>
       </section>
+      )}
 
+      {show(5) && (
       <section>
         <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">申訴處理</h3>
         <ul className="space-y-1 text-[11px]">
-          {appeals.map((a) => (
+          {appealsPager.slice.map((a) => (
             <li key={String(a.appeal_id)} className="flex items-center justify-between rounded bg-black/20 px-2 py-1">
               <span>{String(a.reason)} · {String(a.status)}</span>
               {a.status === 'pending' ? (
@@ -230,8 +258,13 @@ export default function BillingAdminPanel({
             </li>
           ))}
         </ul>
+        {embedded ? (
+          <ConsolePagination page={appealsPager.page} totalPages={appealsPager.pages} onPageChange={appealsPager.setPage} className="!border-0" />
+        ) : null}
       </section>
+      )}
 
+      {show(5) && (
       <section>
         <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">任務分類帳 · 路由</h3>
         <div className="flex gap-2">
@@ -245,12 +278,22 @@ export default function BillingAdminPanel({
                 路由 {String((ledger.routing as Record<string, unknown>).routing_mode)} · Key {String((ledger.routing as Record<string, unknown>).primary_key_id ?? '—')}
               </p>
             ) : null}
-            <pre className="max-h-48 overflow-auto rounded bg-black/40 p-2 text-[10px]">{JSON.stringify(ledger, null, 2)}</pre>
+            <pre className="rounded bg-black/40 p-2 text-[10px] whitespace-pre-wrap break-all">{JSON.stringify(ledger, null, 2).slice(0, 1200)}{JSON.stringify(ledger, null, 2).length > 1200 ? '…' : ''}</pre>
           </div>
         ) : null}
       </section>
+      )}
     </div>
   );
+
+  if (embedded) {
+    return (
+      <ConsolePageFrame page={embeddedPager.page} totalPages={embeddedPager.pages} onPageChange={embeddedPager.setPage}>
+        {body}
+      </ConsolePageFrame>
+    );
+  }
+  return body;
 }
 
 function Stat({ label, value, highlight, warn }: { label: string; value: string; highlight?: boolean; warn?: boolean }) {
@@ -276,8 +319,8 @@ function AdminList({
   return (
     <div className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
       <h3 className="text-[13px] font-medium text-[#F5F5F7]">{title}</h3>
-      <ul className="mt-2 max-h-40 overflow-auto text-[11px]">
-        {items.map((row) => (
+      <ul className="mt-2 text-[11px]">
+        {items.slice(0, 5).map((row) => (
           <li key={String(row[versionKey])} className="flex justify-between gap-2 border-t border-white/[0.04] py-1">
             <span>v{String(row[versionKey])} · {String(row.status)}</span>
             {row.status !== 'active' ? (

@@ -9,7 +9,9 @@
  * 前端层面做二次确认，后端由 DockerManager 安全护栏兜底。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFixedPages, usePagination } from '../lib/pagination';
 import type { DockerBudget, DockerContainer, DockerContainerStats, DockerHealth, DockerStatus } from '../types';
+import { ConsolePageFrame, ConsolePagination } from './ui/ConsolePagination';
 import {
   fetchDockerBudget,
   fetchDockerLogs,
@@ -493,6 +495,9 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
     });
   }, [status]);
 
+  const embeddedPager = useFixedPages(2);
+  const containerPager = usePagination(sortedContainers, embedded ? 2 : sortedContainers.length || 1);
+
   // ── 渲染 ──
   if (loading && !status) {
     return (
@@ -505,7 +510,7 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
     );
   }
 
-  return (
+  const inner = (
     <div className={embedded ? 'space-y-3' : 'flex flex-1 flex-col overflow-auto'}>
       {/* 操作消息横幅 */}
       {actionMessage && (
@@ -534,7 +539,9 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
       )}
 
       {/* 页面内容 */}
-      <div className="flex-1 space-y-4 p-4">
+      <div className={`flex-1 space-y-4 ${embedded ? '' : 'p-4'}`}>
+        {(!embedded || embeddedPager.page === 1) && (
+        <>
         {/* 标题栏 */}
         <div className="flex items-center justify-between">
           <div>
@@ -624,10 +631,14 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
             )}
           </div>
         )}
+        </>
+        )}
 
+        {(!embedded || embeddedPager.page === 2) && (
+        <>
         {/* 容器卡片网格 */}
-        <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-          {sortedContainers.map((c) => (
+        <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+          {(embedded ? containerPager.slice : sortedContainers).map((c) => (
             <ContainerCard
               key={c.name}
               container={c}
@@ -658,6 +669,11 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
             </div>
           </div>
         )}
+        {embedded ? (
+          <ConsolePagination page={containerPager.page} totalPages={containerPager.pages} onPageChange={containerPager.setPage} className="!border-0" />
+        ) : null}
+        </>
+        )}
       </div>
 
       {/* 日志弹窗 */}
@@ -678,4 +694,20 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
       )}
     </div>
   );
+
+  if (embedded) {
+    return (
+      <ConsolePageFrame
+        page={embeddedPager.page}
+        totalPages={embeddedPager.pages}
+        onPageChange={(p) => {
+          embeddedPager.setPage(p);
+          if (p === 2) containerPager.reset();
+        }}
+      >
+        {inner}
+      </ConsolePageFrame>
+    );
+  }
+  return inner;
 }

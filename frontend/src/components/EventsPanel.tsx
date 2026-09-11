@@ -5,7 +5,9 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { fetchCloudEvents } from '../api/client';
+import { usePagination } from '../lib/pagination';
 import type { CloudEvent } from '../types';
+import { ConsolePagination } from './ui/ConsolePagination';
 
 function tone(type: string): string {
   if (type === 'start') return 'bg-[#27a644]/15 text-[#4cc38a]';
@@ -42,6 +44,8 @@ export default function EventsPanel({ embedded = false }: { embedded?: boolean }
     const timer = setInterval(() => void refresh(), 10000);
     return () => clearInterval(timer);
   }, [refresh]);
+
+  const eventsPager = usePagination(events, embedded ? 5 : events.length || 1);
 
   const counts = events.reduce<Record<string, number>>((acc, e) => {
     acc[e.type] = (acc[e.type] ?? 0) + 1;
@@ -92,7 +96,7 @@ export default function EventsPanel({ embedded = false }: { embedded?: boolean }
         </div>
       ) : (
         <div className="relative space-y-0 apple-card apple-card--tight !p-0 p-3">
-          {events.map((e, i) => (
+          {(embedded ? eventsPager.slice : events).map((e, i) => (
             <div key={`${e.ts}-${e.service}-${i}`} className="relative flex gap-3 py-2 pl-4">
               <span className="absolute left-0 top-3 h-full w-px bg-[#23252a]" />
               <span className="absolute left-[-3px] top-3.5 h-1.5 w-1.5 rounded-full bg-[#007AFF]" />
@@ -110,6 +114,9 @@ export default function EventsPanel({ embedded = false }: { embedded?: boolean }
           ))}
         </div>
       )}
+      {embedded && events.length > 0 ? (
+        <ConsolePagination page={eventsPager.page} totalPages={eventsPager.pages} onPageChange={eventsPager.setPage} />
+      ) : null}
     </div>
   );
 }

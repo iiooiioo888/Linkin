@@ -6,7 +6,9 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { createAlertRule, deleteAlertRule, fetchCloudAlerts, toggleAlertRule } from '../api/client';
+import { useFixedPages, usePagination } from '../lib/pagination';
 import type { CloudAlertRecord, CloudAlertRule } from '../types';
+import { ConsolePageFrame, ConsolePagination } from './ui/ConsolePagination';
 
 export default function AlertsPanel({ embedded = false }: { embedded?: boolean }) {
   const [rules, setRules] = useState<CloudAlertRule[]>([]);
@@ -84,7 +86,11 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
     [refresh],
   );
 
-  return (
+  const embeddedPager = useFixedPages(2);
+  const rulesPager = usePagination(rules, embedded ? 3 : rules.length || 1);
+  const historyPager = usePagination(history, embedded ? 5 : history.length || 1);
+
+  const body = (
     <div className={embedded ? 'space-y-3' : 'flex-1 space-y-4 overflow-auto p-4'}>
       {/* 標題欄 */}
       <div className="flex items-center justify-between">
@@ -106,7 +112,7 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
       )}
 
       {/* 新建規則表單 */}
-      {showForm && (
+      {showForm && (!embedded || embeddedPager.page === 1) && (
         <div className="rounded-lg border border-gray-800 bg-gray-900/80 p-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <div>
@@ -159,19 +165,19 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
       )}
 
       {/* 規則列表 */}
-      {loading ? (
+      {(!embedded || embeddedPager.page === 1) && loading ? (
         <div className="flex justify-center py-8">
           <span className="text-sm text-gray-500">加載中...</span>
         </div>
-      ) : rules.length === 0 ? (
+      ) : (!embedded || embeddedPager.page === 1) && rules.length === 0 ? (
         <div className="flex flex-col items-center py-12 text-center">
           <span className="mb-2 text-4xl">⚠️</span>
           <p className="text-sm text-gray-500">暫無告警規則</p>
           <p className="text-xs text-gray-600">點擊上方按鈕創建第一條規則</p>
         </div>
-      ) : (
+      ) : (!embedded || embeddedPager.page === 1) ? (
         <div className="space-y-2">
-          {rules.map((rule) => (
+          {(embedded ? rulesPager.slice : rules).map((rule) => (
             <div
               key={rule.id}
               className={`flex items-center justify-between rounded-lg border p-3 ${
@@ -220,9 +226,13 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
             </div>
           ))}
         </div>
-      )}
+      ) : null}
+      {embedded && embeddedPager.page === 1 && rules.length > 0 ? (
+        <ConsolePagination page={rulesPager.page} totalPages={rulesPager.pages} onPageChange={rulesPager.setPage} className="!border-0" />
+      ) : null}
 
       {/* 告警歷史（無資料也保留區塊） */}
+      {(!embedded || embeddedPager.page === 2) && (
       <div>
         <h3 className="mb-2 text-sm font-medium text-gray-200">觸發歷史</h3>
         {history.length === 0 ? (
@@ -231,8 +241,8 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
             <p className="mt-1 text-xs text-gray-600">規則啟用後，超過閾值會寫入此時間線</p>
           </div>
         ) : (
-          <div className="max-h-64 space-y-1.5 overflow-auto rounded-lg border border-gray-800 bg-gray-900/80 p-2">
-            {history.map((h, i) => (
+          <div className="space-y-1.5 rounded-lg border border-gray-800 bg-gray-900/80 p-2">
+            {(embedded ? historyPager.slice : history).map((h, i) => (
               <div
                 key={`${h.rule_id}-${h.ts}-${i}`}
                 className="flex items-center justify-between rounded-md bg-gray-950/60 px-3 py-1.5"
@@ -251,7 +261,28 @@ export default function AlertsPanel({ embedded = false }: { embedded?: boolean }
             ))}
           </div>
         )}
+        {embedded && history.length > 0 ? (
+          <ConsolePagination page={historyPager.page} totalPages={historyPager.pages} onPageChange={historyPager.setPage} className="!border-0" />
+        ) : null}
       </div>
+      )}
     </div>
   );
+
+  if (embedded) {
+    return (
+      <ConsolePageFrame
+        page={embeddedPager.page}
+        totalPages={embeddedPager.pages}
+        onPageChange={(p) => {
+          embeddedPager.setPage(p);
+          if (p === 1) rulesPager.reset();
+          if (p === 2) historyPager.reset();
+        }}
+      >
+        {body}
+      </ConsolePageFrame>
+    );
+  }
+  return body;
 }

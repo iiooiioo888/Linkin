@@ -1,10 +1,12 @@
 /**
- * BillingPanel — 靈境積分：方案、餘額、用量、分類帳。
+ * WalletPanel — 靈境積分：方案、餘額、用量、分類帳。
  */
 import { useState } from 'react';
 import { assignBillingPlan, topupBillingCredits } from '../api/client';
 import { useWallet } from '../hooks/useWallet';
 import { fmtCredits } from '../lib/billingUi';
+import { useFixedPages, usePagination } from '../lib/pagination';
+import { ConsolePageFrame, ConsolePagination } from './ui/ConsolePagination';
 
 const EVENT_ZH: Record<string, string> = {
   llm_tokens: 'LLM Token',
@@ -61,7 +63,12 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
     }
   };
 
-  return (
+  const embeddedPager = useFixedPages(5);
+  const planPager = usePagination(plans, 3);
+  const usagePager = usePagination(usage, 4);
+  const ledgerPager = usePagination(ledger, 4);
+
+  const body = (
     <div className={embedded ? 'space-y-3' : 'flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-6'}>
       {!embedded ? (
         <header>
@@ -76,6 +83,7 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
         <div className="rounded-lg border border-[#FF453A]/30 bg-[#FF453A]/10 px-3 py-2 text-[12px] text-[#FF9F9A]">{error}</div>
       ) : null}
 
+      {(!embedded || embeddedPager.page === 1) && (
       <section className="grid gap-3 lg:grid-cols-3">
         <div className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4 lg:col-span-1">
           <p className="text-[11px] uppercase tracking-wide text-[#636366]">可用積分</p>
@@ -132,11 +140,13 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
           </ul>
         </div>
       </section>
+      )}
 
+      {(!embedded || embeddedPager.page === 2) && (
       <section>
         <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">訂閱方案</h3>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {plans.map((p) => {
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {(embedded ? planPager.slice : plans).map((p) => {
             const plan = p as {
               id: string;
               name_zh: string;
@@ -172,8 +182,18 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
             );
           })}
         </div>
+        {embedded ? (
+          <ConsolePagination
+            page={planPager.page}
+            totalPages={planPager.pages}
+            onPageChange={planPager.setPage}
+            className="!border-0"
+          />
+        ) : null}
       </section>
+      )}
 
+      {(!embedded || embeddedPager.page === 3) && (
       <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
         <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">Docker 即時計費</h3>
         <p className="text-[11px] text-[#8E8E93]">
@@ -224,19 +244,20 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
           <p className="mt-2 text-[10px] text-[#636366]">最近 Docker 用量事件 {dockerUsage.length} 筆 · 分類帳 Docker 行 {dockerLedger.length} 筆</p>
         ) : null}
       </section>
+      )}
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div>
+      {(!embedded || embeddedPager.page === 4) && (
+        <section>
           <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">最近用量事件</h3>
-          <div className="max-h-64 overflow-auto rounded-xl border border-white/[0.08]">
+          <div className="rounded-xl border border-white/[0.08]">
             <table className="w-full text-left text-[11px]">
-              <thead className="sticky top-0 bg-[#2C2C2E] text-[#8E8E93]">
+              <thead className="bg-[#2C2C2E] text-[#8E8E93]">
                 <tr><th className="px-2 py-1.5">時間</th><th className="px-2 py-1.5">類型</th><th className="px-2 py-1.5">積分</th></tr>
               </thead>
               <tbody>
-                {usage.length === 0 ? (
+                {(embedded ? usagePager.slice : usage).length === 0 ? (
                   <tr><td colSpan={3} className="px-2 py-4 text-center text-[#636366]">{loading ? '載入中…' : '尚無用量'}</td></tr>
-                ) : usage.map((row) => (
+                ) : (embedded ? usagePager.slice : usage).map((row) => (
                   <tr key={row.id} className="border-t border-white/[0.04]">
                     <td className="px-2 py-1.5 text-[#AEAEB2]">{new Date(row.created_at).toLocaleString('zh-TW')}</td>
                     <td className="px-2 py-1.5">{EVENT_ZH[row.event_type] ?? row.event_type}</td>
@@ -246,16 +267,27 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
               </tbody>
             </table>
           </div>
-        </div>
-        <div>
+          {embedded ? (
+            <ConsolePagination
+              page={usagePager.page}
+              totalPages={usagePager.pages}
+              onPageChange={usagePager.setPage}
+              className="!border-0"
+            />
+          ) : null}
+        </section>
+      )}
+
+      {(!embedded || embeddedPager.page === 5) && (
+        <section>
           <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">分類帳</h3>
-          <div className="max-h-64 overflow-auto rounded-xl border border-white/[0.08]">
+          <div className="rounded-xl border border-white/[0.08]">
             <table className="w-full text-left text-[11px]">
-              <thead className="sticky top-0 bg-[#2C2C2E] text-[#8E8E93]">
+              <thead className="bg-[#2C2C2E] text-[#8E8E93]">
                 <tr><th className="px-2 py-1.5">時間</th><th className="px-2 py-1.5">來源</th><th className="px-2 py-1.5">變動</th></tr>
               </thead>
               <tbody>
-                {ledger.map((row) => (
+                {(embedded ? ledgerPager.slice : ledger).map((row) => (
                   <tr key={row.id} className="border-t border-white/[0.04]">
                     <td className="px-2 py-1.5 text-[#AEAEB2]">{new Date(row.created_at).toLocaleString('zh-TW')}</td>
                     <td className="px-2 py-1.5">{EVENT_ZH[row.source] ?? row.source}</td>
@@ -267,8 +299,32 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
               </tbody>
             </table>
           </div>
-        </div>
-      </section>
+          {embedded ? (
+            <ConsolePagination
+              page={ledgerPager.page}
+              totalPages={ledgerPager.pages}
+              onPageChange={ledgerPager.setPage}
+              className="!border-0"
+            />
+          ) : null}
+        </section>
+      )}
     </div>
   );
+
+  if (embedded) {
+    const onPageChange = (p: number) => {
+      embeddedPager.setPage(p);
+      if (p === 2) planPager.reset();
+      if (p === 4) usagePager.reset();
+      if (p === 5) ledgerPager.reset();
+    };
+    return (
+      <ConsolePageFrame page={embeddedPager.page} totalPages={embeddedPager.pages} onPageChange={onPageChange}>
+        {body}
+      </ConsolePageFrame>
+    );
+  }
+
+  return body;
 }
