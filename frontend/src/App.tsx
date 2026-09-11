@@ -7,6 +7,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChatMessage, ChatSession, TaskProgress } from './types';
 import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, startUserGrill, streamAuditor, TaskWebSocket } from './api/client';
+import type { ChatBillingFootnote } from './api/client';
+import { formatChatBillingFootnote } from './lib/billingUi';
 import type { TaskWsMessage } from './api/client';
 import {
   appRouteFromState,
@@ -470,7 +472,8 @@ export default function App() {
               ),
             }));
           },
-          onDone: (answer, score, iteration, thinking) => {
+          onDone: (answer, score, iteration, thinking, billing) => {
+            const footnote = billing ? formatChatBillingFootnote(billing) : undefined;
             updateSession(sessionId, (s) => ({
               ...s,
               updatedAt: Date.now(),
@@ -482,8 +485,20 @@ export default function App() {
                       thinking: thinking || splitThink(answer || '').thinking || m.thinking,
                       streamRaw: undefined,
                       streaming: false,
-                      meta: { score, iteration },
+                      meta: { score, iteration, billingFootnote: footnote || undefined },
                     }
+                  : m,
+              ),
+            }));
+          },
+          onBilling: (billing: ChatBillingFootnote) => {
+            const footnote = formatChatBillingFootnote(billing);
+            if (!footnote) return;
+            updateSession(sessionId, (s) => ({
+              ...s,
+              messages: s.messages.map((m) =>
+                m.id === assistantId
+                  ? { ...m, meta: { ...m.meta, billingFootnote: footnote } }
                   : m,
               ),
             }));
@@ -1212,7 +1227,7 @@ export default function App() {
         }}
         onGoUsage={() => {
           setSettingsOpen(false);
-          handleMonitorTabChange('billing');
+          handleMonitorTabChange('credits');
         }}
       />
       <ContextModal

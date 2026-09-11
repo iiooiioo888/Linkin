@@ -32,6 +32,7 @@ const SkillsMcpPanel = lazy(() => import('./SkillsMcpPanel'));
 const IntegrationsPanel = lazy(() => import('./IntegrationsPanel'));
 const ContextPanel = lazy(() => import('./ContextPanel'));
 const BillingPanel = lazy(() => import('./BillingPanel'));
+const BillingCreditsHub = lazy(() => import('./billing/BillingCreditsHub'));
 
 interface MonitorViewProps {
   onOpenTask: (task: TaskProgress) => void;
@@ -190,6 +191,7 @@ export default function MonitorView({
         {tab === 'pipeline' && <PipelineView onGoTasks={() => onTabChange('tasks')} />}
         {tab === 'metrics' && <SystemMetricsPanel />}
         {tab === 'models' && <ModelCallPanel />}
+        {tab === 'credits' && <BillingCreditsHub />}
         {tab === 'billing' && <BillingPanel />}
         {tab === 'feedback' && <UserFeedbackPanel />}
         {tab === 'lab' && (

@@ -423,6 +423,14 @@ def call_mcp_tool(
         },
         cfg,
     )
+    if out["ok"] and not out.get("dry_run"):
+        try:
+            from backend.billing.metering import meter_minecraft
+
+            blocks = int(arguments.get("volume") or arguments.get("count") or 0)
+            meter_minecraft(local_name, blocks=blocks, meta={"role": role or ""})
+        except Exception:
+            pass
     return out
 
 

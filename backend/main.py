@@ -59,6 +59,9 @@ from backend.hub.api import register_hub
 from backend.hub.monitor import collect_hub_monitor
 from backend.linkin.api import register_linkin
 from backend.middleware.auth_gate import AuthGateMiddleware
+from backend.billing import register_billing
+from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
+from backend.billing.middleware import BillingContextMiddleware
 from backend.modules import register_modules
 from backend.services import lab_tools
 from backend.services.agent_monitor import collect_agent_monitor
@@ -129,10 +132,39 @@ async def _lifespan(_app: FastAPI):
     except Exception as exc:
         logger.warning("技能／MCP 啟動掛載失敗（降級為無）：%s", exc)
     task = asyncio.create_task(llm_ops_loop())
+    from backend.billing.docker_meter import docker_billing_loop
+
+    docker_bill_task = asyncio.create_task(docker_billing_loop())
+
+    async def _rollover_loop() -> None:
+        import os
+        from backend.billing.pool_store import get_pool_store
+
+        interval = max(3600, int(os.getenv("LINKIN_ROLLOVER_CHECK_SEC", "86400")))
+        while True:
+            try:
+                await asyncio.sleep(interval)
+                await asyncio.to_thread(get_pool_store().run_monthly_rollover)
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.warning("月末滾存檢查失敗：%s", exc)
+
+    rollover_task = asyncio.create_task(_rollover_loop())
     try:
         yield
     finally:
+        rollover_task.cancel()
+        docker_bill_task.cancel()
         task.cancel()
+        try:
+            await rollover_task
+        except asyncio.CancelledError:
+            pass
+        try:
+            await docker_bill_task
+        except asyncio.CancelledError:
+            pass
         try:
             await task
         except asyncio.CancelledError:
@@ -166,6 +198,7 @@ if not allowed_origins:
 
 logger.info("CORS allowed origins: %s", allowed_origins)
 
+app.add_middleware(BillingContextMiddleware)
 app.add_middleware(AuthGateMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -187,6 +220,33 @@ register_integrations(app)
 from backend.company.runtime_api import register_runtime_api
 
 register_runtime_api(app)
+register_billing(app)
+
+
+@app.exception_handler(InsufficientCreditsError)
+async def billing_insufficient_handler(_request: Request, exc: InsufficientCreditsError):
+    return JSONResponse(
+        status_code=402,
+        content={
+            "detail": exc.message,
+            "code": exc.code,
+            "balance_credits": exc.balance_credits,
+            "required_credits": exc.required_credits,
+        },
+    )
+
+
+@app.exception_handler(FeatureNotEntitledError)
+async def billing_feature_handler(_request: Request, exc: FeatureNotEntitledError):
+    return JSONResponse(
+        status_code=403,
+        content={
+            "detail": exc.message,
+            "code": exc.code,
+            "feature": exc.feature,
+            "plan_id": exc.plan_id,
+        },
+    )
 
 
 class ChatRequest(BaseModel):
@@ -1010,6 +1070,9 @@ async def chat_stream(req: ChatRequest):
     chat_tracer = TraceLogger(session_id)
 
     async def event_stream():
+        from backend.billing.context import begin_chat_billing, chat_billing_snapshot, end_chat_billing
+
+        billing_token = begin_chat_billing()
         state: dict[str, Any] = {
             "query": req.query,
             "session_id": session_id,
@@ -1189,10 +1252,33 @@ async def chat_stream(req: ChatRequest):
             state["final_answer"] = final_answer
             await asyncio.to_thread(nodes.save_memory, state)
 
-            yield f"event: done\ndata: {json_mod.dumps({'answer': final_answer, 'thinking': state.get('thinking', ''), 'score': state.get('score'), 'iteration': state.get('iteration', 0)}, ensure_ascii=False)}\n\n"
+            done_payload: dict[str, Any] = {
+                "answer": final_answer,
+                "thinking": state.get("thinking", ""),
+                "score": state.get("score"),
+                "iteration": state.get("iteration", 0),
+            }
+            billing_snap = chat_billing_snapshot()
+            if billing_snap:
+                done_payload["billing"] = billing_snap
+            yield f"event: done\ndata: {json_mod.dumps(done_payload, ensure_ascii=False)}\n\n"
         except Exception as exc:
             logger.error("串流聊天失敗：%s", exc)
-            yield f"event: error\ndata: {json_mod.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"
+            from backend.billing.errors import InsufficientCreditsError
+
+            err_msg = str(exc)
+            interrupted = False
+            if isinstance(exc.__cause__, InsufficientCreditsError):
+                err_msg = exc.__cause__.message
+            elif "靈境積分不足" in err_msg or "INSUFFICIENT_CREDITS" in err_msg:
+                interrupted = True
+            snap = chat_billing_snapshot()
+            if snap and interrupted:
+                snap = {**snap, "interrupted": True, "interrupt_reason": err_msg}
+                yield f"event: billing\ndata: {json_mod.dumps(snap, ensure_ascii=False)}\n\n"
+            yield f"event: error\ndata: {json_mod.dumps({'error': err_msg, 'code': 'INSUFFICIENT_CREDITS' if interrupted else 'CHAT_ERROR'}, ensure_ascii=False)}\n\n"
+        finally:
+            end_chat_billing(billing_token)
 
     return StreamingResponse(
         event_stream(),
@@ -1214,11 +1300,40 @@ async def create_task(req: TaskRequest):
     """
     if not req.query.strip():
         raise HTTPException(status_code=422, detail="query 不可為空")
+    from backend.billing.context import billing_enabled, current_billing_user, billing_task_id
+    from backend.billing.task_lifecycle import begin_billed_task
+
     record = task_manager.create_task(
         req.query, req.execution_strategy, req.company_template, options=req.options
     )
+    billing_meta: dict = {}
+    uid = current_billing_user()
+    if billing_enabled() and uid:
+        try:
+            billing_meta = begin_billed_task(
+                uid,
+                task_id=record.task_id,
+                baseline_tokens=max(500, len(req.query) // 2),
+                model=str((req.options or {}).get("model") or "default"),
+            )
+            token = billing_task_id.set(record.task_id)
+            record.options = {**(record.options or {}), "billing": billing_meta}
+            task_manager._persist(record)
+            billing_task_id.reset(token)
+        except Exception as exc:
+            from backend.billing.errors import InsufficientCreditsError
+
+            if isinstance(exc, InsufficientCreditsError):
+                raise HTTPException(status_code=402, detail=exc.message) from exc
+            if getattr(exc, "__class__", None).__name__ == "InsufficientCreditsError":
+                raise HTTPException(status_code=402, detail=str(exc)) from exc
     task_manager.start_task(record)
-    return {"task_id": record.task_id, "strategy": req.execution_strategy}
+    return {
+        "task_id": record.task_id,
+        "strategy": req.execution_strategy,
+        "pricing_version": billing_meta.get("pricing_config_version"),
+        "reserved_credits": billing_meta.get("reserved_credits"),
+    }
 
 
 @app.get("/tasks/{task_id}")
@@ -1796,6 +1911,7 @@ async def docker_budget():
 
     返回當前 Docker 成本、預算壓力、優化建議和自動優化記錄。
     """
+    from backend.billing.docker_api import docker_billing_for_request
     from backend.company.docker_tools import get_service_hourly_rate
 
     dm = get_docker_manager()
@@ -1833,6 +1949,7 @@ async def docker_budget():
         "total_hourly_rate": round(total_hourly_rate, 4),
         "monthly_projection": round(total_hourly_rate * 24 * 30, 4),
         "company_budget": _company_budget_state,
+        "user_billing": docker_billing_for_request(),
     }
 
 
@@ -1868,22 +1985,48 @@ async def docker_health():
 @app.post("/docker/restart/{service}")
 async def docker_restart(service: str):
     """重啟指定服務。"""
+    from backend.billing.docker_api import on_docker_started, on_docker_stopped, preflight_docker_start
+    from backend.billing.errors import InsufficientCreditsError
+
+    try:
+        preflight_docker_start(service)
+    except InsufficientCreditsError as exc:
+        raise HTTPException(status_code=402, detail=exc.message) from exc
     dm = get_docker_manager()
-    return dm.restart_service(service)
+    on_docker_stopped(service)
+    result = dm.restart_service(service)
+    if result.get("success"):
+        result["billing"] = on_docker_started(service)
+    return result
 
 
 @app.post("/docker/stop/{service}")
 async def docker_stop(service: str):
     """停止指定服務。"""
+    from backend.billing.docker_api import on_docker_stopped
+
     dm = get_docker_manager()
-    return dm.stop_service(service)
+    result = dm.stop_service(service)
+    if result.get("success"):
+        result["billing"] = on_docker_stopped(service)
+    return result
 
 
 @app.post("/docker/start/{service}")
 async def docker_start(service: str):
     """啟動指定服務。"""
+    from backend.billing.docker_api import on_docker_started, preflight_docker_start
+    from backend.billing.errors import InsufficientCreditsError
+
+    try:
+        preflight_docker_start(service)
+    except InsufficientCreditsError as exc:
+        raise HTTPException(status_code=402, detail=exc.message) from exc
     dm = get_docker_manager()
-    return dm.start_service(service)
+    result = dm.start_service(service)
+    if result.get("success"):
+        result["billing"] = on_docker_started(service)
+    return result
 
 
 # ==================== 雲控制台 API ====================
@@ -2141,9 +2284,19 @@ async def lab_archify_render(body: ArchifyRenderRequest):
         raise HTTPException(status_code=502, detail=str(orig)) from orig
 
 
+def _require_quant_pack() -> None:
+    from backend.billing.context import current_billing_user
+    from backend.billing.metering import meter_quant_call, require_feature
+    from backend.billing.plans import PACK_QUANT
+
+    require_feature(PACK_QUANT, current_billing_user())
+    meter_quant_call(reference="lab_quant")
+
+
 @app.get("/lab/archify/strategies")
 async def lab_archify_strategies():
     """Archify — 策略庫總覽／分類拓撲 IR（全部策略可視化）。"""
+    _require_quant_pack()
     from backend.company.quant_strategy_maps import strategy_catalog_maps
 
     return strategy_catalog_maps()
@@ -2152,6 +2305,7 @@ async def lab_archify_strategies():
 @app.get("/lab/archify/strategies/{strategy_id}")
 async def lab_archify_strategy(strategy_id: str):
     """Archify — 單策略工作流／生命週期 IR。"""
+    _require_quant_pack()
     from backend.company.quant_strategy_maps import strategy_maps
 
     payload = strategy_maps(strategy_id)
@@ -2163,6 +2317,7 @@ async def lab_archify_strategy(strategy_id: str):
 @app.get("/lab/quant/strategies")
 async def lab_quant_strategies(category: str = "", query: str = "", status: str = ""):
     """stock-quant 策略庫分類樹（實驗室瀏覽；角色仍用 market_strategy_catalog）。"""
+    _require_quant_pack()
     from backend.company.quant_strategy_catalog import market_strategy_catalog
 
     return market_strategy_catalog(
@@ -2176,6 +2331,7 @@ async def lab_quant_strategies(category: str = "", query: str = "", status: str 
 @app.get("/lab/quant/preview")
 async def lab_quant_preview(strategy: str, symbol: str = "600519"):
     """策略工作流 IR + 回測權益／收盤曲線（實驗室圖表）。"""
+    _require_quant_pack()
     from backend.company.quant_strategy_maps import strategy_preview
 
     payload = strategy_preview(strategy, symbol=symbol)
@@ -2195,6 +2351,7 @@ async def lab_quant_capital_flow(
     enable_t1: bool = False,
 ):
     """策略資金流三視圖：瀑布 Mermaid、狀態機 Mermaid、時間軸表。"""
+    _require_quant_pack()
     from backend.company.quant_capital_flow_maps import strategy_capital_flow
 
     payload = strategy_capital_flow(

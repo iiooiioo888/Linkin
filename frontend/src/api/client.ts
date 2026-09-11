@@ -8,7 +8,7 @@
  * 生產環境可設定 VITE_API_URL 環境變數指向後端位址。
  */
 
-import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, SeatFeedQuery, SeatIOFeed, SeatIORecord, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
+import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, BillingLedgerEntry, BillingSnapshot, BillingUsageEvent, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, SeatFeedQuery, SeatIOFeed, SeatIORecord, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
 import { appendGateQuery } from '../lib/auth';
 
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
@@ -28,11 +28,21 @@ export interface ChatOptions {
   semantic_lock?: Record<string, unknown>;
 }
 
+export interface ChatBillingFootnote {
+  credits_deducted?: number;
+  pricing_version?: number;
+  cache_savings_credits?: number;
+  vendor_id?: string;
+  interrupted?: boolean;
+  interrupt_reason?: string;
+}
+
 export interface ChatResult {
   session_id: string;
   answer: string;
   score: number | null;
   iteration: number;
+  billing?: ChatBillingFootnote;
 }
 
 /** SSE 串流事件回調 */
@@ -41,8 +51,20 @@ export interface StreamCallbacks {
   onToken?: (token: string) => void;
   onAnswer?: (answer: string) => void;
   onEvaluation?: (score: number | null, iteration: number, multiDim?: import('../types').MultiDimEvaluation) => void;
-  onDone?: (answer: string, score: number | null, iteration: number, thinking?: string) => void;
+  onDone?: (answer: string, score: number | null, iteration: number, thinking?: string, billing?: ChatBillingFootnote) => void;
+  onBilling?: (billing: ChatBillingFootnote) => void;
   onError?: (error: string) => void;
+}
+
+async function parseBillingError(resp: Response): Promise<string> {
+  const body = await resp.json().catch(() => ({})) as { detail?: string; code?: string };
+  if (resp.status === 402) {
+    return body.detail || '靈境積分不足，請充值或升級方案後再試';
+  }
+  if (resp.status === 403 && body.detail?.includes('轉贈')) {
+    return '積分不可轉贈、轉移或提現';
+  }
+  return body.detail || `請求失敗（HTTP ${resp.status}）`;
 }
 
 /**
@@ -74,8 +96,12 @@ export function sendChatStream(
         signal: controller.signal,
       });
 
-      if (!resp.ok || !resp.body) {
-        callbacks.onError?.(`請求失敗（HTTP ${resp.status}）`);
+      if (!resp.ok) {
+        callbacks.onError?.(await parseBillingError(resp));
+        return;
+      }
+      if (!resp.body) {
+        callbacks.onError?.('串流回應為空');
         return;
       }
 
@@ -122,12 +148,16 @@ export function sendChatStream(
                 (data.multi_dim as import('../types').MultiDimEvaluation) ?? undefined,
               );
               break;
+            case 'billing':
+              callbacks.onBilling?.(data as ChatBillingFootnote);
+              break;
             case 'done':
               callbacks.onDone?.(
                 String(data.answer ?? ''),
                 (data.score as number) ?? null,
                 (data.iteration as number) ?? 0,
                 String(data.thinking ?? ''),
+                (data.billing as ChatBillingFootnote) ?? undefined,
               );
               break;
             case 'error':
@@ -170,7 +200,7 @@ export async function sendChat(
   }
 
   if (!resp.ok) {
-    throw new Error(`請求失敗（HTTP ${resp.status}）`);
+    throw new Error(await parseBillingError(resp));
   }
   const data = await resp.json();
   return {
@@ -178,6 +208,7 @@ export async function sendChat(
     answer: data.answer ?? '',
     score: data.score ?? null,
     iteration: data.iteration ?? 0,
+    billing: data.billing as ChatBillingFootnote | undefined,
   };
 }
 
@@ -529,7 +560,7 @@ export async function createTask(
   } catch {
     throw new Error('網路連線失敗，請檢查後端服務是否啟動');
   }
-  if (!resp.ok) throw new Error(`建立任務失敗（HTTP ${resp.status}）`);
+  if (!resp.ok) throw new Error(await parseBillingError(resp));
   return resp.json();
 }
 
@@ -1004,6 +1035,230 @@ export async function startDockerService(service: string): Promise<DockerActionR
 // ═══════════════════════════════════════════════════════════
 // 雲控制台 API
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// 靈境積分帳務 API
+// ═══════════════════════════════════════════════════════════
+
+export async function fetchBilling(): Promise<BillingSnapshot> {
+  const resp = await fetch(apiUrl('/billing'));
+  if (!resp.ok) throw new Error(`讀取帳務失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function fetchBillingLedger(limit = 50): Promise<{ user_id: string; entries: BillingLedgerEntry[] }> {
+  const resp = await fetch(apiUrl(`/billing/ledger?limit=${limit}`));
+  if (!resp.ok) throw new Error(`讀取分類帳失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function fetchBillingUsage(limit = 50): Promise<{ user_id: string; events: BillingUsageEvent[] }> {
+  const resp = await fetch(apiUrl(`/billing/usage?limit=${limit}`));
+  if (!resp.ok) throw new Error(`讀取用量失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function topupBillingCredits(credits: number, note = ''): Promise<unknown> {
+  const resp = await fetch(apiUrl('/billing/topup'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credits, note }),
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `充值失敗（HTTP ${resp.status}）`);
+  }
+  return resp.json();
+}
+
+export async function assignBillingPlan(planId: string): Promise<unknown> {
+  const resp = await fetch(apiUrl('/billing/assign-plan'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plan_id: planId }),
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `方案切換失敗（HTTP ${resp.status}）`);
+  }
+  return resp.json();
+}
+
+export async function fetchBillingGrants(limit = 50) {
+  const resp = await fetch(apiUrl(`/billing/grants?limit=${limit}`));
+  if (!resp.ok) throw new Error(`讀取入帳來源失敗（HTTP ${resp.status}）`);
+  return resp.json() as Promise<{ items: import('../types').BillingGrant[] }>;
+}
+
+export async function fetchBillingRollover(limit = 20) {
+  const resp = await fetch(apiUrl(`/billing/rollover-records?limit=${limit}`));
+  if (!resp.ok) throw new Error(`讀取滾存紀錄失敗（HTTP ${resp.status}）`);
+  return resp.json() as Promise<{ items: Record<string, unknown>[] }>;
+}
+
+export async function fetchBillingAppeals(limit = 20) {
+  const resp = await fetch(apiUrl(`/billing/appeals?limit=${limit}`));
+  if (!resp.ok) throw new Error(`讀取申訴失敗（HTTP ${resp.status}）`);
+  return resp.json() as Promise<{ appeals: import('../types').BillingAppeal[] }>;
+}
+
+export async function submitBillingAppeal(reason: string, detail: string, taskId = '') {
+  const resp = await fetch(apiUrl('/billing/appeals'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason, detail, task_id: taskId }),
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `申訴失敗（HTTP ${resp.status}）`);
+  }
+  return resp.json();
+}
+
+export async function convertContribution(amount: number) {
+  const resp = await fetch(apiUrl(`/billing/contribution/convert?amount=${amount}`), { method: 'POST' });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `轉換失敗（HTTP ${resp.status}）`);
+  }
+  return resp.json();
+}
+
+export async function lockContribution(amount: number, lockDays: number) {
+  const resp = await fetch(apiUrl('/billing/contributor/contribution/lock'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount, lock_days: lockDays }),
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `鎖倉失敗（HTTP ${resp.status}）`);
+  }
+  return resp.json();
+}
+
+export async function fetchContributorStatus() {
+  const resp = await fetch(apiUrl('/billing/contributor/contribution/status'));
+  if (!resp.ok) throw new Error(`讀取貢獻狀態失敗（HTTP ${resp.status}）`);
+  return resp.json() as Promise<import('../types').ContributionStatus>;
+}
+
+export async function fetchContributorEarnings() {
+  const resp = await fetch(apiUrl('/billing/contributor/earnings'));
+  if (!resp.ok) throw new Error(`讀取貢獻收益失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function bindContributorKey(encryptedKey: string, vendorId = 'self_host') {
+  const resp = await fetch(apiUrl('/billing/contributor/bind-key'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ encrypted_key: encryptedKey, vendor_id: vendorId }),
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `綁定失敗（HTTP ${resp.status}）`);
+  }
+  return resp.json();
+}
+
+export async function triggerInstallments() {
+  const resp = await fetch(apiUrl('/billing/contributor/contribution/unlock-installments'), { method: 'POST' });
+  if (!resp.ok) throw new Error(`分期處理失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+type AdminHeaders = Record<string, string>;
+
+function adminFetch(path: string, init: RequestInit = {}, headers: AdminHeaders = {}) {
+  return fetch(apiUrl(path), {
+    ...init,
+    headers: { ...headers, ...(init.headers as Record<string, string>) },
+  });
+}
+
+export async function adminListPricingConfigs(h: AdminHeaders) {
+  const resp = await adminFetch('/admin/billing/pricing-configs', {}, h);
+  if (!resp.ok) throw new Error('讀取定價列表失敗');
+  return resp.json();
+}
+
+export async function adminActivatePricing(version: number, h: AdminHeaders) {
+  const resp = await adminFetch(`/admin/billing/pricing-configs/${version}/activate`, { method: 'POST' }, h);
+  if (!resp.ok) throw new Error('啟用定價失敗');
+  return resp.json();
+}
+
+export async function adminListCreditPolicies(h: AdminHeaders) {
+  const resp = await adminFetch('/admin/billing/credit-policies', {}, h);
+  if (!resp.ok) throw new Error('讀取政策列表失敗');
+  return resp.json();
+}
+
+export async function adminActivateCreditPolicy(version: number, h: AdminHeaders) {
+  const resp = await adminFetch(`/admin/billing/credit-policies/${version}/activate`, { method: 'POST' }, h);
+  if (!resp.ok) throw new Error('啟用政策失敗');
+  return resp.json();
+}
+
+export async function adminListVendorConfigs(h: AdminHeaders) {
+  const resp = await adminFetch('/admin/billing/vendor-configs', {}, h);
+  if (!resp.ok) throw new Error('讀取廠商配置失敗');
+  return resp.json();
+}
+
+export async function adminActivateVendor(version: number, h: AdminHeaders) {
+  const resp = await adminFetch(`/admin/billing/vendor-configs/${version}/activate`, { method: 'POST' }, h);
+  if (!resp.ok) throw new Error('啟用廠商配置失敗');
+  return resp.json();
+}
+
+export async function adminListAppeals(h: AdminHeaders) {
+  const resp = await adminFetch('/admin/billing/appeals', {}, h);
+  if (!resp.ok) throw new Error('讀取申訴列表失敗');
+  return resp.json();
+}
+
+export async function adminResolveAppeal(appealId: string, h: AdminHeaders) {
+  const resp = await adminFetch(`/admin/billing/appeals/${appealId}/resolve`, { method: 'POST' }, h);
+  if (!resp.ok) throw new Error('處理申訴失敗');
+  return resp.json();
+}
+
+export async function adminRunRollover(h: AdminHeaders) {
+  const resp = await adminFetch('/admin/billing/rollover/run', { method: 'POST' }, h);
+  if (!resp.ok) throw new Error('執行滾存失敗');
+  return resp.json();
+}
+
+export async function adminListRollover(h: AdminHeaders) {
+  const resp = await adminFetch('/admin/billing/rollover-records', {}, h);
+  if (!resp.ok) throw new Error('讀取滾存失敗');
+  return resp.json();
+}
+
+export async function adminGetFaultPool(h: AdminHeaders) {
+  const resp = await adminFetch('/admin/billing/fault-pool', {}, h);
+  if (!resp.ok) throw new Error('讀取 fault pool 失敗');
+  return resp.json();
+}
+
+export async function adminGetCacheStats(h: AdminHeaders) {
+  const resp = await adminFetch('/admin/billing/cache-stats', {}, h);
+  if (!resp.ok) throw new Error('讀取快取統計失敗');
+  return resp.json();
+}
+
+export async function adminGetTaskLedger(taskId: string, h: AdminHeaders) {
+  const resp = await adminFetch(`/admin/billing/task-ledger/${taskId}`, {}, h);
+  if (!resp.ok) throw new Error('讀取任務分類帳失敗');
+  return resp.json();
+}
+
+/** @deprecated 使用 fetchBilling */
+export const fetchWallet = fetchBilling;
+export const fetchWalletLedger = fetchBillingLedger;
+export const topupWallet = (amountUsd: number, note = '') => topupBillingCredits(amountUsd * 1000, note);
 
 /** 獲取雲端費用摘要。 */
 export async function fetchCloudBilling(): Promise<CloudBilling> {

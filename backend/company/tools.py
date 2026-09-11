@@ -246,6 +246,7 @@ class ToolRegistry:
 
         try:
             result = tool.execute(**request.args)
+            _maybe_bill_tool(request.tool, role=role, args=request.args)
             return ToolCallResult(tool=request.tool, success=True, result=result)
         except TypeError as exc:
             return ToolCallResult(
@@ -260,6 +261,40 @@ class ToolRegistry:
                 success=False,
                 error=str(exc),
             )
+
+
+def _maybe_bill_tool(tool_name: str, *, role: str | None = None, args: dict | None = None) -> None:
+    try:
+        name = (tool_name or "").lower()
+        tool_args = args or {}
+        if name.startswith("market_") or name in {"archify_strategies", "strategy_preview"}:
+            from backend.billing.metering import meter_quant_call
+
+            meter_quant_call(reference=tool_name, meta={"role": role or ""})
+        elif name == "docker_start":
+            from backend.billing.docker_api import on_docker_started, preflight_docker_start
+
+            svc = str(tool_args.get("service") or "frontend")
+            preflight_docker_start(svc)
+            on_docker_started(svc)
+        elif name == "docker_restart":
+            from backend.billing.docker_api import on_docker_started, on_docker_stopped, preflight_docker_start
+
+            svc = str(tool_args.get("service") or "frontend")
+            preflight_docker_start(svc)
+            on_docker_stopped(svc)
+            on_docker_started(svc)
+        elif name == "docker_stop":
+            from backend.billing.docker_api import on_docker_stopped
+
+            on_docker_stopped(str(tool_args.get("service") or "frontend"))
+        elif name in {"place_block", "break_block", "fill_block", "execute_command"} or "minecraft" in name:
+            from backend.billing.metering import meter_minecraft
+
+            blocks = 0
+            meter_minecraft(tool_name, blocks=blocks, meta={"role": role or ""})
+    except Exception:
+        pass
 
 
 # ═══════════════════════════════════════════════════════════════

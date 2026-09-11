@@ -33,6 +33,7 @@ export type ConsoleTab =
   | 'pipeline'
   | 'metrics'
   | 'models'
+  | 'credits'
   | 'billing'
   | 'feedback'
   | 'lab'
@@ -254,6 +255,10 @@ export default function AppShell({
         llmConfigured={llmConfigured}
         taskCount={statusInfo.taskCount}
         memoryCount={statusInfo.memoryCount}
+        onOpenCredits={() => {
+          onViewChange('monitor');
+          onMonitorTabChange('credits');
+        }}
       />
     </div>
   );

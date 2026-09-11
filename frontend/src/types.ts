@@ -1,3 +1,134 @@
+/** 靈境積分帳戶 */
+export interface BillingAccount {
+  user_id: string;
+  balance_credits: number;
+  pool_balances?: Record<string, number>;
+  plan_id: string;
+  plan_name_zh: string;
+  byok: boolean;
+  monthly_quota_credits: number;
+  monthly_used_credits: number;
+  monthly_remaining_credits: number;
+  period_key: string;
+  concurrency_limit: number;
+  low_balance: boolean;
+  features: string[];
+  transfer_allowed?: boolean;
+  pricing_config_version?: number;
+  credit_policy_version?: number;
+}
+
+export interface BillingLedgerEntry {
+  id: string;
+  amount_credits: number;
+  balance_after_credits: number;
+  kind: 'credit' | 'debit';
+  source: string;
+  reference: string;
+  meta: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface BillingUsageEvent {
+  id: string;
+  event_type: string;
+  credits: number;
+  quantity: number;
+  unit: string;
+  task_id: string;
+  reference: string;
+  meta: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface BillingDockerSummary {
+  user_id: string;
+  running_services: Array<{
+    service: string;
+    owner: string;
+    rate_per_hour_usd: number;
+    credits_per_hour: number;
+    uptime_hours: number;
+    is_core: boolean;
+  }>;
+  projected_hourly_usd: number;
+  projected_hourly_credits: number;
+  tick_interval_sec: number;
+  recent_docker_events?: BillingUsageEvent[];
+  total_docker_credits_spent?: number;
+}
+
+export interface BillingPoolsDetail {
+  balances: Record<string, number>;
+  spendable: number;
+  grants: BillingGrant[];
+  rollover_records: Record<string, unknown>[];
+  rollover_notice_zh: string;
+  rollover_policy_version: number;
+  cache_stats?: { l3_hits: number; cache_read_tokens: number; savings_credits: number };
+}
+
+export interface BillingGrant {
+  grant_id: string;
+  pool_type: string;
+  amount: number;
+  remaining: number;
+  source: string;
+  origin: string;
+  lock_days?: number;
+  lock_multiplier?: number;
+  created_at: string;
+}
+
+export interface ContributionStatus {
+  unlocked: number;
+  locked: number;
+  convert_threshold: number;
+  accumulated_unlocked: number;
+  convertible_to_locked: number;
+  convert_ratio_to_purchased: number;
+  lock_tiers: Record<string, number>;
+  installments?: LockInstallment[];
+  notice_zh?: string;
+}
+
+export interface LockInstallment {
+  installment_id: string;
+  total_amount: number;
+  per_installment: number;
+  paid_installments: number;
+  lock_days: number;
+  lock_multiplier: number;
+  status: string;
+  progress_zh?: string;
+}
+
+export interface BillingAppeal {
+  appeal_id: string;
+  account_id: string;
+  task_id?: string;
+  reason: string;
+  detail: string;
+  status: string;
+  created_at: string;
+}
+
+export interface BillingSnapshot {
+  account: BillingAccount;
+  pools?: BillingPoolsDetail;
+  contribution?: ContributionStatus;
+  vendor_preference?: { version: number; config: Record<string, unknown> };
+  plans: Record<string, unknown>[];
+  rate_card: Record<string, unknown>;
+  enterprise: Record<string, unknown>;
+  docker?: BillingDockerSummary;
+}
+
+/** @deprecated 使用 BillingAccount */
+export type WalletAccount = BillingAccount & { balance_usd?: number; currency?: string };
+export type WalletLedgerEntry = BillingLedgerEntry & { amount_usd?: number; balance_after_usd?: number };
+export type WalletSnapshot = BillingSnapshot;
+
 /** 多維度評估（優化 #1） */
 export interface DimensionScore {
   score: number;
@@ -561,6 +692,8 @@ export interface ChatMessage {
     iteration?: number;
     /** 多維度評估結果（優化 #1） */
     multiDim?: MultiDimEvaluation;
+    /** 靈境積分扣款摘要（v6.0） */
+    billingFootnote?: string;
   };
 }
 

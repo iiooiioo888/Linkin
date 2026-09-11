@@ -205,6 +205,9 @@ export default function MessageBubble({
             <span className="text-[#30D158]">{message.meta.score.toFixed(1)}</span>
           )}
           {!!message.meta?.iteration && <span>{message.meta.iteration} 輪</span>}
+          {message.meta?.billingFootnote ? (
+            <span className="text-[#64D2FF]" title="本次扣款摘要">{message.meta.billingFootnote}</span>
+          ) : null}
           {message.meta?.multiDim && (
             <button type="button" onClick={() => setShowRadar((v) => !v)} className="hover:text-[#F5F5F7]">
               {showRadar ? '收起評分' : '評分'}

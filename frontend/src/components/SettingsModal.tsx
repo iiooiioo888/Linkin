@@ -67,7 +67,7 @@ export default function SettingsModal({
             onClick={() => onGoUsage?.()}
           >
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#636366]">3 計費</p>
-            <p className="text-[11px] text-[#AEAEB2]">AI 用量與 Docker 成本</p>
+            <p className="text-[11px] text-[#AEAEB2]">靈境積分、AI 用量與 Docker</p>
           </button>
         </div>
 

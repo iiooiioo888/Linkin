@@ -245,7 +245,6 @@ class BudgetManager:
                 self.monthly_spent, self.config.monthly_limit_usd,
                 self._monthly_spent, self.cloud_cost,
             )
-
     def record_docker_cost(self, service: str, hours: float) -> float:
         """記錄容器服務按時費用（USD），計入雲資源預算（不與 API 雙重累加）。
 
@@ -279,6 +278,12 @@ class BudgetManager:
                     self._aliyun_cost,
                     self.total_spent,
                 )
+            try:
+                from backend.billing.metering import meter_docker
+
+                meter_docker(service, hours, cost, meta={"budget_pressure": pressure})
+            except Exception as exc:
+                logger.debug("Docker 計費事件略過：%s", exc)
         return cost
 
     def record_aliyun_cost(self, amount_usd: float) -> float:
@@ -358,6 +363,16 @@ class BudgetManager:
                     "Docker 運行成本快照：總計 $%.4f（%d 個服務）",
                     total, len(services),
                 )
+
+        # 即時結算至用戶靈境積分（增量 tick）
+        try:
+            from backend.billing.docker_meter import get_docker_billing_tracker
+
+            charges = get_docker_billing_tracker().settle_tick()
+            if charges:
+                services["_billing_charges"] = charges
+        except Exception as exc:
+            logger.debug("Docker 積分結算略過：%s", exc)
 
         return {"services": services, "total_cost": round(total, 4)}
 
@@ -529,6 +544,21 @@ class BudgetManager:
 
     # ── 序列化 ──
 
+    def credit_budget_snapshot(self) -> dict:
+        try:
+            from backend.billing.credits import DOCKER_USD_TO_CREDITS
+
+            task_credits = round(self._task_spent * DOCKER_USD_TO_CREDITS, 2)
+            quota_credits = round(self.config.task_limit_usd * DOCKER_USD_TO_CREDITS, 2)
+        except Exception:
+            task_credits = 0.0
+            quota_credits = 0.0
+        return {
+            "task_spent_credits": task_credits,
+            "task_quota_credits": quota_credits,
+            "budget_pressure": self.budget_pressure,
+        }
+
     def to_dict(self) -> dict:
         """序列化為字典。"""
         return {
@@ -551,6 +581,7 @@ class BudgetManager:
             "active_tier": self._router.resolve_model(
                 BudgetTier.ROUTINE, self.budget_pressure
             ),
+            **self.credit_budget_snapshot(),
         }
 
 
