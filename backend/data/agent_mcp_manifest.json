@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "description": "Agent 技能包相關的可選 MCP 連線範本（預設停用；請在環境變數或 UI 填入憑證後啟用）",
+  "servers": [
+    {
+      "id": "openai_developer_docs",
+      "name": "OpenAI Developer Docs",
+      "transport": "http",
+      "url": "https://developers.openai.com/mcp",
+      "enabled": false,
+      "readonly": true,
+      "description": "openai-docs、chatgpt-apps 等 OpenAI 技能的可選 MCP"
+    },
+    {
+      "id": "figma",
+      "name": "Figma MCP",
+      "transport": "http",
+      "url": "https://mcp.figma.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FIGMA_OAUTH_TOKEN}",
+        "X-Figma-Region": "us-east-1"
+      },
+      "enabled": false,
+      "readonly": true,
+      "description": "figma、figma-use、figma-implement-design 等技能的可選 MCP；需 FIGMA_OAUTH_TOKEN"
+    },
+    {
+      "id": "linear",
+      "name": "Linear MCP",
+      "transport": "http",
+      "url": "https://mcp.linear.app/mcp",
+      "enabled": false,
+      "readonly": true,
+      "description": "linear 技能的可選 MCP；通常需 OAuth 登入"
+    }
+  ]
+}

@@ -59,6 +59,12 @@ class Skill:
     skill_budget: int = DEFAULT_SKILL_BUDGET
     created_at: str = ""
     updated_at: str = ""
+    # Agent 技能包同步元資料（.agents/skills/ → skills.json）
+    source: str = ""           # 上游 repo，如 mattpocock/skills
+    skill_type: str = "custom"   # custom | agent-pack | cli-stub | cursor-only
+    source_path: str = ""      # 倉庫內 SKILL.md 相對路徑
+    managed: bool = False      # True = 由 sync 管理，可隨 lock 更新內容
+    content_hash: str = ""     # skills-lock.json computedHash，用於變更偵測
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -122,6 +128,11 @@ class SkillsStore:
                     skill_budget=int(row.get("skill_budget", DEFAULT_SKILL_BUDGET)),
                     created_at=str(row.get("created_at", "")),
                     updated_at=str(row.get("updated_at", "")),
+                    source=str(row.get("source", "")),
+                    skill_type=str(row.get("skill_type", "custom") or "custom"),
+                    source_path=str(row.get("source_path", "")),
+                    managed=bool(row.get("managed", False)),
+                    content_hash=str(row.get("content_hash", "")),
                 )
                 if skill.name and skill.content:
                     skills[skill.id] = skill
@@ -151,6 +162,59 @@ class SkillsStore:
         with self._lock:
             self._load_locked()
             return self._skills.get(skill_id)
+
+    def sync_managed(
+        self,
+        *,
+        skill_id: str,
+        name: str,
+        content: str,
+        description: str = "",
+        trigger: str = "",
+        source: str = "",
+        skill_type: str = "agent-pack",
+        source_path: str = "",
+        content_hash: str = "",
+        default_enabled: bool = False,
+        skill_budget: int = DEFAULT_SKILL_BUDGET,
+    ) -> tuple[Skill, str]:
+        """由 agent 技能包同步 upsert；不覆蓋非 managed 或使用者自訂技能。
+
+        回傳 (skill, action)，action 為 created | updated | unchanged | skipped。
+        """
+        name = (name or "").strip()
+        content = (content or "").strip()
+        if not name or not content:
+            raise ValueError("同步技能需要名稱與內容")
+        now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        with self._lock:
+            self._load_locked()
+            old = self._skills.get(skill_id)
+            if old and not old.managed:
+                return old, "skipped"
+            if old and old.managed and content_hash and old.content_hash == content_hash:
+                return old, "unchanged"
+            skill = Skill(
+                id=skill_id,
+                name=name,
+                content=content,
+                description=(description or "").strip(),
+                trigger=(trigger or "").strip(),
+                enabled=old.enabled if old else bool(default_enabled),
+                roles=old.roles if old else [],
+                skill_budget=max(200, min(int(skill_budget or DEFAULT_SKILL_BUDGET), 20000)),
+                created_at=old.created_at if old else now,
+                updated_at=now,
+                source=(source or "").strip(),
+                skill_type=(skill_type or "agent-pack").strip(),
+                source_path=(source_path or "").strip(),
+                managed=True,
+                content_hash=(content_hash or "").strip(),
+            )
+            action = "updated" if old else "created"
+            self._skills[skill_id] = skill
+            self._save_locked()
+            return skill, action
 
     def upsert(
         self,

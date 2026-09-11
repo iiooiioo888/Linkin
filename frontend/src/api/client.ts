@@ -2074,6 +2074,27 @@ export interface SkillRecord {
   skill_budget: number;
   created_at: string;
   updated_at: string;
+  source?: string;
+  skill_type?: string;
+  source_path?: string;
+  managed?: boolean;
+  content_hash?: string;
+}
+
+export interface AgentSkillsSyncReport {
+  ok: boolean;
+  skills: {
+    created: number;
+    updated: number;
+    unchanged: number;
+    skipped: number;
+    total_catalog: number;
+  };
+  mcp: {
+    created: number;
+    updated: number;
+    unchanged: number;
+  };
 }
 
 export interface SkillSaveBody {
@@ -2122,6 +2143,12 @@ export async function previewSkillPrompt(role?: string): Promise<{ role: string;
   const resp = await fetch(apiUrl(`/skills/preview${params}`));
   if (!resp.ok) throw new Error(await readApiError(resp));
   return resp.json();
+}
+
+export async function syncAgentSkillPacks(): Promise<AgentSkillsSyncReport> {
+  const resp = await fetch(apiUrl('/skills/sync-agent-packs'), { method: 'POST' });
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json() as Promise<AgentSkillsSyncReport>;
 }
 
 // ═══════════════════════════════════════════════════════════

@@ -216,6 +216,22 @@ npx skills@latest add vercel-labs/agent-browser --all --copy
 
 **可選 MCP / CLI：** 多數技能為 skills-only。OpenAI 的 Figma / Linear / Developer Docs 等技能可搭配 MCP；ScrapeGraphAI 與 agent-browser 為 CLI。設定說明與 Cursor 範例片段見 [docs/mcp/agent-skills.md](docs/mcp/agent-skills.md)。
 
+### Linkin 運行時（與 Cursor 目錄的差異）
+
+| 位置 | 用途 |
+|------|------|
+| `.agents/skills/` | Cursor / `npx skills` 的 **canonical 檔案**（本倉庫已內嵌） |
+| `backend/data/skills.json` | Linkin **運行時技能庫**（API、角色提示詞注入） |
+| `backend/data/mcp_servers.json` | Linkin **MCP 連線註冊表** |
+
+後端啟動時會自動把 `.agents/skills/` 同步進 `skills.json`（可用 `LINKIN_SYNC_AGENT_SKILLS=false` 關閉）。也可手動執行：
+
+```bash
+python -m backend.scripts.sync_agent_skills
+```
+
+在 UI 驗證：**控制台 → 監控 → 技能與 MCP**（`/#/monitor/skills`）→「同步 Agent 包」。匯入的技能預設 **停用**；在列表中啟用後才會注入角色提示詞。類型標籤：`Agent 包`（可注入）、`CLI 參考`、`Cursor 專用`（僅目錄展示）。
+
 歸功與授權：[mattpocock/skills](https://github.com/mattpocock/skills) · [anthropics/skills](https://github.com/anthropics/skills) · [openai/skills](https://github.com/openai/skills) · [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) · [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser)
 
 ---
