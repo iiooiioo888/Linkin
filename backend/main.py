@@ -132,10 +132,18 @@ async def _lifespan(_app: FastAPI):
     except Exception as exc:
         logger.warning("技能／MCP 啟動掛載失敗（降級為無）：%s", exc)
     task = asyncio.create_task(llm_ops_loop())
+    from backend.billing.docker_meter import docker_billing_loop
+
+    docker_bill_task = asyncio.create_task(docker_billing_loop())
     try:
         yield
     finally:
+        docker_bill_task.cancel()
         task.cancel()
+        try:
+            await docker_bill_task
+        except asyncio.CancelledError:
+            pass
         try:
             await task
         except asyncio.CancelledError:
@@ -1827,6 +1835,7 @@ async def docker_budget():
 
     返回當前 Docker 成本、預算壓力、優化建議和自動優化記錄。
     """
+    from backend.billing.docker_api import docker_billing_for_request
     from backend.company.docker_tools import get_service_hourly_rate
 
     dm = get_docker_manager()
@@ -1864,6 +1873,7 @@ async def docker_budget():
         "total_hourly_rate": round(total_hourly_rate, 4),
         "monthly_projection": round(total_hourly_rate * 24 * 30, 4),
         "company_budget": _company_budget_state,
+        "user_billing": docker_billing_for_request(),
     }
 
 
@@ -1899,22 +1909,48 @@ async def docker_health():
 @app.post("/docker/restart/{service}")
 async def docker_restart(service: str):
     """重啟指定服務。"""
+    from backend.billing.docker_api import on_docker_started, on_docker_stopped, preflight_docker_start
+    from backend.billing.errors import InsufficientCreditsError
+
+    try:
+        preflight_docker_start(service)
+    except InsufficientCreditsError as exc:
+        raise HTTPException(status_code=402, detail=exc.message) from exc
     dm = get_docker_manager()
-    return dm.restart_service(service)
+    on_docker_stopped(service)
+    result = dm.restart_service(service)
+    if result.get("success"):
+        result["billing"] = on_docker_started(service)
+    return result
 
 
 @app.post("/docker/stop/{service}")
 async def docker_stop(service: str):
     """停止指定服務。"""
+    from backend.billing.docker_api import on_docker_stopped
+
     dm = get_docker_manager()
-    return dm.stop_service(service)
+    result = dm.stop_service(service)
+    if result.get("success"):
+        result["billing"] = on_docker_stopped(service)
+    return result
 
 
 @app.post("/docker/start/{service}")
 async def docker_start(service: str):
     """啟動指定服務。"""
+    from backend.billing.docker_api import on_docker_started, preflight_docker_start
+    from backend.billing.errors import InsufficientCreditsError
+
+    try:
+        preflight_docker_start(service)
+    except InsufficientCreditsError as exc:
+        raise HTTPException(status_code=402, detail=exc.message) from exc
     dm = get_docker_manager()
-    return dm.start_service(service)
+    result = dm.start_service(service)
+    if result.get("success"):
+        result["billing"] = on_docker_started(service)
+    return result
 
 
 # ==================== 雲控制台 API ====================

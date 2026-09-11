@@ -120,6 +120,65 @@ def test_reserve_and_settle(billing_store):
     assert svc.get_account("ivan")["balance_credits"] == 100000 - 8
 
 
+def test_docker_settle_tick_debits_credits(billing_store, monkeypatch):
+    from backend.billing.docker_meter import DockerBillingTracker, reset_docker_billing_tracker
+
+    tracker = DockerBillingTracker()
+    reset_docker_billing_tracker(tracker)
+    svc = BillingService(billing_store)
+    svc.ensure_account("dockuser", "pro")
+    tracker.assign_owner("frontend", "dockuser")
+
+    class FakeDM:
+        available = True
+
+        def list_containers(self):
+            return [
+                {
+                    "service": "frontend",
+                    "name": "evoloop-frontend-1",
+                    "status": "Up 2 minutes",
+                    "uptime_seconds": 120.0,
+                }
+            ]
+
+    monkeypatch.setattr("backend.services.docker_manager.get_docker_manager", lambda: FakeDM())
+
+    token = billing_user_id.set("dockuser")
+    try:
+        before = svc.get_account("dockuser")["balance_credits"]
+        charges = tracker.settle_tick("dockuser")
+        assert len(charges) == 1
+        assert charges[0]["service"] == "frontend"
+        after = svc.get_account("dockuser")["balance_credits"]
+        assert after < before
+        events = svc.usage_events("dockuser", limit=5)
+        assert any(e["event_type"] == "docker_runtime" for e in events)
+        ledger = svc.ledger("dockuser", limit=5)
+        assert any(row["source"] == "docker" for row in ledger)
+    finally:
+        billing_user_id.reset(token)
+        reset_docker_billing_tracker(None)
+
+
+def test_docker_start_preflight_insufficient(billing_store):
+    from backend.billing.docker_api import preflight_docker_start
+    from backend.billing.docker_meter import DockerBillingTracker, reset_docker_billing_tracker
+
+    tracker = DockerBillingTracker()
+    reset_docker_billing_tracker(tracker)
+    svc = BillingService(billing_store)
+    svc.ensure_account("broke", "free")
+    svc.debit_credits("broke", 9999.9, source="test")
+    token = billing_user_id.set("broke")
+    try:
+        with pytest.raises(InsufficientCreditsError):
+            preflight_docker_start("frontend")
+    finally:
+        billing_user_id.reset(token)
+        reset_docker_billing_tracker(None)
+
+
 def test_billing_api(billing_store, monkeypatch):
     monkeypatch.setenv("LINKIN_AUTH_FORCE", "1")
     monkeypatch.setenv("LINKIN_GATE_ID", "bill_user")

@@ -20,13 +20,16 @@ const EVENT_ZH: Record<string, string> = {
   opc_read: 'OPC 讀取',
   minecraft_op: 'Minecraft',
   docker_runtime: 'Docker 運行',
+  docker: 'Docker 運行',
   integrations_recall: '整合召回',
   topup: '充值',
   plan_quota: '方案配額',
 };
 
 export default function WalletPanel() {
-  const { account, ledger, usage, plans, loading, error, refresh } = useWallet(6000);
+  const { account, ledger, usage, plans, docker, loading, error, refresh } = useWallet(6000);
+  const dockerLedger = ledger.filter((row) => row.source === 'docker' || row.reference.startsWith('docker:'));
+  const dockerUsage = usage.filter((row) => row.event_type === 'docker_runtime');
   const [topupAmount, setTopupAmount] = useState('5000');
   const [topupBusy, setTopupBusy] = useState(false);
   const [topupMsg, setTopupMsg] = useState<string | null>(null);
@@ -151,6 +154,42 @@ export default function WalletPanel() {
             );
           })}
         </div>
+      </section>
+
+      <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
+        <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">Docker 即時計費</h3>
+        <p className="text-[11px] text-[#8E8E93]">
+          容器運行費率 × 運行時長，每 {docker?.tick_interval_sec ?? 30} 秒結算至積分；啟動前預檢餘額，不足時拒絕新啟動。
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-lg bg-black/20 px-3 py-2">
+            <p className="text-[10px] text-[#636366]">預估時費</p>
+            <p className="text-[14px] tabular-nums text-[#F5F5F7]">{fmtCredits(docker?.projected_hourly_credits ?? 0)} 積分/h</p>
+          </div>
+          <div className="rounded-lg bg-black/20 px-3 py-2">
+            <p className="text-[10px] text-[#636366]">已扣 Docker 積分</p>
+            <p className="text-[14px] tabular-nums text-[#FF9F9A]">{fmtCredits(docker?.total_docker_credits_spent ?? 0)}</p>
+          </div>
+          <div className="rounded-lg bg-black/20 px-3 py-2">
+            <p className="text-[10px] text-[#636366]">運行中服務</p>
+            <p className="text-[14px] text-[#F5F5F7]">{docker?.running_services?.length ?? 0} 個</p>
+          </div>
+        </div>
+        {(docker?.running_services?.length ?? 0) > 0 ? (
+          <ul className="mt-3 space-y-1 text-[11px] text-[#AEAEB2]">
+            {docker?.running_services?.map((svc) => (
+              <li key={svc.service} className="flex justify-between gap-2">
+                <span>{svc.service}{svc.is_core ? '（核心）' : ''}</span>
+                <span className="tabular-nums">{fmtCredits(svc.credits_per_hour)}/h · {svc.uptime_hours.toFixed(2)}h</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-[11px] text-[#48484A]">目前無計費中的運行容器（或 Docker 不可用）</p>
+        )}
+        {dockerUsage.length > 0 ? (
+          <p className="mt-2 text-[10px] text-[#636366]">最近 Docker 用量事件 {dockerUsage.length} 筆 · 分類帳 Docker 行 {dockerLedger.length} 筆</p>
+        ) : null}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">

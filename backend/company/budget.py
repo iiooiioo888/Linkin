@@ -364,6 +364,16 @@ class BudgetManager:
                     total, len(services),
                 )
 
+        # 即時結算至用戶靈境積分（增量 tick）
+        try:
+            from backend.billing.docker_meter import get_docker_billing_tracker
+
+            charges = get_docker_billing_tracker().settle_tick()
+            if charges:
+                services["_billing_charges"] = charges
+        except Exception as exc:
+            logger.debug("Docker 積分結算略過：%s", exc)
+
         return {"services": services, "total_cost": round(total, 4)}
 
     # ── Docker 預算控制 ──

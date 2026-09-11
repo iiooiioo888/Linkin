@@ -58,6 +58,7 @@ def emit_usage_event(
     reference: str = "",
     meta: dict[str, Any] | None = None,
     skip_debit: bool = False,
+    ledger_source: str | None = None,
 ) -> dict[str, Any] | None:
     """記錄 usage_event 並扣積分（fail-closed）。"""
     uid = _user(user_id)
@@ -73,7 +74,13 @@ def emit_usage_event(
     payload = dict(meta or {})
     payload["event_type"] = event_type
     if not skip_debit:
-        svc.debit_credits(uid, amount, source=event_type, reference=reference or event_type, meta=payload)
+        svc.debit_credits(
+            uid,
+            amount,
+            source=ledger_source or event_type,
+            reference=reference or event_type,
+            meta=payload,
+        )
     event = svc.store.add_usage_event(
         uid, event_type, amount, quantity=quantity, unit=unit, task_id=tid, reference=reference, meta=payload
     )
@@ -157,13 +164,16 @@ def meter_minecraft(tool: str, blocks: int = 0, **kwargs) -> dict | None:
 
 def meter_docker(service: str, hours: float, cost_usd: float, **kwargs) -> dict | None:
     credits = credits_for_docker_usd(cost_usd)
+    kwargs.setdefault("reference", f"docker:{service}")
+    meta = dict(kwargs.pop("meta", None) or {})
+    meta.update({"service": service, "cost_usd": cost_usd, "feature": "docker"})
     return emit_usage_event(
         "docker_runtime",
         credits,
         quantity=hours,
         unit="hour",
-        reference=service,
-        meta={"service": service, "cost_usd": cost_usd},
+        ledger_source="docker",
+        meta=meta,
         **kwargs,
     )
 

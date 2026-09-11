@@ -3,13 +3,14 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { fetchBilling, fetchBillingLedger, fetchBillingUsage } from '../api/client';
-import type { BillingAccount, BillingLedgerEntry, BillingUsageEvent } from '../types';
+import type { BillingAccount, BillingDockerSummary, BillingLedgerEntry, BillingUsageEvent } from '../types';
 
 export function useWallet(pollMs = 8000) {
   const [account, setAccount] = useState<BillingAccount | null>(null);
   const [ledger, setLedger] = useState<BillingLedgerEntry[]>([]);
   const [usage, setUsage] = useState<BillingUsageEvent[]>([]);
   const [plans, setPlans] = useState<Record<string, unknown>[]>([]);
+  const [docker, setDocker] = useState<BillingDockerSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +23,7 @@ export function useWallet(pollMs = 8000) {
       ]);
       setAccount(billing.account);
       setPlans(billing.plans ?? []);
+      setDocker(billing.docker ?? null);
       setLedger(ledgerResp.entries);
       setUsage(usageResp.events);
       setError(null);
@@ -45,5 +47,5 @@ export function useWallet(pollMs = 8000) {
     };
   }, [pollMs, refresh]);
 
-  return { account, ledger, usage, plans, loading, error, refresh };
+  return { account, ledger, usage, plans, docker, loading, error, refresh };
 }

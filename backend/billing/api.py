@@ -47,14 +47,26 @@ def _admin_allowed(request: Request) -> bool:
 
 
 def _account_payload(request: Request) -> dict[str, Any]:
+    from backend.billing.docker_meter import get_docker_billing_tracker
+
     user_id = _resolve_user(request)
     svc = get_billing_service()
     account = svc.get_account(user_id)
+    docker = get_docker_billing_tracker().summary(user_id=user_id)
+    docker_charges = [
+        e for e in svc.usage_events(user_id, limit=100) if e.get("event_type") in {"docker_runtime", "docker"}
+    ]
+    docker_credits_spent = round(sum(float(e.get("credits") or 0) for e in docker_charges), 4)
     return {
         "account": account,
         "plans": list_plans_public(),
         "rate_card": public_rate_card(),
         "enterprise": enterprise_status(),
+        "docker": {
+            **docker,
+            "recent_docker_events": docker_charges[:15],
+            "total_docker_credits_spent": docker_credits_spent,
+        },
     }
 
 

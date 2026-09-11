@@ -37,11 +37,29 @@ export interface BillingUsageEvent {
   created_at: string;
 }
 
+export interface BillingDockerSummary {
+  user_id: string;
+  running_services: Array<{
+    service: string;
+    owner: string;
+    rate_per_hour_usd: number;
+    credits_per_hour: number;
+    uptime_hours: number;
+    is_core: boolean;
+  }>;
+  projected_hourly_usd: number;
+  projected_hourly_credits: number;
+  tick_interval_sec: number;
+  recent_docker_events?: BillingUsageEvent[];
+  total_docker_credits_spent?: number;
+}
+
 export interface BillingSnapshot {
   account: BillingAccount;
   plans: Record<string, unknown>[];
   rate_card: Record<string, unknown>;
   enterprise: Record<string, unknown>;
+  docker?: BillingDockerSummary;
 }
 
 /** @deprecated 使用 BillingAccount */
