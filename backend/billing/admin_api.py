@@ -190,8 +190,11 @@ def admin_list_appeals(limit: int = 50) -> dict[str, Any]:
 
 
 @router.post("/appeals/{appeal_id}/resolve")
-def admin_resolve_appeal(appeal_id: str, note: str = "") -> dict[str, Any]:
-    return resolve_appeal(appeal_id, note=note)
+def admin_resolve_appeal(appeal_id: str, note: str = "", restore_credits: bool = False) -> dict[str, Any]:
+    try:
+        return resolve_appeal(appeal_id, note=note, restore_credits=restore_credits)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.get("/cache-stats")

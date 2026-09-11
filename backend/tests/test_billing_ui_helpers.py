@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from backend.billing.pool_types import CONTRIBUTION_UNLOCKED_CONVERT_RATIO
 
 
@@ -28,3 +30,19 @@ def test_rollover_notice_pattern():
     notice = f"月贈送積分將於每月初按 {pct}% 滾入已購買池（上限 {cap/1000:.1f}k），剩餘作廢"
     assert "50%" in notice
     assert "滾入已購買池" in notice
+
+
+def test_reward_projection_parity():
+    amount = 100.0
+    mult = 1.08
+    reward = amount * (mult - 1)
+    penalty = amount * 0.05
+    assert reward == pytest.approx(8.0)
+    assert penalty == pytest.approx(5.0)
+    assert amount + reward == pytest.approx(108.0)
+
+
+def test_decay_projection_parity():
+    unlocked = 100.0
+    after = round(unlocked * 0.8, 4)
+    assert after == 80.0

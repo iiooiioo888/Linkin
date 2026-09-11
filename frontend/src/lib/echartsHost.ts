@@ -3,7 +3,7 @@
  * 只註冊本專案用到的折線／柱狀／雷達與 Canvas 渲染。
  */
 import { useEffect, useRef } from 'react';
-import { BarChart, LineChart, RadarChart } from 'echarts/charts';
+import { BarChart, GaugeChart, LineChart, PieChart, RadarChart } from 'echarts/charts';
 import {
   GridComponent,
   LegendComponent,
@@ -17,6 +17,8 @@ import type { EChartsCoreOption } from 'echarts/core';
 echarts.use([
   LineChart,
   BarChart,
+  PieChart,
+  GaugeChart,
   RadarChart,
   GridComponent,
   TooltipComponent,

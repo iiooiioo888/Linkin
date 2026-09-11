@@ -34,6 +34,8 @@ class AppealRequest(BaseModel):
     task_id: str = ""
     reason: str = Field(min_length=1)
     detail: str = ""
+    appeal_kind: str = "general"
+    installment_id: str = ""
 
 
 def _resolve_user(request: Request) -> str:
@@ -132,7 +134,17 @@ def submit_appeal(req: AppealRequest, request: Request) -> dict[str, Any]:
     from backend.billing.appeals import create_appeal
 
     user_id = _resolve_user(request)
-    return create_appeal(user_id, task_id=req.task_id or None, reason=req.reason, detail=req.detail)
+    try:
+        return create_appeal(
+            user_id,
+            task_id=req.task_id or None,
+            reason=req.reason,
+            detail=req.detail,
+            appeal_kind=req.appeal_kind,
+            installment_id=req.installment_id or None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/appeals")
@@ -166,6 +178,14 @@ def my_grants(request: Request, limit: int = 50) -> dict[str, Any]:
 
     user_id = _resolve_user(request)
     return {"items": get_pool_store().list_grants(user_id, limit)}
+
+
+@router.get("/pools/ledger")
+def my_pool_ledger(request: Request, limit: int = 50) -> dict[str, Any]:
+    from backend.billing.pool_store import get_pool_store
+
+    user_id = _resolve_user(request)
+    return {"items": get_pool_store().list_pool_ledger(user_id, limit)}
 
 
 @router.post("/contribution/convert")

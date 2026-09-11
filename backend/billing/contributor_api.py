@@ -10,6 +10,7 @@ from backend.billing.api import _resolve_user
 from backend.billing.contribution_service import (
     contribution_status,
     convert_unlocked_to_purchased,
+    early_unlock_contribution,
     lock_contribution,
     process_due_installments,
 )
@@ -31,6 +32,10 @@ class LockRequest(BaseModel):
 
 class ConvertRequest(BaseModel):
     amount: float = Field(gt=0)
+
+
+class EarlyUnlockRequest(BaseModel):
+    installment_id: str = Field(min_length=4)
 
 
 @router.post("/bind-key")
@@ -70,7 +75,16 @@ def convert_contribution(body: ConvertRequest, request: Request) -> dict[str, An
 
 
 @router.post("/contribution/unlock-installments")
-def trigger_installments(request: Request) -> dict[str, Any]:
+def trigger_installments(request: Request, force: bool = False) -> dict[str, Any]:
     user_id = _resolve_user(request)
-    processed = process_due_installments(user_id)
+    processed = process_due_installments(user_id, force=force)
     return {"processed": processed, "status": contribution_status(user_id)}
+
+
+@router.post("/contribution/early-unlock")
+def early_unlock_endpoint(body: EarlyUnlockRequest, request: Request) -> dict[str, Any]:
+    user_id = _resolve_user(request)
+    try:
+        return early_unlock_contribution(user_id, body.installment_id)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
