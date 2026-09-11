@@ -24,11 +24,15 @@ export const consoleLayout = {
   /** 區塊垂直堆疊 */
   sectionStack: 'flex min-h-0 flex-col gap-2',
   sectionGap: 'gap-2',
-  /** KPI／統計列 */
+  /** KPI／統計列（3 欄） */
   kpiGrid: 'console-dense-grid console-dense-grid--3 console-dense-grid--equal-rows',
+  /** KPI／統計列（4 欄 — 系統總覽） */
+  kpiGrid4: 'console-dense-grid console-dense-grid--4 console-dense-grid--equal-rows',
   /** KPI 格填滿可用高度（分頁內無滾動） */
   kpiGridFill:
     'console-dense-grid console-dense-grid--3 console-dense-grid--equal-rows min-h-0 flex-1 [&>*]:min-h-0',
+  kpiGrid4Fill:
+    'console-dense-grid console-dense-grid--4 console-dense-grid--equal-rows min-h-0 flex-1 [&>*]:min-h-0',
   /** 巨型 KPI 列（≤3 個） */
   giantKpiRow: 'console-kpi-row shrink-0',
   /** 管線／角色工作台指標帶 */
@@ -77,7 +81,8 @@ export const consoleLayout = {
   refreshBtn:
     'rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] px-2 py-1 text-[11px] text-[var(--console-sub)] hover:text-[var(--console-ink)]',
   kpiLabel: 'text-[10px] uppercase tracking-wider text-[var(--console-faint)]',
-  kpiValue: 'mt-1 font-mono text-base tabular-nums text-[var(--console-ink)]',
+  kpiValue: 'mt-1 font-mono text-2xl tabular-nums text-[var(--console-ink)]',
+  kpiValueAccent: 'mt-1 font-mono text-2xl tabular-nums text-[var(--console-accent)]',
   chip: 'console-chip',
   chipActive: 'on',
   snippetRow: 'console-snippet-row',

@@ -304,10 +304,19 @@ export function KpiGrid({ fill, className, children, ...rest }: DivProps & { fil
   );
 }
 
+export function KpiGrid4({ fill, className, children, ...rest }: DivProps & { fill?: boolean }) {
+  return (
+    <div className={cn(fill ? consoleLayout.kpiGrid4Fill : consoleLayout.kpiGrid4, className)} {...rest}>
+      {children}
+    </div>
+  );
+}
+
 export function KpiCard({
   label,
   value,
   hint,
+  accent,
   valueClassName,
   className,
   spark,
@@ -315,6 +324,7 @@ export function KpiCard({
   label: ReactNode;
   value: ReactNode;
   hint?: ReactNode;
+  accent?: boolean;
   valueClassName?: string;
   className?: string;
   spark?: number[];
@@ -325,7 +335,7 @@ export function KpiCard({
     <div className={cn(consoleLayout.kpiCard, 'flex min-h-0 flex-col justify-between', className)}>
       <div>
         <p className={consoleLayout.kpiLabel}>{label}</p>
-        <p className={cn(consoleLayout.kpiValue, valueClassName)}>{value}</p>
+        <p className={cn(accent ? consoleLayout.kpiValueAccent : consoleLayout.kpiValue, valueClassName)}>{value}</p>
         {hint ? <p className="mt-1 text-[10px] text-[var(--console-sub)]">{hint}</p> : null}
       </div>
       {bars.length > 0 ? (
@@ -538,7 +548,7 @@ export function ConsoleRdToolbar({
     <div className={cn(consoleLayout.rdToolbar, className)}>
       {children ?? (
         <>
-          <h2 className={cn(consoleLayout.title, 'm-0 text-[#8a8f98]')}>{title}</h2>
+          <h2 className={cn(consoleLayout.title, 'm-0 text-[var(--console-sub)]')}>{title}</h2>
           {actions}
         </>
       )}

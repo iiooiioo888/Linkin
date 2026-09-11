@@ -22,7 +22,7 @@ export const COMPOSITION_META: Record<
   tools: { label: '工具綱要', color: '#BF5AF2', short: 'Tools' },
   user: { label: '用戶訊息', color: 'var(--console-green)', short: 'User' },
   injected: { label: '注入上下文', color: 'var(--console-amber)', short: 'Inj' },
-  assistant: { label: '助手回覆', color: '#0A84FF', short: 'Asst' },
+  assistant: { label: '助手回覆', color: 'var(--console-accent)', short: 'Asst' },
   tool_results: { label: '工具結果', color: 'var(--console-danger)', short: 'Res' },
 };
 

@@ -24,30 +24,36 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
-  --app-topbar-height: 40px;
+  --app-topbar-height: 48px;
   --app-statusbar-height: 22px;
   --mobile-tab-bar-height: 56px;
 
-  /* ---- 控制台 OCD 三欄設計 tokens（8pt grid · 軟色調） ---- */
+  /* ---- 控制台 OCD 三欄設計 tokens（8pt grid · zinc + indigo） ---- */
   --u: 8px;
-  --console-bg: #0a0a0a;
-  --console-sidebar: #0d0d0d;
-  --console-card: #141414;
-  --console-card-elevated: #1a1a1a;
-  --console-line: #2a2a2a;
-  --console-line-strong: #3a3a3a;
-  --console-ink: #e8e8e8;
-  --console-sub: #8a8a8a;
-  --console-faint: #555555;
-  --console-accent: #c98a7a;
-  --console-green: #6d9b7c;
-  --console-blue: #7a8fad;
-  --console-amber: #c4a574;
-  --console-danger: #9a7068;
-  --console-col-left: 224px;
-  --console-col-right: 280px;
-  --console-gap: 16px;
-  --console-pad: 16px;
+  --u2: 16px;
+  --u3: 24px;
+  --u4: 32px;
+  --u6: 48px;
+  --console-bg: #0e0e10;
+  --console-sidebar: #131316;
+  --console-card: #18181b;
+  --console-card-elevated: #1f1f23;
+  --console-line: #2a2a30;
+  --console-line-strong: #3f3f46;
+  --console-line-hi: var(--console-line-strong);
+  --console-ink: #e4e4e7;
+  --console-sub: #a1a1aa;
+  --console-faint: #52525b;
+  --console-accent: #6366f1;
+  --console-accent-soft: #818cf8;
+  --console-green: #34d399;
+  --console-blue: #38bdf8;
+  --console-amber: #fbbf24;
+  --console-danger: #f87171;
+  --console-col-left: calc(var(--u) * 28);
+  --console-col-right: calc(var(--u) * 35);
+  --console-gap: var(--u2);
+  --console-pad: var(--u2);
 }
 
 html {
@@ -63,7 +69,7 @@ body,
 
 body {
   margin: 0;
-  overflow-x: hidden;
+  overflow: hidden;
   overscroll-behavior-x: none;
   background-color: var(--apple-canvas);
   color: var(--apple-light);
@@ -238,18 +244,11 @@ body.scroll-lock {
 }
 
 .console-rail-item.on {
-  border-color: var(--console-line-strong);
+  border-color: transparent;
+  border-left: 2px solid var(--console-accent);
   background: var(--console-card);
   color: var(--console-ink);
-}
-
-.console-rail-item.on::before {
-  content: '';
-  width: 3px;
-  height: 12px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: var(--console-accent);
+  padding-left: 10px;
 }
 
 .console-chip {
@@ -322,7 +321,7 @@ body.scroll-lock {
   margin-top: 8px;
   color: var(--console-ink);
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: clamp(48px, 5vw, 72px);
+  font-size: clamp(40px, 4vw, 64px);
   font-weight: 400;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -362,7 +361,7 @@ body.scroll-lock {
 }
 
 .console-giant-kpi__spark span.on {
-  background: var(--console-blue);
+  background: var(--console-accent-soft);
 }
 
 .console-giant-kpi__spark span.accent {
@@ -388,8 +387,35 @@ body.scroll-lock {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.console-dense-grid--4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 768px) {
+  .console-dense-grid--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 .console-dense-grid--equal-rows > * {
   min-height: 0;
+}
+
+.console-progress-track {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--console-card-elevated);
+}
+
+.console-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--console-accent-soft);
+}
+
+.console-progress-fill--hot {
+  background: var(--console-danger);
 }
 
 .console-status-green { color: var(--console-green); }
@@ -413,10 +439,10 @@ body.scroll-lock {
 }
 
 .apple-chrome {
-  background: color-mix(in srgb, var(--console-sidebar) 88%, transparent);
-  border-color: var(--apple-hairline) !important;
-  backdrop-filter: blur(16px) saturate(1.1);
-  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  background: var(--console-sidebar);
+  border-color: var(--console-line) !important;
+  backdrop-filter: blur(12px) saturate(1.05);
+  -webkit-backdrop-filter: blur(12px) saturate(1.05);
 }
 
 .console-hdr-tabs {
@@ -435,8 +461,8 @@ body.scroll-lock {
   border: none;
   border-radius: 6px;
   background: transparent;
-  padding: 4px 9px;
-  color: var(--apple-tertiary);
+  padding: 6px 10px;
+  color: var(--console-sub);
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;
@@ -446,13 +472,14 @@ body.scroll-lock {
 }
 
 .console-hdr-tab:hover {
-  background: var(--apple-fill);
-  color: var(--apple-label);
+  background: color-mix(in srgb, var(--console-ink) 4%, transparent);
+  color: var(--console-ink);
 }
 
 .console-hdr-tab.on {
-  background: var(--apple-surface);
-  color: var(--apple-label);
+  background: color-mix(in srgb, var(--console-accent) 14%, transparent);
+  color: var(--console-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--console-accent) 28%, transparent);
 }
 
 /* 側欄／設定分區共用：一律標題＋說明＋金邊，名冊展開也不改成單行、不收起 */
@@ -719,7 +746,7 @@ body.scroll-lock {
 }
 
 .apple-btn-active {
-  border-color: rgba(10, 132, 255, 0.35) !important;
+  border-color: color-mix(in srgb, var(--console-accent) 35%, transparent) !important;
   background: rgba(10, 132, 255, 0.12) !important;
   color: var(--apple-blue-soft) !important;
   border-radius: 8px;

@@ -68,7 +68,7 @@ export interface WsCodeTok {
   k: 'plain' | 'keyword' | 'function' | 'string' | 'comment' | 'variable' | 'number';
 }
 
-const AVATAR_COLORS = ['#7a8fad', '#6d9b7c', '#8a8a8a', '#9a7068', '#555555', '#c4a574'];
+const AVATAR_COLORS = ['#6366f1', '#38bdf8', '#34d399', '#a1a1aa', '#818cf8', '#fbbf24'];
 
 const EVENT_LABELS: Record<string, string> = {
   company_start: '公司啟動',

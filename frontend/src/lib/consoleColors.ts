@@ -1,30 +1,31 @@
 /**
- * 控制台軟色調 token — 與 index.css :root --console-* 同步，供 TS／圖表使用。
+ * 控制台 zinc + indigo token — 與 index.css :root --console-* 同步，供 TS／圖表使用。
  */
 export const consoleColors = {
-  bg: '#0a0a0a',
-  sidebar: '#0d0d0d',
-  card: '#141414',
-  cardHi: '#1a1a1a',
-  line: '#2a2a2a',
-  lineHi: '#3a3a3a',
-  ink: '#e8e8e8',
-  sub: '#8a8a8a',
-  faint: '#555555',
-  accent: '#c98a7a',
-  green: '#6d9b7c',
-  blue: '#7a8fad',
-  amber: '#c4a574',
-  danger: '#9a7068',
+  bg: '#0e0e10',
+  sidebar: '#131316',
+  card: '#18181b',
+  cardHi: '#1f1f23',
+  line: '#2a2a30',
+  lineHi: '#3f3f46',
+  ink: '#e4e4e7',
+  sub: '#a1a1aa',
+  faint: '#52525b',
+  accent: '#6366f1',
+  accentSoft: '#818cf8',
+  green: '#34d399',
+  blue: '#38bdf8',
+  amber: '#fbbf24',
+  danger: '#f87171',
 } as const;
 
-/** ECharts／圓餅／柱狀圖預設色序（低飽和） */
+/** ECharts／圓餅／柱狀圖預設色序 */
 export const CHART_PALETTE = [
+  consoleColors.accent,
   consoleColors.blue,
-  consoleColors.sub,
   consoleColors.green,
   consoleColors.amber,
-  consoleColors.faint,
+  consoleColors.sub,
 ] as const;
 
 export const statusClasses = {

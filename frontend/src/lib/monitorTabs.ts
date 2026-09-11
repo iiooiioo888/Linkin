@@ -54,7 +54,7 @@ export const MONITOR_WORK_TABS: MonitorTabItem[] = [
 
 export const MONITOR_AUDIT_TABS: MonitorTabItem[] = [
   { key: 'feedback', icon: '♥', label: '用戶反饋' },
-  { key: 'metrics', icon: '◇', label: '運行指標' },
+  { key: 'metrics', icon: '◇', label: '系統總覽' },
 ];
 
 export const MONITOR_BILLING_TABS: MonitorTabItem[] = [
@@ -99,7 +99,7 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     label: '審計',
     items: [
       { key: 'feedback', icon: '♥', label: '用戶反饋', hint: '評分與審計留痕' },
-      { key: 'metrics', icon: '◇', label: '運行指標', hint: '快取／反思／優化' },
+      { key: 'metrics', icon: '◇', label: '系統總覽', hint: '快取／反思／優化' },
     ],
   },
   {

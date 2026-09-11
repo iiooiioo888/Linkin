@@ -52,7 +52,7 @@ export default function TopBar({
     : null;
 
   return (
-    <header className="app-topbar flex h-10 shrink-0 items-center gap-2 border-b border-white/[0.06] apple-chrome px-3">
+    <header className="app-topbar flex shrink-0 items-center gap-2 border-b apple-chrome px-4">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         <button
           onClick={onToggleSidebar}
@@ -64,7 +64,9 @@ export default function TopBar({
           </svg>
         </button>
 
-        <span className="shrink-0 text-[13px] font-semibold text-[var(--console-ink)]">靈境·Linkin</span>
+        <span className="shrink-0 text-[13px] font-semibold tracking-tight text-[var(--console-ink)]">
+          <span className="console-status-accent">靈境</span>·Linkin
+        </span>
         {activity === 'console' && onMonitorTabChange ? (
           <>
             <nav className="console-hdr-tabs ml-2 hidden min-w-0 md:flex" aria-label="控制台主入口">
@@ -115,7 +117,7 @@ export default function TopBar({
         )}
 
         {getGateUser() ? (
-          <span className="hidden max-w-[88px] truncate px-1 text-[10px] text-[#636366] md:inline" title={getGateUser() ?? ''}>
+          <span className="hidden max-w-[88px] truncate px-1 text-[10px] text-[var(--console-faint)] md:inline" title={getGateUser() ?? ''}>
             {getGateUser()}
           </span>
         ) : null}

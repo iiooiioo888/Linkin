@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>系統總覽 — 強迫症暗黑三欄</title>
+  <style>
+    :root {
+      --u: 8px; --u2: 16px; --u3: 24px; --u4: 32px; --u6: 48px;
+      --bg: #0e0e10;
+      --sidebar: #131316;
+      --card: #18181b;
+      --card-hi: #1f1f23;
+      --line: #2a2a30;
+      --line-hi: #3f3f46;
+      --ink: #e4e4e7;
+      --sub: #a1a1aa;
+      --faint: #52525b;
+      --accent: #6366f1;
+      --accent-soft: #818cf8;
+      --green: #34d399;
+      --blue: #38bdf8;
+      --amber: #fbbf24;
+      --red: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', sans-serif;
+      font-size: 12px;
+    }
+    .topbar {
+      height: var(--u6);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--u2);
+      border-bottom: 1px solid var(--line);
+      background: var(--sidebar);
+    }
+    .brand { font-weight: 600; font-size: 13px; }
+    .brand span { color: var(--accent); }
+    .nav { display: flex; gap: 4px; }
+    .nav a {
+      padding: 6px 10px;
+      border-radius: 6px;
+      color: var(--sub);
+      text-decoration: none;
+    }
+    .nav a.on {
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      color: var(--ink);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+    }
+    .status { display: flex; align-items: center; gap: 6px; color: var(--sub); font-size: 10px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .dot.warn { background: var(--amber); }
+    .main {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: calc(var(--u) * 28) 1fr calc(var(--u) * 35);
+    }
+    .col-left, .col-right { background: var(--sidebar); overflow: hidden; display: flex; flex-direction: column; }
+    .col-left { border-right: 1px solid var(--line); }
+    .col-right { border-left: 1px solid var(--line); }
+    .col-center { min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .scroll { flex: 1; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line-hi) transparent; }
+    .scroll::-webkit-scrollbar { width: 4px; }
+    .scroll::-webkit-scrollbar-thumb { background: var(--line-hi); border-radius: 999px; }
+    .group-title {
+      padding: 10px 12px 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      color: var(--sub);
+      cursor: pointer;
+    }
+    .nav-item.on {
+      border-left: 2px solid var(--accent);
+      background: var(--card);
+      color: var(--ink);
+      padding-left: 10px;
+    }
+    .badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: var(--card-hi);
+      color: var(--sub);
+    }
+    .section-head {
+      padding: var(--u2);
+      border-bottom: 1px solid var(--line);
+    }
+    .section-head h1 { margin: 0; font-size: 15px; }
+    .section-head p { margin: 4px 0 0; color: var(--faint); font-size: 10px; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--u);
+      padding: var(--u2);
+    }
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .kpi label {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--faint);
+    }
+    .kpi .val {
+      margin-top: 8px;
+      font-family: ui-monospace, monospace;
+      font-size: 40px;
+      line-height: 1;
+      color: var(--ink);
+    }
+    .kpi .val.accent { color: var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+    th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); }
+    .track { height: 4px; width: 96px; background: var(--card-hi); border-radius: 999px; overflow: hidden; }
+    .track > i { display: block; height: 100%; background: var(--accent-soft); border-radius: 999px; }
+    .panel { margin: 0 var(--u2) var(--u2); border: 1px solid var(--line); border-radius: 8px; background: var(--card); overflow: hidden; }
+    .panel-head {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--card-hi);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+    .panel-body { padding: 8px 12px; }
+    .qa { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .qa button {
+      border: 1px solid var(--line);
+      background: var(--card-hi);
+      color: var(--sub);
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 11px; }
+    .row:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="brand"><span>靈境</span>·Linkin</div>
+      <nav class="nav">
+        <a href="#" class="on">總覽</a>
+        <a href="#">執行</a>
+        <a href="#">審計</a>
+        <a href="#">計費</a>
+      </nav>
+    </div>
+    <div class="status"><span class="dot"></span> 運行正常 · 積分 12.4k</div>
+  </header>
+  <div class="main">
+    <aside class="col-left">
+      <div class="section-head"><h1>系統總覽</h1><p>EvoLoop 運行時</p></div>
+      <div class="scroll">
+        <div class="group-title">監控</div>
+        <div class="nav-item on">指標總覽 <span class="badge">live</span></div>
+        <div class="nav-item">優化路線</div>
+        <div class="nav-item">反思鏈路</div>
+      </div>
+    </aside>
+    <main class="col-center">
+      <div class="section-head"><h1>系統總覽</h1><p>快取 · 反思 · Trace · 優化</p></div>
+      <div class="scroll">
+        <div class="kpi-grid">
+          <div class="kpi"><label>快取命中</label><div class="val accent">42%</div></div>
+          <div class="kpi"><label>任務成功率</label><div class="val">91%</div></div>
+          <div class="kpi"><label>反思均輪次</label><div class="val">2.1</div></div>
+          <div class="kpi"><label>Trace</label><div class="val">128</div></div>
+        </div>
+        <div class="panel" style="margin-top:0;">
+          <table>
+            <thead><tr><th>指標</th><th>值</th><th>趨勢</th><th>狀態</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>LLM 快取命中率</td>
+                <td>42%</td>
+                <td><div class="track"><i style="width:42%"></i></div></td>
+                <td style="color:var(--green)">良好</td>
+              </tr>
+              <tr>
+                <td>任務成功率</td>
+                <td>91%</td>
+                <td><div class="track"><i style="width:91%"></i></div></td>
+                <td style="color:var(--green)">正常</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+    <aside class="col-right">
+      <div class="section-head"><h1>側欄</h1></div>
+      <div class="scroll">
+        <div class="panel">
+          <div class="panel-head">系統狀態</div>
+          <div class="panel-body">
+            <div class="row"><span>運行時</span><span style="color:var(--green)">正常</span></div>
+            <div class="row"><span>優化啟用</span><span style="color:var(--accent)">3</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">近期活動</div>
+          <div class="panel-body">
+            <div class="row"><span>task_8f2a…</span><span style="color:var(--blue)">2 輪</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">快速操作</div>
+          <div class="panel-body qa">
+            <button>API 路由</button><button>任務隊列</button>
+            <button>AI 用量</button><button>基礎設施</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>
