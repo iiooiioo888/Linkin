@@ -106,16 +106,18 @@ export default function ChatBottomPanel({
       data-testid="chat-bottom-panel"
     >
       <div className="ws-bottom-h" aria-label="對話詳細區">
-        <div className="ws-tabs">
+        <div className="ws-tabs" role="tablist">
           <button
             type="button"
-            className={`ws-tab${tab === 'context' ? ' is-on' : ''}`}
+            role="tab"
+            aria-selected={tab === 'context'}
+            className={`ws-tab ws-tab--context touch-manipulation${tab === 'context' ? ' is-on' : ''}`}
             onClick={() => onTab('context')}
             data-testid="chat-bottom-tab-context"
             title="Context 組成／趨勢／瀏覽器／事件（本對話詳細區 · 鎖定當前會話 · /context）"
           >
             <Ico d="M4 6h16M4 12h10M4 18h14" />
-            Context
+            <span className="ws-tab-label">Context</span>
             <span className="ws-tab-badge" title="對話詳細區主表面 · 不可切換其他對話">
               本對話
             </span>
@@ -125,21 +127,47 @@ export default function ChatBottomPanel({
               </span>
             ) : null}
           </button>
-          <button type="button" className={`ws-tab${tab === 'files' ? ' is-on' : ''}`} onClick={() => onTab('files')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'files'}
+            className={`ws-tab touch-manipulation${tab === 'files' ? ' is-on' : ''}`}
+            onClick={() => onTab('files')}
+          >
             <Ico d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-            AI 輸出文件空間 <span className="ws-count">{files.length}</span>
+            <span className="ws-tab-label ws-tab-label--wide">AI 輸出文件空間</span>
+            <span className="ws-tab-label ws-tab-label--narrow">AI 輸出文件</span>
+            <span className="ws-count">{files.length}</span>
           </button>
-          <button type="button" className={`ws-tab${tab === 'terminal' ? ' is-on' : ''}`} onClick={() => onTab('terminal')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'terminal'}
+            className={`ws-tab touch-manipulation${tab === 'terminal' ? ' is-on' : ''}`}
+            onClick={() => onTab('terminal')}
+          >
             <Ico d="M4 17l6-6-6-6M12 19h8" />
-            終端機 <span className="ws-count">{terminal.length}</span>
+            <span className="ws-tab-label">終端機</span>
+            <span className="ws-count">{terminal.length}</span>
           </button>
-          <button type="button" className={`ws-tab${tab === 'problems' ? ' is-on' : ''}`} onClick={() => onTab('problems')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'problems'}
+            className={`ws-tab touch-manipulation${tab === 'problems' ? ' is-on' : ''}`}
+            onClick={() => onTab('problems')}
+          >
             <Ico d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            問題{' '}
+            <span className="ws-tab-label">問題</span>
             <span className={`ws-count${problems.length ? ' is-err' : ''}`}>{problems.length}</span>
           </button>
         </div>
-        <button type="button" className="ws-btn ws-btn-icon" onClick={onToggle} aria-label={collapsed ? '展開詳細區' : '收合詳細區'}>
+        <button
+          type="button"
+          className="ws-btn ws-btn-icon ws-bottom-close touch-manipulation"
+          onClick={onToggle}
+          aria-label={collapsed ? '展開詳細區' : '收合詳細區'}
+        >
           <Ico d="M6 18L18 6M6 6l12 12" />
         </button>
       </div>

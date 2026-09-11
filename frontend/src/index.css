@@ -1079,68 +1079,68 @@ body.scroll-lock {
   }
 }
 
-/* 行動端底部主活動 Tab */
-.activity-bar-bottom {
-  position: fixed;
-  right: 0;
-  bottom: calc(var(--app-statusbar-height) + var(--safe-area-bottom));
-  left: 0;
-  z-index: 40;
-  display: flex;
-  align-items: stretch;
-  justify-content: space-around;
-  gap: 2px;
-  height: var(--mobile-tab-bar-height);
-  border-top: 1px solid var(--apple-hairline);
-  background: rgba(13, 13, 15, 0.94);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  padding: 0 var(--safe-area-right) 0 var(--safe-area-left);
-}
-
-.activity-tab-bottom {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  padding: 4px 2px;
-  color: var(--apple-tertiary);
-  cursor: pointer;
-  font-family: inherit;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.activity-tab-bottom.is-active {
-  color: var(--apple-label);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.activity-tab-bottom__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-}
-
-.activity-tab-bottom__label {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 9px;
-  font-weight: 500;
-  line-height: 1.1;
-}
-
 /* 行動端 OPC 右欄改為全屏抽屜 */
 @media (max-width: 767px) {
+  /* 行動端底部主活動 Tab（桌面不渲染；勿在此斷點外設 display:flex，以免蓋過 md:hidden） */
+  .activity-bar-bottom {
+    position: fixed;
+    right: 0;
+    bottom: calc(var(--app-statusbar-height) + var(--safe-area-bottom));
+    left: 0;
+    z-index: 40;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 2px;
+    height: var(--mobile-tab-bar-height);
+    border-top: 1px solid var(--apple-hairline);
+    background: rgba(13, 13, 15, 0.94);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    padding: 0 var(--safe-area-right) 0 var(--safe-area-left);
+  }
+
+  .activity-tab-bottom {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    padding: 4px 2px;
+    color: var(--apple-tertiary);
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .activity-tab-bottom.is-active {
+    color: var(--apple-label);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .activity-tab-bottom__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+  }
+
+  .activity-tab-bottom__label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 9px;
+    font-weight: 500;
+    line-height: 1.1;
+  }
+
   .right-panel-drawer.is-open {
     position: fixed;
     top: calc(var(--app-topbar-height) + var(--safe-area-top));
@@ -4800,6 +4800,7 @@ body.scroll-lock {
 
 .ws-tabs {
   display: flex;
+  min-width: 0;
   gap: 4px;
 }
 
@@ -4816,7 +4817,20 @@ body.scroll-lock {
   font-family: inherit;
   font-size: 11px;
   font-weight: 500;
+  white-space: nowrap;
   transition: all 0.15s;
+}
+
+.ws-tab-label {
+  flex-shrink: 0;
+}
+
+.ws-tab-label--narrow {
+  display: none;
+}
+
+.ws-tab--context .ws-tab-label {
+  flex-shrink: 0;
 }
 
 .ws-tab:hover {
@@ -5455,6 +5469,78 @@ body.scroll-lock {
 
   .ws-chat .apple-input-bar {
     padding-bottom: calc(12px + var(--safe-area-bottom));
+  }
+
+  /* 對話底部詳細區分頁：橫向捲動、單行標籤、不與 composer 重疊 */
+  .ws-bottom.is-off {
+    height: auto;
+    min-height: 44px;
+  }
+
+  .ws-bottom-h {
+    height: auto;
+    min-height: 44px;
+    align-items: stretch;
+    padding: 0;
+    gap: 0;
+  }
+
+  .ws-tabs {
+    flex: 1;
+    min-width: 0;
+    flex-wrap: nowrap;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding: 4px 8px 4px 12px;
+  }
+
+  .ws-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ws-tab {
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .ws-tab-label--wide {
+    display: none;
+  }
+
+  .ws-tab-label--narrow {
+    display: inline;
+  }
+
+  .ws-tab--context {
+    gap: 4px;
+  }
+
+  .ws-tab-badge {
+    flex-shrink: 0;
+    margin-left: 2px;
+  }
+
+  .ws-bottom-close {
+    align-self: center;
+    flex-shrink: 0;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    margin-right: 4px;
+  }
+
+  .ws-bottom.is-context {
+    height: min(42vh, 360px);
+  }
+
+  .ws-main > .apple-input-bar {
+    flex-shrink: 0;
   }
 }
 
