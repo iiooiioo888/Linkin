@@ -17,7 +17,7 @@ def begin_billed_task(
     iterations: int = 1,
     roles: int = 1,
     model: str = "default",
-    org_id: str | None = None,
+    lock_multiplier: float = 1.0,
 ) -> dict[str, Any]:
     tid = task_id or f"task_{uuid.uuid4().hex[:16]}"
     pools = get_pools_service()
@@ -28,12 +28,12 @@ def begin_billed_task(
         iterations=iterations,
         roles=roles,
         model=model,
+        lock_multiplier=lock_multiplier,
     )
     binding = select_and_bind_key(
         tid,
         estimate_credits=reserve["reserved_credits"],
         model=model,
-        org_id=org_id,
     )
     return {**reserve, **binding}
 
@@ -43,8 +43,12 @@ def record_llm_usage(
     *,
     input_tokens: int,
     output_tokens: int = 0,
-    cached_tokens: int = 0,
+    cache_read_tokens: int = 0,
     cache_write_tokens: int = 0,
+    cached_tokens: int = 0,
+    l3_cache_hit: bool = False,
+    cache_metadata_missing: bool = False,
+    vendor_id: str | None = None,
     model: str = "default",
     role: str = "",
     tool: str = "",
@@ -55,8 +59,12 @@ def record_llm_usage(
         task_id,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        cached_tokens=cached_tokens,
+        cache_read_tokens=cache_read_tokens or cached_tokens,
         cache_write_tokens=cache_write_tokens,
+        cached_tokens=cached_tokens,
+        l3_cache_hit=l3_cache_hit,
+        cache_metadata_missing=cache_metadata_missing,
+        vendor_id=vendor_id,
         model=model,
         role=role,
         tool=tool,

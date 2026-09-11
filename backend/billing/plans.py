@@ -33,26 +33,8 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
         "price_usd_month": 99,
         "monthly_credits": int(os.getenv("LINKIN_PLAN_PRO_CREDITS", "100000")),
         "concurrency": 5,
-        "features": [PACK_BASE_MODELS, PACK_QUANT, PACK_ADVANCED_MODELS, PACK_MINECRAFT],
-        "description_zh": "每月 10 萬積分 · 5 併發 · 量化與進階模型",
-    },
-    "team": {
-        "id": "team",
-        "name": "Team",
-        "name_zh": "團隊版",
-        "price_usd_month": 499,
-        "monthly_credits": int(os.getenv("LINKIN_PLAN_TEAM_CREDITS", "500000")),
-        "concurrency": 20,
-        "features": [
-            PACK_BASE_MODELS,
-            PACK_QUANT,
-            PACK_ADVANCED_MODELS,
-            PACK_MINECRAFT,
-            PACK_RAHO,
-            PACK_OPC,
-            PACK_AUDIT,
-        ],
-        "description_zh": "每月 50 萬積分 · 20 併發 · RAHO · OPC · 審計",
+        "features": [PACK_BASE_MODELS, PACK_QUANT, PACK_ADVANCED_MODELS, PACK_MINECRAFT, PACK_RAHO, PACK_OPC],
+        "description_zh": "每月 10 萬積分 · 5 併發 · 量化 · RAHO · OPC",
     },
     "enterprise": {
         "id": "enterprise",
@@ -94,7 +76,10 @@ FEATURE_LABELS_ZH: dict[str, str] = {
 
 
 def get_plan(plan_id: str) -> dict[str, Any]:
-    return PLAN_DEFINITIONS.get(plan_id or "free", PLAN_DEFINITIONS["free"])
+    pid = (plan_id or "free").strip()
+    if pid == "team":
+        pid = "pro"
+    return PLAN_DEFINITIONS.get(pid, PLAN_DEFINITIONS["free"])
 
 
 def plan_has_feature(plan_id: str, feature: str) -> bool:

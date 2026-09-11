@@ -12,12 +12,14 @@ from typing import Any, Iterator
 
 from backend.billing.plans import get_plan
 from backend.billing.pool_types import (
-    POOL_CONTRIBUTION,
+    POOL_CONTRIBUTION_LOCKED,
+    POOL_CONTRIBUTION_UNLOCKED,
     POOL_LOCKED,
     POOL_MONTHLY_GRANT,
     POOL_PURCHASED,
     SPEND_ORDER,
 )
+from backend.billing.vendor_configs import DEFAULT_VENDOR_CONFIGS
 from backend.billing.pricing_engine import DEFAULT_CREDIT_POLICY, DEFAULT_PRICING_CONFIG
 
 _DB_LOCK = threading.Lock()
@@ -39,6 +41,32 @@ CREATE TABLE IF NOT EXISTS grants (
     remaining REAL NOT NULL,
     expires_at TEXT,
     source TEXT NOT NULL,
+    origin TEXT NOT NULL DEFAULT '',
+    lock_days INTEGER,
+    lock_multiplier REAL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS vendor_configs (
+    version INTEGER PRIMARY KEY AUTOINCREMENT,
+    status TEXT NOT NULL DEFAULT 'draft',
+    effective_at TEXT NOT NULL,
+    config_json TEXT NOT NULL,
+    created_by TEXT NOT NULL DEFAULT 'system',
+    reason TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS billing_appeals (
+    appeal_id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    task_id TEXT,
+    reason TEXT NOT NULL DEFAULT '',
+    detail TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending',
+    resolved_at TEXT,
+    resolved_by TEXT,
+    resolution_note TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -85,7 +113,8 @@ CREATE TABLE IF NOT EXISTS rollover_records (
     rolled_to_purchased REAL NOT NULL,
     forfeited REAL NOT NULL,
     policy_version INTEGER NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    UNIQUE(account_id, month_key)
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -97,7 +126,10 @@ CREATE TABLE IF NOT EXISTS tasks (
     settled_credits REAL NOT NULL DEFAULT 0,
     pricing_config_version INTEGER,
     credit_policy_version INTEGER,
+    rollover_policy_version INTEGER,
     pricing_snapshot_json TEXT,
+    run_mode TEXT NOT NULL DEFAULT 'normal',
+    lock_multiplier REAL NOT NULL DEFAULT 1.0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -233,8 +265,24 @@ class PoolStore:
     def _init_schema(self) -> None:
         with self._conn() as conn:
             conn.executescript(_POOL_SCHEMA)
+            self._migrate_columns(conn)
             self._migrate_legacy_balance(conn)
             self._seed_defaults(conn)
+
+    def _migrate_columns(self, conn: sqlite3.Connection) -> None:
+        """增量欄位（舊 DB 相容）。"""
+        for stmt in (
+            "ALTER TABLE grants ADD COLUMN origin TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE grants ADD COLUMN lock_days INTEGER",
+            "ALTER TABLE grants ADD COLUMN lock_multiplier REAL",
+            "ALTER TABLE tasks ADD COLUMN run_mode TEXT NOT NULL DEFAULT 'normal'",
+            "ALTER TABLE tasks ADD COLUMN lock_multiplier REAL NOT NULL DEFAULT 1.0",
+            "ALTER TABLE tasks ADD COLUMN rollover_policy_version INTEGER",
+        ):
+            try:
+                conn.execute(stmt)
+            except sqlite3.OperationalError:
+                pass
 
     def _migrate_legacy_balance(self, conn: sqlite3.Connection) -> None:
         try:
@@ -283,12 +331,18 @@ class PoolStore:
                     now,
                 ),
             )
+        if conn.execute("SELECT COUNT(*) AS c FROM vendor_configs").fetchone()["c"] == 0:
+            conn.execute(
+                """INSERT INTO vendor_configs(status, effective_at, config_json, created_by, reason, created_at)
+                   VALUES ('active', ?, ?, 'system', '初始廠商配置', ?)""",
+                (now, json.dumps(DEFAULT_VENDOR_CONFIGS, ensure_ascii=False), now),
+            )
 
     def ensure_pools(self, user_id: str, plan_id: str = "free") -> str:
         account_id = user_id.strip()
         now = _utc_now()
         with self._conn() as conn:
-            for pool in (POOL_MONTHLY_GRANT, POOL_PURCHASED, POOL_CONTRIBUTION, POOL_LOCKED):
+            for pool in (POOL_MONTHLY_GRANT, POOL_PURCHASED, POOL_CONTRIBUTION_UNLOCKED, POOL_CONTRIBUTION_LOCKED, POOL_LOCKED):
                 conn.execute(
                     "INSERT OR IGNORE INTO balances(account_id, pool_type, amount, updated_at) VALUES (?, ?, 0, ?)",
                     (account_id, pool, now),
@@ -312,9 +366,9 @@ class PoolStore:
         grant_id = f"g_{uuid.uuid4().hex[:12]}"
         end = datetime.now(timezone.utc).replace(day=28).isoformat()
         conn.execute(
-            """INSERT INTO grants(grant_id, account_id, pool_type, amount, remaining, expires_at, source, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (grant_id, account_id, POOL_MONTHLY_GRANT, amount, amount, end, source, now),
+            """INSERT INTO grants(grant_id, account_id, pool_type, amount, remaining, expires_at, source, origin, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (grant_id, account_id, POOL_MONTHLY_GRANT, amount, amount, end, source, f"plan:{plan_id}", now),
         )
         conn.execute(
             """INSERT INTO balances(account_id, pool_type, amount, updated_at) VALUES (?, ?, ?, ?)
@@ -358,13 +412,28 @@ class PoolStore:
         cap = float(tier.get("rollover_cap", row["rollover_cap"]))
         return {"version": int(row["version"]), "monthly_rollover_ratio": ratio, "rollover_cap": cap, "by_tier": by_tier}
 
+    def active_vendor_config(self) -> dict[str, Any]:
+        with self._conn() as conn:
+            row = conn.execute(
+                """SELECT version, config_json FROM vendor_configs
+                   WHERE status='active' ORDER BY version DESC LIMIT 1"""
+            ).fetchone()
+        if not row:
+            return {"version": 0, "config": DEFAULT_VENDOR_CONFIGS}
+        return {"version": int(row["version"]), "config": json.loads(row["config_json"])}
+
     def snapshot_pricing(self, plan_id: str = "free") -> dict[str, Any]:
         pc = self.active_pricing_config()
         cp = self.active_credit_policy(plan_id)
+        vc = self.active_vendor_config()
+        merged = dict(pc["config"])
+        merged["vendor_configs"] = vc["config"]
         return {
             "pricing_config_version": pc["version"],
             "credit_policy_version": cp["version"],
-            "pricing_config": pc["config"],
+            "rollover_policy_version": cp["version"],
+            "vendor_config_version": vc["version"],
+            "pricing_config": merged,
             "credit_policy": cp,
         }
 
@@ -403,6 +472,15 @@ class PoolStore:
             )
         return entry_id
 
+    def atomic_debit_pool(self, conn: sqlite3.Connection, account_id: str, pool_type: str, amount: float, now: str) -> bool:
+        """原子扣款：UPDATE ... WHERE amount >= X。"""
+        cur = conn.execute(
+            """UPDATE balances SET amount = amount - ?, updated_at = ?
+               WHERE account_id = ? AND pool_type = ? AND amount >= ?""",
+            (amount, now, account_id, pool_type, amount),
+        )
+        return cur.rowcount > 0
+
     def spend_from_pools(
         self,
         account_id: str,
@@ -427,11 +505,18 @@ class PoolStore:
                 avail = float(row["amount"]) if row else 0.0
                 if avail <= 0:
                     continue
-                take = min(avail, remaining)
-                conn.execute(
-                    "UPDATE balances SET amount=?, updated_at=? WHERE account_id=? AND pool_type=?",
-                    (round(avail - take, 4), now, account_id, pool),
-                )
+                take = round(min(avail, remaining), 4)
+                if not self.atomic_debit_pool(conn, account_id, pool, take, now):
+                    row2 = conn.execute(
+                        "SELECT amount FROM balances WHERE account_id=? AND pool_type=?",
+                        (account_id, pool),
+                    ).fetchone()
+                    avail2 = float(row2["amount"]) if row2 else 0.0
+                    if avail2 <= 0:
+                        continue
+                    take = round(min(avail2, remaining), 4)
+                    if not self.atomic_debit_pool(conn, account_id, pool, take, now):
+                        raise ValueError("INSUFFICIENT_CREDITS")
                 if pool == POOL_MONTHLY_GRANT:
                     conn.execute(
                         """UPDATE grants SET remaining = MAX(0, remaining - ?)
@@ -465,10 +550,14 @@ class PoolStore:
         description: str = "",
         expires_at: str | None = None,
         task_id: str | None = None,
+        origin: str = "",
+        lock_days: int | None = None,
+        lock_multiplier: float | None = None,
     ) -> None:
         if amount <= 0:
             return
         now = _utc_now()
+        grant_origin = origin or source
         with self._conn() as conn:
             conn.execute(
                 """INSERT INTO balances(account_id, pool_type, amount, updated_at) VALUES (?, ?, ?, ?)
@@ -476,12 +565,13 @@ class PoolStore:
                    amount = balances.amount + excluded.amount, updated_at = excluded.updated_at""",
                 (account_id, pool_type, amount, now),
             )
-            if pool_type in (POOL_MONTHLY_GRANT, POOL_CONTRIBUTION):
+            if pool_type in (POOL_MONTHLY_GRANT, POOL_CONTRIBUTION_UNLOCKED, POOL_CONTRIBUTION_LOCKED):
                 gid = f"g_{uuid.uuid4().hex[:12]}"
                 conn.execute(
-                    """INSERT INTO grants(grant_id, account_id, pool_type, amount, remaining, expires_at, source, created_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (gid, account_id, pool_type, amount, amount, expires_at, source, now),
+                    """INSERT INTO grants(grant_id, account_id, pool_type, amount, remaining, expires_at,
+                       source, origin, lock_days, lock_multiplier, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (gid, account_id, pool_type, amount, amount, expires_at, source, grant_origin, lock_days, lock_multiplier, now),
                 )
         total = self.total_spendable(account_id)
         self.append_ledger(
@@ -495,21 +585,35 @@ class PoolStore:
             task_id=task_id,
         )
 
-    def create_task_record(self, task_id: str, account_id: str, estimate: float, snapshot: dict[str, Any]) -> None:
+    def create_task_record(
+        self,
+        task_id: str,
+        account_id: str,
+        estimate: float,
+        reserved: float,
+        snapshot: dict[str, Any],
+        *,
+        run_mode: str = "normal",
+        lock_multiplier: float = 1.0,
+    ) -> None:
         now = _utc_now()
         with self._conn() as conn:
             conn.execute(
                 """INSERT INTO tasks(task_id, account_id, estimate_credits, reserved_credits,
-                   pricing_config_version, credit_policy_version, pricing_snapshot_json, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   pricing_config_version, credit_policy_version, rollover_policy_version,
+                   pricing_snapshot_json, run_mode, lock_multiplier, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     task_id,
                     account_id,
                     estimate,
-                    estimate,
+                    reserved,
                     snapshot.get("pricing_config_version"),
                     snapshot.get("credit_policy_version"),
+                    snapshot.get("rollover_policy_version"),
                     json.dumps(snapshot, ensure_ascii=False),
+                    run_mode,
+                    lock_multiplier,
                     now,
                     now,
                 ),
@@ -517,7 +621,7 @@ class PoolStore:
             conn.execute(
                 """INSERT INTO pool_reservations(reservation_id, task_id, account_id, amount, status, created_at)
                    VALUES (?, ?, ?, ?, 'held', ?)""",
-                (f"rsv_{uuid.uuid4().hex[:12]}", task_id, account_id, estimate, now),
+                (f"rsv_{uuid.uuid4().hex[:12]}", task_id, account_id, reserved, now),
             )
 
     def bind_task_key(self, task_id: str, key_id: str, *, org_id: str | None = None, reason: str = "single_key") -> None:
@@ -606,6 +710,12 @@ class PoolStore:
                 ).fetchone()
                 unused = float(row["amount"]) if row else 0.0
                 if unused <= 0:
+                    continue
+                existing = conn.execute(
+                    "SELECT 1 FROM rollover_records WHERE account_id=? AND month_key=?",
+                    (account_id, mk),
+                ).fetchone()
+                if existing:
                     continue
                 rolled = min(unused * ratio, cap)
                 forfeited = unused - rolled

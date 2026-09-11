@@ -89,7 +89,15 @@ export default function WalletPanel() {
             方案：{account?.plan_name_zh ?? '—'} · 月度贈送 {fmtCredits(account?.pool_balances?.monthly_grant ?? 0)} · 已購買 {fmtCredits(account?.pool_balances?.purchased ?? 0)}
           </p>
           <p className="mt-0.5 text-[10px] text-[#636366]">
-            定價版本 v{account?.pricing_config_version ?? '—'} · 積分不可轉贈／轉移
+            定價 v{account?.pricing_config_version ?? '—'} · 廠商偏好已套用 · 積分不可轉贈
+          </p>
+          {(account?.pool_balances?.contribution_unlocked ?? 0) > 0 ? (
+            <p className="mt-1 text-[10px] text-[#64D2FF]">
+              貢獻積分（未鎖）{fmtCredits(account.pool_balances.contribution_unlocked)} · 可 1:0.4 轉已購買
+            </p>
+          ) : null}
+          <p className="mt-1 text-[10px] text-[#636366]">
+            月度贈送於每月初按比例滾入已購買池，剩餘作廢；L3 快取命中僅計 10% 費用
           </p>
           {account?.low_balance ? (
             <p className="mt-2 text-[11px] text-[#FF9F0A]">積分偏低，請升級方案或充值後繼續使用計費功能。</p>

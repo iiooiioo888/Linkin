@@ -9,7 +9,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.billing.pool_store import get_pool_store
+from backend.billing.appeals import list_appeals, resolve_appeal
 from backend.billing.pricing_engine import DEFAULT_CREDIT_POLICY, DEFAULT_PRICING_CONFIG
+from backend.billing.vendor_configs import DEFAULT_VENDOR_CONFIGS
 
 router = APIRouter(prefix="/admin/billing", tags=["admin-billing"])
 
@@ -149,6 +151,49 @@ def trigger_rollover(month_key: str | None = None) -> dict[str, Any]:
     return {"processed": len(results), "results": results}
 
 
+@router.get("/vendor-configs")
+def list_vendor_configs() -> dict[str, Any]:
+    with get_pool_store()._conn() as conn:
+        rows = conn.execute(
+            "SELECT version, status, effective_at, created_at FROM vendor_configs ORDER BY version DESC LIMIT 50"
+        ).fetchall()
+    return {"items": [dict(r) for r in rows], "active": get_pool_store().active_vendor_config()}
+
+
+@router.post("/vendor-configs")
+def create_vendor_config(config: dict[str, Any], operator: str = "admin", reason: str = "") -> dict[str, Any]:
+    now = _utc_now()
+    body = config or DEFAULT_VENDOR_CONFIGS
+    with get_pool_store()._conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO vendor_configs(status, effective_at, config_json, created_by, reason, created_at)
+               VALUES ('draft', ?, ?, ?, ?, ?)""",
+            (now, json.dumps(body, ensure_ascii=False), operator, reason, now),
+        )
+        version = int(cur.lastrowid)
+    return {"version": version, "status": "draft"}
+
+
+@router.post("/vendor-configs/{version}/activate")
+def activate_vendor_config(version: int) -> dict[str, Any]:
+    with get_pool_store()._conn() as conn:
+        if not conn.execute("SELECT 1 FROM vendor_configs WHERE version=?", (version,)).fetchone():
+            raise HTTPException(404, "廠商配置版本不存在")
+        conn.execute("UPDATE vendor_configs SET status='archived' WHERE status='active'")
+        conn.execute("UPDATE vendor_configs SET status='active' WHERE version=?", (version,))
+    return {"version": version, "status": "active"}
+
+
+@router.get("/appeals")
+def admin_list_appeals(limit: int = 50) -> dict[str, Any]:
+    return {"items": list_appeals(None, limit=limit)}
+
+
+@router.post("/appeals/{appeal_id}/resolve")
+def admin_resolve_appeal(appeal_id: str, note: str = "") -> dict[str, Any]:
+    return resolve_appeal(appeal_id, note=note)
+
+
 @router.get("/fault-pool")
 def fault_pool_stats() -> dict[str, Any]:
     """Phase 2 stub。"""
@@ -163,10 +208,10 @@ def task_ledger(task_id: str) -> dict[str, Any]:
     with store._conn() as conn:
         task = conn.execute("SELECT * FROM tasks WHERE task_id=?", (task_id,)).fetchone()
         ledger = conn.execute(
-            "SELECT * FROM ledger WHERE task_id=? ORDER BY created_at", (task_id,)
+            "SELECT * FROM pool_ledger WHERE task_id=? ORDER BY created_at", (task_id,)
         ).fetchall()
         usage = conn.execute(
-            "SELECT * FROM usage_events WHERE task_id=? ORDER BY created_at", (task_id,)
+            "SELECT * FROM pool_usage_events WHERE task_id=? ORDER BY created_at", (task_id,)
         ).fetchall()
         binding = conn.execute("SELECT * FROM task_key_binding WHERE task_id=?", (task_id,)).fetchone()
     return {

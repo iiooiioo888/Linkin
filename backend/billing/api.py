@@ -27,7 +27,13 @@ class TopupRequest(BaseModel):
 
 
 class AssignPlanRequest(BaseModel):
-    plan_id: str = Field(description="free / pro / team / enterprise")
+    plan_id: str = Field(description="free / pro / enterprise")
+
+
+class AppealRequest(BaseModel):
+    task_id: str = ""
+    reason: str = Field(min_length=1)
+    detail: str = ""
 
 
 def _resolve_user(request: Request) -> str:
@@ -101,9 +107,37 @@ def topup(req: TopupRequest, request: Request) -> dict[str, Any]:
 def assign_plan(req: AssignPlanRequest, request: Request) -> dict[str, Any]:
     if not _admin_allowed(request):
         raise HTTPException(status_code=403, detail="無權限指派方案")
+    if req.plan_id.strip().lower() == "team":
+        raise HTTPException(status_code=400, detail="團隊版已取消，請選擇 free / pro / enterprise")
     user_id = _resolve_user(request)
     account = get_billing_service().set_plan(user_id, req.plan_id)
     return {"account": account}
+
+
+@router.post("/appeals")
+def submit_appeal(req: AppealRequest, request: Request) -> dict[str, Any]:
+    from backend.billing.appeals import create_appeal
+
+    user_id = _resolve_user(request)
+    return create_appeal(user_id, task_id=req.task_id or None, reason=req.reason, detail=req.detail)
+
+
+@router.get("/appeals")
+def list_my_appeals(request: Request, limit: int = 20) -> dict[str, Any]:
+    from backend.billing.appeals import list_appeals
+
+    user_id = _resolve_user(request)
+    return {"appeals": list_appeals(user_id, limit=limit)}
+
+
+@router.post("/contribution/convert")
+def convert_contribution(request: Request, amount: float) -> dict[str, Any]:
+    from backend.billing.pools_service import get_pools_service
+
+    user_id = _resolve_user(request)
+    if amount <= 0:
+        raise HTTPException(status_code=422, detail="轉換數量須大於 0")
+    return get_pools_service().convert_contribution_unlocked(user_id, amount)
 
 
 @wallet_router.get("")

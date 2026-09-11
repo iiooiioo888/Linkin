@@ -96,8 +96,12 @@ def meter_llm(
     task_id: str | None = None,
     reference: str = "call_llm",
     meta: dict | None = None,
-    cached_tokens: int = 0,
+    cache_read_tokens: int = 0,
     cache_write_tokens: int = 0,
+    cached_tokens: int = 0,
+    l3_cache_hit: bool = False,
+    cache_metadata_missing: bool = False,
+    vendor_id: str | None = None,
     role: str = "",
     tool: str = "",
 ) -> dict | None:
@@ -123,10 +127,13 @@ def meter_llm(
                 model=model,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
-                cached_tokens=cached_tokens,
+                cache_read_tokens=cache_read_tokens or cached_tokens,
                 cache_write_tokens=cache_write_tokens,
                 role=role,
                 tool=tool,
+                vendor_id=vendor_id,
+                cache_metadata_missing=cache_metadata_missing,
+                l3_cache_hit=l3_cache_hit,
             )
             from backend.billing.task_lifecycle import record_llm_usage
 
@@ -134,8 +141,11 @@ def meter_llm(
                 tid,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
-                cached_tokens=cached_tokens,
+                cache_read_tokens=cache_read_tokens or cached_tokens,
                 cache_write_tokens=cache_write_tokens,
+                l3_cache_hit=l3_cache_hit,
+                cache_metadata_missing=cache_metadata_missing,
+                vendor_id=vendor_id,
                 model=model,
                 role=role,
                 tool=tool,
@@ -148,10 +158,13 @@ def meter_llm(
         model=model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        cached_tokens=cached_tokens,
+        cache_read_tokens=cache_read_tokens or cached_tokens,
         cache_write_tokens=cache_write_tokens,
         role=role,
         tool=tool,
+        vendor_id=vendor_id,
+        cache_metadata_missing=cache_metadata_missing,
+        l3_cache_hit=l3_cache_hit,
     )
     m = dict(meta or {})
     m.update(
@@ -159,7 +172,7 @@ def meter_llm(
             "model": model,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
-            "cached_tokens": cached_tokens,
+            "cache_read_tokens": cache_read_tokens or cached_tokens,
             "cache_write_tokens": cache_write_tokens,
             "pricing_version": pools.active_pricing_config()["version"],
         }
@@ -173,8 +186,9 @@ def precheck_llm(
     output_tokens: int,
     *,
     user_id: str | None = None,
-    cached_tokens: int = 0,
+    cache_read_tokens: int = 0,
     cache_write_tokens: int = 0,
+    cached_tokens: int = 0,
 ) -> None:
     if not billing_enabled() and not user_id:
         return
@@ -190,7 +204,7 @@ def precheck_llm(
         model=model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        cached_tokens=cached_tokens,
+        cache_read_tokens=cache_read_tokens or cached_tokens,
         cache_write_tokens=cache_write_tokens,
     ) * ESTIMATE_BUFFER
     get_billing_service().ensure_can_afford(uid, est)
