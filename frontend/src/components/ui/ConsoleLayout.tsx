@@ -75,13 +75,16 @@ export function ConsoleRightRail({ className, children, ...rest }: DivProps) {
 }
 
 /** 欄內可滾動區（4px scrollbar，最後手段） */
-export function ConsoleColumnScroll({ className, children, ...rest }: DivProps) {
+export const ConsoleColumnScroll = forwardRef<HTMLDivElement, DivProps>(function ConsoleColumnScroll(
+  { className, children, ...rest },
+  ref,
+) {
   return (
-    <div className={cn(consoleLayout.colScroll, consoleLayout.pagePaddingDense, className)} {...rest}>
+    <div ref={ref} className={cn(consoleLayout.colScroll, consoleLayout.pagePaddingDense, className)} {...rest}>
       {children}
     </div>
   );
-}
+});
 
 /** 左欄垂直 section 導航 */
 export function ConsoleRailNav({

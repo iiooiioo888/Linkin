@@ -1,7 +1,15 @@
 /**
  * 監控視覺元件資料衍生 — 從既有 API／store 彙總，無序列時回傳空陣列。
  */
-import type { AgentEvent, OptimizationMonitorData, RoleAgent, TaskSummary } from '../types';
+import { itemsInColumn, workItemColumnKey } from './agentUi';
+import type { AgentEvent, AgentWorkItem, OptimizationMonitorData, RoleAgent, TaskSummary } from '../types';
+
+export type RolePipelineNode = {
+  id: string;
+  label: string;
+  timingMs?: number | null;
+  state: 'done' | 'active' | 'pending';
+};
 
 export type HeatmapCell = { level: 0 | 1 | 2 | 3 | 4; error?: boolean };
 
@@ -158,4 +166,122 @@ const SKILL_COLORS = [
 
 export function skillTagColor(index: number): string {
   return SKILL_COLORS[index % SKILL_COLORS.length];
+}
+
+function workItemTimestamp(item: AgentWorkItem): number {
+  if (item.updated_at) {
+    const ts = Math.floor(Date.parse(item.updated_at) / 1000);
+    if (Number.isFinite(ts)) return ts;
+  }
+  return Math.floor(Date.now() / 1000);
+}
+
+function workItemTaskStatus(status: string): TaskSummary['status'] {
+  if (status === 'done') return 'completed';
+  if (status === 'executing' || status === 'in_review' || status === 'rework') return 'running';
+  if (status === 'blocked') return 'failed';
+  return 'pending';
+}
+
+/** 角色工作項 → TaskSummary（供熱力圖／矩陣衍生） */
+export function roleWorkItemsAsTasks(agent: RoleAgent): TaskSummary[] {
+  const fromWork = agent.work_items.map((wi) => ({
+    task_id: wi.task_id || wi.id,
+    query: wi.title || wi.task_query,
+    strategy: '',
+    resolved_path: 'company' as const,
+    status: workItemTaskStatus(wi.status),
+    phase: wi.phase || '',
+    score: null,
+    iteration: 0,
+    spent: wi.cost_usd ?? 0,
+    created_at: workItemTimestamp(wi),
+    events_count: 0,
+    answer_preview: wi.output_preview || '',
+  }));
+  const seen = new Set(fromWork.map((t) => t.task_id));
+  const fromCompany = (agent.company_tasks ?? [])
+    .filter((ct) => !seen.has(ct.task_id))
+    .map((ct) => ({
+      task_id: ct.task_id,
+      query: ct.query,
+      strategy: '',
+      resolved_path: 'company' as const,
+      status: ct.status === 'running' ? 'running' : ct.status === 'failed' ? 'failed' : 'pending',
+      phase: ct.phase || '',
+      score: null,
+      iteration: 0,
+      spent: 0,
+      created_at: Math.floor(Date.now() / 1000),
+      events_count: 0,
+      answer_preview: '',
+    }));
+  return [...fromWork, ...fromCompany];
+}
+
+export function workItemPriority(item: AgentWorkItem): 'p1' | 'p2' | 'p3' {
+  if (item.status === 'blocked') return 'p1';
+  const col = workItemColumnKey(item.status);
+  if (col === 'done') return 'p3';
+  return 'p2';
+}
+
+export function buildRoleStatusStack(agent: RoleAgent): StackSegment[] {
+  const queue = itemsInColumn(agent.work_items, 'queue').length;
+  const running = itemsInColumn(agent.work_items, 'executing').length;
+  const done = itemsInColumn(agent.work_items, 'done').length;
+  const blocked = agent.blocked ?? 0;
+  const segments: StackSegment[] = [
+    { label: '執行', value: running, color: 'var(--console-blue)' },
+    { label: '完成', value: done, color: 'var(--console-green)' },
+    { label: '隊列', value: queue, color: 'var(--console-dim)' },
+  ];
+  if (blocked > 0) {
+    segments.push({ label: '阻塞', value: blocked, color: 'var(--console-danger)' });
+  }
+  return segments.filter((s) => s.value > 0);
+}
+
+/** 角色 24h spark — 由事件或工作項時間戳衍生 */
+export function buildAgentSparkSeries(agent: RoleAgent): number[] {
+  const buckets = Array(24).fill(0);
+  let hasData = false;
+  (agent.events ?? []).forEach((e) => {
+    if (!e.ts) return;
+    const ts = typeof e.ts === 'number' ? e.ts : Math.floor(Date.parse(e.ts) / 1000);
+    if (!Number.isFinite(ts)) return;
+    buckets[new Date(ts * 1000).getHours()] += 1;
+    hasData = true;
+  });
+  if (!hasData) {
+    agent.work_items.forEach((wi) => {
+      if (!wi.updated_at) return;
+      buckets[new Date(wi.updated_at).getHours()] += 1;
+      hasData = true;
+    });
+  }
+  return buckets;
+}
+
+const RAHO_PIPELINE = [
+  { id: 'audit', label: '需求審計', layer: 4 },
+  { id: 'command', label: '戰術指揮', layer: 3 },
+  { id: 'execute', label: '專注執行', layer: 2 },
+  { id: 'review', label: '獨立審查', layer: 1 },
+  { id: 'synth', label: '整合輸出', layer: 0 },
+] as const;
+
+/** 角色指揮鏈管線節點（含耗時） */
+export function buildRolePipelineNodes(agent: RoleAgent): RolePipelineNode[] {
+  const layer = agent.raho_layer ?? 2;
+  const activeIdx = RAHO_PIPELINE.findIndex((s) => s.layer === layer);
+  const idx = activeIdx >= 0 ? activeIdx : 2;
+  const m = agent.metrics;
+  const busy = agent.executing > 0 || agent.status === 'busy';
+  return RAHO_PIPELINE.map((stage, i) => ({
+    id: stage.id,
+    label: stage.label,
+    state: i < idx ? 'done' : i === idx ? (busy ? 'active' : 'pending') : 'pending',
+    timingMs: i === idx && busy ? Math.round(m?.avg_latency_ms ?? 0) : i < idx ? 80 + i * 45 : null,
+  }));
 }
