@@ -51,9 +51,61 @@ def test_free_plan_seed_credits(billing_store):
 
 
 def test_team_plan_removed():
+    from backend.billing.plans import get_plan, normalize_plan_id
+
     assert "team" not in PLAN_DEFINITIONS
-    plan = __import__("backend.billing.plans", fromlist=["get_plan"]).get_plan("team")
-    assert plan["id"] == "pro"
+    assert normalize_plan_id("team") == "business"
+    plan = get_plan("team")
+    assert plan["id"] == "business"
+
+
+def test_plan_ladder_has_five_public_tiers():
+    from backend.billing.plans import PLAN_ORDER, list_plans_public
+
+    assert len(PLAN_ORDER) >= 5
+    public = list_plans_public()
+    assert len(public) >= 5
+    ids = [p["id"] for p in public]
+    assert ids == ["free", "starter", "pro", "business", "enterprise"]
+    for p in public:
+        assert "docker" in p
+        assert "rate_multiplier" in p["docker"]
+        assert "included_hours_per_month" in p["docker"]
+
+
+def test_docker_rate_resolution_by_plan():
+    from backend.billing.docker_pricing import get_effective_hourly_rate, get_plan_docker_terms
+    from backend.company.docker_tools import get_service_hourly_rate
+
+    base = get_service_hourly_rate("frontend")
+    free_rate = get_effective_hourly_rate("frontend", "free")
+    pro_rate = get_effective_hourly_rate("frontend", "pro")
+    enterprise_rate = get_effective_hourly_rate("frontend", "enterprise")
+    assert free_rate == round(base * 2.0, 6)
+    assert pro_rate == round(base * 1.0, 6)
+    assert enterprise_rate == round(base * 0.5, 6)
+    assert get_plan_docker_terms("starter")["included_hours_per_month"] == 5
+
+
+def test_docker_included_hours_reduce_charge():
+    from backend.billing.docker_pricing import compute_docker_charge_usd
+
+    charge = compute_docker_charge_usd("frontend", 2.0, "pro", included_used_hours=0)
+    assert charge["free_hours"] == 2.0
+    assert charge["billable_hours"] == 0.0
+    assert charge["cost_usd"] == 0.0
+
+    over = compute_docker_charge_usd("frontend", 5.0, "pro", included_used_hours=18)
+    assert over["free_hours"] == 2.0
+    assert over["billable_hours"] == 3.0
+    assert over["cost_usd"] > 0
+
+
+def test_legacy_team_account_migrates_to_business(billing_store):
+    svc = BillingService(billing_store)
+    billing_store.ensure_account("legacy_team", "team")
+    acct = svc.get_account("legacy_team")
+    assert acct["plan_id"] == "business"
 
 
 def test_debit_and_ledger(billing_store):
@@ -208,8 +260,9 @@ def test_monthly_rollover_proportional_and_idempotent(billing_store):
     results = pools.run_monthly_rollover("2025-08")
     row = next(r for r in results if r["account_id"] == uid)
     assert row["unused"] == 2000
-    assert row["rolled"] == 1000
-    assert row["forfeited"] == 1000
+    # free 方案滾存比例 30%（見 DEFAULT_CREDIT_POLICY.by_tier.free）
+    assert row["rolled"] == 600
+    assert row["forfeited"] == 1400
     repeat = pools.run_monthly_rollover("2025-08")
     assert not any(r["account_id"] == uid for r in repeat)
 
@@ -333,12 +386,18 @@ def test_appeals_basic(billing_store):
 
 def test_docker_settle_tick_debits_credits(billing_store, monkeypatch):
     from backend.billing.docker_meter import DockerBillingTracker, reset_docker_billing_tracker
+    from backend.billing.docker_pricing import get_effective_hourly_rate
 
     tracker = DockerBillingTracker()
     reset_docker_billing_tracker(tracker)
     svc = BillingService(billing_store)
     svc.ensure_account("dockuser", "pro")
     tracker.assign_owner("frontend", "dockuser")
+    # 耗盡含額，確保產生實際扣款
+    from backend.billing.docker_meter import _month_key
+
+    tracker._included_used_hours["dockuser"] = 999.0
+    tracker._included_period["dockuser"] = _month_key()
 
     class FakeDM:
         available = True
@@ -362,9 +421,81 @@ def test_docker_settle_tick_debits_credits(billing_store, monkeypatch):
         assert len(charges) == 1
         after = svc.get_account("dockuser")["balance_credits"]
         assert after < before
+        assert charges[0]["plan_id"] == "pro"
+        assert charges[0]["billable_hours"] > 0
     finally:
         billing_user_id.reset(token)
         reset_docker_billing_tracker(None)
+
+
+def test_docker_settle_uses_plan_rate_multiplier(billing_store, monkeypatch):
+    from backend.billing.docker_meter import DockerBillingTracker, reset_docker_billing_tracker
+    from backend.billing.docker_pricing import get_effective_hourly_rate
+
+    tracker = DockerBillingTracker()
+    reset_docker_billing_tracker(tracker)
+    svc = BillingService(billing_store)
+    svc.ensure_account("free_docker", "free")
+    tracker.assign_owner("frontend", "free_docker")
+    # 耗盡含額（free 無含額）並以 2h uptime 觸發全額計費
+    tracker._included_used_hours["free_docker"] = 999.0
+    tracker._included_period["free_docker"] = __import__("backend.billing.docker_meter", fromlist=["_month_key"])._month_key()
+
+    class FakeDM:
+        available = True
+
+        def list_containers(self):
+            return [
+                {
+                    "service": "frontend",
+                    "status": "Up 2 hours",
+                    "uptime_seconds": 7200.0,
+                }
+            ]
+
+    monkeypatch.setattr("backend.services.docker_manager.get_docker_manager", lambda: FakeDM())
+
+    token = billing_user_id.set("free_docker")
+    try:
+        before = svc.get_account("free_docker")["balance_credits"]
+        charges = tracker.settle_tick("free_docker")
+        assert len(charges) == 1
+        rate = get_effective_hourly_rate("frontend", "free")
+        expected_credits = charges[0]["delta_hours"] * rate * 1000
+        assert charges[0]["credits"] == pytest.approx(expected_credits, rel=1e-3)
+        after = svc.get_account("free_docker")["balance_credits"]
+        assert after < before
+    finally:
+        billing_user_id.reset(token)
+        reset_docker_billing_tracker(None)
+
+
+def test_billing_overview_docker_plan_fields(billing_store, monkeypatch):
+    from backend.billing.docker_meter import DockerBillingTracker, reset_docker_billing_tracker
+
+    reset_docker_billing_tracker(DockerBillingTracker())
+    monkeypatch.setenv("LINKIN_AUTH_FORCE", "1")
+    monkeypatch.setenv("LINKIN_GATE_ID", "docker_overview")
+    monkeypatch.setenv("LINKIN_GATE_SECRET", "docker_secret")
+    monkeypatch.setenv("LINKIN_BILLING_FORCE", "1")
+    monkeypatch.setenv("LINKIN_BILLING_DB", billing_store.db_path)
+
+    from backend.main import app
+
+    with TestClient(app) as client:
+        login = client.post("/auth/login", json={"username": "docker_overview", "password": "docker_secret"})
+        headers = {"X-Linkin-Gate": login.json()["token"]}
+        resp = client.get("/billing", headers=headers)
+        body = resp.json()
+        assert resp.status_code == 200
+        assert len(body["plans"]) >= 5
+        docker = body["docker"]
+        assert docker["plan_id"] == "free"
+        assert "plan_terms" in docker
+        assert docker["plan_terms"]["rate_multiplier"] == 2.0
+        assert "included_hours_remaining" in docker["plan_terms"]
+        assert "projected_billable_hourly_credits" in docker
+        assert "docker_tiers" in body["rate_card"]
 
 
 def test_billing_api(billing_store, monkeypatch):
@@ -384,7 +515,7 @@ def test_billing_api(billing_store, monkeypatch):
         assert resp.status_code == 200
         body = resp.json()
         assert body["account"]["balance_credits"] > 0
-        assert len(body["plans"]) == 3
+        assert len(body["plans"]) >= 5
         topup = client.post("/billing/topup", headers=headers, json={"credits": 500})
         assert topup.status_code == 200
 

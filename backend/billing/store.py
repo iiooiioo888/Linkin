@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from backend.billing.plans import get_plan
+from backend.billing.plans import get_plan, normalize_plan_id
 from backend.billing.pool_store import get_pool_store
 from backend.billing.pool_types import POOL_PURCHASED
 
@@ -134,6 +134,7 @@ class BillingStore:
 
     def ensure_account(self, user_id: str, plan_id: str = "free") -> dict[str, Any]:
         user_id = user_id.strip()
+        plan_id = normalize_plan_id(plan_id)
         plan = get_plan(plan_id)
         now = _utc_now()
         period = _month_key()
@@ -180,9 +181,30 @@ class BillingStore:
         with self._lock:
             with self._connect() as conn:
                 row = conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id.strip(),)).fetchone()
+                if row:
+                    row = self._migrate_legacy_plan_row(conn, row)
                 return self._row_account(row) if row else None
 
+    def _migrate_legacy_plan_row(self, conn, row) -> Any:
+        """將舊版 plan_id（如 team）寫回現行方案。"""
+        raw = str(row["plan_id"] or "free")
+        normalized = normalize_plan_id(raw)
+        if normalized == raw:
+            return row
+        plan = get_plan(normalized)
+        now = _utc_now()
+        conn.execute(
+            """
+            UPDATE accounts SET plan_id = ?, monthly_quota_credits = ?, concurrency_limit = ?, updated_at = ?
+            WHERE user_id = ?
+            """,
+            (normalized, float(plan["monthly_credits"]), int(plan["concurrency"]), now, row["user_id"]),
+        )
+        conn.commit()
+        return conn.execute("SELECT * FROM accounts WHERE user_id = ?", (row["user_id"],)).fetchone()
+
     def set_plan(self, user_id: str, plan_id: str) -> dict[str, Any]:
+        plan_id = normalize_plan_id(plan_id)
         plan = get_plan(plan_id)
         now = _utc_now()
         self.ensure_account(user_id, plan_id)
