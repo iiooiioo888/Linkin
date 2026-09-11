@@ -185,7 +185,17 @@ python -m backend.scripts.seed_demo_content
 
 ## Agent skills
 
-本專案已納入 [mattpocock/skills](https://github.com/mattpocock/skills)（MIT）— 工程化 Agent 工作流（TDD、code review、grill、spec→tickets 等）。技能檔位於 `.agents/skills/`，版本鎖定見 `skills-lock.json`。
+技能檔位於 `.agents/skills/`（canonical），版本鎖定見 `skills-lock.json`。`npx skills add --all` 產生的各 Agent 目錄副本已列入 `.gitignore`，**僅提交** `.agents/skills/`。
+
+| 來源 | 數量 | 目錄索引 | mcpservers.org |
+|------|------|----------|----------------|
+| [mattpocock/skills](https://github.com/mattpocock/skills) | 37 | 工程化工作流（TDD、grill、spec→tickets…） | — |
+| [anthropics/skills](https://github.com/anthropics/skills) | 20 | 文件（docx/pdf/pptx/xlsx）、前端設計、`mcp-builder`… | [作者頁](https://mcpservers.org/zh-TW/agent-skills/author/anthropic) |
+| [openai/skills](https://github.com/openai/skills) | 43 | Codex 技能（Figma、部署、安全、Playwright…） | [作者頁](https://mcpservers.org/zh-TW/agent-skills/author/openai) |
+| [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) | 1 | `just-scrape`（CLI + `SGAI_API_KEY`） | [作者頁](https://mcpservers.org/zh-TW/agent-skills/author/scrapegraphai) |
+| [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | 1 | `agent-browser` 瀏覽器自動化 CLI | [技能頁](https://mcpservers.org/zh-TW/agent-skills/vercel/agent-browser) |
+
+**共 102 項**（Anthropic/OpenAI 的 `pdf`、`skill-creator` 因名稱衝突分別命名為 `anthropic-pdf` / `openai-pdf` 與 `anthropic-skill-creator` / `openai-skill-creator`）。
 
 **首次設定（每個 clone 一次）：**
 
@@ -193,15 +203,20 @@ python -m backend.scripts.seed_demo_content
 # 還原鎖定版本（推薦）
 npx skills@latest experimental_install
 
-# 或重新從上游安裝全部技能
+# 或重新從上游安裝全部技能包
 npx skills@latest add mattpocock/skills --all --copy
+npx skills@latest add anthropics/skills --all --copy
+npx skills@latest add openai/skills --all --copy
+npx skills@latest add scrapegraphai/just-scrape --all --copy
+npx skills@latest add vercel-labs/agent-browser --all --copy
+# 安裝後請刪除各 Agent 目錄下的 skills 副本，僅保留 .agents/skills/
 ```
 
 **接著在 Agent 中執行一次 `setup-matt-pocock-skills`**，配置 issue tracker、分類標籤與 domain 文件版面（詳見 `.agents/skills/setup-matt-pocock-skills/SKILL.md`）。
 
-已安裝 **37** 項技能，含：`ask-matt` · `code-review` · `codebase-design` · `diagnosing-bugs` · `domain-modeling` · `grill-me` · `grill-with-docs` · `grilling` · `implement` · `improve-codebase-architecture` · `prototype` · `research` · `resolving-merge-conflicts` · `setup-matt-pocock-skills` · `tdd` · `to-spec` · `to-tickets` · `triage` · `wayfinder` · `wizard` · `handoff` · `teach` · `to-questionnaire` · `wait-what` · `writing-for-agents` · `claude-handoff` · `implement-spec` · `loop-me` · `retro` · `setup-ts-deep-modules` · `writing-beats` · `writing-fragments` · `writing-shape` · `git-guardrails-claude-code` · `migrate-to-shoehorn` · `scaffold-exercises` · `setup-pre-commit`
+**可選 MCP / CLI：** 多數技能為 skills-only。OpenAI 的 Figma / Linear / Developer Docs 等技能可搭配 MCP；ScrapeGraphAI 與 agent-browser 為 CLI。設定說明與 Cursor 範例片段見 [docs/mcp/agent-skills.md](docs/mcp/agent-skills.md)。
 
-歸功與授權：[mattpocock/skills](https://github.com/mattpocock/skills)
+歸功與授權：[mattpocock/skills](https://github.com/mattpocock/skills) · [anthropics/skills](https://github.com/anthropics/skills) · [openai/skills](https://github.com/openai/skills) · [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) · [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser)
 
 ---
 
