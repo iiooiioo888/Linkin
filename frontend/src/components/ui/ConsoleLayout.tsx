@@ -52,6 +52,18 @@ export const PanelScroll = forwardRef<HTMLDivElement, DivProps>(function PanelSc
   );
 });
 
+/** 分頁 tab 內容區 — 禁止整頁／卡片滾動，溢出由子層換頁處理 */
+export function ConsoleTabBody({ className, children, ...rest }: DivProps) {
+  return (
+    <div
+      className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', consoleLayout.pagePadding, className)}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function PanelSection({ className, children, ...rest }: DivProps) {
   return (
     <div className={cn(consoleLayout.sectionStack, className)} {...rest}>
@@ -193,7 +205,7 @@ export function ConsoleRdShell({ className, children, ...rest }: DivProps) {
 
 export type SectionNavItem = { id: string; label: string };
 
-/** 單頁滾動區塊導航（sticky pill bar + 可選 scroll spy） */
+/** 區塊分頁導航（pill bar；切換可見區塊，不觸發頁面滾動） */
 export function ConsoleSectionNav({
   sections,
   activeId,

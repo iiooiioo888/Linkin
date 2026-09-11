@@ -1,39 +1,44 @@
 /**
- * HubPanel — AI Hub 統一面板（操作台 + 監控）。
+ * HubPanel — AI Hub 統一面板（操作台 + 監控），分頁切換無滾動。
  */
 import { useState } from 'react';
 import HubMonitorPanel from './HubMonitorPanel';
 import HubView from './HubView';
-import { ConsoleCard, ConsoleCardBody, ConsoleCardHeader } from './ui/ConsoleLayout';
+import { ConsolePageFrame } from './ui/ConsolePagination';
+import { ConsoleSectionNav } from './ui/ConsoleLayout';
+import { useFixedPages } from '../lib/pagination';
 
 type HubMode = 'console' | 'monitor';
 
-const MODES: { key: HubMode; icon: string; label: string }[] = [
-  { key: 'console', icon: '🎛️', label: '操作台' },
-  { key: 'monitor', icon: '📡', label: '監控' },
+const MODES: { id: string; key: HubMode; label: string }[] = [
+  { id: 'hub-console', key: 'console', label: '操作台' },
+  { id: 'hub-monitor', key: 'monitor', label: '監控' },
 ];
 
 export default function HubPanel({ embedded = false }: { embedded?: boolean }) {
   const [mode, setMode] = useState<HubMode>('console');
+  const activeId = MODES.find((m) => m.key === mode)?.id ?? MODES[0].id;
 
   if (embedded) {
     return (
-      <div className="space-y-3">
-        <ConsoleCard>
-          <ConsoleCardHeader>操作台</ConsoleCardHeader>
-          <ConsoleCardBody dense>
-            <HubView embedded />
-          </ConsoleCardBody>
-        </ConsoleCard>
-        <ConsoleCard>
-          <ConsoleCardHeader>監控</ConsoleCardHeader>
-          <ConsoleCardBody dense>
-            <HubMonitorPanel embedded />
-          </ConsoleCardBody>
-        </ConsoleCard>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <ConsoleSectionNav
+          sections={MODES.map((m) => ({ id: m.id, label: m.label }))}
+          activeId={activeId}
+          onSelect={(id) => {
+            const next = MODES.find((m) => m.id === id);
+            if (next) setMode(next.key);
+          }}
+          className="!static !z-0 !border-0 !bg-transparent !px-0 !py-0 !backdrop-blur-none"
+        />
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {mode === 'console' ? <HubView embedded /> : <HubMonitorPanel embedded />}
+        </div>
       </div>
     );
   }
+
+  const { page, pages, setPage } = useFixedPages(1);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas">
@@ -52,7 +57,7 @@ export default function HubPanel({ embedded = false }: { embedded?: boolean }) {
                   : 'border-white/[0.08] text-[#8a8f98] hover:text-[#d0d6e0]'
               }`}
             >
-              {item.icon} {item.label}
+              {item.label}
             </button>
           );
         })}
@@ -60,9 +65,11 @@ export default function HubPanel({ embedded = false }: { embedded?: boolean }) {
           GPT-5.6 Sol · Gemini 3.1 Pro · 零 Claude
         </p>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {mode === 'console' ? <HubView embedded /> : <HubMonitorPanel />}
-      </div>
+      <ConsolePageFrame page={page} totalPages={pages} onPageChange={setPage}>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {mode === 'console' ? <HubView embedded /> : <HubMonitorPanel />}
+        </div>
+      </ConsolePageFrame>
     </div>
   );
 }

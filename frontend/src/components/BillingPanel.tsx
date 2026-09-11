@@ -7,6 +7,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { fetchCloudBilling } from '../api/client';
 import type { CloudBilling, CloudServiceCost } from '../types';
+import { useFixedPages, usePagination } from '../lib/pagination';
+import { ConsolePageFrame, ConsolePagination } from './ui/ConsolePagination';
 import { PanelSection, PanelShell, consoleLayout } from './ui/ConsoleLayout';
 
 function formatCost(amount: number): string {
@@ -158,6 +160,9 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
   const dockerCount = billing?.per_service.filter((s) => (s.source || 'docker') !== 'aliyun').length ?? 0;
   const aliyunCount = billing?.per_service.filter((s) => s.source === 'aliyun').length ?? 0;
 
+  const embeddedPager = useFixedPages(4);
+  const servicePager = usePagination(filteredServices, 4);
+
   if (loading && !billing) {
     return (
       <div className={embedded ? 'py-8 text-center' : 'flex flex-1 items-center justify-center'}>
@@ -166,8 +171,11 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
     );
   }
 
+  const show = (page: number) => !embedded || embeddedPager.page === page;
+
   const body = (
       <PanelSection>
+      {show(1) && (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="今日費用"
@@ -194,7 +202,9 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
           accent="blue"
         />
       </div>
+      )}
 
+      {show(2) && (
       <SectionCard title="費用組成" hint="雲服務預算只計下列資源；AI 使用預算另計 LLM API">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatCard
@@ -223,8 +233,9 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
           />
         </div>
       </SectionCard>
+      )}
 
-      {error && (
+      {show(2) && error && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/15 px-4 py-2 text-sm text-red-300">
           ⚠ {error}
           <button onClick={() => void refresh()} className="ml-3 underline">
@@ -233,7 +244,7 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
         </div>
       )}
 
-      {aliyun && (
+      {show(3) && aliyun && (
         <SectionCard
           title="阿里雲 BSS 接入"
           hint={`環境變數 ALIYUN_ACCESS_KEY_ID / ALIYUN_ACCESS_KEY_SECRET · CNY→USD 匯率 ${aliyun.cny_usd_rate}`}
@@ -303,7 +314,7 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
         </SectionCard>
       )}
 
-      {billing && billing.per_service.length > 0 && (
+      {show(4) && billing && billing.per_service.length > 0 && (
         <SectionCard
           title="各服務／產品費用明細"
           hint={`${dockerCount} Docker · ${aliyunCount} 阿里雲產品`}
@@ -334,7 +345,7 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
             <p className="text-sm text-gray-500">此篩選下暫無明細</p>
           ) : (
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-              {filteredServices.map((svc) => (
+              {(embedded ? servicePager.slice : filteredServices).map((svc) => (
                 <ServiceCostCard
                   key={`${svc.source || 'docker'}-${svc.service}`}
                   svc={svc}
@@ -343,6 +354,14 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
               ))}
             </div>
           )}
+          {embedded ? (
+            <ConsolePagination
+              page={servicePager.page}
+              totalPages={servicePager.pages}
+              onPageChange={servicePager.setPage}
+              className="!border-0"
+            />
+          ) : null}
           <div className="mt-3 flex items-center justify-between rounded-lg border border-gray-800 bg-gray-950/40 px-3 py-2.5">
             <span className="text-sm font-medium text-gray-300">雲資源總計</span>
             <span className="text-sm font-bold text-amber-300">{formatCost(billing.total_now)}</span>
@@ -350,7 +369,7 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
         </SectionCard>
       )}
 
-      {billing && billing.per_service.length === 0 && (
+      {show(4) && billing && billing.per_service.length === 0 && (
         <SectionCard title="暫無雲資源費用">
           <p className="text-sm text-gray-300">尚無 Docker 或阿里雲帳單資料</p>
           <p className="mt-1 text-xs text-gray-500">
@@ -361,6 +380,19 @@ export default function BillingPanel({ embedded = false }: { embedded?: boolean 
       </PanelSection>
   );
 
-  if (embedded) return body;
+  if (embedded) {
+    return (
+      <ConsolePageFrame
+        page={embeddedPager.page}
+        totalPages={embeddedPager.pages}
+        onPageChange={(p) => {
+          embeddedPager.setPage(p);
+          if (p === 4) servicePager.reset();
+        }}
+      >
+        {body}
+      </ConsolePageFrame>
+    );
+  }
   return <PanelShell>{body}</PanelShell>;
 }
