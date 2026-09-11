@@ -211,6 +211,13 @@ def run_company(state: StateInput) -> dict[str, Any]:
     except Exception as exc:
         logger.debug("靈境公司前綴略過：%s", exc)
 
+    try:
+        from backend.integrations.recall_bridge import prefix_query_with_recall
+
+        query = prefix_query_with_recall(query, state)
+    except Exception as exc:
+        logger.debug("整合召回公司前綴略過：%s", exc)
+
     # 選擇組織架構模板
     config = BUILTIN_TEMPLATES.get(template_name)
     if config is None:

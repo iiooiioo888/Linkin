@@ -14,6 +14,10 @@
 3. 禁止在本層直連模型供應商 SDK（C-LLM-001）；召回結果只作為注入片段，
    生成一律經 ``backend.core.llm.call_llm``。
 4. 啟用為**顯式動作**（環境變數開關＋健康檢查），禁止隱式自動接入（C-PLUGIN-001 精神）。
+5. **主聊天路徑**（``POST /chat``、``POST /chat/stream``、``POST /tasks`` 簡單路徑、
+   LangGraph ``enhance_with_recall_context`` 節點）在每次生成前自動呼叫
+   ``ContextAssembler``（fail-open）；手動探測仍可用 ``POST /integrations/recall``。
+   環境變數：``LINKIN_RECALL_USER_ID``、``LINKIN_MEMOS_CUBE_IDS``、``LINKIN_WEKNORA_KB_ID``。
 """
 
 from backend.integrations.base import (

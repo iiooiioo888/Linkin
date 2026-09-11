@@ -49,6 +49,7 @@ from backend.linkin.pipeline import (
     prefix_query_with_linkin,
     resolve_linkin_company_template,
 )
+from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.services.archiver import save_session_archive_sync
 from backend.services.task_broadcaster import task_broadcaster
 from backend.services.trace_logger import (
@@ -641,6 +642,29 @@ class TaskManager:
                     source="linkin", items=[linkin_ctx["summary"]],
                     phase="enhance_linkin_context", query=record.query,
                 )
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            # 整合召回（MemOS / OpenViking / WeKnora，fail-open）
+            self._set_phase(record, "enhance_recall_context")
+            state.update(await asyncio.to_thread(enhance_with_recall_context, state))
+            recall_ctx = state.get("recall_context") or {}
+            if isinstance(recall_ctx, dict) and recall_ctx.get("injection"):
+                tracer.log_context_injection(
+                    source="recall",
+                    items=[recall_ctx["injection"]],
+                    phase="enhance_recall_context",
+                    query=record.query,
+                )
+                self._add_event(record, "recall_assembled", {
+                    "reason_codes": recall_ctx.get("reason_codes", []),
+                    "degraded_sources": recall_ctx.get("degraded_sources", []),
+                    "token_report": recall_ctx.get("token_report", {}),
+                    "fragment_sources": [
+                        f.get("source") for f in (recall_ctx.get("fragments") or [])
+                    ],
+                })
             if self._check_cancelled(record):
                 self._finish(record)
                 return

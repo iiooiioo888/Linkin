@@ -1031,15 +1031,25 @@ async def chat_stream(req: ChatRequest):
                     source="memory", items=_mems, phase="retrieve_memories", query=state["query"],
                 )
 
+            # 整合召回（MemOS / OpenViking / WeKnora，fail-open）
+            yield f"event: phase\ndata: {json_mod.dumps({'phase': 'enhance_recall_context'})}\n\n"
+            chat_tracer.log_phase_change("enhance_recall_context")
+            from backend.integrations.recall_bridge import enhance_with_recall_context
+
+            state.update(await asyncio.to_thread(enhance_with_recall_context, state))
+            _recall = state.get("recall_context") or {}
+            if isinstance(_recall, dict) and _recall.get("injection"):
+                chat_tracer.log_context_injection(
+                    source="recall",
+                    items=[_recall["injection"]],
+                    phase="enhance_recall_context",
+                    query=state["query"],
+                )
+
             # 階段 2：生成回答（串流 token，Queue 橋接同步生成器與非同步迴圈）
             yield f"event: phase\ndata: {json_mod.dumps({'phase': 'generate'})}\n\n"
             chat_tracer.log_phase_change("generate")
-            from backend.prompts import templates
-            gen_prompt = templates.GENERATE_INITIAL_ANSWER.format(
-                query=state["query"],
-                history_context=nodes._format_history(state.get("history", [])),
-                memory_context=nodes._format_memories(state.get("retrieved_memories", [])),
-            )
+            gen_prompt, gen_system = nodes.build_generate_prompt(state)
             # 與管線節點同一套環節路由，軌跡才能記到真實模型
             from backend.core.stage_router import resolve_stage_model
 
@@ -1054,7 +1064,7 @@ async def chat_stream(req: ChatRequest):
 
             def _produce_tokens() -> None:
                 try:
-                    for token in call_llm_stream(gen_prompt, system=templates.GENERATE_INITIAL_ANSWER_SYSTEM, model=gen_model):
+                    for token in call_llm_stream(gen_prompt, system=gen_system, model=gen_model):
                         loop.call_soon_threadsafe(token_queue.put_nowait, token)
                 finally:
                     loop.call_soon_threadsafe(token_queue.put_nowait, None)
@@ -1079,7 +1089,7 @@ async def chat_stream(req: ChatRequest):
             chat_tracer.log_llm_call(
                 prompt=gen_prompt, response=(visible or answer)[:8000],
                 model=gen_model,
-                system=templates.GENERATE_INITIAL_ANSWER_SYSTEM,
+                system=gen_system,
                 duration_ms=round((time.monotonic() - gen_started) * 1000, 1),
                 phase="generate",
             )

@@ -4,7 +4,8 @@
 進入同一條 EvoLoop 管線，由系統自動判斷執行策略：
 
 流程：
-  START → retrieve_memories → enhance_with_opc_context → enhance_with_linkin_context → route_by_complexity
+  START → retrieve_memories → enhance_with_opc_context → enhance_with_linkin_context
+    → enhance_with_recall_context → route_by_complexity
     → 複雜任務：run_company → should_evaluate_company
         → 成功：enforce_output_length → evaluate_answer → should_improve
             → (score < 門檻 且 未達最大迭代) → reflect → improve_answer → enforce_output_length（迴圈）
@@ -41,6 +42,7 @@ from backend.core.company_nodes import (
 )
 from backend.core.state import EvoLoopState, StateInput
 from backend.linkin.pipeline import enhance_with_linkin_context
+from backend.integrations.recall_bridge import enhance_with_recall_context
 
 # 可透過環境變數調整；測試中也可 monkeypatch 此模組常數
 PASS_THRESHOLD = float(os.getenv("EVOL_PASS_THRESHOLD", "8"))
@@ -99,6 +101,7 @@ def build_graph():
     graph.add_node("retrieve_memories", nodes.retrieve_memories)
     graph.add_node("enhance_with_opc_context", enhance_with_opc_context)
     graph.add_node("enhance_with_linkin_context", enhance_with_linkin_context)
+    graph.add_node("enhance_with_recall_context", enhance_with_recall_context)
 
     # ── 公司運行時節點 ──
     graph.add_node("run_company", run_company)
@@ -119,8 +122,9 @@ def build_graph():
     graph.add_edge(START, "retrieve_memories")
     graph.add_edge("retrieve_memories", "enhance_with_opc_context")
     graph.add_edge("enhance_with_opc_context", "enhance_with_linkin_context")
+    graph.add_edge("enhance_with_linkin_context", "enhance_with_recall_context")
     graph.add_conditional_edges(
-        "enhance_with_linkin_context",
+        "enhance_with_recall_context",
         route_by_complexity,
         {
             "run_company": "run_company",
