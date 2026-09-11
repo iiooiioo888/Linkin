@@ -1,5 +1,5 @@
 /**
- * SystemMetricsPanel — 系統指標監控（非工業 OPC）。
+ * SystemMetricsPanel — 系統總覽（OCD 三欄 · 非工業 OPC）。
  *
  * 彙總反思閉環、快取、路由、Trace、任務運行時等 EvoLoop 自身指標。
  */
@@ -19,7 +19,7 @@ import {
   ConsoleSnippetList,
   ConsoleThreeColumn,
   KpiCard,
-  KpiGrid,
+  KpiGrid4,
   PanelAlert,
   PanelShell,
   SectionHeader,
@@ -54,16 +54,17 @@ function Gauge({ value, min, max }: { value: number | null; min: number; max: nu
   const pct = value == null ? 0 : Math.min(100, Math.max(0, ((value - min) / span) * 100));
   const hot = pct >= 85;
   return (
-    <div className="h-1.5 w-24 overflow-hidden rounded-full bg-[var(--console-card)]">
+    <div className="console-progress-track w-24">
       <div
-        className="h-full rounded-full"
-        style={{
-          width: `${pct}%`,
-          background: hot ? 'var(--console-danger)' : 'var(--console-blue)',
-        }}
+        className={cn('console-progress-fill', hot && 'console-progress-fill--hot')}
+        style={{ width: `${pct}%` }}
       />
     </div>
   );
+}
+
+function cn(...parts: Array<string | false | null | undefined>): string {
+  return parts.filter(Boolean).join(' ');
 }
 
 function buildMetricRows(data: OptimizationMonitorData | null): MetricRow[] {
@@ -219,14 +220,23 @@ export default function SystemMetricsPanel() {
   const sys = data?.system_stats;
   const reflectionTrace = data?.reflection_trace;
   const activeCount = data?.roadmap?.filter((r) => r.status === 'active').length ?? 0;
+  const recentCycles = reflectionTrace?.recent_cycles ?? [];
+  const systemHealthy = (sys?.success_rate ?? 0) >= 70 && hitPct >= 20;
+
+  const quickActions = [
+    { label: 'API 路由', href: '#/monitor/llm' },
+    { label: '任務隊列', href: '#/monitor/tasks' },
+    { label: 'AI 用量', href: '#/monitor/models' },
+    { label: '基礎設施', href: '#/monitor/ops' },
+  ];
 
   return (
     <PanelShell scroll={false}>
       <ConsoleThreeColumn>
         <ConsoleLeftRail>
           <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-4">
-            <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">運行指標</h1>
-            <p className="mt-1 text-[10px] text-[var(--console-faint)]">快取 · 反思 · Trace</p>
+            <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">系統總覽</h1>
+            <p className="mt-1 text-[10px] text-[var(--console-faint)]">EvoLoop 運行時</p>
           </div>
           <ConsoleColumnScroll className="!px-0 !py-0">
             <ConsoleRailNav
@@ -244,7 +254,7 @@ export default function SystemMetricsPanel() {
         <ConsoleCenterColumn>
           <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-3">
             <SectionHeader
-              title="運行指標"
+              title="系統總覽"
               description="快取 · 反思 · 優化路線圖 · 環節模型（非工業 OPC）"
               meta={
                 <>
@@ -274,9 +284,9 @@ export default function SystemMetricsPanel() {
           <ConsoleColumnScroll>
             {error ? <PanelAlert className="mb-3">{error}</PanelAlert> : null}
 
-            <KpiGrid>
+            <KpiGrid4>
               {[
-                { label: '快取命中', value: `${hitPct}%` },
+                { label: '快取命中', value: `${hitPct}%`, accent: true },
                 { label: '任務成功率', value: `${sys?.success_rate ?? 0}%` },
                 {
                   label: '反思均輪次',
@@ -284,9 +294,9 @@ export default function SystemMetricsPanel() {
                 },
                 { label: 'Trace', value: String(data?.trace.trace_count ?? 0) },
               ].map((kpi) => (
-                <KpiCard key={kpi.label} label={kpi.label} value={kpi.value} />
+                <KpiCard key={kpi.label} label={kpi.label} value={kpi.value} accent={kpi.accent} />
               ))}
-            </KpiGrid>
+            </KpiGrid4>
 
             <ConsoleCard className="mt-3 overflow-x-auto">
               <table className="w-full min-w-[640px] text-left">
@@ -415,38 +425,58 @@ export default function SystemMetricsPanel() {
 
         <ConsoleRightRail>
           <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-3">
-            <p className="text-[11px] font-semibold text-[var(--console-ink)]">快照</p>
+            <p className="text-[11px] font-semibold text-[var(--console-ink)]">側欄</p>
           </div>
           <ConsoleColumnScroll>
             <div className={consoleLayout.sectionStack}>
-              <ConsoleSnippetList title="快取">
+              <ConsoleSnippetList title="系統狀態">
                 <div className={consoleLayout.snippetRow}>
-                  <span>命中率</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className={systemHealthy ? 'apple-dot apple-dot--ok' : 'apple-dot apple-dot--warn'} />
+                    運行時
+                  </span>
+                  <span className={systemHealthy ? 'console-status-green' : 'console-status-amber'}>
+                    {systemHealthy ? '正常' : '注意'}
+                  </span>
+                </div>
+                <div className={consoleLayout.snippetRow}>
+                  <span>優化啟用</span>
+                  <span className="console-status-accent">{activeCount}</span>
+                </div>
+                <div className={consoleLayout.snippetRow}>
+                  <span>快取命中</span>
                   <span className="console-status-green">{hitPct}%</span>
                 </div>
-                <div className={consoleLayout.snippetRow}>
-                  <span>命中 / 未命中</span>
-                  <span className="text-[var(--console-sub)]">
-                    {cache?.hits ?? 0} / {cache?.misses ?? 0}
-                  </span>
-                </div>
               </ConsoleSnippetList>
-              <ConsoleSnippetList title="任務">
-                <div className={consoleLayout.snippetRow}>
-                  <span>成功率</span>
-                  <span className="console-status-green">{sys?.success_rate ?? 0}%</span>
-                </div>
-                <div className={consoleLayout.snippetRow}>
-                  <span>完成 / 總計</span>
-                  <span className="text-[var(--console-sub)]">
-                    {sys?.tasks_completed ?? 0} / {sys?.tasks_total ?? 0}
-                  </span>
-                </div>
+
+              <ConsoleSnippetList title="近期活動">
+                {recentCycles.length === 0 ? (
+                  <p className="px-1 py-2 text-[10px] text-[var(--console-faint)]">尚無反思軌跡</p>
+                ) : (
+                  recentCycles.slice(0, 5).map((cycle) => (
+                    <div key={cycle.task_id} className={consoleLayout.snippetRow}>
+                      <span className="truncate font-mono text-[10px] text-[var(--console-sub)]">
+                        {cycle.task_id.slice(0, 10)}…
+                      </span>
+                      <span className="shrink-0 text-[10px] console-status-blue">
+                        {cycle.iterations} 輪
+                      </span>
+                    </div>
+                  ))
+                )}
               </ConsoleSnippetList>
-              <ConsoleSnippetList title="優化">
-                <div className={consoleLayout.snippetRow}>
-                  <span>啟用中</span>
-                  <span className="console-status-accent">{activeCount}</span>
+
+              <ConsoleSnippetList title="快速操作">
+                <div className="grid grid-cols-2 gap-2 p-2">
+                  {quickActions.map((action) => (
+                    <a
+                      key={action.href}
+                      href={action.href}
+                      className="rounded-md border border-[var(--console-line)] bg-[var(--console-card-elevated)] px-2 py-2 text-center text-[10px] font-medium text-[var(--console-sub)] transition-colors hover:border-[color-mix(in_srgb,var(--console-accent)_35%,transparent)] hover:text-[var(--console-ink)]"
+                    >
+                      {action.label}
+                    </a>
+                  ))}
                 </div>
               </ConsoleSnippetList>
             </div>

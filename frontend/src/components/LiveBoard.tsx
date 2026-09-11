@@ -19,11 +19,11 @@ import type { MonitorTab } from './AppShell';
 import IntegrationsStrip from './IntegrationsStrip';
 import { consoleLayout } from './ui/ConsoleLayout';
 
-const BLUE = '#0A84FF';
+const BLUE = 'var(--console-accent)';
 const GREEN = 'var(--console-green)';
 const ORANGE = 'var(--console-amber)';
 const RED = 'var(--console-danger)';
-const GRAY = '#98989D';
+const GRAY = 'var(--console-sub)';
 
 export type LiveBoardDensity = 'page' | 'dock';
 
@@ -39,7 +39,7 @@ function GoBtn({ onClick, label = '前往' }: { onClick: () => void; label?: str
     <button
       type="button"
       onClick={onClick}
-      className="text-[10px] font-bold text-[#0A84FF] hover:underline"
+      className="text-[10px] font-bold console-status-accent hover:underline"
     >
       {label}
     </button>
@@ -139,10 +139,10 @@ function WorkflowStrip({
             onClick={() => (s.onClick ? s.onClick() : onOpenTab?.(s.tab))}
             className={`rounded-2xl border px-3 py-2.5 text-left transition-colors ${
               next
-                ? 'border-[#0A84FF]/50 bg-[#0A84FF]/10'
+                ? 'border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]'
                 : s.done
                   ? 'border-white/[0.08] bg-[var(--console-card)]'
-                  : 'border-white/[0.08] bg-[var(--console-card)] hover:border-[#0A84FF]/40'
+                  : 'border-[var(--console-line)] bg-[var(--console-card)] hover:border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)]'
             }`}
           >
             <p
@@ -173,7 +173,7 @@ function StatusDot({ color, label }: { color: string; label: string }) {
             ? 'apple-dot apple-dot--info'
             : 'apple-dot';
   return (
-    <span className="inline-flex items-center gap-1.5 text-[10px] text-[#98989D]">
+    <span className="inline-flex items-center gap-1.5 text-[10px] text-[var(--console-sub)]">
       <span className={tone} style={tone === 'apple-dot' ? { background: color } : undefined} />
       {label}
     </span>
@@ -339,7 +339,7 @@ function CompanyCard({
                 requestRoleSettingsDesk();
                 onOpen();
               }}
-              className="mt-2 text-[11px] font-medium text-[#0A84FF] hover:underline"
+              className="mt-2 text-[11px] font-medium console-status-accent hover:underline"
             >
               指定模型與 Token
             </button>
@@ -481,7 +481,7 @@ function SystemMetricsCard({
         ))}
       </div>
       {satisfaction > 0 && (
-        <p className="mt-1 text-center text-[10px] text-[#98989D]">滿意度 {satisfaction}%</p>
+        <p className="mt-1 text-center text-[10px] text-[var(--console-sub)]">滿意度 {satisfaction}%</p>
       )}
     </FrostCard>
   );
@@ -559,7 +559,7 @@ function ApiPoolCard({ feed, onOpen }: { feed: AnimLiveFeed; onOpen?: () => void
             <button
               type="button"
               onClick={onOpen}
-              className="mt-2 inline-block text-[11px] font-medium text-[#0A84FF] hover:underline"
+              className="mt-2 inline-block text-[11px] font-medium console-status-accent hover:underline"
             >
               前往 {navPathForTab('llm')}
             </button>
@@ -625,7 +625,7 @@ function ExternalIntegrationsCard({
         onOpenTab ? (
           <GoBtn onClick={() => onOpenTab('integrations')} label="面板" />
         ) : (
-          <a href="#/monitor/integrations" className="text-[10px] font-bold text-[#0A84FF] hover:underline">
+          <a href="#/monitor/integrations" className="text-[10px] font-bold console-status-accent hover:underline">
             面板
           </a>
         )
@@ -648,7 +648,7 @@ function LabToolsCard({
   onOpenLab?: (sub: LabSubTab) => void;
 }) {
   const chipClass =
-    'rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-[var(--console-ink)] transition-colors hover:border-[#0A84FF]/40 hover:bg-[#0A84FF]/10';
+    'rounded-full border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-1.5 text-[11px] font-medium text-[var(--console-ink)] transition-colors hover:border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]';
 
   return (
     <FrostCard
@@ -658,12 +658,12 @@ function LabToolsCard({
           <button
             type="button"
             onClick={() => onOpenLab('prompt')}
-            className="text-[10px] font-bold text-[#0A84FF] hover:underline"
+            className="text-[10px] font-bold console-status-accent hover:underline"
           >
             實驗室
           </button>
         ) : (
-          <a href="#/monitor/lab" className="text-[10px] font-bold text-[#0A84FF] hover:underline">
+          <a href="#/monitor/lab" className="text-[10px] font-bold console-status-accent hover:underline">
             實驗室
           </a>
         )
