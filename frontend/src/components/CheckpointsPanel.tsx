@@ -107,8 +107,8 @@ export default function CheckpointsPanel({ embedded = false }: { embedded?: bool
         {items.length === 0 ? (
           <ConsoleCard>
             <ConsoleEmpty>
-              <p className="text-sm text-[#8a8f98]">尚無可恢復檢查點</p>
-              <p className="mt-1 text-[11px] text-[#62666d]">
+              <p className="text-sm text-[var(--console-sub)]">尚無可恢復檢查點</p>
+              <p className="mt-1 text-[11px] text-[var(--console-faint)]">
                 公司任務執行中會自動寫入 checkpoint_*.json，中斷後可在此續跑。
               </p>
             </ConsoleEmpty>
@@ -117,7 +117,7 @@ export default function CheckpointsPanel({ embedded = false }: { embedded?: bool
           <ConsoleCard className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left">
             <thead>
-              <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[#62666d]">
+              <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
                 <th className="px-3 py-2 font-medium">任務</th>
                 <th className="px-3 py-2 font-medium">目標</th>
                 <th className="px-3 py-2 font-medium">階段</th>
@@ -130,23 +130,23 @@ export default function CheckpointsPanel({ embedded = false }: { embedded?: bool
             <tbody>
               {(embedded ? listPager.slice : items).map((c) => (
                 <tr key={c.task_id} className="border-b border-white/[0.08] last:border-0">
-                  <td className="px-3 py-2 font-mono text-[11px] text-[#64D2FF]">
+                  <td className="px-3 py-2 font-mono text-[11px] console-status-blue">
                     {c.task_id.slice(0, 12)}
                   </td>
                   <td className="max-w-[240px] truncate px-3 py-2 text-xs text-[#d0d6e0]">
                     {c.goal || '—'}
                   </td>
-                  <td className="px-3 py-2 text-[11px] text-[#8a8f98]">{c.phase || '—'}</td>
-                  <td className="px-3 py-2 text-[11px] text-[#8a8f98]">{c.config_name || '—'}</td>
+                  <td className="px-3 py-2 text-[11px] text-[var(--console-sub)]">{c.phase || '—'}</td>
+                  <td className="px-3 py-2 text-[11px] text-[var(--console-sub)]">{c.config_name || '—'}</td>
                   <td className="px-3 py-2 font-mono text-[11px]">{c.work_item_count ?? 0}</td>
-                  <td className="px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
+                  <td className="px-3 py-2 font-mono text-[11px] text-[var(--console-sub)]">
                     {fmtTime(c.saved_at)}
                   </td>
                   <td className="px-3 py-2">
                     <button
                       onClick={() => void onResume(c.task_id)}
                       disabled={resuming === c.task_id}
-                      className="rounded-md bg-[#007AFF] px-2 py-1 text-[11px] text-white disabled:opacity-50"
+                      className="rounded-md bg-[var(--console-blue)] px-2 py-1 text-[11px] text-white disabled:opacity-50"
                     >
                       {resuming === c.task_id ? '恢復中…' : '續跑'}
                     </button>

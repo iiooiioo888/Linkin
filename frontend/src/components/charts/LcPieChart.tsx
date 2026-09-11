@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import type { EChartsCoreOption } from 'echarts/core';
 import { useEChart } from '../../lib/echartsHost';
+import { CHART_PALETTE } from '../../lib/consoleColors';
 
 export type PieSlice = { name: string; value: number; color?: string };
 
-const DEFAULT_COLORS = ['#64D2FF', '#30D158', '#FF9F0A', '#BF5AF2', '#8E8E93'];
+const DEFAULT_COLORS = [...CHART_PALETTE];
 
 export default function LcPieChart({
   slices,
@@ -31,12 +32,12 @@ export default function LcPieChart({
         trigger: 'item',
         backgroundColor: 'rgba(28,28,30,0.92)',
         borderColor: 'rgba(255,255,255,0.08)',
-        textStyle: { color: '#F5F5F7', fontSize: 11 },
+        textStyle: { color: 'var(--console-ink)', fontSize: 11 },
         formatter: hasData ? undefined : () => emptyLabel,
       },
       legend: {
         bottom: 0,
-        textStyle: { color: '#AEAEB2', fontSize: 10 },
+        textStyle: { color: 'var(--console-sub)', fontSize: 10 },
         icon: 'circle',
         itemWidth: 8,
         itemHeight: 8,
@@ -47,7 +48,7 @@ export default function LcPieChart({
           radius: ['42%', '68%'],
           center: ['50%', '44%'],
           avoidLabelOverlap: true,
-          label: { show: hasData, color: '#AEAEB2', fontSize: 10, formatter: '{b}\n{d}%' },
+          label: { show: hasData, color: 'var(--console-sub)', fontSize: 10, formatter: '{b}\n{d}%' },
           labelLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } },
           data,
         },

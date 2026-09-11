@@ -78,58 +78,58 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
     >
       {!embedded ? (
         <header>
-          <h2 className="text-[15px] font-semibold text-[#F5F5F7]">靈境積分 · 帳務中心</h2>
-          <p className="mt-1 text-[12px] text-[#8E8E93]">
+          <h2 className="text-[15px] font-semibold text-[var(--console-ink)]">靈境積分 · 帳務中心</h2>
+          <p className="mt-1 text-[12px] text-[var(--console-sub)]">
             訂閱方案 + 用量計費 + 功能包。1 積分 ≈ 1,000 baseline tokens（依模型倍率調整）。
           </p>
         </header>
       ) : null}
 
       {error ? (
-        <div className="rounded-lg border border-[#FF453A]/30 bg-[#FF453A]/10 px-3 py-2 text-[12px] text-[#FF9F9A]">{error}</div>
+        <div className="rounded-lg border border-[#FF453A]/30 bg-[#FF453A]/10 px-3 py-2 text-[12px] console-status-danger">{error}</div>
       ) : null}
 
       {(!embedded || embeddedPager.page === 1) && (
       <section className="grid gap-3 lg:grid-cols-3">
-        <div className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4 lg:col-span-1">
-          <p className="text-[11px] uppercase tracking-wide text-[#636366]">可用積分</p>
-          <p className="mt-1 text-[28px] font-semibold tabular-nums text-[#F5F5F7]">
+        <div className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-4 lg:col-span-1">
+          <p className="text-[11px] uppercase tracking-wide text-[var(--console-faint)]">可用積分</p>
+          <p className="mt-1 text-[28px] font-semibold tabular-nums text-[var(--console-ink)]">
             {loading && !account ? '—' : fmtCredits(account?.balance_credits ?? 0)}
           </p>
-          <p className="mt-1 text-[11px] text-[#8E8E93]">
+          <p className="mt-1 text-[11px] text-[var(--console-sub)]">
             方案：{account?.plan_name_zh ?? '—'} · 月度贈送 {fmtCredits(account?.pool_balances?.monthly_grant ?? 0)} · 已購買 {fmtCredits(account?.pool_balances?.purchased ?? 0)}
           </p>
-          <p className="mt-0.5 text-[10px] text-[#636366]">
+          <p className="mt-0.5 text-[10px] text-[var(--console-faint)]">
             定價 v{account?.pricing_config_version ?? '—'} · 廠商偏好已套用 · 積分不可轉贈
           </p>
           {(account?.pool_balances?.contribution_unlocked ?? 0) > 0 ? (
-            <p className="mt-1 text-[10px] text-[#64D2FF]">
+            <p className="mt-1 text-[10px] console-status-blue">
               貢獻積分（未鎖）{fmtCredits(account?.pool_balances?.contribution_unlocked ?? 0)} · 可 1:0.4 轉已購買
             </p>
           ) : null}
-          <p className="mt-1 text-[10px] text-[#636366]">
+          <p className="mt-1 text-[10px] text-[var(--console-faint)]">
             月度贈送於每月初按比例滾入已購買池，剩餘作廢；L3 快取命中僅計 10% 費用
           </p>
           {account?.low_balance ? (
-            <p className="mt-2 text-[11px] text-[#FF9F0A]">積分偏低，請升級方案或充值後繼續使用計費功能。</p>
+            <p className="mt-2 text-[11px] console-status-amber">積分偏低，請升級方案或充值後繼續使用計費功能。</p>
           ) : null}
         </div>
 
-        <div className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
-          <p className="text-[11px] uppercase tracking-wide text-[#636366]">充值（開發／測試）</p>
+        <div className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-4">
+          <p className="text-[11px] uppercase tracking-wide text-[var(--console-faint)]">充值（開發／測試）</p>
           <div className="mt-2 flex gap-2">
             <input
               type="number"
               min="1"
               value={topupAmount}
               onChange={(e) => setTopupAmount(e.target.value)}
-              className="flex-1 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-[13px] text-[#F5F5F7]"
+              className="flex-1 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-[13px] text-[var(--console-ink)]"
             />
             <button
               type="button"
               disabled={topupBusy}
               onClick={() => void handleTopup()}
-              className="rounded-lg bg-[#64D2FF]/20 px-3 py-1.5 text-[12px] font-medium text-[#64D2FF] hover:bg-[#64D2FF]/30 disabled:opacity-50"
+              className="rounded-lg bg-[var(--console-blue)]/20 px-3 py-1.5 text-[12px] font-medium console-status-blue hover:bg-[var(--console-blue)]/30 disabled:opacity-50"
             >
               {topupBusy ? '處理中…' : '充值'}
             </button>
@@ -137,11 +137,11 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
           {topupMsg ? <p className="mt-2 text-[11px] text-[#AEAEB2]">{topupMsg}</p> : null}
         </div>
 
-        <div className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
-          <p className="text-[11px] uppercase tracking-wide text-[#636366]">功能包權益</p>
+        <div className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-4">
+          <p className="text-[11px] uppercase tracking-wide text-[var(--console-faint)]">功能包權益</p>
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {(account?.features ?? []).map((f) => (
-              <li key={f} className="rounded-md bg-[#30D158]/15 px-2 py-0.5 text-[10px] text-[#30D158]">{f}</li>
+              <li key={f} className="rounded-md bg-[#30D158]/15 px-2 py-0.5 text-[10px] console-status-green">{f}</li>
             ))}
           </ul>
         </div>
@@ -150,7 +150,7 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
 
       {(!embedded || embeddedPager.page === 2) && (
       <section>
-        <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">訂閱方案</h3>
+        <h3 className="mb-2 text-[13px] font-medium text-[var(--console-ink)]">訂閱方案</h3>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {(embedded ? planPager.slice : plans).map((p) => {
             const plan = p as {
@@ -163,26 +163,26 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
             };
             const active = account?.plan_id === plan.id;
             return (
-              <div key={plan.id} className={`rounded-xl border p-3 ${active ? 'border-[#64D2FF]/50 bg-[#64D2FF]/5' : 'border-white/[0.08] bg-[#1C1C1E]'}`}>
-                <p className="text-[13px] font-semibold text-[#F5F5F7]">{plan.name_zh}</p>
-                <p className="text-[11px] text-[#8E8E93]">{plan.description_zh}</p>
+              <div key={plan.id} className={`rounded-xl border p-3 ${active ? 'border-[var(--console-blue)]/50 bg-[var(--console-blue)]/5' : 'border-white/[0.08] bg-[var(--console-card)]'}`}>
+                <p className="text-[13px] font-semibold text-[var(--console-ink)]">{plan.name_zh}</p>
+                <p className="text-[11px] text-[var(--console-sub)]">{plan.description_zh}</p>
                 <p className="mt-1 text-[12px] tabular-nums text-[#AEAEB2]">
                   {plan.price_usd_month != null ? `$${plan.price_usd_month}/月` : '客製'} · {fmtCredits(plan.monthly_credits)} 積分
                 </p>
                 {plan.docker ? (
-                  <p className="mt-0.5 text-[10px] text-[#636366]">{plan.docker.description_zh}</p>
+                  <p className="mt-0.5 text-[10px] text-[var(--console-faint)]">{plan.docker.description_zh}</p>
                 ) : null}
                 {!active ? (
                   <button
                     type="button"
                     disabled={planBusy}
                     onClick={() => void handleAssignPlan(plan.id)}
-                    className="mt-2 text-[11px] text-[#64D2FF] hover:underline disabled:opacity-50"
+                    className="mt-2 text-[11px] console-status-blue hover:underline disabled:opacity-50"
                   >
                     切換方案
                   </button>
                 ) : (
-                  <span className="mt-2 inline-block text-[10px] text-[#64D2FF]">目前方案</span>
+                  <span className="mt-2 inline-block text-[10px] console-status-blue">目前方案</span>
                 )}
               </div>
             );
@@ -200,9 +200,9 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
       )}
 
       {(!embedded || embeddedPager.page === 3) && (
-      <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
-        <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">Docker 即時計費</h3>
-        <p className="text-[11px] text-[#8E8E93]">
+      <section className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-4">
+        <h3 className="mb-2 text-[13px] font-medium text-[var(--console-ink)]">Docker 即時計費</h3>
+        <p className="text-[11px] text-[var(--console-sub)]">
           依目前方案「{docker?.plan_terms?.plan_name_zh ?? account?.plan_name_zh ?? '—'}」套用 Docker 費率倍率
           ×{docker?.plan_terms?.rate_multiplier ?? '—'}；含額 {docker?.plan_terms?.included_hours_per_month ?? 0} h/月
           （已用 {docker?.plan_terms?.included_hours_used?.toFixed(1) ?? '0'} h · 剩餘 {docker?.plan_terms?.included_hours_remaining?.toFixed(1) ?? '0'} h）。
@@ -210,22 +210,22 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg bg-black/20 px-3 py-2">
-            <p className="text-[10px] text-[#636366]">方案 Docker 牌價時費</p>
-            <p className="text-[14px] tabular-nums text-[#F5F5F7]">{fmtCredits(docker?.projected_hourly_credits ?? 0)} 積分/h</p>
+            <p className="text-[10px] text-[var(--console-faint)]">方案 Docker 牌價時費</p>
+            <p className="text-[14px] tabular-nums text-[var(--console-ink)]">{fmtCredits(docker?.projected_hourly_credits ?? 0)} 積分/h</p>
           </div>
           <div className="rounded-lg bg-black/20 px-3 py-2">
-            <p className="text-[10px] text-[#636366]">超額預估時費</p>
-            <p className="text-[14px] tabular-nums text-[#F5F5F7]">
+            <p className="text-[10px] text-[var(--console-faint)]">超額預估時費</p>
+            <p className="text-[14px] tabular-nums text-[var(--console-ink)]">
               {fmtCredits(docker?.projected_billable_hourly_credits ?? docker?.projected_hourly_credits ?? 0)} 積分/h
             </p>
           </div>
           <div className="rounded-lg bg-black/20 px-3 py-2">
-            <p className="text-[10px] text-[#636366]">已扣 Docker 積分</p>
-            <p className="text-[14px] tabular-nums text-[#FF9F9A]">{fmtCredits(docker?.total_docker_credits_spent ?? 0)}</p>
+            <p className="text-[10px] text-[var(--console-faint)]">已扣 Docker 積分</p>
+            <p className="text-[14px] tabular-nums console-status-danger">{fmtCredits(docker?.total_docker_credits_spent ?? 0)}</p>
           </div>
           <div className="rounded-lg bg-black/20 px-3 py-2">
-            <p className="text-[10px] text-[#636366]">我的運行中服務</p>
-            <p className="text-[14px] text-[#F5F5F7]">
+            <p className="text-[10px] text-[var(--console-faint)]">我的運行中服務</p>
+            <p className="text-[14px] text-[var(--console-ink)]">
               {docker?.running_services?.filter((s) => s.is_mine).length ?? 0} 個
             </p>
           </div>
@@ -247,27 +247,27 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
           <p className="mt-2 text-[11px] text-[#48484A]">目前無您名下的計費運行容器（或 Docker 不可用）</p>
         )}
         {dockerUsage.length > 0 ? (
-          <p className="mt-2 text-[10px] text-[#636366]">最近 Docker 用量事件 {dockerUsage.length} 筆 · 分類帳 Docker 行 {dockerLedger.length} 筆</p>
+          <p className="mt-2 text-[10px] text-[var(--console-faint)]">最近 Docker 用量事件 {dockerUsage.length} 筆 · 分類帳 Docker 行 {dockerLedger.length} 筆</p>
         ) : null}
       </section>
       )}
 
       {(!embedded || embeddedPager.page === 4) && (
         <section>
-          <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">最近用量事件</h3>
+          <h3 className="mb-2 text-[13px] font-medium text-[var(--console-ink)]">最近用量事件</h3>
           <div className="rounded-xl border border-white/[0.08]">
             <table className="w-full text-left text-[11px]">
-              <thead className="bg-[#2C2C2E] text-[#8E8E93]">
+              <thead className="bg-[#2C2C2E] text-[var(--console-sub)]">
                 <tr><th className="px-2 py-1.5">時間</th><th className="px-2 py-1.5">類型</th><th className="px-2 py-1.5">積分</th></tr>
               </thead>
               <tbody>
                 {(embedded ? usagePager.slice : usage).length === 0 ? (
-                  <tr><td colSpan={3} className="px-2 py-4 text-center text-[#636366]">{loading ? '載入中…' : '尚無用量'}</td></tr>
+                  <tr><td colSpan={3} className="px-2 py-4 text-center text-[var(--console-faint)]">{loading ? '載入中…' : '尚無用量'}</td></tr>
                 ) : (embedded ? usagePager.slice : usage).map((row) => (
                   <tr key={row.id} className="border-t border-white/[0.04]">
                     <td className="px-2 py-1.5 text-[#AEAEB2]">{new Date(row.created_at).toLocaleString('zh-TW')}</td>
                     <td className="px-2 py-1.5">{EVENT_ZH[row.event_type] ?? row.event_type}</td>
-                    <td className="px-2 py-1.5 tabular-nums text-[#FF9F9A]">-{fmtCredits(row.credits)}</td>
+                    <td className="px-2 py-1.5 tabular-nums console-status-danger">-{fmtCredits(row.credits)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -286,10 +286,10 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
 
       {(!embedded || embeddedPager.page === 5) && (
         <section>
-          <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">分類帳</h3>
+          <h3 className="mb-2 text-[13px] font-medium text-[var(--console-ink)]">分類帳</h3>
           <div className="rounded-xl border border-white/[0.08]">
             <table className="w-full text-left text-[11px]">
-              <thead className="bg-[#2C2C2E] text-[#8E8E93]">
+              <thead className="bg-[#2C2C2E] text-[var(--console-sub)]">
                 <tr><th className="px-2 py-1.5">時間</th><th className="px-2 py-1.5">來源</th><th className="px-2 py-1.5">變動</th></tr>
               </thead>
               <tbody>
@@ -297,7 +297,7 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
                   <tr key={row.id} className="border-t border-white/[0.04]">
                     <td className="px-2 py-1.5 text-[#AEAEB2]">{new Date(row.created_at).toLocaleString('zh-TW')}</td>
                     <td className="px-2 py-1.5">{EVENT_ZH[row.source] ?? row.source}</td>
-                    <td className={`px-2 py-1.5 tabular-nums ${row.amount_credits < 0 ? 'text-[#FF9F9A]' : 'text-[#30D158]'}`}>
+                    <td className={`px-2 py-1.5 tabular-nums ${row.amount_credits < 0 ? 'console-status-danger' : 'console-status-green'}`}>
                       {row.amount_credits > 0 ? '+' : ''}{fmtCredits(row.amount_credits)}
                     </td>
                   </tr>

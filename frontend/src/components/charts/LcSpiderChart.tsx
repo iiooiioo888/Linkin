@@ -34,9 +34,9 @@ export default function LcSpiderChart({
             {
               value: points.map((p) => p.value),
               name: 'score',
-              lineStyle: { color: '#007AFF', width: 2 },
-              itemStyle: { color: '#007AFF' },
-              areaStyle: { color: hexAlpha('#007AFF', 0.28) },
+              lineStyle: { color: 'var(--console-blue)', width: 2 },
+              itemStyle: { color: 'var(--console-blue)' },
+              areaStyle: { color: hexAlpha('var(--console-blue)', 0.28) },
             },
           ],
         },

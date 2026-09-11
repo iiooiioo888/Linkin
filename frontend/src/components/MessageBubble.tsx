@@ -137,7 +137,7 @@ export default function MessageBubble({
           <div className={`ws-msg ${isUser ? 'is-user' : 'is-agent'}`}>
             <div
               className="ws-ava ws-ava-lg"
-              style={{ background: isUser ? '#8b5cf6' : '#3b82f6' }}
+              style={{ background: isUser ? 'var(--console-sub)' : 'var(--console-blue)' }}
             >
               {isUser ? 'Y' : 'S'}
             </div>

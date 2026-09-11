@@ -5,7 +5,7 @@ import type { MultiDimEvaluation } from '../types';
 import LcLineChart from './charts/LcLineChart';
 import LcSpiderChart from './charts/LcSpiderChart';
 
-const GREEN = '#34C759';
+const GREEN = 'var(--console-green)';
 
 export function ReflectionRadar({
   multiDim,
@@ -26,7 +26,7 @@ export function ReflectionRadar({
     <div className="apple-card flex h-full min-h-0 flex-col">
       <div className="apple-card__head">
         <h2 className="apple-title">四維評分</h2>
-        <span className="apple-data text-[12px] text-[#007AFF]">{overall.toFixed(1)}</span>
+        <span className="apple-data text-[12px] console-status-blue">{overall.toFixed(1)}</span>
       </div>
       <div className="apple-card__body apple-card__body--static apple-chart" style={{ height }}>
         <LcSpiderChart points={points} height={height} />
@@ -54,7 +54,7 @@ export function IterationTrend({
     <div className="apple-card flex h-full min-h-0 flex-col">
       <div className="apple-card__head">
         <h2 className="apple-title">迭代趨勢</h2>
-        <span className="text-[10px] text-[#8E8E93]">{history.length || 0} 輪</span>
+        <span className="text-[10px] text-[var(--console-sub)]">{history.length || 0} 輪</span>
       </div>
       <div className="apple-card__body apple-card__body--static apple-chart" style={{ height }}>
         <LcLineChart

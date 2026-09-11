@@ -33,7 +33,7 @@ export const INTEGRATION_META: Record<IntegrationName, IntegrationUiMeta> = {
     group: 'recall',
     glyph: '◌',
     hint: '長期記憶召回 · token 節省',
-    accent: '#64D2FF',
+    accent: 'var(--console-blue)',
   },
   openviking: {
     name: 'openviking',
@@ -51,7 +51,7 @@ export const INTEGRATION_META: Record<IntegrationName, IntegrationUiMeta> = {
     group: 'recall',
     glyph: '◈',
     hint: '企業 RAG 知識庫',
-    accent: '#30D158',
+    accent: 'var(--console-green)',
   },
   yao: {
     name: 'yao',
@@ -60,7 +60,7 @@ export const INTEGRATION_META: Record<IntegrationName, IntegrationUiMeta> = {
     group: 'agent',
     glyph: '▣',
     hint: 'Agent 工作區／任務板',
-    accent: '#FF9F0A',
+    accent: 'var(--console-amber)',
   },
   ouroboros: {
     name: 'ouroboros',

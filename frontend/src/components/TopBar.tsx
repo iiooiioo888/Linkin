@@ -64,7 +64,7 @@ export default function TopBar({
           </svg>
         </button>
 
-        <span className="shrink-0 text-[13px] font-semibold text-[#F5F5F7]">靈境·Linkin</span>
+        <span className="shrink-0 text-[13px] font-semibold text-[var(--console-ink)]">靈境·Linkin</span>
         {activity === 'console' && onMonitorTabChange ? (
           <>
             <nav className="console-hdr-tabs ml-2 hidden min-w-0 md:flex" aria-label="控制台主入口">
@@ -80,16 +80,16 @@ export default function TopBar({
               ))}
             </nav>
             {chromeTabLabel ? (
-              <span className="min-w-0 truncate text-[11px] text-[#636366] md:hidden">· {chromeTabLabel}</span>
+              <span className="min-w-0 truncate text-[11px] text-[var(--console-faint)] md:hidden">· {chromeTabLabel}</span>
             ) : null}
             {path && chromeKey && chromeKey !== monitorTab ? (
-              <span className="hidden min-w-0 truncate text-[11px] text-[#636366] lg:inline">· {path}</span>
+              <span className="hidden min-w-0 truncate text-[11px] text-[var(--console-faint)] lg:inline">· {path}</span>
             ) : null}
           </>
         ) : (
           <>
-            <span className="hidden text-[11px] text-[#636366] md:inline">— Evoloop 運行時</span>
-            <span className="min-w-0 truncate text-[12px] text-[#636366]">· {viewLabel}</span>
+            <span className="hidden text-[11px] text-[var(--console-faint)] md:inline">— Evoloop 運行時</span>
+            <span className="min-w-0 truncate text-[12px] text-[var(--console-faint)]">· {viewLabel}</span>
           </>
         )}
       </div>
@@ -106,7 +106,7 @@ export default function TopBar({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="mr-1 hidden items-center gap-1.5 text-[10px] text-[#FF9F0A] md:flex"
+            className="mr-1 hidden items-center gap-1.5 text-[10px] console-status-amber md:flex"
             title="開啟 API 設定"
           >
             <span className="apple-dot apple-dot--warn" />

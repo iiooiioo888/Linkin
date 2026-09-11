@@ -207,7 +207,7 @@ export default function RahoDecisionBar({
                     key={key}
                     type="button"
                     disabled={busy === p.decision_id}
-                    className="raho-decision-choice relative z-[81] w-full cursor-pointer touch-manipulation rounded-lg border border-white/20 bg-white/[0.08] px-3 py-2.5 text-left text-[13px] font-medium text-[#F5F5F7] hover:border-[#3b82f6]/60 hover:bg-[#3b82f6]/20 active:scale-[0.99] disabled:cursor-wait disabled:opacity-50 sm:w-auto sm:min-w-[10rem]"
+                    className="raho-decision-choice relative z-[81] w-full cursor-pointer touch-manipulation rounded-lg border border-[var(--console-line)] bg-[color-mix(in_srgb,var(--console-ink)_8%,transparent)] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--console-ink)] hover:border-[color-mix(in_srgb,var(--console-blue)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--console-blue)_12%,transparent)] active:scale-[0.99] disabled:cursor-wait disabled:opacity-50 sm:w-auto sm:min-w-[10rem]"
                     onClick={(ev) => {
                       ev.preventDefault();
                       ev.stopPropagation();

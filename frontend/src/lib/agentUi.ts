@@ -4,11 +4,11 @@
 import type { AgentWorkItem, ModelRateCard, ModelRateCatalog, RoleAgent } from '../types';
 
 export const AGENT_STATUS_META: Record<string, { label: string; dot: string; text: string }> = {
-  busy: { label: '執行中', dot: 'bg-[#4cc38a] animate-pulse', text: 'text-[#4cc38a]' },
-  waiting: { label: '等待中', dot: 'bg-amber-400', text: 'text-amber-300' },
-  error: { label: '阻塞', dot: 'bg-red-400', text: 'text-red-300' },
-  idle: { label: '待命', dot: 'bg-[#62666d]', text: 'text-[#8a8f98]' },
-  disabled: { label: '停用', dot: 'bg-[#3a3d44]', text: 'text-[#62666d]' },
+  busy: { label: '執行中', dot: 'bg-[var(--console-green)] animate-pulse', text: 'console-status-green' },
+  waiting: { label: '等待中', dot: 'bg-[var(--console-amber)]', text: 'console-status-amber' },
+  error: { label: '阻塞', dot: 'bg-[var(--console-danger)]', text: 'console-status-danger' },
+  idle: { label: '待命', dot: 'bg-[var(--console-faint)]', text: 'text-[var(--console-sub)]' },
+  disabled: { label: '停用', dot: 'bg-[var(--console-line)]', text: 'text-[var(--console-faint)]' },
 };
 
 export const TIER_LABEL: Record<string, string> = {

@@ -2,21 +2,21 @@
 
 /* ---- 極簡深色設計語彙 ---- */
 :root {
-  --apple-blue: #0a84ff;
-  --apple-blue-soft: #64b5ff;
-  --apple-green: #30d158;
-  --apple-orange: #ff9f0a;
-  --apple-red: #ff453a;
-  --apple-gray: #8e8e93;
-  --apple-label: #f5f5f7;
-  --apple-secondary: #98989d;
-  --apple-tertiary: #636366;
-  --apple-hairline: rgba(255, 255, 255, 0.05);
-  --apple-fill: rgba(255, 255, 255, 0.025);
-  --apple-canvas: #0d0d0f;
-  --apple-canvas-elevated: #141416;
-  --apple-surface: rgba(255, 255, 255, 0.03);
-  --apple-light: #f5f5f7;
+  --apple-blue: var(--console-blue);
+  --apple-blue-soft: var(--console-blue);
+  --apple-green: var(--console-green);
+  --apple-orange: var(--console-amber);
+  --apple-red: var(--console-danger);
+  --apple-gray: var(--console-sub);
+  --apple-label: var(--console-ink);
+  --apple-secondary: var(--console-sub);
+  --apple-tertiary: var(--console-faint);
+  --apple-hairline: color-mix(in srgb, var(--console-ink) 5%, transparent);
+  --apple-fill: color-mix(in srgb, var(--console-ink) 2.5%, transparent);
+  --apple-canvas: var(--console-bg);
+  --apple-canvas-elevated: var(--console-card-elevated);
+  --apple-surface: color-mix(in srgb, var(--console-ink) 3%, transparent);
+  --apple-light: var(--console-ink);
   --apple-radius: 10px;
   --apple-radius-lg: 14px;
   --content-max: 680px;
@@ -28,20 +28,22 @@
   --app-statusbar-height: 22px;
   --mobile-tab-bar-height: 56px;
 
-  /* ---- 控制台 OCD 三欄設計 tokens（8pt grid） ---- */
+  /* ---- 控制台 OCD 三欄設計 tokens（8pt grid · 軟色調） ---- */
+  --u: 8px;
   --console-bg: #0a0a0a;
   --console-sidebar: #0d0d0d;
   --console-card: #141414;
-  --console-card-elevated: #1c1c1c;
-  --console-line: #262626;
-  --console-line-strong: #333333;
-  --console-ink: #f5f5f5;
+  --console-card-elevated: #1a1a1a;
+  --console-line: #2a2a2a;
+  --console-line-strong: #3a3a3a;
+  --console-ink: #e8e8e8;
   --console-sub: #8a8a8a;
-  --console-faint: #4d4d4d;
-  --console-accent: #ff4d4d;
-  --console-green: #30d158;
-  --console-blue: #0a84ff;
-  --console-amber: #ff9f0a;
+  --console-faint: #555555;
+  --console-accent: #c98a7a;
+  --console-green: #6d9b7c;
+  --console-blue: #7a8fad;
+  --console-amber: #c4a574;
+  --console-danger: #9a7068;
   --console-col-left: 224px;
   --console-col-right: 280px;
   --console-gap: 16px;
@@ -265,7 +267,7 @@ body.scroll-lock {
 }
 
 .console-chip.on {
-  border-color: rgba(255, 77, 77, 0.45);
+  border-color: color-mix(in srgb, var(--console-accent) 45%, transparent);
   color: var(--console-ink);
 }
 
@@ -394,6 +396,7 @@ body.scroll-lock {
 .console-status-blue { color: var(--console-blue); }
 .console-status-amber { color: var(--console-amber); }
 .console-status-accent { color: var(--console-accent); }
+.console-status-danger { color: var(--console-danger); }
 
 .console-snippet-row {
   display: flex;
@@ -410,10 +413,10 @@ body.scroll-lock {
 }
 
 .apple-chrome {
-  background: rgba(13, 13, 15, 0.88);
+  background: color-mix(in srgb, var(--console-sidebar) 88%, transparent);
   border-color: var(--apple-hairline) !important;
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
 }
 
 .console-hdr-tabs {
@@ -510,7 +513,7 @@ body.scroll-lock {
 }
 
 .sp-item.on {
-  border-color: rgba(255, 159, 10, 0.7);
+  border-color: color-mix(in srgb, var(--console-amber) 55%, transparent);
   background: transparent;
   color: var(--apple-label);
 }
@@ -4467,16 +4470,16 @@ body.scroll-lock {
   --ws-text: #fafafa;
   --ws-muted: #a1a1aa;
   --ws-dim: #71717a;
-  --ws-blue: #3b82f6;
-  --ws-blue-dim: rgba(59, 130, 246, 0.15);
-  --ws-purple: #8b5cf6;
-  --ws-purple-dim: rgba(139, 92, 246, 0.15);
-  --ws-green: #10b981;
-  --ws-green-dim: rgba(16, 185, 129, 0.15);
-  --ws-orange: #f59e0b;
-  --ws-orange-dim: rgba(245, 158, 11, 0.15);
-  --ws-red: #ef4444;
-  --ws-red-dim: rgba(239, 68, 68, 0.15);
+  --ws-blue: var(--console-blue);
+  --ws-blue-dim: color-mix(in srgb, var(--console-blue) 15%, transparent);
+  --ws-purple: var(--console-sub);
+  --ws-purple-dim: color-mix(in srgb, var(--console-sub) 15%, transparent);
+  --ws-green: var(--console-green);
+  --ws-green-dim: color-mix(in srgb, var(--console-green) 15%, transparent);
+  --ws-orange: var(--console-amber);
+  --ws-orange-dim: color-mix(in srgb, var(--console-amber) 15%, transparent);
+  --ws-red: var(--console-danger);
+  --ws-red-dim: color-mix(in srgb, var(--console-danger) 15%, transparent);
   --ws-code-bg: #0d1117;
   --ws-code-text: #c9d1d9;
   --ws-code-kw: #ff7b72;
@@ -4490,7 +4493,7 @@ body.scroll-lock {
   --ws-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --ws-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   --ws-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-  --ws-glow: 0 0 20px rgba(59, 130, 246, 0.3);
+  --ws-glow: 0 0 16px color-mix(in srgb, var(--console-blue) 20%, transparent);
   position: relative;
   display: flex;
   min-height: 0;

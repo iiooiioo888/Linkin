@@ -107,8 +107,8 @@ export default function BillingAdminPanel({
     >
       {!embedded ? (
         <header>
-          <h2 className="text-[15px] font-semibold text-[#F5F5F7]">計費管理台</h2>
-          <p className="mt-1 text-[11px] text-[#8E8E93]">需 Admin Secret（開發環境可留空使用 Gate 用戶）</p>
+          <h2 className="text-[15px] font-semibold text-[var(--console-ink)]">計費管理台</h2>
+          <p className="mt-1 text-[11px] text-[var(--console-sub)]">需 Admin Secret（開發環境可留空使用 Gate 用戶）</p>
         </header>
       ) : null}
       <input
@@ -127,15 +127,15 @@ export default function BillingAdminPanel({
       )}
 
       {show(2) && (
-      <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
-        <h3 className="text-[13px] font-medium text-[#F5F5F7]">廠商配置 · 路由權重 标准/优选/战略</h3>
-        <p className="text-[11px] text-[#8E8E93]">活躍版本 v{(vendors.active as { version?: number })?.version ?? '—'}</p>
+      <section className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-4">
+        <h3 className="text-[13px] font-medium text-[var(--console-ink)]">廠商配置 · 路由權重 标准/优选/战略</h3>
+        <p className="text-[11px] text-[var(--console-sub)]">活躍版本 v{(vendors.active as { version?: number })?.version ?? '—'}</p>
         <ul className="mt-2 text-[11px]">
           {((vendors.items as Record<string, unknown>[]) ?? []).map((row) => (
             <li key={String(row.version)} className="flex justify-between gap-2 py-1">
               <span>v{String(row.version)} · {String(row.status)}</span>
               {row.status === 'draft' ? (
-                <button type="button" className="text-[#64D2FF]" onClick={() => void adminActivateVendor(Number(row.version), headers()).then(() => load())}>啟用</button>
+                <button type="button" className="console-status-blue" onClick={() => void adminActivateVendor(Number(row.version), headers()).then(() => load())}>啟用</button>
               ) : null}
             </li>
           ))}
@@ -144,16 +144,16 @@ export default function BillingAdminPanel({
       )}
 
       {show(3) && (
-      <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
+      <section className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-[13px] font-medium text-[#F5F5F7]">Fault Pool 運行時</h3>
-            <p className="mt-1 text-[11px] text-[#8E8E93]">{fault?.notice_zh ?? '獨立分類帳 · 鎖倉獎勵／沒收資金池'}</p>
+            <h3 className="text-[13px] font-medium text-[var(--console-ink)]">Fault Pool 運行時</h3>
+            <p className="mt-1 text-[11px] text-[var(--console-sub)]">{fault?.notice_zh ?? '獨立分類帳 · 鎖倉獎勵／沒收資金池'}</p>
           </div>
           {fault?.public_pool_paused ? (
             <button
               type="button"
-              className="rounded border border-[#FF9F9A]/40 px-2 py-1 text-[11px] text-[#FF9F9A]"
+              className="rounded border border-[#FF9F9A]/40 px-2 py-1 text-[11px] console-status-danger"
               onClick={() => void adminResumePublicPool(headers()).then(() => { onMsg('公共池已恢復'); void load(); })}
             >
               恢復公共池
@@ -167,7 +167,7 @@ export default function BillingAdminPanel({
           <Stat label="快取節省" value={fmtCredits(Number(cache?.savings_credits ?? 0))} />
         </div>
         {(fault?.alerts ?? []).length > 0 ? (
-          <ul className="mt-2 space-y-1 text-[10px] text-[#FF9F9A]">
+          <ul className="mt-2 space-y-1 text-[10px] console-status-danger">
             {fault!.alerts!.slice(0, 3).map((a, i) => (
               <li key={i}>{a.message_zh}</li>
             ))}
@@ -175,7 +175,7 @@ export default function BillingAdminPanel({
         ) : null}
         {faultLedgerPager.slice.length > 0 ? (
           <table className="mt-3 w-full text-left text-[10px]">
-            <thead className="text-[#636366]"><tr><th>類型</th><th>原因</th><th>金額</th><th>餘額</th></tr></thead>
+            <thead className="text-[var(--console-faint)]"><tr><th>類型</th><th>原因</th><th>金額</th><th>餘額</th></tr></thead>
             <tbody>
               {faultLedgerPager.slice.map((row, i) => (
                 <tr key={i} className="border-t border-white/[0.04]">
@@ -195,8 +195,8 @@ export default function BillingAdminPanel({
       )}
 
       {show(4) && (
-      <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
-        <h3 className="text-[13px] font-medium text-[#F5F5F7]">路由決策統計</h3>
+      <section className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-4">
+        <h3 className="text-[13px] font-medium text-[var(--console-ink)]">路由決策統計</h3>
         <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
           {((routing?.by_mode as { routing_mode: string; c: number }[]) ?? []).map((m) => (
             <span key={m.routing_mode} className="rounded bg-black/30 px-2 py-1">
@@ -219,15 +219,15 @@ export default function BillingAdminPanel({
 
       {show(4) && (
       <>
-        <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
-          <h3 className="text-[13px] font-medium text-[#F5F5F7]">Dev · 注入貢獻積分</h3>
-          <p className="mt-1 text-[11px] text-[#8E8E93]">共享池上線前測試 lock/convert 用（contribution_unlocked）</p>
+        <section className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-4">
+          <h3 className="text-[13px] font-medium text-[var(--console-ink)]">Dev · 注入貢獻積分</h3>
+          <p className="mt-1 text-[11px] text-[var(--console-sub)]">共享池上線前測試 lock/convert 用（contribution_unlocked）</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <input value={seedAccount} onChange={(e) => setSeedAccount(e.target.value)} placeholder="account_id / user_id" className="min-w-[10rem] flex-1 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
             <input value={seedAmount} onChange={(e) => setSeedAmount(e.target.value)} placeholder="amount" className="w-24 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
             <button
               type="button"
-              className="text-[12px] text-[#64D2FF]"
+              className="text-[12px] console-status-blue"
               onClick={() => {
                 if (!seedAccount.trim()) return;
                 void adminSeedContribution(seedAccount.trim(), Number(seedAmount) || 100, 'admin panel seed', headers())
@@ -241,7 +241,7 @@ export default function BillingAdminPanel({
         </section>
 
         <section className="grid gap-3 sm:grid-cols-3">
-          <button type="button" className="rounded-xl border border-[#64D2FF]/30 px-3 py-2 text-[12px] text-[#64D2FF]" onClick={() => void adminRunRollover(headers()).then(() => onMsg('滾存已執行'))}>
+          <button type="button" className="rounded-xl border border-[var(--console-blue)]/30 px-3 py-2 text-[12px] console-status-blue" onClick={() => void adminRunRollover(headers()).then(() => onMsg('滾存已執行'))}>
             執行月末滾存
           </button>
           <button type="button" className="rounded-xl border border-white/10 px-3 py-2 text-[12px] text-[#AEAEB2]" onClick={() => void load()}>
@@ -253,13 +253,13 @@ export default function BillingAdminPanel({
 
       {show(5) && (
       <section>
-        <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">申訴處理</h3>
+        <h3 className="mb-2 text-[13px] font-medium text-[var(--console-ink)]">申訴處理</h3>
         <ul className="space-y-1 text-[11px]">
           {appealsPager.slice.map((a) => (
             <li key={String(a.appeal_id)} className="flex items-center justify-between rounded bg-black/20 px-2 py-1">
               <span>{String(a.reason)} · {String(a.status)}</span>
               {a.status === 'pending' ? (
-                <button type="button" className="text-[#30D158]" onClick={() => void adminResolveAppeal(String(a.appeal_id), headers()).then(() => load())}>解決</button>
+                <button type="button" className="console-status-green" onClick={() => void adminResolveAppeal(String(a.appeal_id), headers()).then(() => load())}>解決</button>
               ) : null}
             </li>
           ))}
@@ -272,15 +272,15 @@ export default function BillingAdminPanel({
 
       {show(5) && (
       <section>
-        <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">任務分類帳 · 路由</h3>
+        <h3 className="mb-2 text-[13px] font-medium text-[var(--console-ink)]">任務分類帳 · 路由</h3>
         <div className="flex gap-2">
           <input value={taskId} onChange={(e) => setTaskId(e.target.value)} placeholder="task_id" className="flex-1 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
-          <button type="button" className="text-[12px] text-[#64D2FF]" onClick={() => void adminGetTaskLedger(taskId, headers()).then(setLedger)}>查詢</button>
+          <button type="button" className="text-[12px] console-status-blue" onClick={() => void adminGetTaskLedger(taskId, headers()).then(setLedger)}>查詢</button>
         </div>
         {ledger ? (
           <div className="mt-2 space-y-2">
             {(ledger.routing as Record<string, unknown> | null) ? (
-              <p className="text-[11px] text-[#64D2FF]">
+              <p className="text-[11px] console-status-blue">
                 路由 {String((ledger.routing as Record<string, unknown>).routing_mode)} · Key {String((ledger.routing as Record<string, unknown>).primary_key_id ?? '—')}
               </p>
             ) : null}
@@ -305,8 +305,8 @@ export default function BillingAdminPanel({
 function Stat({ label, value, highlight, warn }: { label: string; value: string; highlight?: boolean; warn?: boolean }) {
   return (
     <div className={`rounded-lg border p-2 ${warn ? 'border-[#FF9F9A]/30' : highlight ? 'border-[#FF9F9A]/20' : 'border-white/[0.06]'}`}>
-      <p className="text-[10px] text-[#636366]">{label}</p>
-      <p className={`text-[14px] tabular-nums ${warn ? 'text-[#FF9F9A]' : 'text-[#F5F5F7]'}`}>{value}</p>
+      <p className="text-[10px] text-[var(--console-faint)]">{label}</p>
+      <p className={`text-[14px] tabular-nums ${warn ? 'console-status-danger' : 'text-[var(--console-ink)]'}`}>{value}</p>
     </div>
   );
 }
@@ -323,16 +323,16 @@ function AdminList({
   versionKey: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
-      <h3 className="text-[13px] font-medium text-[#F5F5F7]">{title}</h3>
+    <div className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-4">
+      <h3 className="text-[13px] font-medium text-[var(--console-ink)]">{title}</h3>
       <ul className="mt-2 text-[11px]">
         {items.slice(0, 5).map((row) => (
           <li key={String(row[versionKey])} className="flex justify-between gap-2 border-t border-white/[0.04] py-1">
             <span>v{String(row[versionKey])} · {String(row.status)}</span>
             {row.status !== 'active' ? (
-              <button type="button" className="text-[#64D2FF]" onClick={() => void onActivate(Number(row[versionKey]))}>啟用</button>
+              <button type="button" className="console-status-blue" onClick={() => void onActivate(Number(row[versionKey]))}>啟用</button>
             ) : (
-              <span className="text-[#30D158]">使用中</span>
+              <span className="console-status-green">使用中</span>
             )}
           </li>
         ))}

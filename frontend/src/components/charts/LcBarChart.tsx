@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import type { EChartsCoreOption } from 'echarts/core';
 import { AXIS_STYLE, useEChart } from '../../lib/echartsHost';
+import { CHART_PALETTE } from '../../lib/consoleColors';
 
 export type BarGroup = { subCategory: string; values: number[] };
 
-const PALETTE = ['#007AFF', '#8E8E93', '#34C759', '#FF9F0A'];
+const PALETTE = [...CHART_PALETTE];
 
 export default function LcBarChart({
   categories,
@@ -24,10 +25,10 @@ export default function LcBarChart({
         trigger: 'axis',
         backgroundColor: 'rgba(28,28,30,0.92)',
         borderColor: 'rgba(255,255,255,0.08)',
-        textStyle: { color: '#F5F5F7', fontSize: 11 },
+        textStyle: { color: 'var(--console-ink)', fontSize: 11 },
       },
       legend: grouped
-        ? { top: 0, textStyle: { color: '#AEAEB2', fontSize: 10 } }
+        ? { top: 0, textStyle: { color: 'var(--console-sub)', fontSize: 10 } }
         : undefined,
       grid: { left: 36, right: 8, top: grouped ? 28 : 10, bottom: 28 },
       xAxis: {

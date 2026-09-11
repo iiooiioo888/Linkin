@@ -78,7 +78,7 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
   const body = (
       <div className="flex flex-col gap-3">
         {error && (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          <div className="rounded-md border border-red-500/30 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] px-3 py-2 text-xs console-status-danger">
             {error}
             <button
               onClick={() => setError(null)}
@@ -93,8 +93,8 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
           <div
             className={`rounded-md border px-3 py-2 text-xs ${
               healthStatus.healthy
-                ? 'border-green-500/30 bg-green-500/10 text-green-300'
-                : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                ? 'border-green-500/30 bg-green-500/10 console-status-green'
+                : 'border-amber-500/30 bg-amber-500/10 console-status-amber'
             }`}
           >
             <span className="font-medium">
@@ -124,7 +124,7 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
           <button
             onClick={loadStats}
             disabled={loading}
-            className="rounded-md bg-[#007AFF] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-[var(--console-blue)] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
             {loading ? '載入中...' : '🔄 刷新統計'}
           </button>
@@ -146,29 +146,29 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
         {/* 連接列表 */}
         {stats && stats.connections.length > 0 && (
           <div className="flex-1 overflow-hidden">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#62666d]">
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--console-faint)]">
               連接詳情
             </h2>
-            <div className="rounded-lg border border-white/[0.08] bg-[#141516]">
+            <div className="rounded-lg border border-white/[0.08] bg-[var(--console-card)]">
               <table className="w-full text-left text-[11px]">
-                <thead className="sticky top-0 bg-[#1C1C1E]">
+                <thead className="sticky top-0 bg-[var(--console-card)]">
                   <tr>
-                    <th className="px-3 py-2 font-medium text-[#8a8f98]">ID</th>
-                    <th className="px-3 py-2 font-medium text-[#8a8f98]">數據庫路徑</th>
-                    <th className="px-3 py-2 font-medium text-[#8a8f98]">狀態</th>
-                    <th className="px-3 py-2 font-medium text-[#8a8f98]">查詢數</th>
-                    <th className="px-3 py-2 font-medium text-[#8a8f98]">平均延遲</th>
-                    <th className="px-3 py-2 font-medium text-[#8a8f98]">最後使用</th>
-                    <th className="px-3 py-2 font-medium text-[#8a8f98]">操作</th>
+                    <th className="px-3 py-2 font-medium text-[var(--console-sub)]">ID</th>
+                    <th className="px-3 py-2 font-medium text-[var(--console-sub)]">數據庫路徑</th>
+                    <th className="px-3 py-2 font-medium text-[var(--console-sub)]">狀態</th>
+                    <th className="px-3 py-2 font-medium text-[var(--console-sub)]">查詢數</th>
+                    <th className="px-3 py-2 font-medium text-[var(--console-sub)]">平均延遲</th>
+                    <th className="px-3 py-2 font-medium text-[var(--console-sub)]">最後使用</th>
+                    <th className="px-3 py-2 font-medium text-[var(--console-sub)]">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(embedded ? connPager.slice : stats.connections).map((conn) => (
                     <tr
                       key={conn.id}
-                      className="border-t border-white/[0.08] hover:bg-[#1C1C1E]"
+                      className="border-t border-white/[0.08] hover:bg-[var(--console-card)]"
                     >
-                      <td className="px-3 py-2 font-mono text-[#64D2FF]">{conn.id}</td>
+                      <td className="px-3 py-2 font-mono console-status-blue">{conn.id}</td>
                       <td className="max-w-[200px] truncate px-3 py-2 text-[#d0d6e0]">
                         {conn.db_path}
                       </td>
@@ -185,7 +185,7 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
                       </td>
                       <td className="px-3 py-2 text-[#d0d6e0]">{conn.query_count}</td>
                       <td className="px-3 py-2 text-[#d0d6e0]">{conn.avg_latency_ms} ms</td>
-                      <td className="max-w-[150px] truncate px-3 py-2 text-[#8a8f98]">
+                      <td className="max-w-[150px] truncate px-3 py-2 text-[var(--console-sub)]">
                         {formatTime(conn.last_used_at)}
                       </td>
                       <td className="px-3 py-2">
@@ -209,7 +209,7 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
         )}
 
         {stats && stats.connections.length === 0 && (
-          <div className="flex flex-1 items-center justify-center text-xs text-[#62666d]">
+          <div className="flex flex-1 items-center justify-center text-xs text-[var(--console-faint)]">
             暫無連接記錄
           </div>
         )}
@@ -233,8 +233,8 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className={consoleLayout.kpiCard}>
-      <div className="text-[10px] uppercase tracking-wider text-[#62666d]">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-[#f7f8f8]">{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-[var(--console-faint)]">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-[var(--console-ink)]">{value}</div>
     </div>
   );
 }

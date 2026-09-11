@@ -93,10 +93,10 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
             <div className="border-b border-gray-800 px-3 py-2">
               <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
                 running
-                  ? 'badge-glow bg-blue-500/15 text-blue-300 ring-1 ring-blue-400/50'
+                  ? 'badge-glow bg-[color-mix(in_srgb,var(--console-blue)_15%,transparent)] console-status-blue ring-1 ring-blue-400/50'
                   : failed
-                    ? 'bg-red-500/15 text-red-300 ring-1 ring-red-500/40'
-                    : 'bg-green-500/15 text-green-300 ring-1 ring-green-500/40'
+                    ? 'bg-red-500/15 console-status-danger ring-1 ring-red-500/40'
+                    : 'bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] console-status-green ring-1 ring-green-500/40'
               }`}>
                 {running ? '执行中' : failed ? '失败' : '已完成'}
                 {task.status === 'completed' && task.score != null && ` · 评分 ${task.score}`}
@@ -125,7 +125,7 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
                             <div
                               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold transition-colors duration-300 ${
                                 failed && i === currentIdx
-                                  ? 'bg-red-500/20 text-red-300 ring-1 ring-red-500/50'
+                                  ? 'bg-red-500/20 console-status-danger ring-1 ring-red-500/50'
                                   : passed
                                     ? 'bg-cyan-500 text-white shadow-[0_0_6px_rgba(6,182,212,0.4)]'
                                     : active
@@ -153,7 +153,7 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
                     </p>
                   )}
                   {failed && task.error && (
-                    <p className="mt-2 rounded-lg border border-red-500/25 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-300">
+                    <p className="mt-2 rounded-lg border border-red-500/25 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] px-2.5 py-1.5 text-[11px] console-status-danger">
                       ⚠️ {task.error}
                     </p>
                   )}
@@ -190,7 +190,7 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
                                   <td className="py-1 pr-2 font-mono text-gray-300">{String(info.value ?? '-')}</td>
                                   <td className="py-1">
                                     <span className={`rounded px-1 py-0.5 text-[9px] ${
-                                      String(info.quality ?? 'Good') === 'Good' ? 'bg-green-500/15 text-green-300' : 'bg-yellow-500/15 text-yellow-300'
+                                      String(info.quality ?? 'Good') === 'Good' ? 'bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] console-status-green' : 'bg-yellow-500/15 text-yellow-300'
                                     }`}>
                                       {String(info.quality ?? 'Good')}
                                     </span>
@@ -222,11 +222,11 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
                           </div>
                           <div className="rounded-lg border border-green-500/20 bg-green-500/5 px-2 py-1.5 text-center">
                             <p className="text-[9px] text-gray-500">良好</p>
-                            <p className="text-sm font-semibold text-green-300">{task.opc_state.preprocess.quality_report.good}</p>
+                            <p className="text-sm font-semibold console-status-green">{task.opc_state.preprocess.quality_report.good}</p>
                           </div>
                           <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-2 py-1.5 text-center">
                             <p className="text-[9px] text-gray-500">不良</p>
-                            <p className="text-sm font-semibold text-red-300">{task.opc_state.preprocess.quality_report.bad}</p>
+                            <p className="text-sm font-semibold console-status-danger">{task.opc_state.preprocess.quality_report.bad}</p>
                           </div>
                         </div>
                       </div>
@@ -256,7 +256,7 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
                           <div className="space-y-1">
                             {task.opc_state.analyze.violations.slice(0, 3).map((v, i) => (
                               <div key={i} className={`rounded-md border px-2 py-1 text-[10px] ${
-                                v.severity === 'critical' ? 'border-red-500/30 bg-red-500/10' : 'border-yellow-500/30 bg-yellow-500/10'
+                                v.severity === 'critical' ? 'border-red-500/30 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)]' : 'border-yellow-500/30 bg-yellow-500/10'
                               }`}>
                                 <span className="font-medium text-gray-200">{v.tag}</span>
                                 <span className="ml-1 font-mono text-gray-300">{v.value}</span>
@@ -280,7 +280,7 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
                           text="4. 诊断"
                           extra={
                             <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium normal-case tracking-normal ${
-                              task.opc_state.diagnose.anomaly_detected ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'
+                              task.opc_state.diagnose.anomaly_detected ? 'bg-red-500/20 console-status-danger' : 'bg-green-500/20 console-status-green'
                             }`}>
                               {task.opc_state.diagnose.anomaly_detected ? '⚠️ 异常' : '✅ 正常'}
                             </span>
@@ -290,9 +290,9 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
                           <div className="flex items-center gap-1.5">
                             <span className="text-gray-500">严重程度：</span>
                             <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                              task.opc_state.diagnose.severity === 'critical' ? 'bg-red-500/20 text-red-300' :
+                              task.opc_state.diagnose.severity === 'critical' ? 'bg-red-500/20 console-status-danger' :
                               task.opc_state.diagnose.severity === 'warning' ? 'bg-yellow-500/20 text-yellow-300' :
-                              'bg-green-500/20 text-green-300'
+                              'bg-green-500/20 console-status-green'
                             }`}>
                               {task.opc_state.diagnose.severity}
                             </span>
@@ -327,10 +327,10 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
                                   <span className="text-[11px] font-medium text-gray-200">{d.tag_name}</span>
                                   <span className="text-[11px] font-mono text-gray-400">→ {d.value}</span>
                                   <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-medium ${
-                                    d.priority === 'critical' ? 'bg-red-500/20 text-red-300' :
+                                    d.priority === 'critical' ? 'bg-red-500/20 console-status-danger' :
                                     d.priority === 'high' ? 'bg-orange-500/20 text-orange-300' :
                                     d.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
-                                    'bg-green-500/20 text-green-300'
+                                    'bg-green-500/20 console-status-green'
                                   }`}>
                                     {d.priority}
                                   </span>
@@ -355,7 +355,7 @@ export default function RightPanel({ task, onClose }: RightPanelProps) {
                             task.opc_state.act.action_count > 0 && (
                               <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-normal normal-case tracking-normal ${
                                 task.opc_state.act.success_count === task.opc_state.act.action_count
-                                  ? 'bg-green-500/15 text-green-300'
+                                  ? 'bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] console-status-green'
                                   : 'bg-yellow-500/15 text-yellow-300'
                               }`}>
                                 {task.opc_state.act.success_count}/{task.opc_state.act.action_count} 成功

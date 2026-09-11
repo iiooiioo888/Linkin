@@ -30,21 +30,21 @@ import { PanelSection, PanelShell, consoleLayout } from './ui/ConsoleLayout';
 type SubTab = 'skills' | 'mcp' | 'viz';
 
 const inputCls =
-  'w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[#F5F5F7] outline-none focus:border-[#64D2FF]/50';
+  'w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[var(--console-ink)] outline-none focus:border-[var(--console-blue)]/50';
 const btnCls =
-  'rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2.5 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8] disabled:opacity-40';
+  'rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2.5 py-1 text-[11px] text-[var(--console-sub)] hover:text-[var(--console-ink)] disabled:opacity-40';
 const btnPrimaryCls =
-  'rounded-xl border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-2.5 py-1 text-[11px] text-[#64D2FF] disabled:opacity-40';
+  'rounded-xl border border-[var(--console-blue)]/40 bg-[var(--console-blue)]/10 px-2.5 py-1 text-[11px] console-status-blue disabled:opacity-40';
 const cardCls = consoleLayout.insetCard;
 
 function ErrorBar({ message }: { message: string | null }) {
   if (!message) return null;
-  return <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{message}</div>;
+  return <div className="mb-3 rounded-md border border-red-500/30 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] px-3 py-2 text-xs console-status-danger">{message}</div>;
 }
 
 function OkBar({ message }: { message: string | null }) {
   if (!message) return null;
-  return <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">{message}</div>;
+  return <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs console-status-green">{message}</div>;
 }
 
 // ══════════════ 技能庫 ══════════════
@@ -164,7 +164,7 @@ function SkillsSection() {
       <OkBar message={message} />
 
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-[11px] text-[#8a8f98]">
+        <p className="text-[11px] text-[var(--console-sub)]">
           技能會注入角色的系統提示詞（參考資料區塊）；停用即不注入。共 {skills.length} 條，啟用 {skills.filter((s) => s.enabled).length} 條。
         </p>
         <div className="flex gap-2">
@@ -185,27 +185,27 @@ function SkillsSection() {
 
       {editing && (
         <section className={`${cardCls} mb-4`}>
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">
+          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--console-sub)]">
             {form.id ? `編輯技能 · ${form.id}` : '新增技能'}
           </h3>
           <div className="grid gap-2 lg:grid-cols-2">
-            <label className="text-[10px] text-[#8a8f98]">名稱 *
+            <label className="text-[10px] text-[var(--console-sub)]">名稱 *
               <input className={`${inputCls} mt-1`} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="例如：部署更新流程" />
             </label>
-            <label className="text-[10px] text-[#8a8f98]">適用時機（trigger）
+            <label className="text-[10px] text-[var(--console-sub)]">適用時機（trigger）
               <input className={`${inputCls} mt-1`} value={form.trigger} onChange={(e) => setForm({ ...form, trigger: e.target.value })} placeholder="何時該用這條技能" />
             </label>
-            <label className="text-[10px] text-[#8a8f98] lg:col-span-2">說明
+            <label className="text-[10px] text-[var(--console-sub)] lg:col-span-2">說明
               <input className={`${inputCls} mt-1`} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </label>
-            <label className="text-[10px] text-[#8a8f98] lg:col-span-2">內容 *（注入提示詞的知識本體）
+            <label className="text-[10px] text-[var(--console-sub)] lg:col-span-2">內容 *（注入提示詞的知識本體）
               <textarea className={`${inputCls} mt-1 min-h-[140px] font-mono`} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="方法論／步驟／注意事項…" />
             </label>
-            <label className="text-[10px] text-[#8a8f98]">限定角色（逗號分隔，留空＝全角色）
+            <label className="text-[10px] text-[var(--console-sub)]">限定角色（逗號分隔，留空＝全角色）
               <input className={`${inputCls} mt-1`} value={form.roles} onChange={(e) => setForm({ ...form, roles: e.target.value })} placeholder="developer, reviewer, custom_linkin_*" />
             </label>
             <div className="flex items-end gap-4">
-              <label className="text-[10px] text-[#8a8f98]">單技能字元上限
+              <label className="text-[10px] text-[var(--console-sub)]">單技能字元上限
                 <input type="number" className={`${inputCls} mt-1 w-28`} value={form.skill_budget} onChange={(e) => setForm({ ...form, skill_budget: Number(e.target.value) })} />
               </label>
               <label className="flex items-center gap-1.5 pb-1.5 text-[11px] text-[#AEAEB2]">
@@ -228,28 +228,28 @@ function SkillsSection() {
           <div key={s.id} className={`${cardCls} ${s.enabled ? '' : 'opacity-50'}`}>
             <div className="mb-1 flex items-start justify-between gap-2">
               <div>
-                <p className="text-[13px] font-medium text-[#F5F5F7]">{s.name}</p>
-                <p className="font-mono text-[10px] text-[#636366]">{s.id}</p>
+                <p className="text-[13px] font-medium text-[var(--console-ink)]">{s.name}</p>
+                <p className="font-mono text-[10px] text-[var(--console-faint)]">{s.id}</p>
               </div>
-              <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${s.enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-[#636366]'}`}>
+              <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${s.enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-[var(--console-faint)]'}`}>
                 {s.enabled ? '啟用' : '停用'}
               </span>
             </div>
-            {s.description && <p className="mb-1 text-[11px] text-[#8a8f98]">{s.description}</p>}
-            {s.trigger && <p className="mb-1 text-[10px] text-[#64D2FF]/80">適用：{s.trigger}</p>}
-            <pre className="mb-2 max-h-24 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 font-mono text-[10px] leading-relaxed text-[#8a8f98]">{s.content}</pre>
-            <p className="mb-2 text-[10px] text-[#636366]">
+            {s.description && <p className="mb-1 text-[11px] text-[var(--console-sub)]">{s.description}</p>}
+            {s.trigger && <p className="mb-1 text-[10px] console-status-blue/80">適用：{s.trigger}</p>}
+            <pre className="mb-2 max-h-24 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 font-mono text-[10px] leading-relaxed text-[var(--console-sub)]">{s.content}</pre>
+            <p className="mb-2 text-[10px] text-[var(--console-faint)]">
               角色：{s.roles.length ? s.roles.join(', ') : '全部'} · 上限 {s.skill_budget} 字 · 更新 {s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—'}
             </p>
             <div className="flex gap-2">
               <button type="button" className={btnCls} onClick={() => startEdit(s)}>編輯</button>
               <button type="button" className={btnCls} onClick={() => void onToggle(s)}>{s.enabled ? '停用' : '啟用'}</button>
-              <button type="button" className={`${btnCls} text-red-400/80 hover:text-red-300`} onClick={() => void onDelete(s)}>刪除</button>
+              <button type="button" className={`${btnCls} text-red-400/80 hover:console-status-danger`} onClick={() => void onDelete(s)}>刪除</button>
             </div>
           </div>
         ))}
         {skills.length === 0 && !editing && (
-          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[#636366]`}>
+          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[var(--console-faint)]`}>
             尚無技能。點「＋ 新技能」新增第一條——例如把公司的 SOP、代碼規範、領域知識放進去，角色執行時就會自動帶上。
           </p>
         )}
@@ -434,8 +434,8 @@ function McpSection() {
       <OkBar message={message} />
 
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-[11px] text-[#8a8f98]">
-          通用 MCP 客戶端：stdio（本地子行程）／sse／http。探測成功後工具以 <code className="font-mono text-[#64D2FF]/80">server__tool</code> 掛進工具註冊表，角色即可調用。
+        <p className="text-[11px] text-[var(--console-sub)]">
+          通用 MCP 客戶端：stdio（本地子行程）／sse／http。探測成功後工具以 <code className="font-mono console-status-blue/80">server__tool</code> 掛進工具註冊表，角色即可調用。
         </p>
         <div className="flex gap-2">
           <button type="button" className={btnCls} disabled={busy === 'mount'} onClick={() => void onMount()}>
@@ -450,14 +450,14 @@ function McpSection() {
 
       {editing && (
         <section className={`${cardCls} mb-4`}>
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">
+          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--console-sub)]">
             {form.id ? `編輯連線 · ${form.id}` : '新增 MCP Server'}
           </h3>
           <div className="grid gap-2 lg:grid-cols-2">
-            <label className="text-[10px] text-[#8a8f98]">名稱 *
+            <label className="text-[10px] text-[var(--console-sub)]">名稱 *
               <input className={`${inputCls} mt-1`} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="例如：filesystem / github" />
             </label>
-            <label className="text-[10px] text-[#8a8f98]">傳輸
+            <label className="text-[10px] text-[var(--console-sub)]">傳輸
               <select className={`${inputCls} mt-1`} value={form.transport} onChange={(e) => setForm({ ...form, transport: e.target.value as 'stdio' | 'sse' | 'http' })}>
                 <option value="stdio">stdio（本地子行程）</option>
                 <option value="sse">sse（Server-Sent Events）</option>
@@ -466,28 +466,28 @@ function McpSection() {
             </label>
             {form.transport === 'stdio' ? (
               <>
-                <label className="text-[10px] text-[#8a8f98] lg:col-span-2">啟動命令 *
+                <label className="text-[10px] text-[var(--console-sub)] lg:col-span-2">啟動命令 *
                   <input className={`${inputCls} mt-1 font-mono`} value={form.command} onChange={(e) => setForm({ ...form, command: e.target.value })} placeholder="npx -y @modelcontextprotocol/server-filesystem /data" />
                 </label>
-                <label className="text-[10px] text-[#8a8f98] lg:col-span-2">環境變數（每行 KEY=***
+                <label className="text-[10px] text-[var(--console-sub)] lg:col-span-2">環境變數（每行 KEY=***
                   <textarea className={`${inputCls} mt-1 min-h-[52px] font-mono`} value={form.envText} onChange={(e) => setForm({ ...form, envText: e.target.value })} placeholder={'API_TOKEN=***'} />
                 </label>
               </>
             ) : (
               <>
-                <label className="text-[10px] text-[#8a8f98] lg:col-span-2">端點 URL *
+                <label className="text-[10px] text-[var(--console-sub)] lg:col-span-2">端點 URL *
                   <input className={`${inputCls} mt-1 font-mono`} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://example.com/mcp" />
                 </label>
-                <label className="text-[10px] text-[#8a8f98] lg:col-span-2">自訂標頭（每行 KEY=***
+                <label className="text-[10px] text-[var(--console-sub)] lg:col-span-2">自訂標頭（每行 KEY=***
                   <textarea className={`${inputCls} mt-1 min-h-[52px] font-mono`} value={form.headersText} onChange={(e) => setForm({ ...form, headersText: e.target.value })} placeholder={'X-Api-Key=***'} />
                 </label>
               </>
             )}
-            <label className="text-[10px] text-[#8a8f98]">工具白名單（逗號分隔，留空＝全部）
+            <label className="text-[10px] text-[var(--console-sub)]">工具白名單（逗號分隔，留空＝全部）
               <input className={`${inputCls} mt-1`} value={form.allowed_tools} onChange={(e) => setForm({ ...form, allowed_tools: e.target.value })} placeholder="search, read" />
             </label>
             <div className="flex items-end gap-4">
-              <label className="text-[10px] text-[#8a8f98]">逾時（秒）
+              <label className="text-[10px] text-[var(--console-sub)]">逾時（秒）
                 <input type="number" className={`${inputCls} mt-1 w-24`} value={form.timeout} onChange={(e) => setForm({ ...form, timeout: Number(e.target.value) })} />
               </label>
               <label className="flex items-center gap-1.5 pb-1.5 text-[11px] text-[#AEAEB2]">
@@ -516,10 +516,10 @@ function McpSection() {
 
       {callBox && (
         <section className={`${cardCls} mb-4`}>
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">
+          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--console-sub)]">
             手動呼叫 · {callBox.server} / {callBox.tool}
           </h3>
-          <label className="text-[10px] text-[#8a8f98]">參數（JSON）
+          <label className="text-[10px] text-[var(--console-sub)]">參數（JSON）
             <textarea className={`${inputCls} mt-1 min-h-[60px] font-mono`} value={callBox.args} onChange={(e) => setCallBox({ ...callBox, args: e.target.value })} placeholder='{"query": "hello"}' />
           </label>
           <div className="mt-2 flex gap-2">
@@ -541,14 +541,14 @@ function McpSection() {
             <div key={s.id} className={`${cardCls} ${s.enabled ? '' : 'opacity-50'}`}>
               <div className="mb-1 flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-[13px] font-medium text-[#F5F5F7]">{s.name}</p>
-                  <p className="font-mono text-[10px] text-[#636366]">{s.id} · {s.transport}</p>
+                  <p className="text-[13px] font-medium text-[var(--console-ink)]">{s.name}</p>
+                  <p className="font-mono text-[10px] text-[var(--console-faint)]">{s.id} · {s.transport}</p>
                 </div>
-                <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${s.enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-[#636366]'}`}>
+                <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${s.enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-[var(--console-faint)]'}`}>
                   {s.enabled ? '啟用' : '停用'}
                 </span>
               </div>
-              <p className="mb-1 break-all font-mono text-[10px] text-[#8a8f98]">
+              <p className="mb-1 break-all font-mono text-[10px] text-[var(--console-sub)]">
                 {s.transport === 'stdio' ? s.command : s.url}
               </p>
               {probe && probe.probed_at ? (
@@ -556,16 +556,16 @@ function McpSection() {
                   <p className="mb-1 text-[10px] text-emerald-400/90">
                     ✓ 探測正常 · {probe.tool_count} 工具 · {probe.latency_ms}ms
                     {probe.tools && probe.tools.length > 0 && (
-                      <span className="text-[#636366]">（{probe.tools.slice(0, 6).join(', ')}{probe.tools.length > 6 ? '…' : ''}）</span>
+                      <span className="text-[var(--console-faint)]">（{probe.tools.slice(0, 6).join(', ')}{probe.tools.length > 6 ? '…' : ''}）</span>
                     )}
                   </p>
                 ) : (
                   <p className="mb-1 text-[10px] text-red-400/90">✗ {probe.error}</p>
                 )
               ) : (
-                <p className="mb-1 text-[10px] text-[#636366]">尚未探測</p>
+                <p className="mb-1 text-[10px] text-[var(--console-faint)]">尚未探測</p>
               )}
-              <p className="mb-2 text-[10px] text-[#636366]">
+              <p className="mb-2 text-[10px] text-[var(--console-faint)]">
                 白名單：{s.allowed_tools.length ? s.allowed_tools.join(', ') : '全部'} · {s.readonly ? '唯讀' : '可寫入'} · 逾時 {s.timeout}s
               </p>
               <div className="flex flex-wrap gap-2">
@@ -583,14 +583,14 @@ function McpSection() {
                     呼叫工具
                   </button>
                 )}
-                <button type="button" className={`${btnCls} text-red-400/80 hover:text-red-300`} onClick={() => void onDelete(s)}>刪除</button>
+                <button type="button" className={`${btnCls} text-red-400/80 hover:console-status-danger`} onClick={() => void onDelete(s)}>刪除</button>
               </div>
             </div>
           );
         })}
         {servers.length === 0 && !editing && (
-          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[#636366]`}>
-            尚無 MCP 連線。點「＋ 新連線」接入第一個 server——例如 <code className="font-mono text-[#8a8f98]">npx -y @modelcontextprotocol/server-filesystem /data</code>。
+          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[var(--console-faint)]`}>
+            尚無 MCP 連線。點「＋ 新連線」接入第一個 server——例如 <code className="font-mono text-[var(--console-sub)]">npx -y @modelcontextprotocol/server-filesystem /data</code>。
           </p>
         )}
       </div>
@@ -605,24 +605,24 @@ export default function SkillsMcpPanel() {
       <PanelSection>
         <div className={consoleLayout.toolbar}>
           <h2 className={consoleLayout.title}>技能與 MCP</h2>
-          <div className="flex gap-1 rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-0.5">
+          <div className="flex gap-1 rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-0.5">
             <button
               type="button"
-              className={`rounded-lg px-3 py-1 text-[11px] ${tab === 'skills' ? 'bg-[#64D2FF]/15 text-[#64D2FF]' : 'text-[#8a8f98] hover:text-[#F5F5F7]'}`}
+              className={`rounded-lg px-3 py-1 text-[11px] ${tab === 'skills' ? 'bg-[var(--console-blue)]/15 console-status-blue' : 'text-[var(--console-sub)] hover:text-[var(--console-ink)]'}`}
               onClick={() => setTab('skills')}
             >
               技能庫
             </button>
             <button
               type="button"
-              className={`rounded-lg px-3 py-1 text-[11px] ${tab === 'mcp' ? 'bg-[#64D2FF]/15 text-[#64D2FF]' : 'text-[#8a8f98] hover:text-[#F5F5F7]'}`}
+              className={`rounded-lg px-3 py-1 text-[11px] ${tab === 'mcp' ? 'bg-[var(--console-blue)]/15 console-status-blue' : 'text-[var(--console-sub)] hover:text-[var(--console-ink)]'}`}
               onClick={() => setTab('mcp')}
             >
               MCP 連線
             </button>
             <button
               type="button"
-              className={`rounded-lg px-3 py-1 text-[11px] ${tab === 'viz' ? 'bg-[#64D2FF]/15 text-[#64D2FF]' : 'text-[#8a8f98] hover:text-[#F5F5F7]'}`}
+              className={`rounded-lg px-3 py-1 text-[11px] ${tab === 'viz' ? 'bg-[var(--console-blue)]/15 console-status-blue' : 'text-[var(--console-sub)] hover:text-[var(--console-ink)]'}`}
               onClick={() => setTab('viz')}
               data-testid="skills-tab-viz"
             >
@@ -679,14 +679,14 @@ function VizPluginsSection() {
     <div>
       <ErrorBar message={error} />
       <OkBar message={message} />
-      <p className="mb-3 text-[12px] leading-relaxed text-[#8E8E93]">
+      <p className="mb-3 text-[12px] leading-relaxed text-[var(--console-sub)]">
         dsh-plugin 可視化適配。預設關閉；啟用後解鎖 Context 面板／瀏覽器／
         <code className="text-[11px] text-[#AEAEB2]">/context</code> 命令表面。靈感來自{' '}
         <a
           href="https://github.com/bowenliang123/dsh-context"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[#64D2FF] hover:underline"
+          className="console-status-blue hover:underline"
         >
           dsh-context
         </a>
@@ -697,9 +697,9 @@ function VizPluginsSection() {
           <article key={p.plugin_id} className={cardCls} data-testid={`viz-plugin-${p.plugin_id}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="text-[13px] font-semibold text-[#F5F5F7]">{p.display_name || p.plugin_id}</h3>
-                <p className="mt-1 text-[11px] leading-relaxed text-[#8E8E93]">{p.summary}</p>
-                <p className="mt-1 font-mono text-[10px] text-[#636366]">
+                <h3 className="text-[13px] font-semibold text-[var(--console-ink)]">{p.display_name || p.plugin_id}</h3>
+                <p className="mt-1 text-[11px] leading-relaxed text-[var(--console-sub)]">{p.summary}</p>
+                <p className="mt-1 font-mono text-[10px] text-[var(--console-faint)]">
                   {p.repo} · pin {p.pin_version || p.default_pin || '—'} · {p.source_tag}
                 </p>
                 {p.commands?.length ? (
@@ -743,7 +743,7 @@ function VizPluginsSection() {
           </article>
         ))}
         {items.length === 0 ? (
-          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[#636366]`}>尚無可視化插件目錄</p>
+          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[var(--console-faint)]`}>尚無可視化插件目錄</p>
         ) : null}
       </div>
     </div>

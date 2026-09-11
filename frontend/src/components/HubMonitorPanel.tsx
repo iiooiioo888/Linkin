@@ -19,15 +19,15 @@ import {
 } from './ui/ConsoleLayout';
 
 function circuitTone(state: string): string {
-  if (state === 'OPEN') return 'bg-red-500/15 text-red-300';
-  if (state === 'HALF_OPEN') return 'bg-amber-500/15 text-amber-300';
+  if (state === 'OPEN') return 'bg-red-500/15 console-status-danger';
+  if (state === 'HALF_OPEN') return 'bg-[color-mix(in_srgb,var(--console-amber)_15%,transparent)] console-status-amber';
   return 'bg-[#27a644]/15 text-[#4cc38a]';
 }
 
 function statusTone(status: string): string {
   if (status === 'success') return 'text-[#4cc38a]';
-  if (status === 'filtered' || status === 'budget_denied') return 'text-amber-300';
-  return 'text-red-300';
+  if (status === 'filtered' || status === 'budget_denied') return 'console-status-amber';
+  return 'console-status-danger';
 }
 
 function extraPriceBits(m: {
@@ -118,23 +118,23 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
         <div className={consoleLayout.kpiCard}>
           <p className={consoleLayout.kpiLabel}>語義快取命中率</p>
           <p className="mt-1 font-mono text-lg">{hitPct}%</p>
-          <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#141516]">
-            <div className="h-full bg-[#007AFF]" style={{ width: `${hitPct}%` }} />
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--console-card)]">
+            <div className="h-full bg-[var(--console-blue)]" style={{ width: `${hitPct}%` }} />
           </div>
-          <p className="mt-1 text-[10px] text-[#62666d]">目標 &gt; {targetPct}%</p>
+          <p className="mt-1 text-[10px] text-[var(--console-faint)]">目標 &gt; {targetPct}%</p>
         </div>
         <div className={consoleLayout.kpiCard}>
           <p className={consoleLayout.kpiLabel}>今日預算</p>
           <p className="mt-1 font-mono text-lg">
             {fmtUsd(budget?.spent_today_usd)}
-            <span className="text-xs text-[#62666d]"> / {fmtUsd(budget?.daily_limit_usd)}</span>
+            <span className="text-xs text-[var(--console-faint)]"> / {fmtUsd(budget?.daily_limit_usd)}</span>
           </p>
-          <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#141516]">
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--console-card)]">
             <div
               className="h-full"
               style={{
                 width: `${spentPct}%`,
-                background: spentPct >= 90 ? '#e5484d' : '#007AFF',
+                background: spentPct >= 90 ? '#e5484d' : 'var(--console-blue)',
               }}
             />
           </div>
@@ -142,14 +142,14 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
         <div className={consoleLayout.kpiCard}>
           <p className={consoleLayout.kpiLabel}>呼叫日誌</p>
           <p className="mt-1 font-mono text-lg">{data?.call_log_count ?? 0}</p>
-          <p className="mt-1 text-[10px] text-[#62666d]">上游 {data?.upstream_calls ?? 0} 次</p>
+          <p className="mt-1 text-[10px] text-[var(--console-faint)]">上游 {data?.upstream_calls ?? 0} 次</p>
         </div>
         <div className={consoleLayout.kpiCard}>
           <p className={consoleLayout.kpiLabel}>熔斷 Open</p>
           <p className="mt-1 font-mono text-lg">
             {models.filter((m) => m.circuit.state === 'OPEN').length}
           </p>
-          <p className="mt-1 text-[10px] text-[#62666d]">threshold 50% · 半開 10s</p>
+          <p className="mt-1 text-[10px] text-[var(--console-faint)]">threshold 50% · 半開 10s</p>
         </div>
         </KpiGrid>
 
@@ -160,15 +160,15 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
           {(routing.default_chain).map(
             (id, i, arr) => (
               <span key={id} className="flex items-center gap-1.5">
-                <span className="rounded-full border border-white/[0.08] bg-[#141516] px-2 py-0.5 text-[#d0d6e0]">
+                <span className="rounded-full border border-white/[0.08] bg-[var(--console-card)] px-2 py-0.5 text-[#d0d6e0]">
                   {id}
                 </span>
-                {i < arr.length - 1 && <span className="text-[#62666d]">→</span>}
+                {i < arr.length - 1 && <span className="text-[var(--console-faint)]">→</span>}
               </span>
             ),
           )}
         </div>
-        <p className="mt-2 text-[10px] text-[#62666d]">
+        <p className="mt-2 text-[10px] text-[var(--console-faint)]">
           CN 僅 {routing.cn_chain.join(' / ') || 'DeepSeek / Qwen / MiMo'} · 競速{' '}
           {routing.race_pair.join(' × ') || 'Gemini × Mercury'} · 禁止{' '}
           {routing.forbidden_vendor}
@@ -179,7 +179,7 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
         <ConsoleCard className="overflow-x-auto">
         <table className="w-full min-w-[1040px] text-left">
           <thead>
-            <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[#62666d]">
+            <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
               <th className="px-3 py-2 font-medium">模型</th>
               <th className="px-3 py-2 font-medium">目前 API</th>
               <th className="px-3 py-2 font-medium">智能分</th>
@@ -201,12 +201,12 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
                 }`}
               >
                 <td className="px-3 py-2">
-                  <p className="text-xs text-[#f7f8f8]">{m.id}</p>
-                  <p className="text-[10px] text-[#62666d]">{m.provider}</p>
+                  <p className="text-xs text-[var(--console-ink)]">{m.id}</p>
+                  <p className="text-[10px] text-[var(--console-faint)]">{m.provider}</p>
                 </td>
                 <td className="px-3 py-2 text-[11px]">
                   {m.available_in_pool === false ? (
-                    <span className="text-[#62666d]">不可用</span>
+                    <span className="text-[var(--console-faint)]">不可用</span>
                   ) : (
                     <span className="text-[#4cc38a]">{m.mapped_model || '可用'}</span>
                   )}
@@ -214,28 +214,28 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
                 <td className="px-3 py-2 font-mono text-xs">{m.intelligence}</td>
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[#141516]">
+                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[var(--console-card)]">
                       <div
-                        className="h-full bg-[#007AFF]"
+                        className="h-full bg-[var(--console-blue)]"
                         style={{
                           width: `${Math.min(100, ((Number(m.latency_ewma_ms) || 0) / maxLatency) * 100)}%`,
                         }}
                       />
                     </div>
-                    <span className="font-mono text-[11px] text-[#8a8f98]">
+                    <span className="font-mono text-[11px] text-[var(--console-sub)]">
                       {Math.round(Number(m.latency_ewma_ms) || 0)} ms
                     </span>
                   </div>
                 </td>
-                <td className="px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
+                <td className="px-3 py-2 font-mono text-[11px] text-[var(--console-sub)]">
                   {m.ttfb_ms != null ? `${Math.round(Number(m.ttfb_ms))} ms` : '—'}
                 </td>
-                <td className="px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
+                <td className="px-3 py-2 font-mono text-[11px] text-[var(--console-sub)]">
                   ${Number(m.price_in_per_1m ?? 0).toFixed(3)} / ${Number(m.price_out_per_1m ?? 0).toFixed(3)}
                 </td>
-                <td className="px-3 py-2 text-[11px] text-[#8a8f98]">{extraPriceBits(m) || '—'}</td>
+                <td className="px-3 py-2 text-[11px] text-[var(--console-sub)]">{extraPriceBits(m) || '—'}</td>
                 <td className="px-3 py-2 font-mono text-[11px]">{m.consecutive_fail}</td>
-                <td className="px-3 py-2 font-mono text-[11px] text-[#8a8f98]">
+                <td className="px-3 py-2 font-mono text-[11px] text-[var(--console-sub)]">
                   {m.circuit.fail_ratio != null
                     ? `${Math.round(Number(m.circuit.fail_ratio) * 100)}%`
                     : '—'}
@@ -257,7 +257,7 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
             <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-3 pt-3 pb-1.5">呼叫日誌</ConsoleCardHeader>
             <div className="px-3 pb-3">
           {(data?.call_logs.length ?? 0) === 0 ? (
-            <p className="text-[11px] text-[#62666d]">
+            <p className="text-[11px] text-[var(--console-faint)]">
               尚無推論紀錄。到 AI Hub 送出一次同步推論後會寫入 call_logs。
             </p>
           ) : (
@@ -265,12 +265,12 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
               {data!.call_logs.map((log, i) => (
                 <div
                   key={`${log.id ?? i}`}
-                  className="flex items-center justify-between gap-2 rounded-md bg-[#141516] px-2 py-1.5 text-[11px]"
+                  className="flex items-center justify-between gap-2 rounded-md bg-[var(--console-card)] px-2 py-1.5 text-[11px]"
                 >
                   <span className="min-w-0 truncate text-[#d0d6e0]">
                     {log.model_name} · {log.provider}
                   </span>
-                  <span className="shrink-0 font-mono text-[#8a8f98]">
+                  <span className="shrink-0 font-mono text-[var(--console-sub)]">
                     {fmtUsd(log.cost_usd)} · {log.latency_ms ?? '—'}ms
                   </span>
                   <span className={`shrink-0 ${statusTone(log.status ?? '')}`}>
@@ -287,18 +287,18 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
             <ConsoleCardHeader className="mb-0 border-b-0 bg-transparent px-3 pt-3 pb-1.5">Agent 任務</ConsoleCardHeader>
             <div className="px-3 pb-3">
           {(data?.agent_tasks.length ?? 0) === 0 ? (
-            <p className="text-[11px] text-[#62666d]">
+            <p className="text-[11px] text-[var(--console-faint)]">
               尚無 Agent 任務。工具呼叫走 JWT RPC，OPC 寫入禁止直連。
             </p>
           ) : (
             <div className="max-h-64 space-y-1 overflow-y-auto">
               {data!.agent_tasks.map((t) => (
-                <div key={t.task_id} className="rounded-md bg-[#141516] px-2 py-1.5 text-[11px]">
+                <div key={t.task_id} className="rounded-md bg-[var(--console-card)] px-2 py-1.5 text-[11px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[#d0d6e0]">{t.status}</span>
-                    <span className="font-mono text-[#8a8f98]">{fmtUsd(t.cost_usd)}</span>
+                    <span className="font-mono text-[var(--console-sub)]">{fmtUsd(t.cost_usd)}</span>
                   </div>
-                  <p className="mt-0.5 truncate text-[#8a8f98]">{t.input}</p>
+                  <p className="mt-0.5 truncate text-[var(--console-sub)]">{t.input}</p>
                 </div>
               ))}
             </div>

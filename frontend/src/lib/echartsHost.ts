@@ -27,7 +27,7 @@ echarts.use([
   CanvasRenderer,
 ]);
 
-const MUTED = '#8E8E93';
+const MUTED = 'var(--console-sub)';
 
 export const AXIS_STYLE = {
   axisLine: { lineStyle: { color: 'rgba(255,255,255,0.16)' } },

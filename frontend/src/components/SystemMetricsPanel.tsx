@@ -11,10 +11,16 @@ import { RoadmapTable } from './ChatMonitorCards';
 import {
   ConsoleCard,
   ConsoleCardHeader,
+  ConsoleCenterColumn,
+  ConsoleColumnScroll,
+  ConsoleLeftRail,
+  ConsoleRailNav,
+  ConsoleRightRail,
+  ConsoleSnippetList,
+  ConsoleThreeColumn,
   KpiCard,
   KpiGrid,
   PanelAlert,
-  PanelSection,
   PanelShell,
   SectionHeader,
   consoleLayout,
@@ -33,13 +39,13 @@ type MetricRow = {
 function statusClass(status: MetricRow['status']): string {
   switch (status) {
     case 'good':
-      return 'bg-[#27a644]/15 text-[#4cc38a]';
+      return 'console-status-green bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] px-1.5 py-0.5 rounded';
     case 'warn':
-      return 'bg-amber-500/15 text-amber-300';
+      return 'console-status-amber bg-[color-mix(in_srgb,var(--console-amber)_15%,transparent)] px-1.5 py-0.5 rounded';
     case 'info':
-      return 'bg-[#007AFF]/15 text-[#64D2FF]';
+      return 'console-status-blue bg-[color-mix(in_srgb,var(--console-blue)_15%,transparent)] px-1.5 py-0.5 rounded';
     default:
-      return 'bg-[#141516] text-[#62666d]';
+      return 'bg-[var(--console-card)] text-[var(--console-faint)] px-1.5 py-0.5 rounded';
   }
 }
 
@@ -48,12 +54,12 @@ function Gauge({ value, min, max }: { value: number | null; min: number; max: nu
   const pct = value == null ? 0 : Math.min(100, Math.max(0, ((value - min) / span) * 100));
   const hot = pct >= 85;
   return (
-    <div className="h-1.5 w-24 overflow-hidden rounded-full bg-[#141516]">
+    <div className="h-1.5 w-24 overflow-hidden rounded-full bg-[var(--console-card)]">
       <div
         className="h-full rounded-full"
         style={{
           width: `${pct}%`,
-          background: hot ? '#e5484d' : '#007AFF',
+          background: hot ? 'var(--console-danger)' : 'var(--console-blue)',
         }}
       />
     </div>
@@ -215,175 +221,238 @@ export default function SystemMetricsPanel() {
   const activeCount = data?.roadmap?.filter((r) => r.status === 'active').length ?? 0;
 
   return (
-    <PanelShell>
-      <PanelSection>
-        <SectionHeader
-          title="運行指標"
-          description="快取 · 反思 · 優化路線圖 · 環節模型（非工業 OPC）"
-          meta={
-            <>
-              API 金鑰在{' '}
-              <a href="#/monitor/llm" className="text-[#64D2FF] hover:underline">
-                {navPathForTab('llm')}
-              </a>
-              ；用量在{' '}
-              <a href="#/monitor/models" className="text-[#64D2FF] hover:underline">
-                計費 → AI 用量
-              </a>
-              。
-            </>
-          }
-          actions={
-            <>
-              <span className="rounded-full bg-[#27a644]/15 px-2.5 py-0.5 text-[11px] text-[#4cc38a]">
-                {activeCount} 項優化啟用
-              </span>
-              <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
-                {loading ? '同步中' : '重新整理'}
-              </button>
-            </>
-          }
-        />
+    <PanelShell scroll={false}>
+      <ConsoleThreeColumn>
+        <ConsoleLeftRail>
+          <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-4">
+            <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">運行指標</h1>
+            <p className="mt-1 text-[10px] text-[var(--console-faint)]">快取 · 反思 · Trace</p>
+          </div>
+          <ConsoleColumnScroll className="!px-0 !py-0">
+            <ConsoleRailNav
+              sections={[
+                { id: 'metrics-main', label: '指標總覽' },
+                { id: 'metrics-roadmap', label: '優化路線' },
+                { id: 'metrics-reflection', label: '反思鏈路' },
+              ]}
+              activeId="metrics-main"
+              onSelect={() => {}}
+            />
+          </ConsoleColumnScroll>
+        </ConsoleLeftRail>
 
-        {error ? <PanelAlert>{error}</PanelAlert> : null}
-
-        <KpiGrid>
-          {[
-            { label: '快取命中', value: `${hitPct}%` },
-            { label: '任務成功率', value: `${sys?.success_rate ?? 0}%` },
-            {
-              label: '反思均輪次',
-              value: reflectionTrace?.avg_iterations != null ? String(reflectionTrace.avg_iterations) : '—',
-            },
-            { label: 'Trace', value: String(data?.trace.trace_count ?? 0) },
-          ].map((kpi) => (
-            <KpiCard key={kpi.label} label={kpi.label} value={kpi.value} />
-          ))}
-        </KpiGrid>
-
-        <ConsoleCard className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-left">
-          <thead>
-            <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[#62666d]">
-              <th className="px-3 py-2 font-medium">指標</th>
-              <th className="px-3 py-2 font-medium">即時值</th>
-              <th className="px-3 py-2 font-medium">趨勢</th>
-              <th className="px-3 py-2 font-medium">狀態</th>
-            </tr>
-          </thead>
-          <tbody className="px-3">
-            {rows.map((row) => (
-              <tr key={row.name} className="border-b border-white/[0.08] last:border-0">
-                <td className="py-2 pr-3">
-                  <p className="text-xs font-medium text-[#f7f8f8]">{row.name}</p>
-                  <p className="text-[10px] text-[#62666d]">{row.desc}</p>
-                </td>
-                <td className="py-2 pr-3 font-mono text-xs tabular-nums text-[#d0d6e0]">
-                  {row.value}
-                  {row.unit ? <span className="ml-1 text-[#62666d]">{row.unit}</span> : null}
-                </td>
-                <td className="py-2 pr-3">
-                  {row.pct != null ? (
-                    <>
-                      <Gauge value={row.pct} min={0} max={100} />
-                      <p className="mt-0.5 text-[10px] text-[#62666d]">0–100</p>
-                    </>
-                  ) : (
-                    <span className="text-[10px] text-[#62666d]">—</span>
-                  )}
-                </td>
-                <td className="py-2">
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] ${statusClass(row.status)}`}>
-                    {row.statusLabel}
+        <ConsoleCenterColumn>
+          <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-3">
+            <SectionHeader
+              title="運行指標"
+              description="快取 · 反思 · 優化路線圖 · 環節模型（非工業 OPC）"
+              meta={
+                <>
+                  API 金鑰在{' '}
+                  <a href="#/monitor/llm" className="console-status-blue hover:underline">
+                    {navPathForTab('llm')}
+                  </a>
+                  ；用量在{' '}
+                  <a href="#/monitor/models" className="console-status-blue hover:underline">
+                    計費 → AI 用量
+                  </a>
+                  。
+                </>
+              }
+              actions={
+                <>
+                  <span className="rounded-full bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] px-2.5 py-0.5 text-[11px] console-status-green">
+                    {activeCount} 項優化啟用
                   </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </ConsoleCard>
+                  <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
+                    {loading ? '同步中' : '重新整理'}
+                  </button>
+                </>
+              }
+            />
+          </div>
+          <ConsoleColumnScroll>
+            {error ? <PanelAlert className="mb-3">{error}</PanelAlert> : null}
 
-        <RoadmapTable items={data?.roadmap ?? []} />
+            <KpiGrid>
+              {[
+                { label: '快取命中', value: `${hitPct}%` },
+                { label: '任務成功率', value: `${sys?.success_rate ?? 0}%` },
+                {
+                  label: '反思均輪次',
+                  value: reflectionTrace?.avg_iterations != null ? String(reflectionTrace.avg_iterations) : '—',
+                },
+                { label: 'Trace', value: String(data?.trace.trace_count ?? 0) },
+              ].map((kpi) => (
+                <KpiCard key={kpi.label} label={kpi.label} value={kpi.value} />
+              ))}
+            </KpiGrid>
 
-        <ConsoleCard>
-          <ConsoleCardHeader>反思鏈路追蹤（輪次 · 耗時 · 改進幅度）</ConsoleCardHeader>
-        <table className="w-full text-left text-[12px]">
-          <thead className="bg-[#0a0a0b] text-[10px] uppercase tracking-wider text-[#62666d]">
-            <tr>
-              <th className="px-3 py-2 font-medium">任務</th>
-              <th className="px-3 py-2 font-medium">輪次</th>
-              <th className="px-3 py-2 font-medium">分數</th>
-              <th className="px-3 py-2 font-medium">Δ</th>
-              <th className="px-3 py-2 font-medium">反思耗時</th>
-              <th className="px-3 py-2 font-medium">狀態</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(reflectionTrace?.recent_cycles ?? []).length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-3 py-3 text-xs text-[#62666d]">
-                  尚無反思軌跡，完成任務後將自動彙總。
-                </td>
-              </tr>
-            ) : (
-              reflectionTrace?.recent_cycles.map((cycle) => (
-                <tr key={cycle.task_id} className="border-t border-white/[0.08]">
-                  <td className="px-3 py-1.5 font-mono text-[10px] text-[#d0d6e0]">
-                    {cycle.task_id.slice(0, 12)}
-                    {cycle.task_id.length > 12 ? '…' : ''}
-                  </td>
-                  <td className="px-3 py-1.5 tabular-nums text-[#8a8f98]">{cycle.iterations}</td>
-                  <td className="px-3 py-1.5 tabular-nums text-[#8a8f98]">
-                    {cycle.score_start != null && cycle.score_end != null
-                      ? `${cycle.score_start} → ${cycle.score_end}`
-                      : '—'}
-                  </td>
-                  <td className="px-3 py-1.5 tabular-nums text-[#64D2FF]">
-                    {cycle.score_delta != null ? `+${cycle.score_delta}` : '—'}
-                  </td>
-                  <td className="px-3 py-1.5 tabular-nums text-[#8a8f98]">
-                    {cycle.loop_duration_ms > 0 ? `${Math.round(cycle.loop_duration_ms)}ms` : '—'}
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] ${
-                        cycle.early_stop
-                          ? 'bg-amber-500/15 text-amber-300'
-                          : 'bg-[#27a644]/15 text-[#4cc38a]'
-                      }`}
-                    >
-                      {cycle.early_stop ? '早停' : '完成'}
-                    </span>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        </ConsoleCard>
+            <ConsoleCard className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left">
+                <thead>
+                  <tr className="border-b border-[var(--console-line)] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
+                    <th className="px-3 py-2 font-medium">指標</th>
+                    <th className="px-3 py-2 font-medium">即時值</th>
+                    <th className="px-3 py-2 font-medium">趨勢</th>
+                    <th className="px-3 py-2 font-medium">狀態</th>
+                  </tr>
+                </thead>
+                <tbody className="px-3">
+                  {rows.map((row) => (
+                    <tr key={row.name} className="border-b border-[var(--console-line)] last:border-0">
+                      <td className="py-2 pr-3">
+                        <p className="text-xs font-medium text-[var(--console-ink)]">{row.name}</p>
+                        <p className="text-[10px] text-[var(--console-faint)]">{row.desc}</p>
+                      </td>
+                      <td className="py-2 pr-3 font-mono text-xs tabular-nums text-[var(--console-sub)]">
+                        {row.value}
+                        {row.unit ? <span className="ml-1 text-[var(--console-faint)]">{row.unit}</span> : null}
+                      </td>
+                      <td className="py-2 pr-3">
+                        {row.pct != null ? (
+                          <>
+                            <Gauge value={row.pct} min={0} max={100} />
+                            <p className="mt-0.5 text-[10px] text-[var(--console-faint)]">0–100</p>
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-[var(--console-faint)]">—</span>
+                        )}
+                      </td>
+                      <td className="py-2">
+                        <span className={`text-[10px] ${statusClass(row.status)}`}>{row.statusLabel}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ConsoleCard>
 
-        <ConsoleCard>
-          <ConsoleCardHeader>環節 → 模型層級（P0 任務-模型匹配）</ConsoleCardHeader>
-        <table className="w-full text-left text-[12px]">
-          <thead className="bg-[#0a0a0b] text-[10px] uppercase tracking-wider text-[#62666d]">
-            <tr>
-              <th className="px-3 py-2 font-medium">環節</th>
-              <th className="px-3 py-2 font-medium">Tier</th>
-              <th className="px-3 py-2 font-medium">模型</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(data?.stage_router ?? {}).map(([stage, info]) => (
-              <tr key={stage} className="border-t border-white/[0.08]">
-                <td className="px-3 py-1.5 font-mono text-[#d0d6e0]">{stage}</td>
-                <td className="px-3 py-1.5 text-[#64D2FF]">{info.tier}</td>
-                <td className="px-3 py-1.5 font-mono text-[#8a8f98]">{info.model}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </ConsoleCard>
-      </PanelSection>
+            <div className="mt-3">
+              <RoadmapTable items={data?.roadmap ?? []} />
+            </div>
+
+            <ConsoleCard className="mt-3">
+              <ConsoleCardHeader>反思鏈路追蹤（輪次 · 耗時 · 改進幅度）</ConsoleCardHeader>
+              <table className="w-full text-left text-[12px]">
+                <thead className="bg-[var(--console-card)] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">任務</th>
+                    <th className="px-3 py-2 font-medium">輪次</th>
+                    <th className="px-3 py-2 font-medium">分數</th>
+                    <th className="px-3 py-2 font-medium">Δ</th>
+                    <th className="px-3 py-2 font-medium">反思耗時</th>
+                    <th className="px-3 py-2 font-medium">狀態</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(reflectionTrace?.recent_cycles ?? []).length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-3 py-3 text-xs text-[var(--console-faint)]">
+                        尚無反思軌跡，完成任務後將自動彙總。
+                      </td>
+                    </tr>
+                  ) : (
+                    reflectionTrace?.recent_cycles.map((cycle) => (
+                      <tr key={cycle.task_id} className="border-t border-[var(--console-line)]">
+                        <td className="px-3 py-1.5 font-mono text-[10px] text-[var(--console-sub)]">
+                          {cycle.task_id.slice(0, 12)}
+                          {cycle.task_id.length > 12 ? '…' : ''}
+                        </td>
+                        <td className="px-3 py-1.5 tabular-nums text-[var(--console-sub)]">{cycle.iterations}</td>
+                        <td className="px-3 py-1.5 tabular-nums text-[var(--console-sub)]">
+                          {cycle.score_start != null && cycle.score_end != null
+                            ? `${cycle.score_start} → ${cycle.score_end}`
+                            : '—'}
+                        </td>
+                        <td className="px-3 py-1.5 tabular-nums console-status-blue">
+                          {cycle.score_delta != null ? `+${cycle.score_delta}` : '—'}
+                        </td>
+                        <td className="px-3 py-1.5 tabular-nums text-[var(--console-sub)]">
+                          {cycle.loop_duration_ms > 0 ? `${Math.round(cycle.loop_duration_ms)}ms` : '—'}
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] ${
+                              cycle.early_stop
+                                ? 'console-status-amber bg-[color-mix(in_srgb,var(--console-amber)_15%,transparent)]'
+                                : 'console-status-green bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)]'
+                            }`}
+                          >
+                            {cycle.early_stop ? '早停' : '完成'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </ConsoleCard>
+
+            <ConsoleCard className="mt-3">
+              <ConsoleCardHeader>環節 → 模型層級（P0 任務-模型匹配）</ConsoleCardHeader>
+              <table className="w-full text-left text-[12px]">
+                <thead className="bg-[var(--console-card)] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">環節</th>
+                    <th className="px-3 py-2 font-medium">Tier</th>
+                    <th className="px-3 py-2 font-medium">模型</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(data?.stage_router ?? {}).map(([stage, info]) => (
+                    <tr key={stage} className="border-t border-[var(--console-line)]">
+                      <td className="px-3 py-1.5 font-mono text-[var(--console-sub)]">{stage}</td>
+                      <td className="px-3 py-1.5 console-status-blue">{info.tier}</td>
+                      <td className="px-3 py-1.5 font-mono text-[var(--console-sub)]">{info.model}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ConsoleCard>
+          </ConsoleColumnScroll>
+        </ConsoleCenterColumn>
+
+        <ConsoleRightRail>
+          <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-3">
+            <p className="text-[11px] font-semibold text-[var(--console-ink)]">快照</p>
+          </div>
+          <ConsoleColumnScroll>
+            <div className={consoleLayout.sectionStack}>
+              <ConsoleSnippetList title="快取">
+                <div className={consoleLayout.snippetRow}>
+                  <span>命中率</span>
+                  <span className="console-status-green">{hitPct}%</span>
+                </div>
+                <div className={consoleLayout.snippetRow}>
+                  <span>命中 / 未命中</span>
+                  <span className="text-[var(--console-sub)]">
+                    {cache?.hits ?? 0} / {cache?.misses ?? 0}
+                  </span>
+                </div>
+              </ConsoleSnippetList>
+              <ConsoleSnippetList title="任務">
+                <div className={consoleLayout.snippetRow}>
+                  <span>成功率</span>
+                  <span className="console-status-green">{sys?.success_rate ?? 0}%</span>
+                </div>
+                <div className={consoleLayout.snippetRow}>
+                  <span>完成 / 總計</span>
+                  <span className="text-[var(--console-sub)]">
+                    {sys?.tasks_completed ?? 0} / {sys?.tasks_total ?? 0}
+                  </span>
+                </div>
+              </ConsoleSnippetList>
+              <ConsoleSnippetList title="優化">
+                <div className={consoleLayout.snippetRow}>
+                  <span>啟用中</span>
+                  <span className="console-status-accent">{activeCount}</span>
+                </div>
+              </ConsoleSnippetList>
+            </div>
+          </ConsoleColumnScroll>
+        </ConsoleRightRail>
+      </ConsoleThreeColumn>
     </PanelShell>
   );
 }

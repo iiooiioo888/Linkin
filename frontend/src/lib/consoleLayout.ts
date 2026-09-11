@@ -71,7 +71,7 @@ export const consoleLayout = {
   subtitle: 'mt-0.5 text-[11px] text-[var(--console-sub)]',
   meta: 'mt-1 text-[10px] text-[var(--console-faint)]',
   errorBar:
-    'rounded-md border border-[var(--console-accent)]/30 bg-[var(--console-accent)]/10 px-3 py-2 text-xs text-[var(--console-accent)]',
+    'rounded-md border border-[var(--console-danger)]/30 bg-[var(--console-danger)]/10 px-3 py-2 text-xs text-[var(--console-danger)]',
   noticeBar:
     'rounded-md border border-[var(--console-blue)]/30 bg-[var(--console-blue)]/10 px-3 py-2 text-xs text-[var(--console-blue)]',
   refreshBtn:

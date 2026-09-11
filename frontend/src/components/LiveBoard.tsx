@@ -20,9 +20,9 @@ import IntegrationsStrip from './IntegrationsStrip';
 import { consoleLayout } from './ui/ConsoleLayout';
 
 const BLUE = '#0A84FF';
-const GREEN = '#30D158';
-const ORANGE = '#FF9F0A';
-const RED = '#FF453A';
+const GREEN = 'var(--console-green)';
+const ORANGE = 'var(--console-amber)';
+const RED = 'var(--console-danger)';
 const GRAY = '#98989D';
 
 export type LiveBoardDensity = 'page' | 'dock';
@@ -141,19 +141,19 @@ function WorkflowStrip({
               next
                 ? 'border-[#0A84FF]/50 bg-[#0A84FF]/10'
                 : s.done
-                  ? 'border-white/[0.08] bg-[#1C1C1E]'
-                  : 'border-white/[0.08] bg-[#1C1C1E] hover:border-[#0A84FF]/40'
+                  ? 'border-white/[0.08] bg-[var(--console-card)]'
+                  : 'border-white/[0.08] bg-[var(--console-card)] hover:border-[#0A84FF]/40'
             }`}
           >
             <p
               className={`text-[10px] font-bold uppercase tracking-wider ${
-                next ? 'text-[#64D2FF]' : s.done ? 'text-[#30D158]' : 'text-[#636366]'
+                next ? 'console-status-blue' : s.done ? 'console-status-green' : 'text-[var(--console-faint)]'
               }`}
             >
               {s.done ? '完成' : next ? '下一步' : s.n}
             </p>
-            <p className="mt-0.5 text-[13px] font-semibold text-[#F5F5F7]">{s.label}</p>
-            <p className="text-[10px] text-[#8E8E93]">{s.hint}</p>
+            <p className="mt-0.5 text-[13px] font-semibold text-[var(--console-ink)]">{s.label}</p>
+            <p className="text-[10px] text-[var(--console-sub)]">{s.hint}</p>
           </button>
         );
       })}
@@ -220,8 +220,8 @@ function RingMetric({
           <span className="apple-data text-[16px] text-white">{pct}%</span>
         </div>
       </div>
-      <p className="text-[12px] font-bold text-[#F5F5F7]">{label}</p>
-      {sub && <p className="apple-data text-[10px] text-[#8E8E93]">{sub}</p>}
+      <p className="text-[12px] font-bold text-[var(--console-ink)]">{label}</p>
+      {sub && <p className="apple-data text-[10px] text-[var(--console-sub)]">{sub}</p>}
     </div>
   );
 }
@@ -280,7 +280,7 @@ function PipelineCard({
               </div>
               <span
                 className={`mt-2 font-medium ${dock ? 'text-[9px]' : 'text-[10px]'}`}
-                style={{ color: active ? '#fff' : '#8E8E93' }}
+                style={{ color: active ? '#fff' : 'var(--console-sub)' }}
               >
                 {n.label}
               </span>
@@ -327,9 +327,9 @@ function CompanyCard({
     >
       {busy.length === 0 ? (
         <div className="py-4 text-center">
-          <p className="text-[12px] text-[#636366]">無忙碌角色</p>
+          <p className="text-[12px] text-[var(--console-faint)]">無忙碌角色</p>
           {feed.agents.some((a) => a.preferred_model || a.preferred_provider) ? (
-            <p className="mt-1 text-[11px] text-[#8E8E93]">
+            <p className="mt-1 text-[11px] text-[var(--console-sub)]">
               {feed.agents.filter((a) => a.preferred_model || a.preferred_provider).length} 席已指定模型
             </p>
           ) : onOpen ? (
@@ -376,8 +376,8 @@ function CompanyCard({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <p className="truncate text-[12px] font-bold text-[#F5F5F7]">{a.name}</p>
-                    <span className="apple-data shrink-0 text-[10px] text-[#8E8E93]">{pct}%</span>
+                    <p className="truncate text-[12px] font-bold text-[var(--console-ink)]">{a.name}</p>
+                    <span className="apple-data shrink-0 text-[10px] text-[var(--console-sub)]">{pct}%</span>
                   </div>
                   <div className="h-1 overflow-hidden rounded-full bg-white/[0.08]">
                     <div
@@ -511,7 +511,7 @@ function EventsCard({
       scroll={lines.length > (dock ? 3 : 4)}
     >
       {lines.length === 0 ? (
-        <p className="py-8 text-center text-[12px] text-[#636366]">等待事件</p>
+        <p className="py-8 text-center text-[12px] text-[var(--console-faint)]">等待事件</p>
       ) : (
         <ul className="divide-y divide-white/[0.06]">
           {lines.map((s) => (
@@ -527,7 +527,7 @@ function EventsCard({
                 <p className="truncate text-[11px] font-bold" style={{ color: s.accent ?? BLUE }}>
                   {s.role}
                 </p>
-                <p className="mt-0.5 text-[12px] font-normal leading-snug text-[#F5F5F7]">{s.line}</p>
+                <p className="mt-0.5 text-[12px] font-normal leading-snug text-[var(--console-ink)]">{s.line}</p>
               </div>
             </li>
           ))}
@@ -551,7 +551,7 @@ function ApiPoolCard({ feed, onOpen }: { feed: AnimLiveFeed; onOpen?: () => void
       accessory={onOpen ? <GoBtn onClick={onOpen} label="管理" /> : undefined}
     >
       {!ops ? (
-        <p className="py-4 text-center text-[12px] text-[#636366]">同步中…</p>
+        <p className="py-4 text-center text-[12px] text-[var(--console-faint)]">同步中…</p>
       ) : routes.length === 0 && !ops.configured ? (
         <div className="py-4 text-center">
           <p className="text-[12px] text-[#AEAEB2]">尚未配置 API</p>
@@ -567,7 +567,7 @@ function ApiPoolCard({ feed, onOpen }: { feed: AnimLiveFeed; onOpen?: () => void
         </div>
       ) : (
         <div className="space-y-2 py-1">
-          <div className="flex items-center justify-between text-[11px] text-[#8E8E93]">
+          <div className="flex items-center justify-between text-[11px] text-[var(--console-sub)]">
             <StatusDot
               color={tone}
               label={
@@ -594,12 +594,12 @@ function ApiPoolCard({ feed, onOpen }: { feed: AnimLiveFeed; onOpen?: () => void
               <li key={route.id} className="flex items-center justify-between gap-2 py-1.5 first:pt-0">
                 <button
                   type="button"
-                  className="min-w-0 truncate text-left text-[12px] font-medium text-[#F5F5F7] hover:text-[#64D2FF]"
+                  className="min-w-0 truncate text-left text-[12px] font-medium text-[var(--console-ink)] hover:console-status-blue"
                   onClick={onOpen}
                 >
                   {route.name}
                 </button>
-                <span className="shrink-0 font-mono text-[10px] text-[#8E8E93]">
+                <span className="shrink-0 font-mono text-[10px] text-[var(--console-sub)]">
                   {route.model || `${route.allowed_models.length} 模`}
                 </span>
               </li>
@@ -633,7 +633,7 @@ function ExternalIntegrationsCard({
       className={dock ? '' : 'lb-span-2'}
     >
       <IntegrationsStrip density={dock ? 'compact' : 'comfortable'} showSummary={false} showGroups={!dock} />
-      <p className="mt-2 text-[10px] leading-relaxed text-[#636366]">
+      <p className="mt-2 text-[10px] leading-relaxed text-[var(--console-faint)]">
         MemOS 記憶 · OpenViking 分層上下文 · WeKnora 知識 · Yao 任務板 · Ouroboros 閘門 · OpenPencil 設計。預設關閉，顯式啟用。
       </p>
     </FrostCard>
@@ -648,7 +648,7 @@ function LabToolsCard({
   onOpenLab?: (sub: LabSubTab) => void;
 }) {
   const chipClass =
-    'rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-[#F5F5F7] transition-colors hover:border-[#0A84FF]/40 hover:bg-[#0A84FF]/10';
+    'rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-[var(--console-ink)] transition-colors hover:border-[#0A84FF]/40 hover:bg-[#0A84FF]/10';
 
   return (
     <FrostCard
@@ -694,7 +694,7 @@ function LabToolsCard({
           ),
         )}
       </div>
-      <p className="mt-2 text-[10px] leading-relaxed text-[#636366]">
+      <p className="mt-2 text-[10px] leading-relaxed text-[var(--console-faint)]">
         Firecrawl 爬蟲 · Prompt Optimizer · Archify 架構 · Ponytail 精簡 · stock-quant 策略庫
       </p>
     </FrostCard>
@@ -740,12 +740,12 @@ export default function LiveBoard({
       >
         {!dock && (
           <header className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-[11px] text-[#8E8E93]">
+            <p className="text-[11px] text-[var(--console-sub)]">
               控制台總覽 · API → 角色 → 執行 → 外部整合（MemOS／Viking…）→ 審計／計費
             </p>
             <span className="flex items-center gap-2">
               <StatusDot color={feed.live ? GREEN : GRAY} label={feed.live ? 'LIVE' : 'IDLE'} />
-              {updated && <span className="apple-data text-[10px] text-[#636366]">{updated}</span>}
+              {updated && <span className="apple-data text-[10px] text-[var(--console-faint)]">{updated}</span>}
             </span>
           </header>
         )}
@@ -753,7 +753,7 @@ export default function LiveBoard({
         {dock && (
           <div className="mb-3 flex items-center gap-2">
             <StatusDot color={feed.live ? GREEN : GRAY} label={feed.live ? 'LIVE' : 'IDLE'} />
-            {updated && <span className="font-mono text-[10px] text-[#636366]">{updated}</span>}
+            {updated && <span className="font-mono text-[10px] text-[var(--console-faint)]">{updated}</span>}
           </div>
         )}
 

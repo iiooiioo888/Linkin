@@ -15,12 +15,12 @@ export default function LockTimelineChart({
   return (
     <div className="w-full" style={{ minHeight: height }}>
       {empty ? (
-        <div className="flex h-full items-center justify-center text-[11px] text-[#636366]">暫無鎖倉分期</div>
+        <div className="flex h-full items-center justify-center text-[11px] text-[var(--console-faint)]">暫無鎖倉分期</div>
       ) : (
         <>
-          <div className="mb-1 flex items-center justify-between text-[10px] text-[#8E8E93]">
+          <div className="mb-1 flex items-center justify-between text-[10px] text-[var(--console-sub)]">
             <span>0 天</span>
-            <span className="text-[#64D2FF]">已解鎖 {paidPct}%</span>
+            <span className="console-status-blue">已解鎖 {paidPct}%</span>
             <span>{days} 天</span>
           </div>
           <svg viewBox="0 0 320 40" className="w-full" role="img" aria-label="鎖倉分期時間軸">
@@ -42,8 +42,8 @@ export default function LockTimelineChart({
                     cx={x}
                     cy={20}
                     r={6}
-                    fill={m.paid ? '#30D158' : '#1C1C1E'}
-                    stroke={m.paid ? '#30D158' : '#64D2FF'}
+                    fill={m.paid ? 'var(--console-green)' : '#1C1C1E'}
+                    stroke={m.paid ? 'var(--console-green)' : 'var(--console-blue)'}
                     strokeWidth={2}
                   />
                   <text x={x} y={36} textAnchor="middle" fill="#8E8E93" fontSize="9">

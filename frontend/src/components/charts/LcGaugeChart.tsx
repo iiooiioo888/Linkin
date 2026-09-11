@@ -32,7 +32,7 @@ export default function LcGaugeChart({
           progress: {
             show: true,
             width: 10,
-            itemStyle: { color: '#64D2FF' },
+            itemStyle: { color: 'var(--console-blue)' },
           },
           axisLine: { lineStyle: { width: 10, color: [[1, 'rgba(255,255,255,0.08)']] } },
           axisTick: { show: false },
@@ -50,7 +50,7 @@ export default function LcGaugeChart({
           },
           title: {
             offsetCenter: [0, '72%'],
-            color: '#8E8E93',
+            color: 'var(--console-sub)',
             fontSize: 10,
           },
           data: [{ value: pct, name: label }],
@@ -65,7 +65,7 @@ export default function LcGaugeChart({
     <div className="relative h-full w-full" style={{ height, minHeight: height }}>
       <div ref={host} className="h-full w-full" role="img" aria-label="儀表圖" />
       {sublabel ? (
-        <p className="pointer-events-none absolute bottom-1 left-0 right-0 text-center text-[10px] text-[#636366]">
+        <p className="pointer-events-none absolute bottom-1 left-0 right-0 text-center text-[10px] text-[var(--console-faint)]">
           {sublabel}
         </p>
       ) : null}
