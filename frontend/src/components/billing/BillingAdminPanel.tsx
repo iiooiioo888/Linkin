@@ -35,7 +35,13 @@ type FaultPoolView = {
   by_reason?: { reason: string; entry_type: string; total: number }[];
 };
 
-export default function BillingAdminPanel({ onMsg }: { onMsg: (m: string) => void }) {
+export default function BillingAdminPanel({
+  onMsg,
+  embedded = false,
+}: {
+  onMsg: (m: string) => void;
+  embedded?: boolean;
+}) {
   const [secret, setSecret] = useState(() => localStorage.getItem(ADMIN_KEY_STORAGE) ?? '');
   const [pricing, setPricing] = useState<Record<string, unknown>[]>([]);
   const [policies, setPolicies] = useState<Record<string, unknown>[]>([]);
@@ -83,11 +89,13 @@ export default function BillingAdminPanel({ onMsg }: { onMsg: (m: string) => voi
   const faultBalance = Number(fault?.balance ?? fault?.total ?? 0);
 
   return (
-    <div className="space-y-4 p-6">
-      <header>
-        <h2 className="text-[15px] font-semibold text-[#F5F5F7]">計費管理台</h2>
-        <p className="mt-1 text-[11px] text-[#8E8E93]">需 Admin Secret（開發環境可留空使用 Gate 用戶）</p>
-      </header>
+    <div className={embedded ? 'space-y-3' : 'space-y-4 p-6'}>
+      {!embedded ? (
+        <header>
+          <h2 className="text-[15px] font-semibold text-[#F5F5F7]">計費管理台</h2>
+          <p className="mt-1 text-[11px] text-[#8E8E93]">需 Admin Secret（開發環境可留空使用 Gate 用戶）</p>
+        </header>
+      ) : null}
       <input
         type="password"
         placeholder="X-Billing-Admin"

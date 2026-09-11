@@ -122,7 +122,7 @@ function ServiceCostCard({ svc, maxCost }: { svc: CloudServiceCost; maxCost: num
   );
 }
 
-export default function BillingPanel() {
+export default function BillingPanel({ embedded = false }: { embedded?: boolean }) {
   const [billing, setBilling] = useState<CloudBilling | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,14 +160,13 @@ export default function BillingPanel() {
 
   if (loading && !billing) {
     return (
-      <div className="flex flex-1 items-center justify-center">
+      <div className={embedded ? 'py-8 text-center' : 'flex flex-1 items-center justify-center'}>
         <span className="text-sm text-gray-500">加載費用數據...</span>
       </div>
     );
   }
 
-  return (
-    <PanelShell>
+  const body = (
       <PanelSection>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -360,6 +359,8 @@ export default function BillingPanel() {
         </SectionCard>
       )}
       </PanelSection>
-    </PanelShell>
   );
+
+  if (embedded) return body;
+  return <PanelShell>{body}</PanelShell>;
 }

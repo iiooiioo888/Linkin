@@ -1,7 +1,15 @@
 /**
  * 控制台共用版面元件 — 包裝 consoleLayout tokens，避免各面板重複 ad-hoc padding。
  */
-import type { HTMLAttributes, ReactNode } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useState,
+  type HTMLAttributes,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { consoleLayout } from '../../lib/consoleLayout';
 
 export function cn(...parts: Array<string | false | null | undefined>): string {
@@ -33,13 +41,16 @@ export function PanelShell({
   );
 }
 
-export function PanelScroll({ className, children, ...rest }: DivProps) {
+export const PanelScroll = forwardRef<HTMLDivElement, DivProps>(function PanelScroll(
+  { className, children, ...rest },
+  ref,
+) {
   return (
-    <div className={cn(consoleLayout.pageScroll, className)} {...rest}>
+    <div ref={ref} className={cn(consoleLayout.pageScroll, className)} {...rest}>
       {children}
     </div>
   );
-}
+});
 
 export function PanelSection({ className, children, ...rest }: DivProps) {
   return (
@@ -177,6 +188,113 @@ export function ConsoleRdShell({ className, children, ...rest }: DivProps) {
     <div className={cn(consoleLayout.rdShell, className)} {...rest}>
       {children}
     </div>
+  );
+}
+
+export type SectionNavItem = { id: string; label: string };
+
+/** 單頁滾動區塊導航（sticky pill bar + 可選 scroll spy） */
+export function ConsoleSectionNav({
+  sections,
+  activeId,
+  onSelect,
+  className,
+}: {
+  sections: SectionNavItem[];
+  activeId?: string;
+  onSelect: (id: string) => void;
+  className?: string;
+}) {
+  return (
+    <nav className={cn(consoleLayout.sectionNav, className)} aria-label="區塊導航">
+      {sections.map((s) => {
+        const active = activeId === s.id;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onSelect(s.id)}
+            className={cn(
+              'shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-medium transition-colors',
+              active
+                ? 'bg-[#007AFF] text-white'
+                : 'bg-white/[0.04] text-[#AEAEB2] hover:text-[#F5F5F7]',
+            )}
+          >
+            {s.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** IntersectionObserver scroll spy for single-page section nav */
+export function useSectionScrollSpy(
+  sectionIds: string[],
+  scrollRootRef: RefObject<HTMLElement | null>,
+): string | undefined {
+  const [active, setActive] = useState<string | undefined>(sectionIds[0]);
+
+  useEffect(() => {
+    const root = scrollRootRef.current;
+    if (!root || sectionIds.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        const id = visible[0]?.target.id;
+        if (id) setActive(id);
+      },
+      { root, rootMargin: '-12% 0px -55% 0px', threshold: [0, 0.15, 0.4, 0.65] },
+    );
+
+    for (const id of sectionIds) {
+      const el = root.querySelector(`#${CSS.escape(id)}`);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, [sectionIds, scrollRootRef]);
+
+  return active;
+}
+
+export function useScrollToSection(scrollRootRef: RefObject<HTMLElement | null>) {
+  return useCallback(
+    (id: string) => {
+      const root = scrollRootRef.current;
+      const el =
+        root?.querySelector(`#${CSS.escape(id)}`) ??
+        document.getElementById(id);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    [scrollRootRef],
+  );
+}
+
+/** 單頁區塊外殼（anchor + 標題 + 內容堆疊） */
+export function ConsoleSection({
+  id,
+  title,
+  description,
+  actions,
+  children,
+  className,
+}: {
+  id: string;
+  title: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section id={id} className={cn(consoleLayout.sectionAnchor, consoleLayout.sectionStack, className)}>
+      <SectionHeader title={title} description={description} actions={actions} />
+      {children}
+    </section>
   );
 }
 

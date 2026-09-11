@@ -54,7 +54,7 @@ function fmtUsd(n: number | undefined): string {
   return `$${v.toFixed(3)}`;
 }
 
-export default function HubMonitorPanel() {
+export default function HubMonitorPanel({ embedded = false }: { embedded?: boolean }) {
   const [data, setData] = useState<HubMonitorData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,21 +89,28 @@ export default function HubMonitorPanel() {
       : 0;
   const maxLatency = Math.max(1, ...models.map((m) => Number(m.latency_ewma_ms) || 0));
 
-  return (
-    <PanelShell>
+  const body = (
       <PanelSection>
-        <SectionHeader
-          title="AI Hub 編排監控"
-          description={
-            data?.routing?.pool_lock?.lock_message
-              || 'GPT-5.6 Sol 旗艦 · Gemini 3.1 Pro 多模態 · 禁止 Anthropic / Claude'
-          }
-          actions={
+        {!embedded ? (
+          <SectionHeader
+            title="AI Hub 編排監控"
+            description={
+              data?.routing?.pool_lock?.lock_message
+                || 'GPT-5.6 Sol 旗艦 · Gemini 3.1 Pro 多模態 · 禁止 Anthropic / Claude'
+            }
+            actions={
+              <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
+                {loading ? '同步中' : '重新整理'}
+              </button>
+            }
+          />
+        ) : (
+          <div className="flex justify-end">
             <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
               {loading ? '同步中' : '重新整理'}
             </button>
-          }
-        />
+          </div>
+        )}
 
         {error ? <PanelAlert>{error}</PanelAlert> : null}
 
@@ -300,6 +307,8 @@ export default function HubMonitorPanel() {
           </ConsoleCard>
         </div>
       </PanelSection>
-    </PanelShell>
   );
+
+  if (embedded) return body;
+  return <PanelShell>{body}</PanelShell>;
 }

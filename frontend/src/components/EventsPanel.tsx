@@ -20,7 +20,7 @@ function fmtTime(iso: string): string {
   return d.toLocaleString('zh-TW', { hour12: false });
 }
 
-export default function EventsPanel() {
+export default function EventsPanel({ embedded = false }: { embedded?: boolean }) {
   const [events, setEvents] = useState<CloudEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,10 +49,10 @@ export default function EventsPanel() {
   }, {});
 
   return (
-    <div className="flex-1 space-y-4 overflow-auto apple-canvas p-4 text-[#f7f8f8]">
+    <div className={embedded ? 'space-y-3 text-[#f7f8f8]' : 'flex-1 space-y-4 overflow-auto apple-canvas p-4 text-[#f7f8f8]'}>
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-medium">容器事件時間線</h3>
+          {!embedded ? <h3 className="text-sm font-medium">容器事件時間線</h3> : null}
           <p className="mt-0.5 text-[11px] text-[#8a8f98]">start / stop / restart · 最近 {events.length} 筆</p>
         </div>
         <button

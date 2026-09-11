@@ -13,7 +13,7 @@ import {
 } from '../api/client';
 import { PanelScroll, PanelShell, SectionHeader, consoleLayout } from './ui/ConsoleLayout';
 
-export default function DbPoolPanel() {
+export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }) {
   const [stats, setStats] = useState<DbPoolStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,16 +71,8 @@ export default function DbPoolPanel() {
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <PanelShell scroll={false}>
-      <div className="shrink-0 border-b border-white/[0.08] px-6 py-4">
-        <SectionHeader
-          title="🗄️ 數據庫連接池管理"
-          description="監控 SQLite 連接池狀態、管理連接、執行健康檢查"
-        />
-      </div>
-
-      <PanelScroll className="flex flex-col gap-4">
+  const body = (
+      <div className="flex flex-col gap-3">
         {error && (
           <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
             {error}
@@ -214,7 +206,19 @@ export default function DbPoolPanel() {
             暫無連接記錄
           </div>
         )}
-      </PanelScroll>
+      </div>
+  );
+
+  if (embedded) return body;
+  return (
+    <PanelShell scroll={false}>
+      <div className="shrink-0 border-b border-white/[0.08] px-6 py-4">
+        <SectionHeader
+          title="🗄️ 數據庫連接池管理"
+          description="監控 SQLite 連接池狀態、管理連接、執行健康檢查"
+        />
+      </div>
+      <PanelScroll className="flex flex-col gap-4">{body}</PanelScroll>
     </PanelShell>
   );
 }

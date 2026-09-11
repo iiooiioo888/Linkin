@@ -1,67 +1,102 @@
 /**
- * CloudConsoleView — 雲控制台主視圖。
- *
- * 整合五大模組：
- * - 📊 費用帳單 — BillingPanel
- * - 📈 資源監控 — MonitoringPanel
- * - 🐳 實例管理 — DockerView（容器卡片 + 啟停控制）
- * - ⚠ 告警中心 — AlertsPanel
- * - 📜 事件時間線 — EventsPanel
- *
- * 透過頂部標籤切換，提供完整的雲端管理體驗。
+ * CloudConsoleView — 雲控制台單頁：監控 / 實例 / 告警 / 事件
+ * 費用帳單已整合至靈境積分中心（#/monitor/credits/cloud）
  */
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import AlertsPanel from './AlertsPanel';
-import BillingPanel from './BillingPanel';
 import DockerView from './DockerView';
 import EventsPanel from './EventsPanel';
 import MonitoringPanel from './MonitoringPanel';
+import {
+  ConsoleSection,
+  ConsoleSectionNav,
+  PanelSection,
+  PanelShell,
+  PanelScroll,
+  useScrollToSection,
+  useSectionScrollSpy,
+  consoleLayout,
+} from './ui/ConsoleLayout';
+import { jumpToCreditsSection } from '../lib/billingUi';
 
-type CloudTab = 'billing' | 'monitoring' | 'instances' | 'alerts' | 'events';
+const CLOUD_SECTIONS = [
+  { id: 'cloud-monitoring', label: '資源監控' },
+  { id: 'cloud-instances', label: '實例管理' },
+  { id: 'cloud-alerts', label: '告警中心' },
+  { id: 'cloud-events', label: '事件時間線' },
+] as const;
 
-const TABS: { key: CloudTab; icon: string; label: string; desc: string }[] = [
-  { key: 'billing', icon: '📊', label: '費用帳單', desc: '按時計費 · 服務明細' },
-  { key: 'monitoring', icon: '📈', label: '資源監控', desc: 'CPU · 記憶體 · 網路' },
-  { key: 'instances', icon: '🐳', label: '實例管理', desc: '容器啟停 · 日誌' },
-  { key: 'alerts', icon: '⚠️', label: '告警中心', desc: '閾值規則 · 歷史' },
-  { key: 'events', icon: '📜', label: '事件時間線', desc: 'start · stop · restart' },
-];
+export default function CloudConsoleView({ embedded = false }: { embedded?: boolean }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollToInRoot = useScrollToSection(scrollRef);
+  const spyActive = useSectionScrollSpy(CLOUD_SECTIONS.map((s) => s.id), scrollRef);
+  const [clickedActive, setClickedActive] = useState<string>(CLOUD_SECTIONS[0].id);
+  const activeId = embedded ? clickedActive : spyActive;
 
-export default function CloudConsoleView() {
-  const [activeTab, setActiveTab] = useState<CloudTab>('billing');
+  const scrollTo = useCallback(
+    (id: string) => {
+      setClickedActive(id);
+      if (embedded) {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        scrollToInRoot(id);
+      }
+    },
+    [embedded, scrollToInRoot],
+  );
+
+  const sections = (
+    <PanelSection className={consoleLayout.sectionGapLg}>
+      <div className={embedded ? 'mb-3' : ''}>
+        <button
+          type="button"
+          onClick={() => jumpToCreditsSection('cloud')}
+          className="w-full rounded-xl border border-[#64D2FF]/25 bg-[#64D2FF]/5 px-3 py-2 text-left text-[11px] text-[#AEAEB2] hover:bg-[#64D2FF]/10"
+        >
+          <span className="text-[#64D2FF]">費用帳單</span> 已整合至靈境積分中心 → 雲與 Docker（Docker 按時 + 阿里雲 BSS）
+        </button>
+      </div>
+
+      <ConsoleSection id="cloud-monitoring" title="資源監控" description="CPU · 記憶體 · 網路">
+        <MonitoringPanel embedded />
+      </ConsoleSection>
+
+      <ConsoleSection id="cloud-instances" title="實例管理" description="容器啟停 · 日誌">
+        <DockerView embedded />
+      </ConsoleSection>
+
+      <ConsoleSection id="cloud-alerts" title="告警中心" description="閾值規則 · 歷史">
+        <AlertsPanel embedded />
+      </ConsoleSection>
+
+      <ConsoleSection id="cloud-events" title="事件時間線" description="start · stop · restart">
+        <EventsPanel embedded />
+      </ConsoleSection>
+    </PanelSection>
+  );
+
+  if (embedded) {
+    return (
+      <div className="space-y-3">
+        <ConsoleSectionNav
+          sections={CLOUD_SECTIONS.map((s) => ({ id: s.id, label: s.label }))}
+          activeId={activeId}
+          onSelect={scrollTo}
+          className="!static !z-0 !border-0 !bg-transparent !px-0 !py-0 !backdrop-blur-none"
+        />
+        {sections}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      {/* 子標籤欄 */}
-      <nav className="flex shrink-0 items-center border-b border-gray-800 bg-gray-900/50 px-2">
-        {TABS.map((tab) => {
-          const active = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`relative flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-medium transition-colors ${
-                active
-                  ? 'border-blue-500 text-blue-300'
-                  : 'border-transparent text-gray-500 hover:text-gray-300'
-              }`}
-              title={tab.desc}
-            >
-              <span>{tab.icon}</span>
-              {tab.label}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* 子面板內容 */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {activeTab === 'billing' && <BillingPanel />}
-        {activeTab === 'monitoring' && <MonitoringPanel />}
-        {activeTab === 'instances' && <DockerView />}
-        {activeTab === 'alerts' && <AlertsPanel />}
-        {activeTab === 'events' && <EventsPanel />}
-      </div>
-    </div>
+    <PanelShell scroll={false}>
+      <ConsoleSectionNav
+        sections={CLOUD_SECTIONS.map((s) => ({ id: s.id, label: s.label }))}
+        activeId={activeId}
+        onSelect={scrollTo}
+      />
+      <PanelScroll ref={scrollRef}>{sections}</PanelScroll>
+    </PanelShell>
   );
 }

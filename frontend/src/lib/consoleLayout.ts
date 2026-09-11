@@ -40,6 +40,12 @@ export const consoleLayout = {
   maxContent: 'mx-auto w-full max-w-6xl',
   tabBar:
     'flex shrink-0 items-center gap-2 overflow-x-auto border-b border-white/[0.06] px-4 py-3 sm:px-6',
+  /** 單頁區塊導航（sticky + 毛玻璃） */
+  sectionNav:
+    'sticky top-0 z-20 flex shrink-0 items-center gap-2 overflow-x-auto border-b border-white/[0.06] bg-[#010102]/92 px-4 py-3 backdrop-blur-md sm:px-6',
+  /** 區塊 anchor 偏移（避開 sticky nav） */
+  sectionAnchor: 'scroll-mt-14',
+  sectionGapLg: 'space-y-6',
   toolbar: 'flex flex-wrap items-center justify-between gap-2',
   title: 'text-sm font-semibold',
   subtitle: 'mt-0.5 text-[11px] text-[#8a8f98]',

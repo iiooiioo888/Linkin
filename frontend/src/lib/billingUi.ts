@@ -1,5 +1,50 @@
 /** 靈境積分 UI 輔助（v6.0）— 純函式，可單測。 */
 
+/** 計費中心單頁區塊（#/monitor/credits/{section}） */
+export type CreditsSectionKey =
+  | 'overview'
+  | 'cloud'
+  | 'pools'
+  | 'contribution'
+  | 'contributor'
+  | 'appeals'
+  | 'admin';
+
+export const CREDITS_SECTIONS: { key: CreditsSectionKey; label: string; anchorId: string }[] = [
+  { key: 'overview', label: '總覽', anchorId: 'credits-overview' },
+  { key: 'cloud', label: '雲與 Docker', anchorId: 'credits-cloud' },
+  { key: 'pools', label: '積分池', anchorId: 'credits-pools' },
+  { key: 'contribution', label: '貢獻轉換', anchorId: 'credits-contribution' },
+  { key: 'contributor', label: '貢獻者', anchorId: 'credits-contributor' },
+  { key: 'appeals', label: '申訴', anchorId: 'credits-appeals' },
+  { key: 'admin', label: '管理', anchorId: 'credits-admin' },
+];
+
+const CREDITS_SECTION_KEYS = new Set<string>(CREDITS_SECTIONS.map((s) => s.key));
+
+export function isCreditsSectionKey(v: string | null | undefined): v is CreditsSectionKey {
+  return Boolean(v && CREDITS_SECTION_KEYS.has(v));
+}
+
+export function creditsAnchorId(section: CreditsSectionKey): string {
+  return CREDITS_SECTIONS.find((s) => s.key === section)?.anchorId ?? 'credits-overview';
+}
+
+/** 深鏈：#/monitor/credits 或 #/monitor/credits/{section}；#/monitor/billing 對應 cloud */
+export function parseCreditsSection(hash = window.location.hash): CreditsSectionKey {
+  const raw = hash.replace(/^#/, '').replace(/^\/?/, '');
+  const parts = raw.split('/').filter(Boolean);
+  if (parts[0] === 'monitor' && parts[1] === 'billing') return 'cloud';
+  if (parts[0] === 'monitor' && parts[1] === 'credits' && isCreditsSectionKey(parts[2])) {
+    return parts[2];
+  }
+  return 'overview';
+}
+
+export function jumpToCreditsSection(section: CreditsSectionKey = 'overview') {
+  window.location.hash = `#/monitor/credits/${section}`;
+}
+
 export const POOL_LABELS_ZH: Record<string, string> = {
   monthly_grant: '月度贈送',
   purchased: '已購買',
