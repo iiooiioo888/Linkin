@@ -55,6 +55,9 @@ export function keyFailureAppealNoticeZh(deadline: string | undefined): string {
   return `Key 故障沒收申訴截止：${deadline.slice(0, 10)}`;
 }
 
+/** 貢獻池為空時 lock/convert 提示 */
+export const CONTRIBUTION_EMPTY_ZH = '尚無貢獻積分；提供 Key 獲獎或等待入帳';
+
 export function parseBillingHttpError(status: number, body: { detail?: string; code?: string }): string {
   if (status === 402) {
     return body.detail || '靈境積分不足，請充值或升級方案後再試';

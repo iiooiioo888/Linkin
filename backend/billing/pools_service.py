@@ -202,11 +202,26 @@ class PoolsService:
                 float(meta_cost.get("cache_savings_credits", 0)),
                 l3_hit=l3_cache_hit,
             )
+        reward_result: dict[str, Any] = {"credited": False}
+        if key_id:
+            from backend.billing.contribution_rewards import settle_contributor_reward
+
+            reward_result = settle_contributor_reward(
+                task_id=task_id,
+                consumer_account_id=account_id,
+                key_id=key_id,
+                actual_api_cost=actual,
+                lock_multiplier=lock_mult,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                meta=payload,
+            )
         return {
             "task_id": task_id,
             "cost_credits": actual,
             "pricing_version": snapshot.get("pricing_config_version"),
             "lock_multiplier": lock_mult,
+            "contributor_reward": reward_result,
         }
 
     def finalize_task(self, task_id: str, actual_total: float) -> dict[str, Any]:

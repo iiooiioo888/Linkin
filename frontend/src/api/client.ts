@@ -1166,16 +1166,50 @@ export async function fetchContributorEarnings() {
   return resp.json();
 }
 
-export async function bindContributorKey(encryptedKey: string, vendorId = 'self_host') {
+export async function bindContributorKey(
+  encryptedKey: string,
+  opts: {
+    vendorId?: string;
+    models?: string[];
+    dailyTokenCap?: number;
+    concurrency?: number;
+    minPrice?: number;
+    activeHours?: number[];
+    tosClass?: string;
+    orgId?: string;
+  } = {},
+) {
   const resp = await fetch(apiUrl('/billing/contributor/bind-key'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ encrypted_key: encryptedKey, vendor_id: vendorId }),
+    body: JSON.stringify({
+      encrypted_key: encryptedKey,
+      vendor_id: opts.vendorId ?? 'self_host',
+      models: opts.models ?? [],
+      daily_token_cap: opts.dailyTokenCap ?? 0,
+      concurrency: opts.concurrency ?? 1,
+      min_price: opts.minPrice ?? 0,
+      active_hours: opts.activeHours ?? [0, 23],
+      tos_class: opts.tosClass ?? 'self_host',
+      org_id: opts.orgId ?? '',
+    }),
   });
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}));
     throw new Error((body as { detail?: string }).detail || `綁定失敗（HTTP ${resp.status}）`);
   }
+  return resp.json();
+}
+
+export async function fetchContributorKeys() {
+  const resp = await fetch(apiUrl('/billing/contributor/keys'));
+  if (!resp.ok) throw new Error(`讀取 Key 列表失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function fetchContributorKeyHealth(keyId: string) {
+  const resp = await fetch(apiUrl(`/billing/contributor/keys/${encodeURIComponent(keyId)}/health`));
+  if (!resp.ok) throw new Error(`讀取 Key 健康度失敗（HTTP ${resp.status}）`);
   return resp.json();
 }
 
@@ -1273,6 +1307,32 @@ export async function adminListRollover(h: AdminHeaders) {
 export async function adminGetFaultPool(h: AdminHeaders) {
   const resp = await adminFetch('/admin/billing/fault-pool', {}, h);
   if (!resp.ok) throw new Error('讀取 fault pool 失敗');
+  return resp.json();
+}
+
+export async function adminGetRoutingStats(h: AdminHeaders) {
+  const resp = await adminFetch('/admin/billing/routing/stats', {}, h);
+  if (!resp.ok) throw new Error('讀取路由統計失敗');
+  return resp.json();
+}
+
+export async function adminResumePublicPool(h: AdminHeaders) {
+  const resp = await adminFetch('/admin/billing/fault-pool/resume-public', { method: 'POST' }, h);
+  if (!resp.ok) throw new Error('恢復公共池失敗');
+  return resp.json();
+}
+
+export async function adminSeedContribution(accountId: string, amount: number, note = '', h: AdminHeaders = {}) {
+  const resp = await adminFetch(
+    '/admin/billing/contribution/seed',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: accountId, amount, note }),
+    },
+    h,
+  );
+  if (!resp.ok) throw new Error('注入貢獻積分失敗');
   return resp.json();
 }
 

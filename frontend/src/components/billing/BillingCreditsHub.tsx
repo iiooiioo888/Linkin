@@ -13,6 +13,8 @@ import {
   submitBillingAppeal,
   bindContributorKey,
   fetchContributorEarnings,
+  fetchContributorKeys,
+  fetchContributorKeyHealth,
   triggerInstallments,
   earlyUnlockContribution,
 } from '../../api/client';
@@ -26,6 +28,7 @@ import {
   installmentScheduleZh,
   earlyUnlockConfirmZh,
   keyFailureAppealNoticeZh,
+  CONTRIBUTION_EMPTY_ZH,
 } from '../../lib/billingUi';
 import type { BillingAppeal, BillingGrant, BillingPoolsDetail, ContributionStatus, PoolLedgerEntry } from '../../types';
 import WalletPanel from '../WalletPanel';
@@ -189,6 +192,7 @@ export default function BillingCreditsHub() {
                 <p className="text-[11px] text-[#636366]">未鎖定 → 已購買（1:0.4）</p>
                 <ConvertForm
                   max={contribution.unlocked}
+                  empty={contribution.unlocked <= 0}
                   preview={(a) => convertPreview(a, contribution.convert_ratio_to_purchased)}
                   onSubmit={(a) => run(() => convertContribution(a), `已轉換 ${fmtCredits(a)} → ${fmtCredits(convertPreview(a))} 已購買`)}
                   busy={busy}
@@ -198,6 +202,7 @@ export default function BillingCreditsHub() {
                 <p className="text-[11px] text-[#636366]">轉鎖倉（30/90/180 天）</p>
                 <LockForm
                   max={contribution.convertible_to_locked}
+                  empty={contribution.convertible_to_locked <= 0}
                   tiers={contribution.lock_tiers}
                   onPreviewChange={setLockPreview}
                   onSubmit={(amount, days) => run(() => lockContribution(amount, days), `已鎖倉 ${fmtCredits(amount)} · ${days} 天`)}
@@ -306,26 +311,32 @@ export default function BillingCreditsHub() {
   );
 }
 
-function ConvertForm({ max, preview, onSubmit, busy }: { max: number; preview: (a: number) => number; onSubmit: (a: number) => void; busy: boolean }) {
+function ConvertForm({ max, empty, preview, onSubmit, busy }: { max: number; empty?: boolean; preview: (a: number) => number; onSubmit: (a: number) => void; busy: boolean }) {
   const [amount, setAmount] = useState('10');
   const a = Number(amount);
+  const disabled = busy || Boolean(empty) || a <= 0 || a > max;
   return (
     <div className="mt-2 space-y-2">
-      <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
+      {empty ? (
+        <p className="rounded border border-[#FFD60A]/20 bg-[#FFD60A]/5 px-2 py-1.5 text-[11px] text-[#FFD60A]">{CONTRIBUTION_EMPTY_ZH}</p>
+      ) : null}
+      <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={empty} className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px] disabled:opacity-40" />
       <p className="text-[10px] text-[#636366]">預覽入帳 {fmtCredits(preview(a))} 已購買（最多 {fmtCredits(max)}）</p>
-      <button type="button" disabled={busy || a <= 0 || a > max} onClick={() => onSubmit(a)} className="text-[12px] text-[#64D2FF]">轉換</button>
+      <button type="button" disabled={disabled} onClick={() => onSubmit(a)} className="text-[12px] text-[#64D2FF] disabled:opacity-40">轉換</button>
     </div>
   );
 }
 
 function LockForm({
   max,
+  empty,
   tiers,
   onSubmit,
   onPreviewChange,
   busy,
 }: {
   max: number;
+  empty?: boolean;
   tiers: Record<string, number>;
   onSubmit: (a: number, d: number) => void;
   onPreviewChange: (p: LockPreview) => void;
@@ -335,6 +346,7 @@ function LockForm({
   const [days, setDays] = useState(30);
   const a = Number(amount);
   const mult = Number(tiers[String(days)] ?? tiers[days] ?? 1.02);
+  const disabled = busy || Boolean(empty) || a <= 0 || a > max;
 
   const emitPreview = (amt: number, d: number) => {
     const m = Number(tiers[String(d)] ?? tiers[d] ?? 1.02);
@@ -347,30 +359,35 @@ function LockForm({
 
   return (
     <div className="mt-2 space-y-2">
+      {empty ? (
+        <p className="rounded border border-[#FFD60A]/20 bg-[#FFD60A]/5 px-2 py-1.5 text-[11px] text-[#FFD60A]">{CONTRIBUTION_EMPTY_ZH}</p>
+      ) : null}
       <input
         type="number"
         value={amount}
+        disabled={empty}
         onChange={(e) => {
           setAmount(e.target.value);
           emitPreview(Number(e.target.value), days);
         }}
-        className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]"
+        className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px] disabled:opacity-40"
       />
       <select
         value={days}
+        disabled={empty}
         onChange={(e) => {
           const d = Number(e.target.value);
           setDays(d);
           emitPreview(a, d);
         }}
-        className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]"
+        className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px] disabled:opacity-40"
       >
         {Object.entries(tiers).map(([d, m]) => (
           <option key={d} value={d}>{d} 天 · 倍率 ×{m}</option>
         ))}
       </select>
       <p className="text-[10px] text-[#636366]">預估獎勵 ×{mult} → +{fmtCredits(a * Math.max(0, mult - 1))}</p>
-      <button type="button" disabled={busy || a <= 0 || a > max} onClick={() => onSubmit(a, days)} className="text-[12px] text-[#64D2FF]">鎖倉</button>
+      <button type="button" disabled={disabled} onClick={() => onSubmit(a, days)} className="text-[12px] text-[#64D2FF] disabled:opacity-40">鎖倉</button>
     </div>
   );
 }
@@ -430,27 +447,63 @@ function AppealForm({
 
 function ContributorPanel({ onMsg, busy, setBusy }: { onMsg: (m: string) => void; busy: boolean; setBusy: (b: boolean) => void }) {
   const [earnings, setEarnings] = useState<Record<string, unknown> | null>(null);
+  const [keys, setKeys] = useState<Record<string, unknown>[]>([]);
   const [keyVal, setKeyVal] = useState('');
+  const [orgId, setOrgId] = useState('');
+  const [dailyCap, setDailyCap] = useState('1000000');
+  const [concurrency, setConcurrency] = useState('2');
+  const [vendorId, setVendorId] = useState('self_host');
+
+  const refresh = useCallback(async () => {
+    const [e, k] = await Promise.all([fetchContributorEarnings(), fetchContributorKeys()]);
+    setEarnings(e);
+    setKeys((k.items as Record<string, unknown>[]) ?? []);
+  }, []);
 
   useEffect(() => {
-    void fetchContributorEarnings().then(setEarnings).catch((e) => onMsg(String(e)));
-  }, [onMsg]);
+    void refresh().catch((err) => onMsg(err instanceof Error ? err.message : String(err)));
+  }, [refresh, onMsg]);
+
+  const healthColor = (status: string | undefined) => {
+    if (status === 'healthy') return 'text-[#30D158]';
+    if (status === 'degraded') return 'text-[#FFD60A]';
+    return 'text-[#FF9F9A]';
+  };
 
   return (
     <div className="space-y-4 p-6">
-      <h2 className="text-[15px] font-semibold text-[#F5F5F7]">貢獻者 · API Key</h2>
-      <p className="text-[12px] text-[#8E8E93]">綁定 Key 共享調用權（非積分）。平台加密代理，收益進貢獻池。</p>
+      <h2 className="text-[15px] font-semibold text-[#F5F5F7]">貢獻者 · 共享池 API Key</h2>
+      <p className="text-[12px] text-[#8E8E93]">
+        綁定 Key 共享調用權（非積分）。AES-256 加密代理、零日誌；僅 self_host / resale_allowed 廠商。
+      </p>
       <div className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
         <p className="text-[11px] text-[#636366]">未鎖收益 {fmtCredits(Number(earnings?.unlocked_earnings ?? 0))} · 鎖倉 {fmtCredits(Number(earnings?.locked_earnings ?? 0))}</p>
-        <input placeholder="加密 Key（開發用明文佔位）" value={keyVal} onChange={(e) => setKeyVal(e.target.value)} className="mt-2 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]" />
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <input placeholder="API Key" value={keyVal} onChange={(e) => setKeyVal(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px] sm:col-span-2" />
+          <input placeholder="組織 ID（同 org 優先）" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]" />
+          <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]">
+            <option value="self_host">自架</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI</option>
+          </select>
+          <input type="number" placeholder="日 Token 上限" value={dailyCap} onChange={(e) => setDailyCap(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]" />
+          <input type="number" placeholder="並發" value={concurrency} onChange={(e) => setConcurrency(e.target.value)} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[12px]" />
+        </div>
         <button
           type="button"
           disabled={busy || keyVal.length < 8}
           className="mt-2 text-[12px] text-[#64D2FF]"
           onClick={() => {
             setBusy(true);
-            bindContributorKey(keyVal)
-              .then(() => onMsg('Key 已綁定'))
+            bindContributorKey(keyVal, {
+              vendorId,
+              orgId,
+              dailyTokenCap: Number(dailyCap) || 0,
+              concurrency: Number(concurrency) || 1,
+              tosClass: vendorId === 'self_host' ? 'self_host' : 'resale_allowed',
+              models: ['default'],
+            })
+              .then(() => { onMsg('Key 已綁定（AES-256 加密）'); return refresh(); })
               .catch((e) => onMsg(e instanceof Error ? e.message : '失敗'))
               .finally(() => setBusy(false));
           }}
@@ -458,11 +511,34 @@ function ContributorPanel({ onMsg, busy, setBusy }: { onMsg: (m: string) => void
           綁定 Key
         </button>
       </div>
-      <ul className="text-[11px] text-[#AEAEB2]">
-        {(earnings?.keys as { key_id: string; status: string }[] | undefined)?.map((k) => (
-          <li key={k.key_id}>{k.key_id} · {k.status}</li>
-        ))}
-      </ul>
+      <section>
+        <h3 className="mb-2 text-[13px] font-medium text-[#F5F5F7]">Key 健康度</h3>
+        {keys.length === 0 ? (
+          <p className="text-[11px] text-[#636366]">尚無綁定 Key</p>
+        ) : (
+          <ul className="space-y-2 text-[11px]">
+            {keys.map((k) => (
+              <li key={String(k.key_id)} className="rounded-lg border border-white/[0.06] px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[#F5F5F7]">{String(k.key_id).slice(-10)}</span>
+                  <span className={healthColor(String(k.health_status ?? k.status))}>
+                    {String(k.health_status ?? k.status ?? 'healthy')}
+                  </span>
+                  <span className="text-[#636366]">分數 {Number(k.health_score ?? 1).toFixed(2)}</span>
+                  <span className="text-[#636366]">今日 {Number(k.daily_usage ?? 0).toLocaleString()} tok</span>
+                </div>
+                <button
+                  type="button"
+                  className="mt-1 text-[10px] text-[#64D2FF]"
+                  onClick={() => void fetchContributorKeyHealth(String(k.key_id)).then((h) => onMsg(`成功率 ${(Number(h.success_rate) * 100).toFixed(1)}% · 延遲 ${h.avg_latency_ms}ms`))}
+                >
+                  重新檢查
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

@@ -17,4 +17,5 @@ nbtlib>=2.0.4
 asyncua>=1.1
 docker>=7.0.0
 psutil>=6.0
+cryptography>=43.0
 # Node：frontend/package.json 的 archify（file:../vendor/archify，上游 https://github.com/tt-a1i/archify）
