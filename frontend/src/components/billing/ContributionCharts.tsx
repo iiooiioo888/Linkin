@@ -68,9 +68,9 @@ export default function ContributionCharts({
   ];
 
   return (
-    <section className={consoleLayout.sectionStack}>
-      <h3 className="text-[13px] font-medium text-[#F5F5F7]">圖表分析</h3>
-      <div className={`${consoleLayout.cardGrid} grid-cols-1`}>
+    <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+      <h3 className="shrink-0 text-[13px] font-medium text-[#F5F5F7]">圖表分析</h3>
+      <div className={`${consoleLayout.cardGridFill} grid-cols-1 lg:grid-cols-2`}>
         {/* 1. 貢獻池分布 */}
         <ChartCard title="貢獻池分布" subtitle="未鎖 / 可轉鎖 / 已鎖 / 已轉已購買">
           <LcPieChart slices={poolSlices} height={220} emptyLabel="暫無貢獻積分" />

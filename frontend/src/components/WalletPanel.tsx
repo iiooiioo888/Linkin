@@ -69,7 +69,13 @@ export default function WalletPanel({ embedded = false }: { embedded?: boolean }
   const ledgerPager = usePagination(ledger, 4);
 
   const body = (
-    <div className={embedded ? 'space-y-3' : 'flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-6'}>
+    <div
+      className={
+        embedded
+          ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-hidden'
+          : 'flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-6'
+      }
+    >
       {!embedded ? (
         <header>
           <h2 className="text-[15px] font-semibold text-[#F5F5F7]">靈境積分 · 帳務中心</h2>

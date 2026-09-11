@@ -64,6 +64,15 @@ export function ConsoleTabBody({ className, children, ...rest }: DivProps) {
   );
 }
 
+/** SectionHeader 下方可伸縮內容槽（與 ConsolePageFrame 分頁器搭配） */
+export function ConsoleTabContent({ className, children, ...rest }: DivProps) {
+  return (
+    <div className={cn(consoleLayout.pageContent, className)} {...rest}>
+      {children}
+    </div>
+  );
+}
+
 export function PanelSection({ className, children, ...rest }: DivProps) {
   return (
     <div className={cn(consoleLayout.sectionStack, className)} {...rest}>
@@ -119,9 +128,9 @@ export function PanelTabBar({ className, children, ...rest }: DivProps) {
   );
 }
 
-export function KpiGrid({ className, children, ...rest }: DivProps) {
+export function KpiGrid({ fill, className, children, ...rest }: DivProps & { fill?: boolean }) {
   return (
-    <div className={cn(consoleLayout.kpiGrid, className)} {...rest}>
+    <div className={cn(fill ? consoleLayout.kpiGridFill : consoleLayout.kpiGrid, className)} {...rest}>
       {children}
     </div>
   );
@@ -294,6 +303,7 @@ export function ConsoleSection({
   actions,
   children,
   className,
+  fill,
 }: {
   id: string;
   title: ReactNode;
@@ -301,11 +311,29 @@ export function ConsoleSection({
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** 垂直填滿父層（分頁 frame 內使用） */
+  fill?: boolean;
 }) {
   return (
-    <section id={id} className={cn(consoleLayout.sectionAnchor, consoleLayout.sectionStack, className)}>
-      <SectionHeader title={title} description={description} actions={actions} />
-      {children}
+    <section
+      id={id}
+      className={cn(
+        consoleLayout.sectionAnchor,
+        fill ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-hidden' : consoleLayout.sectionStack,
+        className,
+      )}
+    >
+      <SectionHeader
+        title={title}
+        description={description}
+        actions={actions}
+        className={fill ? 'shrink-0' : undefined}
+      />
+      {fill ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+      ) : (
+        children
+      )}
     </section>
   );
 }

@@ -10,9 +10,9 @@ import {
   ConsoleSection,
   ConsoleSectionNav,
   ConsoleTabBody,
+  ConsoleTabContent,
   PanelShell,
   SectionHeader,
-  consoleLayout,
 } from './ui/ConsoleLayout';
 
 const OPS_SECTIONS = [
@@ -40,31 +40,32 @@ export default function OpsPanel() {
       />
       <ConsoleTabBody>
         <SectionHeader
+          className="shrink-0"
           title="基礎設施"
           description="AI Hub、雲端運維、斷點續跑與資料庫連接池 — 分頁切換，無整頁滾動"
         />
-        <div className={consoleLayout.sectionStack + ' min-h-0 flex-1 overflow-hidden'}>
+        <ConsoleTabContent>
           {tab === 'hub' ? (
-            <ConsoleSection id="ops-hub" title="AI Hub" description="模型目錄、探針與熔斷操作台">
+            <ConsoleSection fill id="ops-hub" title="AI Hub" description="模型目錄、探針與熔斷操作台">
               <HubPanel embedded />
             </ConsoleSection>
           ) : null}
           {tab === 'cloud' ? (
-            <ConsoleSection id="ops-cloud" title="雲端" description="容器監控、實例、告警與事件">
+            <ConsoleSection fill id="ops-cloud" title="雲端" description="容器監控、實例、告警與事件">
               <CloudConsoleView embedded />
             </ConsoleSection>
           ) : null}
           {tab === 'checkpoints' ? (
-            <ConsoleSection id="ops-checkpoints" title="檢查點" description="公司運行時中斷後可從此續跑">
+            <ConsoleSection fill id="ops-checkpoints" title="檢查點" description="公司運行時中斷後可從此續跑">
               <CheckpointsPanel embedded />
             </ConsoleSection>
           ) : null}
           {tab === 'dbpool' ? (
-            <ConsoleSection id="ops-dbpool" title="連接池" description="SQLite 連接池狀態與健康檢查">
+            <ConsoleSection fill id="ops-dbpool" title="連接池" description="SQLite 連接池狀態與健康檢查">
               <DbPoolPanel embedded />
             </ConsoleSection>
           ) : null}
-        </div>
+        </ConsoleTabContent>
       </ConsoleTabBody>
     </PanelShell>
   );

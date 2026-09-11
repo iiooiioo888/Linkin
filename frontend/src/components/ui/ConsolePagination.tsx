@@ -66,8 +66,8 @@ export function ConsolePageFrame({
   className?: string;
 }) {
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
-      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+    <div className={cn('flex h-full min-h-0 flex-1 flex-col overflow-hidden', className)}>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
       <ConsolePagination page={page} totalPages={totalPages} onPageChange={onPageChange} />
     </div>
   );

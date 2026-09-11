@@ -7,7 +7,9 @@ export const consoleLayout = {
   /** 可滾動頁面根（多數監控分頁） */
   page: 'flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden apple-canvas px-4 py-4 text-[#f7f8f8] sm:px-6',
   /** 不可滾動外殼（內含子面板自管滾動） */
-  pageShell: 'flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas',
+  pageShell: 'flex h-full min-h-0 flex-1 flex-col overflow-hidden apple-canvas',
+  /** Tab 內可伸縮內容區（SectionHeader 下方） */
+  pageContent: 'flex min-h-0 flex-1 flex-col overflow-hidden',
   /** 內層滾動區（與 page 同節奏） */
   pageScroll: 'min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6',
   pagePadding: 'px-4 py-4 sm:px-6',
@@ -17,6 +19,9 @@ export const consoleLayout = {
   sectionGap: 'gap-3',
   /** KPI／統計列 */
   kpiGrid: 'grid grid-cols-2 gap-1.5 lg:grid-cols-4',
+  /** KPI 格填滿可用高度（分頁內無滾動） */
+  kpiGridFill:
+    'grid min-h-0 flex-1 grid-cols-2 auto-rows-[minmax(0,1fr)] gap-1.5 [&>*]:min-h-0 lg:grid-cols-4',
   /** 管線／角色工作台指標帶（6 格；px-6 為頁面邊距，py-3 為帶內垂直節奏） */
   kpiStrip6:
     'grid shrink-0 grid-cols-2 gap-1.5 overflow-x-auto border-b border-white/[0.06] px-4 py-3 sm:grid-cols-3 sm:px-6 lg:grid-cols-6',
@@ -26,6 +31,9 @@ export const consoleLayout = {
     'flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] px-4 py-3 sm:px-6 sm:py-4',
   /** 雙欄卡片格 */
   cardGrid: 'grid gap-3 lg:grid-cols-2',
+  /** 雙欄卡片格填滿可用高度 */
+  cardGridFill:
+    'grid min-h-0 flex-1 gap-3 lg:grid-cols-2 lg:grid-rows-[minmax(0,1fr)] [&>*]:flex [&>*]:min-h-0 [&>*]:flex-col',
   /** apple-card 外殼（表頭＋內容分離時 !p-0） */
   card: 'apple-card apple-card--tight !p-0 overflow-hidden',
   kpiCard: 'apple-card apple-card--tight !p-0 px-3 py-2',

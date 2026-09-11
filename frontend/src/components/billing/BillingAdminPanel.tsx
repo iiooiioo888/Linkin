@@ -100,7 +100,11 @@ export default function BillingAdminPanel({
   const show = (p: number) => !embedded || embeddedPager.page === p;
 
   const body = (
-    <div className={embedded ? 'space-y-3' : 'space-y-4 p-6'}>
+    <div
+      className={
+        embedded ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-hidden' : 'space-y-4 p-6'
+      }
+    >
       {!embedded ? (
         <header>
           <h2 className="text-[15px] font-semibold text-[#F5F5F7]">計費管理台</h2>
@@ -215,35 +219,35 @@ export default function BillingAdminPanel({
 
       {show(4) && (
       <>
-      <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
-        <h3 className="text-[13px] font-medium text-[#F5F5F7]">Dev · 注入貢獻積分</h3>
-        <p className="mt-1 text-[11px] text-[#8E8E93]">共享池上線前測試 lock/convert 用（contribution_unlocked）</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <input value={seedAccount} onChange={(e) => setSeedAccount(e.target.value)} placeholder="account_id / user_id" className="min-w-[10rem] flex-1 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
-          <input value={seedAmount} onChange={(e) => setSeedAmount(e.target.value)} placeholder="amount" className="w-24 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
-          <button
-            type="button"
-            className="text-[12px] text-[#64D2FF]"
-            onClick={() => {
-              if (!seedAccount.trim()) return;
-              void adminSeedContribution(seedAccount.trim(), Number(seedAmount) || 100, 'admin panel seed', headers())
-                .then((r) => onMsg(`已注入 ${fmtCredits(Number(r.contribution_unlocked))} 貢獻積分`))
-                .catch((e) => onMsg(e instanceof Error ? e.message : '注入失敗'));
-            }}
-          >
-            注入
-          </button>
-        </div>
-      </section>
+        <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-4">
+          <h3 className="text-[13px] font-medium text-[#F5F5F7]">Dev · 注入貢獻積分</h3>
+          <p className="mt-1 text-[11px] text-[#8E8E93]">共享池上線前測試 lock/convert 用（contribution_unlocked）</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <input value={seedAccount} onChange={(e) => setSeedAccount(e.target.value)} placeholder="account_id / user_id" className="min-w-[10rem] flex-1 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
+            <input value={seedAmount} onChange={(e) => setSeedAmount(e.target.value)} placeholder="amount" className="w-24 rounded border border-white/10 bg-black/30 px-2 py-1 text-[12px]" />
+            <button
+              type="button"
+              className="text-[12px] text-[#64D2FF]"
+              onClick={() => {
+                if (!seedAccount.trim()) return;
+                void adminSeedContribution(seedAccount.trim(), Number(seedAmount) || 100, 'admin panel seed', headers())
+                  .then((r) => onMsg(`已注入 ${fmtCredits(Number(r.contribution_unlocked))} 貢獻積分`))
+                  .catch((e) => onMsg(e instanceof Error ? e.message : '注入失敗'));
+              }}
+            >
+              注入
+            </button>
+          </div>
+        </section>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <button type="button" className="rounded-xl border border-[#64D2FF]/30 px-3 py-2 text-[12px] text-[#64D2FF]" onClick={() => void adminRunRollover(headers()).then(() => onMsg('滾存已執行'))}>
-          執行月末滾存
-        </button>
-        <button type="button" className="rounded-xl border border-white/10 px-3 py-2 text-[12px] text-[#AEAEB2]" onClick={() => void load()}>
-          重新整理
-        </button>
-      </section>
+        <section className="grid gap-3 sm:grid-cols-3">
+          <button type="button" className="rounded-xl border border-[#64D2FF]/30 px-3 py-2 text-[12px] text-[#64D2FF]" onClick={() => void adminRunRollover(headers()).then(() => onMsg('滾存已執行'))}>
+            執行月末滾存
+          </button>
+          <button type="button" className="rounded-xl border border-white/10 px-3 py-2 text-[12px] text-[#AEAEB2]" onClick={() => void load()}>
+            重新整理
+          </button>
+        </section>
       </>
       )}
 
