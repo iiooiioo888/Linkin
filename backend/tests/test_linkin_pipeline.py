@@ -93,6 +93,7 @@ def test_graph_includes_linkin_node():
     names = set(compiled.get_graph().nodes)
     assert "enhance_with_linkin_context" in names
     assert "enhance_with_opc_context" in names
+    assert "enhance_with_recall_context" in names
 
 
 def test_generate_injects_linkin_overlay(monkeypatch):

@@ -105,6 +105,12 @@ class EvoLoopState(OPCStateFields, total=False):
     # ---- OPC 工業上下文（統一模式下自動注入） ----
     opc_context: dict[str, Any]
 
+    # ---- 整合召回（MemOS / OpenViking / WeKnora，fail-open） ----
+    recall_context: dict[str, Any]
+    user_id: str
+    cube_ids: list[str]
+    knowledge_base_id: str
+
     # ---- RAHO 語意鎖定（用戶 Grill-Me 通過後注入） ----
     semantic_lock: dict[str, Any]
     raho: dict[str, Any]

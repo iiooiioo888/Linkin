@@ -106,7 +106,7 @@ def retrieve_memories(state: StateInput) -> dict:
 
 
 def _format_injected_context(state: StateInput) -> str:
-    """OPC／靈境上下文摘要，注入生成 prompt。"""
+    """OPC／靈境／整合召回上下文摘要，注入生成 prompt。"""
     parts: list[str] = []
     opc = state.get("opc_context") or {}
     if isinstance(opc, dict) and opc.get("summary"):
@@ -114,6 +114,11 @@ def _format_injected_context(state: StateInput) -> str:
     linkin = state.get("linkin_context") or {}
     if isinstance(linkin, dict) and linkin.get("summary"):
         parts.append(str(linkin["summary"]))
+    recall = state.get("recall_context") or {}
+    if isinstance(recall, dict):
+        injection = str(recall.get("injection") or "").strip()
+        if injection:
+            parts.append(f"【整合召回】\n{injection}")
     if not parts:
         return ""
     return "\n".join(parts) + "\n"
@@ -127,8 +132,8 @@ def _generate_system_prompt(state: StateInput) -> str:
     return system
 
 
-def generate_initial_answer(state: StateInput) -> dict:
-    """節點 1：生成初始回答。"""
+def build_generate_prompt(state: StateInput) -> tuple[str, str]:
+    """組裝初始生成 prompt 與 system（graph／SSE 共用）。"""
     extra = _format_injected_context(state)
     memory = _format_memories(state.get("retrieved_memories", []))
     prompt = templates.GENERATE_INITIAL_ANSWER.format(
@@ -136,12 +141,18 @@ def generate_initial_answer(state: StateInput) -> dict:
         history_context=truncate(_format_history(state.get("history", [])), 2000),
         memory_context=truncate(extra + memory, 2000),
     )
+    return prompt, _generate_system_prompt(state)
+
+
+def generate_initial_answer(state: StateInput) -> dict:
+    """節點 1：生成初始回答。"""
+    prompt, system = build_generate_prompt(state)
     model = resolve_stage_model(
         "generate",
         query=state.get("query"),
         complexity=state.get("task_complexity"),
     )
-    answer = call_llm(prompt, system=_generate_system_prompt(state), model=model)
+    answer = call_llm(prompt, system=system, model=model)
     log_node(state, "generate_initial_answer", model=model)
     return {
         "initial_answer": answer,
@@ -149,7 +160,7 @@ def generate_initial_answer(state: StateInput) -> dict:
         "iteration": 0,
         # 軌跡回填用：實際使用的模型、系統提示詞與完整生成 prompt
         "generate_model": model,
-        "generate_system": _generate_system_prompt(state),
+        "generate_system": system,
         "generate_prompt": prompt,
     }
 

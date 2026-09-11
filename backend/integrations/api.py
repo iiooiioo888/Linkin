@@ -20,7 +20,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from backend.integrations.base import IntegrationConfig
-from backend.integrations.context_assembler import ContextAssembler, RecallPolicy
+from backend.integrations.recall_bridge import assemble_recall_context
 from backend.integrations.memos import MemosClient
 from backend.integrations.openpencil import OpenPencilClient
 from backend.integrations.openviking import OpenVikingClient
@@ -196,11 +196,7 @@ class RecallRequest(BaseModel):
 @router.post("/recall")
 def recall(req: RecallRequest) -> dict[str, Any]:
     """token 節省召回：記憶（MemOS）＋分層上下文（OpenViking）＋知識（WeKnora）。"""
-    reg = get_registry()
-    assembler = ContextAssembler(
-        memos=reg["memos"], viking=reg["openviking"], weknora=reg["weknora"], policy=RecallPolicy()
-    )
-    out = assembler.assemble(
+    out = assemble_recall_context(
         req.query,
         req.history,
         user_id=req.user_id,
