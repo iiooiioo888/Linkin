@@ -19,11 +19,17 @@ import ChatTaskMonitor from './ChatTaskMonitor';
 import {
   activeTaskMessage,
   flattenWsNodes,
+  hasUnresolvedDecision,
+  isBattleWaiting,
+  isGrillInteractive,
+  numBudget,
   resolveContextTaskId,
+  runningTaskMessage,
   wsFiles,
   wsProblems,
   wsTerminal,
 } from '../lib/chatWorkspace';
+import PipelineStrip from './chat/PipelineStrip';
 import {
   OPEN_CHAT_CONTEXT_EVENT,
   consumePendingChatContext,
@@ -50,6 +56,7 @@ interface ChatViewProps {
   onBattlePick?: (messageId: string, choice: string) => void;
   onDecisionPending?: (hasPending: boolean) => void;
   onDecisionResolved?: (decisionId?: string) => void;
+  onOpenBilling?: () => void;
 }
 
 export default function ChatView({
@@ -71,8 +78,10 @@ export default function ChatView({
   onBattlePick,
   onDecisionPending,
   onDecisionResolved,
+  onOpenBilling,
 }: ChatViewProps) {
   const live = activeTaskMessage(messages);
+  const runningMsg = runningTaskMessage(messages);
   const [hydrated, setHydrated] = useState<TaskProgress | null>(null);
   const taskId = live?.taskId || live?.taskState?.task_id || null;
 
@@ -98,15 +107,31 @@ export default function ChatView({
     };
   }, [taskId, live?.taskState]);
 
-  const task = live?.taskState ?? hydrated;
+  const task = live?.taskState ?? runningMsg?.taskState ?? hydrated;
   const pending = task?.raho?.pending_decisions ?? [];
+  const running = task?.status === 'running' || task?.status === 'pending';
   const grilling = messages.some((m) => Boolean(m.grill && !m.grill.locked && !m.grill.terminated));
   const waitingBattle = messages.some(
     (m) => m.battle?.status === 'ESCALATE_TO_USER' && m.battle.waiting_for_user_decision,
   );
-  const showMonitor = Boolean(live);
+  const [monitorPinned, setMonitorPinned] = useState(false);
+  const taskFailed = task?.status === 'failed' || task?.status === 'interrupted';
+  const needsFullMonitor = Boolean(
+    live &&
+      (taskFailed ||
+        monitorPinned ||
+        isGrillInteractive(live) ||
+        isBattleWaiting(live) ||
+        hasUnresolvedDecision(live)),
+  );
+  const showPipelineStrip = Boolean(running && !needsFullMonitor);
+  const showMonitor = needsFullMonitor;
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [monitorSheetOpen, setMonitorSheetOpen] = useState(false);
+
+  useEffect(() => {
+    if (task?.status === 'completed') setMonitorPinned(false);
+  }, [task?.status]);
 
   useEffect(() => {
     if (!showMonitor) setMonitorSheetOpen(false);
@@ -197,8 +222,7 @@ export default function ChatView({
     return () => window.removeEventListener(OPEN_CHAT_CONTEXT_EVENT, onOpen);
   }, []);
 
-  const running = task?.status === 'running' || task?.status === 'pending';
-  const now = useNowTick(Boolean(showMonitor && running));
+  const now = useNowTick(Boolean((showMonitor || showPipelineStrip) && running));
   const nodes = useMemo(() => flattenWsNodes(task), [task]);
   const files = useMemo(() => wsFiles(task, nodes), [task, nodes]);
   const terminal = useMemo(() => wsTerminal(task), [task]);
@@ -276,10 +300,14 @@ export default function ChatView({
     />
   );
 
+  const liveSpent = task ? numBudget(task, 'task_spent') || numBudget(task, 'task_api_spent') : null;
+
   const composer = (
     <InputBar
       disabled={sending || grilling || waitingBattle}
       onSend={onSend}
+      onOpenBilling={onOpenBilling}
+      liveSpent={liveSpent}
       onContextCommand={(mode) => {
         // 對話頁 Context／Peek 一律綁定本會話解析結果，禁止選其他對話
         if (mode === 'peek') {
@@ -329,6 +357,13 @@ export default function ChatView({
           </div>
         </nav>
         {banners}
+        {showPipelineStrip && task && (
+          <PipelineStrip
+            task={task}
+            pinned={monitorPinned}
+            onPinMonitor={() => setMonitorPinned((v) => !v)}
+          />
+        )}
         {task && (
           <div className="shrink-0 px-4 pt-2 sm:px-6">
             <RahoDecisionBar
@@ -372,7 +407,7 @@ export default function ChatView({
           onClick={() => setMonitorSheetOpen(false)}
         />
       )}
-      {live && task && (
+      {showMonitor && live && task && (
         <ChatTaskMonitor
           task={task}
           pending={pending}
@@ -385,7 +420,7 @@ export default function ChatView({
           onResume={() => void handleResume()}
         />
       )}
-      {live && !task && (
+      {showMonitor && live && !task && (
         <aside className="ws-side" aria-label="任務監控" data-testid="chat-task-monitor">
           <div className="ws-side-h">
             <div>

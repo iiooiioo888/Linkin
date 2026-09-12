@@ -90,6 +90,35 @@ def get_billing(request: Request) -> dict[str, Any]:
     return _account_payload(request)
 
 
+@router.get("/overview")
+def billing_overview(request: Request) -> dict[str, Any]:
+    """帳務總覽聚合：本月消耗、餘額、異常 Key 數。"""
+    from backend.billing.pool_store import get_pool_store
+
+    user_id = _resolve_user(request)
+    svc = get_billing_service()
+    account = svc.get_account(user_id)
+    keys = get_pool_store().list_contributor_keys_with_health(user_id)
+    bad_statuses = {"unhealthy", "degraded", "offline"}
+    unhealthy = [k for k in keys if str(k.get("health_status") or "") in bad_statuses]
+    return {
+        "user_id": user_id,
+        "period_key": account.get("period_key"),
+        "monthly_used_credits": float(account.get("monthly_used_credits") or 0),
+        "balance_credits": float(account.get("balance_credits") or 0),
+        "low_balance": bool(account.get("low_balance")),
+        "unhealthy_keys_count": len(unhealthy),
+        "unhealthy_keys": [
+            {
+                "key_id": k.get("key_id") or k.get("id"),
+                "status": k.get("health_status"),
+                "health_score": k.get("health_score"),
+            }
+            for k in unhealthy[:20]
+        ],
+    }
+
+
 @router.get("/usage")
 def get_usage(request: Request, limit: int = 50) -> dict[str, Any]:
     user_id = _resolve_user(request)

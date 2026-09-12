@@ -461,6 +461,7 @@ export function isLiveMonitorTask(
   const task = message.taskState;
   if (task) {
     if (isRunningTaskStatus(task.status)) return true;
+    if (task.status === 'failed' || task.status === 'interrupted') return true;
     if (TERMINAL_TASK_STATUSES.has(task.status)) return false;
   }
 
@@ -474,6 +475,20 @@ export function activeTaskMessage<T extends Pick<ChatMessage, 'taskState' | 'tas
   messages: T[],
 ): T | null {
   return [...messages].reverse().find(isLiveMonitorTask) ?? null;
+}
+
+/** 進行中任務（不含失敗／已完成）— 用於精簡管線條。 */
+export function runningTaskMessage<
+  T extends Pick<ChatMessage, 'taskState' | 'taskId' | 'streaming'>,
+>(messages: T[]): T | null {
+  return (
+    [...messages].reverse().find((m) => {
+      const st = m.taskState?.status;
+      if (st === 'running' || st === 'pending') return true;
+      if (m.taskId && !m.taskState && m.streaming) return true;
+      return false;
+    }) ?? null
+  );
 }
 
 /**

@@ -10,7 +10,9 @@
     "system": "System",
     "lab": "Lab",
     "monitor": "Console",
-    "traces": "Traces"
+    "traces": "Traces",
+    "tasks": "Tasks",
+    "wallet": "Wallet"
   },
   "monitor": {
     "live": "Live",
@@ -28,6 +30,55 @@
     "liveActive": "Live",
     "roster": "Roster",
     "searchRoles": "Search roles"
+  },
+  "chat": {
+    "emptyTitle": "Start a conversation",
+    "emptySubtitle": "Simple tasks stream instantly · complex tasks use multi-role orchestration",
+    "emptyPipelineHint": "After you send a message, the task advances through pipeline stages (sense → generate → evaluate → reflect → output). Dense monitors are for ops; daily chat uses a compact pipeline strip.",
+    "pipelineRunning": "Pipeline running",
+    "pinMonitor": "Expand monitor",
+    "monitorPinned": "Monitor expanded",
+    "balance": "Balance",
+    "estCost": "Est.",
+    "liveCost": "Spent",
+    "insufficientBalance": "Insufficient credits — top up first",
+    "lowBalanceWarn": "Balance may be too low for this task",
+    "openWallet": "Open wallet",
+    "send": "Send"
+  },
+  "onboarding": {
+    "title": "Get started",
+    "body": "Type your request below to start chatting. Complex tasks automatically use the multi-role pipeline. Try Auto execution mode first.",
+    "monitorNote": "The dense right monitor is for ops; daily chat uses a compact pipeline strip.",
+    "startCta": "Start chatting"
+  },
+  "monitorAlert": {
+    "toggle": "Alert mode",
+    "title": "Monitor mode",
+    "subtitle": "Highlight anomalies, failed tasks, and unhealthy keys",
+    "exit": "Exit monitor mode",
+    "allClear": "No anomalies need attention",
+    "jump": "Go fix",
+    "failedTasks": "{{count}} failed task(s)",
+    "failedTasksHint": "Open tasks panel",
+    "highDocker": "High Docker resource usage",
+    "unhealthyKeys": "{{count}} unhealthy key(s)",
+    "unhealthyKeysHint": "Open contributor key health",
+    "agentBudget": "{{count}} agent budget alert(s)",
+    "highLoad": "{{count}} tasks running",
+    "highLoadHint": "System load is elevated"
+  },
+  "skills": {
+    "tierEnabled": "Enabled",
+    "tierAvailable": "Available",
+    "tierNeedsKey": "Needs key",
+    "mcpHealthOk": "Healthy",
+    "mcpHealthWarn": "Needs attention",
+    "mcpHealthUnknown": "Not probed",
+    "mcpProbe": "Health check"
+  },
+  "roles": {
+    "showDenseWidgets": "Show heatmap & task matrix"
   },
   "errors": {
     "opcGuard": "OPC guard blocked a write",

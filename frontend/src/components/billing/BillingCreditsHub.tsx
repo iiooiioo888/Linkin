@@ -7,6 +7,7 @@ import {
   assignBillingPlan,
   convertContribution,
   fetchBilling,
+  fetchBillingOverview,
   fetchBillingAppeals,
   fetchBillingGrants,
   fetchBillingPoolLedger,
@@ -103,6 +104,12 @@ export default function BillingCreditsHub() {
   const [appeals, setAppeals] = useState<BillingAppeal[]>([]);
   const [poolLedger, setPoolLedger] = useState<PoolLedgerEntry[]>([]);
   const [cloudBilling, setCloudBilling] = useState<CloudBilling | null>(null);
+  const [overview, setOverview] = useState<{
+    monthly_used_credits: number;
+    balance_credits: number;
+    unhealthy_keys_count: number;
+    period_key?: string;
+  } | null>(null);
   const [lockPreview, setLockPreview] = useState<LockPreview>({ amount: 10, days: 30, multiplier: 1.02 });
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -110,14 +117,16 @@ export default function BillingCreditsHub() {
 
   const refresh = useCallback(async () => {
     try {
-      const [billing, grantResp, rollResp, appealResp, ledgerResp, cloudResp] = await Promise.all([
+      const [billing, overviewResp, grantResp, rollResp, appealResp, ledgerResp, cloudResp] = await Promise.all([
         fetchBilling(),
+        fetchBillingOverview().catch(() => null),
         fetchBillingGrants(30),
         fetchBillingRollover(20),
         fetchBillingAppeals(20),
         fetchBillingPoolLedger(50),
         fetchCloudBilling().catch(() => null),
       ]);
+      if (overviewResp) setOverview(overviewResp);
       setPools(billing.pools ?? null);
       setContribution(billing.contribution ?? null);
       setGrants(grantResp.items);
@@ -181,8 +190,31 @@ export default function BillingCreditsHub() {
 
   const centerContent = useMemo(() => {
     if (section === 'overview') {
+      const monthSpend = overview?.monthly_used_credits ?? wallet.account?.monthly_used_credits ?? 0;
+      const remainBal = overview?.balance_credits ?? balance;
+      const badKeys = overview?.unhealthy_keys_count ?? 0;
       return (
         <div className={cnStack()}>
+          <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <KpiCard
+              label="本月消耗"
+              value={`${fmtCredits(monthSpend)} cr`}
+              hint={overview?.period_key ?? wallet.account?.period_key ?? '—'}
+              accent
+            />
+            <KpiCard
+              label="剩餘餘額"
+              value={`${fmtCredits(remainBal)} cr`}
+              hint={wallet.account?.low_balance ? '偏低' : '可用'}
+            />
+            {badKeys > 0 ? (
+              <button type="button" className="text-left" onClick={() => onNavSelect('credits-contributor')}>
+                <KpiCard label="異常 Key" value={`${badKeys} 個`} hint="點擊檢查貢獻者 Key" />
+              </button>
+            ) : (
+              <KpiCard label="異常 Key" value="0 個" hint="健康" />
+            )}
+          </div>
           <div className={consoleLayout.giantKpiRow}>
             <ConsoleGiantKpi
               label="可用積分"

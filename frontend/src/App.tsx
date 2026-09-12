@@ -41,6 +41,7 @@ import SettingsModal from './components/SettingsModal';
 import TraceView from './components/TraceView';
 import TaskDetailView from './components/taskdetail/TaskDetailView';
 import RahoOpsView from './components/rahoops/RahoOpsView';
+import OnboardingGuide from './components/onboarding/OnboardingGuide';
 
 function createSession(): ChatSession {
   const now = Date.now();
@@ -1143,26 +1144,33 @@ export default function App() {
         forceCloseSidebar={decisionPending}
       >
         {activeView === 'chat' && (
-          <ChatView
-            messages={activeSession?.messages ?? []}
-            sessionId={activeSession?.id ?? ''}
-            loading={false}
-            sending={sending}
-            error={error}
-            lastQuery={lastQuery}
-            llmConfigured={llmConfigured}
-            onOpenSettings={() => setSettingsOpen(true)}
-            onSend={sendQuery}
-            onRetry={handleRetry}
-            onDismissError={() => setError(null)}
-            onOpenTask={handleOpenTask}
-            onOpenTrace={handleOpenTrace}
-            onSuggest={handleSuggest}
-            onGrillAnswer={handleGrillAnswer}
-            onBattlePick={handleBattlePick}
-            onDecisionPending={handleDecisionPending}
-            onDecisionResolved={handleDecisionResolved}
-          />
+          <>
+            <OnboardingGuide />
+            <ChatView
+              messages={activeSession?.messages ?? []}
+              sessionId={activeSession?.id ?? ''}
+              loading={false}
+              sending={sending}
+              error={error}
+              lastQuery={lastQuery}
+              llmConfigured={llmConfigured}
+              onOpenSettings={() => setSettingsOpen(true)}
+              onSend={sendQuery}
+              onRetry={handleRetry}
+              onDismissError={() => setError(null)}
+              onOpenTask={handleOpenTask}
+              onOpenTrace={handleOpenTrace}
+              onSuggest={handleSuggest}
+              onGrillAnswer={handleGrillAnswer}
+              onBattlePick={handleBattlePick}
+              onDecisionPending={handleDecisionPending}
+              onDecisionResolved={handleDecisionResolved}
+              onOpenBilling={() => {
+                setActiveView('monitor');
+                setMonitorTab('credits');
+              }}
+            />
+          </>
         )}
 
         {activeView === 'monitor' && (
