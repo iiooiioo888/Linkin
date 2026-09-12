@@ -21,6 +21,7 @@ import {
   previewBuildBrief,
   previewMapPlan,
   previewWorldIntents,
+  runNarrativePipeline,
   seedNarrativeStarterPack,
   writeNarrativeDraft,
   type BuildBrief,
@@ -29,8 +30,11 @@ import {
   type MapPlan,
   type MapPlanPreview,
   type MinecraftStatus,
+  type NarrativePipelineResult,
   type NarrativeWorkspace,
   type PendingWorldIntents,
+  type PipelineStep,
+  type PipelineStepStatus,
   type WorldIntentApplyResult,
   type WorldIntentPreview,
 } from '../../api/linkin';
@@ -119,6 +123,28 @@ const PHASE4_LABELS: Record<Phase4Step, string> = {
   apply: '落地地圖',
 };
 
+const PIPELINE_STEP_LABELS: Record<string, string> = {
+  begin_workspace: '建立工作區',
+  generate: 'AI 生成草案',
+  commit: '提交至 Linkin',
+  map_generate: '生成區域地圖',
+  build_preview: '建築預覽',
+  world_preview: '世界意圖預覽',
+  map_preview: '地圖預覽',
+  build_apply: '落地建築',
+  world_apply: '落地 NPC／任務／道具',
+  map_apply: '落地地圖',
+};
+
+const PIPELINE_STATUS_STYLES: Record<PipelineStepStatus, string> = {
+  pending: 'text-[#636366]',
+  running: 'text-[#64D2FF]',
+  ok: 'text-emerald-400',
+  error: 'text-red-400',
+  partial: 'text-[#FF9F0A]',
+  skipped: 'text-[#636366]',
+};
+
 function defaultTaskId() {
   return `task-${Date.now().toString(36)}`;
 }
@@ -155,6 +181,10 @@ export default function NarrativeWorkspacePanel() {
   const [worldPreview, setWorldPreview] = useState<WorldIntentPreview[] | null>(null);
   const [worldApplyResult, setWorldApplyResult] = useState<WorldIntentApplyResult | null>(null);
   const [worldBusy, setWorldBusy] = useState<'idle' | 'preview' | 'apply'>('idle');
+  const [pipelineBusy, setPipelineBusy] = useState(false);
+  const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>([]);
+  const [pipelineResult, setPipelineResult] = useState<NarrativePipelineResult | null>(null);
+  const [pipelineConfirmWorld, setPipelineConfirmWorld] = useState(false);
 
   const awaitingConfirmation = workspace?.state === 'awaiting_confirmation';
   const isTerminal = workspace?.state === 'committed' || workspace?.state === 'discarded';
@@ -535,6 +565,89 @@ export default function NarrativeWorkspacePanel() {
     }
   };
 
+  const syncPipelineSideEffects = useCallback(
+    async (data: NarrativePipelineResult) => {
+      if (data.workspace) {
+        setWorkspace(data.workspace);
+        syncEditors(data.workspace);
+      } else if (data.workspace_id) {
+        await refreshWorkspace(data.workspace_id);
+      }
+      if (data.build_brief_id) {
+        setCommittedBriefId(data.build_brief_id);
+        await loadCommittedBrief(data.build_brief_id);
+      }
+      if (data.map_plan) {
+        setMapPlan(data.map_plan);
+        setMapStep('preview');
+      }
+      if (data.map_preview) {
+        setMapPreview(data.map_preview);
+      }
+      await refreshBridgeStatus();
+      if (data.workspace?.state === 'committed' || data.committed) {
+        await refreshPendingWorld();
+      }
+    },
+    [loadCommittedBrief, refreshBridgeStatus, refreshPendingWorld, refreshWorkspace, syncEditors],
+  );
+
+  const onRunPipeline = async (confirmWorld = false) => {
+    const trimmed = brief.trim();
+    if (!workspace && !trimmed && !confirmWorld) {
+      setError('請先輸入 brief，或建立工作區後再執行一鍵完整圈。');
+      return;
+    }
+    if (confirmWorld) {
+      const proceed = window.confirm(
+        '即將寫入 Minecraft 世界（建築／NPC／任務／道具／地圖）。橋接未連線時將以 dry-run 模擬。確定繼續？',
+      );
+      if (!proceed) return;
+    }
+    setPipelineBusy(true);
+    setError(null);
+    setSuccess(null);
+    setPipelineSteps([]);
+    setPipelineResult(null);
+    try {
+      const data = await runNarrativePipeline({
+        brief: trimmed || undefined,
+        workspace_id: workspace?.workspace_id,
+        task_id: taskId,
+        snapshot_id: snapshotId,
+        region,
+        theme,
+        seed: mapSeed || theme || region,
+        confirm_world: confirmWorld,
+        regenerate: confirmWorld ? false : Boolean(trimmed),
+      });
+      setPipelineResult(data);
+      setPipelineSteps(data.steps ?? []);
+      setPipelineConfirmWorld(false);
+      await syncPipelineSideEffects(data);
+      const failed = data.steps?.filter((s) => s.status === 'error').length ?? 0;
+      const partial = data.steps?.filter((s) => s.status === 'partial').length ?? 0;
+      if (data.needs_confirm) {
+        setSuccess(
+          data.plan?.message ??
+            `預覽完成（${data.elapsed_ms ?? 0}ms）。勾選「確認寫入世界」後再按一次以落地。`,
+        );
+      } else if (failed > 0) {
+        setError(`管線完成但有 ${failed} 步失敗；請查看步驟時間軸。`);
+      } else if (partial > 0 || data.bridge?.dry_run) {
+        setSuccess(
+          `一鍵完整圈完成（${data.status}，${data.elapsed_ms ?? 0}ms）。部分步驟為 dry-run／partial。`,
+        );
+      } else {
+        setSuccess(`一鍵完整圈完成（${data.status}，${data.elapsed_ms ?? 0}ms）。`);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setPipelineBusy(false);
+    }
+  };
+
   const onApplyMap = async () => {
     if (!mapPlan) return;
     setBusy(true);
@@ -561,22 +674,103 @@ export default function NarrativeWorkspacePanel() {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div className="max-w-2xl">
-          <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">Phase 1 · 故事草稿工作區</p>
+          <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">Phase 5 · 一鍵完整圈</p>
           <h2 className="text-sm font-semibold text-[#c9a961]">RPG 草案桌</h2>
           <p className="mt-1 text-[11px] leading-relaxed text-[#8a8f98]">
             北極星：AI 生成完整 Minecraft RPG（故事、NPC、地圖、建築、道具）。
-            輸入 brief 後按「AI 生成」可一次填入五個草案鍵（覆寫該鍵既有內容）；審閱後再提交至 Linkin 實體庫。
-            不會自動寫入世界觀或觸發 MineMCP 建造。
+            「一鍵完整圈」先跑生成→提交→預覽；確認後才寫入世界。手動 Phase 0–4 控制仍保留於下方。
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void loadSnapshot()}
-          className="rounded-xl border border-[#c9a961]/30 px-2 py-1 text-[11px] text-[#c9a961]"
-        >
-          重新讀取 L0 快照
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void loadSnapshot()}
+            className="rounded-xl border border-[#c9a961]/30 px-2 py-1 text-[11px] text-[#c9a961]"
+          >
+            重新讀取 L0 快照
+          </button>
+          <button
+            type="button"
+            onClick={() => void refreshBridgeStatus()}
+            className="rounded-xl border border-[#64D2FF]/30 px-2 py-1 text-[11px] text-[#64D2FF]"
+          >
+            刷新橋接
+          </button>
+        </div>
       </div>
+
+      <section className="mb-4 rounded-xl border border-[#c9a961]/40 bg-[#1C1C1E] p-4">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">一鍵完整圈</p>
+            <p className="mt-1 text-[11px] text-[#8a8f98]">
+              第一次：生成草案、提交、地圖與預覽。第二次（或勾選確認）：落地建築／世界／地圖。
+            </p>
+          </div>
+          <div className="text-[10px] text-[#8a8f98]">
+            MineMCP：
+            <span className="text-[#c9a961]">
+              {bridgeStatus?.enabled
+                ? bridgeStatus.connected
+                  ? '已連線'
+                  : '未連線'
+                : '未啟用（乾跑）'}
+            </span>
+          </div>
+        </div>
+
+        {bridgeStatus && (!bridgeStatus.enabled || !bridgeStatus.connected) && (
+          <div className="mb-3 rounded-md border border-[#FF9F0A]/30 bg-[#FF9F0A]/10 px-3 py-2 text-[11px] text-[#FF9F0A]">
+            橋接關閉或未連線：管線仍會完成 Linkin 寫入與 dry-run 預覽；世界落地標記為 partial／乾跑。
+          </div>
+        )}
+
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={pipelineBusy || awaitingConfirmation}
+            onClick={() => void onRunPipeline(pipelineConfirmWorld)}
+            className="rounded-lg border border-[#c9a961]/50 bg-[#c9a961]/20 px-4 py-2 text-[13px] font-medium text-[#c9a961] disabled:opacity-40"
+          >
+            {pipelineBusy ? '管線執行中…' : pipelineConfirmWorld ? '一鍵完整圈（確認寫入世界）' : '一鍵完整圈'}
+          </button>
+          <label className="flex items-center gap-2 text-[11px] text-[#AEAEB2]">
+            <input
+              type="checkbox"
+              checked={pipelineConfirmWorld}
+              onChange={(e) => setPipelineConfirmWorld(e.target.checked)}
+              disabled={pipelineBusy}
+              className="rounded border-white/20"
+            />
+            確認寫入世界（confirm_world）
+          </label>
+          {pipelineResult?.needs_confirm && !pipelineConfirmWorld && (
+            <span className="text-[10px] text-emerald-400">預覽已完成，可勾選確認後再執行</span>
+          )}
+        </div>
+
+        {pipelineSteps.length > 0 && (
+          <ul className="space-y-1.5 rounded-lg border border-white/[0.06] bg-black/20 p-3">
+            {pipelineSteps.map((step) => (
+              <li key={step.id} className="flex flex-wrap items-baseline gap-2 text-[11px]">
+                <span className={`font-medium ${PIPELINE_STATUS_STYLES[step.status]}`}>
+                  {step.status === 'running' ? '…' : step.status}
+                </span>
+                <span className="text-[#f7f8f8]">{step.label ?? PIPELINE_STEP_LABELS[step.id] ?? step.id}</span>
+                {step.message && <span className="text-[#636366]">— {step.message}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {pipelineResult && (
+          <p className="mt-2 text-[10px] text-[#636366]">
+            管線狀態 {pipelineResult.status} · {pipelineResult.elapsed_ms ?? 0}ms
+            {pipelineResult.build_brief_id ? ` · build_brief ${pipelineResult.build_brief_id}` : ''}
+            {pipelineResult.map_plan?.id ? ` · map ${pipelineResult.map_plan.id}` : ''}
+          </p>
+        )}
+      </section>
 
       {error && (
         <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>

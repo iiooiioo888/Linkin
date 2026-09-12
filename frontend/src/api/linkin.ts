@@ -451,6 +451,58 @@ export const generateNarrativeDrafts = (
     body,
   );
 
+export type PipelineStepStatus = 'pending' | 'running' | 'ok' | 'error' | 'partial' | 'skipped';
+
+export type PipelineStep = {
+  id: string;
+  label: string;
+  status: PipelineStepStatus;
+  message?: string;
+  detail?: Record<string, unknown>;
+};
+
+export type NarrativePipelineResult = {
+  ok: boolean;
+  status: PipelineStepStatus;
+  confirm_world: boolean;
+  needs_confirm: boolean;
+  bridge: MinecraftStatus;
+  workspace_id?: string;
+  workspace?: NarrativeWorkspace;
+  committed?: Record<string, { id?: string; title?: string; [key: string]: unknown }>;
+  commit_errors?: Array<{ key: string; code: string; message: string }>;
+  build_brief_id?: string | null;
+  map_plan?: MapPlan | null;
+  map_preview?: MapPlanPreview | null;
+  steps: PipelineStep[];
+  plan?: {
+    confirm_world_required?: boolean;
+    build_brief_id?: string | null;
+    map_plan_id?: string;
+    pending_world_count?: number;
+    message?: string;
+  };
+  elapsed_ms?: number;
+  message?: string;
+};
+
+export const runNarrativePipeline = (body: {
+  brief?: string;
+  workspace_id?: string;
+  task_id?: string;
+  snapshot_id?: string;
+  region?: string;
+  theme?: string;
+  seed?: string;
+  confirm_world?: boolean;
+  regenerate?: boolean;
+  use_starter_pack?: boolean;
+  options?: { steps?: Record<string, boolean> };
+}) => mc.post<NarrativePipelineResult>('/narrative/pipelines/run', body);
+
+export const fetchNarrativePipelineSteps = () =>
+  mc.get<{ steps: Array<{ id: string; label: string }> }>('/narrative/pipelines/steps');
+
 export type BuildBrief = {
   id: string;
   title: string;

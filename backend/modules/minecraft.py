@@ -80,6 +80,7 @@ def build_minecraft_spec() -> ModuleSpec:
                     "/quests",
                     "/items",
                     "/narrative/workspaces",
+                    "/narrative/pipelines",
                     "/build-briefs",
                     "/world-intents",
                     "/map",
