@@ -115,6 +115,17 @@ def build_minecraft_spec() -> ModuleSpec:
                 api_prefix=_PREFIX,
                 routes=("/minecraft/status", "/minecraft/probe", "/minecraft/call"),
             ),
+            ModuleCapability(
+                id="plugins",
+                title="插件／地圖",
+                description="第三方插件目錄、地圖 URL 設定與內嵌檢視",
+                api_prefix=_PREFIX,
+                routes=(
+                    "/minecraft/plugins/catalog",
+                    "/minecraft/plugins/settings",
+                    "/minecraft/plugins/{id}/probe",
+                ),
+            ),
         ),
         nav_groups=(
             ModuleNavGroup(
@@ -142,6 +153,26 @@ def build_minecraft_spec() -> ModuleSpec:
                 ),
             ),
             ModuleNavGroup(
+                id="plugins",
+                label="插件／地圖",
+                items=(
+                    ModuleNavItem(
+                        "plugin-hub",
+                        "⚡",
+                        "插件中心",
+                        "Dynmap／BlueMap／Squaremap 等目錄與連線狀態",
+                        capability="plugins",
+                    ),
+                    ModuleNavItem(
+                        "server-map",
+                        "🗺",
+                        "伺服器地圖",
+                        "內嵌網頁地圖（Dynmap／BlueMap／Squaremap）",
+                        capability="plugins",
+                    ),
+                ),
+            ),
+            ModuleNavGroup(
                 id="server",
                 label="伺服器",
                 items=(
@@ -159,6 +190,11 @@ def build_minecraft_spec() -> ModuleSpec:
             ("linkin_roles", "studio"),
             ("server", "admin"),
             ("ops_admin", "admin"),
+            ("plugins", "plugin-hub"),
+            ("plugin_center", "plugin-hub"),
+            ("map", "server-map"),
+            ("server_map", "server-map"),
+            ("dynmap", "server-map"),
         ),
         health=minecraft_health,
     )

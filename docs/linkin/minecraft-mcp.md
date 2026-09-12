@@ -76,7 +76,9 @@ Docker 後端要打宿主機上的 Minecraft 時，Windows 可用 `EVOL_MC_MCP_U
 | POST | `/linkin/buildings/import` 匯入 `.schem`（v1／v2／v3，儲存升級為 v3） |
 | POST | `/linkin/admin/execute` 通過鐵律後轉發 `execute_command` |
 
-監控中心活動欄 **Minecraft** 是獨立世界模組（`GET /modules/minecraft`）：世界觀、Admin、NPC／任務／道具、工作室、建築與 MineMCP 橋接。控制台不含這些頁。建築面板可「發送到 Minecraft」。實驗室 MCP 只保留 OPC／記憶等通用開關，不含 MineMCP。
+監控中心活動欄 **Minecraft** 是獨立世界模組（`GET /modules/minecraft`）：世界觀、Admin、NPC／任務／道具、工作室、建築、**插件／地圖**（Dynmap／BlueMap 內嵌）與 MineMCP 橋接。控制台不含這些頁。建築面板可「發送到 Minecraft」。實驗室 MCP 只保留 OPC／記憶等通用開關，不含 MineMCP。
+
+第三方網頁地圖設定見 [minecraft-plugins.md](./minecraft-plugins.md)。
 
 ## 其他 MCP 實作
 

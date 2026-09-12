@@ -16,5 +16,7 @@ export function registerMinecraftModule(): void {
     admin: wrapPanel(() => import('./AdminPanel')),
     building: wrapPanel(() => import('./BuildPanel')),
     minecraft: wrapPanel(() => import('./MinecraftBridgePanel')),
+    'plugin-hub': wrapPanel(() => import('./PluginHubPanel')),
+    'server-map': wrapPanel(() => import('./ServerMapPanel')),
   });
 }

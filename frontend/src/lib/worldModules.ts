@@ -77,6 +77,26 @@ const MINECRAFT_NAV: ModuleNavGroup[] = [
     items: [{ key: 'studio', icon: '◈', label: '工作室角色', hint: '建築／敘事／NPC／道具班底', roster: 'agents' }],
   },
   {
+    id: 'plugins',
+    label: '插件／地圖',
+    items: [
+      {
+        key: 'plugin-hub',
+        icon: '⚡',
+        label: '插件中心',
+        hint: 'Dynmap／BlueMap／Squaremap 等目錄與連線狀態',
+        capability: 'plugins',
+      },
+      {
+        key: 'server-map',
+        icon: '🗺',
+        label: '伺服器地圖',
+        hint: '內嵌網頁地圖（Dynmap／BlueMap／Squaremap）',
+        capability: 'plugins',
+      },
+    ],
+  },
+  {
     id: 'server',
     label: '伺服器',
     items: [
@@ -135,6 +155,13 @@ export const BUILTIN_WORLD_MODULES: WorldModuleSpec[] = [
         api_prefix: '/linkin',
         routes: ['/minecraft/status', '/minecraft/probe', '/minecraft/call'],
       },
+      {
+        id: 'plugins',
+        title: '插件／地圖',
+        description: '第三方插件目錄、地圖 URL 設定與內嵌檢視',
+        api_prefix: '/linkin',
+        routes: ['/minecraft/plugins/catalog', '/minecraft/plugins/settings', '/minecraft/plugins/{id}/probe'],
+      },
     ],
     navGroups: MINECRAFT_NAV,
     pageAliases: {
@@ -145,6 +172,11 @@ export const BUILTIN_WORLD_MODULES: WorldModuleSpec[] = [
       linkin_roles: 'studio',
       server: 'admin',
       ops_admin: 'admin',
+      plugins: 'plugin-hub',
+      plugin_center: 'plugin-hub',
+      map: 'server-map',
+      server_map: 'server-map',
+      dynmap: 'server-map',
     },
   },
 ];
@@ -158,6 +190,11 @@ export const MODULE_PAGE_ALIASES: Record<string, string> = {
   linkin_roles: 'studio',
   server: 'admin',
   ops_admin: 'admin',
+  plugins: 'plugin-hub',
+  plugin_center: 'plugin-hub',
+  map: 'server-map',
+  server_map: 'server-map',
+  dynmap: 'server-map',
 };
 
 const EXTRA_MODULES: WorldModuleSpec[] = [];
