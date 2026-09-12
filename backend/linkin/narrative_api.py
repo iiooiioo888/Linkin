@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from backend.linkin.narrative_commit import KNOWN_DRAFT_KEYS, commit_narrative_drafts
 from backend.linkin.narrative_registry import get_narrative_registry
+from backend.linkin.narrative_starter import generate_starter_pack
 from backend.linkin.narrative_workspace import (
     ERR_CONFIRM_CHOICE_INVALID,
     ERR_SNAPSHOT_UNRESOLVED,
@@ -105,6 +106,35 @@ def post_draft(workspace_id: str, body: dict[str, Any]) -> dict[str, Any]:
         _raise_verdict(verdict)
     assert verdict.workspace is not None
     return {"ok": True, "workspace": _workspace_detail(verdict.workspace)}
+
+
+@narrative_router.post("/{workspace_id}/starter-pack")
+def seed_starter_pack(workspace_id: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    """一鍵草案：LLM 或模板填充草稿，不自動 commit（Phase 0）。"""
+    ws = _get_workspace_or_404(workspace_id)
+    if ws.state.value != "active":
+        raise HTTPException(
+            status_code=409,
+            detail={"ok": False, "error_code": ERR_WORKSPACE_NOT_ACTIVE, "workspace": _workspace_summary(ws)},
+        )
+    payload = body or {}
+    region = str(payload.get("region") or "织庭都").strip() or "织庭都"
+    theme = str(payload.get("theme") or payload.get("topic") or "靈丝残章").strip() or "靈丝残章"
+    generated = generate_starter_pack(region=region, theme=theme)
+    drafts = dict(generated.get("drafts") or {})
+    reg = get_narrative_registry()
+    for key, value in drafts.items():
+        verdict = reg.write_draft(workspace_id, key, value)
+        if not verdict.ok:
+            _raise_verdict(verdict)
+    refreshed = reg.get(workspace_id)
+    assert refreshed is not None
+    return {
+        "ok": True,
+        "source": generated.get("source") or "fallback",
+        "workspace": _workspace_detail(refreshed),
+        "draft_keys": sorted(refreshed.drafts.keys()),
+    }
 
 
 @narrative_router.post("/{workspace_id}/commit")

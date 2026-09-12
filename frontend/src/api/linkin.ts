@@ -339,3 +339,12 @@ export const refreshNarrativeL0 = (newSnapshotId: string) =>
     '/narrative/workspaces/refresh-l0',
     { new_snapshot_id: newSnapshotId },
   );
+
+export const seedNarrativeStarterPack = (
+  workspaceId: string,
+  body?: { region?: string; theme?: string },
+) =>
+  mc.post<{ ok: boolean; source: 'fallback' | 'llm'; workspace: NarrativeWorkspace; draft_keys: string[] }>(
+    `/narrative/workspaces/${encodeURIComponent(workspaceId)}/starter-pack`,
+    body ?? {},
+  );

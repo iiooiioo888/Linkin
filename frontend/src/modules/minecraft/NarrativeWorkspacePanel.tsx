@@ -1,5 +1,5 @@
 /**
- * NarrativeWorkspacePanel — 敘事草稿工作區：建立、編輯草稿、提交至 Linkin 實體。
+ * NarrativeWorkspacePanel — Phase 0 故事草稿工作區（完整 RPG 管線的起點）。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchL0Kernel } from '../../api/client';
@@ -9,11 +9,31 @@ import {
   confirmNarrativeWorkspace,
   fetchNarrativeWorkspace,
   listNarrativeWorkspaces,
+  seedNarrativeStarterPack,
   writeNarrativeDraft,
   type NarrativeWorkspace,
 } from '../../api/linkin';
 
+const DRAFT_LABELS: Record<string, string> = {
+  story_arc: '故事主線',
+  quest: '任務',
+  npc: 'NPC',
+  item: '道具',
+  build_brief: '建築／地圖意圖',
+};
+
 const DRAFT_TEMPLATES: Record<string, string> = {
+  story_arc: JSON.stringify(
+    {
+      title: '靈丝残章',
+      summary: '旅人在織庭都追尋失落的織夢記憶，串連 NPC、任務與建築意圖。',
+      region: '织庭都',
+      chapters: ['序章：抵達織庭都', '第一章：追尋殘章'],
+      tags: ['主線', '织庭都'],
+    },
+    null,
+    2,
+  ),
   quest: JSON.stringify(
     {
       title: '支線：遺失的織夢殘章',
@@ -39,13 +59,27 @@ const DRAFT_TEMPLATES: Record<string, string> = {
     null,
     2,
   ),
-  lore_note: JSON.stringify(
-    { title: '設定筆記', text: '織庭都夜裡會聽見金線共鳴。', tags: ['织庭都', '靈丝'] },
+  item: JSON.stringify(
+    {
+      name: '靈丝殘章',
+      type: '消耗品',
+      rarity: 'common',
+      attributes: { power: 12 },
+      description: '與主線共鳴的碎片，可觸發後續任務。',
+    },
     null,
     2,
   ),
-  chapter_beat: JSON.stringify(
-    { title: '開場', chapter: '第一章', beat_order: 1, text: '旅人抵達織庭都廣場。' },
+  build_brief: JSON.stringify(
+    {
+      title: '織庭都序章廣場',
+      region: '织庭都',
+      location: '0,64,0',
+      style: '织庭盟',
+      prompt: '帶金線紋樣的開場廣場，中央有契約碑。',
+      block_count: 800,
+      notes: 'Phase 0 僅落庫意圖；提交後由 Builder／MineMCP 管線消費（Phase 2）。',
+    },
     null,
     2,
   ),
@@ -65,9 +99,11 @@ function snapshotFromL0(generatedAt?: number) {
 export default function NarrativeWorkspacePanel() {
   const [taskId, setTaskId] = useState(defaultTaskId);
   const [snapshotId, setSnapshotId] = useState('snap-local');
+  const [theme, setTheme] = useState('靈丝残章');
+  const [region, setRegion] = useState('织庭都');
   const [workspace, setWorkspace] = useState<NarrativeWorkspace | null>(null);
   const [draftEditors, setDraftEditors] = useState<Record<string, string>>({});
-  const [selectedKey, setSelectedKey] = useState('quest');
+  const [selectedKey, setSelectedKey] = useState('story_arc');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -126,7 +162,7 @@ export default function NarrativeWorkspacePanel() {
       case 'awaiting_confirmation':
         return '快照衝突 · 待確認';
       case 'committed':
-        return '已提交';
+        return '已提交至實體庫';
       case 'discarded':
         return '已丟棄';
       default:
@@ -142,7 +178,28 @@ export default function NarrativeWorkspacePanel() {
       const data = await beginNarrativeWorkspace({ task_id: taskId, snapshot_id: snapshotId });
       setWorkspace(data.workspace);
       syncEditors(data.workspace);
-      setSuccess('工作區已建立，可開始編輯草稿。');
+      setSuccess('Phase 0 工作區已建立。可手動編輯或使用「一鍵草案」。');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onStarterPack = async () => {
+    if (!workspace) return;
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = await seedNarrativeStarterPack(workspace.workspace_id, { region, theme });
+      setWorkspace(data.workspace);
+      syncEditors(data.workspace);
+      setSuccess(
+        data.source === 'llm'
+          ? 'AI 已填入一組 RPG 草案（故事／任務／NPC／道具／建築意圖）。請審閱後按「提交」。'
+          : '已填入本地模板草案。請審閱後按「提交至 Linkin」。',
+      );
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -161,7 +218,7 @@ export default function NarrativeWorkspacePanel() {
       const data = await writeNarrativeDraft(workspace.workspace_id, selectedKey, parsed);
       setWorkspace(data.workspace);
       syncEditors(data.workspace);
-      setSuccess(`草稿「${selectedKey}」已儲存至工作區。`);
+      setSuccess(`草稿「${DRAFT_LABELS[selectedKey] ?? selectedKey}」已儲存。`);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -178,9 +235,13 @@ export default function NarrativeWorkspacePanel() {
       const data = await commitNarrativeWorkspace(workspace.workspace_id);
       setWorkspace(data.workspace);
       const ids = Object.entries(data.committed ?? {})
-        .map(([key, val]) => `${key}:${(val as { id?: string }).id ?? 'ok'}`)
+        .map(([key, val]) => `${DRAFT_LABELS[key] ?? key}:${(val as { id?: string }).id ?? 'ok'}`)
         .join(' · ');
-      setSuccess(ids ? `提交成功：${ids}` : '提交成功');
+      setSuccess(
+        ids
+          ? `已寫入 Linkin 實體庫：${ids}。後續可驅動地圖配置與 MineMCP 建造（Phase 2+）。`
+          : '提交成功',
+      );
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -210,11 +271,15 @@ export default function NarrativeWorkspacePanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-[#c9a961]">敘事工作區</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            草稿僅存於記憶體；提交後寫入 Linkin 任務／NPC／設定，不維護第二套世界觀圖譜。
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+        <div className="max-w-2xl">
+          <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">Phase 0 · 故事草稿工作區</p>
+          <h2 className="text-sm font-semibold text-[#c9a961]">RPG 草案桌</h2>
+          <p className="mt-1 text-[11px] leading-relaxed text-[#8a8f98]">
+            北極星：AI 生成完整 Minecraft RPG（故事、NPC、地圖、建築、道具）。
+            此頁是管線起點——彙整
+            <span className="text-[#AEAEB2]"> 故事主線／任務／NPC／道具／建築意圖 </span>
+            草稿；提交後寫入 Linkin 實體庫，後續再驅動地圖佈局與 MineMCP 建造（不在本階段自動執行）。
           </p>
         </div>
         <button
@@ -235,7 +300,7 @@ export default function NarrativeWorkspacePanel() {
         </div>
       )}
 
-      <div className="mb-4 grid gap-2 rounded-xl border border-[#c9a961]/20 bg-[#1C1C1E] p-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid gap-2 rounded-xl border border-[#c9a961]/20 bg-[#1C1C1E] p-3 sm:grid-cols-2 lg:grid-cols-6">
         <label className="text-[10px] text-[#8a8f98]">
           任務 ID
           <input
@@ -254,15 +319,36 @@ export default function NarrativeWorkspacePanel() {
             className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]"
           />
         </label>
+        <label className="text-[10px] text-[#8a8f98]">
+          區域
+          <select
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]"
+          >
+            <option value="织庭都">織庭都</option>
+            <option value="精灵森林">精靈森林</option>
+            <option value="裂隙港">裂隙港</option>
+            <option value="宁渊谷">寧淵谷</option>
+          </select>
+        </label>
+        <label className="text-[10px] text-[#8a8f98]">
+          主題
+          <input
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]"
+          />
+        </label>
         <div className="flex flex-col justify-end text-[11px] text-[#8a8f98]">
           <span>
             狀態：<span className="text-[#c9a961]">{stateLabel}</span>
           </span>
           {workspace && (
-            <span className="truncate text-[10px] text-[#636366]">工作區 {workspace.workspace_id}</span>
+            <span className="truncate text-[10px] text-[#636366]">{workspace.workspace_id}</span>
           )}
         </div>
-        <div className="flex items-end">
+        <div className="flex flex-col justify-end gap-1">
           <button
             type="button"
             disabled={busy || (Boolean(workspace) && !isTerminal)}
@@ -301,7 +387,7 @@ export default function NarrativeWorkspacePanel() {
       {workspace && !isTerminal && (
         <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
           <aside className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-2">
-            <p className="mb-2 px-1 text-[10px] text-[#8a8f98]">草稿鍵</p>
+            <p className="mb-2 px-1 text-[10px] text-[#8a8f98]">RPG 草案鍵</p>
             <div className="space-y-1">
               {KNOWN_KEYS.map((key) => {
                 const saved = workspace.draft_keys?.includes(key);
@@ -316,18 +402,29 @@ export default function NarrativeWorkspacePanel() {
                         : 'border border-transparent text-[#AEAEB2] hover:bg-white/[0.04]'
                     }`}
                   >
-                    <span>{key}</span>
+                    <span>{DRAFT_LABELS[key] ?? key}</span>
                     {saved && <span className="text-[10px] text-emerald-400">已存</span>}
                   </button>
                 );
               })}
             </div>
+            <button
+              type="button"
+              disabled={busy || awaitingConfirmation}
+              onClick={() => void onStarterPack()}
+              className="mt-3 w-full rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-2 py-1.5 text-[11px] text-[#64D2FF] disabled:opacity-40"
+            >
+              一鍵草案（AI／模板）
+            </button>
           </aside>
 
           <section className="flex min-h-[280px] flex-col rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-[13px] font-medium">編輯草稿 · {selectedKey}</h3>
-              <div className="flex gap-2">
+              <h3 className="text-[13px] font-medium">
+                編輯 · {DRAFT_LABELS[selectedKey] ?? selectedKey}
+                <span className="ml-2 text-[10px] font-normal text-[#636366]">{selectedKey}</span>
+              </h3>
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={busy || awaitingConfirmation}
@@ -352,16 +449,16 @@ export default function NarrativeWorkspacePanel() {
               spellCheck={false}
               className="min-h-[220px] flex-1 resize-y rounded-lg border border-white/[0.08] bg-black/30 p-3 font-mono text-[11px] leading-relaxed text-[#f7f8f8]"
             />
-            <p className="mt-2 text-[10px] text-[#636366]">
-              支援 quest、npc、lore_note、chapter_beat；提交時寫入既有 Linkin store。
+            <p className="mt-2 text-[10px] leading-relaxed text-[#636366]">
+              提交後：story_arc → 主線實體；quest／npc／item → 既有 store；build_brief → 建築意圖實體（Phase 2 Builder／MineMCP 消費）。
             </p>
           </section>
         </div>
       )}
 
       {workspace?.state === 'committed' && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[12px] text-emerald-200">
-          此工作區已提交。可變更任務 ID 後建立新的工作區繼續編輯。
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[12px] leading-relaxed text-emerald-200">
+          草案已寫入 Linkin 實體庫。下一步：在任務／NPC／道具／建築面板檢視成果；地圖生成與 MineMCP 即時建造將在後續 Phase 接入。
         </div>
       )}
     </div>

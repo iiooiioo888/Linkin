@@ -35,6 +35,23 @@ QUEST_DRAFT = {
     "player_id": "traveler-01",
 }
 
+ITEM_DRAFT = {
+    "name": "測試靈丝殘章",
+    "type": "消耗品",
+    "rarity": "common",
+    "attributes": {"power": 10},
+    "description": "敘事工作區測試道具。",
+}
+
+BUILD_BRIEF_DRAFT = {
+    "title": "測試序章廣場",
+    "region": "织庭都",
+    "location": "0,64,0",
+    "style": "织庭盟",
+    "prompt": "小型契約廣場，中央立碑。",
+    "block_count": 500,
+}
+
 
 def _pass_eval(_query: str, _answer: str) -> EvaluationResult:
     result = EvaluationResult(source="test")
@@ -76,6 +93,7 @@ def _begin(client: TestClient, task_id: str = "task-narrative-1", snapshot_id: s
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["ok"] is True
+    assert set(body["known_draft_keys"]) >= {"story_arc", "quest", "npc", "item", "build_brief"}
     return body["workspace"]["workspace_id"]
 
 
@@ -108,11 +126,62 @@ def test_narrative_begin_write_commit(client: TestClient):
     assert any(n["name"] == NPC_DRAFT["name"] for n in npcs)
 
 
+def test_narrative_full_rpg_draft_keys_commit(client: TestClient):
+    ws_id = _begin(client)
+    client.put(
+        f"/linkin/narrative/workspaces/{ws_id}/drafts/story_arc",
+        json={
+            "value": {
+                "title": "靈丝殘章",
+                "summary": "旅人在織庭都追尋失落的織夢記憶。",
+                "region": "织庭都",
+                "chapters": ["序章"],
+            }
+        },
+    )
+    client.put(f"/linkin/narrative/workspaces/{ws_id}/drafts/item", json={"value": ITEM_DRAFT})
+    client.put(f"/linkin/narrative/workspaces/{ws_id}/drafts/build_brief", json={"value": BUILD_BRIEF_DRAFT})
+
+    commit = client.post(f"/linkin/narrative/workspaces/{ws_id}/commit")
+    assert commit.status_code == 200, commit.text
+    committed = commit.json()["committed"]
+    assert committed["item"]["name"] == ITEM_DRAFT["name"]
+    assert committed["build_brief"]["status"] == "pending_builder"
+
+    items = client.get("/linkin/items").json()["items"]
+    assert any(i["name"] == ITEM_DRAFT["name"] for i in items)
+
+
+def test_narrative_starter_pack_without_auto_commit(client: TestClient):
+    ws_id = _begin(client)
+    seeded = client.post(
+        f"/linkin/narrative/workspaces/{ws_id}/starter-pack",
+        json={"region": "织庭都", "theme": "測試主題"},
+    )
+    assert seeded.status_code == 200, seeded.text
+    body = seeded.json()
+    assert body["ok"] is True
+    assert body["source"] in {"fallback", "llm"}
+    assert set(body["draft_keys"]) >= {"story_arc", "quest", "npc", "item", "build_brief"}
+    assert body["workspace"]["state"] == "active"
+
+    quests_before = client.get("/linkin/quests").json()["count"]
+    commit = client.post(f"/linkin/narrative/workspaces/{ws_id}/commit")
+    assert commit.status_code == 200
+    assert client.get("/linkin/quests").json()["count"] >= quests_before + 1
+
+
 def test_narrative_snapshot_conflict_requires_confirm(client: TestClient):
     ws_id = _begin(client)
     client.put(
-        f"/linkin/narrative/workspaces/{ws_id}/drafts/lore_note",
-        json={"value": {"title": "設定片段", "text": "織庭都夜裡會聽見金線共鳴。"}},
+        f"/linkin/narrative/workspaces/{ws_id}/drafts/story_arc",
+        json={
+            "value": {
+                "title": "設定片段",
+                "summary": "織庭都夜裡會聽見金線共鳴。",
+                "region": "织庭都",
+            }
+        },
     )
 
     refresh = client.post(
@@ -136,7 +205,7 @@ def test_narrative_snapshot_conflict_requires_confirm(client: TestClient):
 
     commit = client.post(f"/linkin/narrative/workspaces/{ws_id}/commit")
     assert commit.status_code == 200
-    assert commit.json()["committed"]["lore_note"]["kind"] == "lore_note"
+    assert commit.json()["committed"]["story_arc"]["title"] == "設定片段"
 
 
 def test_narrative_list_by_task(client: TestClient):
