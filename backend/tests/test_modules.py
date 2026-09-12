@@ -30,12 +30,12 @@ def test_register_and_list_minecraft():
     assert ids == ["minecraft"]
     spec = get_module("minecraft")
     assert spec is not None
-    assert spec.default_page == "world"
+    assert spec.default_page == "monitor"
     assert spec.api_prefix == "/linkin"
     cap_ids = {cap.id for cap in spec.capabilities}
-    assert cap_ids == {"worldview", "content", "admin", "building", "bridge"}
+    assert cap_ids == {"worldview", "content", "admin", "building", "bridge", "monitor"}
     pages = {item.key for group in spec.nav_groups for item in group.items}
-    assert {"world", "admin", "building", "minecraft", "studio"} <= pages
+    assert {"monitor", "world", "admin", "building", "minecraft", "studio", "narrative"} <= pages
 
 
 def test_reserved_id_rejected():
@@ -73,7 +73,7 @@ def test_modules_http_catalog(monkeypatch, tmp_path):
         body = listed.json()
         assert body["count"] == 1
         assert body["modules"][0]["id"] == "minecraft"
-        assert body["modules"][0]["nav_groups"][0]["items"][0]["key"] == "world"
+        assert body["modules"][0]["nav_groups"][0]["items"][0]["key"] == "monitor"
 
         detail = client.get("/modules/minecraft")
         assert detail.status_code == 200
@@ -96,9 +96,9 @@ def test_modules_http_catalog(monkeypatch, tmp_path):
         assert pages.status_code == 200
         page_body = pages.json()
         assert page_body["id"] == "minecraft"
-        assert page_body["default_page"] == "world"
+        assert page_body["default_page"] == "monitor"
         keys = {item["key"] for item in page_body["pages"]}
-        assert {"world", "admin", "building", "minecraft", "studio"} <= keys
+        assert {"monitor", "world", "admin", "building", "minecraft", "studio", "narrative"} <= keys
         world = next(item for item in page_body["pages"] if item["key"] == "world")
         assert world["capability"] == "worldview"
         assert "/constitution" in world["routes"]
@@ -119,6 +119,7 @@ def test_modules_http_catalog(monkeypatch, tmp_path):
             "admin",
             "building",
             "bridge",
+            "monitor",
         }
 
         missing_page = client.get("/modules/minecraft/pages/nope")
