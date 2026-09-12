@@ -210,12 +210,23 @@ def build_ai_snapshot() -> dict[str, Any]:
     workspaces = [ws.to_dict() for ws in get_narrative_registry().list_for_task(include_terminal=True)]
     recent = list_minecraft_events(limit=10)
 
+    layout_summary = None
+    try:
+        from backend.linkin.layout_preview import build_layout_preview
+
+        preview = build_layout_preview()
+        if not preview.get("empty"):
+            layout_summary = preview.get("layout_summary")
+    except Exception:
+        layout_summary = None
+
     return {
         "bridge": summary["bridge"],
         "kpis": summary["kpis"],
         "world_status": summary["world_status"],
         "pending_intents": list_pending_intents(),
         "latest_map_plan": latest_map[0] if latest_map else None,
+        "layout_summary": layout_summary,
         "active_workspaces": [w for w in workspaces if w.get("state") == "active"],
         "last_pipeline": summary.get("last_pipeline"),
         "recent_events": recent.get("events") or [],

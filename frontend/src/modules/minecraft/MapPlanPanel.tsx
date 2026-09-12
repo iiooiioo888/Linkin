@@ -117,6 +117,9 @@ export default function MapPlanPanel() {
                 <button type="button" className="console-btn-ghost" onClick={() => void loadLatest()}>
                   載入最新
                 </button>
+                <a href="#/modules/minecraft/layout-preview" className="console-btn-ghost">
+                  本地布局預覽
+                </a>
               </div>
             </div>
           </ConsoleCard>

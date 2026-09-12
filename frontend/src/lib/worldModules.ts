@@ -85,6 +85,13 @@ const MINECRAFT_NAV: ModuleNavGroup[] = [
     items: [
       { key: 'building', icon: '⌂', label: '建築', hint: 'Schematic 生成與派發', capability: 'building' },
       { key: 'map_plan', icon: '◫', label: '地圖計畫', hint: '區域地圖生成／預覽／落地', capability: 'content' },
+      {
+        key: 'layout-preview',
+        icon: '▣',
+        label: '布局預覽',
+        hint: '原生 2D 俯視（map_plan／建築意圖／POI，無需 Dynmap）',
+        capability: 'content',
+      },
       { key: 'minecraft', icon: '⇄', label: '橋接', hint: 'MineMCP 探測與審計', capability: 'bridge' },
     ],
   },
@@ -186,6 +193,7 @@ export const BUILTIN_WORLD_MODULES: WorldModuleSpec[] = [
           '/minecraft/ai/snapshot',
           '/minecraft/ai/events',
           '/minecraft/ai/context',
+          '/minecraft/layout-preview',
           '/map/plans',
         ],
       },
@@ -213,6 +221,7 @@ export const BUILTIN_WORLD_MODULES: WorldModuleSpec[] = [
       plugin_center: 'plugin-hub',
       server_map: 'server-map',
       dynmap: 'server-map',
+      layout_preview: 'layout-preview',
     },
   },
 ];
@@ -233,6 +242,7 @@ export const MODULE_PAGE_ALIASES: Record<string, string> = {
   plugin_center: 'plugin-hub',
   server_map: 'server-map',
   dynmap: 'server-map',
+  layout_preview: 'layout-preview',
 };
 
 const EXTRA_MODULES: WorldModuleSpec[] = [];

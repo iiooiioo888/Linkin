@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
+from backend.linkin.layout_preview import build_layout_preview
 from backend.linkin.minecraft_observability import (
     build_ai_context,
     build_ai_snapshot,
@@ -41,6 +42,14 @@ def api_ai_context(
     format: str = Query("markdown", pattern="^(markdown|json)$"),
 ) -> dict[str, Any]:
     return build_ai_context(max_chars=max_chars, fmt=format)
+
+
+@monitor_router.get("/layout-preview")
+def api_layout_preview(
+    plan_id: str | None = Query(None, description="指定 map_plan id；省略則取最新"),
+    region: str | None = Query(None, description="依區域篩選"),
+) -> dict[str, Any]:
+    return build_layout_preview(plan_id=plan_id, region=region)
 
 
 def register_minecraft_monitor_routes(app) -> None:

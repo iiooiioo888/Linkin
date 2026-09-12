@@ -148,6 +148,12 @@ export default function ServerMapPanel() {
       {!mapUrl ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-[#c9a961]/30 bg-[#1C1C1E] p-8 text-center">
           <p className="mb-2 text-sm font-medium text-[#c9a961]">尚未設定地圖 URL</p>
+          <a
+            href="#/modules/minecraft/layout-preview"
+            className="mb-4 inline-block rounded-xl border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[11px] text-[#c9a961] hover:bg-[#c9a961]/20"
+          >
+            本地布局預覽（無需 Dynmap）
+          </a>
           <ol className="max-w-md space-y-2 text-left text-[11px] text-[#8a8f98]">
             <li>1. 在伺服器安裝 Dynmap、BlueMap 或 Squaremap 並確認網頁地圖可公開存取。</li>
             <li>2. 打開「{navPathForTab('plugin-hub')}」，啟用地圖插件並填入公開 URL。</li>

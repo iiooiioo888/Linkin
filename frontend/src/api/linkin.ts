@@ -773,9 +773,60 @@ export type MinecraftMonitorSummary = {
   generated_at: number;
 };
 
+export type LayoutPreviewFeature = {
+  id: string;
+  type: 'point' | 'rect' | 'polyline';
+  kind: string;
+  title: string;
+  status: string;
+  label: string;
+  source: string;
+  color: string;
+  point?: { x: number; z: number };
+  rect?: { x1: number; z1: number; x2: number; z2: number };
+  polyline?: { points: Array<{ x: number; z: number }>; width: number };
+  meta?: Record<string, unknown>;
+};
+
+export type LayoutPreviewData = {
+  ok: boolean;
+  empty: boolean;
+  mode: string;
+  note: string;
+  has_map_plan: boolean;
+  map_plan: {
+    id: string;
+    title: string;
+    region: string;
+    status?: string;
+    source?: string;
+    estimated_blocks?: number;
+  } | null;
+  region: string | null;
+  bounds: { x1: number; z1: number; x2: number; z2: number };
+  view: { width: number; depth: number; center: { x: number; z: number } };
+  legend: Array<{ kind: string; label: string; color: string }>;
+  features: LayoutPreviewFeature[];
+  counts: {
+    plots: number;
+    build_briefs: number;
+    npc_intents: number;
+    landmarks: number;
+    total: number;
+  };
+  layout_summary?: {
+    feature_count: number;
+    bounds: { x1: number; z1: number; x2: number; z2: number };
+    has_map_plan: boolean;
+    region: string | null;
+  };
+  generated_at: number;
+};
+
 export type MinecraftAiSnapshot = MinecraftMonitorSummary & {
   pending_intents: PendingWorldIntents & { count: number };
   latest_map_plan: MapPlan | null;
+  layout_summary?: LayoutPreviewData['layout_summary'];
   active_workspaces: Array<{ workspace_id: string; state: string; draft_keys: string[] }>;
   recent_events: MinecraftObservabilityEvent[];
 };
@@ -810,3 +861,11 @@ export const fetchMinecraftAiEvents = (params?: { since?: number; cursor?: strin
 
 export const fetchMinecraftAiContext = (maxChars = 8000, format: 'markdown' | 'json' = 'markdown') =>
   mc.get<MinecraftAiContext>(`/minecraft/ai/context?max_chars=${maxChars}&format=${format}`);
+
+export const fetchMinecraftLayoutPreview = (params?: { plan_id?: string; region?: string }) => {
+  const qs = new URLSearchParams();
+  if (params?.plan_id) qs.set('plan_id', params.plan_id);
+  if (params?.region) qs.set('region', params.region);
+  const suffix = qs.toString() ? `?${qs}` : '';
+  return mc.get<LayoutPreviewData>(`/minecraft/layout-preview${suffix}`);
+};
