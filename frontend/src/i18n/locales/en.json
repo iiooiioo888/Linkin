@@ -90,7 +90,24 @@
     "mcpProbe": "Health check"
   },
   "roles": {
-    "showDenseWidgets": "Show heatmap & task matrix"
+    "showDenseWidgets": "Show heatmap & task matrix",
+    "budgetSummary": "Role budget",
+    "budgetAi": "AI (LLM API)",
+    "budgetAiHint": "LLM API only",
+    "budgetCloud": "Cloud",
+    "budgetCloudHint": "Docker + Aliyun",
+    "budgetDaily": "Today",
+    "budgetWeeklyMonthly": "Weekly / monthly caps",
+    "budgetUnlimited": "Unlimited",
+    "budgetOver": "Over budget",
+    "budgetAlertShort": "{{count}} budget alert(s)",
+    "budgetAlertCount": "{{count}} budget alert(s) active",
+    "accountHubBudget": "Hub daily API budget (USD)",
+    "accountHubHint": "Per-user Hub call limit — separate from per-role USD caps",
+    "accountLinkinCredits": "Linkin credits",
+    "accountCreditsHint": "Task billing wallet — not mixed with role USD budgets",
+    "creditsUnit": "credits",
+    "creditsMonthlyUsed": "Monthly used {{used}} / {{quota}}"
   },
   "mobileShell": {
     "desktopHint": "Full controls and dense monitors work best on desktop (≥768px). You can still open a simplified view here.",
