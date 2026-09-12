@@ -499,7 +499,20 @@ flowchart LR
 
 ---
 
-## 9. 相關文件
+## 9. 往下拆的專圖
+
+全景文檔刻意保持可讀性；下列專圖把子系統狀態機與決策樹拆開，便於 Code Review 與運維對照。索引：[specials.md](specials.md)。
+
+| 專圖 | 文件 | 重點 |
+|------|------|------|
+| 共享池掘礦 | [shared-pool-mining.md](shared-pool-mining.md) | Key 生命週期、路由（貢獻者優先於 `platform_default`）、settle、Failover、Token Plan |
+| 積分池生命週期 | [credit-pools-lifecycle.md](credit-pools-lifecycle.md) | monthly_grant／purchased／contribution_*、預扣分級、鎖倉轉換、fault_pool、Docker／BSS |
+| OPC 六級閉環 | [opc-six-stage.md](opc-six-stage.md) | S1→A2、主圖 `enhance_with_opc_context`、WriteGuard、超時降級 |
+| RAHO / Grill-Me | [raho-grill-detail.md](raho-grill-detail.md) | L5 鎖定迴圈、L4–L2 作戰鏈、L1 收斂、事件與預算 |
+
+---
+
+## 10. 相關文件
 
 | 主題 | 文件 |
 |------|------|

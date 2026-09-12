@@ -27,6 +27,11 @@
 
 - [架構總覽](architecture/overview.md) — 統一管線、三層能力、目錄結構
 - [系統架構與運作流程（全面·2026-09）](architecture/system-architecture-2026-09.md) — 部署拓撲、分層、LangGraph、RAHO、計費／共享池掘礦、對話生命週期、前端殼
+- [架構專圖索引](architecture/specials.md) — 專題流程圖目錄
+- [共享池掘礦狀態機](architecture/shared-pool-mining.md) — Key 生命週期、路由、settle、Failover
+- [積分池生命週期](architecture/credit-pools-lifecycle.md) — 多池、預扣、鎖倉、fault_pool、Docker／BSS
+- [OPC 六級工業閉環](architecture/opc-six-stage.md) — S1→A2、WriteGuard、超時降級
+- [RAHO / Grill-Me 細節](architecture/raho-grill-detail.md) — L5 鎖定、L4–L2、L1 收斂
 - [反思閉環](architecture/reflection-loop.md) — 評分 → 反思 → 改進
 - [公司運行時](architecture/company-runtime.md) — RAHO、角色、預算
 - [OPC 工業整合](architecture/opc-integration.md) — 6 級閉環、護欄
