@@ -19,7 +19,12 @@ export default function AiEventsPanel({ compact = false }: { compact?: boolean }
       <p className="px-3 pt-1 text-[9px] text-[var(--console-faint)]">與 /linkin/minecraft/ai/events 同步</p>
       {error ? <p className="console-status-red px-3 pb-3 text-xs">{error}</p> : null}
       {!events.length ? (
-        <p className="px-3 pb-3 text-xs text-[var(--console-faint)]">尚無事件 — 執行敘事／建築／地圖操作後會出現。</p>
+        <div className="px-3 pb-3 text-xs text-[var(--console-faint)]">
+          <p>尚無事件 — 執行敘事／建築／地圖操作後會出現。</p>
+          <a href="#/modules/minecraft/narrative" className="mt-2 inline-block text-[var(--console-accent)] hover:underline">
+            前往敘事工作區 →
+          </a>
+        </div>
       ) : (
         <ul className="divide-y divide-[var(--console-border)] px-1 pb-2">
           {events.map((evt) => {

@@ -1,12 +1,14 @@
 /**
  * 橋接健康監控 — EVOL_MC_MCP_* 配置、ping、最近錯誤（無密鑰）。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   fetchMinecraftAiEvents,
+  fetchMinecraftMonitorSummary,
   fetchMinecraftStatus,
   probeMinecraft,
   type MinecraftAudit,
+  type MinecraftBridgeSetup,
   type MinecraftStatus,
 } from '../../api/linkin';
 import { ResourceGauges } from '../../components/ui/monitor';
@@ -20,10 +22,11 @@ import {
   WarnBar,
 } from '../../components/ui/ConsoleLayout';
 import AiEventsPanel from './monitor/AiEventsPanel';
-import { bridgeKpi, formatTs } from './monitor/shared';
+import { BridgeSetupCard, bridgeKpi, formatTs, minecraftHref, useVisibilityPoll } from './monitor/shared';
 
 export default function BridgeMonitorPanel() {
   const [status, setStatus] = useState<MinecraftStatus | null>(null);
+  const [setup, setSetup] = useState<MinecraftBridgeSetup | null>(null);
   const [bridgeEvents, setBridgeEvents] = useState<MinecraftAudit[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,11 +34,13 @@ export default function BridgeMonitorPanel() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [st, ev] = await Promise.all([
+      const [st, ev, summary] = await Promise.all([
         fetchMinecraftStatus(),
         fetchMinecraftAiEvents({ limit: 30 }),
+        fetchMinecraftMonitorSummary(),
       ]);
       setStatus(st);
+      setSetup(summary.bridge_setup ?? null);
       const audits = (st.recent ?? []) as MinecraftAudit[];
       const bridgeEv = ev.events.filter((e) => e.domain === 'bridge');
       setBridgeEvents(audits);
@@ -55,9 +60,7 @@ export default function BridgeMonitorPanel() {
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useVisibilityPoll(load, 12000);
 
   const onProbe = async () => {
     setBusy(true);
@@ -72,12 +75,14 @@ export default function BridgeMonitorPanel() {
   };
 
   const bridge = bridgeKpi(status ?? undefined);
-  const envHints = [
-    { key: 'EVOL_MC_MCP_ENABLED', ok: status?.enabled },
-    { key: 'EVOL_MC_MCP_URL', ok: Boolean(status?.url) },
-    { key: 'EVOL_MC_MCP_TOKEN', ok: status?.token_configured },
-    { key: 'EVOL_MC_MCP_WORLD', ok: Boolean(status?.world) },
-  ];
+  const probeMsg = status?.probe?.message || status?.probe?.error || setup?.probe_message;
+  const plainStatus = status?.connected
+    ? 'MineMCP 已連線，可執行落地操作。'
+    : status?.dry_run
+      ? '目前為乾跑模式：工具可呼叫但不會寫入世界。'
+      : status?.enabled
+        ? `已啟用但未連線。${probeMsg || '請確認 MineMCP 插件是否運行、Token 是否正確。'}`
+        : '橋接未啟用：請設定 EVOL_MC_MCP_ENABLED=true 與 TOKEN。';
 
   return (
     <PanelShell>
@@ -101,26 +106,20 @@ export default function BridgeMonitorPanel() {
                 <div>URL：{status?.url ? status.url.replace(/\/\/[^@]+@/, '//***@') : '—'}</div>
                 <div>世界：{status?.world ?? '—'}</div>
                 <div>Live：{status?.live ? '是' : '否'} · Dry-run：{status?.dry_run ? '是' : '否'}</div>
+                <div className="mt-2 rounded bg-[var(--console-card)] p-2 text-[var(--console-text)]">{plainStatus}</div>
               </div>
             </div>
           </ConsoleCard>
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>環境配置 · 不顯示密鑰</ConsoleCardHeader>
-            <ul className="px-3 pb-3 text-xs">
-              {envHints.map((row) => (
-                <li key={row.key} className="flex justify-between border-b border-[var(--console-border)] py-1.5">
-                  <span className="font-mono text-[10px]">{row.key}</span>
-                  <span className={row.ok ? 'text-[var(--console-green)]' : 'text-[var(--console-faint)]'}>
-                    {row.ok ? '已配置' : '未配置 / 關閉'}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className="px-3 pb-3">
+              <BridgeSetupCard setup={setup} onProbe={() => void onProbe()} probing={busy} />
+            </div>
           </ConsoleCard>
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>最近審計 / 錯誤</ConsoleCardHeader>
             {!bridgeEvents.length ? (
-              <p className="px-3 pb-3 text-xs text-[var(--console-faint)]">尚無橋接事件</p>
+              <p className="px-3 pb-3 text-xs text-[var(--console-faint)]">尚無橋接事件 — 探測或執行工具後會出現。</p>
             ) : (
               <ul className="divide-y divide-[var(--console-border)] text-xs">
                 {bridgeEvents.slice(0, 12).map((row, idx) => (
@@ -138,7 +137,7 @@ export default function BridgeMonitorPanel() {
           </ConsoleCard>
           <AiEventsPanel compact />
           <p className="mt-2 text-xs text-[var(--console-faint)]">
-            完整工具呼叫請使用「橋接」操作面板（#/modules/minecraft/bridge）。
+            完整工具呼叫請使用「橋接」操作面板（<a href={minecraftHref('minecraft')} className="text-[var(--console-accent)] hover:underline">橋接</a>）。
           </p>
         </ConsoleColumnScroll>
       </ConsoleCenterColumn>

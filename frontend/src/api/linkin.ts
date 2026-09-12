@@ -751,14 +751,30 @@ export type MinecraftObservabilityEvent = {
   entity_refs?: Record<string, unknown>;
 };
 
+export type MinecraftBridgeSetup = {
+  enabled?: boolean;
+  url_set?: boolean;
+  token_set?: boolean;
+  world_set?: boolean;
+  all_ready?: boolean;
+  connected?: boolean;
+  dry_run?: boolean;
+  probe_ok?: boolean | null;
+  probe_message?: string;
+};
+
 export type MinecraftMonitorSummary = {
   bridge: {
     enabled?: boolean;
     connected?: boolean;
     dry_run?: boolean;
+    live?: boolean;
     token_configured?: boolean;
     world?: string;
+    url?: string;
   };
+  bridge_setup?: MinecraftBridgeSetup;
+  plugins?: MinecraftPluginsSummary;
   kpis: {
     pending_build_briefs: number;
     pending_world_intents: number;
@@ -769,7 +785,9 @@ export type MinecraftMonitorSummary = {
   };
   world_status: Record<string, Record<string, number>>;
   last_pipeline: MinecraftObservabilityEvent | null;
+  pipeline_timeline?: MinecraftObservabilityEvent[];
   recent_errors: MinecraftObservabilityEvent[];
+  bridge_errors?: MinecraftObservabilityEvent[];
   generated_at: number;
 };
 

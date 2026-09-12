@@ -137,6 +137,22 @@ def _last_event(*domains: str) -> dict[str, Any] | None:
     return None
 
 
+_PIPELINE_DOMAINS = frozenset({"narrative", "pipeline", "map", "build", "world", "bridge"})
+
+
+def recent_pipeline_events(limit: int = 10) -> list[dict[str, Any]]:
+    """最近管線／落地相關事件（時間正序，供 UI 時間軸）。"""
+    limit = max(1, min(int(limit or 10), 50))
+    rows = _read_all_events()
+    matched = [
+        row
+        for row in rows
+        if str(row.get("domain")) in _PIPELINE_DOMAINS
+        or str(row.get("action")) in {"run", "generate", "commit", "apply", "dispatch", "probe"}
+    ]
+    return matched[-limit:]
+
+
 def _recent_errors(limit: int = 5) -> list[dict[str, Any]]:
     rows = _read_all_events()
     bad_status = {"failed", "partial", "bridge_offline", "error", "cancelled"}
@@ -150,13 +166,41 @@ def _recent_errors(limit: int = 5) -> list[dict[str, Any]]:
     return out
 
 
+def _bridge_setup_block(bridge: dict[str, Any]) -> dict[str, Any]:
+    probe = bridge.get("probe") if isinstance(bridge.get("probe"), dict) else {}
+    url = str(bridge.get("url") or "").strip()
+    world = str(bridge.get("world") or "").strip()
+    enabled = bool(bridge.get("enabled"))
+    token_set = bool(bridge.get("token_configured"))
+    url_set = bool(url)
+    world_set = bool(world)
+    probe_msg = str(probe.get("message") or probe.get("error") or "").strip()
+    return {
+        "enabled": enabled,
+        "url_set": url_set,
+        "token_set": token_set,
+        "world_set": world_set,
+        "all_ready": enabled and url_set and token_set,
+        "connected": bool(bridge.get("connected")),
+        "dry_run": bool(bridge.get("dry_run")),
+        "probe_ok": probe.get("ok") if probe else None,
+        "probe_message": probe_msg,
+    }
+
+
 def build_monitor_summary() -> dict[str, Any]:
     """監控總覽 KPI（供 UI hub 單次請求）。"""
     from backend.linkin.knowledge import list_entities
     from backend.linkin.minecraft import monitor_status
+    from backend.linkin.minecraft_plugins import monitor_summary as plugin_summary
     from backend.linkin.narrative_world_apply import list_pending_intents
 
     bridge = monitor_status()
+    plugins: dict[str, Any] = {}
+    try:
+        plugins = plugin_summary()
+    except Exception:
+        plugins = {}
     briefs = list_entities("build_briefs")
     map_plans = list_entities("map_plans")
     npcs = list_entities("npcs")
@@ -166,15 +210,24 @@ def build_monitor_summary() -> dict[str, Any]:
 
     pending_briefs = [b for b in briefs if str(b.get("status") or "") in {"pending_builder", "planned"}]
     pipeline_evt = _last_event("narrative", "pipeline")
+    bridge_errors = [
+        e
+        for e in _recent_errors(8)
+        if str(e.get("domain")) == "bridge" or e.get("bridge_offline")
+    ]
 
     return {
         "bridge": {
             "enabled": bridge.get("enabled"),
             "connected": bridge.get("connected"),
             "dry_run": bridge.get("dry_run"),
+            "live": bridge.get("live"),
             "token_configured": bridge.get("token_configured"),
             "world": bridge.get("world"),
+            "url": bridge.get("url"),
         },
+        "bridge_setup": _bridge_setup_block(bridge),
+        "plugins": plugins,
         "kpis": {
             "pending_build_briefs": len(pending_briefs),
             "pending_world_intents": pending.get("count", 0),
@@ -191,7 +244,9 @@ def build_monitor_summary() -> dict[str, Any]:
             "map_plans": _count_by_status(map_plans, "status"),
         },
         "last_pipeline": pipeline_evt,
+        "pipeline_timeline": recent_pipeline_events(10),
         "recent_errors": _recent_errors(5),
+        "bridge_errors": bridge_errors[:3],
         "generated_at": time.time(),
     }
 
@@ -212,12 +267,15 @@ def build_ai_snapshot() -> dict[str, Any]:
 
     return {
         "bridge": summary["bridge"],
+        "bridge_setup": summary.get("bridge_setup"),
+        "plugins": summary.get("plugins") or {},
         "kpis": summary["kpis"],
         "world_status": summary["world_status"],
         "pending_intents": list_pending_intents(),
         "latest_map_plan": latest_map[0] if latest_map else None,
         "active_workspaces": [w for w in workspaces if w.get("state") == "active"],
         "last_pipeline": summary.get("last_pipeline"),
+        "pipeline_timeline": summary.get("pipeline_timeline") or [],
         "recent_events": recent.get("events") or [],
         "recent_errors": summary.get("recent_errors") or [],
         "generated_at": time.time(),
@@ -228,6 +286,7 @@ def build_ai_context(*, max_chars: int = 8000, fmt: str = "markdown") -> dict[st
     """token-budget 感知的 LLM 注入 blob。"""
     max_chars = max(500, min(int(max_chars or 8000), 32000))
     snap = build_ai_snapshot()
+    plugins = snap.get("plugins") or {}
     lines: list[str] = [
         "# Minecraft 伺服器可觀測狀態",
         "",
@@ -235,6 +294,12 @@ def build_ai_context(*, max_chars: int = 8000, fmt: str = "markdown") -> dict[st
         (
             f"- enabled={snap['bridge'].get('enabled')} connected={snap['bridge'].get('connected')} "
             f"dry_run={snap['bridge'].get('dry_run')} world={snap['bridge'].get('world')}"
+        ),
+        "",
+        "## 地圖插件",
+        (
+            f"- active={plugins.get('active_map_plugin')} map_url={plugins.get('map_url')} "
+            f"reachable={plugins.get('reachable_count')}/{plugins.get('configured_count')}"
         ),
         "",
         "## KPI",
@@ -310,6 +375,7 @@ __all__ = [
     "build_ai_snapshot",
     "build_monitor_summary",
     "list_minecraft_events",
+    "recent_pipeline_events",
     "reset_minecraft_events",
     "safe_append_minecraft_event",
 ]
