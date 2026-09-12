@@ -11,7 +11,6 @@ from backend.linkin.narrative_generate import NarrativeGenerateError, generate_n
 from backend.linkin.narrative_registry import get_narrative_registry
 from backend.linkin.narrative_starter import generate_starter_pack
 from backend.linkin.narrative_workspace import (
-    ERR_CONFIRM_CHOICE_INVALID,
     ERR_SNAPSHOT_UNRESOLVED,
     ERR_WORKSPACE_NOT_ACTIVE,
     ERR_WORKSPACE_UNKNOWN,

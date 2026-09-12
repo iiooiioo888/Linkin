@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from backend.core.evaluation import DimensionResult, EvaluationResult
 from backend.linkin.api import register_linkin
 from backend.linkin.constitution import reset_cache as reset_constitution_cache
-from backend.linkin.knowledge import get_store, reset_store
+from backend.linkin.knowledge import reset_store
 from backend.linkin.narrative_registry import reset_narrative_registry
 from backend.linkin.narrative_workspace import ERR_SNAPSHOT_UNRESOLVED
 
