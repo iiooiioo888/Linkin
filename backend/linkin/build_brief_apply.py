@@ -379,13 +379,16 @@ def apply_build_brief(
     if generate or not normalized.get("building_id"):
         building, schematic = _generate_building_from_brief(normalized)
     else:
-        building = next(
-            (b for b in list_entities("buildings") if str(b.get("id")) == normalized["building_id"]),
-            None,
-        )
-        if building is None:
+        resolved: dict[str, Any] | None = None
+        for candidate in list_entities("buildings"):
+            if str(candidate.get("id")) == normalized["building_id"]:
+                resolved = candidate
+                break
+        if resolved is None:
             raise BuildBriefError("關聯 building 不存在", code="building_not_found")
-        building, schematic = ensure_schematic(building)
+        building, schematic = ensure_schematic(resolved)
+
+    assert building is not None
 
     placement = place_schematic_blocks(
         schematic,

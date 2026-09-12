@@ -11,6 +11,7 @@ Phase 1  任務／NPC／道具編排   →  既有 /linkin/* 與 RAG
 Phase 2  建築／地圖意圖       →  build_briefs → 使用者手動「落地建築」→ Builder.generate + place_block
 Phase 3  NPC／任務／道具落地  →  world_status: pending_world → 使用者手動「落地」→ store + MineMCP 標記
 Phase 4  區域 map_plan        →  generate / preview / apply（confirm=true）
+Phase 5  一鍵完整圈          →  POST /pipelines/run（兩段式 confirm_world）
 ```
 
 契約：**C-L0-004**（`backend/linkin/narrative_workspace.py`）——不得維護第二套可寫世界觀圖譜；落庫必經顯式 `commit` + 注入 writer。
@@ -115,7 +116,40 @@ Base：`/linkin/world-intents`（Minecraft 模組閘道：`/modules/minecraft/ap
 - **一鍵草案 LLM**：`backend/linkin/narrative_starter.py`；無金鑰時使用 `fallback_starter_pack`。
 - **brief AI 生成（Phase 1）**：`backend/linkin/narrative_generate.py`；`POST /generate` 接受 `{ brief, locale?, keys?, region?, theme? }`；成功時以 **replace-per-key** 覆寫所請求鍵，解析失敗時保留既有草稿；計量經 `call_llm`（`trace_label=narrative_generate`）。
 
+## Phase 5：一鍵完整圈（pipeline orchestrator）
+
+Base：`/linkin/narrative/pipelines`（Minecraft 模組閘道：`/modules/minecraft/api/narrative/pipelines/*`）
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| POST | `/run` | 一鍵執行完整 RPG 管線 |
+| GET | `/steps` | 步驟定義（前端 stepper） |
+
+實作：`backend/linkin/narrative_pipeline.py`、`backend/linkin/narrative_pipeline_api.py`。
+
+### 請求（`POST /run`）
+
+```json
+{
+  "brief": "故事種子（或提供 workspace_id）",
+  "workspace_id": "ws-...",
+  "task_id": "task-...",
+  "snapshot_id": "snap-...",
+  "region": "织庭都",
+  "theme": "靈丝残章",
+  "confirm_world": false,
+  "regenerate": false,
+  "use_starter_pack": false,
+  "options": { "steps": { "generate": true } }
+}
+```
+
+- **`confirm_world=false`（預設）**：begin → generate → commit → map_generate → build/world/map previews；apply 步驟標記 `skipped`。
+- **`confirm_world=true`**：在上述基礎上執行 build_apply、world_apply、map_apply；橋接關閉時建築以 dry-run、世界／地圖標記 partial。
+- **`regenerate=true`**：已有草稿或已提交工作區時允許重新生成／提交。
+- 回傳 `steps[]`：每步 `status` 為 `pending|running|ok|error|partial|skipped`；`plan` 物件供 UI 二次確認。
+
 ## 前端
 
 Minecraft 模組 → **敘事工作區**（`#/modules/minecraft/narrative`）  
-面板：`frontend/src/modules/minecraft/NarrativeWorkspacePanel.tsx`（Phase 0 草案 + Phase 4 地圖 strip）
+面板：`frontend/src/modules/minecraft/NarrativeWorkspacePanel.tsx`（Phase 5 一鍵完整圈 + Phase 0–4 手動控制）
