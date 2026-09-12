@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse
 
+from backend.billing.context import billing_user_id
 from backend.hub.catalog import catalog_payload
 from backend.hub.errors import HubError
 from backend.hub.runtime import runtime
@@ -19,7 +20,6 @@ from backend.hub.service import (
     create_agent_task,
     get_agent_task,
 )
-from backend.billing.context import billing_user_id
 
 hub_router = APIRouter(prefix="/api/v1", tags=["ai-hub"])
 compat_router = APIRouter(prefix="/v1", tags=["ai-hub-nginx-compat"])

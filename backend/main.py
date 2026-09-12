@@ -30,6 +30,9 @@ from backend.auth.gate import (
     session_user,
     ws_authorized,
 )
+from backend.billing import register_billing
+from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
+from backend.billing.middleware import BillingContextMiddleware
 from backend.company.docker_tools import DOCKER_SERVICE_HOURLY_RATES
 from backend.company.role_catalog import (
     create_custom_role,
@@ -59,9 +62,6 @@ from backend.hub.api import register_hub
 from backend.hub.monitor import collect_hub_monitor
 from backend.linkin.api import register_linkin
 from backend.middleware.auth_gate import AuthGateMiddleware
-from backend.billing import register_billing
-from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
-from backend.billing.middleware import BillingContextMiddleware
 from backend.modules import register_modules
 from backend.services import lab_tools
 from backend.services.agent_monitor import collect_agent_monitor
@@ -150,6 +150,7 @@ async def _lifespan(_app: FastAPI):
 
     async def _rollover_loop() -> None:
         import os
+
         from backend.billing.pool_store import get_pool_store
 
         interval = max(3600, int(os.getenv("LINKIN_ROLLOVER_CHECK_SEC", "86400")))
@@ -165,7 +166,10 @@ async def _lifespan(_app: FastAPI):
     rollover_task = asyncio.create_task(_rollover_loop())
 
     async def _contribution_maintenance_loop() -> None:
-        from backend.billing.contribution_service import process_due_installments, run_contribution_decay
+        from backend.billing.contribution_service import (
+            process_due_installments,
+            run_contribution_decay,
+        )
 
         installment_interval = max(3600, int(os.getenv("LINKIN_INSTALLMENT_CHECK_SEC", "3600")))
         decay_interval = max(3600, int(os.getenv("LINKIN_DECAY_CHECK_SEC", "86400")))
@@ -1155,7 +1159,11 @@ async def chat_stream(req: ChatRequest):
         return f"event: billing\ndata: {json_mod.dumps(snap, ensure_ascii=False)}\n\n"
 
     async def event_stream():
-        from backend.billing.context import begin_chat_billing, chat_billing_snapshot, end_chat_billing
+        from backend.billing.context import (
+            begin_chat_billing,
+            chat_billing_snapshot,
+            end_chat_billing,
+        )
 
         billing_token = begin_chat_billing(session_id)
         state: dict[str, Any] = {
@@ -1391,7 +1399,7 @@ async def create_task(req: TaskRequest):
     """
     if not req.query.strip():
         raise HTTPException(status_code=422, detail="query 不可為空")
-    from backend.billing.context import billing_enabled, current_billing_user, billing_task_id
+    from backend.billing.context import billing_enabled, billing_task_id, current_billing_user
     from backend.billing.task_lifecycle import begin_billed_task
 
     record = task_manager.create_task(
@@ -1416,7 +1424,8 @@ async def create_task(req: TaskRequest):
 
             if isinstance(exc, InsufficientCreditsError):
                 raise HTTPException(status_code=402, detail=exc.message) from exc
-            if getattr(exc, "__class__", None).__name__ == "InsufficientCreditsError":
+            exc_cls = getattr(exc, "__class__", None)
+            if exc_cls is not None and exc_cls.__name__ == "InsufficientCreditsError":
                 raise HTTPException(status_code=402, detail=str(exc)) from exc
     task_manager.start_task(record)
     return {
@@ -2093,7 +2102,11 @@ async def docker_health():
 @app.post("/docker/restart/{service}")
 async def docker_restart(service: str):
     """重啟指定服務。"""
-    from backend.billing.docker_api import on_docker_started, on_docker_stopped, preflight_docker_start
+    from backend.billing.docker_api import (
+        on_docker_started,
+        on_docker_stopped,
+        preflight_docker_start,
+    )
     from backend.billing.errors import InsufficientCreditsError
 
     try:

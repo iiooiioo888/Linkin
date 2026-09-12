@@ -427,3 +427,190 @@ export const applyMapPlan = (body: { plan?: MapPlan; plan_id?: string; confirm?:
       note?: string;
     };
   }>('/map/apply', body);
+
+export type NarrativeGenerateResult = {
+  ok: boolean;
+  source: 'llm';
+  replaced_keys: string[];
+  workspace: NarrativeWorkspace;
+  draft_keys: string[];
+};
+
+export const generateNarrativeDrafts = (
+  workspaceId: string,
+  body: {
+    brief: string;
+    locale?: string;
+    keys?: string[];
+    region?: string;
+    theme?: string;
+  },
+) =>
+  mc.post<NarrativeGenerateResult>(
+    `/narrative/workspaces/${encodeURIComponent(workspaceId)}/generate`,
+    body,
+  );
+
+export type BuildBrief = {
+  id: string;
+  title: string;
+  region: string;
+  location: string;
+  style: string;
+  prompt: string;
+  block_count: number;
+  notes?: string;
+  status?: string;
+  source?: string;
+  building_id?: string;
+  build_job?: {
+    blocks_total?: number;
+    blocks_placed?: number;
+    blocks_failed?: number;
+    dry_run?: boolean;
+    cancelled?: boolean;
+  };
+};
+
+export type BuildBriefPreview = {
+  brief: BuildBrief;
+  building?: Building | null;
+  bounds: {
+    anchor?: { x: number; y: number; z: number };
+    world_min?: { x: number; y: number; z: number };
+    world_max?: { x: number; y: number; z: number };
+    solid_count: number;
+    width?: number;
+    height?: number;
+    length?: number;
+    estimate_only?: boolean;
+  };
+  preview?: BuildingPreview | null;
+  bridge: { enabled?: boolean; connected?: boolean; dry_run?: boolean };
+  dry_run: boolean;
+};
+
+export type BuildBriefApplyResult = {
+  brief: BuildBrief;
+  building: Building;
+  placement: {
+    ok: boolean;
+    dry_run?: boolean;
+    cancelled?: boolean;
+    blocks_total: number;
+    blocks_placed: number;
+    blocks_failed: number;
+    bounds?: BuildBriefPreview['bounds'];
+    errors?: string[];
+    note?: string;
+  };
+  bridge?: MinecraftStatus;
+  dry_run?: boolean;
+};
+
+export type BuildBriefJob = {
+  job_id: string;
+  brief_id: string;
+  status: string;
+  dry_run: boolean;
+  blocks_total: number;
+  blocks_placed: number;
+  blocks_failed: number;
+  error?: string | null;
+  cancel_requested?: boolean;
+  result?: BuildBriefApplyResult | null;
+};
+
+export const fetchBuildBriefs = () =>
+  mc.get<{ build_briefs: BuildBrief[]; count: number }>('/build-briefs');
+
+export const fetchBuildBrief = (id: string) =>
+  mc.get<{ build_brief: BuildBrief }>(`/build-briefs/${encodeURIComponent(id)}`);
+
+export const previewBuildBrief = (briefId: string) =>
+  mc.post<BuildBriefPreview>(`/build-briefs/${encodeURIComponent(briefId)}/preview`, {});
+
+export const applyBuildBrief = (briefId: string) =>
+  mc.post<BuildBriefApplyResult>('/build-briefs/apply', { brief_id: briefId, confirm: true });
+
+export const applyBuildBriefAsync = (briefId: string) =>
+  mc.post<{ job: BuildBriefJob }>('/build-briefs/apply', {
+    brief_id: briefId,
+    confirm: true,
+    async: true,
+  });
+
+export const fetchBuildBriefJob = (jobId: string) =>
+  mc.get<{ job: BuildBriefJob }>(`/build-briefs/jobs/${encodeURIComponent(jobId)}`);
+
+export const cancelBuildBriefJob = (jobId: string) =>
+  mc.post<{ job: BuildBriefJob }>(`/build-briefs/jobs/${encodeURIComponent(jobId)}/cancel`);
+
+export type WorldIntentEntity = {
+  id: string;
+  kind: 'npc' | 'quest' | 'item';
+  title?: string;
+  name?: string;
+  world_status?: string;
+  region?: string;
+  location?: string;
+  source?: string;
+};
+
+export type PendingWorldIntents = {
+  npcs: WorldIntentEntity[];
+  quests: WorldIntentEntity[];
+  items: WorldIntentEntity[];
+  count: number;
+};
+
+export type WorldIntentPreview = {
+  kind: 'npc' | 'quest' | 'item';
+  id: string;
+  title: string;
+  spawn?: { x: number; y: number; z: number };
+  actions?: Array<{ tool: string; description: string; material?: string; command?: string }>;
+  store?: string;
+  world_status?: string;
+};
+
+export type WorldIntentApplyRow = {
+  kind: 'npc' | 'quest' | 'item';
+  id: string;
+  title?: string;
+  world_status?: string;
+  skipped?: boolean;
+  store?: { ok: boolean; note?: string; entity?: Record<string, unknown> };
+  minecraft?: { ok: boolean; skipped?: boolean };
+  next_steps?: string[];
+};
+
+export type WorldIntentApplyResult = {
+  results: WorldIntentApplyRow[];
+  summary: {
+    overall_status: 'applied' | 'partial' | 'failed' | 'skipped';
+    applied: number;
+    partial: number;
+    skipped: number;
+    failed: number;
+    total: number;
+  };
+  bridge?: MinecraftStatus & {
+    spawn_mode?: string;
+    bridge_offline?: boolean;
+    note?: string;
+  };
+  dry_run?: boolean;
+};
+
+export const fetchPendingWorldIntents = () =>
+  mc.get<{ pending: PendingWorldIntents; count: number }>('/world-intents');
+
+export const previewWorldIntents = (body: { apply_all?: boolean; npc_ids?: string[]; quest_ids?: string[]; item_ids?: string[] }) =>
+  mc.post<{ intents: WorldIntentPreview[]; count: number; bridge: MinecraftStatus; dry_run: boolean }>(
+    '/world-intents/preview',
+    body,
+  );
+
+export const applyWorldIntents = (body: { apply_all?: boolean; npc_ids?: string[]; quest_ids?: string[]; item_ids?: string[] }) =>
+  mc.post<WorldIntentApplyResult>('/world-intents/apply', { ...body, confirm: true });

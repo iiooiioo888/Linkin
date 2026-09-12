@@ -10,7 +10,7 @@ from typing import Any
 
 from backend.company.quant_strategy_maps import ARCHIFY_SOURCE
 
-_FLOW_CATALOG: tuple[dict[str, str], ...] = (
+_FLOW_CATALOG: tuple[dict[str, Any], ...] = (
     {
         "id": "system-deploy",
         "title": "部署拓撲",

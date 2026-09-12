@@ -75,7 +75,7 @@ def build_minecraft_spec() -> ModuleSpec:
                 title="世界內容",
                 description="NPC、任務、道具",
                 api_prefix=_PREFIX,
-                routes=("/npcs", "/quests", "/items", "/narrative/workspaces", "/map"),
+                routes=("/npcs", "/quests", "/items", "/narrative/workspaces", "/build-briefs", "/world-intents", "/map"),
             ),
             ModuleCapability(
                 id="admin",
@@ -97,7 +97,7 @@ def build_minecraft_spec() -> ModuleSpec:
                 title="建築",
                 description="Schematic 生成、匯入與派發",
                 api_prefix=_PREFIX,
-                routes=("/buildings", "/buildings/generate", "/buildings/import"),
+                routes=("/buildings", "/buildings/generate", "/buildings/import", "/build-briefs"),
             ),
             ModuleCapability(
                 id="bridge",

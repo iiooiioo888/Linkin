@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from backend.core.evaluation import DimensionResult, EvaluationResult
 from backend.linkin.api import register_linkin
 from backend.linkin.constitution import reset_cache as reset_constitution_cache
-from backend.linkin.knowledge import get_store, reset_store
+from backend.linkin.knowledge import reset_store
 from backend.linkin.narrative_registry import reset_narrative_registry
 from backend.linkin.narrative_workspace import ERR_SNAPSHOT_UNRESOLVED
 
@@ -119,6 +119,8 @@ def test_narrative_begin_write_commit(client: TestClient):
     assert payload["workspace"]["state"] == "committed"
     assert "quest" in payload["committed"]
     assert "npc" in payload["committed"]
+    assert payload["committed"]["quest"]["world_status"] == "pending_world"
+    assert payload["committed"]["npc"]["world_status"] == "pending_world"
 
     quests = client.get("/linkin/quests").json()["quests"]
     assert any(q["title"] == QUEST_DRAFT["title"] for q in quests)
@@ -146,6 +148,7 @@ def test_narrative_full_rpg_draft_keys_commit(client: TestClient):
     assert commit.status_code == 200, commit.text
     committed = commit.json()["committed"]
     assert committed["item"]["name"] == ITEM_DRAFT["name"]
+    assert committed["item"]["world_status"] == "pending_world"
     assert committed["build_brief"]["status"] == "pending_builder"
 
     items = client.get("/linkin/items").json()["items"]
@@ -206,6 +209,86 @@ def test_narrative_snapshot_conflict_requires_confirm(client: TestClient):
     commit = client.post(f"/linkin/narrative/workspaces/{ws_id}/commit")
     assert commit.status_code == 200
     assert commit.json()["committed"]["story_arc"]["title"] == "設定片段"
+
+
+VALID_GENERATE_PAYLOAD = {
+    "story_arc": {
+        "title": "靈丝残章",
+        "summary": "旅人在織庭都追尋失落的織夢記憶。",
+        "region": "织庭都",
+        "chapters": ["序章", "第一章"],
+        "tags": ["主線"],
+    },
+    "quest": QUEST_DRAFT,
+    "npc": NPC_DRAFT,
+    "item": ITEM_DRAFT,
+    "build_brief": BUILD_BRIEF_DRAFT,
+}
+
+
+def test_narrative_generate_happy_path(client: TestClient, monkeypatch):
+    ws_id = _begin(client)
+
+    def _fake_generate(**_kwargs):
+        return {"drafts": VALID_GENERATE_PAYLOAD, "source": "llm", "keys": sorted(VALID_GENERATE_PAYLOAD)}
+
+    monkeypatch.setattr("backend.linkin.narrative_api.generate_narrative_drafts", _fake_generate)
+
+    resp = client.post(
+        f"/linkin/narrative/workspaces/{ws_id}/generate",
+        json={"brief": "織庭都靈丝契約傳說", "locale": "zh-Hant", "region": "织庭都"},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["ok"] is True
+    assert body["source"] == "llm"
+    assert set(body["replaced_keys"]) == set(VALID_GENERATE_PAYLOAD.keys())
+    assert set(body["draft_keys"]) >= set(VALID_GENERATE_PAYLOAD.keys())
+    assert body["workspace"]["state"] == "active"
+    assert body["workspace"]["drafts"]["story_arc"]["title"] == "靈丝残章"
+
+    quests_before = client.get("/linkin/quests").json()["count"]
+    assert quests_before == client.get("/linkin/quests").json()["count"]
+
+
+def test_narrative_generate_bad_json_keeps_prior_drafts(client: TestClient, monkeypatch):
+    ws_id = _begin(client)
+    client.put(
+        f"/linkin/narrative/workspaces/{ws_id}/drafts/quest",
+        json={"value": QUEST_DRAFT},
+    )
+
+    def _fail_generate(**_kwargs):
+        from backend.linkin.narrative_generate import NarrativeGenerateError
+
+        raise NarrativeGenerateError("LLM 回傳無法解析為 JSON", code="parse_failed", detail="not json")
+
+    monkeypatch.setattr("backend.linkin.narrative_api.generate_narrative_drafts", _fail_generate)
+
+    resp = client.post(
+        f"/linkin/narrative/workspaces/{ws_id}/generate",
+        json={"brief": "測試 brief"},
+    )
+    assert resp.status_code == 422, resp.text
+    detail = resp.json()["detail"]
+    assert detail["error_code"] == "parse_failed"
+    assert "quest" in detail["workspace"]["draft_keys"]
+    assert detail["workspace"]["drafts"]["quest"]["title"] == QUEST_DRAFT["title"]
+
+
+def test_narrative_generate_unknown_workspace(client: TestClient):
+    resp = client.post(
+        "/linkin/narrative/workspaces/ws-does-not-exist/generate",
+        json={"brief": "測試"},
+    )
+    assert resp.status_code == 404
+
+
+def test_narrative_generate_requires_brief(client: TestClient):
+    ws_id = _begin(client)
+    resp = client.post(f"/linkin/narrative/workspaces/{ws_id}/generate", json={})
+    assert resp.status_code == 422
+    assert resp.json()["detail"]["error_code"] == "missing_brief"
 
 
 def test_narrative_list_by_task(client: TestClient):
