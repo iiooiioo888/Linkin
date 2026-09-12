@@ -558,6 +558,7 @@ export default function NarrativeWorkspacePanel() {
   };
 
   return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div className="max-w-2xl">
           <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">Phase 1 · 故事草稿工作區</p>
