@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.linkin.narrative_commit import KNOWN_DRAFT_KEYS, commit_narrative_drafts
+from backend.linkin.narrative_generate import NarrativeGenerateError, generate_narrative_drafts
 from backend.linkin.narrative_registry import get_narrative_registry
 from backend.linkin.narrative_starter import generate_starter_pack
 from backend.linkin.narrative_workspace import (
@@ -106,6 +107,64 @@ def post_draft(workspace_id: str, body: dict[str, Any]) -> dict[str, Any]:
         _raise_verdict(verdict)
     assert verdict.workspace is not None
     return {"ok": True, "workspace": _workspace_detail(verdict.workspace)}
+
+
+@narrative_router.post("/{workspace_id}/generate")
+def generate_workspace_drafts(workspace_id: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Phase 1：依使用者 brief 以 LLM 一鍵生成草稿（replace-per-key），不 commit。"""
+    ws = _get_workspace_or_404(workspace_id)
+    if ws.state.value != "active":
+        raise HTTPException(
+            status_code=409,
+            detail={"ok": False, "error_code": ERR_WORKSPACE_NOT_ACTIVE, "workspace": _workspace_summary(ws)},
+        )
+    payload = body or {}
+    brief = str(payload.get("brief") or payload.get("seed") or "").strip()
+    locale = str(payload.get("locale") or "zh-Hant").strip() or "zh-Hant"
+    region = str(payload.get("region") or "织庭都").strip() or "织庭都"
+    theme = str(payload.get("theme") or payload.get("topic") or "").strip()
+    raw_keys = payload.get("keys")
+    keys: list[str] | None = None
+    if isinstance(raw_keys, list):
+        keys = [str(k).strip() for k in raw_keys if str(k).strip()]
+
+    try:
+        generated = generate_narrative_drafts(
+            brief=brief,
+            locale=locale,
+            keys=keys,
+            region=region,
+            theme=theme,
+        )
+    except NarrativeGenerateError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "ok": False,
+                "error_code": exc.code,
+                "message": str(exc),
+                "detail": exc.detail,
+                "workspace": _workspace_detail(ws),
+            },
+        ) from exc
+
+    drafts = dict(generated.get("drafts") or {})
+    reg = get_narrative_registry()
+    written: list[str] = []
+    for key, value in drafts.items():
+        verdict = reg.write_draft(workspace_id, key, value)
+        if not verdict.ok:
+            _raise_verdict(verdict)
+        written.append(key)
+    refreshed = reg.get(workspace_id)
+    assert refreshed is not None
+    return {
+        "ok": True,
+        "source": generated.get("source") or "llm",
+        "replaced_keys": written,
+        "workspace": _workspace_detail(refreshed),
+        "draft_keys": sorted(refreshed.drafts.keys()),
+    }
 
 
 @narrative_router.post("/{workspace_id}/starter-pack")
