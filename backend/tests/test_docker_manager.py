@@ -492,8 +492,9 @@ class TestDockerApiEndpoints:
         data = response.json()
         assert "stats" in data
 
-    def test_docker_health_endpoint(self, client):
+    def test_docker_health_endpoint(self, client, monkeypatch):
         """GET /docker/health 應回傳 JSON。"""
+        monkeypatch.setattr("backend.services.docker_manager.DOCKER_AVAILABLE", False)
         response = client.get("/docker/health")
         assert response.status_code == 200
         data = response.json()

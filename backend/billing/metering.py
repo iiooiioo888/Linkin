@@ -49,7 +49,7 @@ def _task(task_id: str | None = None) -> str:
 
 
 def require_feature(feature: str, user_id: str | None = None) -> None:
-    if not billing_enabled() and not user_id:
+    if not billing_enabled():
         return
     uid = _user(user_id)
     if not uid:

@@ -403,6 +403,7 @@ def test_transfer_forbidden(billing_store):
 def test_billing_overview_api(billing_store, monkeypatch):
     monkeypatch.setenv("LINKIN_BILLING_FORCE", "1")
     monkeypatch.setenv("LINKIN_BILLING_DB", billing_store.db_path)
+    monkeypatch.setenv("LINKIN_BILLING_ANONYMOUS_USER", "overview_user")
     from backend.main import app
 
     svc = BillingService(billing_store)
