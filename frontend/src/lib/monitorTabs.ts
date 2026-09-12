@@ -229,7 +229,7 @@ export function consoleChromeTabKey(tab: MonitorTab | 'traces'): MonitorTab | nu
 export const ACTIVITY_DEFAULT_TAB: Partial<Record<ActivityKey, MonitorTab | 'traces'>> = {
   console: 'live',
   lab: 'lab',
-  minecraft: 'world',
+  minecraft: 'monitor',
 };
 
 export function normalizeMonitorTab(tab: string | null | undefined): MonitorTab {

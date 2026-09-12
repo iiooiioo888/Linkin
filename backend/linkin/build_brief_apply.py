@@ -437,6 +437,24 @@ def apply_build_brief(
         {"kind": "minecraft", "build_brief_id": normalized["id"], "building_id": building.get("id")},
         skip_quality=True,
     )
+    from backend.linkin.minecraft_observability import safe_append_minecraft_event
+
+    bridge_offline = not bridge.get("connected") and bridge.get("enabled")
+    status = "ok" if placement.get("ok") else ("cancelled" if placement.get("cancelled") else "partial")
+    safe_append_minecraft_event(
+        domain="build",
+        action="apply",
+        status=status,
+        summary=f"建築意圖 {normalized['id']} 落地 {placement['blocks_placed']}/{placement['blocks_total']} 方塊",
+        dry_run=bool(dry_run or placement.get("dry_run")),
+        bridge_offline=bool(bridge_offline),
+        entity_refs={"brief_id": normalized["id"], "building_id": building.get("id")},
+        details={
+            "blocks_placed": placement["blocks_placed"],
+            "blocks_total": placement["blocks_total"],
+            "blocks_failed": placement.get("blocks_failed"),
+        },
+    )
     return {
         "brief": updated_brief,
         "building": building,

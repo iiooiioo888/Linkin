@@ -602,6 +602,26 @@ def apply_world_intents(
             results.append(_apply_item(entity, dry_run=dry_run, bridge=bridge))
 
     summary = _summarize_results(results)
+    from backend.linkin.minecraft_observability import safe_append_minecraft_event
+
+    bridge_offline = bool(bridge.get("bridge_offline"))
+    safe_append_minecraft_event(
+        domain="world",
+        action="apply",
+        status=str(summary.get("overall_status") or "unknown"),
+        summary=(
+            f"世界意圖落地 applied={summary.get('applied')} partial={summary.get('partial')} "
+            f"skipped={summary.get('skipped')} failed={summary.get('failed')}"
+        ),
+        dry_run=bool(dry_run),
+        bridge_offline=bridge_offline,
+        details=dict(summary),
+        entity_refs={
+            "npc_ids": [r.get("id") for r in results if r.get("kind") == "npc"],
+            "quest_ids": [r.get("id") for r in results if r.get("kind") == "quest"],
+            "item_ids": [r.get("id") for r in results if r.get("kind") == "item"],
+        },
+    )
     return {
         "results": results,
         "summary": summary,
