@@ -10,6 +10,7 @@ export function registerMinecraftModule(): void {
     world: wrapPanel(() => import('./WorldConstitutionPanel')),
     npcs: wrapPanel(() => import('./NpcManagerPanel')),
     quests: wrapPanel(() => import('./QuestPanel')),
+    narrative: wrapPanel(() => import('./NarrativeWorkspacePanel')),
     items: wrapPanel(() => import('./ItemPanel')),
     studio: () => import('./StudioPage'),
     admin: wrapPanel(() => import('./AdminPanel')),

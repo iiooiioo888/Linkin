@@ -75,7 +75,7 @@ def build_minecraft_spec() -> ModuleSpec:
                 title="世界內容",
                 description="NPC、任務、道具",
                 api_prefix=_PREFIX,
-                routes=("/npcs", "/quests", "/items"),
+                routes=("/npcs", "/quests", "/items", "/narrative/workspaces"),
             ),
             ModuleCapability(
                 id="admin",
@@ -115,6 +115,7 @@ def build_minecraft_spec() -> ModuleSpec:
                     ModuleNavItem("world", "✧", "世界觀", "憲法與陣營", capability="worldview"),
                     ModuleNavItem("npcs", "☺", "NPC", "角色卡與對話", capability="content"),
                     ModuleNavItem("quests", "⚑", "任務", "主線／支線／日常", capability="content"),
+                    ModuleNavItem("narrative", "✎", "敘事工作區", "故事草稿與提交", capability="content"),
                     ModuleNavItem("items", "◆", "道具", "稀有度平衡", capability="content"),
                 ),
             ),

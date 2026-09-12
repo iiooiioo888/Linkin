@@ -67,6 +67,7 @@ const MINECRAFT_NAV: ModuleNavGroup[] = [
       { key: 'world', icon: '✧', label: '世界觀', hint: '憲法與陣營', capability: 'worldview' },
       { key: 'npcs', icon: '☺', label: 'NPC', hint: '角色卡與對話', capability: 'content' },
       { key: 'quests', icon: '⚑', label: '任務', hint: '主線／支線／日常', capability: 'content' },
+      { key: 'narrative', icon: '✎', label: '敘事工作區', hint: '故事草稿與提交', capability: 'content' },
       { key: 'items', icon: '◆', label: '道具', hint: '稀有度平衡', capability: 'content' },
     ],
   },
@@ -111,7 +112,7 @@ export const BUILTIN_WORLD_MODULES: WorldModuleSpec[] = [
         title: '世界內容',
         description: 'NPC、任務、道具',
         api_prefix: '/linkin',
-        routes: ['/npcs', '/quests', '/items'],
+        routes: ['/npcs', '/quests', '/items', '/narrative/workspaces'],
       },
       {
         id: 'admin',

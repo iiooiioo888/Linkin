@@ -71,8 +71,14 @@ function httpError(status: number, data: unknown, text: string): string {
   }
   const detail = (data as { detail?: unknown })?.detail;
   if (typeof detail === 'string') return detail;
-  if (detail && typeof detail === 'object' && 'message' in detail) {
-    return String((detail as { message: string }).message);
+  if (detail && typeof detail === 'object') {
+    if ('message' in detail) return String((detail as { message: string }).message);
+    if ('error_code' in detail) {
+      const code = String((detail as { error_code: string }).error_code);
+      return code === 'ERR_SNAPSHOT_UNRESOLVED'
+        ? 'L0 快照已更新，請先重綁或丟棄草稿後再提交。'
+        : `敘事工作區錯誤：${code}`;
+    }
   }
   return text?.trim() ? text.trim().slice(0, 240) : `請求失敗（HTTP ${status}）`;
 }
