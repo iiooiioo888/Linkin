@@ -14,6 +14,7 @@ export function registerMinecraftModule(): void {
     build_monitor: wrapPanel(() => import('./BuildMonitorPanel')),
     bridge_monitor: wrapPanel(() => import('./BridgeMonitorPanel')),
     map_plan: wrapPanel(() => import('./MapPlanPanel')),
+    'layout-preview': wrapPanel(() => import('./LayoutPreviewPanel')),
     world: wrapPanel(() => import('./WorldConstitutionPanel')),
     npcs: wrapPanel(() => import('./NpcManagerPanel')),
     quests: wrapPanel(() => import('./QuestPanel')),

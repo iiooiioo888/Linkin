@@ -126,6 +126,7 @@ def build_minecraft_spec() -> ModuleSpec:
                     "/minecraft/ai/snapshot",
                     "/minecraft/ai/events",
                     "/minecraft/ai/context",
+                    "/minecraft/layout-preview",
                 ),
             ),
             ModuleCapability(
@@ -166,6 +167,13 @@ def build_minecraft_spec() -> ModuleSpec:
                 items=(
                     ModuleNavItem("building", "⌂", "建築", "Schematic 生成與派發", capability="building"),
                     ModuleNavItem("map_plan", "◫", "地圖計畫", "區域地圖生成／預覽／落地", capability="content"),
+                    ModuleNavItem(
+                        "layout-preview",
+                        "▣",
+                        "布局預覽",
+                        "原生 2D 俯視（map_plan／建築意圖／POI，無需 Dynmap）",
+                        capability="content",
+                    ),
                     ModuleNavItem("minecraft", "⇄", "橋接", "MineMCP 探測與審計", capability="bridge"),
                 ),
             ),
@@ -223,6 +231,7 @@ def build_minecraft_spec() -> ModuleSpec:
             ("plugin_center", "plugin-hub"),
             ("server_map", "server-map"),
             ("dynmap", "server-map"),
+            ("layout_preview", "layout-preview"),
         ),
         health=minecraft_health,
     )

@@ -64,7 +64,13 @@ export default function MapMonitorPanel() {
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>地圖計畫 · generate / preview / apply</ConsoleCardHeader>
             {!plans.length ? (
-              <p className="px-3 pb-3 text-xs text-[var(--console-faint)]">尚無地圖計畫 — 請在「地圖計畫」或敘事工作區生成。</p>
+              <div className="space-y-2 px-3 pb-3 text-xs text-[var(--console-faint)]">
+                <p>尚無地圖計畫 — 請在「地圖計畫」或敘事工作區生成。</p>
+                <div className="flex flex-wrap gap-2">
+                  <a href="#/modules/minecraft/narrative" className="console-btn-ghost">敘事工作區</a>
+                  <a href="#/modules/minecraft/layout-preview" className="console-btn-ghost">布局預覽</a>
+                </div>
+              </div>
             ) : (
               <ul className="divide-y divide-[var(--console-border)]">
                 {plans.map((plan) => {
@@ -98,6 +104,14 @@ export default function MapMonitorPanel() {
               </ul>
             )}
           </ConsoleCard>
+
+          {plans.length > 0 ? (
+            <div className="mt-2 text-right">
+              <a href="#/modules/minecraft/layout-preview" className="console-btn-ghost text-xs">
+                本地布局預覽
+              </a>
+            </div>
+          ) : null}
         </ConsoleColumnScroll>
       </ConsoleCenterColumn>
     </PanelShell>

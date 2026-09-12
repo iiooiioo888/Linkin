@@ -177,6 +177,28 @@ export default function MonitorHubPanel() {
             </div>
           </ConsoleCard>
 
+          <ConsoleCard className="mt-3">
+            <ConsoleCardHeader>地圖與布局</ConsoleCardHeader>
+            <div className="flex flex-wrap items-center gap-2 px-3 pb-3 text-xs">
+              <span className="text-[var(--console-muted)]">
+                地圖計畫 {data?.kpis.map_plan_count ?? 0} 筆
+              </span>
+              <a href={minecraftHref('layout-preview')} className="console-btn">
+                布局預覽
+              </a>
+              {(data?.kpis.map_plan_count ?? 0) === 0 ? (
+                <>
+                  <a href={minecraftHref('narrative')} className="console-btn-ghost">
+                    生成敘事／地圖
+                  </a>
+                  <a href={minecraftHref('server-map')} className="console-btn-ghost">
+                    伺服器地圖
+                  </a>
+                </>
+              ) : null}
+            </div>
+          </ConsoleCard>
+
           {emptyActions.filter((a) => a.show).map((block) => (
             <EmptyStateCta key={block.title} title={block.title} hint={block.hint} actions={block.actions} />
           ))}
