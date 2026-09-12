@@ -1,7 +1,8 @@
 /** 單則訊息：無框助手回覆 + 任務卡。 */
 import { useState } from 'react';
-import type { ChatMessage } from '../types';
-import { cancelTask, resumeTask, sendFeedback } from '../api/client';
+import type { ChatMessage, TaskProgress } from '../types';
+import { resumeTask, sendFeedback } from '../api/client';
+import { cancelTaskAndSync } from '../lib/taskCancel';
 import { splitThink } from '../lib/splitThink';
 import { ReflectionRadar } from './ReflectionCharts';
 import MarkdownBody from './media/MarkdownBody';
@@ -21,6 +22,7 @@ interface MessageBubbleProps {
   onOpenContext?: (taskId: string) => void;
   onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
   onBattlePick?: (messageId: string, choice: string) => void;
+  onTaskStatePatch?: (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => void;
   variant?: 'default' | 'workspace';
 }
 
@@ -41,6 +43,7 @@ export default function MessageBubble({
   onOpenContext,
   onGrillAnswer,
   onBattlePick,
+  onTaskStatePatch,
   variant = 'default',
 }: MessageBubbleProps) {
   const [feedbackSent, setFeedbackSent] = useState<1 | 2 | undefined>(message.feedback);
@@ -56,12 +59,17 @@ export default function MessageBubble({
 
   const handleCancelTask = async (taskId: string) => {
     setCancelError(null);
-    try {
-      await cancelTask(taskId);
-    } catch (err) {
-      setCancelError((err as Error).message);
-      setTimeout(() => setCancelError(null), 3000);
+    const { task: fresh, error: cancelErr } = await cancelTaskAndSync(taskId);
+    if (fresh) {
+      onTaskStatePatch?.(taskId, fresh);
+      return;
     }
+    if (cancelErr) {
+      setCancelError(cancelErr);
+      setTimeout(() => setCancelError(null), 3000);
+      return;
+    }
+    onTaskStatePatch?.(taskId, { status: 'cancelled' });
   };
 
   const handleResumeTask = async (taskId: string) => {

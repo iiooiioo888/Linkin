@@ -216,6 +216,7 @@ export default function TaskPanel({
   const isOPC = task.resolved_path === 'opc';
   const isCancelled = task.status === 'cancelled';
   const isInterrupted = task.status === 'interrupted';
+  const compactTerminal = isCancelled || isInterrupted;
   const phases = isOPC ? OPC_PHASES : isCompany ? COMPANY_PHASES : STANDARD_PHASES;
   const running = task.status === 'running' || task.status === 'pending';
   const failed = task.status === 'failed' || isCancelled || isInterrupted;
@@ -366,7 +367,8 @@ export default function TaskPanel({
         />
       )}
 
-      {/* ── 階段進度條（執行中帶流光） ── */}
+      {/* ── 階段進度條（執行中帶流光；已取消／中斷僅顯示精簡標題） ── */}
+      {!compactTerminal && (
       <div className="mt-2.5 flex items-center gap-1">
         {phases.map((p, i) => {
           const active = running && i === currentIdx;
@@ -394,9 +396,10 @@ export default function TaskPanel({
           );
         })}
       </div>
+      )}
 
       {/* ── 耗時／預計剩餘 ── */}
-      {eta && (
+      {!compactTerminal && eta && (
         <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px]" title={etaTip}>
           <span className="text-gray-400">
             已耗 <span className="font-medium text-gray-200">{formatDuration(eta.elapsedSec)}</span>
@@ -432,8 +435,15 @@ export default function TaskPanel({
         <p className="mt-2 rounded-lg border border-red-500/25 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] px-2.5 py-1.5 leading-relaxed console-status-danger">⚠️ {task.error}</p>
       )}
 
+      {compactTerminal && eta && (
+        <p className="mt-2 text-[11px] text-gray-500">
+          已耗 {formatDuration(eta.elapsedSec)}
+          {isCancelled ? ' · 任務已取消' : ' · 任務已中斷'}
+        </p>
+      )}
+
       {/* ── Agent 工具調用狀態 ── */}
-      {isCompany && toolCalls.length > 0 && (
+      {!compactTerminal && isCompany && toolCalls.length > 0 && (
         <div className="mt-2 rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-2.5 py-1.5">
           <p className="flex items-center gap-1.5 text-[11px] text-cyan-300">
             {toolPending && (
@@ -453,7 +463,7 @@ export default function TaskPanel({
       )}
 
       {/* ══ 公司模式：角色流水線（PysdnOPC 風格） ══ */}
-      {isCompany && pipeline.length > 1 && (
+      {!compactTerminal && isCompany && pipeline.length > 1 && (
         <div className="mt-3 flex flex-wrap items-center gap-1">
           {pipeline.map((role, i) => (
             <span key={role.key} className="flex items-center gap-1">
@@ -480,7 +490,7 @@ export default function TaskPanel({
       )}
 
       {/* ══ 公司模式：子項三欄（隊列 / 執行中 / 已完成） ══ */}
-      {isCompany && totalCount > 0 && (
+      {!compactTerminal && isCompany && totalCount > 0 && (
         <div className="mt-2.5">
           <StatusColumnBoard
             compact
