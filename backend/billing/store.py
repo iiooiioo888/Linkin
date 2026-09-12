@@ -417,7 +417,7 @@ class BillingStore:
             "monthly_remaining_credits": max(0.0, monthly_grant),
             "period_key": row["period_key"],
             "concurrency_limit": int(row["concurrency_limit"]),
-            "low_balance": balance < max(100.0, quota * 0.05),
+            "low_balance": balance > 0 and balance < max(100.0, min(1000.0, monthly_grant * 0.1 if monthly_grant > 0 else 100.0)),
             "features": plan.get("features") or [],
             "transfer_allowed": False,
             "pricing_config_version": pricing["version"],

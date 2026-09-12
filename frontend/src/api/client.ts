@@ -9,7 +9,7 @@
  */
 
 import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, BillingLedgerEntry, BillingSnapshot, BillingUsageEvent, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, SeatFeedQuery, SeatIOFeed, SeatIORecord, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
-import { appendGateQuery } from '../lib/auth';
+import { appendGateQuery, attachGateHeaders } from '../lib/auth';
 
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -30,9 +30,16 @@ export interface ChatOptions {
 
 export interface ChatBillingFootnote {
   credits_deducted?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_tokens?: number;
+  cache_write_tokens?: number;
+  call_count?: number;
+  models?: string[];
   pricing_version?: number;
   cache_savings_credits?: number;
   vendor_id?: string;
+  session_id?: string;
   interrupted?: boolean;
   interrupt_reason?: string;
 }
@@ -84,17 +91,20 @@ export function sendChatStream(
 
   (async () => {
     try {
-      const resp = await fetch(apiUrl('/chat/stream'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query,
-          session_id: sessionId,
-          history: history ?? [],
-          semantic_lock: extra?.semantic_lock ?? {},
+      const resp = await fetch(
+        apiUrl('/chat/stream'),
+        attachGateHeaders({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query,
+            session_id: sessionId,
+            history: history ?? [],
+            semantic_lock: extra?.semantic_lock ?? {},
+          }),
+          signal: controller.signal,
         }),
-        signal: controller.signal,
-      });
+      );
 
       if (!resp.ok) {
         callbacks.onError?.(await parseBillingError(resp));
@@ -184,17 +194,20 @@ export async function sendChat(
 ): Promise<ChatResult> {
   let resp: Response;
   try {
-    resp = await fetch(apiUrl('/chat'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        session_id: sessionId,
-        execution_strategy: options.executionStrategy ?? 'auto',
-        company_template: options.companyTemplate ?? 'quick_task',
-        history: options.history ?? [],
+    resp = await fetch(
+      apiUrl('/chat'),
+      attachGateHeaders({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          session_id: sessionId,
+          execution_strategy: options.executionStrategy ?? 'auto',
+          company_template: options.companyTemplate ?? 'quick_task',
+          history: options.history ?? [],
+        }),
       }),
-    });
+    );
   } catch {
     throw new Error('網路連線失敗，請檢查後端服務是否啟動');
   }
@@ -547,16 +560,19 @@ export async function createTask(
 ): Promise<{ task_id: string; strategy: string }> {
   let resp: Response;
   try {
-    resp = await fetch(apiUrl('/tasks'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        execution_strategy: executionStrategy,
-        company_template: companyTemplate,
-        options: options ?? {},
+    resp = await fetch(
+      apiUrl('/tasks'),
+      attachGateHeaders({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          execution_strategy: executionStrategy,
+          company_template: companyTemplate,
+          options: options ?? {},
+        }),
       }),
-    });
+    );
   } catch {
     throw new Error('網路連線失敗，請檢查後端服務是否啟動');
   }

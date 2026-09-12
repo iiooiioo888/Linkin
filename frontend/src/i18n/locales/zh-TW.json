@@ -44,7 +44,19 @@
     "insufficientBalance": "積分不足，請先充值",
     "lowBalanceWarn": "餘額可能不足以完成此任務",
     "openWallet": "前往錢包",
+    "estHint": "預估",
     "send": "發送"
+  },
+  "billing": {
+    "turnReceipt": "本輪扣款摘要",
+    "creditsCharged": "扣款",
+    "tokensInOut": "Token 入 / 出",
+    "cacheTokens": "快取 Token",
+    "cacheReadWrite": "讀 {{read}} · 寫 {{write}}",
+    "modelsUsed": "模型",
+    "llmCalls": "LLM 呼叫",
+    "pricingVersion": "定價版本",
+    "cacheSavings": "快取節省"
   },
   "onboarding": {
     "title": "開始任務",

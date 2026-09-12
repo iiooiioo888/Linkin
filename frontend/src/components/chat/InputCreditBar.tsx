@@ -7,16 +7,17 @@ import { useWallet } from '../../hooks/useWallet';
 import { fmtCredits } from '../../lib/billingUi';
 import type { SendOptions } from '../InputBar';
 
-const MIN_SEND_CREDITS = 50;
+/** 單輪簡單對話實際約 0.3–3 cr；公司任務高於此 */
+const MIN_SEND_CREDITS = 0.5;
 
 function estimateCredits(text: string, strategy: SendOptions['executionStrategy']): number {
   const len = text.trim().length;
-  if (strategy === 'simple') return Math.max(MIN_SEND_CREDITS, 80 + Math.round(len / 20));
-  if (strategy === 'company') return Math.max(400, 500 + Math.round(len / 8));
-  // auto
-  if (len >= 200) return 600;
-  if (len >= 80) return 250;
-  return 120;
+  if (strategy === 'simple') return Math.max(0.5, 0.3 + len / 500);
+  if (strategy === 'company') return Math.max(5, 2 + len / 100);
+  // auto — 與實際 LLM 定價同量級
+  if (len >= 200) return 3;
+  if (len >= 80) return 1.5;
+  return 0.8;
 }
 
 interface InputCreditBarProps {
@@ -62,6 +63,9 @@ export default function InputCreditBar({ text, strategy, liveSpent, onOpenBillin
             {liveSpent != null && liveSpent > 0 ? fmtCredits(liveSpent) : fmtCredits(estimate)}
           </strong>
           <span className="text-[var(--console-faint)]"> cr</span>
+          {!(liveSpent != null && liveSpent > 0) ? (
+            <span className="ml-0.5 text-[var(--console-faint)]">({t('chat.estHint')})</span>
+          ) : null}
         </span>
       </div>
       {(blocked || insufficient) && (

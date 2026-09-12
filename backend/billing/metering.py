@@ -5,7 +5,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.billing.context import billing_enabled, current_billing_task, current_billing_user
+from backend.billing.context import (
+    billing_enabled,
+    chat_billing_acc,
+    chat_session_id,
+    current_billing_task,
+    current_billing_user,
+    record_chat_meter,
+)
 from backend.billing.credits import (
     credits_for_docker_usd,
     credits_for_llm_tokens,
@@ -71,6 +78,10 @@ def emit_usage_event(
         return None
     svc = get_billing_service()
     tid = _task(task_id)
+    if not tid:
+        sid = chat_session_id()
+        if sid:
+            tid = sid
     payload = dict(meta or {})
     payload["event_type"] = event_type
     if not skip_debit:
@@ -84,6 +95,19 @@ def emit_usage_event(
     event = svc.store.add_usage_event(
         uid, event_type, amount, quantity=quantity, unit=unit, task_id=tid, reference=reference, meta=payload
     )
+    if event and chat_billing_acc.get() is not None:
+        record_chat_meter(
+            amount,
+            pricing_version=payload.get("pricing_version"),
+            cache_savings_credits=float(payload.get("cache_savings_credits") or 0),
+            vendor_id=payload.get("vendor_id"),
+            model=payload.get("model"),
+            input_tokens=int(payload.get("input_tokens") or 0),
+            output_tokens=int(payload.get("output_tokens") or 0),
+            cache_read_tokens=int(payload.get("cache_read_tokens") or 0),
+            cache_write_tokens=int(payload.get("cache_write_tokens") or 0),
+            event_type=event_type,
+        )
     return event
 
 
@@ -151,7 +175,20 @@ def meter_llm(
                 tool=tool,
                 meta=meta,
             )
-            return {"credits": usage.get("cost_credits", credits), "task_id": tid, "pricing_version": usage.get("pricing_version")}
+            billed = float(usage.get("cost_credits", credits))
+            if chat_billing_acc.get() is not None:
+                record_chat_meter(
+                    billed,
+                    pricing_version=usage.get("pricing_version"),
+                    vendor_id=vendor_id,
+                    model=model,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    cache_read_tokens=cache_read_tokens or cached_tokens,
+                    cache_write_tokens=cache_write_tokens,
+                    event_type="llm_tokens",
+                )
+            return {"credits": billed, "task_id": tid, "pricing_version": usage.get("pricing_version")}
     config = pools.active_pricing_config()["config"]
     credits = compute_cost_credits(
         config,
@@ -177,20 +214,9 @@ def meter_llm(
             "pricing_version": pools.active_pricing_config()["version"],
         }
     )
-    event = emit_usage_event(
+    return emit_usage_event(
         "llm_tokens", credits, user_id=uid, task_id=tid, reference=reference, meta=m, quantity=input_tokens + output_tokens, unit="token"
     )
-    if not tid and event:
-        from backend.billing.context import record_chat_meter
-
-        savings = float(m.get("cache_savings_credits") or 0)
-        record_chat_meter(
-            credits,
-            pricing_version=m.get("pricing_version"),
-            cache_savings_credits=savings,
-            vendor_id=vendor_id or m.get("vendor_id"),
-        )
-    return event
 
 
 def precheck_llm(

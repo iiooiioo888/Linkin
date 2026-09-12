@@ -41,9 +41,14 @@ export function useWallet(pollMs = 8000) {
     };
     void run();
     const timer = setInterval(() => void run(), pollMs);
+    const onWalletRefresh = () => {
+      void run();
+    };
+    window.addEventListener('linkin:wallet-refresh', onWalletRefresh);
     return () => {
       cancelled = true;
       clearInterval(timer);
+      window.removeEventListener('linkin:wallet-refresh', onWalletRefresh);
     };
   }, [pollMs, refresh]);
 

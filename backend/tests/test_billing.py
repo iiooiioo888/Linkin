@@ -8,7 +8,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.billing.appeals import create_appeal, list_appeals
-from backend.billing.context import billing_user_id
+from backend.billing.context import (
+    begin_chat_billing,
+    billing_user_id,
+    chat_billing_snapshot,
+    end_chat_billing,
+)
+from backend.billing.metering import meter_reflection_iteration
 from backend.billing.credits import credits_for_llm_tokens, credits_for_raho_layer
 from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
 from backend.billing.metering import meter_llm, meter_raho_layer, meter_quant_call, require_feature
@@ -169,6 +175,52 @@ def test_llm_token_metering(billing_store):
         assert len(svc.usage_events("grace")) >= 1
     finally:
         billing_user_id.reset(token)
+
+
+def test_chat_billing_accumulator_with_session_task_id(billing_store):
+    svc = BillingService(billing_store)
+    svc.set_plan("chat_user", "pro")
+    uid_token = billing_user_id.set("chat_user")
+    bill_token = begin_chat_billing("sess-abc")
+    try:
+        meter_llm("qwen3.8-flash", 477, 454, task_id="sess-abc", reference="chat")
+        snap = chat_billing_snapshot()
+        assert snap is not None
+        assert snap["credits_deducted"] > 0
+        assert snap["input_tokens"] == 477
+        assert snap["output_tokens"] == 454
+        assert snap["call_count"] >= 1
+        assert "qwen3.8-flash" in snap["models"]
+        events = svc.usage_events("chat_user")
+        assert events[-1]["task_id"] == "sess-abc"
+    finally:
+        end_chat_billing(bill_token)
+        billing_user_id.reset(uid_token)
+
+
+def test_chat_billing_includes_reflection_iteration(billing_store):
+    svc = BillingService(billing_store)
+    svc.ensure_account("reflect_user", "pro")
+    uid_token = billing_user_id.set("reflect_user")
+    bill_token = begin_chat_billing("sess-reflect")
+    try:
+        before = float(chat_billing_snapshot()["credits_deducted"])
+        meter_reflection_iteration(1, task_id="sess-reflect", meta={"node": "improve_answer"})
+        snap = chat_billing_snapshot()
+        assert snap is not None
+        assert snap["credits_deducted"] > before
+    finally:
+        end_chat_billing(bill_token)
+        billing_user_id.reset(uid_token)
+
+
+def test_low_balance_not_tied_to_enterprise_quota(billing_store):
+    svc = BillingService(billing_store)
+    svc.set_plan("enterprise_user", "enterprise")
+    acct = svc.get_account("enterprise_user")
+    assert acct["monthly_quota_credits"] >= 1_000_000
+    assert acct["balance_credits"] > 1000
+    assert acct["low_balance"] is False
 
 
 def test_raho_layer_metering(billing_store):
