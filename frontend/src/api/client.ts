@@ -1209,6 +1209,8 @@ export async function bindContributorKey(
     activeHours?: number[];
     tosClass?: string;
     orgId?: string;
+    label?: string;
+    apiBase?: string;
   } = {},
 ) {
   const resp = await fetch(apiUrl('/billing/contributor/bind-key'), {
@@ -1224,6 +1226,8 @@ export async function bindContributorKey(
       active_hours: opts.activeHours ?? [0, 23],
       tos_class: opts.tosClass ?? 'self_host',
       org_id: opts.orgId ?? '',
+      label: opts.label ?? '',
+      api_base: opts.apiBase ?? '',
     }),
   });
   if (!resp.ok) {

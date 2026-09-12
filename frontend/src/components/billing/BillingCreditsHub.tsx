@@ -875,6 +875,31 @@ function AppealForm({
   );
 }
 
+const CONTRIBUTOR_VENDOR_OPTIONS: { id: string; label: string; tosClass: string }[] = [
+  { id: 'self_host', label: '自架 / 通用', tosClass: 'self_host' },
+  { id: 'tongyi', label: '通义 · Token Plan', tosClass: 'resale_allowed' },
+  { id: 'openai', label: 'OpenAI', tosClass: 'resale_allowed' },
+  { id: 'google', label: 'Google', tosClass: 'resale_allowed' },
+  { id: 'deepseek', label: 'DeepSeek', tosClass: 'resale_allowed' },
+  { id: 'kimi', label: 'Kimi', tosClass: 'resale_allowed' },
+];
+
+const TONGYI_TOKEN_PLAN_MODELS = [
+  'qwen-turbo',
+  'qwen-plus',
+  'qwen-max',
+  'qwen-long',
+  'qwen-vl-plus',
+  'qwen-vl-max',
+];
+
+function parseModelsInput(raw: string): string[] {
+  return raw
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function ContributorPanel({
   onMsg, busy, setBusy,
 }: {
@@ -883,10 +908,15 @@ function ContributorPanel({
   const [earnings, setEarnings] = useState<Record<string, unknown> | null>(null);
   const [keys, setKeys] = useState<Record<string, unknown>[]>([]);
   const [keyVal, setKeyVal] = useState('');
-  const vendorId = 'self_host';
-  const orgId = '';
-  const dailyCap = '1000000';
-  const concurrency = '2';
+  const [vendorId, setVendorId] = useState('self_host');
+  const [orgId, setOrgId] = useState('');
+  const [dailyCap, setDailyCap] = useState('1000000');
+  const [concurrency, setConcurrency] = useState('2');
+  const [modelsRaw, setModelsRaw] = useState('default');
+  const [routeLabel, setRouteLabel] = useState('');
+  const [apiBase, setApiBase] = useState('');
+
+  const vendorMeta = CONTRIBUTOR_VENDOR_OPTIONS.find((v) => v.id === vendorId) ?? CONTRIBUTOR_VENDOR_OPTIONS[0];
 
   const refresh = useCallback(async () => {
     const [e, k] = await Promise.all([fetchContributorEarnings(), fetchContributorKeys()]);
@@ -911,17 +941,87 @@ function ContributorPanel({
         <div className={consoleLayout.insetCard}>
           <p className="mb-2 text-[11px] text-[var(--console-sub)]">綁定共享池 API Key（AES-256）</p>
           <input placeholder="API Key" value={keyVal} onChange={(e) => setKeyVal(e.target.value)} className="mb-2 w-full rounded border border-[var(--console-line)] bg-[var(--console-bg)] px-2 py-1.5 text-[12px]" />
-          <button type="button" disabled={busy || keyVal.length < 8} className="text-[12px] text-[var(--console-blue)]" onClick={() => { setBusy(true); bindContributorKey(keyVal, { vendorId, orgId, dailyTokenCap: Number(dailyCap) || 0, concurrency: Number(concurrency) || 1, tosClass: vendorId === 'self_host' ? 'self_host' : 'resale_allowed', models: ['default'] }).then(() => { onMsg('Key 已綁定'); return refresh(); }).catch((e) => onMsg(e instanceof Error ? e.message : '失敗')).finally(() => setBusy(false)); }}>綁定 Key</button>
+          <div className="mb-2 grid grid-cols-2 gap-2">
+            <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} className="rounded border border-[var(--console-line)] bg-[var(--console-bg)] px-2 py-1 text-[11px]">
+              {CONTRIBUTOR_VENDOR_OPTIONS.map((v) => (
+                <option key={v.id} value={v.id}>{v.label}</option>
+              ))}
+            </select>
+            <input placeholder="Org ID（可選）" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="rounded border border-[var(--console-line)] bg-[var(--console-bg)] px-2 py-1 text-[11px]" />
+          </div>
+          <input placeholder="路由標籤（可選）" value={routeLabel} onChange={(e) => setRouteLabel(e.target.value)} className="mb-2 w-full rounded border border-[var(--console-line)] bg-[var(--console-bg)] px-2 py-1 text-[11px]" />
+          <input placeholder="API Base（可選，如 Token Plan 端點）" value={apiBase} onChange={(e) => setApiBase(e.target.value)} className="mb-2 w-full rounded border border-[var(--console-line)] bg-[var(--console-bg)] px-2 py-1 text-[11px]" />
+          <textarea
+            placeholder="模型列表（逗號或換行分隔）"
+            value={modelsRaw}
+            onChange={(e) => setModelsRaw(e.target.value)}
+            rows={2}
+            className="mb-2 w-full rounded border border-[var(--console-line)] bg-[var(--console-bg)] px-2 py-1 text-[11px]"
+          />
+          {vendorId === 'tongyi' ? (
+            <button
+              type="button"
+              className="mb-2 text-[10px] text-[var(--console-blue)]"
+              onClick={() => setModelsRaw(TONGYI_TOKEN_PLAN_MODELS.join(', '))}
+            >
+              填入通义 Token Plan 常用模型
+            </button>
+          ) : null}
+          <div className="mb-2 grid grid-cols-2 gap-2">
+            <input type="number" placeholder="日 Token 上限" value={dailyCap} onChange={(e) => setDailyCap(e.target.value)} className="rounded border border-[var(--console-line)] bg-[var(--console-bg)] px-2 py-1 text-[11px]" />
+            <input type="number" placeholder="並發" value={concurrency} onChange={(e) => setConcurrency(e.target.value)} className="rounded border border-[var(--console-line)] bg-[var(--console-bg)] px-2 py-1 text-[11px]" />
+          </div>
+          <button
+            type="button"
+            disabled={busy || keyVal.length < 8}
+            className="text-[12px] text-[var(--console-blue)]"
+            onClick={() => {
+              const models = parseModelsInput(modelsRaw);
+              if (models.length === 0) {
+                onMsg('請至少填寫一個模型 ID');
+                return;
+              }
+              setBusy(true);
+              bindContributorKey(keyVal, {
+                vendorId,
+                orgId,
+                dailyTokenCap: Number(dailyCap) || 0,
+                concurrency: Number(concurrency) || 1,
+                tosClass: vendorMeta.tosClass,
+                models,
+                label: routeLabel,
+                apiBase,
+              })
+                .then(() => { onMsg('Key 已綁定'); return refresh(); })
+                .catch((e) => onMsg(e instanceof Error ? e.message : '失敗'))
+                .finally(() => setBusy(false));
+            }}
+          >
+            綁定 Key
+          </button>
         </div>
         <div className={`${consoleLayout.insetCard} flex min-h-0 flex-col overflow-hidden`}>
           <p className="mb-2 text-[11px] font-medium text-[var(--console-ink)]">Key 健康度</p>
           <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto console-col-scroll text-[11px]">
-            {keysPager.slice.map((k) => (
-              <li key={String(k.key_id)} className="flex items-center justify-between gap-2 border-b border-[var(--console-line)] py-1">
-                <span className="font-mono text-[var(--console-sub)]">{String(k.key_id).slice(-8)}</span>
-                <button type="button" className="text-[10px] text-[var(--console-blue)]" onClick={() => void fetchContributorKeyHealth(String(k.key_id)).then((h) => onMsg(`成功率 ${(Number(h.success_rate) * 100).toFixed(1)}%`))}>檢查</button>
-              </li>
-            ))}
+            {keysPager.slice.map((k) => {
+              const limits = (k.limits as Record<string, unknown> | undefined) ?? {};
+              const routeName = String(limits.label ?? limits.route_label ?? '').trim();
+              const vendor = String(limits.vendor_id ?? '—');
+              const modelCount = Array.isArray(limits.models) ? limits.models.length : 0;
+              return (
+                <li key={String(k.key_id)} className="flex items-center justify-between gap-2 border-b border-[var(--console-line)] py-1">
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-[var(--console-sub)]">
+                      {routeName || String(k.key_id).slice(-8)}
+                    </p>
+                    <p className="truncate text-[10px] text-[var(--console-faint)]">
+                      {vendor} · {modelCount} 模型 · {String(k.key_id).slice(-8)}
+                    </p>
+                  </div>
+                  <button type="button" className="shrink-0 text-[10px] text-[var(--console-blue)]" onClick={() => void fetchContributorKeyHealth(String(k.key_id)).then((h) => onMsg(`成功率 ${(Number(h.success_rate) * 100).toFixed(1)}%`))}>檢查</button>
+                </li>
+              );
+            })}
           </ul>
           <ConsolePagination page={keysPager.page} totalPages={keysPager.pages} onPageChange={keysPager.setPage} className="!border-0" />
         </div>

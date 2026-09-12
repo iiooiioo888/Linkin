@@ -74,14 +74,20 @@ def route_key_selection(
         _log_decision(decision)
         return decision
 
-    contributor_keys = [k for k in sorted_keys if not k.get("is_platform_default")]
+    contributor_keys = [
+        k
+        for k in sorted_keys
+        if not k.get("is_platform_default") and not k.get("is_public_pool")
+    ]
     if not contributor_keys and not _public_pool_available():
         decision.update(_finalize_decision(mode="queue_reject", keys=[], reason="public_pool_paused_no_contributors"))
         _log_decision(decision)
         return decision
 
-    same_org = [k for k in sorted_keys if k.get("same_org")]
-    if len(same_org) == 1 and len(sorted_keys) == 1:
+    pool_keys = contributor_keys if contributor_keys else sorted_keys
+
+    same_org = [k for k in pool_keys if k.get("same_org")]
+    if len(same_org) == 1 and len(pool_keys) == 1:
         decision.update(_finalize_decision(mode="single", keys=[same_org[0]], reason="single_eligible_key"))
     elif len(same_org) >= 2:
         mode = "relay" if _prefer_relay(same_org, estimate_credits) else "parallel_split"
@@ -93,18 +99,18 @@ def route_key_selection(
                 split_mode=mode,
             )
         )
-    elif len(sorted_keys) >= 2:
-        mode = "relay" if _prefer_relay(sorted_keys, estimate_credits) else "parallel_split"
+    elif len(pool_keys) >= 2:
+        mode = "relay" if _prefer_relay(pool_keys, estimate_credits) else "parallel_split"
         decision.update(
             _finalize_decision(
                 mode=mode,
-                keys=sorted_keys[: min(3, len(sorted_keys))],
+                keys=pool_keys[: min(3, len(pool_keys))],
                 reason=f"multi_key_{mode}",
                 split_mode=mode,
             )
         )
     else:
-        decision.update(_finalize_decision(mode="single", keys=[sorted_keys[0]], reason="best_single_key"))
+        decision.update(_finalize_decision(mode="single", keys=[pool_keys[0]], reason="best_single_key"))
 
     _log_decision(decision)
     return decision
