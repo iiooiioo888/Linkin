@@ -1,6 +1,7 @@
 """Token 看板生成服務。"""
 from __future__ import annotations
 
+import glob
 import os
 from typing import Any
 
@@ -38,7 +39,7 @@ def _try_collect_workbuddy() -> dict[str, Any] | None:
     if not glob.glob(os.path.join(projects, "**", "*.jsonl"), recursive=True):
         return None
     try:
-        from importlib.util import spec_from_file_location, module_from_spec
+        from importlib.util import spec_from_file_location
         from pathlib import Path
 
         script = Path(".agents/skills/token-dashboard/scripts/gen_dashboard.py")

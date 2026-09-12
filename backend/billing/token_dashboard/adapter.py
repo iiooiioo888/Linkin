@@ -31,26 +31,15 @@ def _parse_created_at(value: str | None) -> int | None:
     if not value:
         return None
     s = str(value).strip()
-    for fmt in (
-        "%Y-%m-%dT%H:%M:%S.%f%z",
-        "%Y-%m-%dT%H:%M:%S%z",
-        "%Y-%m-%dT%H:%M:%S.%fZ",
-        "%Y-%m-%dT%H:%M:%SZ",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%dT%H:%M:%S.%f",
-        "%Y-%m-%dT%H:%M:%S",
-    ):
-        try:
-            dt = datetime.strptime(s.replace("Z", "+0000"), fmt)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return int(dt.timestamp() // 60)
-        except ValueError:
-            continue
     try:
         dt = datetime.fromisoformat(s)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() // 60)
+    except ValueError:
+        pass
+    try:
+        dt = datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         return int(dt.timestamp() // 60)
     except ValueError:
         return None
