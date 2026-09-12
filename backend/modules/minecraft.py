@@ -75,7 +75,16 @@ def build_minecraft_spec() -> ModuleSpec:
                 title="世界內容",
                 description="NPC、任務、道具",
                 api_prefix=_PREFIX,
-                routes=("/npcs", "/quests", "/items", "/narrative/workspaces", "/build-briefs", "/world-intents", "/map"),
+                routes=(
+                    "/npcs",
+                    "/quests",
+                    "/items",
+                    "/narrative/workspaces",
+                    "/narrative/pipelines",
+                    "/build-briefs",
+                    "/world-intents",
+                    "/map",
+                ),
             ),
             ModuleCapability(
                 id="admin",
