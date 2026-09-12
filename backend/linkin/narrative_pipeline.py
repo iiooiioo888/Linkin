@@ -553,7 +553,7 @@ def run_narrative_pipeline(body: dict[str, Any]) -> dict[str, Any]:
             "message": "預覽完成。設定 confirm_world=true 以執行建築／世界／地圖落地。",
         }
 
-    return {
+    result = {
         "ok": overall_status in {"ok", "partial"},
         "status": overall_status,
         "confirm_world": confirm_world,
@@ -570,6 +570,23 @@ def run_narrative_pipeline(body: dict[str, Any]) -> dict[str, Any]:
         "plan": plan_for_confirm,
         "elapsed_ms": int((time.time() - started) * 1000),
     }
+    try:
+        from backend.linkin.minecraft_observability import safe_append_minecraft_event
+
+        step_labels = [f"{s['id']}:{s['status']}" for s in steps if s.get("status") not in {"pending", "running"}]
+        safe_append_minecraft_event(
+            domain="pipeline",
+            action="run",
+            status=overall_status,
+            summary=f"敘事管線 {workspace_id} → {overall_status}（{len(step_labels)} 步）",
+            entity_refs={"workspace_id": workspace_id},
+            details={"steps": steps, "elapsed_ms": result["elapsed_ms"]},
+            dry_run=bool(bridge.get("dry_run")),
+            bridge_offline=bool(bridge.get("enabled") and not bridge.get("connected")),
+        )
+    except Exception:
+        pass
+    return result
 
 
 __all__ = [

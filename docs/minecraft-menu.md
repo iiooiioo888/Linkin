@@ -47,6 +47,17 @@ Minecraft 已提升為 Linkin 左側 ActivityBar 的一級世界模組（與控�
 
 事件在 generate / commit / apply（build、world、map）、bridge probe 等路徑自動追加；狀態誠實標記 dry-run、partial、bridge_offline。
 
+## 監控 cockpit（自動刷新）
+
+監控總覽在頁面可見時每 **12 秒**自動刷新 summary 與 AI 事件（標籤隱藏時暫停）。空狀態會提供可點擊的下一步：
+
+- 無管線紀錄 → 敘事工作區
+- 無地圖 URL → 插件中心
+- 橋接離線 → 橋接健康監控
+- 待建築／待世界意圖 → 對應監控分頁
+
+橋接設定 checklist、可複製的 `EVOL_MC_MCP_*` 範例與 systemd drop-in 見 **橋接健康** 分頁。
+
 ## 本機試用
 
 ```bash

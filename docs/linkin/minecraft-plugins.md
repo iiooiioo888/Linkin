@@ -34,6 +34,12 @@ Linkin 面板可整合伺服器上常見的網頁地圖插件（Dynmap、BlueMap
 
 `GET /linkin/minecraft/status` 的 `plugins` 欄位會摘要地圖插件狀態，供 AI 觀測與監控使用。探測與設定變更會寫入 `linkin_events` 集合。
 
+## 內嵌可靠性
+
+- 探測成功後 URL 會記住於瀏覽器 `localStorage`（`linkin.minecraft.lastMapUrl`），可在「伺服器地圖」一鍵恢復。
+- 探測會檢查 `X-Frame-Options` / CSP，若可能阻擋 iframe 會在插件中心與地圖面板顯示 nginx 反向代理片段（可複製）。
+- 伺服器地圖支援全螢幕；行動裝置最小高度 `50dvh`。
+
 ## 反向代理（iframe 被阻擋時）
 
 部分地圖站點設定 `X-Frame-Options: SAMEORIGIN` 或 CSP `frame-ancestors`，無法被 Linkin 跨域嵌入。可將地圖反代到 Linkin 同源路徑，例如 nginx：

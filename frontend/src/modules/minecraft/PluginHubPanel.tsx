@@ -11,6 +11,7 @@ import {
   type MinecraftPluginSettings,
 } from '../../api/linkin';
 import { navPathForTab } from '../../lib/monitorTabs';
+import { CopyButton, MAP_NGINX_SNIPPET, rememberLastMapUrl } from './monitor/shared';
 
 const STATUS_LABEL: Record<string, string> = {
   disabled: '未啟用',
@@ -109,9 +110,13 @@ export default function PluginHubPanel() {
     setMessage(null);
     try {
       const result = await probeMinecraftPlugin(pluginId);
+      if (result.probe.ok && result.map_url) {
+        rememberLastMapUrl(result.map_url);
+      }
+      const embedHint = result.probe.embeddable_hint ? ` · ${result.probe.embeddable_hint}` : '';
       setMessage(
         result.probe.ok
-          ? `${pluginId} 探測成功（HTTP ${result.probe.status_code ?? '—'}）`
+          ? `${pluginId} 探測成功（HTTP ${result.probe.status_code ?? '—'}）${embedHint}`
           : `${pluginId} 探測失敗：${result.probe.error || result.connection_status}`,
       );
       await load();
@@ -281,13 +286,27 @@ export default function PluginHubPanel() {
       <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">NPC／任務／建築相關</h3>
       <div className="grid gap-3 lg:grid-cols-2">{otherPlugins.map(renderCard)}</div>
 
-      <section className="mt-6 rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3 text-[11px] text-[#8a8f98]">
-        <h4 className="mb-1 font-semibold text-[#c9a961]">反向代理提示</h4>
+      <section className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-[#8a8f98]">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h4 className="font-semibold text-amber-300">iframe 被阻擋？（X-Frame-Options / CSP）</h4>
+          <CopyButton text={MAP_NGINX_SNIPPET} label="複製 nginx 片段" />
+        </div>
         <p>
-          若地圖站點阻擋 iframe（X-Frame-Options / CSP），可在 nginx 將地圖反代到 Linkin 同源路徑，例如{' '}
-          <code className="text-[#AEAEB2]">/minecraft-map/</code> → 你的 Dynmap 埠，再在插件中心填寫{' '}
+          探測成功但「伺服器地圖」空白時，多半是地圖站點禁止跨域嵌入。將地圖反代到 Linkin 同源路徑（例如{' '}
+          <code className="text-[#AEAEB2]">/minecraft-map/</code>），再在插件中心填寫{' '}
           <code className="text-[#AEAEB2]">https://linkin.example.com/minecraft-map/</code>。
         </p>
+        <pre className="mt-2 max-h-32 overflow-auto rounded bg-black/30 p-2 font-mono text-[9px] text-[#AEAEB2]">
+          {MAP_NGINX_SNIPPET}
+        </pre>
+        <a
+          href="https://github.com/iiooiioo888/Linkin/blob/master/docs/linkin/minecraft-plugins.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-block text-[#c9a961] hover:underline"
+        >
+          完整文件 →
+        </a>
       </section>
     </div>
   );

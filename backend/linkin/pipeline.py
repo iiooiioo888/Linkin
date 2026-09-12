@@ -25,6 +25,17 @@ _LINKIN_WORLD_RE = re.compile(
     re.IGNORECASE,
 )
 
+_MC_OBSERVABILITY_RE = re.compile(
+    r"("
+    r"minecraft|minemcp|mine\s*mcp|"
+    r"橋接|bridge|伺服器|server\s*map|"
+    r"dynmap|bluemap|squaremap|地圖插件|插件中心|"
+    r"map\s*plan|地圖計畫|待落地|build\s*brief|建築落地|"
+    r"npc.*落地|任務.*落地|世界意圖"
+    r")",
+    re.IGNORECASE,
+)
+
 _LINKIN_WORK_RE = re.compile(
     r"("
     r"建造|建筑|建築|扩建|擴建|改建|主城|"
@@ -109,8 +120,9 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
     except Exception as exc:
         logger.debug("Minecraft MCP 摘要略過：%s", exc)
 
+    obs_hit = bool(_MC_OBSERVABILITY_RE.search(query))
     observability_block = ""
-    if world_hit or mc_hit:
+    if world_hit or mc_hit or obs_hit:
         try:
             from backend.linkin.minecraft_observability import build_ai_context
 

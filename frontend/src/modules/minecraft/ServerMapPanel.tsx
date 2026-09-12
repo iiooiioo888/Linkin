@@ -8,6 +8,12 @@ import {
   type MinecraftPluginSettings,
 } from '../../api/linkin';
 import { navPathForTab } from '../../lib/monitorTabs';
+import {
+  MapEmbedHelp,
+  loadLastMapUrl,
+  rememberLastMapUrl,
+  useVisibilityPoll,
+} from './monitor/shared';
 
 export default function ServerMapPanel() {
   const [settings, setSettings] = useState<MinecraftPluginSettings | null>(null);
@@ -16,6 +22,8 @@ export default function ServerMapPanel() {
   const [busy, setBusy] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [embedBlocked, setEmbedBlocked] = useState(false);
+  const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -27,15 +35,18 @@ export default function ServerMapPanel() {
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useVisibilityPoll(load, 15000);
 
   const mapUrl = settings?.map_url?.trim() || '';
   const activePlugin = settings?.active_map_plugin;
   const lastProbe = activePlugin ? settings?.plugins?.[activePlugin]?.last_probe : undefined;
+  const displayUrl = mapUrl || fallbackUrl || '';
+  const probeBlocksEmbed = Boolean(
+    lastProbe?.embeddable_hint?.includes('iframe') || lastProbe?.embeddable_hint?.includes('X-Frame'),
+  );
+  const showEmbedHelp = embedBlocked || probeBlocksEmbed || (lastProbe && !lastProbe.ok);
 
-  const onProbe = async () => {
+  const onProbe = useCallback(async () => {
     if (!activePlugin) {
       setError('請先在插件中心設定並選擇預設地圖插件');
       return;
@@ -45,13 +56,34 @@ export default function ServerMapPanel() {
     setMessage(null);
     try {
       const result = await probeMinecraftPlugin(activePlugin);
+      if (result.probe.ok && result.map_url) {
+        rememberLastMapUrl(result.map_url);
+        setFallbackUrl(null);
+      }
       setMessage(result.probe.ok ? '地圖 URL 可連線' : `探測失敗：${result.probe.error || '無法連線'}`);
+      setEmbedBlocked(Boolean(result.probe.embeddable_hint?.includes('iframe')));
       await load();
+      setReloadKey((k) => k + 1);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setBusy(false);
     }
+  }, [activePlugin, load]);
+
+  useEffect(() => {
+    if (mapUrl) {
+      rememberLastMapUrl(mapUrl);
+      setEmbedBlocked(false);
+    }
+  }, [mapUrl]);
+
+  const onIframeLoad = () => {
+    if (displayUrl) rememberLastMapUrl(displayUrl);
+  };
+
+  const onIframeError = () => {
+    setEmbedBlocked(true);
   };
 
   const toggleFullscreen = async () => {
@@ -73,6 +105,16 @@ export default function ServerMapPanel() {
     return () => document.removeEventListener('fullscreenchange', onFs);
   }, []);
 
+  const useLastUrl = () => {
+    const last = loadLastMapUrl();
+    if (last) {
+      setFallbackUrl(last);
+      setEmbedBlocked(false);
+      setReloadKey((k) => k + 1);
+      setMessage(`已載入上次成功 URL：${last}`);
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas p-4 text-[#f7f8f8]">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -92,7 +134,7 @@ export default function ServerMapPanel() {
           </button>
           <button
             type="button"
-            disabled={!mapUrl}
+            disabled={!displayUrl}
             onClick={() => setReloadKey((k) => k + 1)}
             className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8] disabled:opacity-40"
           >
@@ -100,13 +142,13 @@ export default function ServerMapPanel() {
           </button>
           <button
             type="button"
-            disabled={!mapUrl || busy}
+            disabled={!activePlugin || busy}
             onClick={() => void onProbe()}
             className="rounded-xl border border-[#c9a961]/40 bg-[#c9a961]/10 px-2 py-1 text-[11px] text-[#c9a961] disabled:opacity-40"
           >
-            {busy ? '探測中…' : '健康檢查'}
+            {busy ? '探測中…' : '一鍵重探'}
           </button>
-          {mapUrl && (
+          {displayUrl && (
             <>
               <button
                 type="button"
@@ -116,7 +158,7 @@ export default function ServerMapPanel() {
                 {fullscreen ? '退出全螢幕' : '全螢幕'}
               </button>
               <a
-                href={mapUrl}
+                href={displayUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]"
@@ -142,11 +184,18 @@ export default function ServerMapPanel() {
           上次健康檢查：{lastProbe.checked_at}
           {lastProbe.status_code != null ? ` · HTTP ${lastProbe.status_code}` : ''}
           {lastProbe.ok ? ' · 可連線' : ' · 無法連線'}
+          {lastProbe.embeddable_hint ? ` · ${lastProbe.embeddable_hint}` : ''}
         </p>
       )}
 
-      {!mapUrl ? (
-        <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-[#c9a961]/30 bg-[#1C1C1E] p-8 text-center">
+      {showEmbedHelp && displayUrl && (
+        <div className="mb-3">
+          <MapEmbedHelp onUseLastUrl={useLastUrl} />
+        </div>
+      )}
+
+      {!displayUrl ? (
+        <div className="flex min-h-[50dvh] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-[#c9a961]/30 bg-[#1C1C1E] p-8 text-center">
           <p className="mb-2 text-sm font-medium text-[#c9a961]">尚未設定地圖 URL</p>
           <a
             href="#/modules/minecraft/layout-preview"
@@ -160,17 +209,28 @@ export default function ServerMapPanel() {
             <li>3. 點「探測 URL」確認連線，再「設為預設地圖」。</li>
             <li>4. 回到本頁即可內嵌檢視；若 iframe 被阻擋，請用反向代理或新分頁開啟。</li>
           </ol>
+          {loadLastMapUrl() && (
+            <button
+              type="button"
+              onClick={useLastUrl}
+              className="mt-4 rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961]"
+            >
+              使用上次成功 URL
+            </button>
+          )}
         </div>
       ) : (
         <div
           ref={frameRef}
-          className={`relative min-h-0 flex-1 overflow-hidden rounded-xl border border-[#c9a961]/20 bg-black ${fullscreen ? 'fixed inset-0 z-50 rounded-none border-0' : ''}`}
+          className={`relative min-h-[50dvh] flex-1 overflow-hidden rounded-xl border border-[#c9a961]/20 bg-black ${fullscreen ? 'fixed inset-0 z-50 min-h-0 rounded-none border-0' : ''}`}
         >
           <iframe
             key={reloadKey}
             title="Minecraft 伺服器地圖"
-            src={mapUrl}
-            className="h-full w-full border-0 bg-[#0a0a0a]"
+            src={displayUrl}
+            onLoad={onIframeLoad}
+            onError={onIframeError}
+            className="h-full min-h-[50dvh] w-full border-0 bg-[#0a0a0a]"
             allow="fullscreen"
             referrerPolicy="no-referrer"
           />
