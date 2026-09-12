@@ -3,15 +3,19 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  applyBuildBrief,
   deleteBuilding,
   dispatchBuilding,
   fetchBuildingPreview,
+  fetchBuildBriefs,
   fetchBuildings,
   fetchConstitution,
   generateBuilding,
   importSchematic,
   importSchematicBase64,
+  previewBuildBrief,
   schematicUrl,
+  type BuildBrief,
   type Building,
   type BuildingPreview,
 } from '../../api/linkin';
@@ -39,8 +43,12 @@ export default function BuildPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<'idle' | 'generate' | 'dispatch' | 'delete' | 'preview' | 'import'>('idle');
+  const [busy, setBusy] = useState<
+    'idle' | 'generate' | 'dispatch' | 'delete' | 'preview' | 'import' | 'brief-preview' | 'brief-apply'
+  >('idle');
   const [dispatchNote, setDispatchNote] = useState<string | null>(null);
+  const [buildBriefs, setBuildBriefs] = useState<BuildBrief[]>([]);
+  const [briefNote, setBriefNote] = useState<string | null>(null);
   const [b64Input, setB64Input] = useState('');
   const [b64Copied, setB64Copied] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -50,8 +58,13 @@ export default function BuildPanel() {
 
   const load = useCallback(async () => {
     try {
-      const [data, constitution] = await Promise.all([fetchBuildings(), fetchConstitution().catch(() => null)]);
+      const [data, briefs, constitution] = await Promise.all([
+        fetchBuildings(),
+        fetchBuildBriefs().catch(() => ({ build_briefs: [] as BuildBrief[], count: 0 })),
+        fetchConstitution().catch(() => null),
+      ]);
       setBuildings(data.buildings);
+      setBuildBriefs(briefs.build_briefs.filter((b) => b.status === 'pending_builder' || b.status === 'built'));
       if (constitution?.regions?.length) {
         const mapped: Record<string, string[]> = {};
         for (const row of constitution.regions) {
@@ -177,6 +190,40 @@ export default function BuildPanel() {
     }
   };
 
+  const onBriefPreview = async (id: string) => {
+    setBusy('brief-preview');
+    setError(null);
+    setBriefNote(null);
+    try {
+      const data = await previewBuildBrief(id);
+      setBriefNote(`預覽 ${data.brief.title}：約 ${data.bounds.solid_count} 方塊 @ ${data.brief.location}`);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy('idle');
+    }
+  };
+
+  const onBriefApply = async (id: string) => {
+    setBusy('brief-apply');
+    setError(null);
+    setBriefNote(null);
+    try {
+      const data = await applyBuildBrief(id);
+      const p = data.placement;
+      setBriefNote(
+        p.ok
+          ? `落地建築完成：${p.blocks_placed}/${p.blocks_total} 方塊${p.dry_run ? '（乾跑）' : ''}`
+          : `落地未完成：${p.blocks_failed} 失敗`,
+      );
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy('idle');
+    }
+  };
+
   const onImportBase64 = async () => {
     const text = b64Input.trim();
     if (!text) {
@@ -214,6 +261,7 @@ export default function BuildPanel() {
       </div>
       {error && <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
       {dispatchNote && <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">{dispatchNote}</div>}
+      {briefNote && <div className="mb-3 rounded-md border border-[#c9a961]/30 bg-[#c9a961]/10 px-3 py-2 text-xs text-[#c9a961]">{briefNote}</div>}
 
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#111113]">
@@ -313,6 +361,43 @@ export default function BuildPanel() {
           {result.style} · {result.width ?? '?'}×{result.height ?? '?'}×{result.length ?? '?'} · v{result.schematic_version ?? 3}
           {result.note ? ` · ${result.note}` : ''}
         </p>
+      )}
+
+      {buildBriefs.length > 0 && (
+        <section className="mt-6 rounded-xl border border-[#c9a961]/25 bg-[#1C1C1E] p-3">
+          <h3 className="mb-2 text-[11px] font-semibold text-[#c9a961]">敘事建築意圖（Phase 2 · {buildBriefs.length}）</h3>
+          <p className="mb-3 text-[10px] text-[#8a8f98]">來自敘事工作區 commit 的 build_brief；需手動「落地建築」，不會自動放置。</p>
+          <div className="space-y-2">
+            {buildBriefs.map((brief) => (
+              <article key={brief.id} className="rounded-lg border border-white/[0.08] bg-black/20 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-[12px] font-medium text-[#f7f8f8]">{brief.title}</h4>
+                  <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{brief.status}</span>
+                  <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{brief.block_count} 方塊預算</span>
+                </div>
+                <p className="mt-1 text-[11px] text-[#AEAEB2]">{brief.prompt}</p>
+                <div className="mt-2 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    disabled={busy !== 'idle'}
+                    onClick={() => void onBriefPreview(brief.id)}
+                    className="text-[10px] text-[#64D2FF] disabled:opacity-40"
+                  >
+                    預覽／估算
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy !== 'idle'}
+                    onClick={() => void onBriefApply(brief.id)}
+                    className="text-[10px] text-[#c9a961] disabled:opacity-40"
+                  >
+                    落地建築
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
 
       <h3 className="mb-2 mt-6 text-[11px] font-semibold text-[#8a8f98]">已規劃方案（{buildings.length}）</h3>

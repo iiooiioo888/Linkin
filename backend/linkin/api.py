@@ -84,9 +84,11 @@ linkin_router = APIRouter(prefix="/linkin", tags=["linkin"])
 
 
 def register_linkin(app) -> None:
+    from backend.linkin.build_brief_api import build_brief_router
     from backend.linkin.narrative_api import register_narrative_routes
 
     app.include_router(linkin_router)
+    app.include_router(build_brief_router)
     register_narrative_routes(app)
 
 
