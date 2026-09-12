@@ -505,6 +505,12 @@
       "skillPath": "skills/theme-factory/SKILL.md",
       "computedHash": "598ddfa9784ae2a8c55be5dbb047b98564d875dea6f4669168a87ae1ea1a4ed3"
     },
+    "token-dashboard": {
+      "source": "fuyi-git/token-dashboard",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "154b9df9b73102b693adf52c924a46ce0f2604e351ca0f64c9a3a1bc7011ccf2"
+    },
     "to-questionnaire": {
       "source": "mattpocock/skills",
       "sourceType": "github",

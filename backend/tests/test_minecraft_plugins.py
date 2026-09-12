@@ -13,7 +13,6 @@ from backend.linkin.minecraft_plugins import (
     PLUGIN_CATALOG,
     PluginUrlError,
     list_catalog,
-    probe_plugin,
     public_settings,
     reset_settings_cache,
     update_settings,

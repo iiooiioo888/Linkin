@@ -14,6 +14,7 @@ import {
   fetchBillingPoolLedger,
   fetchBillingRollover,
   fetchCloudBilling,
+  openTokenDashboard,
   lockContribution,
   submitBillingAppeal,
   bindContributorKey,
@@ -221,6 +222,16 @@ export default function BillingCreditsHub({ liteShell = false }: { liteShell?: b
       const badKeys = overview?.unhealthy_keys_count ?? 0;
       return (
         <div className={cnStack()}>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] text-[var(--console-sub)]">請求級 Token 用量（來自計費庫 metering）</p>
+            <button
+              type="button"
+              className="rounded-xl border border-[var(--console-blue)]/40 bg-[var(--console-blue)]/10 px-3 py-1.5 text-[11px] text-[var(--console-blue)] hover:bg-[var(--console-blue)]/20"
+              onClick={() => openTokenDashboard(30)}
+            >
+              打開 Token 看板
+            </button>
+          </div>
           <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <KpiCard
               label="本月消耗"

@@ -109,6 +109,16 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
     except Exception as exc:
         logger.debug("Minecraft MCP 摘要略過：%s", exc)
 
+    observability_block = ""
+    if world_hit or mc_hit:
+        try:
+            from backend.linkin.minecraft_observability import build_ai_context
+
+            ctx_blob = build_ai_context(max_chars=2400, fmt="markdown")
+            observability_block = "\n" + str(ctx_blob.get("context") or "").strip()
+        except Exception as exc:
+            logger.debug("Minecraft 可觀測性上下文略過：%s", exc)
+
     if not world_hit and not mc_hit:
         return {"linkin_context": {}}
 
@@ -137,7 +147,7 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
         overlays.append(_SYSTEM_OVERLAY)
     if mc_hit:
         overlays.append(_MC_SYSTEM_OVERLAY)
-    summary = f"{brief}{rag_block}{mcp_block}".strip()
+    summary = f"{brief}{rag_block}{mcp_block}{observability_block}".strip()
     return {
         "linkin_context": {
             "active": True,
@@ -145,6 +155,7 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
             "system_overlay": "\n".join(overlays),
             "complex": is_linkin_complex_task(query) or mc_hit,
             "minecraft": mc_hit,
+            "minecraft_observability": bool(observability_block),
             "rag_hits": len(hits),
             "backend": backend,
         }
