@@ -46,7 +46,27 @@ def test_monitor_summary_empty(client: TestClient):
     body = res.json()
     assert "kpis" in body
     assert "bridge" in body
+    assert "bridge_setup" in body
+    assert "plugins" in body
+    assert "pipeline_timeline" in body
+    assert isinstance(body["pipeline_timeline"], list)
     assert body["kpis"]["map_plan_count"] == 0
+    assert body["bridge_setup"]["token_set"] is False
+
+
+def test_monitor_summary_pipeline_timeline(client: TestClient):
+    append_minecraft_event(
+        domain="pipeline",
+        action="run",
+        status="ok",
+        summary="測試管線",
+        details={"steps": [{"id": "begin_workspace", "status": "ok"}]},
+    )
+    append_minecraft_event(domain="map", action="generate", status="ok", summary="地圖生成")
+    res = client.get("/linkin/minecraft/monitor/summary")
+    body = res.json()
+    assert len(body["pipeline_timeline"]) >= 2
+    assert body["last_pipeline"]["domain"] == "pipeline"
 
 
 def test_ai_events_append_and_list(client: TestClient):

@@ -33,7 +33,7 @@ def test_register_and_list_minecraft():
     assert spec.default_page == "monitor"
     assert spec.api_prefix == "/linkin"
     cap_ids = {cap.id for cap in spec.capabilities}
-    assert cap_ids == {"worldview", "content", "admin", "building", "bridge", "monitor"}
+    assert cap_ids == {"worldview", "content", "admin", "building", "bridge", "monitor", "plugins"}
     pages = {item.key for group in spec.nav_groups for item in group.items}
     assert {"monitor", "world", "admin", "building", "minecraft", "studio", "narrative"} <= pages
 
@@ -120,6 +120,7 @@ def test_modules_http_catalog(monkeypatch, tmp_path):
             "building",
             "bridge",
             "monitor",
+            "plugins",
         }
 
         missing_page = client.get("/modules/minecraft/pages/nope")
