@@ -38,6 +38,16 @@ Base URL 與主應用相同：`http://localhost:8000`
 | POST | `/linkin/items` | 稀有度區間校驗；名稱重複回 409 |
 | GET | `/linkin/items` | 道具列表 |
 | DELETE | `/linkin/items/{id}` | 刪除道具 |
+
+## 敘事草稿工作區（Phase 0）
+
+詳見 [narrative-workspace.md](./narrative-workspace.md)。
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| POST | `/linkin/narrative/workspaces` | 建立工作區 |
+| POST | `/linkin/narrative/workspaces/{id}/starter-pack` | 一鍵草案（不 auto-commit） |
+| POST | `/linkin/narrative/workspaces/{id}/commit` | 提交至 Linkin 實體 |
 | GET | `/linkin/events` | 歷史事件（RAG 事件庫） |
 | GET | `/linkin/minecraft/status` | MineMCP 橋接狀態、乾跑、最近審計 |
 | POST | `/linkin/minecraft/probe` | `tools/list` 探測（乾跑不發 HTTP） |

@@ -280,3 +280,71 @@ export const runServerPatrol = () => mc.post<Record<string, unknown>>('/server/p
 export const fetchServerReport = () => mc.get<{ report: string }>('/server/report');
 export const fetchServerAudit = (limit = 40) =>
   mc.get<{ entries: ServerAuditEntry[]; count: number }>(`/server/audit?limit=${limit}`);
+
+export type NarrativeWorkspaceState = 'active' | 'awaiting_confirmation' | 'committed' | 'discarded';
+
+export type NarrativeWorkspace = {
+  workspace_id: string;
+  task_id: string;
+  snapshot_id: string;
+  state: NarrativeWorkspaceState;
+  draft_keys: string[];
+  drafts?: Record<string, unknown>;
+  created_at?: number;
+};
+
+export type NarrativeCommitResult = {
+  ok: boolean;
+  workspace: NarrativeWorkspace;
+  committed: Record<string, { id?: string; title?: string; kind?: string; [key: string]: unknown }>;
+  errors: Array<{ key: string; code: string; message: string }>;
+};
+
+export const beginNarrativeWorkspace = (body: { task_id: string; snapshot_id: string }) =>
+  mc.post<{ ok: boolean; workspace: NarrativeWorkspace; known_draft_keys: string[] }>(
+    '/narrative/workspaces',
+    body,
+  );
+
+export const listNarrativeWorkspaces = (taskId?: string) =>
+  mc.get<{ workspaces: NarrativeWorkspace[]; count: number }>(
+    `/narrative/workspaces${taskId ? `?task_id=${encodeURIComponent(taskId)}` : ''}`,
+  );
+
+export const fetchNarrativeWorkspace = (workspaceId: string) =>
+  mc.get<{ ok: boolean; workspace: NarrativeWorkspace; known_draft_keys: string[] }>(
+    `/narrative/workspaces/${encodeURIComponent(workspaceId)}`,
+  );
+
+export const writeNarrativeDraft = (workspaceId: string, key: string, value: unknown) =>
+  mc.put<{ ok: boolean; workspace: NarrativeWorkspace }>(
+    `/narrative/workspaces/${encodeURIComponent(workspaceId)}/drafts/${encodeURIComponent(key)}`,
+    { value },
+  );
+
+export const commitNarrativeWorkspace = (workspaceId: string) =>
+  mc.post<NarrativeCommitResult>(`/narrative/workspaces/${encodeURIComponent(workspaceId)}/commit`);
+
+export const confirmNarrativeWorkspace = (
+  workspaceId: string,
+  body: { choice: 'rebind' | 'discard'; new_snapshot_id?: string },
+) =>
+  mc.post<{ ok: boolean; workspace: NarrativeWorkspace }>(
+    `/narrative/workspaces/${encodeURIComponent(workspaceId)}/confirm`,
+    body,
+  );
+
+export const refreshNarrativeL0 = (newSnapshotId: string) =>
+  mc.post<{ ok: boolean; affected_workspace_ids: string[]; count: number }>(
+    '/narrative/workspaces/refresh-l0',
+    { new_snapshot_id: newSnapshotId },
+  );
+
+export const seedNarrativeStarterPack = (
+  workspaceId: string,
+  body?: { region?: string; theme?: string },
+) =>
+  mc.post<{ ok: boolean; source: 'fallback' | 'llm'; workspace: NarrativeWorkspace; draft_keys: string[] }>(
+    `/narrative/workspaces/${encodeURIComponent(workspaceId)}/starter-pack`,
+    body ?? {},
+  );

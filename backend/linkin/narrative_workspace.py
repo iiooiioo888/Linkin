@@ -88,6 +88,26 @@ class WorkspaceRegistry:
     def get(self, workspace_id: str) -> EphemeralWorkspace | None:
         return self._by_id.get(workspace_id)
 
+    def list_for_task(
+        self,
+        task_id: str = "",
+        *,
+        include_terminal: bool = False,
+    ) -> list[EphemeralWorkspace]:
+        """列舉工作區；預設略過已提交／已丟棄。"""
+        rows: list[EphemeralWorkspace] = []
+        for ws in self._by_id.values():
+            if task_id and ws.task_id != task_id:
+                continue
+            if not include_terminal and ws.state in (
+                WorkspaceState.COMMITTED,
+                WorkspaceState.DISCARDED,
+            ):
+                continue
+            rows.append(ws)
+        rows.sort(key=lambda item: item.created_at, reverse=True)
+        return rows
+
     def end_task(self, task_id: str) -> int:
         """任務結束＝生命週期上限：所有未提交草稿自動丟棄（§4.7）。"""
         count = 0
