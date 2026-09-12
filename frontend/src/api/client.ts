@@ -1046,6 +1046,22 @@ export async function fetchBilling(): Promise<BillingSnapshot> {
   return resp.json();
 }
 
+export interface BillingOverview {
+  user_id: string;
+  period_key: string;
+  monthly_used_credits: number;
+  balance_credits: number;
+  low_balance: boolean;
+  unhealthy_keys_count: number;
+  unhealthy_keys: Array<{ key_id?: string; status?: string; health_score?: number }>;
+}
+
+export async function fetchBillingOverview(): Promise<BillingOverview> {
+  const resp = await fetch(apiUrl('/billing/overview'));
+  if (!resp.ok) throw new Error(`讀取帳務總覽失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
 export async function fetchBillingLedger(limit = 50): Promise<{ user_id: string; entries: BillingLedgerEntry[] }> {
   const resp = await fetch(apiUrl(`/billing/ledger?limit=${limit}`));
   if (!resp.ok) throw new Error(`讀取分類帳失敗（HTTP ${resp.status}）`);

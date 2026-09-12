@@ -2,8 +2,11 @@
  * LiveBoard — 控制台總覽（Apple 控制中心風格）。
  * 卡片可跳到對應分頁：API 路由／角色／任務／計費，避免功能孤立。
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { fetchBillingOverview } from '../api/client';
+import MonitorAlertMode from './monitor/MonitorAlertMode';
 import {
   type AnimLiveFeed,
   budgetPct,
@@ -714,7 +717,17 @@ export default function LiveBoard({
   backgroundPhase?: string | null;
   density?: LiveBoardDensity;
 } & LiveBoardNav) {
+  const { t } = useTranslation();
+  const [alertMode, setAlertMode] = useState(false);
+  const [unhealthyKeys, setUnhealthyKeys] = useState(0);
   const dock = density === 'dock';
+
+  useEffect(() => {
+    if (dock) return;
+    fetchBillingOverview()
+      .then((o) => setUnhealthyKeys(o.unhealthy_keys_count))
+      .catch(() => setUnhealthyKeys(0));
+  }, [dock]);
   const dashboard = useMonitorStore((s) => s.dashboard);
   const consoleFeed = useMemo(
     () => ({ ...feed, agents: filterAgentsByDesk(feed.agents, 'console') }),
@@ -736,12 +749,26 @@ export default function LiveBoard({
       })
     : null;
 
+  const handleAlertJump = (tab: MonitorTab, detail?: string) => {
+    onOpenTab?.(tab);
+    if (detail && tab === 'agents') onOpenAgent?.(detail);
+    if (detail && tab === 'credits') {
+      window.location.hash = `#/monitor/credits/${detail}`;
+    }
+  };
+
   return (
     <div
       className={`lb-board flex min-h-0 flex-col overflow-hidden ${
         dock ? 'rounded-2xl border border-white/[0.08]' : 'flex-1'
       }`}
     >
+      <MonitorAlertMode
+        open={alertMode}
+        onClose={() => setAlertMode(false)}
+        onJump={handleAlertJump}
+        unhealthyKeysCount={unhealthyKeys}
+      />
       <div
         className={`lb-board-scroll min-h-0 flex-1 overflow-y-auto ${
           dock ? consoleLayout.pagePaddingDense : consoleLayout.pagePadding
@@ -753,6 +780,14 @@ export default function LiveBoard({
               控制台總覽 · API → 角色 → 執行 → 外部整合（MemOS／Viking…）→ 審計／計費
             </p>
             <span className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAlertMode(true)}
+                className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-medium text-[var(--console-accent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_16%,transparent)]"
+                data-testid="monitor-alert-mode-toggle"
+              >
+                {t('monitorAlert.toggle')}
+              </button>
               <StatusDot color={feed.live ? GREEN : GRAY} label={feed.live ? 'LIVE' : 'IDLE'} />
               {updated && <span className="apple-data text-[10px] text-[var(--console-faint)]">{updated}</span>}
             </span>

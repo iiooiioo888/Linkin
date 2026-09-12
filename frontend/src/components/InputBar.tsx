@@ -1,9 +1,12 @@
 /** 輸入列：極簡 composer，模式收在選單內；支援 /context 斜線命令。 */
 import { useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { COMPANY_TEMPLATES } from '../types';
 import type { CompanyTemplate, TaskOptions } from '../types';
 import { openChatContextDetail, openContextModal } from '../lib/contextUi';
+import { useWallet } from '../hooks/useWallet';
+import InputCreditBar, { estimateCredits, MIN_SEND_CREDITS } from './chat/InputCreditBar';
 
 export interface SendOptions {
   executionStrategy: 'auto' | 'simple' | 'company';
@@ -22,6 +25,8 @@ interface InputBarProps {
    * 不得在此處自行 openContextModal() 以免回落其他會話軌跡。
    */
   onContextCommand?: (mode: 'detail' | 'peek') => void;
+  onOpenBilling?: () => void;
+  liveSpent?: number | null;
 }
 
 const STRATEGIES: { key: 'auto' | 'simple' | 'company'; label: string }[] = [
@@ -43,7 +48,16 @@ const SLASH_COMMANDS = [
   },
 ] as const;
 
-export default function InputBar({ disabled, onSend, compact = false, onContextCommand }: InputBarProps) {
+export default function InputBar({
+  disabled,
+  onSend,
+  compact = false,
+  onContextCommand,
+  onOpenBilling,
+  liveSpent,
+}: InputBarProps) {
+  const { t } = useTranslation();
+  const { account } = useWallet(12000);
   const [text, setText] = useState('');
   const [executionStrategy, setExecutionStrategy] = useState<'auto' | 'simple' | 'company'>('auto');
   const [companyTemplate, setCompanyTemplate] = useState<CompanyTemplate>('quick_task');
@@ -99,10 +113,14 @@ export default function InputBar({ disabled, onSend, compact = false, onContextC
     clearComposer();
   };
 
+  const balance = account?.balance_credits ?? null;
+  const estCost = estimateCredits(text, executionStrategy);
+  const insufficient = balance !== null && balance < Math.max(MIN_SEND_CREDITS, estCost);
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed || disabled) return;
+    if (!trimmed || disabled || insufficient) return;
     // /context [peek]：開啟可視化，不送入對話（對齊 dsh-context）
     if (/^\/context(?:\s+peek)?$/i.test(trimmed)) {
       runContextCommand(/\bpeek\b/i.test(trimmed) ? 'peek' : 'detail');
@@ -274,6 +292,15 @@ export default function InputBar({ disabled, onSend, compact = false, onContextC
           </div>
         )}
 
+        {!compact && (
+          <InputCreditBar
+            text={text}
+            strategy={executionStrategy}
+            liveSpent={liveSpent}
+            onOpenBilling={onOpenBilling}
+          />
+        )}
+
         <form onSubmit={handleSubmit} className="apple-composer">
           <textarea
             ref={textareaRef}
@@ -303,9 +330,10 @@ export default function InputBar({ disabled, onSend, compact = false, onContextC
 
             <button
               type="submit"
-              disabled={disabled || !text.trim()}
+              disabled={disabled || !text.trim() || insufficient}
               className="apple-send-btn ml-auto"
-              aria-label="發送"
+              aria-label={t('chat.send')}
+              title={insufficient ? t('chat.insufficientBalance') : undefined}
             >
               {disabled ? (
                 <span className="apple-send-btn__spinner" />

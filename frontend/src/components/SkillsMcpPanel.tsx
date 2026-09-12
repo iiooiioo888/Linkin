@@ -5,7 +5,8 @@
  * MCP  = 通用 Model Context Protocol server 連線（stdio/sse/http），
  *        探測後工具自動掛進公司工具註冊表，角色可經 tool_call 閉環調用。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   callMcpTool,
   deleteMcpServer,
@@ -29,6 +30,58 @@ import { jumpToContextMonitor } from '../lib/rahoUi';
 import { PanelSection, PanelShell, consoleLayout } from './ui/ConsoleLayout';
 
 type SubTab = 'skills' | 'mcp' | 'viz';
+type SkillTier = 'enabled' | 'available' | 'needsKey';
+
+function skillTierOf(s: SkillRecord): SkillTier {
+  if (s.skill_type === 'cursor-only') return 'needsKey';
+  if (s.enabled) return 'enabled';
+  return 'available';
+}
+
+function mcpTierOf(s: McpServerRecord): SkillTier {
+  const envIncomplete = Object.values(s.env ?? {}).some((v) => !v || v === '***' || v.includes('${'));
+  const hdrIncomplete = Object.values(s.headers ?? {}).some((v) => !v || v === '***' || v.includes('${'));
+  const configMissing = s.transport === 'stdio' ? !s.command.trim() : !s.url.trim();
+  if (configMissing || envIncomplete || hdrIncomplete) return 'needsKey';
+  const probe = s.last_probe as { ok?: boolean; probed_at?: string } | undefined;
+  if (probe?.probed_at && !probe.ok) return 'needsKey';
+  if (s.enabled) return 'enabled';
+  return 'available';
+}
+
+function mcpHealthLabel(s: McpServerRecord): 'ok' | 'warn' | 'unknown' {
+  const probe = s.last_probe as { ok?: boolean; probed_at?: string } | undefined;
+  if (!probe?.probed_at) return mcpTierOf(s) === 'needsKey' ? 'warn' : 'unknown';
+  return probe.ok ? 'ok' : 'warn';
+}
+
+function TierSection({
+  title,
+  count,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  count: number;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (count === 0) return null;
+  return (
+    <section className="mb-4">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mb-2 flex w-full items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-left"
+      >
+        <span className="text-[11px] font-semibold text-[var(--console-ink)]">{title}</span>
+        <span className="text-[10px] text-[var(--console-faint)]">{count} · {open ? '▾' : '▸'}</span>
+      </button>
+      {open ? children : null}
+    </section>
+  );
+}
 
 const inputCls =
   'w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[var(--console-ink)] outline-none focus:border-[var(--console-blue)]/50';
@@ -87,6 +140,7 @@ const EMPTY_SKILL_FORM = {
 };
 
 function SkillsSection() {
+  const { t } = useTranslation();
   const [skills, setSkills] = useState<SkillRecord[]>([]);
   const [form, setForm] = useState({ ...EMPTY_SKILL_FORM });
   const [editing, setEditing] = useState(false);
@@ -203,6 +257,40 @@ function SkillsSection() {
   };
 
   const managedCount = skills.filter((s) => s.managed).length;
+  const tiers = useMemo(() => ({
+    enabled: skills.filter((s) => skillTierOf(s) === 'enabled'),
+    available: skills.filter((s) => skillTierOf(s) === 'available'),
+    needsKey: skills.filter((s) => skillTierOf(s) === 'needsKey'),
+  }), [skills]);
+
+  const renderSkillCard = (s: SkillRecord) => (
+    <div key={s.id} className={`${cardCls} ${s.enabled ? '' : 'opacity-50'}`}>
+      <div className="mb-1 flex items-start justify-between gap-2">
+        <div>
+          <p className="text-[13px] font-medium text-[var(--console-ink)]">{s.name}</p>
+          <p className="font-mono text-[10px] text-[var(--console-faint)]">{s.id}</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          <SkillTypeBadge skill={s} />
+          <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${s.enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-[var(--console-faint)]'}`}>
+            {s.enabled ? t('skills.tierEnabled') : t('skills.tierAvailable')}
+          </span>
+        </div>
+      </div>
+      {s.source && <p className="mb-1 text-[10px] text-[var(--console-faint)]">來源：{s.source}</p>}
+      {s.description && <p className="mb-1 text-[11px] text-[var(--console-sub)]">{s.description}</p>}
+      {s.trigger && <p className="mb-1 text-[10px] console-status-blue/80">適用：{s.trigger}</p>}
+      <pre className="mb-2 max-h-24 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 font-mono text-[10px] leading-relaxed text-[var(--console-sub)]">{s.content}</pre>
+      <p className="mb-2 text-[10px] text-[var(--console-faint)]">
+        角色：{s.roles.length ? s.roles.join(', ') : '全部'} · 上限 {s.skill_budget} 字 · 更新 {s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—'}
+      </p>
+      <div className="flex gap-2">
+        <button type="button" className={btnCls} onClick={() => startEdit(s)}>編輯</button>
+        <button type="button" className={btnCls} onClick={() => void onToggle(s)}>{s.enabled ? '停用' : '啟用'}</button>
+        <button type="button" className={`${btnCls} text-red-400/80 hover:console-status-danger`} onClick={() => void onDelete(s)}>刪除</button>
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -273,41 +361,20 @@ function SkillsSection() {
         </section>
       )}
 
-      <div className="grid gap-2 lg:grid-cols-2">
-        {skills.map((s) => (
-          <div key={s.id} className={`${cardCls} ${s.enabled ? '' : 'opacity-50'}`}>
-            <div className="mb-1 flex items-start justify-between gap-2">
-              <div>
-                <p className="text-[13px] font-medium text-[var(--console-ink)]">{s.name}</p>
-                <p className="font-mono text-[10px] text-[var(--console-faint)]">{s.id}</p>
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-1">
-                <SkillTypeBadge skill={s} />
-                <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${s.enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-[var(--console-faint)]'}`}>
-                  {s.enabled ? '啟用' : '停用'}
-                </span>
-              </div>
-            </div>
-            {s.source && <p className="mb-1 text-[10px] text-[var(--console-faint)]">來源：{s.source}</p>}
-            {s.description && <p className="mb-1 text-[11px] text-[var(--console-sub)]">{s.description}</p>}
-            {s.trigger && <p className="mb-1 text-[10px] console-status-blue/80">適用：{s.trigger}</p>}
-            <pre className="mb-2 max-h-24 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 font-mono text-[10px] leading-relaxed text-[var(--console-sub)]">{s.content}</pre>
-            <p className="mb-2 text-[10px] text-[var(--console-faint)]">
-              角色：{s.roles.length ? s.roles.join(', ') : '全部'} · 上限 {s.skill_budget} 字 · 更新 {s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—'}
-            </p>
-            <div className="flex gap-2">
-              <button type="button" className={btnCls} onClick={() => startEdit(s)}>編輯</button>
-              <button type="button" className={btnCls} onClick={() => void onToggle(s)}>{s.enabled ? '停用' : '啟用'}</button>
-              <button type="button" className={`${btnCls} text-red-400/80 hover:console-status-danger`} onClick={() => void onDelete(s)}>刪除</button>
-            </div>
-          </div>
-        ))}
-        {skills.length === 0 && !editing && (
-          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[var(--console-faint)]`}>
-            尚無技能。點「＋ 新技能」新增第一條——例如把公司的 SOP、代碼規範、領域知識放進去，角色執行時就會自動帶上。
-          </p>
-        )}
-      </div>
+      <TierSection title={t('skills.tierEnabled')} count={tiers.enabled.length}>
+        <div className="grid gap-2 lg:grid-cols-2">{tiers.enabled.map(renderSkillCard)}</div>
+      </TierSection>
+      <TierSection title={t('skills.tierAvailable')} count={tiers.available.length} defaultOpen={false}>
+        <div className="grid gap-2 lg:grid-cols-2">{tiers.available.map(renderSkillCard)}</div>
+      </TierSection>
+      <TierSection title={t('skills.tierNeedsKey')} count={tiers.needsKey.length} defaultOpen={false}>
+        <div className="grid gap-2 lg:grid-cols-2">{tiers.needsKey.map(renderSkillCard)}</div>
+      </TierSection>
+      {skills.length === 0 && !editing && (
+        <p className={`${consoleLayout.emptySm} text-[12px] text-[var(--console-faint)]`}>
+          尚無技能。點「＋ 新技能」新增第一條——例如把公司的 SOP、代碼規範、領域知識放進去，角色執行時就會自動帶上。
+        </p>
+      )}
     </div>
   );
 }
@@ -342,6 +409,7 @@ function kvToText(kv: Record<string, string>): string {
 }
 
 function McpSection() {
+  const { t } = useTranslation();
   const [servers, setServers] = useState<McpServerRecord[]>([]);
   const [form, setForm] = useState({ ...EMPTY_MCP_FORM });
   const [editing, setEditing] = useState(false);
@@ -482,6 +550,70 @@ function McpSection() {
     }
   };
 
+  const tiers = useMemo(() => ({
+    enabled: servers.filter((s) => mcpTierOf(s) === 'enabled'),
+    available: servers.filter((s) => mcpTierOf(s) === 'available'),
+    needsKey: servers.filter((s) => mcpTierOf(s) === 'needsKey'),
+  }), [servers]);
+
+  const renderMcpCard = (s: McpServerRecord) => {
+    const probe = s.last_probe as { ok?: boolean; tool_count?: number; tools?: string[]; latency_ms?: number; error?: string; probed_at?: string } | undefined;
+    const health = mcpHealthLabel(s);
+    return (
+      <div key={s.id} className={`${cardCls} ${s.enabled ? '' : 'opacity-50'}`}>
+        <div className="mb-1 flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[13px] font-medium text-[var(--console-ink)]">{s.name}</p>
+            <p className="font-mono text-[10px] text-[var(--console-faint)]">{s.id} · {s.transport}</p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`h-2 w-2 rounded-full ${health === 'ok' ? 'bg-[var(--console-green)]' : health === 'warn' ? 'bg-[var(--console-amber)]' : 'bg-[var(--console-faint)]'}`}
+              title={health === 'ok' ? t('skills.mcpHealthOk') : health === 'warn' ? t('skills.mcpHealthWarn') : t('skills.mcpHealthUnknown')}
+            />
+            <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${s.enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-[var(--console-faint)]'}`}>
+              {s.enabled ? t('skills.tierEnabled') : t('skills.tierAvailable')}
+            </span>
+          </div>
+        </div>
+        <p className="mb-1 break-all font-mono text-[10px] text-[var(--console-sub)]">
+          {s.transport === 'stdio' ? s.command : s.url}
+        </p>
+        {probe && probe.probed_at ? (
+          probe.ok ? (
+            <p className="mb-1 text-[10px] text-emerald-400/90">
+              ✓ {t('skills.mcpHealthOk')} · {probe.tool_count} 工具 · {probe.latency_ms}ms
+            </p>
+          ) : (
+            <p className="mb-1 text-[10px] text-red-400/90">✗ {probe.error}</p>
+          )
+        ) : (
+          <p className="mb-1 text-[10px] text-[var(--console-faint)]">{t('skills.mcpHealthUnknown')}</p>
+        )}
+        <p className="mb-2 text-[10px] text-[var(--console-faint)]">
+          白名單：{s.allowed_tools.length ? s.allowed_tools.join(', ') : '全部'} · {s.readonly ? '唯讀' : '可寫入'} · 逾時 {s.timeout}s
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={btnCls} disabled={busy === `probe:${s.id}`} onClick={() => void onProbe(s)}>
+            {busy === `probe:${s.id}` ? '探測中…' : t('skills.mcpProbe')}
+          </button>
+          <button type="button" className={btnCls} onClick={() => startEdit(s)}>編輯</button>
+          <button type="button" className={btnCls} onClick={() => void onToggle(s)}>{s.enabled ? '停用' : '啟用'}</button>
+          {probe?.ok && (probe.tools ?? []).length > 0 && (
+            <button
+              type="button"
+              className={btnCls}
+              onClick={() => { setCallBox({ server: s.id, tool: (probe?.tools ?? [])[0], args: '{}' }); setCallResult(null); }}
+            >
+              呼叫工具
+            </button>
+          )}
+          <button type="button" className={`${btnCls} text-red-400/80 hover:console-status-danger`} onClick={() => void onDelete(s)}>刪除</button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <ErrorBar message={error} />
@@ -588,66 +720,20 @@ function McpSection() {
         </section>
       )}
 
-      <div className="grid gap-2 lg:grid-cols-2">
-        {servers.map((s) => {
-          const probe = s.last_probe as { ok?: boolean; tool_count?: number; tools?: string[]; latency_ms?: number; error?: string; probed_at?: string } | undefined;
-          return (
-            <div key={s.id} className={`${cardCls} ${s.enabled ? '' : 'opacity-50'}`}>
-              <div className="mb-1 flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-[13px] font-medium text-[var(--console-ink)]">{s.name}</p>
-                  <p className="font-mono text-[10px] text-[var(--console-faint)]">{s.id} · {s.transport}</p>
-                </div>
-                <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${s.enabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-[var(--console-faint)]'}`}>
-                  {s.enabled ? '啟用' : '停用'}
-                </span>
-              </div>
-              <p className="mb-1 break-all font-mono text-[10px] text-[var(--console-sub)]">
-                {s.transport === 'stdio' ? s.command : s.url}
-              </p>
-              {probe && probe.probed_at ? (
-                probe.ok ? (
-                  <p className="mb-1 text-[10px] text-emerald-400/90">
-                    ✓ 探測正常 · {probe.tool_count} 工具 · {probe.latency_ms}ms
-                    {probe.tools && probe.tools.length > 0 && (
-                      <span className="text-[var(--console-faint)]">（{probe.tools.slice(0, 6).join(', ')}{probe.tools.length > 6 ? '…' : ''}）</span>
-                    )}
-                  </p>
-                ) : (
-                  <p className="mb-1 text-[10px] text-red-400/90">✗ {probe.error}</p>
-                )
-              ) : (
-                <p className="mb-1 text-[10px] text-[var(--console-faint)]">尚未探測</p>
-              )}
-              <p className="mb-2 text-[10px] text-[var(--console-faint)]">
-                白名單：{s.allowed_tools.length ? s.allowed_tools.join(', ') : '全部'} · {s.readonly ? '唯讀' : '可寫入'} · 逾時 {s.timeout}s
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className={btnCls} disabled={busy === `probe:${s.id}`} onClick={() => void onProbe(s)}>
-                  {busy === `probe:${s.id}` ? '探測中…' : '探測'}
-                </button>
-                <button type="button" className={btnCls} onClick={() => startEdit(s)}>編輯</button>
-                <button type="button" className={btnCls} onClick={() => void onToggle(s)}>{s.enabled ? '停用' : '啟用'}</button>
-                {probe?.ok && (probe.tools ?? []).length > 0 && (
-                  <button
-                    type="button"
-                    className={btnCls}
-                    onClick={() => { setCallBox({ server: s.id, tool: (probe?.tools ?? [])[0], args: '{}' }); setCallResult(null); }}
-                  >
-                    呼叫工具
-                  </button>
-                )}
-                <button type="button" className={`${btnCls} text-red-400/80 hover:console-status-danger`} onClick={() => void onDelete(s)}>刪除</button>
-              </div>
-            </div>
-          );
-        })}
-        {servers.length === 0 && !editing && (
-          <p className={`col-span-full ${consoleLayout.emptySm} text-[12px] text-[var(--console-faint)]`}>
-            尚無 MCP 連線。點「＋ 新連線」接入第一個 server——例如 <code className="font-mono text-[var(--console-sub)]">npx -y @modelcontextprotocol/server-filesystem /data</code>。
-          </p>
-        )}
-      </div>
+      <TierSection title={t('skills.tierEnabled')} count={tiers.enabled.length}>
+        <div className="grid gap-2 lg:grid-cols-2">{tiers.enabled.map(renderMcpCard)}</div>
+      </TierSection>
+      <TierSection title={t('skills.tierAvailable')} count={tiers.available.length} defaultOpen={false}>
+        <div className="grid gap-2 lg:grid-cols-2">{tiers.available.map(renderMcpCard)}</div>
+      </TierSection>
+      <TierSection title={t('skills.tierNeedsKey')} count={tiers.needsKey.length} defaultOpen={false}>
+        <div className="grid gap-2 lg:grid-cols-2">{tiers.needsKey.map(renderMcpCard)}</div>
+      </TierSection>
+      {servers.length === 0 && !editing && (
+        <p className={`${consoleLayout.emptySm} text-[12px] text-[var(--console-faint)]`}>
+          尚無 MCP 連線。點「＋ 新連線」接入第一個 server——例如 <code className="font-mono text-[var(--console-sub)]">npx -y @modelcontextprotocol/server-filesystem /data</code>。
+        </p>
+      )}
     </div>
   );
 }

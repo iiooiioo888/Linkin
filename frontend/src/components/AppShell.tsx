@@ -208,7 +208,11 @@ export default function AppShell({
       {/* ══ 中间区域：ActivityBar + SidePanel + Main + RightPanel ══ */}
       <div className="app-shell__body flex min-h-0 flex-1">
         {/* 桌面左側活動欄 */}
-        <ActivityBar activity={activity} onActivityChange={handleActivityChange} placement="sidebar" />
+        <ActivityBar
+          activity={activity}
+          onActivityChange={handleActivityChange}
+          placement="sidebar"
+        />
 
         {/* 侧面板（移动端覆盖层） */}
         <SidePanel
@@ -247,7 +251,19 @@ export default function AppShell({
 
       {/* 行動端底部 Tab 列（桌面僅左側垂直欄） */}
       {!isDesktop && (
-        <ActivityBar activity={activity} onActivityChange={handleActivityChange} placement="bottom" />
+        <ActivityBar
+          activity={activity}
+          onActivityChange={handleActivityChange}
+          placement="bottom"
+          onMobileTasks={() => {
+            onViewChange('monitor');
+            onMonitorTabChange('tasks');
+          }}
+          onMobileWallet={() => {
+            onViewChange('monitor');
+            onMonitorTabChange('credits');
+          }}
+        />
       )}
 
       {/* ══ 底部状态栏 ══ */}

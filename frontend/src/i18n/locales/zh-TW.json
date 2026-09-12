@@ -10,7 +10,9 @@
     "system": "系統",
     "lab": "實驗室",
     "monitor": "控制台",
-    "traces": "軌跡"
+    "traces": "軌跡",
+    "tasks": "任務",
+    "wallet": "錢包"
   },
   "monitor": {
     "live": "即時",
@@ -28,6 +30,55 @@
     "liveActive": "即時",
     "roster": "名冊",
     "searchRoles": "搜尋角色／職責"
+  },
+  "chat": {
+    "emptyTitle": "開始對話",
+    "emptySubtitle": "簡單任務即時生成 · 複雜任務多角色協作",
+    "emptyPipelineHint": "送出訊息後，任務會依管線階段推進（感知 → 生成 → 評估 → 反思 → 輸出）。密集監控台留給運維人員，日常對話以精簡管線條為主。",
+    "pipelineRunning": "管線進行中",
+    "pinMonitor": "展開監控",
+    "monitorPinned": "已展開監控",
+    "balance": "餘額",
+    "estCost": "預估",
+    "liveCost": "已耗",
+    "insufficientBalance": "積分不足，請先充值",
+    "lowBalanceWarn": "餘額可能不足以完成此任務",
+    "openWallet": "前往錢包",
+    "send": "發送"
+  },
+  "onboarding": {
+    "title": "開始任務",
+    "body": "在下方輸入需求即可啟動對話；複雜任務會自動走多角色管線。建議先使用「自動」執行模式。",
+    "monitorNote": "右側密集監控台適合運維；日常對話以精簡管線條為主。",
+    "startCta": "開始對話"
+  },
+  "monitorAlert": {
+    "toggle": "監控模式",
+    "title": "監控模式",
+    "subtitle": "突顯異常資源、失敗任務與不健康 Key",
+    "exit": "退出監控模式",
+    "allClear": "目前無需關注的異常",
+    "jump": "前往處理",
+    "failedTasks": "{{count}} 個失敗任務",
+    "failedTasksHint": "點擊查看任務面板",
+    "highDocker": "Docker 資源偏高",
+    "unhealthyKeys": "{{count}} 個異常 Key",
+    "unhealthyKeysHint": "點擊查看貢獻者 Key 健康",
+    "agentBudget": "{{count}} 個角色預算告警",
+    "highLoad": "{{count}} 個任務執行中",
+    "highLoadHint": "系統負載偏高"
+  },
+  "skills": {
+    "tierEnabled": "已啟用",
+    "tierAvailable": "可用",
+    "tierNeedsKey": "需 Key",
+    "mcpHealthOk": "連線正常",
+    "mcpHealthWarn": "需檢查",
+    "mcpHealthUnknown": "尚未探測",
+    "mcpProbe": "健康檢查"
+  },
+  "roles": {
+    "showDenseWidgets": "展開熱力圖與任務矩陣"
   },
   "errors": {
     "opcGuard": "OPC 安全護欄已攔截寫入",

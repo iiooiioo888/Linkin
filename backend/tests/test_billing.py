@@ -338,6 +338,26 @@ def test_transfer_forbidden(billing_store):
         svc.transfer("a", "b", 10)
 
 
+def test_billing_overview_api(billing_store, monkeypatch):
+    monkeypatch.setenv("LINKIN_BILLING_FORCE", "1")
+    monkeypatch.setenv("LINKIN_BILLING_DB", billing_store.db_path)
+    from backend.main import app
+
+    svc = BillingService(billing_store)
+    svc.ensure_account("overview_user", "free")
+    svc.debit_credits("overview_user", 120.5, source="test", reference="overview-spend")
+
+    with TestClient(app) as client:
+        resp = client.get("/billing/overview")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["user_id"] == "overview_user"
+        assert data["monthly_used_credits"] == pytest.approx(120.5)
+        assert data["balance_credits"] > 0
+        assert data["unhealthy_keys_count"] == 0
+        assert data["unhealthy_keys"] == []
+
+
 def test_transfer_api_403(billing_store, monkeypatch):
     monkeypatch.setenv("LINKIN_AUTH_FORCE", "1")
     monkeypatch.setenv("LINKIN_GATE_ID", "t_user")

@@ -2,8 +2,10 @@
  * 訊息列表：居中窄欄，空態極簡。
  * 僅在新訊息／串流正文變化且貼近底部時自動捲動，避免決策列被進度輪詢搶點擊。
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ChatMessage } from '../types';
+import { dismissChatEmptyHint, isChatEmptyHintDismissed } from '../lib/onboarding';
 import MessageBubble from './MessageBubble';
 
 interface MessageListProps {
@@ -41,6 +43,8 @@ export default function MessageList({
   variant = 'default',
   hideTaskCard = false,
 }: MessageListProps) {
+  const { t } = useTranslation();
+  const [hintVisible, setHintVisible] = useState(() => !isChatEmptyHintDismissed());
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -82,11 +86,26 @@ export default function MessageList({
           <div className={`flex flex-col items-center gap-8 text-center ${variant === 'drawer' ? 'py-10' : 'py-20 sm:py-28'}`}>
             <div>
               <h2 className="text-[20px] font-semibold tracking-tight text-[#F5F5F7] sm:text-[22px]">
-                開始對話
+                {t('chat.emptyTitle')}
               </h2>
               <p className="mt-2 text-[13px] text-[#98989D]">
-                簡單任務即時生成 · 複雜任務多角色協作
+                {t('chat.emptySubtitle')}
               </p>
+              {hintVisible && (
+                <div className="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_20%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_6%,transparent)] px-4 py-3 text-left">
+                  <p className="text-[12px] text-[var(--console-sub)]">{t('chat.emptyPipelineHint')}</p>
+                  <button
+                    type="button"
+                    className="mt-2 text-[11px] text-[var(--console-accent)] hover:underline"
+                    onClick={() => {
+                      dismissChatEmptyHint();
+                      setHintVisible(false);
+                    }}
+                  >
+                    {t('common.dismiss')}
+                  </button>
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (

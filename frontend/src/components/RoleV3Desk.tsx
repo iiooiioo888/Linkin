@@ -3,6 +3,8 @@
  * 對齊 docs/design/monitor-dashboard-v3.html 與 SystemMetricsPanel 結構。
  */
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { AgentWorkItem, GrillTreeNode, L0Snapshot, RahoSnapshot, RoleAgent } from '../types';
 import {
   blankMetrics,
@@ -147,11 +149,14 @@ export default function RoleV3Desk({
   onSelectAgent,
   onOpenGrill,
 }: RoleV3DeskProps) {
+  const { t } = useTranslation();
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollTo = useScrollToSection(scrollRef);
   const activeSection = useSectionScrollSpy(LEFT_SECTIONS.map((s) => s.id), scrollRef);
   const [itemFilter, setItemFilter] = useState<WorkItemColumnKey>('executing');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showDenseWidgets, setShowDenseWidgets] = useState(false);
 
   const m = agent.metrics ?? blankMetrics();
   const capPct = Math.round(m.capacity_pct ?? ((agent.capacity_used ?? 0) / Math.max(agent.max_parallel_work, 1)) * 100);
@@ -253,12 +258,14 @@ export default function RoleV3Desk({
               </div>
             </div>
 
-            <ConsoleCard>
-              <ConsoleCardHeader>活動熱力圖</ConsoleCardHeader>
-              <div className="p-2">
-                <ActivityHeatmap rows={heatmap} demo={heatmapEmpty} title="7×24" />
-              </div>
-            </ConsoleCard>
+            {(!isMobile || showDenseWidgets) && (
+              <ConsoleCard>
+                <ConsoleCardHeader>活動熱力圖</ConsoleCardHeader>
+                <div className="p-2">
+                  <ActivityHeatmap rows={heatmap} demo={heatmapEmpty} title="7×24" />
+                </div>
+              </ConsoleCard>
+            )}
 
             <ConsoleCard>
               <ConsoleCardHeader>資源</ConsoleCardHeader>
@@ -315,12 +322,22 @@ export default function RoleV3Desk({
           </section>
 
           <section id="role-execution" className={`${consoleLayout.sectionAnchor} space-y-3`}>
-            <ConsoleCard>
-              <ConsoleCardHeader>任務分佈 · L4/L3/L2 × 24h</ConsoleCardHeader>
-              <div className="p-3">
-                <TaskDistributionMatrix matrix={taskMatrix} demo={matrixEmpty} />
-              </div>
-            </ConsoleCard>
+            {isMobile && !showDenseWidgets ? (
+              <button
+                type="button"
+                onClick={() => setShowDenseWidgets(true)}
+                className="w-full rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-2 text-[11px] text-[var(--console-sub)] hover:text-[var(--console-ink)]"
+              >
+                {t('roles.showDenseWidgets')}
+              </button>
+            ) : (
+              <ConsoleCard>
+                <ConsoleCardHeader>任務分佈 · L4/L3/L2 × 24h</ConsoleCardHeader>
+                <div className="p-3">
+                  <TaskDistributionMatrix matrix={taskMatrix} demo={matrixEmpty} />
+                </div>
+              </ConsoleCard>
+            )}
 
             <ConsoleCard>
               <ConsoleCardHeader>指揮鏈管線 · 節點耗時</ConsoleCardHeader>
