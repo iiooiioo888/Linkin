@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchL0Kernel } from '../../api/client';
 import {
   applyBuildBrief,
+  applyMapPlan,
   applyWorldIntents,
   beginNarrativeWorkspace,
   commitNarrativeWorkspace,
@@ -14,15 +15,19 @@ import {
   fetchMinecraftStatus,
   fetchNarrativeWorkspace,
   fetchPendingWorldIntents,
-  listNarrativeWorkspaces,
+  generateMapPlan,
   generateNarrativeDrafts,
+  listNarrativeWorkspaces,
   previewBuildBrief,
+  previewMapPlan,
   previewWorldIntents,
   seedNarrativeStarterPack,
   writeNarrativeDraft,
   type BuildBrief,
   type BuildBriefApplyResult,
   type BuildBriefPreview,
+  type MapPlan,
+  type MapPlanPreview,
   type MinecraftStatus,
   type NarrativeWorkspace,
   type PendingWorldIntents,
@@ -104,6 +109,16 @@ const DRAFT_TEMPLATES: Record<string, string> = {
 
 const KNOWN_KEYS = Object.keys(DRAFT_TEMPLATES);
 
+const PHASE4_STEPS = ['brief', 'generate', 'preview', 'apply'] as const;
+type Phase4Step = (typeof PHASE4_STEPS)[number];
+
+const PHASE4_LABELS: Record<Phase4Step, string> = {
+  brief: 'brief/seed',
+  generate: '生成地圖',
+  preview: 'preview',
+  apply: '落地地圖',
+};
+
 function defaultTaskId() {
   return `task-${Date.now().toString(36)}`;
 }
@@ -125,6 +140,11 @@ export default function NarrativeWorkspacePanel() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mapSeed, setMapSeed] = useState('');
+  const [mapPlan, setMapPlan] = useState<MapPlan | null>(null);
+  const [mapPreview, setMapPreview] = useState<MapPlanPreview | null>(null);
+  const [mapStep, setMapStep] = useState<Phase4Step>('brief');
+  const [mapNote, setMapNote] = useState<string | null>(null);
   const [committedBriefId, setCommittedBriefId] = useState<string | null>(null);
   const [buildBrief, setBuildBrief] = useState<BuildBrief | null>(null);
   const [briefPreview, setBriefPreview] = useState<BuildBriefPreview | null>(null);
@@ -472,8 +492,72 @@ export default function NarrativeWorkspacePanel() {
     }
   };
 
+  const phase4Index = PHASE4_STEPS.indexOf(mapStep);
+
+  const onGenerateMap = async () => {
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    setMapNote(null);
+    try {
+      const data = await generateMapPlan({
+        workspace_id: workspace?.workspace_id,
+        region,
+        seed: mapSeed || theme || region,
+      });
+      setMapPlan(data.plan);
+      setMapPreview(data.preview);
+      setMapStep('preview');
+      setSuccess(
+        data.source === 'llm'
+          ? `AI 已生成區域地圖計畫（${data.preview.plot_count} plots）。`
+          : `已生成確定性區域佈局（${data.preview.plot_count} plots）。`,
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onRefreshMapPreview = async () => {
+    if (!mapPlan) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await previewMapPlan({ plan: mapPlan });
+      setMapPreview(data.preview);
+      setMapStep('preview');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onApplyMap = async () => {
+    if (!mapPlan) return;
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    setMapNote(null);
+    try {
+      const data = await applyMapPlan({ plan: mapPlan, confirm: true });
+      setMapPlan(data.plan);
+      const note = data.minecraft.dry_run
+        ? '橋接未連線：dry-run 模擬落地（未寫入世界）。'
+        : `已落地 ${data.minecraft.blocks_placed ?? 0} 方塊（status=${data.status}）。`;
+      setMapNote(note);
+      setMapStep('apply');
+      setSuccess(note);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div className="max-w-2xl">
           <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">Phase 1 · 故事草稿工作區</p>
@@ -690,7 +774,7 @@ export default function NarrativeWorkspacePanel() {
       {workspace?.state === 'committed' && (
         <div className="space-y-3">
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[12px] leading-relaxed text-emerald-200">
-            草案已寫入 Linkin 實體庫。NPC／任務／道具標記為 pending_world，需 Phase 3 手動落地；建築意圖需 Phase 2 手動建造。
+            草案已寫入 Linkin 實體庫。NPC／任務／道具標記為 pending_world，需 Phase 3 手動落地；建築意圖需 Phase 2 手動建造；可在下方 Phase 4 從故事／build_brief 生成區域地圖（落地需明確確認，commit 不會自動寫入世界）。
           </div>
 
           {pendingWorld && pendingWorld.count > 0 && (
@@ -843,6 +927,123 @@ export default function NarrativeWorkspacePanel() {
           )}
         </div>
       )}
+
+      <section className="mt-4 rounded-xl border border-[#64D2FF]/20 bg-[#1C1C1E] p-3">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-[#64D2FF]/80">Phase 4 · 區域地圖</p>
+            <h3 className="text-[13px] font-medium text-[#64D2FF]">brief/seed → 生成地圖 → preview → 落地地圖</h3>
+            <p className="mt-1 text-[10px] leading-relaxed text-[#636366]">
+              從工作區草稿或已提交實體生成 map_plan；preview 不寫世界；落地需 confirm=true。
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-3 flex gap-1">
+          {PHASE4_STEPS.map((step, idx) => {
+            const done = idx < phase4Index;
+            const active = step === mapStep;
+            return (
+              <div key={step} className="flex-1">
+                <div
+                  className={`h-1.5 w-full rounded-full ${
+                    done ? 'bg-[#c9a961]' : active ? 'progress-shimmer bg-[#64D2FF]/60' : 'bg-gray-700/70'
+                  }`}
+                />
+                <p className={`mt-1 text-center text-[10px] ${active ? 'text-[#64D2FF]' : 'text-[#636366]'}`}>
+                  {PHASE4_LABELS[step]}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {mapNote && (
+          <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+            {mapNote}
+          </div>
+        )}
+
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="space-y-2 rounded-lg border border-white/[0.06] bg-black/20 p-3">
+            <label className="block text-[10px] text-[#8a8f98]">
+              區域 seed（可選）
+              <input
+                value={mapSeed}
+                onChange={(e) => {
+                  setMapSeed(e.target.value);
+                  setMapStep('brief');
+                }}
+                placeholder={theme || region}
+                className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]"
+              />
+            </label>
+            <p className="text-[10px] text-[#636366]">
+              來源：{workspace ? `工作區 ${workspace.workspace_id}` : '僅 region／已提交實體'} · 區域 {region}
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setMapStep('generate');
+                  void onGenerateMap();
+                }}
+                className="rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40"
+              >
+                生成地圖
+              </button>
+              <button
+                type="button"
+                disabled={busy || !mapPlan}
+                onClick={() => void onRefreshMapPreview()}
+                className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[#AEAEB2] disabled:opacity-40"
+              >
+                重新預覽
+              </button>
+              <button
+                type="button"
+                disabled={busy || !mapPlan}
+                onClick={() => {
+                  setMapStep('apply');
+                  void onApplyMap();
+                }}
+                className="rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961] disabled:opacity-40"
+              >
+                落地地圖（confirm）
+              </button>
+            </div>
+          </div>
+
+          <div className="min-h-[180px] rounded-lg border border-white/[0.06] bg-[#111113] p-3">
+            {mapPreview ? (
+              <div className="space-y-2 text-[11px]">
+                <p className="font-medium text-[#f7f8f8]">{mapPreview.title}</p>
+                <p className="text-[#8a8f98]">
+                  plots {mapPreview.plot_count} · 預估 {mapPreview.estimated_blocks} 方塊 · 跨度 x
+                  {mapPreview.axis_span.x}/y{mapPreview.axis_span.y}/z{mapPreview.axis_span.z}
+                </p>
+                <p className="text-[10px] text-[#636366]">
+                  bounds ({mapPreview.bounds.x1},{mapPreview.bounds.y1},{mapPreview.bounds.z1}) → (
+                  {mapPreview.bounds.x2},{mapPreview.bounds.y2},{mapPreview.bounds.z2})
+                </p>
+                <div>
+                  <p className="mb-1 text-[10px] uppercase text-[#64D2FF]/70">POI</p>
+                  <ul className="max-h-[120px] space-y-1 overflow-y-auto font-mono text-[10px] text-[#AEAEB2]">
+                    {mapPreview.pois.map((poi) => (
+                      <li key={poi.id}>
+                        {poi.title} · {poi.location} · {poi.kind}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-[#636366]">尚未生成地圖。請設定 seed 後按「生成地圖」。</p>
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
