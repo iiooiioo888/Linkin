@@ -26,7 +26,7 @@ import {
   saveActiveSessionId,
   saveSessions,
 } from './lib/storage';
-import { looksLikeCompanyQuery } from './lib/chatWorkspace';
+import { coerceTaskProgressStatus, looksLikeCompanyQuery } from './lib/chatWorkspace';
 import { hydrateWorldModules } from './lib/worldModules';
 import { splitThink } from './lib/splitThink';
 import AppShell from './components/AppShell';
@@ -633,7 +633,12 @@ export default function App() {
             wsClient?.close();
             if (pollTimer) clearTimeout(pollTimer);
           }
-          if (progress.status === 'failed' && !finished) {
+          if (
+            (progress.status === 'failed' ||
+              progress.status === 'cancelled' ||
+              progress.status === 'interrupted') &&
+            !finished
+          ) {
             finished = true;
             updateSession(sessionId, (s) => ({
               ...s,
@@ -641,7 +646,9 @@ export default function App() {
                 m.id === assistantId ? { ...m, streaming: false } : m,
               ),
             }));
-            setError(progress.error || '任务执行失败');
+            if (progress.status === 'failed') {
+              setError(progress.error || '任务执行失败');
+            }
             wsClient?.close();
             if (pollTimer) clearTimeout(pollTimer);
           }
@@ -672,12 +679,7 @@ export default function App() {
               // 降级：使用事件数据
               const data = msg.data;
               if (lastProgress) {
-                const statusValue = data.status;
-                const validStatus: TaskProgress['status'] =
-                  statusValue === 'completed' || statusValue === 'failed' ||
-                  statusValue === 'running' || statusValue === 'pending'
-                    ? statusValue
-                    : 'completed';
+                const validStatus = coerceTaskProgressStatus(data.status);
                 applyProgress({
                   ...lastProgress,
                   status: validStatus,
@@ -1097,6 +1099,33 @@ export default function App() {
     [navigateRoute],
   );
 
+  const handleTaskStatePatch = useCallback(
+    (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => {
+      const sid = activeSession?.id;
+      if (!sid) return;
+      updateSession(sid, (s) => ({
+        ...s,
+        updatedAt: Date.now(),
+        messages: s.messages.map((m) => {
+          const tid = (m.taskId || m.taskState?.task_id || '').trim();
+          if (tid !== taskId || !m.taskState) return m;
+          const nextState = { ...m.taskState, ...patch };
+          const terminal =
+            nextState.status === 'completed' ||
+            nextState.status === 'failed' ||
+            nextState.status === 'cancelled' ||
+            nextState.status === 'interrupted';
+          return {
+            ...m,
+            streaming: terminal ? false : m.streaming,
+            taskState: nextState,
+          };
+        }),
+      }));
+    },
+    [activeSession?.id, updateSession],
+  );
+
   const handleDecisionPending = useCallback((hasPending: boolean) => {
     setDecisionPending(hasPending);
   }, []);
@@ -1185,6 +1214,7 @@ export default function App() {
               onBattlePick={handleBattlePick}
               onDecisionPending={handleDecisionPending}
               onDecisionResolved={handleDecisionResolved}
+              onTaskStatePatch={handleTaskStatePatch}
               onOpenBilling={() => {
                 setActiveView('monitor');
                 setMonitorTab('credits');

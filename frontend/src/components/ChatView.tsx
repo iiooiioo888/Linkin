@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, TaskProgress } from '../types';
-import { cancelTask, fetchTask, resumeTask } from '../api/client';
+import { fetchTask, resumeTask } from '../api/client';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import InputBar from './InputBar';
@@ -22,6 +22,8 @@ import {
   hasUnresolvedDecision,
   isBattleWaiting,
   isGrillInteractive,
+  isRunningTaskStatus,
+  isTerminalTaskStatus,
   numBudget,
   resolveContextTaskId,
   runningTaskMessage,
@@ -29,6 +31,7 @@ import {
   wsProblems,
   wsTerminal,
 } from '../lib/chatWorkspace';
+import { cancelTaskAndSync } from '../lib/taskCancel';
 import PipelineStrip from './chat/PipelineStrip';
 import {
   OPEN_CHAT_CONTEXT_EVENT,
@@ -56,6 +59,7 @@ interface ChatViewProps {
   onBattlePick?: (messageId: string, choice: string) => void;
   onDecisionPending?: (hasPending: boolean) => void;
   onDecisionResolved?: (decisionId?: string) => void;
+  onTaskStatePatch?: (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => void;
   onOpenBilling?: () => void;
   /** SSE 本輪實際扣款（優先於任務預算 liveSpent） */
   liveSpent?: number | null;
@@ -80,6 +84,7 @@ export default function ChatView({
   onBattlePick,
   onDecisionPending,
   onDecisionResolved,
+  onTaskStatePatch,
   onOpenBilling,
   liveSpent: sseLiveSpent,
 }: ChatViewProps) {
@@ -110,7 +115,15 @@ export default function ChatView({
     };
   }, [taskId, live?.taskState]);
 
-  const task = live?.taskState ?? runningMsg?.taskState ?? hydrated;
+  const task = useMemo(() => {
+    const fromMsg = live?.taskState ?? runningMsg?.taskState;
+    if (fromMsg && hydrated && fromMsg.task_id === hydrated.task_id) {
+      if (isRunningTaskStatus(fromMsg.status) && isTerminalTaskStatus(hydrated.status)) {
+        return hydrated;
+      }
+    }
+    return fromMsg ?? hydrated;
+  }, [live?.taskState, runningMsg?.taskState, hydrated]);
   const pending = task?.raho?.pending_decisions ?? [];
   const running = task?.status === 'running' || task?.status === 'pending';
   const grilling = messages.some((m) => Boolean(m.grill && !m.grill.locked && !m.grill.terminated));
@@ -133,7 +146,13 @@ export default function ChatView({
   const [monitorSheetOpen, setMonitorSheetOpen] = useState(false);
 
   useEffect(() => {
-    if (task?.status === 'completed') setMonitorPinned(false);
+    if (
+      task?.status === 'completed' ||
+      task?.status === 'cancelled' ||
+      task?.status === 'interrupted'
+    ) {
+      setMonitorPinned(false);
+    }
   }, [task?.status]);
 
   useEffect(() => {
@@ -235,11 +254,18 @@ export default function ChatView({
   const handlePause = async () => {
     if (!task) return;
     setActError(null);
-    try {
-      await cancelTask(task.task_id);
-    } catch (err) {
-      setActError((err as Error).message);
+    const { task: fresh, error: cancelErr } = await cancelTaskAndSync(task.task_id);
+    if (fresh) {
+      onTaskStatePatch?.(task.task_id, fresh);
+      setMonitorPinned(false);
+      return;
     }
+    if (cancelErr) {
+      setActError(cancelErr);
+      return;
+    }
+    onTaskStatePatch?.(task.task_id, { status: 'cancelled' });
+    setMonitorPinned(false);
   };
 
   const handleResume = async () => {
@@ -299,6 +325,7 @@ export default function ChatView({
       sending={sending}
       onGrillAnswer={onGrillAnswer}
       onBattlePick={onBattlePick}
+      onTaskStatePatch={onTaskStatePatch}
       hideTaskCard={showMonitor}
     />
   );

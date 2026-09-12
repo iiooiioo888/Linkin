@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, TaskProgress } from '../types';
 import { dismissChatEmptyHint, isChatEmptyHintDismissed } from '../lib/onboarding';
 import MessageBubble from './MessageBubble';
 
@@ -20,6 +20,7 @@ interface MessageListProps {
   onSuggest?: (text: string, companyMode: boolean) => void;
   onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
   onBattlePick?: (messageId: string, choice: string) => void;
+  onTaskStatePatch?: (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => void;
   variant?: 'default' | 'drawer';
   /** 左右分裂時隱藏氣泡內看板，避免與右側監控重複 */
   hideTaskCard?: boolean;
@@ -40,6 +41,7 @@ export default function MessageList({
   onSuggest,
   onGrillAnswer,
   onBattlePick,
+  onTaskStatePatch,
   variant = 'default',
   hideTaskCard = false,
 }: MessageListProps) {
@@ -132,6 +134,7 @@ export default function MessageList({
             onOpenContext={onOpenContext}
             onGrillAnswer={onGrillAnswer}
             onBattlePick={onBattlePick}
+            onTaskStatePatch={onTaskStatePatch}
             variant={variant === 'drawer' || hideTaskCard ? 'workspace' : 'default'}
           />
         ))}
