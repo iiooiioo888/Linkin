@@ -3,8 +3,11 @@
  * 分頁切換由左側 SidePanel 負責；此處僅渲染當前分頁。
  */
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchL0Kernel } from '../api/client';
 import { useMonitorHub } from '../hooks/useMonitorHub';
+import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
+import { isMobileDesktopOnlyPanel } from '../lib/mobileShell';
 import { buildAnimLiveFeed } from '../lib/animLive';
 import { isLinkinStudioAgent } from '../lib/agentUi';
 import { jumpToL0Kernel } from '../lib/rahoUi';
@@ -16,6 +19,7 @@ import { moduleIdForTab } from '../lib/worldModules';
 import ModuleWorkspace from '../modules/ModuleWorkspace';
 import LiveBoard from './LiveBoard';
 import ErrorState from './ui/ErrorState';
+import { MobileLiteGate } from './ui/MobileLiteGate';
 import { PanelShell } from './ui/ConsoleLayout';
 
 const AgentsMonitorPanel = lazy(() => import('./AgentsMonitorPanel'));
@@ -61,12 +65,14 @@ function LiveTab({
   onOpenTab,
   onOpenTraces,
   onOpenAgent,
+  liteShell,
 }: {
   messages?: ChatMessage[];
   onOpenLab?: (sub: LabSubTab) => void;
   onOpenTab?: (tab: MonitorTab) => void;
   onOpenTraces?: () => void;
   onOpenAgent?: (id: string) => void;
+  liteShell?: boolean;
 }) {
   const agents = useMonitorStore((s) => s.agents);
   const optimization = useMonitorStore((s) => s.optimization);
@@ -130,6 +136,7 @@ function LiveTab({
       <LiveBoard
         feed={liveFeed}
         backgroundPhase={backgroundPhase}
+        liteShell={liteShell}
         onOpenLab={onOpenLab}
         onOpenTab={onOpenTab}
         onOpenTraces={onOpenTraces}
@@ -152,8 +159,10 @@ export default function MonitorView({
   labSubTab,
   onLabSubTabChange,
 }: MonitorViewProps) {
+  const { t } = useTranslation();
   const tab = activeTab;
   const moduleId = moduleIdForTab(tab);
+  const isMobileLite = useIsMobileLiteShell();
 
   useMonitorHub(tab !== 'lab');
 
@@ -177,6 +186,7 @@ export default function MonitorView({
         {tab === 'live' && (
           <LiveTab
             messages={messages}
+            liteShell={isMobileLite}
             onOpenLab={(sub) => {
               onTabChange('lab');
               onLabSubTabChange(sub);
@@ -191,6 +201,7 @@ export default function MonitorView({
         )}
         {tab === 'tasks' && (
           <TasksMonitorPanel
+            liteShell={isMobileLite}
             focusTaskId={focusTaskId}
             onFocusTask={onFocusTask}
             onOpenTask={onOpenTask}
@@ -201,46 +212,87 @@ export default function MonitorView({
           <AgentsMonitorPanel focusAgentId={focusAgentId} onFocusAgent={onFocusAgent} deskScope="console" />
         )}
         {tab === 'pipeline' && (
-          <PipelineView messages={messages} onGoTasks={() => onTabChange('tasks')} />
+          <MobileLiteGate
+            gated={isMobileDesktopOnlyPanel('pipeline')}
+            summary={<p className="text-[12px] text-[var(--console-sub)]">{t('mobileShell.tasksSummary')}</p>}
+          >
+            <PipelineView messages={messages} onGoTasks={() => onTabChange('tasks')} />
+          </MobileLiteGate>
         )}
-        {tab === 'metrics' && <SystemMetricsPanel />}
+        {tab === 'metrics' && (
+          <MobileLiteGate gated={isMobileDesktopOnlyPanel('metrics')}>
+            <SystemMetricsPanel />
+          </MobileLiteGate>
+        )}
         {tab === 'models' && <ModelCallPanel />}
-        {(tab === 'credits' || tab === 'billing') && <BillingCreditsHub />}
-        {tab === 'feedback' && <UserFeedbackPanel />}
-        {tab === 'lab' && (
-          <LabPanel activeTab={labSubTab} onTabChange={onLabSubTabChange} />
+        {(tab === 'credits' || tab === 'billing') && <BillingCreditsHub liteShell={isMobileLite} />}
+        {tab === 'feedback' && (
+          <MobileLiteGate gated={isMobileDesktopOnlyPanel('feedback')}>
+            <UserFeedbackPanel />
+          </MobileLiteGate>
         )}
-        {tab === 'ops' && <OpsPanel />}
-        {tab === 'llm' && <LlmOpsPanel />}
+        {tab === 'lab' && (
+          <MobileLiteGate
+            gated={isMobileLite}
+            summary={<p className="text-[12px] text-[var(--console-sub)]">{t('mobileShell.moreNote')}</p>}
+          >
+            <LabPanel activeTab={labSubTab} onTabChange={onLabSubTabChange} />
+          </MobileLiteGate>
+        )}
+        {tab === 'ops' && (
+          <MobileLiteGate gated={isMobileDesktopOnlyPanel('ops')}>
+            <OpsPanel />
+          </MobileLiteGate>
+        )}
+        {tab === 'llm' && (
+          <MobileLiteGate gated={isMobileDesktopOnlyPanel('llm')}>
+            <LlmOpsPanel />
+          </MobileLiteGate>
+        )}
         {tab === 'memory' && (
-          <PanelShell>
-            <L0Panel />
-          </PanelShell>
+          <MobileLiteGate gated={isMobileDesktopOnlyPanel('memory')}>
+            <PanelShell>
+              <L0Panel />
+            </PanelShell>
+          </MobileLiteGate>
         )}
         {tab === 'context' && (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="shrink-0 border-b border-white/[0.06] bg-[#1C1C1E]/80 px-6 py-3">
-              <p className="text-[12px] text-[#AEAEB2]">
-                Context 主表面在<strong className="mx-1 text-[#F5F5F7]">對話底部詳細區</strong>
-                （輸入 <code className="text-[11px] text-[#64D2FF]">/context</code>）。此處為控制台完整鏡像。
-              </p>
-              <button
-                type="button"
-                className="mt-1.5 rounded-lg border border-[#64D2FF]/35 bg-[#64D2FF]/10 px-2.5 py-1 text-[11px] font-medium text-[#64D2FF] hover:bg-[#64D2FF]/18"
-                onClick={() => {
-                  void import('../lib/contextUi').then(({ openChatContextDetail }) => {
-                    openChatContextDetail(focusTaskId);
-                  });
-                }}
-              >
-                開啟對話詳細區 →
-              </button>
+          <MobileLiteGate gated={isMobileDesktopOnlyPanel('context')}>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="shrink-0 border-b border-white/[0.06] bg-[#1C1C1E]/80 px-6 py-3">
+                <p className="text-[12px] text-[#AEAEB2]">
+                  Context 主表面在<strong className="mx-1 text-[#F5F5F7]">對話底部詳細區</strong>
+                  （輸入 <code className="text-[11px] text-[#64D2FF]">/context</code>）。此處為控制台完整鏡像。
+                </p>
+                <button
+                  type="button"
+                  className="mt-1.5 rounded-lg border border-[#64D2FF]/35 bg-[#64D2FF]/10 px-2.5 py-1 text-[11px] font-medium text-[#64D2FF] hover:bg-[#64D2FF]/18"
+                  onClick={() => {
+                    void import('../lib/contextUi').then(({ openChatContextDetail }) => {
+                      openChatContextDetail(focusTaskId);
+                    });
+                  }}
+                >
+                  開啟對話詳細區 →
+                </button>
+              </div>
+              <ContextPanel taskId={focusTaskId} />
             </div>
-            <ContextPanel taskId={focusTaskId} />
-          </div>
+          </MobileLiteGate>
         )}
-        {tab === 'integrations' && <IntegrationsPanel />}
-        {tab === 'skills' && <SkillsMcpPanel />}
+        {tab === 'integrations' && (
+          <MobileLiteGate gated={isMobileDesktopOnlyPanel('integrations')}>
+            <IntegrationsPanel />
+          </MobileLiteGate>
+        )}
+        {tab === 'skills' && (
+          <MobileLiteGate
+            gated={isMobileDesktopOnlyPanel('skills')}
+            summary={<p className="text-[12px] text-[var(--console-sub)]">{t('mobileShell.skillsSummary')}</p>}
+          >
+            <SkillsMcpPanel />
+          </MobileLiteGate>
+        )}
         </div>
       </Suspense>
     </div>

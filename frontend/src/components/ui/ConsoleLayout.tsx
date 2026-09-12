@@ -49,12 +49,17 @@ export function ConsoleThreeColumn({
   className,
   children,
   mobileLabels,
+  liteShell = false,
   ...rest
 }: DivProps & {
   mobileLabels?: Partial<Record<ConsoleMobilePane, string>>;
+  /** 行動 Lite Shell：預設主視圖欄、<768 亦啟用分欄分頁 */
+  liteShell?: boolean;
 }) {
   const isWideConsole = useMediaQuery('(min-width: 1024px)', true);
-  const [mobilePane, setMobilePane] = useState<ConsoleMobilePane>('center');
+  const isMobileWidth = useMediaQuery('(max-width: 767px)', false);
+  const useMobileTabs = !isWideConsole || (liteShell && isMobileWidth);
+  const [mobilePane, setMobilePane] = useState<ConsoleMobilePane>(liteShell && isMobileWidth ? 'center' : 'center');
 
   const labels: Record<ConsoleMobilePane, string> = {
     left: mobileLabels?.left ?? '導覽',
@@ -66,13 +71,14 @@ export function ConsoleThreeColumn({
     <div
       className={cn(
         consoleLayout.threeColumn,
-        !isWideConsole && 'console-three-col--mobile-tabs',
-        !isWideConsole && `console-three-col--show-${mobilePane}`,
+        useMobileTabs && 'console-three-col--mobile-tabs',
+        useMobileTabs && `console-three-col--show-${mobilePane}`,
         className,
       )}
+      data-console-layout={useMobileTabs ? 'tabbed' : 'wide'}
       {...rest}
     >
-      {!isWideConsole ? (
+      {useMobileTabs ? (
         <nav className="console-mobile-col-tabs" role="tablist" aria-label="欄位切換">
           {(['left', 'center', 'right'] as ConsoleMobilePane[]).map((pane) => (
             <button

@@ -3,6 +3,7 @@
  * Chat → 會話；Monitor → 完整導航（標題＋說明＋金邊）+ 虛擬滾動名冊。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
@@ -22,6 +23,8 @@ import {
   type ConsoleNavKey,
 } from '../lib/monitorTabs';
 import { rosterKindForTab } from '../lib/worldModules';
+import { partitionNavGroupsForMobileLite } from '../lib/mobileShell';
+import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import { useMonitorStore } from '../stores/monitorStore';
 import type { MonitorTab, ViewKey } from './AppShell';
 import TraceRoster from './TraceRoster';
@@ -659,9 +662,16 @@ function MonitorSidebar({
   traceTaskId: string | null;
   onTraceTaskChange: (id: string | null) => void;
 }) {
+  const { t } = useTranslation();
+  const isMobileLite = useIsMobileLiteShell();
   const activity = resolveActivity(activeView, monitorTab);
   const onLab = activity === 'lab';
-  const navGroups = navGroupsForActivity(activity);
+  const allNavGroups = navGroupsForActivity(activity);
+  const { primary: primaryNavGroups, advanced: advancedNavGroups } = useMemo(
+    () => (isMobileLite ? partitionNavGroupsForMobileLite(allNavGroups) : { primary: allNavGroups, advanced: [] }),
+    [allNavGroups, isMobileLite],
+  );
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const onAgentsTab = activeView === 'monitor' && monitorTab === 'agents';
   const onStudioTab = activeView === 'monitor' && rosterKindForTab(monitorTab) === 'agents';
   const onMemoryTab = activeView === 'monitor' && monitorTab === 'memory';
@@ -689,27 +699,42 @@ function MonitorSidebar({
 
   const showRoster = onRoleDesk || onTasksTab || onTraces || onLlmTab;
 
+  const renderNavGroup = (group: (typeof allNavGroups)[number]) => (
+    <div key={group.id}>
+      <div className="sp-group">{group.id === 'mobile-advanced' ? t('mobileShell.advancedNav') : group.label}</div>
+      <div className="sp-list">
+        {group.items.map((item) => (
+          <TabBtn
+            key={item.key}
+            item={item}
+            active={currentKey === item.key}
+            onClick={() => pick(item.key)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <nav
         className={showRoster ? 'sp-nav sp-nav--roster' : 'sp-nav'}
         aria-label={activityTitle(activity)}
       >
-        {navGroups.map((group) => (
-          <div key={group.id}>
-            <div className="sp-group">{group.label}</div>
-            <div className="sp-list">
-              {group.items.map((item) => (
-                <TabBtn
-                  key={item.key}
-                  item={item}
-                  active={currentKey === item.key}
-                  onClick={() => pick(item.key)}
-                />
-              ))}
-            </div>
+        {primaryNavGroups.map(renderNavGroup)}
+        {isMobileLite && advancedNavGroups.length > 0 ? (
+          <div>
+            <button
+              type="button"
+              className="sp-group w-full text-left hover:text-[var(--console-ink)]"
+              onClick={() => setAdvancedOpen((v) => !v)}
+              aria-expanded={advancedOpen}
+            >
+              {t('mobileShell.advancedNav')} {advancedOpen ? '▾' : '▸'}
+            </button>
+            {advancedOpen ? advancedNavGroups.map(renderNavGroup) : null}
           </div>
-        ))}
+        ) : null}
       </nav>
 
       {onRoleDesk ? (

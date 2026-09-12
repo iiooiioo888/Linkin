@@ -2,7 +2,8 @@
  * 靈境積分中心 — OCD 三欄 dense 單頁（左導航 · 中 KPI/主表 · 右活動/快操）
  * 深鏈：#/monitor/credits/{section} · #/monitor/billing → cloud
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   assignBillingPlan,
   convertContribution,
@@ -38,6 +39,10 @@ import {
   parseCreditsSection,
   type CreditsSectionKey,
 } from '../../lib/billingUi';
+import {
+  isMobileDesktopOnlyCreditsSection,
+  MOBILE_LITE_CREDITS_SECTIONS,
+} from '../../lib/mobileShell';
 import type {
   BillingAppeal,
   BillingGrant,
@@ -48,6 +53,7 @@ import type {
 } from '../../types';
 import BillingAdminPanel from './BillingAdminPanel';
 import ContributionCharts, { type LockPreview } from './ContributionCharts';
+import { MobileLiteGate } from '../ui/MobileLiteGate';
 import { usePagination } from '../../lib/pagination';
 import { ConsolePagination } from '../ui/ConsolePagination';
 import {
@@ -94,7 +100,8 @@ function sparkFromLedger(values: number[], count = 8): number[] {
   return slice;
 }
 
-export default function BillingCreditsHub() {
+export default function BillingCreditsHub({ liteShell = false }: { liteShell?: boolean }) {
+  const { t } = useTranslation();
   const [section, setSection] = useState<CreditsSectionKey>(() => parseCreditsSection());
   const wallet = useWallet(8000);
 
@@ -151,6 +158,24 @@ export default function BillingCreditsHub() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
+
+  const navItems = useMemo(() => {
+    if (!liteShell) return NAV_ITEMS;
+    return NAV_ITEMS.filter((item) => {
+      const hit = CREDITS_SECTIONS.find((s) => s.anchorId === item.id);
+      return hit && MOBILE_LITE_CREDITS_SECTIONS.has(hit.key);
+    });
+  }, [liteShell]);
+
+  const advancedNavItems = useMemo(() => {
+    if (!liteShell) return [];
+    return NAV_ITEMS.filter((item) => {
+      const hit = CREDITS_SECTIONS.find((s) => s.anchorId === item.id);
+      return hit && !MOBILE_LITE_CREDITS_SECTIONS.has(hit.key);
+    });
+  }, [liteShell]);
+
+  const [advancedNavOpen, setAdvancedNavOpen] = useState(false);
 
   const onNavSelect = (anchorId: string) => {
     const hit = CREDITS_SECTIONS.find((s) => s.anchorId === anchorId);
@@ -328,7 +353,11 @@ export default function BillingCreditsHub() {
     if (section === 'cloud') {
       const b = cloudBilling;
       const breakdown = b?.breakdown;
-      return (
+      return wrapCreditsLiteGate(
+        liteShell,
+        'cloud',
+        <p className="text-[12px] text-[var(--console-sub)]">{t('mobileShell.walletSummary')}</p>,
+        (
         <div className={cnStack()}>
           <div className={consoleLayout.giantKpiRow}>
             <ConsoleGiantKpi label="今日費用" value={b ? formatCost(b.today_total) : '—'} meta="Docker＋阿里雲" spark={[20, 35, 28, 42, 38, 50, 45, b?.today_total ?? 0]} />
@@ -377,11 +406,16 @@ export default function BillingCreditsHub() {
             </ConsoleCardBody>
           </ConsoleCard>
         </div>
+        ),
       );
     }
 
     if (section === 'pools') {
-      return (
+      return wrapCreditsLiteGate(
+        liteShell,
+        'pools',
+        <p className="text-[12px] text-[var(--console-sub)]">{t('mobileShell.walletSummary')}</p>,
+        (
         <div className={cnStack()}>
           <KpiGrid fill>
             {poolBalances.map(([k, v]) => (
@@ -436,11 +470,16 @@ export default function BillingCreditsHub() {
             </ConsoleCard>
           </div>
         </div>
+        ),
       );
     }
 
     if (section === 'contribution' && contribution) {
-      return (
+      return wrapCreditsLiteGate(
+        liteShell,
+        'contribution',
+        <p className="text-[12px] text-[var(--console-sub)]">{t('mobileShell.walletSummary')}</p>,
+        (
         <div className={cnStack()}>
           <div className="shrink-0 rounded-lg border border-[var(--console-blue)]/20 bg-[var(--console-blue)]/5 px-3 py-2 text-[11px] text-[var(--console-sub)]">
             {contribution.notice_zh ?? lockThresholdNotice(contribution.accumulated_unlocked, contribution.convert_threshold, contribution.convertible_to_locked)}
@@ -475,27 +514,37 @@ export default function BillingCreditsHub() {
             </ConsoleCardBody>
           </ConsoleCard>
         </div>
+        ),
       );
     }
 
     if (section === 'contributor') {
       return (
-        <ConsoleCard className="flex min-h-0 flex-1 flex-col">
-          <ConsoleCardHeader>貢獻者 · Key 綁定</ConsoleCardHeader>
-          <ConsoleCardBody className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <ContributorPanel onMsg={setMsg} busy={busy} setBusy={setBusy} />
-          </ConsoleCardBody>
-        </ConsoleCard>
+        <MobileLiteGate
+          gated={liteShell}
+          summary={<p className="text-[12px] text-[var(--console-sub)]">{t('mobileShell.billingAdminSummary')}</p>}
+        >
+          <ConsoleCard className="flex min-h-0 flex-1 flex-col">
+            <ConsoleCardHeader>貢獻者 · Key 綁定</ConsoleCardHeader>
+            <ConsoleCardBody className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <ContributorPanel onMsg={setMsg} busy={busy} setBusy={setBusy} />
+            </ConsoleCardBody>
+          </ConsoleCard>
+        </MobileLiteGate>
       );
     }
 
     if (section === 'appeals') {
-      return (
+      return wrapCreditsLiteGate(
+        liteShell,
+        'appeals',
+        <p className="text-[12px] text-[var(--console-sub)]">{t('mobileShell.walletSummary')}</p>,
+        (
         <div className={cnStack()}>
           <ConsoleCard>
             <ConsoleCardHeader>提交申訴</ConsoleCardHeader>
             <ConsoleCardBody>
-              <AppealForm forfeitedInstallments={(contribution?.installments ?? []).filter((i) => i.status === 'forfeited_key_failure' && i.appeal_deadline)} onSubmit={(r, d, t, kind, installmentId) => run(() => submitBillingAppeal(r, d, t, { appealKind: kind, installmentId }), '申訴已提交')} busy={busy} />
+              <AppealForm forfeitedInstallments={(contribution?.installments ?? []).filter((i) => i.status === 'forfeited_key_failure' && i.appeal_deadline)} onSubmit={(r, d, detail, kind, installmentId) => run(() => submitBillingAppeal(r, d, detail, { appealKind: kind, installmentId }), '申訴已提交')} busy={busy} />
             </ConsoleCardBody>
           </ConsoleCard>
           <ConsoleCard className="flex min-h-0 flex-1 flex-col">
@@ -513,14 +562,20 @@ export default function BillingCreditsHub() {
             </ConsoleCardBody>
           </ConsoleCard>
         </div>
+        ),
       );
     }
 
     if (section === 'admin') {
       return (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <BillingAdminPanel onMsg={setMsg} embedded />
-        </div>
+        <MobileLiteGate
+          gated={liteShell}
+          summary={<p className="text-[12px] text-[var(--console-sub)]">{t('mobileShell.billingAdminSummary')}</p>}
+        >
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <BillingAdminPanel onMsg={setMsg} embedded />
+          </div>
+        </MobileLiteGate>
       );
     }
 
@@ -528,7 +583,7 @@ export default function BillingCreditsHub() {
   }, [
     section, wallet, balance, usageSpark, ledgerSpark, busy, cloudBilling, poolBalances,
     totalPoolBalance, grantsPager, rolloversPager, contribution, installmentsPager,
-    appealsListPager, poolLedger, lockPreview,
+    appealsListPager, poolLedger, lockPreview, liteShell, t,
   ]);
 
   const rightContent = useMemo(() => {
@@ -647,7 +702,7 @@ export default function BillingCreditsHub() {
 
   return (
     <PanelShell scroll={false}>
-      <ConsoleThreeColumn>
+      <ConsoleThreeColumn liteShell={liteShell}>
         <ConsoleLeftRail>
           <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-4">
             <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">靈境積分</h1>
@@ -655,10 +710,28 @@ export default function BillingCreditsHub() {
           </div>
           <ConsoleColumnScroll className="!px-0 !py-0">
             <ConsoleRailNav
-              sections={NAV_ITEMS}
+              sections={navItems}
               activeId={creditsAnchorId(section)}
               onSelect={onNavSelect}
             />
+            {liteShell && advancedNavItems.length > 0 ? (
+              <div className="border-t border-[var(--console-line)] px-2 py-2">
+                <button
+                  type="button"
+                  className="mb-1 w-full px-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--console-faint)]"
+                  onClick={() => setAdvancedNavOpen((v) => !v)}
+                >
+                  {t('mobileShell.advancedNav')} {advancedNavOpen ? '▾' : '▸'}
+                </button>
+                {advancedNavOpen ? (
+                  <ConsoleRailNav
+                    sections={advancedNavItems}
+                    activeId={creditsAnchorId(section)}
+                    onSelect={onNavSelect}
+                  />
+                ) : null}
+              </div>
+            ) : null}
           </ConsoleColumnScroll>
           <div className="shrink-0 border-t border-[var(--console-line)] px-3 py-3">
             <p className="mb-2 text-[10px] uppercase tracking-wider text-[var(--console-faint)]">方案</p>
@@ -706,6 +779,20 @@ function cnStack() {
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ');
+}
+
+function wrapCreditsLiteGate(
+  liteShell: boolean,
+  sectionKey: CreditsSectionKey,
+  summary: ReactNode,
+  content: ReactNode,
+) {
+  if (!liteShell || !isMobileDesktopOnlyCreditsSection(sectionKey)) return content;
+  return (
+    <MobileLiteGate summary={summary} gated>
+      {content}
+    </MobileLiteGate>
+  );
 }
 
 function ConvertForm({
