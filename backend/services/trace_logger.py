@@ -451,6 +451,18 @@ def delete_checkpoint(task_id: str) -> bool:
     return False
 
 
+def delete_trace(task_id: str) -> bool:
+    """刪除任務軌跡 JSONL（取消／過期清理）。"""
+    path = trace_path(task_id)
+    if path.exists():
+        try:
+            path.unlink()
+            return True
+        except OSError:
+            return False
+    return False
+
+
 def list_checkpoints() -> list[dict[str, Any]]:
     """列出所有可恢復的檢查點。
 
