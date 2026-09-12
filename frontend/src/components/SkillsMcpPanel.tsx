@@ -19,6 +19,7 @@ import {
   saveMcpServer,
   saveSkill,
   syncAgentSkillPacks,
+  openTokenDashboard,
   toggleMcpServer,
   toggleSkill,
   type McpServerRecord,
@@ -305,6 +306,9 @@ function SkillsSection() {
         <div className="flex gap-2">
           <button type="button" className={btnCls} disabled={busy} onClick={() => void onSyncAgentPacks()} title="從 .agents/skills/ 匯入／更新">
             同步 Agent 包
+          </button>
+          <button type="button" className={btnCls} onClick={() => openTokenDashboard(30)} title="Linkin 計費庫 Token 用量看板">
+            打開 Token 看板
           </button>
           <button type="button" className={btnCls} onClick={() => void onPreview()}>預覽注入區塊</button>
           <button type="button" className={btnCls} onClick={() => void load()}>重新整理</button>

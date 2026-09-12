@@ -172,6 +172,15 @@ class PoolsService:
         account_id = row["account_id"]
         payload = dict(meta or {})
         payload["lock_multiplier"] = lock_mult
+        payload.setdefault("model", model)
+        payload.setdefault("input_tokens", input_tokens)
+        payload.setdefault("output_tokens", output_tokens)
+        payload.setdefault("cache_read_tokens", cache_read_tokens or cached_tokens)
+        payload.setdefault("cache_write_tokens", cache_write_tokens)
+        if role:
+            payload.setdefault("role", role)
+        if tool:
+            payload.setdefault("tool", tool)
         self.store.record_usage_event(
             account_id=account_id,
             task_id=task_id,

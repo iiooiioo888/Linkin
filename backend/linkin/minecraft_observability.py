@@ -67,9 +67,8 @@ def append_minecraft_event(
     path = _event_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
-    with _lock:
-        with path.open("a", encoding="utf-8") as fh:
-            fh.write(line + "\n")
+    with _lock, path.open("a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
     return record
 
 
@@ -233,8 +232,10 @@ def build_ai_context(*, max_chars: int = 8000, fmt: str = "markdown") -> dict[st
         "# Minecraft 伺服器可觀測狀態",
         "",
         "## 橋接",
-        f"- enabled={snap['bridge'].get('enabled')} connected={snap['bridge'].get('connected')} "
-        f"dry_run={snap['bridge'].get('dry_run')} world={snap['bridge'].get('world')}",
+        (
+            f"- enabled={snap['bridge'].get('enabled')} connected={snap['bridge'].get('connected')} "
+            f"dry_run={snap['bridge'].get('dry_run')} world={snap['bridge'].get('world')}"
+        ),
         "",
         "## KPI",
     ]
@@ -305,10 +306,10 @@ def safe_append_minecraft_event(**kwargs: Any) -> None:
 
 __all__ = [
     "append_minecraft_event",
-    "safe_append_minecraft_event",
-    "list_minecraft_events",
-    "build_monitor_summary",
-    "build_ai_snapshot",
     "build_ai_context",
+    "build_ai_snapshot",
+    "build_monitor_summary",
+    "list_minecraft_events",
     "reset_minecraft_events",
+    "safe_append_minecraft_event",
 ]
