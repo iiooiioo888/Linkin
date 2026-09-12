@@ -84,10 +84,12 @@ linkin_router = APIRouter(prefix="/linkin", tags=["linkin"])
 
 
 def register_linkin(app) -> None:
+    from backend.linkin.map_api import register_map_routes
     from backend.linkin.narrative_api import register_narrative_routes
 
     app.include_router(linkin_router)
     register_narrative_routes(app)
+    register_map_routes(app)
 
 
 def _llm_ready() -> bool:

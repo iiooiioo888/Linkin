@@ -200,6 +200,129 @@ def execute_for_agent(tool_name: str, **kwargs: Any) -> str:
     return mcp.format_tool_result(result)
 
 
+def _place_path_segment(
+    points: list[dict[str, int]],
+    *,
+    material: str,
+    width: int,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], bool]:
+    """沿路徑放置方塊；回傳 (applied, errors, dry_run_seen)。"""
+    applied: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    dry_run = False
+    cells: list[tuple[int, int, int]] = []
+    for i in range(len(points) - 1):
+        a, b = points[i], points[i + 1]
+        steps = max(abs(b["x"] - a["x"]), abs(b["y"] - a["y"]), abs(b["z"] - a["z"]), 1)
+        for step in range(steps + 1):
+            t = step / steps
+            cell = (
+                int(round(a["x"] + (b["x"] - a["x"]) * t)),
+                int(round(a["y"] + (b["y"] - a["y"]) * t)),
+                int(round(a["z"] + (b["z"] - a["z"]) * t)),
+            )
+            if cell not in cells:
+                cells.append(cell)
+    for x, y, z in cells:
+        for w in range(max(1, width)):
+            try:
+                result = execute_named_tool(
+                    mcp.PLACE_BLOCK,
+                    {"x": x, "y": y, "z": z + w, "material": material},
+                )
+                if result.get("dry_run"):
+                    dry_run = True
+                applied.append({"x": x, "y": y, "z": z + w, "ok": result.get("ok")})
+            except ToolValidationError as exc:
+                errors.append({"x": x, "y": y, "z": z + w, "error": str(exc), "code": exc.code})
+    return applied, errors, dry_run
+
+
+def dispatch_map_plan(plan: dict[str, Any], *, confirmed: bool = False) -> dict[str, Any]:
+    """Phase 4：落地 map_plan 的 markers、paths、terrain patches。"""
+    if not confirmed:
+        raise ToolValidationError(
+            "地圖落地需 confirm=true",
+            code="needs_confirmation",
+            extra={"needs_confirmation": True, "plan_id": plan.get("id")},
+        )
+    applied_plots: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    dry_run = False
+    blocks_placed = 0
+
+    for plot in plan.get("plots") or []:
+        plot_id = plot.get("id")
+        kind = plot.get("kind")
+        try:
+            if kind in {"marker", "poi"}:
+                loc = plot.get("location") or {}
+                material = plot.get("material") or "GOLD_BLOCK"
+                result = execute_named_tool(
+                    mcp.PLACE_BLOCK,
+                    {"x": loc["x"], "y": loc["y"], "z": loc["z"], "material": material},
+                )
+                if result.get("dry_run"):
+                    dry_run = True
+                blocks_placed += 1
+                applied_plots.append({"plot_id": plot_id, "kind": kind, "ok": result.get("ok"), "blocks": 1})
+            elif kind == "path":
+                seg_applied, seg_errors, seg_dry = _place_path_segment(
+                    plot.get("points") or [],
+                    material=str(plot.get("material") or "GRAVEL"),
+                    width=int(plot.get("width") or 1),
+                )
+                if seg_dry:
+                    dry_run = True
+                blocks_placed += len(seg_applied)
+                if seg_errors:
+                    errors.extend([{"plot_id": plot_id, **e} for e in seg_errors])
+                applied_plots.append(
+                    {
+                        "plot_id": plot_id,
+                        "kind": kind,
+                        "ok": len(seg_errors) == 0,
+                        "blocks": len(seg_applied),
+                    }
+                )
+            elif kind == "terrain":
+                geom = plot.get("geometry") or {}
+                result = execute_named_tool(
+                    mcp.FILL_BLOCK,
+                    {
+                        "x1": geom["x1"],
+                        "y1": geom["y1"],
+                        "z1": geom["z1"],
+                        "x2": geom["x2"],
+                        "y2": geom["y2"],
+                        "z2": geom["z2"],
+                        "material": geom.get("material") or "GRASS_BLOCK",
+                    },
+                )
+                if result.get("dry_run"):
+                    dry_run = True
+                vol = int((result.get("params") or {}).get("block_count") or 0)
+                blocks_placed += vol or mcp.fill_volume(
+                    geom["x1"], geom["y1"], geom["z1"], geom["x2"], geom["y2"], geom["z2"]
+                )
+                applied_plots.append({"plot_id": plot_id, "kind": kind, "ok": result.get("ok"), "blocks": vol})
+        except ToolValidationError as exc:
+            errors.append({"plot_id": plot_id, "kind": kind, "error": str(exc), "code": exc.code})
+
+    ok = bool(applied_plots) and len(errors) < len(plan.get("plots") or [])
+    status = "complete" if ok and not errors else ("partial" if applied_plots else "failed")
+    return {
+        "ok": ok or bool(applied_plots),
+        "dry_run": dry_run,
+        "plan_id": plan.get("id"),
+        "status": status,
+        "applied": applied_plots,
+        "errors": errors,
+        "blocks_placed": blocks_placed,
+        "note": "Phase 4 落地 markers／徑道方塊／小型 terrain fill；大量塑形請分批 fill_block。",
+    }
+
+
 def dispatch_building(building: dict[str, Any]) -> dict[str, Any]:
     """把已校驗的建築方案落到世界：在錨點放一顆風格對應的標記方塊。"""
     xyz = mcp.parse_xyz(building.get("location"))

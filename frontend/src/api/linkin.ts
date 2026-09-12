@@ -348,3 +348,82 @@ export const seedNarrativeStarterPack = (
     `/narrative/workspaces/${encodeURIComponent(workspaceId)}/starter-pack`,
     body ?? {},
   );
+
+export type MapPlanPlot = {
+  id: string;
+  kind: 'marker' | 'poi' | 'path' | 'terrain';
+  title: string;
+  location?: { x: number; y: number; z: number };
+  material?: string;
+  style?: string;
+  link?: Record<string, unknown>;
+  points?: Array<{ x: number; y: number; z: number }>;
+  width?: number;
+  geometry?: Record<string, unknown>;
+};
+
+export type MapPlan = {
+  version: number;
+  id: string;
+  title: string;
+  region: string;
+  seed: string;
+  origin: { x: number; y: number; z: number };
+  bounds: { x1: number; y1: number; z1: number; x2: number; y2: number; z2: number };
+  plots: MapPlanPlot[];
+  landmarks?: Array<{ id: string; title: string; location: { x: number; y: number; z: number }; notes?: string }>;
+  summary?: string;
+  source?: string;
+  estimated_blocks?: number;
+  status?: string;
+};
+
+export type MapPlanPreview = {
+  plan_id: string;
+  title: string;
+  region: string;
+  bounds: MapPlan['bounds'];
+  axis_span: { x: number; y: number; z: number };
+  plot_count: number;
+  estimated_blocks: number;
+  pois: Array<{
+    id: string;
+    title: string;
+    kind: string;
+    location: string;
+    material?: string;
+    link?: Record<string, unknown>;
+    notes?: string;
+  }>;
+  paths: string[];
+  terrain_patches: string[];
+};
+
+export const generateMapPlan = (body: {
+  workspace_id?: string;
+  region?: string;
+  seed?: string;
+  origin?: string | { x: number; y: number; z: number };
+}) =>
+  mc.post<{ ok: boolean; source: 'fallback' | 'llm'; plan: MapPlan; preview: MapPlanPreview }>(
+    '/map/generate',
+    body,
+  );
+
+export const previewMapPlan = (body: { plan?: MapPlan; plan_id?: string }) =>
+  mc.post<{ ok: boolean; preview: MapPlanPreview }>('/map/preview', body);
+
+export const applyMapPlan = (body: { plan?: MapPlan; plan_id?: string; confirm?: boolean }) =>
+  mc.post<{
+    ok: boolean;
+    status: 'complete' | 'partial' | 'failed';
+    plan: MapPlan;
+    minecraft: {
+      ok: boolean;
+      dry_run?: boolean;
+      applied?: Array<Record<string, unknown>>;
+      errors?: Array<Record<string, unknown>>;
+      blocks_placed?: number;
+      note?: string;
+    };
+  }>('/map/apply', body);
