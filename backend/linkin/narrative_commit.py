@@ -11,7 +11,13 @@ import uuid
 from typing import Any
 
 from backend.linkin.knowledge import COL_EVENTS, COL_NPCS, COL_WORLDVIEW, get_store, upsert_entity
-from backend.linkin.tools import TOOL_ITEM_CREATE, TOOL_NPC_CREATE, ToolValidationError, format_npc_text, invoke_tool
+from backend.linkin.tools import (
+    TOOL_ITEM_CREATE,
+    TOOL_NPC_CREATE,
+    ToolValidationError,
+    format_npc_text,
+    invoke_tool,
+)
 
 # Phase 0 草稿鍵（與前端／一鍵草案對齊）
 KNOWN_DRAFT_KEYS = frozenset({"story_arc", "quest", "npc", "item", "build_brief"})

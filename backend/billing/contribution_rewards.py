@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from backend.billing.fault_pool import credit_fault_pool, DEFAULT_PLATFORM_TAKE
+from backend.billing.fault_pool import DEFAULT_PLATFORM_TAKE, credit_fault_pool
 from backend.billing.pool_store import get_pool_store
 from backend.billing.pool_types import POOL_CONTRIBUTION_UNLOCKED
 from backend.billing.reward_engine import compute_reward

@@ -81,7 +81,7 @@ def test_role_budgets_uncustomized_detects_overlay():
 
 
 def test_seed_linkin_roles_sets_default_budgets():
-    from backend.company.role_catalog import get_snapshot, update_role_settings
+    from backend.company.role_catalog import get_snapshot
     from backend.linkin.roles import seed_linkin_roles
 
     seed_linkin_roles()
@@ -125,8 +125,8 @@ def test_backfill_skips_customized_positive_budget():
 def test_settings_patch_budget_round_trip(monkeypatch):
     from fastapi.testclient import TestClient
 
-    from backend.main import app
     from backend.linkin.roles import seed_linkin_roles
+    from backend.main import app
 
     monkeypatch.setattr("backend.services.task_manager.task_manager.tasks", {})
     seed_linkin_roles()
@@ -155,9 +155,8 @@ def test_settings_patch_budget_round_trip(monkeypatch):
 
 
 def test_budget_alert_when_over_daily(monkeypatch):
-    from backend.services.agent_monitor import collect_agent_monitor
-
     from backend.linkin.roles import seed_linkin_roles
+    from backend.services.agent_monitor import collect_agent_monitor
 
     monkeypatch.setattr("backend.services.task_manager.task_manager.tasks", {})
     seed_linkin_roles()

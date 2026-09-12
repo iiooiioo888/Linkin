@@ -5,10 +5,11 @@ import json
 import sqlite3
 import threading
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from backend.billing.plans import get_plan
 from backend.billing.pool_types import (
@@ -21,8 +22,8 @@ from backend.billing.pool_types import (
     POOL_PURCHASED,
     SPEND_ORDER,
 )
-from backend.billing.vendor_configs import DEFAULT_VENDOR_CONFIGS
 from backend.billing.pricing_engine import DEFAULT_CREDIT_POLICY, DEFAULT_PRICING_CONFIG
+from backend.billing.vendor_configs import DEFAULT_VENDOR_CONFIGS
 
 _DB_LOCK = threading.RLock()
 _DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "billing.sqlite3"
@@ -390,7 +391,7 @@ def _month_key(dt: datetime | None = None) -> str:
 
 
 def _parse_iso(ts: str) -> datetime:
-    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    return datetime.fromisoformat(ts)
 
 
 def _installment_interval_days(lock_days: int) -> int:

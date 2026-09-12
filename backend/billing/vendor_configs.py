@@ -76,7 +76,7 @@ DEFAULT_VENDOR_CONFIGS: dict[str, dict[str, Any]] = {
 
 def detect_vendor(model: str) -> str:
     m = (model or "").lower()
-    if "gpt" in m or "openai" in m or m.startswith("o1") or m.startswith("o3"):
+    if "gpt" in m or "openai" in m or m.startswith(("o1", "o3")):
         return "openai"
     if "gemini" in m or "google" in m:
         return "google"

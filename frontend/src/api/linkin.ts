@@ -349,6 +349,29 @@ export const seedNarrativeStarterPack = (
     body ?? {},
   );
 
+export type NarrativeGenerateResult = {
+  ok: boolean;
+  source: 'llm';
+  replaced_keys: string[];
+  workspace: NarrativeWorkspace;
+  draft_keys: string[];
+};
+
+export const generateNarrativeDrafts = (
+  workspaceId: string,
+  body: {
+    brief: string;
+    locale?: string;
+    keys?: string[];
+    region?: string;
+    theme?: string;
+  },
+) =>
+  mc.post<NarrativeGenerateResult>(
+    `/narrative/workspaces/${encodeURIComponent(workspaceId)}/generate`,
+    body,
+  );
+
 export type BuildBrief = {
   id: string;
   title: string;

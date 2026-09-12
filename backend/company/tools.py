@@ -278,7 +278,11 @@ def _maybe_bill_tool(tool_name: str, *, role: str | None = None, args: dict | No
             preflight_docker_start(svc)
             on_docker_started(svc)
         elif name == "docker_restart":
-            from backend.billing.docker_api import on_docker_started, on_docker_stopped, preflight_docker_start
+            from backend.billing.docker_api import (
+                on_docker_started,
+                on_docker_stopped,
+                preflight_docker_start,
+            )
 
             svc = str(tool_args.get("service") or "frontend")
             preflight_docker_start(svc)

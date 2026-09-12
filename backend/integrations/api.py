@@ -20,17 +20,16 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.billing.context import billing_enabled, current_billing_user
+from backend.billing.credits import credits_for_recall
 from backend.billing.errors import InsufficientCreditsError
 from backend.billing.metering import meter_recall
 from backend.billing.quota import get_billing_service
-from backend.billing.credits import credits_for_recall
-
 from backend.integrations.base import IntegrationConfig
-from backend.integrations.recall_bridge import assemble_recall_context
 from backend.integrations.memos import MemosClient
 from backend.integrations.openpencil import OpenPencilClient
 from backend.integrations.openviking import OpenVikingClient
 from backend.integrations.ouroboros import OuroborosClient
+from backend.integrations.recall_bridge import assemble_recall_context
 from backend.integrations.weknora import WeKnoraClient
 from backend.integrations.yao import YaoClient
 

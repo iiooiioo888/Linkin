@@ -45,10 +45,9 @@ class BillingStore:
         return conn
 
     def _init_db(self) -> None:
-        with self._lock:
-            with self._connect() as conn:
-                conn.executescript(
-                    """
+        with self._lock, self._connect() as conn:
+            conn.executescript(
+                """
                     CREATE TABLE IF NOT EXISTS accounts (
                         user_id TEXT PRIMARY KEY,
                         balance_credits REAL NOT NULL DEFAULT 0 CHECK (balance_credits >= 0),
@@ -128,8 +127,8 @@ class BillingStore:
                     CREATE INDEX IF NOT EXISTS idx_ledger_user_created
                         ON ledger(user_id, created_at DESC);
                     """
-                )
-                conn.commit()
+            )
+            conn.commit()
         get_pool_store()._init_schema()
 
     def ensure_account(self, user_id: str, plan_id: str = "free") -> dict[str, Any]:
@@ -138,8 +137,7 @@ class BillingStore:
         plan = get_plan(plan_id)
         now = _utc_now()
         period = _month_key()
-        with self._lock:
-            with self._connect() as conn:
+        with self._lock, self._connect() as conn:
                 row = conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,)).fetchone()
                 if row:
                     if row["period_key"] != period:
@@ -172,14 +170,12 @@ class BillingStore:
                     conn.commit()
         pools = get_pool_store()
         pools.ensure_pools(user_id, plan_id)
-        with self._lock:
-            with self._connect() as conn:
-                row = conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,)).fetchone()
-                return self._row_account(row)
+        with self._lock, self._connect() as conn:
+            row = conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,)).fetchone()
+            return self._row_account(row)
 
     def get_account(self, user_id: str) -> dict[str, Any] | None:
-        with self._lock:
-            with self._connect() as conn:
+        with self._lock, self._connect() as conn:
                 row = conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id.strip(),)).fetchone()
                 if row:
                     row = self._migrate_legacy_plan_row(conn, row)
@@ -208,8 +204,7 @@ class BillingStore:
         plan = get_plan(plan_id)
         now = _utc_now()
         self.ensure_account(user_id, plan_id)
-        with self._lock:
-            with self._connect() as conn:
+        with self._lock, self._connect() as conn:
                 conn.execute(
                     """
                     UPDATE accounts SET plan_id = ?, monthly_quota_credits = ?, concurrency_limit = ?, updated_at = ?
@@ -241,8 +236,7 @@ class BillingStore:
         balance = pools.total_spendable(user_id)
         now = _utc_now()
         entry_id = uuid.uuid4().hex
-        with self._lock:
-            with self._connect() as conn:
+        with self._lock, self._connect() as conn:
                 conn.execute(
                     """
                     INSERT INTO ledger (id, user_id, amount_credits, balance_after_credits, kind, source, reference, meta_json, created_at)
@@ -271,8 +265,7 @@ class BillingStore:
         entry_id = uuid.uuid4().hex
         payload = dict(meta or {})
         payload["breakdown"] = breakdown
-        with self._lock:
-            with self._connect() as conn:
+        with self._lock, self._connect() as conn:
                 monthly_used = float(conn.execute("SELECT monthly_used_credits FROM accounts WHERE user_id=?", (user_id.strip(),)).fetchone()["monthly_used_credits"])
                 conn.execute(
                     "UPDATE accounts SET monthly_used_credits=?, updated_at=? WHERE user_id=?",
@@ -289,8 +282,7 @@ class BillingStore:
         return {"id": entry_id, "amount_credits": -amount, "balance_after_credits": balance, "kind": "debit", "source": source, "reference": reference, "created_at": now}
 
     def _adjust(self, user_id: str, amount_signed: float, *, kind: str, source: str, reference: str, meta: dict | None) -> dict:
-        with self._lock:
-            with self._connect() as conn:
+        with self._lock, self._connect() as conn:
                 conn.execute("BEGIN IMMEDIATE")
                 return self._adjust_tx(conn, user_id, amount_signed if kind == "credit" else -abs(amount_signed), kind=kind, source=source, reference=reference, meta=meta)
 
@@ -335,8 +327,7 @@ class BillingStore:
     ) -> dict:
         now = _utc_now()
         eid = uuid.uuid4().hex
-        with self._lock:
-            with self._connect() as conn:
+        with self._lock, self._connect() as conn:
                 conn.execute(
                     """
                     INSERT INTO usage_events
@@ -350,31 +341,28 @@ class BillingStore:
 
     def list_usage_events(self, user_id: str, limit: int = 50) -> list[dict]:
         limit = max(1, min(int(limit), 200))
-        with self._lock:
-            with self._connect() as conn:
-                rows = conn.execute(
-                    """
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                """
                     SELECT * FROM usage_events WHERE user_id = ? ORDER BY created_at DESC LIMIT ?
                     """,
-                    (user_id.strip(), limit),
-                ).fetchall()
+                (user_id.strip(), limit),
+            ).fetchall()
         return [self._row_usage(r) for r in rows]
 
     def list_ledger(self, user_id: str, limit: int = 50) -> list[dict]:
         limit = max(1, min(int(limit), 200))
-        with self._lock:
-            with self._connect() as conn:
-                rows = conn.execute(
-                    "SELECT * FROM ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-                    (user_id.strip(), limit),
-                ).fetchall()
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+                (user_id.strip(), limit),
+            ).fetchall()
         return [self._row_ledger(r) for r in rows]
 
     def create_reservation(self, user_id: str, estimated_credits: float) -> str:
         rid = uuid.uuid4().hex
         now = _utc_now()
-        with self._lock:
-            with self._connect() as conn:
+        with self._lock, self._connect() as conn:
                 conn.execute(
                     "INSERT INTO reservations (id, user_id, estimated_credits, status, created_at) VALUES (?, ?, ?, 'open', ?)",
                     (rid, user_id.strip(), float(estimated_credits), now),
@@ -384,8 +372,7 @@ class BillingStore:
 
     def settle_reservation(self, reservation_id: str, actual_credits: float) -> None:
         now = _utc_now()
-        with self._lock:
-            with self._connect() as conn:
+        with self._lock, self._connect() as conn:
                 conn.execute(
                     "UPDATE reservations SET settled_credits = ?, status = 'settled', settled_at = ? WHERE id = ?",
                     (float(actual_credits), now, reservation_id),
@@ -480,7 +467,6 @@ def reset_billing_store(store: BillingStore | None = None) -> None:
     with _LOCK:
         _STORE = store
     from backend.billing.pool_store import PoolStore, reset_pool_store
-
     from backend.billing.pools_service import reset_pools_service
 
     if store is None:

@@ -331,9 +331,7 @@ def parse_models_payload(
     out: list[dict[str, str]] = []
     seen: set[str] = set()
     for item in rows:
-        if isinstance(item, str):
-            row = normalize_catalog_model(item, route_provider=route_provider)
-        elif isinstance(item, dict):
+        if isinstance(item, (str, dict)):
             row = normalize_catalog_model(item, route_provider=route_provider)
         else:
             continue
