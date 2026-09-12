@@ -666,3 +666,76 @@ export const previewWorldIntents = (body: { apply_all?: boolean; npc_ids?: strin
 
 export const applyWorldIntents = (body: { apply_all?: boolean; npc_ids?: string[]; quest_ids?: string[]; item_ids?: string[] }) =>
   mc.post<WorldIntentApplyResult>('/world-intents/apply', { ...body, confirm: true });
+
+export type MinecraftObservabilityEvent = {
+  id: string;
+  ts: number;
+  domain: string;
+  action: string;
+  status: string;
+  summary: string;
+  dry_run?: boolean;
+  bridge_offline?: boolean;
+  details?: Record<string, unknown>;
+  entity_refs?: Record<string, unknown>;
+};
+
+export type MinecraftMonitorSummary = {
+  bridge: {
+    enabled?: boolean;
+    connected?: boolean;
+    dry_run?: boolean;
+    token_configured?: boolean;
+    world?: string;
+  };
+  kpis: {
+    pending_build_briefs: number;
+    pending_world_intents: number;
+    map_plan_count: number;
+    npc_count: number;
+    quest_count: number;
+    item_count: number;
+  };
+  world_status: Record<string, Record<string, number>>;
+  last_pipeline: MinecraftObservabilityEvent | null;
+  recent_errors: MinecraftObservabilityEvent[];
+  generated_at: number;
+};
+
+export type MinecraftAiSnapshot = MinecraftMonitorSummary & {
+  pending_intents: PendingWorldIntents & { count: number };
+  latest_map_plan: MapPlan | null;
+  active_workspaces: Array<{ workspace_id: string; state: string; draft_keys: string[] }>;
+  recent_events: MinecraftObservabilityEvent[];
+};
+
+export type MinecraftAiContext = {
+  format: 'markdown' | 'json';
+  context: string;
+  chars: number;
+  truncated: boolean;
+  snapshot: MinecraftAiSnapshot;
+};
+
+export const fetchMinecraftMonitorSummary = () =>
+  mc.get<MinecraftMonitorSummary>('/minecraft/monitor/summary');
+
+export const fetchMinecraftAiSnapshot = () => mc.get<MinecraftAiSnapshot>('/minecraft/ai/snapshot');
+
+export const fetchMinecraftAiEvents = (params?: { since?: number; cursor?: string; limit?: number }) => {
+  const qs = new URLSearchParams();
+  if (params?.since != null) qs.set('since', String(params.since));
+  if (params?.cursor) qs.set('cursor', params.cursor);
+  if (params?.limit != null) qs.set('limit', String(params.limit));
+  const suffix = qs.toString() ? `?${qs}` : '';
+  return mc.get<{
+    events: MinecraftObservabilityEvent[];
+    count: number;
+    total: number;
+    next_cursor: string | null;
+    has_more: boolean;
+  }>(`/minecraft/ai/events${suffix}`);
+};
+
+export const fetchMinecraftAiContext = (maxChars = 8000, format: 'markdown' | 'json' = 'markdown') =>
+  mc.get<MinecraftAiContext>(`/minecraft/ai/context?max_chars=${maxChars}&format=${format}`);
