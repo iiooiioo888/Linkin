@@ -1424,7 +1424,8 @@ async def create_task(req: TaskRequest):
 
             if isinstance(exc, InsufficientCreditsError):
                 raise HTTPException(status_code=402, detail=exc.message) from exc
-            if getattr(exc, "__class__", None).__name__ == "InsufficientCreditsError":
+            exc_cls = getattr(exc, "__class__", None)
+            if exc_cls is not None and exc_cls.__name__ == "InsufficientCreditsError":
                 raise HTTPException(status_code=402, detail=str(exc)) from exc
     task_manager.start_task(record)
     return {

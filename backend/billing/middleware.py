@@ -18,8 +18,8 @@ class BillingContextMiddleware(BaseHTTPMiddleware):
         elif not user and gate_enabled():
             token = extract_token(request.headers, request.cookies, request.query_params)
             user = session_user(token)
-        token = billing_user_id.set(str(user or "").strip())
+        billing_token = billing_user_id.set(str(user or "").strip())
         try:
             return await call_next(request)
         finally:
-            billing_user_id.reset(token)
+            billing_user_id.reset(billing_token)

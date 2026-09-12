@@ -352,10 +352,10 @@ class TaskManager:
             task_id = key.removeprefix(TASK_KEY_PREFIX) if isinstance(key, str) else str(key)[len(TASK_KEY_PREFIX):]
             if task_id in seen:
                 continue
-            record = self._load_from_redis(task_id)
-            if record is not None:
+            loaded = self._load_from_redis(task_id)
+            if loaded is not None:
                 seen.add(task_id)
-                records.append(record)
+                records.append(loaded)
         return records
 
     # ── 公開 API ──

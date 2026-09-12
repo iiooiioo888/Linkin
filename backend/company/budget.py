@@ -340,7 +340,7 @@ class BudgetManager:
             return {"services": {}, "total_cost": 0.0}
 
         containers = dm.list_containers()
-        services: dict[str, dict[str, Any]] = {}
+        services: dict[str, Any] = {}
         total = 0.0
 
         for c in containers:

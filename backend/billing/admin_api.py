@@ -90,6 +90,8 @@ def create_pricing_config(body: PricingConfigBody, operator: str = "admin") -> d
                VALUES ('draft', ?, ?, ?, ?, ?)""",
             (eff, json.dumps(cfg, ensure_ascii=False), operator, body.reason, now),
         )
+        if cur.lastrowid is None:
+            raise RuntimeError("pricing_configs insert did not return lastrowid")
         version = int(cur.lastrowid)
         conn.execute(
             """INSERT INTO pricing_config_audit(entity_type, version, operator, action, new_json, reason, created_at)
@@ -152,6 +154,8 @@ def create_credit_policy(body: CreditPolicyBody, operator: str = "admin") -> dic
                 now,
             ),
         )
+        if cur.lastrowid is None:
+            raise RuntimeError("credit_policies insert did not return lastrowid")
         version = int(cur.lastrowid)
     return {"version": version, "status": "draft"}
 
@@ -200,6 +204,8 @@ def create_vendor_config(config: dict[str, Any], operator: str = "admin", reason
                VALUES ('draft', ?, ?, ?, ?, ?)""",
             (now, json.dumps(body, ensure_ascii=False), operator, reason, now),
         )
+        if cur.lastrowid is None:
+            raise RuntimeError("vendor_configs insert did not return lastrowid")
         version = int(cur.lastrowid)
     return {"version": version, "status": "draft"}
 

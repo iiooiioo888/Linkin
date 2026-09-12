@@ -1460,7 +1460,7 @@ class CompanyOrchestrator:
                     if _raho_layer is not None:
                         meter_raho_layer(
                             f"L{_raho_layer}",
-                            task_id=self.run_id,
+                            task_id=self._run_id,
                             reference=item.id,
                             meta={"role": str(role_type), "item_id": item.id},
                         )

@@ -45,11 +45,15 @@ def default_recall_user_id(state: StateInput | None = None, env: dict[str, str] 
 
 def resolve_recall_params(state: StateInput) -> dict[str, Any]:
     """從 state 與環境變數解析 assembler 參數。"""
-    cube_ids = state.get("cube_ids") or state.get("memos_cube_ids")
-    if not cube_ids:
+    raw_cube_ids = state.get("cube_ids") or state.get("memos_cube_ids")
+    if not raw_cube_ids:
         cube_ids = default_cube_ids()
-    elif isinstance(cube_ids, str):
-        cube_ids = [p.strip() for p in cube_ids.split(",") if p.strip()]
+    elif isinstance(raw_cube_ids, str):
+        cube_ids = [p.strip() for p in raw_cube_ids.split(",") if p.strip()]
+    elif isinstance(raw_cube_ids, (list, tuple)):
+        cube_ids = [str(item).strip() for item in raw_cube_ids if str(item).strip()]
+    else:
+        cube_ids = default_cube_ids()
 
     kb_id = str(state.get("knowledge_base_id") or state.get("weknora_kb_id") or default_knowledge_base_id())
     return {

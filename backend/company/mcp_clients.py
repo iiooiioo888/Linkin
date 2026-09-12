@@ -424,7 +424,7 @@ class McpRegistry:
                 and old.timeout == max(2.0, min(float(timeout or DEFAULT_TIMEOUT), 300.0))
                 and (old.allowed_tools or []) == [str(t).strip() for t in (allowed_tools or []) if str(t).strip()]
             )
-            if unchanged:
+            if unchanged and old is not None:
                 return old, "unchanged"
             srv = McpServer(
                 id=server_id,

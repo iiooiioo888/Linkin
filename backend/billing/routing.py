@@ -90,23 +90,23 @@ def route_key_selection(
     if len(same_org) == 1 and len(pool_keys) == 1:
         decision.update(_finalize_decision(mode="single", keys=[same_org[0]], reason="single_eligible_key"))
     elif len(same_org) >= 2:
-        mode = "relay" if _prefer_relay(same_org, estimate_credits) else "parallel_split"
+        same_org_mode: RoutingMode = "relay" if _prefer_relay(same_org, estimate_credits) else "parallel_split"
         decision.update(
             _finalize_decision(
-                mode="same_org_split" if mode == "parallel_split" else "relay",
+                mode="same_org_split" if same_org_mode == "parallel_split" else "relay",
                 keys=same_org[: min(3, len(same_org))],
-                reason=f"same_org_{mode}",
-                split_mode=mode,
+                reason=f"same_org_{same_org_mode}",
+                split_mode=same_org_mode,
             )
         )
     elif len(pool_keys) >= 2:
-        mode = "relay" if _prefer_relay(pool_keys, estimate_credits) else "parallel_split"
+        multi_mode: RoutingMode = "relay" if _prefer_relay(pool_keys, estimate_credits) else "parallel_split"
         decision.update(
             _finalize_decision(
-                mode=mode,
+                mode=multi_mode,
                 keys=pool_keys[: min(3, len(pool_keys))],
-                reason=f"multi_key_{mode}",
-                split_mode=mode,
+                reason=f"multi_key_{multi_mode}",
+                split_mode=multi_mode,
             )
         )
     else:
@@ -200,5 +200,9 @@ def apply_routing_binding(task_id: str, decision: dict[str, Any]) -> dict[str, A
         reason=str(decision.get("binding_reason", "routed")),
     )
     if len(selected) > 1:
-        store.save_task_key_split(task_id, selected, split_mode=decision.get("split_mode") or decision.get("routing_mode"))
+        store.save_task_key_split(
+            task_id,
+            selected,
+            split_mode=str(decision.get("split_mode") or decision.get("routing_mode") or ""),
+        )
     return {**decision, "bound": True, "key_id": primary, "task_id": task_id}
