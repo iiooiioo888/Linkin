@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from backend.billing.errors import InsufficientCreditsError
-from backend.billing.pool_store import get_pool_store, _utc_now
+from backend.billing.pool_store import _utc_now, get_pool_store
 from backend.billing.pool_types import (
     CONTRIBUTION_UNLOCKED_CONVERT_RATIO,
     POOL_CONTRIBUTION_UNLOCKED,

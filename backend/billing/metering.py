@@ -15,18 +15,24 @@ from backend.billing.context import (
 )
 from backend.billing.credits import (
     credits_for_docker_usd,
-    credits_for_llm_tokens,
     credits_for_mc_fill,
     credits_for_mc_op,
     credits_for_opc_read,
     credits_for_opc_write,
     credits_for_quant_call,
     credits_for_raho_layer,
-    credits_for_reflection_iteration,
     credits_for_recall,
+    credits_for_reflection_iteration,
 )
-from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
-from backend.billing.plans import PACK_ADVANCED_MODELS, PACK_MINECRAFT, PACK_OPC, PACK_QUANT, PACK_RAHO, plan_has_feature
+from backend.billing.errors import FeatureNotEntitledError
+from backend.billing.plans import (
+    PACK_ADVANCED_MODELS,
+    PACK_MINECRAFT,
+    PACK_OPC,
+    PACK_QUANT,
+    PACK_RAHO,
+    plan_has_feature,
+)
 from backend.billing.quota import get_billing_service
 
 logger = logging.getLogger(__name__)

@@ -6,13 +6,12 @@ from typing import Any
 
 from backend.billing.contribution_threshold import compute_lock_threshold
 from backend.billing.errors import InsufficientCreditsError
-from backend.billing.pool_store import get_pool_store, _utc_now
+from backend.billing.pool_store import get_pool_store
 from backend.billing.pool_types import (
     CONTRIBUTION_LOCK_TIERS,
     CONTRIBUTION_UNLOCKED_CONVERT_RATIO,
     POOL_CONTRIBUTION_LOCKED,
     POOL_CONTRIBUTION_UNLOCKED,
-    POOL_PURCHASED,
 )
 
 

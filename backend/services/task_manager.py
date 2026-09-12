@@ -43,13 +43,13 @@ from backend.core.company_nodes import (
     enhance_with_opc_context,
 )
 from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD
+from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.linkin.pipeline import (
     enhance_with_linkin_context,
     is_linkin_complex_task,
     prefix_query_with_linkin,
     resolve_linkin_company_template,
 )
-from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.services.archiver import save_session_archive_sync
 from backend.services.task_broadcaster import task_broadcaster
 from backend.services.trace_logger import (

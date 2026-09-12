@@ -8,11 +8,11 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.billing.appeals import list_appeals, resolve_appeal
 from backend.billing.fault_pool import fault_pool_status
 from backend.billing.pool_store import get_pool_store
 from backend.billing.pool_types import POOL_CONTRIBUTION_UNLOCKED
-from backend.billing.appeals import list_appeals, resolve_appeal
-from backend.billing.pricing_engine import DEFAULT_CREDIT_POLICY, DEFAULT_PRICING_CONFIG
+from backend.billing.pricing_engine import DEFAULT_PRICING_CONFIG
 from backend.billing.vendor_configs import DEFAULT_VENDOR_CONFIGS
 
 router = APIRouter(prefix="/admin/billing", tags=["admin-billing"])

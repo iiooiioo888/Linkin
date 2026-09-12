@@ -14,10 +14,15 @@ from backend.billing.context import (
     chat_billing_snapshot,
     end_chat_billing,
 )
-from backend.billing.metering import meter_reflection_iteration
-from backend.billing.credits import credits_for_llm_tokens, credits_for_raho_layer
+from backend.billing.credits import credits_for_raho_layer
 from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
-from backend.billing.metering import meter_llm, meter_raho_layer, meter_quant_call, require_feature
+from backend.billing.metering import (
+    meter_llm,
+    meter_quant_call,
+    meter_raho_layer,
+    meter_reflection_iteration,
+    require_feature,
+)
 from backend.billing.plans import PACK_QUANT, PLAN_DEFINITIONS, plan_has_feature
 from backend.billing.pool_store import get_pool_store
 from backend.billing.pool_types import (
@@ -26,13 +31,18 @@ from backend.billing.pool_types import (
     POOL_MONTHLY_GRANT,
     POOL_PURCHASED,
 )
-from backend.billing.pools_service import PoolsService, ReserveRejectedError, TransferForbiddenError, evaluate_reserve_tier
+from backend.billing.pools_service import (
+    PoolsService,
+    ReserveRejectedError,
+    TransferForbiddenError,
+    evaluate_reserve_tier,
+)
 from backend.billing.pricing_engine import compute_cost_credits, compute_cost_with_meta
 from backend.billing.quota import BillingService, reset_billing_service
 from backend.billing.reward_engine import compute_reward, quality_score
 from backend.billing.store import BillingStore, reset_billing_store
 from backend.billing.task_lifecycle import begin_billed_task, complete_billed_task, record_llm_usage
-from backend.billing.vendor_configs import DEFAULT_VENDOR_CONFIGS, detect_vendor
+from backend.billing.vendor_configs import detect_vendor
 
 
 @pytest.fixture()
@@ -458,7 +468,6 @@ def test_appeals_basic(billing_store):
 
 def test_docker_settle_tick_debits_credits(billing_store, monkeypatch):
     from backend.billing.docker_meter import DockerBillingTracker, reset_docker_billing_tracker
-    from backend.billing.docker_pricing import get_effective_hourly_rate
 
     tracker = DockerBillingTracker()
     reset_docker_billing_tracker(tracker)

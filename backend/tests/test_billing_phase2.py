@@ -11,14 +11,13 @@ from backend.billing.fault_pool import (
     credit_fault_pool,
     disburse_from_fault_pool,
     fault_pool_status,
-    record_cache_invalidation,
 )
 from backend.billing.key_binding import mark_failover, select_and_bind_key
 from backend.billing.pool_store import get_pool_store
+from backend.billing.quota import BillingService, reset_billing_service
 from backend.billing.routing import route_key_selection
 from backend.billing.shared_pool import evaluate_key_health, list_shared_pool_keys
 from backend.billing.store import BillingStore, reset_billing_store
-from backend.billing.quota import BillingService, reset_billing_service
 
 
 @pytest.fixture()
@@ -279,8 +278,8 @@ def test_shared_pool_excludes_offline_keys(billing_store):
 
 
 def test_settle_credits_contribution_unlocked(billing_store):
-    from backend.billing.pools_service import get_pools_service
     from backend.billing.pool_types import POOL_CONTRIBUTION_UNLOCKED
+    from backend.billing.pools_service import get_pools_service
 
     uid = "settle_reward"
     billing_store.ensure_account(uid, "pro")
@@ -304,8 +303,12 @@ def test_settle_credits_contribution_unlocked(billing_store):
 
 
 def test_convert_contribution_ratio_1_to_0_4(billing_store):
+    from backend.billing.pool_types import (
+        CONTRIBUTION_UNLOCKED_CONVERT_RATIO,
+        POOL_CONTRIBUTION_UNLOCKED,
+        POOL_PURCHASED,
+    )
     from backend.billing.pools_service import get_pools_service
-    from backend.billing.pool_types import CONTRIBUTION_UNLOCKED_CONVERT_RATIO, POOL_CONTRIBUTION_UNLOCKED, POOL_PURCHASED
 
     uid = "convert_user"
     billing_store.ensure_account(uid, "free")

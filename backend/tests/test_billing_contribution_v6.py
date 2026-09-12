@@ -21,7 +21,6 @@ from backend.billing.pool_store import get_pool_store
 from backend.billing.pool_types import (
     CONTRIBUTION_UNLOCKED_CONVERT_RATIO,
     CONTRIBUTION_UNLOCKED_DECAY,
-    POOL_CONTRIBUTION_LOCKED,
     POOL_CONTRIBUTION_UNLOCKED,
     POOL_PURCHASED,
 )

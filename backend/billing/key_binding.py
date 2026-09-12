@@ -4,7 +4,11 @@ from __future__ import annotations
 import os
 from typing import Any, Literal
 
-from backend.billing.fault_pool import record_cache_invalidation, record_degrade_spread, record_public_pool_premium
+from backend.billing.fault_pool import (
+    record_cache_invalidation,
+    record_degrade_spread,
+    record_public_pool_premium,
+)
 from backend.billing.pool_store import get_pool_store
 from backend.billing.routing import apply_routing_binding, route_key_selection
 
