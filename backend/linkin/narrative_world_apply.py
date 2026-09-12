@@ -12,7 +12,14 @@ import re
 import time
 from typing import Any
 
-from backend.linkin.knowledge import COL_EVENTS, COL_NPCS, COL_WORLDVIEW, get_store, list_entities, upsert_entity
+from backend.linkin.knowledge import (
+    COL_EVENTS,
+    COL_NPCS,
+    COL_WORLDVIEW,
+    get_store,
+    list_entities,
+    upsert_entity,
+)
 from backend.linkin.minecraft import execute_named_tool, monitor_status
 from backend.linkin.tools import ToolValidationError
 from backend.tools import minecraft_mcp as mcp
