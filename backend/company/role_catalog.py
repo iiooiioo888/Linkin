@@ -809,6 +809,36 @@ def create_custom_role(data: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def backfill_custom_role_budgets(role_id: str, budgets: dict[str, Any]) -> bool:
+    """僅在 custom 記錄與 settings 覆蓋層皆未自訂預算時，寫入預設預算到 custom[]。
+
+    不回寫 settings 覆蓋層，保留使用者日後透過監控中心單獨覆蓋的能力。
+    回傳 True 表示已更新。
+    """
+    role_id = _sanitize_id(role_id)
+    with _lock:
+        store = deepcopy(_load_store())
+        overlay = (store.get("settings") or {}).get(role_id) or {}
+        customs = store.get("custom") or []
+        updated = False
+        for item in customs:
+            if _sanitize_id(str(item.get("id") or "")) != role_id:
+                continue
+            from backend.linkin.budget_defaults import role_budgets_uncustomized
+
+            if not role_budgets_uncustomized(item, overlay if isinstance(overlay, dict) else None):
+                return False
+            for field in BUDGET_USD_FIELDS:
+                if field in budgets:
+                    item[field] = max(0.0, float(budgets[field] or 0))
+            updated = True
+            break
+        if updated:
+            store["custom"] = customs
+            _save_store(store)
+        return updated
+
+
 def delete_custom_role(role_id: str) -> None:
     role_id = _sanitize_id(role_id)
     snap = get_snapshot(role_id)

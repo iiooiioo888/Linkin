@@ -647,6 +647,21 @@ def _limit_over(limit: float, spent: float) -> bool:
     return bool(limit > 0 and spent > limit)
 
 
+def _count_budget_alerts(agent: dict[str, Any]) -> int:
+    """事件型 budget_warning/degrade 與監控快照型預算告警合計。"""
+    event_count = sum(
+        1
+        for e in agent.get("events") or []
+        if e.get("event") in {"budget_warning", "budget_degrade"}
+    )
+    alert_count = sum(
+        1
+        for item in agent.get("alerts") or []
+        if any(marker in (item.get("message") or "") for marker in _BUDGET_ALERT_MARKERS)
+    )
+    return max(event_count, alert_count)
+
+
 def _strip_budget_alerts(alerts: list[dict[str, str]]) -> list[dict[str, str]]:
     cleaned: list[dict[str, str]] = []
     for item in alerts:
@@ -933,6 +948,7 @@ def _finalize_agent(agent: dict[str, Any]) -> dict[str, Any]:
         alerts.append({"level": "warning", "message": f"今日工作項已達上限 {max_items}"})
     agent["alerts"] = alerts
     _apply_split_budgets(agent)
+    agent["metrics"]["budget_alerts"] = _count_budget_alerts(agent)
     seen_tasks: dict[str, dict[str, Any]] = {}
     for item in agent["work_items"]:
         tid = str(item.get("task_id") or "")
@@ -1106,6 +1122,44 @@ def _ingest_auditor_sessions(agents: dict[str, dict[str, Any]]) -> None:
         )
 
 
+def _collect_account_budget_summary() -> dict[str, Any]:
+    """帳戶級預算摘要：Hub 日限額（USD）與靈境積分（credits）分開標示，不混算。"""
+    summary: dict[str, Any] = {}
+    try:
+        from backend.hub.runtime import runtime
+
+        user = runtime.store.seed_dev_user()
+        spent = float(runtime.budget.spent_today(str(user.id)))
+        limit = float(user.daily_budget_limit_usd or 0)
+        summary["hub_daily"] = {
+            "label": "Hub API 日預算",
+            "unit": "usd",
+            "spent_today_usd": round(spent, 4),
+            "daily_limit_usd": limit,
+            "remaining_today_usd": round(max(0.0, limit - spent), 4) if limit > 0 else None,
+        }
+    except Exception:
+        logger.debug("Hub 帳戶預算摘要讀取失敗（已忽略）", exc_info=True)
+        summary["hub_daily"] = None
+    try:
+        from backend.billing.context import default_anonymous_user
+        from backend.billing.quota import get_billing_service
+
+        uid = default_anonymous_user()
+        acct = get_billing_service().get_account(uid)
+        summary["linkin_credits"] = {
+            "label": "靈境積分",
+            "unit": "credits",
+            "balance_credits": round(float(acct.get("balance_credits") or 0), 2),
+            "monthly_quota_credits": round(float(acct.get("monthly_quota_credits") or 0), 2),
+            "monthly_used_credits": round(float(acct.get("monthly_used_credits") or 0), 2),
+        }
+    except Exception:
+        logger.debug("靈境積分摘要讀取失敗（已忽略）", exc_info=True)
+        summary["linkin_credits"] = None
+    return summary
+
+
 def collect_agent_monitor() -> dict[str, Any]:
     """聚合每位角色的 Agent 工作台；目錄永遠完整，缺資料時全部待命。"""
     snapshots = list_role_snapshots()
@@ -1182,5 +1236,6 @@ def collect_agent_monitor() -> dict[str, Any]:
         "grill_chain": grill_edges(),
         "catalog_meta": catalog_meta(),
         "monitor_prefs": get_monitor_prefs(),
+        "account_budget": _collect_account_budget_summary(),
         "agents": finalized,
     }

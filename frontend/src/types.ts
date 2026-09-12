@@ -1751,8 +1751,26 @@ export interface RoleAgent {
   raho_rank?: 'ok' | 'watch' | 'demoted' | string;
 }
 
+export interface AccountBudgetSnapshot {
+  hub_daily?: {
+    label: string;
+    unit: string;
+    spent_today_usd: number;
+    daily_limit_usd: number;
+    remaining_today_usd: number | null;
+  } | null;
+  linkin_credits?: {
+    label: string;
+    unit: string;
+    balance_credits: number;
+    monthly_quota_credits: number;
+    monthly_used_credits: number;
+  } | null;
+}
+
 export interface AgentMonitorData {
   generated_at: string;
+  account_budget?: AccountBudgetSnapshot;
   summary: {
     roles_total: number;
     roles_busy: number;

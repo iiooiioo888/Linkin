@@ -63,6 +63,7 @@ import {
   RahoChainBlock,
   roleInitials,
 } from './RoleDeskLayout';
+import { RoleBudgetSummary } from './RoleBudgetSummary';
 
 const KANBAN_COLUMNS = [
   { key: 'queue' as WorkItemColumnKey, label: '待辦' },
@@ -170,7 +171,8 @@ export default function RoleV3Desk({
   const statusStack = buildRoleStatusStack(agent);
   const pipelineNodes = buildRolePipelineNodes(agent);
   const skillTags = [...(agent.tags ?? []), ...(agent.tools_allowed ?? []).slice(0, 6)];
-  const capacityWarn = capPct >= 80 || (m.budget_alerts ?? 0) > 0;
+  const budgetWarn = agent.budget_over || agent.ai_budget_over || agent.cloud_budget_over || (m.budget_alerts ?? 0) > 0;
+  const capacityWarn = capPct >= 80 || budgetWarn;
 
   const groupedAgents = useMemo(() => {
     const groups = new Map<string, RoleAgent[]>();
@@ -280,9 +282,9 @@ export default function RoleV3Desk({
                 {agent.status === 'busy' ? '執行中' : agent.status === 'waiting' ? '等待' : '待命'}
               </span>
               {agent.on_call ? <span className="rounded bg-[var(--console-card)] px-1.5 py-0.5 text-[9px] text-[var(--console-accent)]">值班</span> : null}
-              {(m.budget_alerts ?? 0) > 0 ? (
+              {budgetWarn ? (
                 <span className="rounded bg-[color-mix(in_srgb,var(--console-amber)_15%,transparent)] px-1.5 py-0.5 text-[9px] text-[var(--console-amber)]">
-                  告警 {m.budget_alerts}
+                  {(m.budget_alerts ?? 0) > 0 ? t('roles.budgetAlertShort', { count: m.budget_alerts }) : t('roles.budgetOver')}
                 </span>
               ) : null}
             </div>
@@ -296,11 +298,14 @@ export default function RoleV3Desk({
             <WarnBar className="mb-3">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--console-amber)]" />
               {capPct >= 80 ? `並行容量 ${capPct}%（${agent.executing}/${agent.max_parallel_work}）` : null}
-              {(m.budget_alerts ?? 0) > 0 ? ` · 預算告警 ${m.budget_alerts}` : null}
+              {budgetWarn ? ` · ${(m.budget_alerts ?? 0) > 0 ? t('roles.budgetAlertShort', { count: m.budget_alerts }) : t('roles.budgetOver')}` : null}
             </WarnBar>
           ) : null}
 
           <section id="role-overview" className={consoleLayout.sectionAnchor}>
+            <div className="mb-3">
+              <RoleBudgetSummary agent={agent} compact={isMobileLite} />
+            </div>
             {(!isMobileLite || showDenseWidgets) ? (
               <KpiGrid6 className="mb-3">
                 {[

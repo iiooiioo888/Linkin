@@ -5,7 +5,13 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.company.role_catalog import create_custom_role, get_snapshot, update_role_settings
+from backend.company.role_catalog import (
+    backfill_custom_role_budgets,
+    create_custom_role,
+    get_snapshot,
+    update_role_settings,
+)
+from backend.linkin.budget_defaults import budgets_for_role, is_linkin_role
 from backend.linkin.prompts import (
     ROLE_BUILD_DIRECTOR,
     ROLE_EXECUTOR,
@@ -164,6 +170,24 @@ def _safe_create(payload: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
 
+def backfill_linkin_role_budgets() -> int:
+    """為尚未自訂預算的靈境子角色回填預設 AI／雲預算。不回寫已設正值或 settings 覆蓋。"""
+    from backend.company.role_catalog import _load_store, reset_catalog_cache
+
+    store = _load_store()
+    count = 0
+    for raw in store.get("custom") or []:
+        if not isinstance(raw, dict) or not is_linkin_role(raw):
+            continue
+        role_id = str(raw.get("id") or "")
+        if not role_id:
+            continue
+        if backfill_custom_role_budgets(role_id, budgets_for_role(role_id)):
+            count += 1
+    reset_catalog_cache()
+    return count
+
+
 def seed_linkin_roles() -> list[dict[str, Any]]:
     """冪等寫入 16 個 Linkin 子角色（4 總監 × 總監+執行者+審查員+記錄員）。
 
@@ -197,6 +221,7 @@ def seed_linkin_roles() -> list[dict[str, Any]]:
                 "tools_allowed": _tools_for(slug, None),
                 "allow_tool_use": True,
                 **DIRECTOR_RUNTIME,
+                **budgets_for_role(director_id),
             }
         )
         if director is None:
@@ -234,8 +259,10 @@ def seed_linkin_roles() -> list[dict[str, Any]]:
                     "tools_allowed": _tools_for(slug, staff_key),
                     "allow_tool_use": True,
                     **staff_runtime,
+                    **budgets_for_role(f"linkin_{slug}_{staff_slug}"),
                 }
             )
             if role:
                 created.append(role)
+    backfill_linkin_role_budgets()
     return created

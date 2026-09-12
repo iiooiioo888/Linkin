@@ -40,6 +40,7 @@ import RoleV3Desk from './RoleV3Desk';
 import { RdCell, RoleDeskHeader, RoleRightPanel, RoleStatsStrip, type RoleDeskTab } from './RoleDeskLayout';
 import StrategyCatalogPanel from './StrategyCatalogPanel';
 import { ConsoleEmpty, ConsoleRdShell, PanelShell } from './ui/ConsoleLayout';
+import { AccountBudgetBanner } from './RoleBudgetSummary';
 
 function toDeskTab(tab?: string | null): RoleDeskTab {
   if (tab === 'monitor' || tab === 'settings' || tab === 'quant' || tab === 'list') return tab;
@@ -465,6 +466,11 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
               {(selected.alerts!.length ?? 0) > 1 ? ` · 另 ${selected.alerts!.length - 1} 則` : ''}
             </div>
           )}
+          {deskTab === 'tasks' && data?.account_budget ? (
+            <div className="shrink-0 border-b border-[var(--console-line)] px-6 py-2">
+              <AccountBudgetBanner summary={data.account_budget} />
+            </div>
+          ) : null}
 
           {deskTab === 'tasks' ? (
             <RoleV3Desk

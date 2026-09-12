@@ -357,7 +357,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 25.0,
       "tools_allowed": [
         "BuilderAI.generate",
         "place_block",
@@ -383,8 +383,8 @@
       "always_require_review": false,
       "priority": 4,
       "description": "靈境四部門之一 · 塑形學派 L1 主管",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 100.0,
+      "monthly_budget_usd": 350.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -402,7 +402,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 15.0,
+      "cloud_weekly_budget_usd": 60.0,
+      "cloud_monthly_budget_usd": 200.0
     },
     {
       "id": "custom_linkin_build_executor",
@@ -422,7 +425,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 12.0,
       "tools_allowed": [
         "BuilderAI.generate",
         "place_block",
@@ -447,8 +450,8 @@
       "always_require_review": false,
       "priority": 3,
       "description": "塑形學派流水線 L2 · 執行者",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 50.0,
+      "monthly_budget_usd": 180.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -466,7 +469,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 8.0,
+      "cloud_weekly_budget_usd": 30.0,
+      "cloud_monthly_budget_usd": 100.0
     },
     {
       "id": "custom_linkin_build_reviewer",
@@ -486,7 +492,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 5.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -506,8 +512,8 @@
       "always_require_review": false,
       "priority": 4,
       "description": "塑形學派流水線 L3 · 審查員",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 20.0,
+      "monthly_budget_usd": 70.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -525,7 +531,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 2.0,
+      "cloud_weekly_budget_usd": 8.0,
+      "cloud_monthly_budget_usd": 25.0
     },
     {
       "id": "custom_linkin_build_scribe",
@@ -545,7 +554,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 3.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -565,8 +574,8 @@
       "always_require_review": false,
       "priority": 2,
       "description": "塑形學派流水線 L4 · 記錄員",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 12.0,
+      "monthly_budget_usd": 40.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -584,7 +593,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 1.0,
+      "cloud_weekly_budget_usd": 4.0,
+      "cloud_monthly_budget_usd": 12.0
     },
     {
       "id": "custom_linkin_narrative_director",
@@ -609,7 +621,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 25.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -629,8 +641,8 @@
       "always_require_review": false,
       "priority": 4,
       "description": "靈境四部門之一 · 言靈學派 L1 主管",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 100.0,
+      "monthly_budget_usd": 350.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -648,7 +660,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 15.0,
+      "cloud_weekly_budget_usd": 60.0,
+      "cloud_monthly_budget_usd": 200.0
     },
     {
       "id": "custom_linkin_narrative_executor",
@@ -668,7 +683,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 12.0,
       "tools_allowed": [
         "Quest.generate",
         "get_player",
@@ -689,8 +704,8 @@
       "always_require_review": false,
       "priority": 3,
       "description": "言靈學派流水線 L2 · 執行者",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 50.0,
+      "monthly_budget_usd": 180.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -708,7 +723,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 8.0,
+      "cloud_weekly_budget_usd": 30.0,
+      "cloud_monthly_budget_usd": 100.0
     },
     {
       "id": "custom_linkin_narrative_reviewer",
@@ -728,7 +746,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 5.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -748,8 +766,8 @@
       "always_require_review": false,
       "priority": 4,
       "description": "言靈學派流水線 L3 · 審查員",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 20.0,
+      "monthly_budget_usd": 70.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -767,7 +785,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 2.0,
+      "cloud_weekly_budget_usd": 8.0,
+      "cloud_monthly_budget_usd": 25.0
     },
     {
       "id": "custom_linkin_narrative_scribe",
@@ -787,7 +808,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 3.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -807,8 +828,8 @@
       "always_require_review": false,
       "priority": 2,
       "description": "言靈學派流水線 L4 · 記錄員",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 12.0,
+      "monthly_budget_usd": 40.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -826,7 +847,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 1.0,
+      "cloud_weekly_budget_usd": 4.0,
+      "cloud_monthly_budget_usd": 12.0
     },
     {
       "id": "custom_linkin_npc_director",
@@ -851,7 +875,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 25.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -871,8 +895,8 @@
       "always_require_review": false,
       "priority": 4,
       "description": "靈境四部門之一 · 共鳴學派 L1 主管",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 100.0,
+      "monthly_budget_usd": 350.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -890,7 +914,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 15.0,
+      "cloud_weekly_budget_usd": 60.0,
+      "cloud_monthly_budget_usd": 200.0
     },
     {
       "id": "custom_linkin_npc_executor",
@@ -910,7 +937,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 12.0,
       "tools_allowed": [
         "NPC.create",
         "NPC.dialogue",
@@ -932,8 +959,8 @@
       "always_require_review": false,
       "priority": 3,
       "description": "共鳴學派流水線 L2 · 執行者",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 50.0,
+      "monthly_budget_usd": 180.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -951,7 +978,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 8.0,
+      "cloud_weekly_budget_usd": 30.0,
+      "cloud_monthly_budget_usd": 100.0
     },
     {
       "id": "custom_linkin_npc_reviewer",
@@ -971,7 +1001,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 5.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -991,8 +1021,8 @@
       "always_require_review": false,
       "priority": 4,
       "description": "共鳴學派流水線 L3 · 審查員",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 20.0,
+      "monthly_budget_usd": 70.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -1010,7 +1040,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 2.0,
+      "cloud_weekly_budget_usd": 8.0,
+      "cloud_monthly_budget_usd": 25.0
     },
     {
       "id": "custom_linkin_npc_scribe",
@@ -1030,7 +1063,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 3.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -1050,8 +1083,8 @@
       "always_require_review": false,
       "priority": 2,
       "description": "共鳴學派流水線 L4 · 記錄員",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 12.0,
+      "monthly_budget_usd": 40.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -1069,7 +1102,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 1.0,
+      "cloud_weekly_budget_usd": 4.0,
+      "cloud_monthly_budget_usd": 12.0
     },
     {
       "id": "custom_linkin_item_director",
@@ -1094,7 +1130,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 25.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -1114,8 +1150,8 @@
       "always_require_review": false,
       "priority": 4,
       "description": "靈境四部門之一 · 賦形學派 L1 主管",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 100.0,
+      "monthly_budget_usd": 350.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -1133,7 +1169,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 15.0,
+      "cloud_weekly_budget_usd": 60.0,
+      "cloud_monthly_budget_usd": 200.0
     },
     {
       "id": "custom_linkin_item_executor",
@@ -1153,7 +1192,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 12.0,
       "tools_allowed": [
         "Item.create",
         "get_player",
@@ -1174,8 +1213,8 @@
       "always_require_review": false,
       "priority": 3,
       "description": "賦形學派流水線 L2 · 執行者",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 50.0,
+      "monthly_budget_usd": 180.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -1193,7 +1232,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 8.0,
+      "cloud_weekly_budget_usd": 30.0,
+      "cloud_monthly_budget_usd": 100.0
     },
     {
       "id": "custom_linkin_item_reviewer",
@@ -1213,7 +1255,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 5.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -1233,8 +1275,8 @@
       "always_require_review": false,
       "priority": 4,
       "description": "賦形學派流水線 L3 · 審查員",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 20.0,
+      "monthly_budget_usd": 70.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -1252,7 +1294,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 2.0,
+      "cloud_weekly_budget_usd": 8.0,
+      "cloud_monthly_budget_usd": 25.0
     },
     {
       "id": "custom_linkin_item_scribe",
@@ -1272,7 +1317,7 @@
       "templates": [],
       "enabled": true,
       "preferred_model": "",
-      "daily_budget_usd": 0.0,
+      "daily_budget_usd": 3.0,
       "tools_allowed": [
         "get_player",
         "get_online_players"
@@ -1292,8 +1337,8 @@
       "always_require_review": false,
       "priority": 2,
       "description": "賦形學派流水線 L4 · 記錄員",
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
+      "weekly_budget_usd": 12.0,
+      "monthly_budget_usd": 40.0,
       "max_daily_items": 0,
       "require_human_approval": false,
       "stream_enabled": true,
@@ -1311,7 +1356,10 @@
       ],
       "notify_channel": "",
       "quiet_hours": "",
-      "context_window": 0
+      "context_window": 0,
+      "cloud_daily_budget_usd": 1.0,
+      "cloud_weekly_budget_usd": 4.0,
+      "cloud_monthly_budget_usd": 12.0
     }
   ]
 }

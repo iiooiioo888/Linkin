@@ -90,7 +90,24 @@
     "mcpProbe": "健康檢查"
   },
   "roles": {
-    "showDenseWidgets": "展開熱力圖與任務矩陣"
+    "showDenseWidgets": "展開熱力圖與任務矩陣",
+    "budgetSummary": "角色預算",
+    "budgetAi": "AI 使用",
+    "budgetAiHint": "僅計 LLM API",
+    "budgetCloud": "雲服務",
+    "budgetCloudHint": "Docker＋阿里雲",
+    "budgetDaily": "今日",
+    "budgetWeeklyMonthly": "週／月上限",
+    "budgetUnlimited": "不限",
+    "budgetOver": "已超預算",
+    "budgetAlertShort": "預算告警 {{count}}",
+    "budgetAlertCount": "預算告警 {{count}} 則",
+    "accountHubBudget": "Hub 日 API 預算（USD）",
+    "accountHubHint": "Hub 用戶呼叫日限額，與角色 USD 預算分開",
+    "accountLinkinCredits": "靈境積分",
+    "accountCreditsHint": "任務計費錢包，不與角色 USD 預算混算",
+    "creditsUnit": "積分",
+    "creditsMonthlyUsed": "本月已用 {{used}} / {{quota}}"
   },
   "mobileShell": {
     "desktopHint": "完整控制與密集監控台建議在桌面（≥768px）使用；此處仍可查看摘要或展開簡化面板。",
