@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { createNpc, deleteNpc, fetchNpcs, npcDialogue, updateNpc, type NpcCard } from '../../api/linkin';
 import { npcPortraitUri } from '../../lib/visualCards';
 import MediaGallery, { VisualThumb } from '../../components/media/MediaGallery';
+import PendingWorldIntentsBanner from './PendingWorldIntentsBanner';
 
 const EMPTY: NpcCard = {
   name: '',
@@ -119,6 +120,9 @@ export default function NpcManagerPanel() {
         <button type="button" onClick={() => void load()} className="rounded-md border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98]">重新整理</button>
       </div>
       {error && <p className="border-b border-red-800 bg-red-900/30 px-3 py-2 text-xs text-red-300">{error}</p>}
+      <div className="px-3 pt-3">
+        <PendingWorldIntentsBanner kind="npc" compact />
+      </div>
       <div className="grid min-h-0 flex-1 gap-0 overflow-hidden lg:grid-cols-[1fr_1.1fr]">
         <div className="overflow-y-auto border-b border-white/[0.06] p-3 lg:border-b-0 lg:border-r">
           {npcs.length === 0 && <p className="py-8 text-center text-xs text-[#636366]">尚無 NPC，請先建立角色卡</p>}

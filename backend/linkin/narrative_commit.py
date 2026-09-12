@@ -88,6 +88,7 @@ def _commit_quest(payload: dict[str, Any]) -> dict[str, Any]:
         "description": description,
         "rewards": payload.get("rewards") or {"灵丝碎片": 3},
         "source": "narrative_workspace",
+        "world_status": "pending_world",
     }
     saved = upsert_entity("quests", quest)
     get_store().upsert(
@@ -106,6 +107,8 @@ def _commit_npc(payload: dict[str, Any]) -> dict[str, Any]:
         raise NarrativeCommitError(str(exc), key="npc", code=exc.code) from exc
     card = dict(invoked["params"])
     card["id"] = str(card.get("id") or f"npc-{uuid.uuid4().hex[:10]}")
+    card["source"] = "narrative_workspace"
+    card["world_status"] = "pending_world"
     stored = get_store().upsert(
         COL_NPCS,
         format_npc_text(card),
@@ -122,7 +125,12 @@ def _commit_item(payload: dict[str, Any]) -> dict[str, Any]:
     except ToolValidationError as exc:
         raise NarrativeCommitError(str(exc), key="item", code=exc.code) from exc
     params = invoked["params"]
-    item = {"id": str(payload.get("id") or f"item-{uuid.uuid4().hex[:10]}"), **params}
+    item = {
+        "id": str(payload.get("id") or f"item-{uuid.uuid4().hex[:10]}"),
+        **params,
+        "source": "narrative_workspace",
+        "world_status": "pending_world",
+    }
     saved = upsert_entity("items", item)
     get_store().upsert(
         COL_WORLDVIEW,

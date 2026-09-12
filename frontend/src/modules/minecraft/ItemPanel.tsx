@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { createItem, deleteItem, fetchItems, type Item } from '../../api/linkin';
 import { itemTileUri } from '../../lib/visualCards';
 import MediaGallery, { VisualThumb } from '../../components/media/MediaGallery';
+import PendingWorldIntentsBanner from './PendingWorldIntentsBanner';
 
 export default function ItemPanel() {
   const [items, setItems] = useState<Item[]>([]);
@@ -72,6 +73,7 @@ export default function ItemPanel() {
         </div>
         <button type="button" onClick={() => void load()} className="rounded-xl border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98]">重新整理</button>
       </div>
+      <PendingWorldIntentsBanner kind="item" compact />
       {error && <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
 
       {items.length > 0 && (

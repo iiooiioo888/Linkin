@@ -119,6 +119,8 @@ def test_narrative_begin_write_commit(client: TestClient):
     assert payload["workspace"]["state"] == "committed"
     assert "quest" in payload["committed"]
     assert "npc" in payload["committed"]
+    assert payload["committed"]["quest"]["world_status"] == "pending_world"
+    assert payload["committed"]["npc"]["world_status"] == "pending_world"
 
     quests = client.get("/linkin/quests").json()["quests"]
     assert any(q["title"] == QUEST_DRAFT["title"] for q in quests)
@@ -146,6 +148,7 @@ def test_narrative_full_rpg_draft_keys_commit(client: TestClient):
     assert commit.status_code == 200, commit.text
     committed = commit.json()["committed"]
     assert committed["item"]["name"] == ITEM_DRAFT["name"]
+    assert committed["item"]["world_status"] == "pending_world"
     assert committed["build_brief"]["status"] == "pending_builder"
 
     items = client.get("/linkin/items").json()["items"]

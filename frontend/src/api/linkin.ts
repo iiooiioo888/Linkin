@@ -466,3 +466,72 @@ export const fetchBuildBriefJob = (jobId: string) =>
 
 export const cancelBuildBriefJob = (jobId: string) =>
   mc.post<{ job: BuildBriefJob }>(`/build-briefs/jobs/${encodeURIComponent(jobId)}/cancel`);
+
+export type WorldIntentEntity = {
+  id: string;
+  kind: 'npc' | 'quest' | 'item';
+  title?: string;
+  name?: string;
+  world_status?: string;
+  region?: string;
+  location?: string;
+  source?: string;
+};
+
+export type PendingWorldIntents = {
+  npcs: WorldIntentEntity[];
+  quests: WorldIntentEntity[];
+  items: WorldIntentEntity[];
+  count: number;
+};
+
+export type WorldIntentPreview = {
+  kind: 'npc' | 'quest' | 'item';
+  id: string;
+  title: string;
+  spawn?: { x: number; y: number; z: number };
+  actions?: Array<{ tool: string; description: string; material?: string; command?: string }>;
+  store?: string;
+  world_status?: string;
+};
+
+export type WorldIntentApplyRow = {
+  kind: 'npc' | 'quest' | 'item';
+  id: string;
+  title?: string;
+  world_status?: string;
+  skipped?: boolean;
+  store?: { ok: boolean; note?: string; entity?: Record<string, unknown> };
+  minecraft?: { ok: boolean; skipped?: boolean };
+  next_steps?: string[];
+};
+
+export type WorldIntentApplyResult = {
+  results: WorldIntentApplyRow[];
+  summary: {
+    overall_status: 'applied' | 'partial' | 'failed' | 'skipped';
+    applied: number;
+    partial: number;
+    skipped: number;
+    failed: number;
+    total: number;
+  };
+  bridge?: MinecraftStatus & {
+    spawn_mode?: string;
+    bridge_offline?: boolean;
+    note?: string;
+  };
+  dry_run?: boolean;
+};
+
+export const fetchPendingWorldIntents = () =>
+  mc.get<{ pending: PendingWorldIntents; count: number }>('/world-intents');
+
+export const previewWorldIntents = (body: { apply_all?: boolean; npc_ids?: string[]; quest_ids?: string[]; item_ids?: string[] }) =>
+  mc.post<{ intents: WorldIntentPreview[]; count: number; bridge: MinecraftStatus; dry_run: boolean }>(
+    '/world-intents/preview',
+    body,
+  );
+
+export const applyWorldIntents = (body: { apply_all?: boolean; npc_ids?: string[]; quest_ids?: string[]; item_ids?: string[] }) =>
+  mc.post<WorldIntentApplyResult>('/world-intents/apply', { ...body, confirm: true });
