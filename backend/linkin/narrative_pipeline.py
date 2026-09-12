@@ -327,14 +327,15 @@ def run_narrative_pipeline(body: dict[str, Any]) -> dict[str, Any]:
                 committed = dict(summary_holder.get("committed") or {})
                 commit_errors = list(summary_holder.get("errors") or [])
                 build_brief_id = _find_build_brief_id(committed)
-                status: StepStatus = "ok" if not commit_errors else "partial"
+                commit_status: StepStatus = "ok" if not commit_errors else "partial"
                 _set(
                     "commit",
-                    status,
+                    commit_status,
                     detail={"committed": committed, "errors": commit_errors},
                     message=f"已提交 {len(committed)} 鍵" if committed else "",
                 )
                 workspace = reg.get(workspace_id)
+                assert workspace is not None
                 already_committed = True
 
     if build_brief_id is None:
@@ -442,12 +443,12 @@ def run_narrative_pipeline(body: dict[str, Any]) -> dict[str, Any]:
                     brief_entity = get_build_brief(build_brief_id)
                     result = apply_build_brief(brief_entity, dry_run=dry_run_build)
                     placement = result.get("placement") or {}
-                    status: StepStatus = "ok" if placement.get("ok") else "partial"
+                    build_apply_status: StepStatus = "ok" if placement.get("ok") else "partial"
                     if placement.get("dry_run"):
-                        status = "partial" if status == "ok" else status
+                        build_apply_status = "partial" if build_apply_status == "ok" else build_apply_status
                     _set(
                         "build_apply",
-                        status,
+                        build_apply_status,
                         detail={
                             "brief_id": build_brief_id,
                             "placement": placement,
@@ -466,7 +467,12 @@ def run_narrative_pipeline(body: dict[str, Any]) -> dict[str, Any]:
                 result = apply_world_intents(apply_all=True, dry_run=False)
                 summary = result.get("summary") or {}
                 overall = str(summary.get("overall_status") or "failed")
-                status_map = {"applied": "ok", "partial": "partial", "skipped": "skipped", "failed": "error"}
+                status_map: dict[str, StepStatus] = {
+                    "applied": "ok",
+                    "partial": "partial",
+                    "skipped": "skipped",
+                    "failed": "error",
+                }
                 _set(
                     "world_apply",
                     status_map.get(overall, "partial"),
