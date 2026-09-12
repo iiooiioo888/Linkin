@@ -9,7 +9,7 @@
 Phase 0  敘事工作區（本模組）  →  commit  →  Linkin 實體庫
 Phase 1  任務／NPC／道具編排   →  既有 /linkin/* 與 RAG
 Phase 2  建築／地圖意圖       →  build_briefs → 使用者手動「落地建築」→ Builder.generate + place_block
-Phase 3  地圖生成／區域佈局   →  TODO：region map pipeline（未實作）
+Phase 3  NPC／任務／道具落地  →  world_status: pending_world → 使用者手動「落地」→ store + MineMCP 標記
 ```
 
 契約：**C-L0-004**（`backend/linkin/narrative_workspace.py`）——不得維護第二套可寫世界觀圖譜；落庫必經顯式 `commit` + 注入 writer。
@@ -63,6 +63,26 @@ Base：`/linkin/build-briefs`（Minecraft 模組閘道：`/modules/minecraft/api
 - 單次實心方塊 ≤ 5000；schematic 單軸 ≤ 128；超出回傳 `block_limit` / `bounds_exceeded`。
 
 前端：敘事工作區提交後顯示「落地建築」；建築面板列出 `pending_builder` 意圖。
+
+## Phase 3：落地 NPC／任務／道具
+
+Base：`/linkin/world-intents`（Minecraft 模組閘道：`/modules/minecraft/api/world-intents`）
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| GET | `/` | 列出 `world_status: pending_world` 的敘事意圖 |
+| POST | `/preview` | Dry-run：估算生成點與 MineMCP 動作 |
+| POST | `/apply` | **需 `confirm: true`**：更新 store 狀態並嘗試遊戲內標記 |
+
+實作：`backend/linkin/narrative_world_apply.py`、`backend/linkin/narrative_world_api.py`。
+
+安全契約：
+
+- Phase 0 **commit** 寫入實體庫並標記 `world_status: pending_world`；**不會**自動 summon／公告。
+- **apply** 更新 `world_status` 為 `applied` 或 `partial`；橋接未連線時仍更新 Linkin 資料並回傳 `partial`（不偽造 in-game 成功）。
+- 已 `applied` 的實體在重複 apply 時略過（idempotent）。
+
+前端：敘事工作區提交後顯示 Phase 3 條；NPC／任務／道具面板顯示待落地提示。
 
 ## 擴展點（TODO）
 

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchL0Kernel } from '../../api/client';
 import {
   applyBuildBrief,
+  applyWorldIntents,
   beginNarrativeWorkspace,
   commitNarrativeWorkspace,
   confirmNarrativeWorkspace,
@@ -12,9 +13,11 @@ import {
   fetchBuildBriefs,
   fetchMinecraftStatus,
   fetchNarrativeWorkspace,
+  fetchPendingWorldIntents,
   listNarrativeWorkspaces,
   generateNarrativeDrafts,
   previewBuildBrief,
+  previewWorldIntents,
   seedNarrativeStarterPack,
   writeNarrativeDraft,
   type BuildBrief,
@@ -22,7 +25,11 @@ import {
   type BuildBriefPreview,
   type MinecraftStatus,
   type NarrativeWorkspace,
+  type PendingWorldIntents,
+  type WorldIntentApplyResult,
+  type WorldIntentPreview,
 } from '../../api/linkin';
+import { consoleLayout } from '../../lib/consoleLayout';
 
 const DRAFT_LABELS: Record<string, string> = {
   story_arc: '故事主線',
@@ -124,6 +131,10 @@ export default function NarrativeWorkspacePanel() {
   const [applyResult, setApplyResult] = useState<BuildBriefApplyResult | null>(null);
   const [bridgeStatus, setBridgeStatus] = useState<MinecraftStatus | null>(null);
   const [buildBusy, setBuildBusy] = useState<'idle' | 'preview' | 'apply'>('idle');
+  const [pendingWorld, setPendingWorld] = useState<PendingWorldIntents | null>(null);
+  const [worldPreview, setWorldPreview] = useState<WorldIntentPreview[] | null>(null);
+  const [worldApplyResult, setWorldApplyResult] = useState<WorldIntentApplyResult | null>(null);
+  const [worldBusy, setWorldBusy] = useState<'idle' | 'preview' | 'apply'>('idle');
 
   const awaitingConfirmation = workspace?.state === 'awaiting_confirmation';
   const isTerminal = workspace?.state === 'committed' || workspace?.state === 'discarded';
@@ -183,6 +194,15 @@ export default function NarrativeWorkspacePanel() {
     }
   }, []);
 
+  const refreshPendingWorld = useCallback(async () => {
+    try {
+      const data = await fetchPendingWorldIntents();
+      setPendingWorld(data.pending);
+    } catch {
+      setPendingWorld(null);
+    }
+  }, []);
+
   useEffect(() => {
     void loadSnapshot();
   }, [loadSnapshot]);
@@ -190,6 +210,12 @@ export default function NarrativeWorkspacePanel() {
   useEffect(() => {
     void resumeTaskWorkspace().catch(() => undefined);
   }, [resumeTaskWorkspace]);
+
+  useEffect(() => {
+    if (workspace?.state === 'committed') {
+      void refreshPendingWorld();
+    }
+  }, [workspace?.state, refreshPendingWorld]);
 
   useEffect(() => {
     if (workspace?.state !== 'committed' || committedBriefId) return;
@@ -322,6 +348,8 @@ export default function NarrativeWorkspacePanel() {
     setSuccess(null);
     setBriefPreview(null);
     setApplyResult(null);
+    setWorldPreview(null);
+    setWorldApplyResult(null);
     try {
       const data = await commitNarrativeWorkspace(workspace.workspace_id);
       setWorkspace(data.workspace);
@@ -331,12 +359,13 @@ export default function NarrativeWorkspacePanel() {
         await loadCommittedBrief(brief.id);
         await refreshBridgeStatus();
       }
+      await refreshPendingWorld();
       const ids = Object.entries(data.committed ?? {})
         .map(([key, val]) => `${DRAFT_LABELS[key] ?? key}:${(val as { id?: string }).id ?? 'ok'}`)
         .join(' · ');
       setSuccess(
         ids
-          ? `已寫入 Linkin 實體庫：${ids}。若有建築意圖，可按「落地建築」經 MineMCP 放置方塊（需手動觸發）。`
+          ? `已寫入 Linkin 實體庫：${ids}。建築／NPC／任務／道具需手動 Phase 2／3 落地，commit 不會自動寫入遊戲世界。`
           : '提交成功',
       );
     } catch (err) {
@@ -361,6 +390,42 @@ export default function NarrativeWorkspacePanel() {
       setError((err as Error).message);
     } finally {
       setBuildBusy('idle');
+    }
+  };
+
+  const onPreviewWorld = async () => {
+    if (!pendingWorld?.count) return;
+    setWorldBusy('preview');
+    setError(null);
+    try {
+      const data = await previewWorldIntents({ apply_all: true });
+      setWorldPreview(data.intents);
+      await refreshBridgeStatus();
+      setSuccess(`預覽 ${data.count} 筆世界意圖（NPC／任務／道具）。`);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setWorldBusy('idle');
+    }
+  };
+
+  const onApplyWorld = async () => {
+    if (!pendingWorld?.count) return;
+    setWorldBusy('apply');
+    setError(null);
+    setWorldApplyResult(null);
+    try {
+      const data = await applyWorldIntents({ apply_all: true });
+      setWorldApplyResult(data);
+      await refreshPendingWorld();
+      const { summary } = data;
+      setSuccess(
+        `世界落地：${summary.overall_status} · 已套用 ${summary.applied} · 部分 ${summary.partial} · 略過 ${summary.skipped}`,
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setWorldBusy('idle');
     }
   };
 
@@ -625,8 +690,81 @@ export default function NarrativeWorkspacePanel() {
       {workspace?.state === 'committed' && (
         <div className="space-y-3">
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[12px] leading-relaxed text-emerald-200">
-            草案已寫入 Linkin 實體庫。任務／NPC／道具可在對應面板檢視；建築意圖需手動觸發 Phase 2 落地（不會自動建造）。
+            草案已寫入 Linkin 實體庫。NPC／任務／道具標記為 pending_world，需 Phase 3 手動落地；建築意圖需 Phase 2 手動建造。
           </div>
+
+          {pendingWorld && pendingWorld.count > 0 && (
+            <section className={`${consoleLayout.card} border-[var(--console-accent)]/30 p-4`}>
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-[var(--console-accent)]">Phase 3 · 落地 NPC／任務／道具</p>
+                  <h3 className={consoleLayout.title}>
+                    {pendingWorld.count} 筆待落地意圖
+                  </h3>
+                  <p className={consoleLayout.subtitle}>
+                    NPC {pendingWorld.npcs.length} · 任務 {pendingWorld.quests.length} · 道具 {pendingWorld.items.length}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void refreshBridgeStatus()}
+                  className={consoleLayout.refreshBtn}
+                >
+                  刷新橋接狀態
+                </button>
+              </div>
+
+              <div className="mb-3 flex flex-wrap gap-3 text-[10px] text-[var(--console-sub)]">
+                <span>
+                  MineMCP：
+                  <span className="text-[var(--console-accent)]">
+                    {bridgeStatus?.enabled ? (bridgeStatus.connected ? '已連線' : '未連線') : '未啟用（乾跑）'}
+                  </span>
+                </span>
+                {worldApplyResult && (
+                  <span>
+                    上次：
+                    <span className="text-[var(--console-accent)]">{worldApplyResult.summary.overall_status}</span>
+                  </span>
+                )}
+              </div>
+
+              {worldPreview && worldPreview.length > 0 && (
+                <ul className="mb-3 space-y-1 text-[10px] text-[var(--console-sub)]">
+                  {worldPreview.map((row) => (
+                    <li key={`${row.kind}-${row.id}`}>
+                      {row.title} · {row.kind} @ ({row.spawn?.x ?? '?'}, {row.spawn?.y ?? '?'}, {row.spawn?.z ?? '?'})
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={worldBusy !== 'idle'}
+                  onClick={() => void onPreviewWorld()}
+                  className="rounded-lg border border-[var(--console-cyan)]/40 bg-[var(--console-cyan)]/10 px-3 py-1.5 text-[12px] text-[var(--console-cyan)] disabled:opacity-40"
+                >
+                  {worldBusy === 'preview' ? '預覽中…' : '預覽／估算'}
+                </button>
+                <button
+                  type="button"
+                  disabled={worldBusy !== 'idle'}
+                  onClick={() => void onApplyWorld()}
+                  className="rounded-lg border border-[var(--console-accent)]/40 bg-[var(--console-accent)]/10 px-3 py-1.5 text-[12px] text-[var(--console-accent)] disabled:opacity-40"
+                >
+                  {worldBusy === 'apply' ? '落地中…' : '落地 NPC／任務／道具'}
+                </button>
+              </div>
+
+              {bridgeStatus?.enabled && !bridgeStatus.connected && (
+                <p className={`mt-2 ${consoleLayout.warnBar}`}>
+                  橋接未連線：仍會更新 Linkin 世界資料並標記 partial；連線後可重試遊戲內生成。
+                </p>
+              )}
+            </section>
+          )}
 
           {committedBriefId && buildBrief && (
             <section className="rounded-xl border border-[#c9a961]/30 bg-[#1C1C1E] p-4">
