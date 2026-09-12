@@ -67,6 +67,7 @@ VENDOR_STATIC: dict[str, tuple[str, ...]] = {
 }
 
 VENDOR_HOSTS: tuple[tuple[str, str], ...] = (
+    ("token-plan", "token-plan"),
     ("openrouter.ai", "openrouter"),
     ("api.deepseek.com", "deepseek"),
     ("dashscope.aliyuncs.com", "qwen"),
@@ -77,6 +78,8 @@ VENDOR_HOSTS: tuple[tuple[str, str], ...] = (
     ("api.openai.com", "openai"),
 )
 
+TOKEN_PLAN_LABEL = "阿里雲 Token Plan"
+
 KIND_LABELS: dict[str, str] = {
     "deepseek": "DeepSeek（單一廠商）",
     "qwen": "通義千問 Qwen（單一廠商）",
@@ -86,10 +89,24 @@ KIND_LABELS: dict[str, str] = {
     "openai": "OpenAI",
     "openrouter": "OpenRouter（通用模型目錄）",
     "ollama": "Ollama（本地通用）",
+    "token-plan": TOKEN_PLAN_LABEL,
     "generic": "OpenAI 相容通用端點",
 }
 
-CRAWL_KINDS = frozenset({"openrouter", "ollama", "generic", "openai"})
+MODEL_FAMILY_LABELS: dict[str, str] = {
+    "qwen": "通義千問 Qwen",
+    "deepseek": "DeepSeek",
+    "zhipu": "智譜 GLM",
+    "moonshot": "Moonshot / Kimi",
+    "token-plan": TOKEN_PLAN_LABEL,
+}
+
+MODEL_FAMILY_PREFIX_RE = re.compile(
+    r"^(?P<family>qwen|wan|deepseek|glm|kimi|moonshot)[-._]?",
+    re.IGNORECASE,
+)
+
+CRAWL_KINDS = frozenset({"openrouter", "ollama", "generic", "openai", "token-plan"})
 DEFAULT_REFRESH_SEC = 300
 
 # ── 模型池呼叫健康 / Failover（P1）────────────────────────────
@@ -124,6 +141,110 @@ def is_forbidden_model(model: str) -> bool:
     return bool(FORBIDDEN_RE.search(model or ""))
 
 
+def is_token_plan_url(url: str = "") -> bool:
+    return "token-plan" in (url or "").strip().lower()
+
+
+def infer_model_family(model_id: str) -> str:
+    """依模型 id 前綴推斷廠商家族（Token Plan 等多廠商目錄用）。"""
+    bare = _bare(model_id)
+    if not bare:
+        return "token-plan"
+    match = MODEL_FAMILY_PREFIX_RE.match(bare)
+    if not match:
+        return "token-plan"
+    family = match.group("family").lower()
+    if family in {"qwen", "wan"}:
+        return "qwen"
+    if family == "glm":
+        return "zhipu"
+    if family in {"kimi", "moonshot"}:
+        return "moonshot"
+    return family
+
+
+def friendly_model_name(model_id: str) -> str:
+    """可讀顯示名；wire id 不變。"""
+    bare = _bare(model_id)
+    if not bare:
+        return model_id
+    match = MODEL_FAMILY_PREFIX_RE.match(bare)
+    vendor_label = ""
+    rest = bare
+    if match:
+        family = match.group("family").lower()
+        vendor_label = {
+            "qwen": "Qwen",
+            "wan": "Wan",
+            "deepseek": "DeepSeek",
+            "glm": "GLM",
+            "kimi": "Kimi",
+            "moonshot": "Moonshot",
+        }.get(family, family.title())
+        rest = bare[match.end() :].lstrip("-._")
+    parts = [p for p in re.split(r"[-_]+", rest) if p]
+    formatted: list[str] = []
+    for part in parts:
+        if re.match(r"^v?\d", part, re.IGNORECASE):
+            formatted.append(part.upper() if part.lower().startswith("v") else part)
+        else:
+            formatted.append(part.capitalize())
+    suffix = " ".join(formatted)
+    if vendor_label and suffix:
+        return f"{vendor_label} {suffix}"
+    if vendor_label:
+        return vendor_label
+    return bare
+
+
+def normalize_catalog_model(
+    item: dict[str, str] | str,
+    *,
+    route_provider: str = "",
+) -> dict[str, str]:
+    if isinstance(item, str):
+        mid = item.strip()
+        owned = infer_model_family(mid) if route_provider == "token-plan" else route_provider
+        name = friendly_model_name(mid) if route_provider == "token-plan" else mid
+        return {"id": mid, "name": name, "owned_by": owned}
+    mid = str(item.get("id") or item.get("name") or "").strip()
+    owned = str(item.get("owned_by") or item.get("canonical_slug") or "").strip()
+    name = str(item.get("name") or mid).strip()
+    if route_provider == "token-plan":
+        if not owned or owned in {"system", "token-plan"}:
+            owned = infer_model_family(mid)
+        if name == mid or not name:
+            name = friendly_model_name(mid)
+    elif not owned:
+        owned = route_provider
+    return {"id": mid, "name": name or mid, "owned_by": owned}
+
+
+def normalize_catalog_models(
+    models: list[Any],
+    *,
+    route_provider: str = "",
+) -> list[dict[str, str]]:
+    if route_provider != "token-plan":
+        return [
+            normalize_catalog_model(item, route_provider=route_provider)
+            for item in models
+            if isinstance(item, (str, dict))
+        ]
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for item in models:
+        if not isinstance(item, (str, dict)):
+            continue
+        row = normalize_catalog_model(item, route_provider="token-plan")
+        mid = row.get("id") or ""
+        if not mid or is_forbidden_model(mid) or mid.lower() in seen:
+            continue
+        seen.add(mid.lower())
+        out.append(row)
+    return out
+
+
 def classify_provider(api_base: str = "", model: str = "") -> str:
     """依端點與模型名判斷供應商類型。"""
     base = (api_base or "").strip().lower()
@@ -132,6 +253,8 @@ def classify_provider(api_base: str = "", model: str = "") -> str:
 
     if "11434" in base or host in {"localhost", "127.0.0.1"} and "11434" in base:
         return "ollama"
+    if is_token_plan_url(base):
+        return "token-plan"
     for needle, kind in VENDOR_HOSTS:
         if needle in host or needle in base:
             return kind
@@ -195,7 +318,11 @@ def _http_get_json(url: str, api_key: str, timeout: float = 15.0) -> dict[str, A
     return data
 
 
-def parse_models_payload(payload: dict[str, Any]) -> list[dict[str, str]]:
+def parse_models_payload(
+    payload: dict[str, Any],
+    *,
+    route_provider: str = "",
+) -> list[dict[str, str]]:
     rows = payload.get("data") or payload.get("models") or payload.get("data".upper())
     if rows is None and isinstance(payload.get("id"), str):
         rows = [payload]
@@ -205,22 +332,20 @@ def parse_models_payload(payload: dict[str, Any]) -> list[dict[str, str]]:
     seen: set[str] = set()
     for item in rows:
         if isinstance(item, str):
-            mid = item.strip()
-            owned = ""
-            name = mid
+            row = normalize_catalog_model(item, route_provider=route_provider)
         elif isinstance(item, dict):
-            mid = str(item.get("id") or item.get("name") or "").strip()
-            owned = str(item.get("owned_by") or item.get("canonical_slug") or "")
-            name = str(item.get("name") or mid)
+            row = normalize_catalog_model(item, route_provider=route_provider)
         else:
             continue
+        mid = row.get("id") or ""
+        name = row.get("name") or mid
         if not mid or is_forbidden_model(mid) or is_forbidden_model(name):
             continue
         key = mid.lower()
         if key in seen:
             continue
         seen.add(key)
-        out.append({"id": mid, "name": name, "owned_by": owned})
+        out.append(row)
     return out
 
 
@@ -398,7 +523,7 @@ def fetch_catalog(
     if should_crawl:
         try:
             payload = _http_get_json(url, api_key)
-            models = parse_models_payload(payload)
+            models = parse_models_payload(payload, route_provider=kind)
             if models:
                 source = "crawl"
             else:

@@ -14,6 +14,7 @@ import {
   rateOptionLabel,
   routeDisplayName,
 } from '../lib/agentUi';
+import { modelsForRoute } from '../lib/llmCatalog';
 import { agentRahoLabel } from '../lib/rahoUi';
 import { navPathForTab } from '../lib/monitorTabs';
 import PromptEditor from './PromptEditor';
@@ -577,10 +578,10 @@ export default function RoleSettingsPanel({
               value={draft.preferred_provider}
               onChange={(e) => {
                 const next = e.target.value;
-                const group = (catalog?.models_by_provider ?? []).find((g) => g.route_id === next);
+                const routeModels = modelsForRoute(catalog?.models_by_provider ?? [], next);
                 const nextModel =
-                  next && group && !group.models.includes(draft.preferred_model)
-                    ? group.models[0] || ''
+                  next && routeModels.length > 0 && !routeModels.includes(draft.preferred_model)
+                    ? routeModels[0] || ''
                     : draft.preferred_model;
                 setDraft({ ...draft, preferred_provider: next, preferred_model: nextModel });
               }}
@@ -1084,10 +1085,10 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
               value={provider}
               onChange={(e) => {
                 const next = e.target.value;
-                const group = (catalog?.models_by_provider ?? []).find((g) => g.route_id === next);
+                const routeModels = modelsForRoute(catalog?.models_by_provider ?? [], next);
                 setProvider(next);
-                if (next && group && !group.models.includes(model)) {
-                  setModel(group.models[0] || '');
+                if (next && routeModels.length > 0 && !routeModels.includes(model)) {
+                  setModel(routeModels[0] || '');
                 }
               }}
             >

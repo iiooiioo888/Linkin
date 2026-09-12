@@ -6,7 +6,11 @@ from backend.core.llm_config import save_runtime_config
 from backend.core.provider_pool import (
     clamp_model,
     classify_provider,
+    friendly_model_name,
+    infer_model_family,
+    is_token_plan_url,
     models_endpoint,
+    normalize_catalog_models,
     parse_models_payload,
     refresh_model_catalog,
 )
@@ -22,7 +26,55 @@ def test_classify_deepseek_and_openrouter():
     assert classify_provider(
         "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
         "qwen3.8-max",
-    ) == "generic"
+    ) == "token-plan"
+
+
+def test_token_plan_url_detect_and_family_inference():
+    url = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+    assert is_token_plan_url(url)
+    assert is_token_plan_url(f"{url}/models")
+    assert infer_model_family("qwen3.8-flash") == "qwen"
+    assert infer_model_family("wan2.7-image-pro") == "qwen"
+    assert infer_model_family("deepseek-v4-pro") == "deepseek"
+    assert infer_model_family("glm-5.2") == "zhipu"
+    assert infer_model_family("kimi-k3") == "moonshot"
+    assert infer_model_family("moonshot-v1-8k") == "moonshot"
+    assert infer_model_family("unknown-model") == "token-plan"
+
+
+def test_friendly_model_name_preserves_wire_id():
+    assert friendly_model_name("deepseek-v4-pro") == "DeepSeek V4 Pro"
+    assert friendly_model_name("qwen3.8-flash") == "Qwen 3.8 Flash"
+
+
+def test_parse_models_payload_token_plan_owned_by():
+    rows = parse_models_payload(
+        {
+            "data": [
+                {"id": "deepseek-v4-pro", "owned_by": "system"},
+                {"id": "glm-5.2", "owned_by": "system"},
+                {"id": "qwen3.8-flash"},
+            ]
+        },
+        route_provider="token-plan",
+    )
+    by_id = {row["id"]: row for row in rows}
+    assert by_id["deepseek-v4-pro"]["owned_by"] == "deepseek"
+    assert by_id["glm-5.2"]["owned_by"] == "zhipu"
+    assert by_id["qwen3.8-flash"]["owned_by"] == "qwen"
+    assert by_id["deepseek-v4-pro"]["name"] == "DeepSeek V4 Pro"
+
+
+def test_normalize_catalog_models_token_plan():
+    rows = normalize_catalog_models(
+        [
+            {"id": "deepseek-v4-pro", "name": "deepseek-v4-pro", "owned_by": "system"},
+            {"id": "qwen3.8-flash", "name": "qwen3.8-flash", "owned_by": "system"},
+        ],
+        route_provider="token-plan",
+    )
+    assert rows[0]["owned_by"] == "deepseek"
+    assert rows[1]["owned_by"] == "qwen"
 
 
 def test_parse_models_skips_claude():

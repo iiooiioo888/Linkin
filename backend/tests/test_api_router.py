@@ -6,6 +6,8 @@ from backend.core.api_router import (
     find_route_for_model,
     list_failover_chain,
     list_routes,
+    normalize_route,
+    public_router_state,
     reset_router_state,
     resolve_route_ref,
     resolve_target,
@@ -15,6 +17,7 @@ from backend.core.api_router import (
     union_allowed_models,
     upsert_route,
 )
+from backend.core.provider_pool import TOKEN_PLAN_LABEL
 from backend.core.llm import _truncate_prompt, llm_kwargs_for_role
 from backend.core.llm_config import save_runtime_config
 from backend.core.provider_pool import clamp_model, refresh_model_catalog
@@ -511,6 +514,40 @@ def test_openrouter_provider_routing_normalizes_only():
     routing = route.get("provider_routing") or {}
     assert routing.get("sort") == "price"
     assert routing.get("only") == ["openai", "google"]
+
+
+def test_token_plan_route_normalizes_provider_and_family_groups():
+    route = normalize_route(
+        {
+            "id": "qwen",
+            "name": "通義千問 Qwen",
+            "provider": "qwen",
+            "api_base": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+            "catalog_url": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/models",
+            "model": "qwen3.8-flash",
+            "allowed_models": ["qwen3.8-flash", "deepseek-v4-pro", "glm-5.2"],
+            "catalog_models": [
+                {"id": "qwen3.8-flash", "name": "qwen3.8-flash", "owned_by": "system"},
+                {"id": "deepseek-v4-pro", "name": "deepseek-v4-pro", "owned_by": "system"},
+                {"id": "glm-5.2", "name": "glm-5.2", "owned_by": "system"},
+            ],
+        }
+    )
+    assert route["provider"] == "token-plan"
+    assert route["name"] == TOKEN_PLAN_LABEL
+    owned = {row["id"]: row["owned_by"] for row in route["catalog_models"]}
+    assert owned["deepseek-v4-pro"] == "deepseek"
+    assert owned["glm-5.2"] == "zhipu"
+    assert owned["qwen3.8-flash"] == "qwen"
+
+    save_routes([{**route, "api_key": "sk-token-plan"}])
+    state = public_router_state()
+    groups = state["models_by_provider"]
+    assert len(groups) == 3
+    labels = {g["name"] for g in groups}
+    assert any("DeepSeek" in label for label in labels)
+    assert any("智譜 GLM" in label for label in labels)
+    assert all(g["route_id"] == "qwen" for g in groups)
 
 
 def test_role_preferred_still_pins_model_to_owner():

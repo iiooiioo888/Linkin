@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchLlmOps, refreshLlmModels, updateLlmOpsPrefs } from '../api/client';
 import { extraRateItems, fmtPerMillion, fmtRate, lookupRateCard } from '../lib/agentUi';
+import { catalogGroupKey, familyLabel } from '../lib/llmCatalog';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { LlmOpsData, ModelRateCard } from '../types';
 import ApiRoutesEditor from './ApiRoutesEditor';
@@ -86,14 +87,16 @@ export default function LlmOpsPanel() {
         m.id.toLowerCase().includes(q) ||
         (m.name || '').toLowerCase().includes(q) ||
         (m.owned_by || '').toLowerCase().includes(q) ||
-        (m.route_name || '').toLowerCase().includes(q),
+        familyLabel(m.owned_by).toLowerCase().includes(q) ||
+        (m.route_name || '').toLowerCase().includes(q) ||
+        catalogGroupKey(m).toLowerCase().includes(q),
     );
   }, [models, query]);
 
   const groupedCatalog = useMemo(() => {
     const map = new Map<string, typeof filtered>();
     for (const m of filtered) {
-      const key = m.route_name || '未歸組';
+      const key = catalogGroupKey(m);
       const list = map.get(key) ?? [];
       list.push(m);
       map.set(key, list);
@@ -228,9 +231,16 @@ export default function LlmOpsPanel() {
                                   <span className="ml-2 text-[10px] console-status-blue">預設</span>
                                 ) : null}
                               </td>
-                              <td className="px-3 py-1.5 text-[var(--console-sub)]">{m.name}</td>
                               <td className="px-3 py-1.5 text-[var(--console-sub)]">
-                                {idx === 0 || rows[idx - 1]?.route_name !== m.route_name ? group : ''}
+                                {m.name !== m.id ? m.name : '—'}
+                                {m.owned_by && m.owned_by !== 'token-plan' ? (
+                                  <span className="ml-1 text-[10px] text-[var(--console-faint)]">
+                                    ({familyLabel(m.owned_by)})
+                                  </span>
+                                ) : null}
+                              </td>
+                              <td className="px-3 py-1.5 text-[var(--console-sub)]">
+                                {idx === 0 ? group : ''}
                               </td>
                               <td className="px-3 py-1.5 font-mono text-[var(--console-sub)]">
                                 {rateField(data, m.id, 'input')}
