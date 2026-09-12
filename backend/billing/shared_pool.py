@@ -262,6 +262,8 @@ def sort_keys_for_routing(keys: list[dict[str, Any]], *, model: str, estimate_cr
         quota_ok = float(k.get("quota_remaining", 0)) >= estimate_credits * QUOTA_BUFFER_RATIO
         concurrency_avail = int(k.get("concurrency_limit", 1)) - int(k.get("concurrency_in_use", 0))
         return (
+            int(k.get("is_platform_default", False)),
+            int(k.get("is_public_pool", False)),
             -int(quota_ok),
             -int(model_match),
             -int(k.get("same_org", False)),

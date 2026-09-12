@@ -30,6 +30,8 @@ class BindKeyRequest(BaseModel):
     active_hours: list[int] = Field(default_factory=lambda: [0, 23])
     tos_class: str = Field(default="self_host", description="self_host 或 resale_allowed")
     org_id: str = ""
+    label: str = Field(default="", description="路由顯示名稱（存入 limits_json）")
+    api_base: str = Field(default="", description="自訂 API Base（存入 limits_json）")
 
 
 class LockRequest(BaseModel):
@@ -59,6 +61,10 @@ def bind_contributor_key(body: BindKeyRequest, request: Request) -> dict[str, An
         "active_hours": body.active_hours,
         "tos_class": body.tos_class,
     }
+    if body.label.strip():
+        limits["label"] = body.label.strip()
+    if body.api_base.strip():
+        limits["api_base"] = body.api_base.strip()
     org_id = body.org_id.strip() or None
     return get_pool_store().bind_contributor_key(
         user_id,

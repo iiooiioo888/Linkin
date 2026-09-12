@@ -34,7 +34,15 @@ def billing_store(tmp_path, monkeypatch):
     reset_billing_service(None)
 
 
-def _bind_key(uid: str, *, org_id: str = "org_a", daily_cap: int = 500_000, vendor: str = "self_host") -> str:
+def _bind_key(
+    uid: str,
+    *,
+    org_id: str = "org_a",
+    daily_cap: int = 500_000,
+    vendor: str = "self_host",
+    tos_class: str | None = None,
+) -> str:
+    resolved_tos = tos_class or ("self_host" if vendor == "self_host" else "resale_allowed")
     result = get_pool_store().bind_contributor_key(
         uid,
         "sk-test-key-abcdefgh123456",
@@ -45,12 +53,29 @@ def _bind_key(uid: str, *, org_id: str = "org_a", daily_cap: int = 500_000, vend
             "concurrency": 3,
             "min_price": 0.001,
             "active_hours": [0, 23],
-            "tos_class": "self_host",
+            "tos_class": resolved_tos,
         },
         org_id=org_id,
         plaintext_key="sk-test-key-abcdefgh123456",
     )
     return str(result["key_id"])
+
+
+def test_routing_prefers_contributor_key_over_platform_default(billing_store):
+    """有貢獻者 Key 時，primary 不應為 platform_default。"""
+    uid = "route_contrib"
+    billing_store.ensure_account(uid, "free")
+    key_id = _bind_key(uid, org_id="org_contrib", vendor="tongyi")
+    decision = route_key_selection(
+        task_id="task_contrib",
+        account_id=uid,
+        model="default",
+        estimate_credits=10.0,
+        org_id="org_contrib",
+    )
+    assert decision.get("primary_key_id") == key_id
+    assert decision.get("primary_key_id") != "platform_default"
+    assert not decision.get("rejected")
 
 
 def test_routing_single_key_when_only_one_eligible(billing_store):
