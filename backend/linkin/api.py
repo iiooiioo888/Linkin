@@ -86,6 +86,7 @@ linkin_router = APIRouter(prefix="/linkin", tags=["linkin"])
 def register_linkin(app) -> None:
     from backend.linkin.build_brief_api import build_brief_router
     from backend.linkin.map_api import register_map_routes
+    from backend.linkin.minecraft_monitor_api import register_minecraft_monitor_routes
     from backend.linkin.narrative_api import register_narrative_routes
     from backend.linkin.narrative_pipeline_api import register_narrative_pipeline_routes
     from backend.linkin.narrative_world_api import world_intent_router
@@ -96,6 +97,7 @@ def register_linkin(app) -> None:
     register_narrative_routes(app)
     register_narrative_pipeline_routes(app)
     register_map_routes(app)
+    register_minecraft_monitor_routes(app)
 
 
 def _llm_ready() -> bool:
@@ -717,9 +719,20 @@ def minecraft_status() -> dict[str, Any]:
 
 @linkin_router.post("/minecraft/probe")
 def minecraft_probe() -> dict[str, Any]:
+    from backend.linkin.minecraft_observability import safe_append_minecraft_event
     from backend.tools.minecraft_mcp import probe_connection
 
-    return probe_connection()
+    result = probe_connection()
+    safe_append_minecraft_event(
+        domain="bridge",
+        action="probe",
+        status="ok" if result.get("connected") else "bridge_offline",
+        summary=f"MineMCP 探測 connected={result.get('connected')} dry_run={result.get('dry_run')}",
+        dry_run=bool(result.get("dry_run")),
+        bridge_offline=not bool(result.get("connected")),
+        details={"message": result.get("message"), "error": result.get("error")},
+    )
+    return result
 
 
 @linkin_router.post("/minecraft/call")

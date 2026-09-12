@@ -21,6 +21,16 @@ from backend.linkin.tools import ToolValidationError
 map_router = APIRouter(prefix="/linkin/map", tags=["linkin-map"])
 
 
+@map_router.get("/plans")
+def map_list_plans() -> dict[str, Any]:
+    """列出已保存的地圖計畫（監控／地圖工作台用）。"""
+    from backend.linkin.knowledge import list_entities
+
+    plans = list_entities("map_plans")
+    plans.sort(key=lambda p: str(p.get("id") or ""), reverse=True)
+    return {"map_plans": plans, "count": len(plans)}
+
+
 def _tool_http(exc: ToolValidationError) -> HTTPException:
     status = 409 if exc.code == "needs_confirmation" else 400
     return HTTPException(
@@ -78,6 +88,16 @@ def map_generate(body: dict[str, Any]) -> dict[str, Any]:
     plan = generated["plan"]
     preview = preview_map_plan(plan)
     saved = upsert_entity("map_plans", {**plan, "status": "planned"})
+    from backend.linkin.minecraft_observability import safe_append_minecraft_event
+
+    safe_append_minecraft_event(
+        domain="map",
+        action="generate",
+        status="ok",
+        summary=f"地圖計畫生成 {saved.get('id')}（{saved.get('region')}，{len(saved.get('plots') or [])} plots）",
+        entity_refs={"plan_id": saved.get("id")},
+        details={"source": generated.get("source"), "plot_count": len(saved.get("plots") or [])},
+    )
     return {
         "ok": True,
         "source": generated.get("source") or "fallback",
@@ -169,6 +189,22 @@ def map_apply(body: dict[str, Any]) -> dict[str, Any]:
         f"地圖落地 {validated['id']} → Minecraft MCP（status={status} dry_run={result.get('dry_run')}）",
         {"kind": "minecraft", "map_plan_id": validated["id"], "status": status},
         skip_quality=True,
+    )
+    from backend.linkin.minecraft_observability import safe_append_minecraft_event
+
+    safe_append_minecraft_event(
+        domain="map",
+        action="apply",
+        status=status,
+        summary=f"地圖落地 {validated['id']} → {status}",
+        dry_run=bool(result.get("dry_run")),
+        bridge_offline=bool(result.get("dry_run") and not result.get("ok")),
+        entity_refs={"plan_id": validated["id"]},
+        details={
+            "blocks_placed": result.get("blocks_placed"),
+            "applied_count": len(result.get("applied") or []),
+            "error_count": len(result.get("errors") or []),
+        },
     )
     return {"ok": result.get("ok"), "plan": updated, "minecraft": result, "status": status}
 

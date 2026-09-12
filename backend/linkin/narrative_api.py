@@ -157,6 +157,16 @@ def generate_workspace_drafts(workspace_id: str, body: dict[str, Any] | None = N
         written.append(key)
     refreshed = reg.get(workspace_id)
     assert refreshed is not None
+    from backend.linkin.minecraft_observability import safe_append_minecraft_event
+
+    safe_append_minecraft_event(
+        domain="pipeline",
+        action="generate",
+        status="ok",
+        summary=f"敘事工作區 {workspace_id} 一鍵生成草稿：{', '.join(written)}",
+        entity_refs={"workspace_id": workspace_id},
+        details={"keys": written, "source": generated.get("source")},
+    )
     return {
         "ok": True,
         "source": generated.get("source") or "llm",
@@ -207,11 +217,23 @@ def commit_workspace(workspace_id: str) -> dict[str, Any]:
     if not verdict.ok:
         _raise_verdict(verdict)
     assert verdict.workspace is not None
+    committed = summary.get("committed") or {}
+    errors = summary.get("errors") or []
+    from backend.linkin.minecraft_observability import safe_append_minecraft_event
+
+    safe_append_minecraft_event(
+        domain="pipeline",
+        action="commit",
+        status="partial" if errors else "ok",
+        summary=f"敘事工作區 {workspace_id} 提交 {len(committed)} 項草稿",
+        entity_refs={"workspace_id": workspace_id, "committed_keys": list(committed.keys())},
+        details={"errors": errors},
+    )
     return {
         "ok": True,
         "workspace": _workspace_summary(verdict.workspace),
-        "committed": summary.get("committed") or {},
-        "errors": summary.get("errors") or [],
+        "committed": committed,
+        "errors": errors,
     }
 
 

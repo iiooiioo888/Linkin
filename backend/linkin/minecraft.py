@@ -453,4 +453,32 @@ def register_company_tools(registry: Any) -> None:
         readonly=False,
         timeout_seconds=20.0,
     )
+    registry.register(
+        name="minecraft_server_state",
+        description="讀取 Minecraft 伺服器可觀測狀態（橋接、待落地意圖、近期動作、錯誤）",
+        parameters={
+            "max_chars": {
+                "type": "integer",
+                "description": "上下文字元上限（預設 4000）",
+            },
+            "format": {
+                "type": "string",
+                "description": "markdown 或 json",
+            },
+        },
+        execute=lambda **kwargs: _tool_minecraft_server_state(**kwargs),
+        allowed_roles=list(MC_READ_ROLES),
+        readonly=True,
+        timeout_seconds=15.0,
+    )
+
+
+def _tool_minecraft_server_state(**kwargs: Any) -> dict[str, Any]:
+    from backend.linkin.minecraft_observability import build_ai_context
+
+    max_chars = int(kwargs.get("max_chars") or 4000)
+    fmt = str(kwargs.get("format") or "markdown").strip() or "markdown"
+    if fmt not in {"markdown", "json"}:
+        fmt = "markdown"
+    return build_ai_context(max_chars=max_chars, fmt=fmt)
 
