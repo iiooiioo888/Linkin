@@ -44,7 +44,19 @@
     "insufficientBalance": "Insufficient credits — top up first",
     "lowBalanceWarn": "Balance may be too low for this task",
     "openWallet": "Open wallet",
+    "estHint": "est.",
     "send": "Send"
+  },
+  "billing": {
+    "turnReceipt": "Turn billing",
+    "creditsCharged": "Charged",
+    "tokensInOut": "Tokens in / out",
+    "cacheTokens": "Cache tokens",
+    "cacheReadWrite": "read {{read}} · write {{write}}",
+    "modelsUsed": "Models",
+    "llmCalls": "LLM calls",
+    "pricingVersion": "Pricing",
+    "cacheSavings": "Cache savings"
   },
   "onboarding": {
     "title": "Get started",

@@ -9,6 +9,7 @@ import TaskPanel from './TaskPanel';
 import GrillUserCard from './GrillUserCard';
 import BattlePlanCard from './BattlePlanCard';
 import ErrorState from './ui/ErrorState';
+import TurnBillingReceipt from './chat/TurnBillingReceipt';
 
 
 interface MessageBubbleProps {
@@ -245,6 +246,10 @@ export default function MessageBubble({
         <div className="w-full max-w-xs">
           <ReflectionRadar multiDim={message.meta.multiDim} height={130} />
         </div>
+      )}
+
+      {!isUser && message.meta?.billing && !message.streaming && (
+        <TurnBillingReceipt billing={message.meta.billing} />
       )}
     </div>
   );

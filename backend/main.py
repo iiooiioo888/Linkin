@@ -910,6 +910,9 @@ async def _company_stream(req: ChatRequest):
     from backend.company.roles import BUILTIN_TEMPLATES
 
     session_id = req.session_id or uuid.uuid4().hex[:12]
+    from backend.billing.context import begin_chat_billing, chat_billing_snapshot, end_chat_billing
+
+    billing_token = begin_chat_billing(session_id)
     lock = req.semantic_lock or {}
     query = req.query
     if isinstance(lock, dict) and lock.get("locked_brief"):
@@ -1049,7 +1052,16 @@ async def _company_stream(req: ChatRequest):
                 except Exception:
                     pass
 
-                yield f"event: done\ndata: {json_mod.dumps({'answer': final_answer, 'score': eval_state.get('score'), 'iteration': eval_state.get('iteration', 0), 'company': company_result.get('stats', {})}, ensure_ascii=False)}\n\n"
+                done_company: dict[str, Any] = {
+                    'answer': final_answer,
+                    'score': eval_state.get('score'),
+                    'iteration': eval_state.get('iteration', 0),
+                    'company': company_result.get('stats', {}),
+                }
+                billing_snap = chat_billing_snapshot()
+                if billing_snap:
+                    done_company['billing'] = billing_snap
+                yield f"event: done\ndata: {json_mod.dumps(done_company, ensure_ascii=False)}\n\n"
                 break
 
             elif evt == "_error":
@@ -1062,6 +1074,7 @@ async def _company_stream(req: ChatRequest):
 
     finally:
         task.cancel()
+        end_chat_billing(billing_token)
 
 
 # ==================== 串流聊天 API（SSE 打字機效果） ====================
@@ -1100,10 +1113,18 @@ async def chat_stream(req: ChatRequest):
 
     chat_tracer = TraceLogger(session_id)
 
+    def _sse_billing_event() -> str | None:
+        from backend.billing.context import chat_billing_snapshot as _snap
+
+        snap = _snap()
+        if not snap or float(snap.get("credits_deducted") or 0) <= 0:
+            return None
+        return f"event: billing\ndata: {json_mod.dumps(snap, ensure_ascii=False)}\n\n"
+
     async def event_stream():
         from backend.billing.context import begin_chat_billing, chat_billing_snapshot, end_chat_billing
 
-        billing_token = begin_chat_billing()
+        billing_token = begin_chat_billing(session_id)
         state: dict[str, Any] = {
             "query": req.query,
             "session_id": session_id,
@@ -1187,6 +1208,9 @@ async def chat_stream(req: ChatRequest):
                 duration_ms=round((time.monotonic() - gen_started) * 1000, 1),
                 phase="generate",
             )
+            billing_evt = _sse_billing_event()
+            if billing_evt:
+                yield billing_evt
 
             # 輸出長度守門：超標時把「精簡」當成額外一輪改進目標（預算由節點控管）
             state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
@@ -1276,6 +1300,9 @@ async def chat_stream(req: ChatRequest):
                 }
                 yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
                 state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
+                billing_evt = _sse_billing_event()
+                if billing_evt:
+                    yield billing_evt
 
             final_answer = state.get("current_answer", "")
             chat_tracer.log_phase_change("done", data={"score": state.get("score"), "iteration": state.get("iteration", 0)})

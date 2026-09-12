@@ -25,6 +25,7 @@ import {
 import { useWallet } from '../../hooks/useWallet';
 import {
   fmtCredits,
+  formatUsageEventTokens,
   lockThresholdNotice,
   POOL_LABELS_ZH,
   rolloverNoticeZh,
@@ -298,13 +299,21 @@ export default function BillingCreditsHub() {
             <ConsoleCardBody dense>
               <table className="w-full text-left text-[11px]">
                 <thead className="text-[var(--console-faint)]">
-                  <tr><th className="pb-1">時間</th><th>類型</th><th className="text-right">積分</th></tr>
+                  <tr>
+                    <th className="pb-1">時間</th>
+                    <th>類型</th>
+                    <th>Token / 模型</th>
+                    <th className="text-right">積分</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {wallet.usage.slice(0, 6).map((row) => (
+                  {wallet.usage.slice(0, 8).map((row) => (
                     <tr key={row.id} className="border-t border-[var(--console-line)]">
                       <td className="py-1 text-[var(--console-sub)]">{new Date(row.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
                       <td>{EVENT_ZH[row.event_type] ?? row.event_type}</td>
+                      <td className="max-w-[140px] truncate text-[var(--console-sub)]" title={formatUsageEventTokens(row.meta)}>
+                        {formatUsageEventTokens(row.meta)}
+                      </td>
                       <td className="text-right tabular-nums console-status-accent">-{fmtCredits(row.credits)}</td>
                     </tr>
                   ))}

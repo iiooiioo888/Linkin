@@ -57,6 +57,8 @@ interface ChatViewProps {
   onDecisionPending?: (hasPending: boolean) => void;
   onDecisionResolved?: (decisionId?: string) => void;
   onOpenBilling?: () => void;
+  /** SSE 本輪實際扣款（優先於任務預算 liveSpent） */
+  liveSpent?: number | null;
 }
 
 export default function ChatView({
@@ -79,6 +81,7 @@ export default function ChatView({
   onDecisionPending,
   onDecisionResolved,
   onOpenBilling,
+  liveSpent: sseLiveSpent,
 }: ChatViewProps) {
   const live = activeTaskMessage(messages);
   const runningMsg = runningTaskMessage(messages);
@@ -300,7 +303,8 @@ export default function ChatView({
     />
   );
 
-  const liveSpent = task ? numBudget(task, 'task_spent') || numBudget(task, 'task_api_spent') : null;
+  const taskSpent = task ? numBudget(task, 'task_spent') || numBudget(task, 'task_api_spent') : null;
+  const liveSpent = sseLiveSpent != null && sseLiveSpent > 0 ? sseLiveSpent : taskSpent;
 
   const composer = (
     <InputBar

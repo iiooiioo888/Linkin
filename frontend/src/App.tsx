@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChatMessage, ChatSession, TaskProgress } from './types';
 import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, startUserGrill, streamAuditor, TaskWebSocket } from './api/client';
 import type { ChatBillingFootnote } from './api/client';
-import { formatChatBillingFootnote } from './lib/billingUi';
+import { formatChatBillingFootnote, requestWalletRefresh } from './lib/billingUi';
 import type { TaskWsMessage } from './api/client';
 import {
   appRouteFromState,
@@ -71,6 +71,8 @@ export default function App() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
+  /** 本輪 SSE 對話實際扣款（供 InputCreditBar liveSpent） */
+  const [turnSpent, setTurnSpent] = useState<number | null>(null);
 
   // ── IDE 布局状态（由 Hash 路由初始化） ──
   const initialRoute = applyAppRoute(parseAppRoute(window.location.hash));
@@ -415,6 +417,7 @@ export default function App() {
         (options.executionStrategy === 'auto' && looksLikeCompanyQuery(workQuery));
       if (!openTaskWorkspace) {
         setSending(false);
+        setTurnSpent(null);
 
         // 構建對話歷史（最近 6 輪，排除當前佔位訊息）
         const currentMessages = activeSession.messages.filter(
@@ -475,6 +478,8 @@ export default function App() {
           },
           onDone: (answer, score, iteration, thinking, billing) => {
             const footnote = billing ? formatChatBillingFootnote(billing) : undefined;
+            if (billing?.credits_deducted != null) setTurnSpent(billing.credits_deducted);
+            requestWalletRefresh();
             updateSession(sessionId, (s) => ({
               ...s,
               updatedAt: Date.now(),
@@ -486,7 +491,13 @@ export default function App() {
                       thinking: thinking || splitThink(answer || '').thinking || m.thinking,
                       streamRaw: undefined,
                       streaming: false,
-                      meta: { score, iteration, billingFootnote: footnote || undefined },
+                      meta: {
+                        ...m.meta,
+                        score,
+                        iteration,
+                        billingFootnote: footnote || undefined,
+                        billing: billing || undefined,
+                      },
                     }
                   : m,
               ),
@@ -494,12 +505,21 @@ export default function App() {
           },
           onBilling: (billing: ChatBillingFootnote) => {
             const footnote = formatChatBillingFootnote(billing);
-            if (!footnote) return;
+            if (billing.credits_deducted != null) setTurnSpent(billing.credits_deducted);
+            requestWalletRefresh();
+            if (!footnote && !billing.credits_deducted) return;
             updateSession(sessionId, (s) => ({
               ...s,
               messages: s.messages.map((m) =>
                 m.id === assistantId
-                  ? { ...m, meta: { ...m.meta, billingFootnote: footnote } }
+                  ? {
+                      ...m,
+                      meta: {
+                        ...m.meta,
+                        billingFootnote: footnote || m.meta?.billingFootnote,
+                        billing: { ...m.meta?.billing, ...billing },
+                      },
+                    }
                   : m,
               ),
             }));
@@ -1169,6 +1189,7 @@ export default function App() {
                 setActiveView('monitor');
                 setMonitorTab('credits');
               }}
+              liveSpent={turnSpent}
             />
           </>
         )}
