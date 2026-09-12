@@ -4,6 +4,7 @@
  * 以任務為中心：統計概覽、狀態篩選、列表／看板、即時詳情。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cancelTask, fetchTask, resumeTask } from '../api/client';
 import { TASK_COLUMNS, taskColumnKey, tasksInColumn, type TaskColumnKey } from '../lib/agentUi';
 import { useMonitorStore } from '../stores/monitorStore';
@@ -25,6 +26,7 @@ interface TasksMonitorPanelProps {
   onFocusTask: (id: string | null) => void;
   onOpenTask: (task: TaskProgress) => void;
   onOpenTrace?: (taskId: string) => void;
+  liteShell?: boolean;
 }
 
 type StatusFilter = TaskColumnKey;
@@ -139,7 +141,10 @@ export default function TasksMonitorPanel({
   onFocusTask,
   onOpenTask,
   onOpenTrace,
+  liteShell = false,
 }: TasksMonitorPanelProps) {
+  const { t } = useTranslation();
+  const [showDenseWidgets, setShowDenseWidgets] = useState(false);
   const dashboard = useMonitorStore((s) => s.dashboard);
   const connected = useMonitorStore((s) => s.connected);
   const storeError = useMonitorStore((s) => s.error);
@@ -241,7 +246,7 @@ export default function TasksMonitorPanel({
         </div>
       ) : null}
 
-      <div className="rd-stats">
+      <div className={`rd-stats ${liteShell && !showDenseWidgets ? 'hidden' : ''}`}>
         <div className="rd-stat">
           <span className="rd-stat-l">隊列</span>
           <span className="rd-stat-v">{queueCount}</span>
@@ -270,10 +275,19 @@ export default function TasksMonitorPanel({
 
       <div className="rd-body">
         <div className={`rd-tasks ${focusTaskId ? 'lg:max-w-none' : ''}`}>
-          {!focusTaskId && tasks.length > 0 ? (
+          {!focusTaskId && tasks.length > 0 && (!liteShell || showDenseWidgets) ? (
             <div className="mb-3 rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] p-3">
               <TaskDistributionMatrix matrix={taskMatrix} demo={taskMatrix.every((r) => r.every((c) => c.count === 0))} />
             </div>
+          ) : null}
+          {liteShell && !showDenseWidgets ? (
+            <button
+              type="button"
+              onClick={() => setShowDenseWidgets(true)}
+              className="mb-3 w-full rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-2 text-[11px] text-[var(--console-sub)] hover:text-[var(--console-ink)]"
+            >
+              {t('roles.showDenseWidgets')}
+            </button>
           ) : null}
           <StatusColumnBoard
             selectedKey={filter}

@@ -5,10 +5,13 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActivityKey } from '../lib/monitorTabs';
+import type { MonitorTab, ViewKey } from './AppShell';
 import { useWorldModules, type ModuleIconKey } from '../lib/worldModules';
 
 interface ActivityBarProps {
   activity: ActivityKey;
+  activeView?: ViewKey;
+  monitorTab?: MonitorTab;
   onActivityChange: (activity: ActivityKey) => void;
   /** 桌面左欄 vs 行動底欄 */
   placement?: 'sidebar' | 'bottom';
@@ -172,12 +175,16 @@ function ActivityButtons({
 
 function MobileBottomBar({
   activity,
+  activeView = 'chat',
+  monitorTab = 'live',
   onActivityChange,
   onMobileTasks,
   onMobileWallet,
   overflowItems,
 }: {
   activity: ActivityKey;
+  activeView?: ViewKey;
+  monitorTab?: MonitorTab;
   onActivityChange: (activity: ActivityKey) => void;
   onMobileTasks?: () => void;
   onMobileWallet?: () => void;
@@ -185,8 +192,11 @@ function MobileBottomBar({
 }) {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
-  const tasksActive = activity === 'console';
-  const walletActive = activity === 'console'; // wallet opens credits within console
+  const onMonitor = activeView === 'monitor' || activeView === 'traces' || activeView === 'task' || activeView === 'raho';
+  const tasksActive =
+    onMonitor && (monitorTab === 'tasks' || monitorTab === 'pipeline' || activeView === 'traces');
+  const walletActive =
+    onMonitor && (monitorTab === 'credits' || monitorTab === 'billing' || monitorTab === 'models');
 
   return (
     <>
@@ -238,6 +248,9 @@ function MobileBottomBar({
             <p className="border-b border-white/[0.06] px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
               {t('monitor.more')}
             </p>
+            <p className="border-b border-white/[0.06] px-4 py-2 text-[10px] leading-relaxed text-[var(--console-sub)]">
+              {t('mobileShell.moreNote')}
+            </p>
             <div className="grid grid-cols-2 gap-1 p-2">
               {overflowItems.map((item) => (
                 <button
@@ -263,6 +276,8 @@ function MobileBottomBar({
 
 export default function ActivityBar({
   activity,
+  activeView,
+  monitorTab,
   onActivityChange,
   placement = 'sidebar',
   onMobileTasks,
@@ -286,6 +301,8 @@ export default function ActivityBar({
     return (
       <MobileBottomBar
         activity={activity}
+        activeView={activeView}
+        monitorTab={monitorTab}
         onActivityChange={onActivityChange}
         onMobileTasks={onMobileTasks}
         onMobileWallet={onMobileWallet}

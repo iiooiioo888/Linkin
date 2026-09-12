@@ -708,6 +708,7 @@ export default function LiveBoard({
   feed,
   backgroundPhase,
   density = 'page',
+  liteShell = false,
   onOpenLab,
   onOpenTab,
   onOpenTraces,
@@ -716,11 +717,13 @@ export default function LiveBoard({
   feed: AnimLiveFeed;
   backgroundPhase?: string | null;
   density?: LiveBoardDensity;
+  /** 行動 Lite：精簡卡片、隱藏密集 KPI／矩陣／全螢幕告警 */
+  liteShell?: boolean;
 } & LiveBoardNav) {
   const { t } = useTranslation();
   const [alertMode, setAlertMode] = useState(false);
   const [unhealthyKeys, setUnhealthyKeys] = useState(0);
-  const dock = density === 'dock';
+  const dock = density === 'dock' || liteShell;
 
   useEffect(() => {
     if (dock) return;
@@ -764,7 +767,7 @@ export default function LiveBoard({
       }`}
     >
       <MonitorAlertMode
-        open={alertMode}
+        open={alertMode && !liteShell}
         onClose={() => setAlertMode(false)}
         onJump={handleAlertJump}
         unhealthyKeysCount={unhealthyKeys}
@@ -780,14 +783,20 @@ export default function LiveBoard({
               控制台總覽 · API → 角色 → 執行 → 外部整合（MemOS／Viking…）→ 審計／計費
             </p>
             <span className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setAlertMode(true)}
-                className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-medium text-[var(--console-accent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_16%,transparent)]"
-                data-testid="monitor-alert-mode-toggle"
-              >
-                {t('monitorAlert.toggle')}
-              </button>
+              {!liteShell ? (
+                <button
+                  type="button"
+                  onClick={() => setAlertMode(true)}
+                  className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-medium text-[var(--console-accent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_16%,transparent)]"
+                  data-testid="monitor-alert-mode-toggle"
+                >
+                  {t('monitorAlert.toggle')}
+                </button>
+              ) : (
+                <span className="text-[10px] text-[var(--console-faint)]" title={t('mobileShell.alertModeDesktop')}>
+                  {t('mobileShell.alertModeDesktop')}
+                </span>
+              )}
               <StatusDot color={feed.live ? GREEN : GRAY} label={feed.live ? 'LIVE' : 'IDLE'} />
               {updated && <span className="apple-data text-[10px] text-[var(--console-faint)]">{updated}</span>}
             </span>

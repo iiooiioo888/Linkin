@@ -92,6 +92,17 @@
   "roles": {
     "showDenseWidgets": "展開熱力圖與任務矩陣"
   },
+  "mobileShell": {
+    "desktopHint": "完整控制與密集監控台建議在桌面（≥768px）使用；此處仍可查看摘要或展開簡化面板。",
+    "showFullPanel": "在此裝置顯示完整面板",
+    "advancedNav": "進階",
+    "moreNote": "控制台、模組與實驗室 — 密集管理介面建議用桌面開啟。",
+    "walletSummary": "積分餘額與近期用量",
+    "tasksSummary": "任務佇列與進度",
+    "skillsSummary": "技能與 MCP 管理編輯建議在桌面操作。",
+    "billingAdminSummary": "定價、政策與 Fault Pool 管理需桌面控制台。",
+    "alertModeDesktop": "全螢幕監控模式請在桌面使用。"
+  },
   "errors": {
     "opcGuard": "OPC 安全護欄已攔截寫入",
     "llmFailed": "模型呼叫失敗",

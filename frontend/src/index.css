@@ -111,6 +111,19 @@ body.scroll-lock {
   overflow-x: hidden;
 }
 
+/* Mobile Lite Shell (<768px) — presentation-only; APIs unchanged */
+.app-shell[data-shell-mode='lite'] .ws-side {
+  display: none;
+}
+
+.app-shell[data-shell-mode='lite'] .ws.is-monitor-open .ws-side {
+  display: flex;
+}
+
+.app-shell[data-shell-mode='lite'] [data-testid='monitor-alert-mode-toggle'] {
+  display: none;
+}
+
 .app-topbar {
   height: calc(var(--app-topbar-height) + var(--safe-area-top));
   padding-top: var(--safe-area-top);

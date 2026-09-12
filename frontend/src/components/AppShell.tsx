@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { useIsDesktop } from '../hooks/useMediaQuery';
+import { useIsDesktop, useShellMode } from '../hooks/useMediaQuery';
 import type { ChatSession } from '../types';
 import type { LabSubTab } from '../lib/labTabs';
 import {
@@ -124,6 +124,7 @@ export default function AppShell({
   forceCloseSidebar = false,
 }: AppShellProps) {
   const isDesktop = useIsDesktop();
+  const shellMode = useShellMode();
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches,
   );
@@ -188,7 +189,10 @@ export default function AppShell({
   );
 
   return (
-    <div className="app-shell flex h-dvh flex-col apple-canvas text-[var(--console-ink)]">
+    <div
+      className="app-shell flex h-dvh flex-col apple-canvas text-[var(--console-ink)]"
+      data-shell-mode={shellMode}
+    >
       {/* ══ 顶栏 ══ */}
       <TopBar
         activeView={activeView}
@@ -253,6 +257,8 @@ export default function AppShell({
       {!isDesktop && (
         <ActivityBar
           activity={activity}
+          activeView={activeView}
+          monitorTab={monitorTab}
           onActivityChange={handleActivityChange}
           placement="bottom"
           onMobileTasks={() => {

@@ -92,6 +92,17 @@
   "roles": {
     "showDenseWidgets": "Show heatmap & task matrix"
   },
+  "mobileShell": {
+    "desktopHint": "Full controls and dense monitors work best on desktop (≥768px). You can still open a simplified view here.",
+    "showFullPanel": "Show full panel on this device",
+    "advancedNav": "Advanced",
+    "moreNote": "Console, modules, and lab — dense admin panels open best on desktop.",
+    "walletSummary": "Credits balance and recent usage",
+    "tasksSummary": "Task queue and progress",
+    "skillsSummary": "Skills & MCP admin editing is easier on desktop.",
+    "billingAdminSummary": "Pricing, policies, and fault pool admin require desktop.",
+    "alertModeDesktop": "Fullscreen alert mode is available on desktop."
+  },
   "errors": {
     "opcGuard": "OPC guard blocked a write",
     "llmFailed": "Model call failed",

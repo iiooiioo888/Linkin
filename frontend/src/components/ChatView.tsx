@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, TaskProgress } from '../types';
 import { cancelTask, fetchTask, resumeTask } from '../api/client';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import InputBar from './InputBar';
 import type { SendOptions } from './InputBar';
 import MessageList from './MessageList';
@@ -129,7 +129,7 @@ export default function ChatView({
   );
   const showPipelineStrip = Boolean(running && !needsFullMonitor);
   const showMonitor = needsFullMonitor;
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useIsMobileLiteShell();
   const [monitorSheetOpen, setMonitorSheetOpen] = useState(false);
 
   useEffect(() => {

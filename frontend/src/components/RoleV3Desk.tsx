@@ -4,7 +4,7 @@
  */
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import type { AgentWorkItem, GrillTreeNode, L0Snapshot, RahoSnapshot, RoleAgent } from '../types';
 import {
   blankMetrics,
@@ -150,7 +150,7 @@ export default function RoleV3Desk({
   onOpenGrill,
 }: RoleV3DeskProps) {
   const { t } = useTranslation();
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobileLite = useIsMobileLiteShell();
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollTo = useScrollToSection(scrollRef);
   const activeSection = useSectionScrollSpy(LEFT_SECTIONS.map((s) => s.id), scrollRef);
@@ -197,6 +197,7 @@ export default function RoleV3Desk({
   return (
     <ConsoleThreeColumn
       className="min-h-0 flex-1"
+      liteShell={isMobileLite}
       mobileLabels={{ left: '導覽', center: '監控', right: '詳情' }}
     >
       <ConsoleLeftRail>
@@ -258,7 +259,7 @@ export default function RoleV3Desk({
               </div>
             </div>
 
-            {(!isMobile || showDenseWidgets) && (
+            {(!isMobileLite || showDenseWidgets) && (
               <ConsoleCard>
                 <ConsoleCardHeader>活動熱力圖</ConsoleCardHeader>
                 <div className="p-2">
@@ -300,29 +301,37 @@ export default function RoleV3Desk({
           ) : null}
 
           <section id="role-overview" className={consoleLayout.sectionAnchor}>
-            <KpiGrid6 className="mb-3">
-              {[
-                { label: '成功率', value: success > 0 ? `${success}%` : '—', accent: true },
-                { label: '延遲', value: `${Math.round(m.avg_latency_ms ?? 0)}`, unit: 'ms' },
-                { label: '執行中', value: String(agent.executing) },
-                { label: '序列', value: String(agent.queue) },
-                { label: 'P95', value: `${Math.round(m.p95_latency_ms ?? 0)}`, unit: 'ms' },
-                { label: 'SLA 違規', value: String(m.sla_breaches ?? 0) },
-              ].map((kpi) => (
-                <KpiSparkCard
-                  key={kpi.label}
-                  label={kpi.label}
-                  value={kpi.value}
-                  unit={kpi.unit}
-                  spark={spark}
-                  accent={kpi.accent}
-                />
-              ))}
-            </KpiGrid6>
+            {(!isMobileLite || showDenseWidgets) ? (
+              <KpiGrid6 className="mb-3">
+                {[
+                  { label: '成功率', value: success > 0 ? `${success}%` : '—', accent: true },
+                  { label: '延遲', value: `${Math.round(m.avg_latency_ms ?? 0)}`, unit: 'ms' },
+                  { label: '執行中', value: String(agent.executing) },
+                  { label: '序列', value: String(agent.queue) },
+                  { label: 'P95', value: `${Math.round(m.p95_latency_ms ?? 0)}`, unit: 'ms' },
+                  { label: 'SLA 違規', value: String(m.sla_breaches ?? 0) },
+                ].map((kpi) => (
+                  <KpiSparkCard
+                    key={kpi.label}
+                    label={kpi.label}
+                    value={kpi.value}
+                    unit={kpi.unit}
+                    spark={spark}
+                    accent={kpi.accent}
+                  />
+                ))}
+              </KpiGrid6>
+            ) : (
+              <div className="mb-3 grid grid-cols-3 gap-2">
+                <KpiSparkCard label="執行中" value={String(agent.executing)} spark={spark} accent />
+                <KpiSparkCard label="序列" value={String(agent.queue)} spark={spark} />
+                <KpiSparkCard label="成功率" value={success > 0 ? `${success}%` : '—'} spark={spark} />
+              </div>
+            )}
           </section>
 
           <section id="role-execution" className={`${consoleLayout.sectionAnchor} space-y-3`}>
-            {isMobile && !showDenseWidgets ? (
+            {isMobileLite && !showDenseWidgets ? (
               <button
                 type="button"
                 onClick={() => setShowDenseWidgets(true)}
