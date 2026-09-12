@@ -167,7 +167,8 @@ def _recent_errors(limit: int = 5) -> list[dict[str, Any]]:
 
 
 def _bridge_setup_block(bridge: dict[str, Any]) -> dict[str, Any]:
-    probe = bridge.get("probe") if isinstance(bridge.get("probe"), dict) else {}
+    raw_probe = bridge.get("probe")
+    probe: dict[str, Any] = raw_probe if isinstance(raw_probe, dict) else {}
     url = str(bridge.get("url") or "").strip()
     world = str(bridge.get("world") or "").strip()
     enabled = bool(bridge.get("enabled"))
