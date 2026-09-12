@@ -1886,6 +1886,34 @@ export async function labArchifyEvoloop(): Promise<ArchifyIR> {
   return resp.json();
 }
 
+export interface SystemFlowEntry {
+  id: string;
+  title: string;
+  blurb: string;
+  diagram_type: string;
+  legacy?: boolean;
+}
+
+export interface SystemFlowCatalog {
+  ok: boolean;
+  source: string;
+  flows: SystemFlowEntry[];
+  default_view: string;
+  hint?: string;
+}
+
+export async function labArchifySystemFlows(): Promise<SystemFlowCatalog> {
+  const resp = await fetch(apiUrl('/lab/archify/system-flows'));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
+export async function labArchifySystemFlow(flowId: string): Promise<ArchifyIR> {
+  const resp = await fetch(apiUrl(`/lab/archify/system-flows/${encodeURIComponent(flowId)}`));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json();
+}
+
 export async function labArchifyGenerate(description: string): Promise<ArchifyIR> {
   const resp = await fetch(apiUrl('/lab/archify/generate'), {
     method: 'POST',

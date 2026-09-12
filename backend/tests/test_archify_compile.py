@@ -73,6 +73,10 @@ def test_resolve_views():
     assert wf["meta"]["type"] == "workflow"
     evoloop = resolve_strategy_ir("evoloop")
     assert evoloop["nodes"]
+    deploy = resolve_strategy_ir("system-deploy")
+    assert "部署" in deploy["meta"]["title"]
+    opc = resolve_strategy_ir("opc")
+    assert opc["meta"]["type"] == "workflow"
 
 
 def test_prepare_html_keeps_svg_height():

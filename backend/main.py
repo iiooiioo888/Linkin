@@ -2272,6 +2272,25 @@ async def lab_archify_evoloop():
     return lab_tools.get_evoloop_architecture()
 
 
+@app.get("/lab/archify/system-flows")
+async def lab_archify_system_flows():
+    """Archify — 系統架構／運作流程圖目錄（Lab 流程選擇器）。"""
+    from backend.company.system_flow_maps import system_flow_catalog
+
+    return system_flow_catalog()
+
+
+@app.get("/lab/archify/system-flows/{flow_id}")
+async def lab_archify_system_flow(flow_id: str):
+    """Archify — 單一系統流程簡化 IR。"""
+    from backend.company.system_flow_maps import resolve_system_flow_ir
+
+    try:
+        return resolve_system_flow_ir(flow_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @app.post("/lab/archify/generate")
 async def lab_archify_generate(body: ArchifyGenerateRequest):
     """Archify — 由描述生成架構 IR。"""

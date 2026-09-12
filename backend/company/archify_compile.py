@@ -563,10 +563,20 @@ def resolve_strategy_ir(view: str = "overview", id: str = "", kind: str = "") ->
     want = (view or "overview").strip().lower()
     key = (id or "").strip()
     flavor = (kind or "").strip().lower()
-    if want in {"evoloop", "system"}:
-        from backend.services.lab_tools import get_evoloop_architecture
+    from backend.company.system_flow_maps import resolve_system_flow_ir
 
-        return get_evoloop_architecture()
+    _system_views = {
+        "evoloop",
+        "system",
+        "system-deploy",
+        "langgraph",
+        "raho",
+        "shared-pool",
+        "credit-pools",
+        "opc",
+    }
+    if want in _system_views:
+        return resolve_system_flow_ir(want)
     if want in {"overview", "catalog", "all", ""}:
         return strategy_catalog_maps()["overview"]
     if want in {"data_flow", "data-flow", "flow"}:

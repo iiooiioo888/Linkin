@@ -140,6 +140,21 @@ def test_lab_api_endpoints(client: TestClient, monkeypatch):
     assert r.status_code == 200
     assert r.json()["meta"]["title"]
 
+    r = client.get("/lab/archify/system-flows")
+    assert r.status_code == 200
+    flows_body = r.json()
+    assert flows_body["ok"] is True
+    flow_ids = {row["id"] for row in flows_body["flows"]}
+    assert "langgraph" in flow_ids
+    assert "shared-pool" in flow_ids
+
+    r = client.get("/lab/archify/system-flows/raho")
+    assert r.status_code == 200
+    assert "RAHO" in r.json()["meta"]["title"]
+
+    r = client.get("/lab/archify/system-flows/missing-flow")
+    assert r.status_code == 404
+
     r = client.get("/lab/quant/strategies")
     assert r.status_code == 200
     body = r.json()
