@@ -26,6 +26,7 @@
 ### 架構
 
 - [架構總覽](architecture/overview.md) — 統一管線、三層能力、目錄結構
+- [系統架構與運作流程（全面·2026-09）](architecture/system-architecture-2026-09.md) — 部署拓撲、分層、LangGraph、RAHO、計費／共享池掘礦、對話生命週期、前端殼
 - [反思閉環](architecture/reflection-loop.md) — 評分 → 反思 → 改進
 - [公司運行時](architecture/company-runtime.md) — RAHO、角色、預算
 - [OPC 工業整合](architecture/opc-integration.md) — 6 級閉環、護欄
