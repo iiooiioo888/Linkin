@@ -9,12 +9,19 @@ from __future__ import annotations
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from backend.linkin.constitution import allowed_styles_for_region, max_blocks_per_call
 from backend.linkin.design_llm import generate_llm_structure
-from backend.linkin.knowledge import COL_EVENTS, COL_WORLDVIEW, get_store, list_entities, upsert_entity
+from backend.linkin.knowledge import (
+    COL_EVENTS,
+    COL_WORLDVIEW,
+    get_store,
+    list_entities,
+    upsert_entity,
+)
 from backend.linkin.minecraft import execute_named_tool, monitor_status
 from backend.linkin.schematic import (
     MAX_AXIS,
