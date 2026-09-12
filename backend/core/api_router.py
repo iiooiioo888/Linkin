@@ -17,8 +17,13 @@ from typing import Any
 from backend.core.llm_config import get_runtime_config, masked_key, merge_runtime_config
 from backend.core.provider_pool import (
     KIND_LABELS,
+    MODEL_FAMILY_LABELS,
+    TOKEN_PLAN_LABEL,
     classify_provider,
+    infer_model_family,
     is_forbidden_model,
+    is_token_plan_url,
+    normalize_catalog_models,
     static_catalog,
 )
 
@@ -90,6 +95,11 @@ def token_hint_for(model: str) -> dict[str, int] | None:
 
 
 PROVIDER_PRESETS: dict[str, dict[str, str]] = {
+    "token-plan": {
+        "name": TOKEN_PLAN_LABEL,
+        "api_base": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+        "model": "qwen3.8-flash",
+    },
     "qwen": {
         "name": "通義千問 Qwen",
         "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -232,15 +242,32 @@ def _default_models_for(provider: str, model: str) -> list[str]:
     return ids
 
 
+def _token_plan_route_name(current: str) -> bool:
+    text = (current or "").strip()
+    if not text:
+        return True
+    qwen_preset = PROVIDER_PRESETS.get("qwen", {})
+    return text in {
+        str(qwen_preset.get("name") or ""),
+        KIND_LABELS.get("qwen", ""),
+        "通義千問 Qwen",
+        "qwen",
+    }
+
+
 def normalize_route(raw: dict[str, Any] | None, *, existing_ids: set[str] | None = None) -> dict[str, Any]:
     """正規化一條路由；缺欄位時用供應商預設補齊。"""
     source = dict(raw or {})
     api_base = str(source.get("api_base") or "").strip()
+    catalog_url = str(source.get("catalog_url") or "").strip()
     model = str(source.get("model") or "").strip()
     provider = str(source.get("provider") or "").strip().lower()
     if provider in {"kimi", "kimi-k2"}:
         provider = "moonshot"
-    if not provider or provider == "custom":
+    token_plan = is_token_plan_url(api_base) or is_token_plan_url(catalog_url)
+    if token_plan:
+        provider = "token-plan"
+    elif not provider or provider == "custom":
         provider = classify_provider(api_base, model)
     preset = PROVIDER_PRESETS.get(provider, {})
     if not api_base:
@@ -270,9 +297,13 @@ def normalize_route(raw: dict[str, Any] | None, *, existing_ids: set[str] | None
     elif model and model not in allowed and not is_forbidden_model(model):
         allowed = [model, *allowed]
 
-    catalog = source.get("catalog_models") or [
+    raw_catalog = source.get("catalog_models") or [
         {"id": mid, "name": mid, "owned_by": provider} for mid in allowed
     ]
+    catalog = normalize_catalog_models(
+        list(raw_catalog) if isinstance(raw_catalog, list) else [],
+        route_provider=provider,
+    )
     try:
         weight = max(1, min(100, int(source.get("weight") or 10)))
     except (TypeError, ValueError):
@@ -281,6 +312,8 @@ def normalize_route(raw: dict[str, Any] | None, *, existing_ids: set[str] | None
     routing = _normalize_provider_routing(source.get("provider_routing"))
 
     name = str(source.get("name") or preset.get("name") or KIND_LABELS.get(provider, provider)).strip()
+    if token_plan and _token_plan_route_name(name):
+        name = TOKEN_PLAN_LABEL
     return {
         "id": route_id,
         "name": name[:64] or route_id,
@@ -786,12 +819,67 @@ def resolve_target(
     }
 
 
+def _route_provider_label(route: dict[str, Any]) -> str:
+    provider = str(route.get("provider") or "")
+    if provider == "token-plan":
+        return TOKEN_PLAN_LABEL
+    return KIND_LABELS.get(provider, provider)
+
+
+def _build_models_by_provider(routes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for route in routes:
+        provider = str(route.get("provider") or "")
+        route_label = str(route.get("name") or route.get("id") or "")
+        provider_label = _route_provider_label(route)
+        allowed = [str(x) for x in (route.get("allowed_models") or []) if str(x).strip()]
+        catalog = list(route.get("catalog_models") or [])
+        if provider == "token-plan":
+            families: dict[str, list[str]] = {}
+            for item in catalog:
+                if isinstance(item, dict):
+                    mid = str(item.get("id") or "").strip()
+                    if not mid:
+                        continue
+                    family = str(item.get("owned_by") or infer_model_family(mid))
+                    families.setdefault(family, []).append(mid)
+            if not families and allowed:
+                for mid in allowed:
+                    family = infer_model_family(mid)
+                    families.setdefault(family, []).append(mid)
+            for family, models in sorted(families.items()):
+                family_label = MODEL_FAMILY_LABELS.get(family, family)
+                rows.append(
+                    {
+                        "route_id": route.get("id") or "",
+                        "name": f"{route_label} · {family_label}",
+                        "provider": provider,
+                        "provider_label": provider_label,
+                        "family": family,
+                        "enabled": bool(route.get("enabled", True)),
+                        "models": models,
+                    }
+                )
+            continue
+        rows.append(
+            {
+                "route_id": route.get("id") or "",
+                "name": route_label,
+                "provider": provider,
+                "provider_label": provider_label,
+                "enabled": bool(route.get("enabled", True)),
+                "models": allowed,
+            }
+        )
+    return rows
+
+
 def public_route(route: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": route.get("id") or "",
         "name": route.get("name") or "",
         "provider": route.get("provider") or "",
-        "provider_label": KIND_LABELS.get(str(route.get("provider") or ""), str(route.get("provider") or "")),
+        "provider_label": _route_provider_label(route),
         "api_key": masked_key(str(route.get("api_key") or "")),
         "configured": bool(route.get("api_key")),
         "api_base": route.get("api_base") or "",
@@ -839,17 +927,7 @@ def public_router_state(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
         "allowed_models": union_allowed_models(runtime),
         "model_token_hints": dict(MODEL_TOKEN_HINTS),
         "model_rate_cards": _public_rate_cards(),
-        "models_by_provider": [
-            {
-                "route_id": r["id"],
-                "name": r.get("name") or r["id"],
-                "provider": r.get("provider") or "",
-                "provider_label": KIND_LABELS.get(str(r.get("provider") or ""), str(r.get("provider") or "")),
-                "enabled": bool(r.get("enabled", True)),
-                "models": list(r.get("allowed_models") or []),
-            }
-            for r in routes
-        ],
+        "models_by_provider": _build_models_by_provider(routes),
     }
 
 

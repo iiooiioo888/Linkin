@@ -1424,6 +1424,7 @@ export interface ModelsByProvider {
   name: string;
   provider: string;
   provider_label: string;
+  family?: string;
   enabled: boolean;
   models: string[];
 }

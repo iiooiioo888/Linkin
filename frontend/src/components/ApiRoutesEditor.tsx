@@ -15,9 +15,18 @@ import {
 } from '../api/client';
 import type { ApiRoutePublic } from '../types';
 import { EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, dispatchApiRoutesChanged } from '../lib/agentUi';
+import { isTokenPlanUrl, TOKEN_PLAN_LABEL } from '../lib/llmCatalog';
 import { navPathForTab } from '../lib/monitorTabs';
 
 export const PROVIDER_PRESETS = [
+  {
+    value: 'token-plan',
+    label: TOKEN_PLAN_LABEL,
+    apiBase: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+    defaultModel: 'qwen3.8-flash',
+    hint: '阿里雲 Token Plan MaaS（多廠商：Qwen／DeepSeek／GLM／Wan 等）；與 DashScope 通義千問不同',
+    models: [] as string[],
+  },
   {
     value: 'qwen',
     label: '通義千問 Qwen',
@@ -95,6 +104,14 @@ export const PROVIDER_PRESETS = [
 ] as const;
 
 export type ProviderValue = (typeof PROVIDER_PRESETS)[number]['value'];
+
+function resolveProvider(route: ApiRoutePublic): ProviderValue {
+  if (isTokenPlanUrl(route.api_base) || isTokenPlanUrl(route.catalog_url)) {
+    return 'token-plan';
+  }
+  const hit = PROVIDER_PRESETS.find((p) => p.value === route.provider);
+  return (hit?.value ?? 'custom') as ProviderValue;
+}
 
 const inputCls =
   'w-full rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-sm text-[#F5F5F7] placeholder-[#636366] outline-none focus:border-[#007AFF]/60';
@@ -198,12 +215,11 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
     const only = Array.isArray(routing.only)
       ? (routing.only as unknown[]).map((x) => String(x)).filter(Boolean).join(', ')
       : '';
+    const provider = resolveProvider(route);
     setDraft({
       id: route.id,
       name: route.name,
-      provider: (PROVIDER_PRESETS.some((p) => p.value === route.provider)
-        ? route.provider
-        : 'custom') as ProviderValue,
+      provider,
       apiKey: '',
       apiBase: route.api_base,
       model: route.model,
@@ -551,7 +567,18 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
         <input
           className={`mb-3 ${inputCls}`}
           value={draft.apiBase}
-          onChange={(e) => setDraft({ ...draft, apiBase: e.target.value })}
+          onChange={(e) => {
+            const apiBase = e.target.value;
+            const next: Partial<RouteDraft> = { apiBase };
+            if (isTokenPlanUrl(apiBase) && draft.provider !== 'token-plan') {
+              const preset = PROVIDER_PRESETS.find((p) => p.value === 'token-plan');
+              next.provider = 'token-plan';
+              if (!draft.id && (!draft.name || draft.name === PROVIDER_PRESETS[1]?.label)) {
+                next.name = preset?.label || TOKEN_PLAN_LABEL;
+              }
+            }
+            setDraft((prev) => ({ ...prev, ...next }));
+          }}
           placeholder="https://..."
         />
 
