@@ -43,13 +43,13 @@ from backend.core.company_nodes import (
     enhance_with_opc_context,
 )
 from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD
+from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.linkin.pipeline import (
     enhance_with_linkin_context,
     is_linkin_complex_task,
     prefix_query_with_linkin,
     resolve_linkin_company_template,
 )
-from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.services.archiver import save_session_archive_sync
 from backend.services.task_broadcaster import task_broadcaster
 from backend.services.trace_logger import (
@@ -352,10 +352,10 @@ class TaskManager:
             task_id = key.removeprefix(TASK_KEY_PREFIX) if isinstance(key, str) else str(key)[len(TASK_KEY_PREFIX):]
             if task_id in seen:
                 continue
-            record = self._load_from_redis(task_id)
-            if record is not None:
+            loaded = self._load_from_redis(task_id)
+            if loaded is not None:
                 seen.add(task_id)
-                records.append(record)
+                records.append(loaded)
         return records
 
     # ── 公開 API ──

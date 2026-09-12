@@ -1,7 +1,7 @@
-# 敘事草稿工作區（Phase 0）
+# 敘事草稿工作區（Phase 0 / Phase 1）
 
 > **北極星**：AI 生成完整 Minecraft RPG——故事、NPC、地圖、建築、道具等。  
-> **本模組定位**：Phase 0「故事草稿工作區」，是完整管線的**草案桌**，不是終態。
+> **本模組定位**：Phase 0「故事草稿工作區」＋ Phase 1「brief → AI 生成草案」，是完整管線的**草案桌**，不是終態。
 
 ## 管線概覽
 
@@ -26,6 +26,7 @@ Base：`/linkin/narrative/workspaces`（Minecraft 模組閘道：`/modules/minec
 | PUT | `/{id}/drafts/{key}` | 寫草稿 `{ value }` |
 | POST | `/{id}/draft` | 寫草稿 `{ key, value }` |
 | POST | `/{id}/starter-pack` | 一鍵草案（LLM 或模板），**不** auto-commit |
+| POST | `/{id}/generate` | Phase 1：依 `brief` LLM 生成草稿（**replace-per-key**），**不** auto-commit |
 | POST | `/{id}/commit` | 提交至 Linkin 實體 |
 | POST | `/{id}/confirm` | 快照衝突 `{ choice: rebind\|discard }` |
 | POST | `/refresh-l0` | L0 刷新 `{ new_snapshot_id }` |
@@ -46,6 +47,7 @@ Base：`/linkin/narrative/workspaces`（Minecraft 模組閘道：`/modules/minec
 - **地圖／區域生成**：新增 `map_brief` 或擴展 `build_brief` 的 `region_layout` 欄位；實作放在獨立模組，勿寫入敘事工作區圖譜。
 - **MineMCP 即時建造**：經 `backend/tools/minecraft_mcp.py` 護欄；不在 Phase 0 commit 路徑自動觸發。
 - **一鍵草案 LLM**：`backend/linkin/narrative_starter.py`；無金鑰時使用 `fallback_starter_pack`。
+- **brief AI 生成（Phase 1）**：`backend/linkin/narrative_generate.py`；`POST /generate` 接受 `{ brief, locale?, keys?, region?, theme? }`；成功時以 **replace-per-key** 覆寫所請求鍵，解析失敗時保留既有草稿；計量經 `call_llm`（`trace_label=narrative_generate`）。
 
 ## 前端
 

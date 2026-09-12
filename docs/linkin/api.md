@@ -47,6 +47,7 @@ Base URL 與主應用相同：`http://localhost:8000`
 |------|------|------|
 | POST | `/linkin/narrative/workspaces` | 建立工作區 |
 | POST | `/linkin/narrative/workspaces/{id}/starter-pack` | 一鍵草案（不 auto-commit） |
+| POST | `/linkin/narrative/workspaces/{id}/generate` | Phase 1：依 brief AI 生成草稿（replace-per-key，不 auto-commit） |
 | POST | `/linkin/narrative/workspaces/{id}/commit` | 提交至 Linkin 實體 |
 | GET | `/linkin/events` | 歷史事件（RAG 事件庫） |
 | GET | `/linkin/minecraft/status` | MineMCP 橋接狀態、乾跑、最近審計 |

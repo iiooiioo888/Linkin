@@ -7,7 +7,6 @@ from typing import Any
 from backend.auth.gate import gate_enabled
 from backend.billing.context import current_billing_user, default_anonymous_user
 from backend.billing.docker_meter import get_docker_billing_tracker
-from backend.billing.errors import InsufficientCreditsError
 
 
 def resolve_docker_user() -> str:

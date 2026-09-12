@@ -9,6 +9,7 @@ import {
   confirmNarrativeWorkspace,
   fetchNarrativeWorkspace,
   listNarrativeWorkspaces,
+  generateNarrativeDrafts,
   seedNarrativeStarterPack,
   writeNarrativeDraft,
   type NarrativeWorkspace,
@@ -101,6 +102,7 @@ export default function NarrativeWorkspacePanel() {
   const [snapshotId, setSnapshotId] = useState('snap-local');
   const [theme, setTheme] = useState('靈丝残章');
   const [region, setRegion] = useState('织庭都');
+  const [brief, setBrief] = useState('');
   const [workspace, setWorkspace] = useState<NarrativeWorkspace | null>(null);
   const [draftEditors, setDraftEditors] = useState<Record<string, string>>({});
   const [selectedKey, setSelectedKey] = useState('story_arc');
@@ -179,6 +181,36 @@ export default function NarrativeWorkspacePanel() {
       setWorkspace(data.workspace);
       syncEditors(data.workspace);
       setSuccess('Phase 0 工作區已建立。可手動編輯或使用「一鍵草案」。');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onGenerate = async () => {
+    if (!workspace) return;
+    const trimmed = brief.trim();
+    if (!trimmed) {
+      setError('請先輸入 brief（故事種子／主題描述）。');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const data = await generateNarrativeDrafts(workspace.workspace_id, {
+        brief: trimmed,
+        locale: 'zh-Hant',
+        region,
+        theme,
+      });
+      setWorkspace(data.workspace);
+      syncEditors(data.workspace);
+      const labels = data.replaced_keys.map((k) => DRAFT_LABELS[k] ?? k).join('、');
+      setSuccess(
+        `AI 已覆寫 ${labels || '草案'}。請審閱各鍵內容後再按「提交至 Linkin」。`,
+      );
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -273,13 +305,12 @@ export default function NarrativeWorkspacePanel() {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div className="max-w-2xl">
-          <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">Phase 0 · 故事草稿工作區</p>
+          <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">Phase 1 · 故事草稿工作區</p>
           <h2 className="text-sm font-semibold text-[#c9a961]">RPG 草案桌</h2>
           <p className="mt-1 text-[11px] leading-relaxed text-[#8a8f98]">
             北極星：AI 生成完整 Minecraft RPG（故事、NPC、地圖、建築、道具）。
-            此頁是管線起點——彙整
-            <span className="text-[#AEAEB2]"> 故事主線／任務／NPC／道具／建築意圖 </span>
-            草稿；提交後寫入 Linkin 實體庫，後續再驅動地圖佈局與 MineMCP 建造（不在本階段自動執行）。
+            輸入 brief 後按「AI 生成」可一次填入五個草案鍵（覆寫該鍵既有內容）；審閱後再提交至 Linkin 實體庫。
+            不會自動寫入世界觀或觸發 MineMCP 建造。
           </p>
         </div>
         <button
@@ -385,8 +416,36 @@ export default function NarrativeWorkspacePanel() {
       )}
 
       {workspace && !isTerminal && (
-        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
-          <aside className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-2">
+        <>
+          <div className="mb-4 rounded-xl border border-[#c9a961]/20 bg-[#121216] p-3">
+            <label className="block text-[10px] text-[#8a8f98]">
+              Brief（故事種子／主題描述）
+              <textarea
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                disabled={busy || awaitingConfirmation}
+                placeholder="例：旅人在織庭都發現失落的靈丝契約，需與典章抄錄者合作揭開三大陣營的秘密…"
+                rows={3}
+                className="mt-1 w-full resize-y rounded-lg border border-white/[0.08] bg-[#08080a] px-3 py-2 text-[12px] leading-relaxed text-[#f7f8f8] placeholder:text-[#636366] disabled:opacity-50"
+              />
+            </label>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={busy || awaitingConfirmation || !brief.trim()}
+                onClick={() => void onGenerate()}
+                className="rounded-lg border border-[#c9a961]/50 bg-[#c9a961]/15 px-4 py-1.5 text-[12px] font-medium text-[#c9a961] disabled:opacity-40"
+              >
+                {busy ? '生成中…' : 'AI 生成'}
+              </button>
+              <span className="text-[10px] text-[#636366]">
+                覆寫五個草案鍵；不會自動提交。區域／主題欄位會作為生成上下文。
+              </span>
+            </div>
+          </div>
+
+          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <aside className="rounded-xl border border-white/[0.08] bg-[#121216] p-2">
             <p className="mb-2 px-1 text-[10px] text-[#8a8f98]">RPG 草案鍵</p>
             <div className="space-y-1">
               {KNOWN_KEYS.map((key) => {
@@ -418,7 +477,7 @@ export default function NarrativeWorkspacePanel() {
             </button>
           </aside>
 
-          <section className="flex min-h-[280px] flex-col rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
+          <section className="flex min-h-[280px] flex-col rounded-xl border border-white/[0.08] bg-[#121216] p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-[13px] font-medium">
                 編輯 · {DRAFT_LABELS[selectedKey] ?? selectedKey}
@@ -454,6 +513,7 @@ export default function NarrativeWorkspacePanel() {
             </p>
           </section>
         </div>
+        </>
       )}
 
       {workspace?.state === 'committed' && (

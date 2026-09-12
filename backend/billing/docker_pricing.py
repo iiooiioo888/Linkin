@@ -6,7 +6,10 @@ import os
 from typing import Any
 
 from backend.billing.plans import get_plan, normalize_plan_id
-from backend.company.docker_tools import DOCKER_SERVICE_HOURLY_RATES, DEFAULT_HOURLY_RATE, get_service_hourly_rate
+from backend.company.docker_tools import (
+    DOCKER_SERVICE_HOURLY_RATES,
+    get_service_hourly_rate,
+)
 
 
 def _env_float(key: str, default: float) -> float:

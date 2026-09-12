@@ -13,7 +13,7 @@ def _utc_now() -> str:
 
 
 def _parse_iso(ts: str) -> datetime:
-    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    return datetime.fromisoformat(ts)
 
 
 def create_appeal(

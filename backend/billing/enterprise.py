@@ -16,7 +16,7 @@ def validate_enterprise_license(license_key: str | None = None) -> bool:
     expected = os.getenv("LINKIN_ENTERPRISE_LICENSE", "").strip()
     if not expected:
         return True
-    key = (license_key or os.getenv("LINKIN_ENTERPRISE_LICENSE_KEY", "")).strip()
+    key = str(license_key or os.getenv("LINKIN_ENTERPRISE_LICENSE_KEY", "") or "").strip()
     if not key:
         return False
     digest = hmac.new(b"linkin.enterprise", key.encode(), hashlib.sha256).hexdigest()

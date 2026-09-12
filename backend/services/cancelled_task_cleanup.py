@@ -20,8 +20,6 @@ from backend.company.seat_io import seat_log_path
 from backend.services.trace_logger import (
     checkpoint_dir,
     checkpoint_path,
-    delete_checkpoint,
-    delete_trace,
     load_checkpoint,
     trace_dir,
     trace_path,
