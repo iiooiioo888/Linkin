@@ -50,9 +50,12 @@ Base URL 與主應用相同：`http://localhost:8000`
 | POST | `/linkin/narrative/workspaces/{id}/generate` | Phase 1：依 brief AI 生成草稿（replace-per-key，不 auto-commit） |
 | POST | `/linkin/narrative/workspaces/{id}/commit` | 提交至 Linkin 實體 |
 | GET | `/linkin/events` | 歷史事件（RAG 事件庫） |
-| GET | `/linkin/minecraft/status` | MineMCP 橋接狀態、乾跑、最近審計 |
+| GET | `/linkin/minecraft/status` | MineMCP 橋接狀態、乾跑、最近審計、`plugins` 地圖摘要 |
 | POST | `/linkin/minecraft/probe` | `tools/list` 探測（乾跑不發 HTTP） |
 | POST | `/linkin/minecraft/call` | `{tool, arguments}`；鐵律與方塊上限與公司工具相同 |
+| GET | `/linkin/minecraft/plugins/catalog` | 第三方插件目錄（Dynmap／BlueMap 等）與連線狀態 |
+| GET/PUT | `/linkin/minecraft/plugins/settings` | 地圖 URL、啟用、預設地圖插件 |
+| POST | `/linkin/minecraft/plugins/{id}/probe` | 地圖 URL 健康檢查（見 [minecraft-plugins.md](./minecraft-plugins.md)） |
 | POST | `/linkin/buildings/{id}/dispatch` | 在方案錨點放置標記方塊（不一次填滿） |
 
 ## 管理與總覽

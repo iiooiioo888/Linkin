@@ -755,6 +755,42 @@ def minecraft_call(body: dict[str, Any]) -> dict[str, Any]:
         raise _tool_http(exc) from exc
 
 
+@linkin_router.get("/minecraft/plugins/catalog")
+def minecraft_plugins_catalog() -> dict[str, Any]:
+    from backend.linkin.minecraft_plugins import list_catalog
+
+    items = list_catalog()
+    return {"plugins": items, "count": len(items)}
+
+
+@linkin_router.get("/minecraft/plugins/settings")
+def minecraft_plugins_settings_get() -> dict[str, Any]:
+    from backend.linkin.minecraft_plugins import public_settings
+
+    return public_settings()
+
+
+@linkin_router.put("/minecraft/plugins/settings")
+def minecraft_plugins_settings_put(body: dict[str, Any]) -> dict[str, Any]:
+    from backend.linkin.minecraft_plugins import PluginUrlError, update_settings
+
+    try:
+        return update_settings(body)
+    except PluginUrlError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc), "code": exc.code}) from exc
+
+
+@linkin_router.post("/minecraft/plugins/{plugin_id}/probe")
+def minecraft_plugins_probe(plugin_id: str) -> dict[str, Any]:
+    from backend.linkin.minecraft_plugins import PluginUrlError, probe_plugin
+
+    try:
+        return probe_plugin(plugin_id)
+    except PluginUrlError as exc:
+        status = 404 if exc.code == "unknown_plugin" else 400
+        raise HTTPException(status_code=status, detail={"message": str(exc), "code": exc.code}) from exc
+
+
 @linkin_router.get("/overview")
 def overview() -> dict[str, Any]:
     store = get_store()

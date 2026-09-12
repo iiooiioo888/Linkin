@@ -129,6 +129,60 @@ export type MinecraftAudit = {
   duration_ms?: number;
 };
 
+export type MinecraftPluginProbe = {
+  checked_at?: string;
+  url?: string;
+  ok?: boolean;
+  status?: string;
+  status_code?: number | null;
+  method?: string | null;
+  error?: string | null;
+  embeddable_hint?: string | null;
+};
+
+export type MinecraftPluginCatalogEntry = {
+  id: string;
+  name: string;
+  category: string;
+  purpose: string;
+  platforms: string[];
+  install_hint: string;
+  config_fields: Array<{ key: string; label: string; required?: boolean; example?: string }>;
+  embeddable: boolean;
+  related_flows?: string[];
+  enabled?: boolean;
+  map_url?: string | null;
+  api_port?: number | null;
+  active_map?: boolean;
+  status?: string;
+  last_probe?: MinecraftPluginProbe | null;
+};
+
+export type MinecraftPluginSettings = {
+  version?: number;
+  updated_at?: string;
+  active_map_plugin?: string | null;
+  map_url?: string | null;
+  plugins: Record<
+    string,
+    {
+      enabled?: boolean;
+      map_url?: string | null;
+      api_port?: number | null;
+      last_probe?: MinecraftPluginProbe | null;
+    }
+  >;
+  catalog_count?: number;
+};
+
+export type MinecraftPluginsSummary = {
+  active_map_plugin?: string | null;
+  map_url?: string | null;
+  map_plugins?: Record<string, string>;
+  configured_count?: number;
+  reachable_count?: number;
+};
+
 export type MinecraftStatus = {
   enabled: boolean;
   live: boolean;
@@ -141,6 +195,7 @@ export type MinecraftStatus = {
   company_tools?: string[];
   tools?: string[];
   recent?: MinecraftAudit[];
+  plugins?: MinecraftPluginsSummary;
   probe?: {
     ok?: boolean;
     connected?: boolean;
@@ -219,6 +274,22 @@ export const fetchMinecraftStatus = () => mc.get<MinecraftStatus>('/minecraft/st
 export const probeMinecraft = () => mc.post<MinecraftStatus['probe']>('/minecraft/probe');
 export const callMinecraftTool = (tool: string, arguments_: Record<string, unknown>) =>
   mc.post<Record<string, unknown>>('/minecraft/call', { tool, arguments: arguments_ });
+
+export const fetchMinecraftPluginCatalog = () =>
+  mc.get<{ plugins: MinecraftPluginCatalogEntry[]; count: number }>('/minecraft/plugins/catalog');
+export const fetchMinecraftPluginSettings = () => mc.get<MinecraftPluginSettings>('/minecraft/plugins/settings');
+export const saveMinecraftPluginSettings = (body: {
+  active_map_plugin?: string | null;
+  plugins?: Record<string, { enabled?: boolean; map_url?: string; api_port?: number | null }>;
+}) => mc.put<MinecraftPluginSettings>('/minecraft/plugins/settings', body);
+export const probeMinecraftPlugin = (pluginId: string) =>
+  mc.post<{
+    plugin_id: string;
+    map_url: string;
+    probe: MinecraftPluginProbe;
+    embeddable: boolean;
+    connection_status: string;
+  }>(`/minecraft/plugins/${pluginId}/probe`);
 export const dispatchBuilding = (id: string) =>
   mc.post<{ building: Building; minecraft: Record<string, unknown> }>(`/buildings/${id}/dispatch`);
 

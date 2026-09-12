@@ -346,6 +346,13 @@ def dispatch_building(building: dict[str, Any]) -> dict[str, Any]:
 def monitor_status() -> dict[str, Any]:
     cfg_status = mcp.connector_status()
     probe = mcp.probe_connection()
+    plugins_summary: dict[str, Any] = {}
+    try:
+        from backend.linkin.minecraft_plugins import monitor_summary
+
+        plugins_summary = monitor_summary()
+    except Exception:
+        plugins_summary = {}
     return {
         **cfg_status,
         "connected": probe.get("connected", False),
@@ -354,6 +361,7 @@ def monitor_status() -> dict[str, Any]:
         "company_tools": list(mcp.COMPANY_TOOL_NAMES),
         "write_roles": list(MC_WRITE_ROLES),
         "admin_roles": list(MC_ADMIN_ROLES),
+        "plugins": plugins_summary,
     }
 
 
