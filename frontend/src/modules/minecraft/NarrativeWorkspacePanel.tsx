@@ -4,14 +4,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchL0Kernel } from '../../api/client';
 import {
+  applyBuildBrief,
   beginNarrativeWorkspace,
   commitNarrativeWorkspace,
   confirmNarrativeWorkspace,
+  fetchBuildBrief,
+  fetchBuildBriefs,
+  fetchMinecraftStatus,
   fetchNarrativeWorkspace,
   listNarrativeWorkspaces,
   generateNarrativeDrafts,
+  previewBuildBrief,
   seedNarrativeStarterPack,
   writeNarrativeDraft,
+  type BuildBrief,
+  type BuildBriefApplyResult,
+  type BuildBriefPreview,
+  type MinecraftStatus,
   type NarrativeWorkspace,
 } from '../../api/linkin';
 
@@ -109,6 +118,12 @@ export default function NarrativeWorkspacePanel() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [committedBriefId, setCommittedBriefId] = useState<string | null>(null);
+  const [buildBrief, setBuildBrief] = useState<BuildBrief | null>(null);
+  const [briefPreview, setBriefPreview] = useState<BuildBriefPreview | null>(null);
+  const [applyResult, setApplyResult] = useState<BuildBriefApplyResult | null>(null);
+  const [bridgeStatus, setBridgeStatus] = useState<MinecraftStatus | null>(null);
+  const [buildBusy, setBuildBusy] = useState<'idle' | 'preview' | 'apply'>('idle');
 
   const awaitingConfirmation = workspace?.state === 'awaiting_confirmation';
   const isTerminal = workspace?.state === 'committed' || workspace?.state === 'discarded';
@@ -149,6 +164,25 @@ export default function NarrativeWorkspacePanel() {
     }
   }, [refreshWorkspace, taskId]);
 
+  const refreshBridgeStatus = useCallback(async () => {
+    try {
+      const status = await fetchMinecraftStatus();
+      setBridgeStatus(status);
+    } catch {
+      setBridgeStatus(null);
+    }
+  }, []);
+
+  const loadCommittedBrief = useCallback(async (briefId: string) => {
+    try {
+      const data = await fetchBuildBrief(briefId);
+      setBuildBrief(data.build_brief);
+      setCommittedBriefId(briefId);
+    } catch {
+      setBuildBrief(null);
+    }
+  }, []);
+
   useEffect(() => {
     void loadSnapshot();
   }, [loadSnapshot]);
@@ -156,6 +190,29 @@ export default function NarrativeWorkspacePanel() {
   useEffect(() => {
     void resumeTaskWorkspace().catch(() => undefined);
   }, [resumeTaskWorkspace]);
+
+  useEffect(() => {
+    if (workspace?.state !== 'committed' || committedBriefId) return;
+    void (async () => {
+      try {
+        const listed = await fetchBuildBriefs();
+        const draft = workspace.drafts?.build_brief as { title?: string } | undefined;
+        const candidates = listed.build_briefs.filter(
+          (b) => b.source === 'narrative_workspace' || b.status === 'pending_builder' || b.status === 'built',
+        );
+        const match =
+          (draft?.title ? candidates.find((b) => b.title === draft.title) : undefined) ??
+          candidates[candidates.length - 1];
+        if (match) {
+          setCommittedBriefId(match.id);
+          setBuildBrief(match);
+          await refreshBridgeStatus();
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [workspace, committedBriefId, refreshBridgeStatus]);
 
   const stateLabel = useMemo(() => {
     switch (workspace?.state) {
@@ -263,21 +320,70 @@ export default function NarrativeWorkspacePanel() {
     setBusy(true);
     setError(null);
     setSuccess(null);
+    setBriefPreview(null);
+    setApplyResult(null);
     try {
       const data = await commitNarrativeWorkspace(workspace.workspace_id);
       setWorkspace(data.workspace);
+      const brief = data.committed?.build_brief as { id?: string } | undefined;
+      if (brief?.id) {
+        setCommittedBriefId(brief.id);
+        await loadCommittedBrief(brief.id);
+        await refreshBridgeStatus();
+      }
       const ids = Object.entries(data.committed ?? {})
         .map(([key, val]) => `${DRAFT_LABELS[key] ?? key}:${(val as { id?: string }).id ?? 'ok'}`)
         .join(' · ');
       setSuccess(
         ids
-          ? `已寫入 Linkin 實體庫：${ids}。後續可驅動地圖配置與 MineMCP 建造（Phase 2+）。`
+          ? `已寫入 Linkin 實體庫：${ids}。若有建築意圖，可按「落地建築」經 MineMCP 放置方塊（需手動觸發）。`
           : '提交成功',
       );
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const onPreviewBuild = async () => {
+    if (!committedBriefId) return;
+    setBuildBusy('preview');
+    setError(null);
+    try {
+      const data = await previewBuildBrief(committedBriefId);
+      setBriefPreview(data);
+      await refreshBridgeStatus();
+      setSuccess(
+        `預覽：約 ${data.bounds.solid_count} 方塊，錨點 (${data.bounds.anchor?.x ?? '?'}, ${data.bounds.anchor?.y ?? '?'}, ${data.bounds.anchor?.z ?? '?'})`,
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBuildBusy('idle');
+    }
+  };
+
+  const onApplyBuild = async () => {
+    if (!committedBriefId) return;
+    setBuildBusy('apply');
+    setError(null);
+    setApplyResult(null);
+    try {
+      const data = await applyBuildBrief(committedBriefId);
+      setApplyResult(data);
+      setBuildBrief(data.brief);
+      const placement = data.placement;
+      const dryNote = placement.dry_run ? '（MineMCP 乾跑／未連線）' : '';
+      setSuccess(
+        placement.ok
+          ? `落地完成：${placement.blocks_placed}/${placement.blocks_total} 方塊${dryNote}`
+          : `落地未完成：${placement.blocks_placed}/${placement.blocks_total} 方塊，失敗 ${placement.blocks_failed}`,
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBuildBusy('idle');
     }
   };
 
@@ -517,8 +623,86 @@ export default function NarrativeWorkspacePanel() {
       )}
 
       {workspace?.state === 'committed' && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[12px] leading-relaxed text-emerald-200">
-          草案已寫入 Linkin 實體庫。下一步：在任務／NPC／道具／建築面板檢視成果；地圖生成與 MineMCP 即時建造將在後續 Phase 接入。
+        <div className="space-y-3">
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[12px] leading-relaxed text-emerald-200">
+            草案已寫入 Linkin 實體庫。任務／NPC／道具可在對應面板檢視；建築意圖需手動觸發 Phase 2 落地（不會自動建造）。
+          </div>
+
+          {committedBriefId && buildBrief && (
+            <section className="rounded-xl border border-[#c9a961]/30 bg-[#1C1C1E] p-4">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">Phase 2 · 落地建築</p>
+                  <h3 className="text-[13px] font-medium text-[#c9a961]">{buildBrief.title}</h3>
+                  <p className="mt-1 text-[11px] text-[#8a8f98]">
+                    {buildBrief.id} · {buildBrief.region} · {buildBrief.location} · 狀態 {buildBrief.status ?? 'pending_builder'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void refreshBridgeStatus()}
+                  className="rounded-lg border border-[#c9a961]/30 px-2 py-1 text-[10px] text-[#c9a961]"
+                >
+                  刷新橋接狀態
+                </button>
+              </div>
+
+              <p className="mb-3 text-[11px] leading-relaxed text-[#AEAEB2]">{buildBrief.prompt}</p>
+
+              <div className="mb-3 flex flex-wrap gap-3 text-[10px] text-[#8a8f98]">
+                <span>
+                  MineMCP：
+                  <span className="text-[#c9a961]">
+                    {bridgeStatus?.enabled ? (bridgeStatus.connected ? '已連線' : '未連線') : '未啟用（乾跑）'}
+                  </span>
+                </span>
+                {briefPreview && (
+                  <span>
+                    預估方塊：<span className="text-[#c9a961]">{briefPreview.bounds.solid_count}</span>
+                  </span>
+                )}
+                {applyResult && (
+                  <span>
+                    已放置：<span className="text-[#c9a961]">{applyResult.placement.blocks_placed}</span>/
+                    {applyResult.placement.blocks_total}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={buildBusy !== 'idle'}
+                  onClick={() => void onPreviewBuild()}
+                  className="rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40"
+                >
+                  {buildBusy === 'preview' ? '預覽中…' : '預覽／估算'}
+                </button>
+                <button
+                  type="button"
+                  disabled={buildBusy !== 'idle'}
+                  onClick={() => void onApplyBuild()}
+                  className="rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961] disabled:opacity-40"
+                >
+                  {buildBusy === 'apply' ? '落地中…' : '落地建築'}
+                </button>
+              </div>
+
+              {briefPreview?.bounds.world_max && (
+                <p className="mt-3 text-[10px] text-[#636366]">
+                  世界邊界：({briefPreview.bounds.world_min?.x}, {briefPreview.bounds.world_min?.y},{' '}
+                  {briefPreview.bounds.world_min?.z}) → ({briefPreview.bounds.world_max.x},{' '}
+                  {briefPreview.bounds.world_max.y}, {briefPreview.bounds.world_max.z})
+                </p>
+              )}
+
+              {bridgeStatus?.enabled && !bridgeStatus.connected && (
+                <p className="mt-2 text-[11px] text-[#FF9F0A]">
+                  橋接未連線：落地建築將被拒絕。請在 Minecraft 橋接面板確認 Token 與伺服器後再試。
+                </p>
+              )}
+            </section>
+          )}
         </div>
       )}
     </div>

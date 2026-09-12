@@ -8,7 +8,7 @@
 ```text
 Phase 0  敘事工作區（本模組）  →  commit  →  Linkin 實體庫
 Phase 1  任務／NPC／道具編排   →  既有 /linkin/* 與 RAG
-Phase 2  建築／地圖意圖       →  build_briefs → Builder.generate → MineMCP dispatch
+Phase 2  建築／地圖意圖       →  build_briefs → 使用者手動「落地建築」→ Builder.generate + place_block
 Phase 3  地圖生成／區域佈局   →  TODO：region map pipeline（未實作）
 ```
 
@@ -41,11 +41,32 @@ Base：`/linkin/narrative/workspaces`（Minecraft 模組閘道：`/modules/minec
 | `item` | `items.json` + 世界觀 RAG | 道具平衡 |
 | `build_brief` | `build_briefs.json` + 世界觀 RAG | **Phase 2**：`Builder.generate` + MineMCP |
 
+## Phase 2：落地建築（build_brief → MineMCP）
+
+Base：`/linkin/build-briefs`（Minecraft 模組閘道：`/modules/minecraft/api/build-briefs`）
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| GET | `/` | 列出已提交的 `build_briefs` |
+| GET | `/{id}` | 單筆建築意圖 |
+| POST | `/{id}/preview` 或 `/preview` | Dry-run：生成 schematic、估算方塊數與世界邊界 |
+| POST | `/{id}/apply` 或 `/apply` | **需 `confirm: true`**：生成並以 `place_block` 落地 |
+| GET | `/jobs/{job_id}` | 非同步落地任務狀態（`async: true`） |
+| POST | `/jobs/{job_id}/cancel` | 取消進行中的落地任務 |
+
+實作：`backend/linkin/build_brief_apply.py`、`backend/linkin/build_brief_api.py`。
+
+安全契約：
+
+- Phase 0 **commit 不會**自動觸發 MineMCP；僅 `POST .../apply` + `confirm: true` 才落地。
+- 橋接已啟用但未連線時回傳 `bridge_offline`（409）。
+- 單次實心方塊 ≤ 5000；schematic 單軸 ≤ 128；超出回傳 `block_limit` / `bounds_exceeded`。
+
+前端：敘事工作區提交後顯示「落地建築」；建築面板列出 `pending_builder` 意圖。
+
 ## 擴展點（TODO）
 
-- **`build_brief` → 建築管線**：`backend/linkin/narrative_commit.py` 中 `_commit_build_brief` 標記 `status: pending_builder`；消費方應讀 `build_briefs` 並呼叫 `/linkin/buildings/generate`。
 - **地圖／區域生成**：新增 `map_brief` 或擴展 `build_brief` 的 `region_layout` 欄位；實作放在獨立模組，勿寫入敘事工作區圖譜。
-- **MineMCP 即時建造**：經 `backend/tools/minecraft_mcp.py` 護欄；不在 Phase 0 commit 路徑自動觸發。
 - **一鍵草案 LLM**：`backend/linkin/narrative_starter.py`；無金鑰時使用 `fallback_starter_pack`。
 - **brief AI 生成（Phase 1）**：`backend/linkin/narrative_generate.py`；`POST /generate` 接受 `{ brief, locale?, keys?, region?, theme? }`；成功時以 **replace-per-key** 覆寫所請求鍵，解析失敗時保留既有草稿；計量經 `call_llm`（`trace_label=narrative_generate`）。
 

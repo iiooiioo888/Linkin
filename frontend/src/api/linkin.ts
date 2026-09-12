@@ -371,3 +371,98 @@ export const generateNarrativeDrafts = (
     `/narrative/workspaces/${encodeURIComponent(workspaceId)}/generate`,
     body,
   );
+
+export type BuildBrief = {
+  id: string;
+  title: string;
+  region: string;
+  location: string;
+  style: string;
+  prompt: string;
+  block_count: number;
+  notes?: string;
+  status?: string;
+  source?: string;
+  building_id?: string;
+  build_job?: {
+    blocks_total?: number;
+    blocks_placed?: number;
+    blocks_failed?: number;
+    dry_run?: boolean;
+    cancelled?: boolean;
+  };
+};
+
+export type BuildBriefPreview = {
+  brief: BuildBrief;
+  building?: Building | null;
+  bounds: {
+    anchor?: { x: number; y: number; z: number };
+    world_min?: { x: number; y: number; z: number };
+    world_max?: { x: number; y: number; z: number };
+    solid_count: number;
+    width?: number;
+    height?: number;
+    length?: number;
+    estimate_only?: boolean;
+  };
+  preview?: BuildingPreview | null;
+  bridge: { enabled?: boolean; connected?: boolean; dry_run?: boolean };
+  dry_run: boolean;
+};
+
+export type BuildBriefApplyResult = {
+  brief: BuildBrief;
+  building: Building;
+  placement: {
+    ok: boolean;
+    dry_run?: boolean;
+    cancelled?: boolean;
+    blocks_total: number;
+    blocks_placed: number;
+    blocks_failed: number;
+    bounds?: BuildBriefPreview['bounds'];
+    errors?: string[];
+    note?: string;
+  };
+  bridge?: MinecraftStatus;
+  dry_run?: boolean;
+};
+
+export type BuildBriefJob = {
+  job_id: string;
+  brief_id: string;
+  status: string;
+  dry_run: boolean;
+  blocks_total: number;
+  blocks_placed: number;
+  blocks_failed: number;
+  error?: string | null;
+  cancel_requested?: boolean;
+  result?: BuildBriefApplyResult | null;
+};
+
+export const fetchBuildBriefs = () =>
+  mc.get<{ build_briefs: BuildBrief[]; count: number }>('/build-briefs');
+
+export const fetchBuildBrief = (id: string) =>
+  mc.get<{ build_brief: BuildBrief }>(`/build-briefs/${encodeURIComponent(id)}`);
+
+export const previewBuildBrief = (briefId: string) =>
+  mc.post<BuildBriefPreview>(`/build-briefs/${encodeURIComponent(briefId)}/preview`, {});
+
+export const applyBuildBrief = (briefId: string) =>
+  mc.post<BuildBriefApplyResult>('/build-briefs/apply', { brief_id: briefId, confirm: true });
+
+export const applyBuildBriefAsync = (briefId: string) =>
+  mc.post<{ job: BuildBriefJob }>('/build-briefs/apply', {
+    brief_id: briefId,
+    confirm: true,
+    async: true,
+  });
+
+export const fetchBuildBriefJob = (jobId: string) =>
+  mc.get<{ job: BuildBriefJob }>(`/build-briefs/jobs/${encodeURIComponent(jobId)}`);
+
+export const cancelBuildBriefJob = (jobId: string) =>
+  mc.post<{ job: BuildBriefJob }>(`/build-briefs/jobs/${encodeURIComponent(jobId)}/cancel`);
