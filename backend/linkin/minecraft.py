@@ -217,9 +217,9 @@ def _place_path_segment(
         for step in range(steps + 1):
             t = step / steps
             cell = (
-                int(round(a["x"] + (b["x"] - a["x"]) * t)),
-                int(round(a["y"] + (b["y"] - a["y"]) * t)),
-                int(round(a["z"] + (b["z"] - a["z"]) * t)),
+                round(a["x"] + (b["x"] - a["x"]) * t),
+                round(a["y"] + (b["y"] - a["y"]) * t),
+                round(a["z"] + (b["z"] - a["z"]) * t),
             )
             if cell not in cells:
                 cells.append(cell)

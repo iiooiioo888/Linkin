@@ -347,7 +347,7 @@ def _offset_from_seed(seed: str, index: int, radius: int = 24) -> tuple[int, int
     base = _seed_int(f"{seed}:{index}")
     angle = (base % 360) * math.pi / 180.0
     dist = 8 + (base % max(radius - 8, 1))
-    return int(round(math.cos(angle) * dist)), int(round(math.sin(angle) * dist))
+    return round(math.cos(angle) * dist), round(math.sin(angle) * dist)
 
 
 def gather_narrative_context(
@@ -598,9 +598,9 @@ def _iter_path_cells(a: dict[str, int], b: dict[str, int]) -> list[tuple[int, in
         t = i / steps
         cells.append(
             (
-                int(round(x0 + (x1 - x0) * t)),
-                int(round(y0 + (y1 - y0) * t)),
-                int(round(z0 + (z1 - z0) * t)),
+                round(x0 + (x1 - x0) * t),
+                round(y0 + (y1 - y0) * t),
+                round(z0 + (z1 - z0) * t),
             )
         )
     deduped: list[tuple[int, int, int]] = []
