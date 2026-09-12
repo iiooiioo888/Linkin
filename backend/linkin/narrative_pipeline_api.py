@@ -6,7 +6,11 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from backend.linkin.narrative_pipeline import PIPELINE_STEP_ORDER, STEP_LABELS, run_narrative_pipeline
+from backend.linkin.narrative_pipeline import (
+    PIPELINE_STEP_ORDER,
+    STEP_LABELS,
+    run_narrative_pipeline,
+)
 
 pipeline_router = APIRouter(prefix="/linkin/narrative/pipelines", tags=["linkin-narrative-pipeline"])
 
