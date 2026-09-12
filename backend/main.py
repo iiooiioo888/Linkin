@@ -117,6 +117,13 @@ async def _lifespan(_app: FastAPI):
         await asyncio.to_thread(task_manager.rehydrate)
     except Exception as exc:
         logger.warning("任務 rehydrate 失敗（降級為記憶體）：%s", exc)
+    try:
+        from backend.services.cancelled_task_cleanup import cleanup_enabled, run_cleanup
+
+        if cleanup_enabled():
+            await asyncio.to_thread(run_cleanup, task_manager)
+    except Exception as exc:
+        logger.warning("啟動時已取消任務清理失敗：%s", exc)
     # 主 loop 註冊：供 MCP server 等無 loop 執行緒安全派發任務
     task_manager._loop = asyncio.get_running_loop()
     # 技能庫與 MCP：載入設定並把啟用 server 的工具掛進 tool_registry
@@ -177,15 +184,41 @@ async def _lifespan(_app: FastAPI):
                 logger.warning("貢獻積分維護檢查失敗：%s", exc)
 
     contribution_task = asyncio.create_task(_contribution_maintenance_loop())
+
+    async def _cancelled_task_cleanup_loop() -> None:
+        from backend.services.cancelled_task_cleanup import (
+            cleanup_enabled,
+            cleanup_interval_seconds,
+            run_cleanup,
+        )
+
+        if not cleanup_enabled():
+            return
+        interval = cleanup_interval_seconds()
+        while True:
+            try:
+                await asyncio.sleep(interval)
+                await asyncio.to_thread(run_cleanup, task_manager)
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.warning("已取消任務清理失敗：%s", exc)
+
+    cleanup_task = asyncio.create_task(_cancelled_task_cleanup_loop())
     try:
         yield
     finally:
+        cleanup_task.cancel()
         contribution_task.cancel()
         rollover_task.cancel()
         docker_bill_task.cancel()
         task.cancel()
         try:
             await contribution_task
+        except asyncio.CancelledError:
+            pass
+        try:
+            await cleanup_task
         except asyncio.CancelledError:
             pass
         try:
@@ -1430,6 +1463,23 @@ async def resume_task(task_id: str):
     if not ok:
         raise HTTPException(status_code=400, detail=message)
     return {"success": True, "message": message}
+
+
+@app.post("/admin/tasks/purge-cancelled")
+async def admin_purge_cancelled_tasks():
+    """手動觸發已取消任務過期清理（磁碟產物 + Redis 記錄）。"""
+    from backend.services.cancelled_task_cleanup import cleanup_enabled, run_cleanup
+
+    if not cleanup_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail="清理已停用（LINKIN_CANCELLED_TASK_CLEANUP_ENABLED=false）",
+        )
+    try:
+        summary = await asyncio.to_thread(run_cleanup, task_manager)
+        return summary.to_dict()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"清理失敗：{exc}") from exc
 
 
 # ==================== 思考過程軌跡 API ====================

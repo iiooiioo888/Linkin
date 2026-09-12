@@ -114,6 +114,7 @@ class TaskRecord:
         # 控制細項（進階參數）
         self.options: dict[str, Any] = {}
         self.created_at = time.time()
+        self.finished_at: float | None = None
         self.raho: dict[str, Any] = {}
 
     def to_dict(self, events_limit: int | None = 50) -> dict[str, Any]:
@@ -148,6 +149,7 @@ class TaskRecord:
             "resumable": self.resumable,
             "options": self.options,
             "created_at": self.created_at,
+            "finished_at": self.finished_at,
             "raho": self.raho,
         }
 
@@ -186,6 +188,8 @@ class TaskRecord:
         record.resumable = data.get("resumable", False)
         record.options = data.get("options", {})
         record.created_at = data.get("created_at", time.time())
+        finished = data.get("finished_at")
+        record.finished_at = float(finished) if finished is not None else None
         record.raho = data.get("raho") or {}
         return record
 
@@ -314,6 +318,45 @@ class TaskManager:
         if loaded:
             logger.info("任務 rehydrate：自 Redis 載回 %d 筆記錄", loaded)
         return loaded
+
+    def delete_task_record(self, task_id: str) -> bool:
+        """自記憶體與 Redis 移除任務記錄（過期清理用）。"""
+        self.tasks.pop(task_id, None)
+        client = self._get_redis()
+        if client is None:
+            return True
+        try:
+            client.delete(TASK_KEY_PREFIX + task_id)
+            return True
+        except Exception as exc:
+            logger.warning("任務記錄刪除失敗：task_id=%s, %s", task_id, exc)
+            return False
+
+    def iter_all_records(self) -> list[TaskRecord]:
+        """合併記憶體與 Redis 中的任務記錄（清理掃描用）。"""
+        seen: set[str] = set()
+        records: list[TaskRecord] = []
+        for record in self.tasks.values():
+            if record.task_id not in seen:
+                seen.add(record.task_id)
+                records.append(record)
+        client = self._get_redis()
+        if client is None:
+            return records
+        try:
+            keys = list(client.scan_iter(match=TASK_KEY_PREFIX + "*", count=500))
+        except Exception as exc:
+            logger.warning("任務掃描失敗：%s", exc)
+            return records
+        for key in keys:
+            task_id = key.removeprefix(TASK_KEY_PREFIX) if isinstance(key, str) else str(key)[len(TASK_KEY_PREFIX):]
+            if task_id in seen:
+                continue
+            record = self._load_from_redis(task_id)
+            if record is not None:
+                seen.add(task_id)
+                records.append(record)
+        return records
 
     # ── 公開 API ──
 
@@ -497,6 +540,8 @@ class TaskManager:
 
     def _finish(self, record: TaskRecord) -> None:
         """任務結束（完成/失敗）：持久化並寫入 JSONL 存檔。"""
+        if record.finished_at is None:
+            record.finished_at = time.time()
         self._persist(record)
         # WebSocket 推送任务完成/失败事件
         self._broadcast_event(record.task_id, "task_finished", {
