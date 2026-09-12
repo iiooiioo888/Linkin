@@ -19,6 +19,20 @@
 
 驗證路徑：前端 `/#/monitor/skills` → 技能分頁應顯示 ~102 條 managed 技能（來源欄位、類型標籤）。
 
+## Token 用量看板（token-dashboard）
+
+上游：[fuyi-git/token-dashboard](https://github.com/fuyi-git/token-dashboard)（vendored 於 `.agents/skills/token-dashboard/`）。
+
+| 入口 | 說明 |
+|------|------|
+| 控制台 `/#/monitor/credits` | 總覽區「打開 Token 看板」 |
+| 控制台 `/#/monitor/skills` | 工具列同名按鈕 |
+| 對話觸發 | 啟用 `token-dashboard` 技能後說「看看我的 token 用量」 |
+| API | `GET /billing/token-dashboard` · `POST /billing/token-dashboard/generate` |
+| CLI | `python -m backend.scripts.gen_token_dashboard --out token-dashboard.html` |
+
+資料來源為 Linkin `billing.sqlite3` 的 `pool_usage_events` / `usage_events`（請求級真實 metering）。若本機存在 `~/.workbuddy/projects`，技能腳本亦支援 `--source workbuddy`。
+
 ## 技能包與 MCP 對照
 
 | 來源 | 技能數 | MCP | 說明 |

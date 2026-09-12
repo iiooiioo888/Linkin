@@ -1078,6 +1078,16 @@ export async function fetchBillingOverview(): Promise<BillingOverview> {
   return resp.json();
 }
 
+/** Token 用量看板 HTML（Linkin 計費庫請求級 usage） */
+export function tokenDashboardUrl(days = 90): string {
+  const d = Math.max(1, Math.min(365, Math.floor(days)));
+  return apiUrl(`/billing/token-dashboard?days=${d}`);
+}
+
+export function openTokenDashboard(days = 90): void {
+  window.open(tokenDashboardUrl(days), '_blank', 'noopener,noreferrer');
+}
+
 export async function fetchBillingLedger(limit = 50): Promise<{ user_id: string; entries: BillingLedgerEntry[] }> {
   const resp = await fetch(apiUrl(`/billing/ledger?limit=${limit}`));
   if (!resp.ok) throw new Error(`讀取分類帳失敗（HTTP ${resp.status}）`);

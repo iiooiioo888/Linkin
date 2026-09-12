@@ -6,6 +6,7 @@ import os
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from backend.auth.gate import gate_enabled
@@ -249,6 +250,34 @@ def wallet_ledger_alias(request: Request, limit: int = 50) -> dict[str, Any]:
 @wallet_router.post("/topup")
 def wallet_topup_alias(req: TopupRequest, request: Request) -> dict[str, Any]:
     return topup(req, request)
+
+
+@router.get("/token-dashboard", response_class=HTMLResponse)
+def get_token_dashboard(request: Request, days: int = 90) -> HTMLResponse:
+    """生成並返回 Token 用量看板 HTML（資料來自 Linkin 計費庫）。"""
+    from backend.billing.token_dashboard.service import generate_token_dashboard_html
+
+    user_id = _resolve_user(request)
+    days = max(1, min(int(days), 365))
+    html = generate_token_dashboard_html(user_id, days=days)
+    return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+
+
+@router.post("/token-dashboard/generate")
+def post_token_dashboard(request: Request, days: int = 90) -> dict[str, Any]:
+    """生成 Token 看板並返回統計摘要與 HTML。"""
+    from backend.billing.token_dashboard.service import generate_token_dashboard_payload
+
+    user_id = _resolve_user(request)
+    days = max(1, min(int(days), 365))
+    payload = generate_token_dashboard_payload(user_id, days=days)
+    return {
+        "user_id": user_id,
+        "days": days,
+        "stats": payload["stats"],
+        "dashboard_url": "/billing/token-dashboard",
+        "html": payload["html"],
+    }
 
 
 @router.post("/transfer")
