@@ -73,7 +73,11 @@ def test_modules_http_catalog(monkeypatch, tmp_path):
         body = listed.json()
         assert body["count"] == 1
         assert body["modules"][0]["id"] == "minecraft"
-        assert body["modules"][0]["nav_groups"][0]["items"][0]["key"] == "monitor"
+        nav_groups = body["modules"][0]["nav_groups"]
+        assert nav_groups[0]["id"] == "players_group"
+        assert nav_groups[0]["items"][0]["key"] == "player_presence"
+        monitor_group = next(g for g in nav_groups if g["id"] == "monitor")
+        assert monitor_group["items"][0]["key"] == "monitor"
 
         detail = client.get("/modules/minecraft")
         assert detail.status_code == 200
@@ -98,7 +102,17 @@ def test_modules_http_catalog(monkeypatch, tmp_path):
         assert page_body["id"] == "minecraft"
         assert page_body["default_page"] == "monitor"
         keys = {item["key"] for item in page_body["pages"]}
-        assert {"monitor", "world", "admin", "building", "minecraft", "studio", "narrative"} <= keys
+        assert {
+            "monitor",
+            "world",
+            "admin",
+            "building",
+            "minecraft",
+            "studio",
+            "narrative",
+            "player_presence",
+            "ai_gm",
+        } <= keys
         world = next(item for item in page_body["pages"] if item["key"] == "world")
         assert world["capability"] == "worldview"
         assert "/constitution" in world["routes"]
