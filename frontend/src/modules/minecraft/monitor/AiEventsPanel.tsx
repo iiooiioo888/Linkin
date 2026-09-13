@@ -16,7 +16,9 @@ export default function AiEventsPanel({ compact = false }: { compact?: boolean }
           刷新
         </button>
       </div>
-      <p className="px-3 pt-1 text-[9px] text-[var(--console-faint)]">與 /linkin/minecraft/ai/events 同步</p>
+      <p className="px-3 pt-1 text-[9px] text-[var(--console-faint)]">
+        與 /linkin/minecraft/ai/events 同步 · 含 player/* 活動
+      </p>
       {error ? <p className="console-status-red px-3 pb-3 text-xs">{error}</p> : null}
       {!events.length ? (
         <div className="px-3 pb-3 text-xs text-[var(--console-faint)]">

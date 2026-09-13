@@ -110,7 +110,13 @@ export default function MonitorHubPanel() {
               {loading ? '刷新中…' : data?.generated_at ? `更新 ${formatTs(data.generated_at)}` : '自動刷新 12s'}
             </span>
           </div>
-          <KpiGrid6>
+            <KpiGrid6>
+            <KpiSparkCard
+              label="在線玩家"
+              value={String(data?.kpis.online_players ?? data?.players?.online_count ?? 0)}
+              accent={Boolean(data?.kpis.online_players ?? data?.players?.online_count)}
+              spark={[0, 1, data?.kpis.online_players ?? 0, data?.kpis.online_players ?? 0]}
+            />
             <KpiSparkCard
               label="待建築意圖"
               value={String(pendingBuild)}
@@ -128,6 +134,11 @@ export default function MonitorHubPanel() {
             <KpiSparkCard label="任務" value={String(data?.kpis.quest_count ?? 0)} />
             <KpiSparkCard label="道具" value={String(data?.kpis.item_count ?? 0)} />
           </KpiGrid6>
+          <div className="mt-1 text-right text-[10px]">
+            <a href={minecraftHref('player_presence')} className="text-[var(--console-accent)] hover:underline">
+              在線玩家 {data?.kpis.online_players ?? data?.players?.online_count ?? 0} · 打開玩家現場 →
+            </a>
+          </div>
 
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>橋接健康 · MineMCP</ConsoleCardHeader>

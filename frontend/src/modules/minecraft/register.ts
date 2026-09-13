@@ -13,6 +13,7 @@ export function registerMinecraftModule(): void {
     quest_item_monitor: wrapPanel(() => import('./QuestItemMonitorPanel')),
     build_monitor: wrapPanel(() => import('./BuildMonitorPanel')),
     bridge_monitor: wrapPanel(() => import('./BridgeMonitorPanel')),
+    player_presence: wrapPanel(() => import('./PlayerPresencePanel')),
     map_plan: wrapPanel(() => import('./MapPlanPanel')),
     'layout-preview': wrapPanel(() => import('./LayoutPreviewPanel')),
     world: wrapPanel(() => import('./WorldConstitutionPanel')),
