@@ -32,6 +32,14 @@ export type NpcCard = {
   backend?: string;
 };
 
+export type QuestObjective = {
+  id: string;
+  title: string;
+  description?: string;
+  done?: boolean;
+  updated_at?: number | null;
+};
+
 export type Quest = {
   id: string;
   title: string;
@@ -39,6 +47,35 @@ export type Quest = {
   difficulty: string;
   region?: string;
   description?: string;
+  objectives?: QuestObjective[];
+  world_status?: string;
+};
+
+export type QuestProgressRow = {
+  id: string;
+  player_id: string;
+  quest_id: string;
+  status: 'active' | 'completed' | 'failed' | string;
+  objectives?: Record<string, { done?: boolean; updated_at?: number | null }>;
+  objectives_detail?: QuestObjective[];
+  objectives_done?: number;
+  objectives_total?: number;
+  quest_title?: string;
+  quest_type?: string;
+  quest_region?: string;
+  world_status?: string;
+  started_at?: number;
+  updated_at?: number;
+  completed_at?: number | null;
+  last_event_id?: string | null;
+  notes?: Array<{ ts?: number; text?: string; objective_id?: string; source?: string }>;
+};
+
+export type QuestProgressSummary = {
+  active: number;
+  completed: number;
+  failed: number;
+  active_quests: QuestProgressRow[];
 };
 
 export type Building = {
@@ -782,6 +819,7 @@ export type MinecraftMonitorSummary = {
     npc_count: number;
     quest_count: number;
     item_count: number;
+    active_quest_progress?: number;
     online_players?: number;
     players_live?: {
       online_count: number;
@@ -1044,3 +1082,24 @@ export const reactMinecraftGm = (eventId: string, force = false) =>
     event_id: eventId,
     force,
   });
+
+export const fetchQuestProgress = (params?: { player_id?: string; quest_id?: string; status?: string }) => {
+  const qs = new URLSearchParams();
+  if (params?.player_id) qs.set('player_id', params.player_id);
+  if (params?.quest_id) qs.set('quest_id', params.quest_id);
+  if (params?.status) qs.set('status', params.status);
+  const suffix = qs.toString() ? `?${qs}` : '';
+  return mc.get<{ progress: QuestProgressRow[]; count: number }>(`/minecraft/quests/progress${suffix}`);
+};
+
+export const fetchQuestProgressSummary = (limit = 12) =>
+  mc.get<QuestProgressSummary>(`/minecraft/quests/progress/summary?limit=${limit}`);
+
+export const applyQuestProgress = (body: {
+  player_id: string;
+  quest_id: string;
+  objective_id?: string;
+  status?: 'advance' | 'complete' | 'failed';
+  note?: string;
+  dry_run?: boolean;
+}) => mc.post<Record<string, unknown>>('/minecraft/quests/progress/apply', body);

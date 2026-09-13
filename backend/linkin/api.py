@@ -88,6 +88,7 @@ def register_linkin(app) -> None:
     from backend.linkin.map_api import register_map_routes
     from backend.linkin.minecraft_ai_gm_api import register_minecraft_gm_routes
     from backend.linkin.minecraft_monitor_api import register_minecraft_monitor_routes
+    from backend.linkin.quest_runtime_api import register_quest_runtime_routes
     from backend.linkin.narrative_api import register_narrative_routes
     from backend.linkin.narrative_pipeline_api import register_narrative_pipeline_routes
     from backend.linkin.narrative_world_api import world_intent_router
@@ -100,6 +101,7 @@ def register_linkin(app) -> None:
     register_map_routes(app)
     register_minecraft_monitor_routes(app)
     register_minecraft_gm_routes(app)
+    register_quest_runtime_routes(app)
 
 
 def _llm_ready() -> bool:
@@ -387,16 +389,20 @@ def generate_quest(body: dict[str, Any]) -> dict[str, Any]:
     if parsed:
         title = str(parsed.get("title") or title).strip() or title
         description = str(parsed.get("description") or description).strip() or description
-    quest = {
-        "id": f"quest-{uuid.uuid4().hex[:10]}",
-        "player_id": params["player_id"],
-        "quest_type": params["quest_type"],
-        "difficulty": params["difficulty"],
-        "region": region,
-        "title": title,
-        "description": description,
-        "rewards": {"灵丝碎片": 3 if params["difficulty"] == "简单" else 8},
-    }
+    from backend.linkin.quest_objectives import attach_objectives_if_missing
+
+    quest = attach_objectives_if_missing(
+        {
+            "id": f"quest-{uuid.uuid4().hex[:10]}",
+            "player_id": params["player_id"],
+            "quest_type": params["quest_type"],
+            "difficulty": params["difficulty"],
+            "region": region,
+            "title": title,
+            "description": description,
+            "rewards": {"灵丝碎片": 3 if params["difficulty"] == "简单" else 8},
+        }
+    )
     upsert_entity("quests", quest)
     store.upsert(
         COL_EVENTS,

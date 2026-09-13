@@ -32,6 +32,7 @@ import {
   statusStripe,
   useVisibilityPoll,
 } from './monitor/shared';
+import QuestRuntimeStrip from './QuestRuntimeStrip';
 
 const PLAYER_ACTIONS = ['', 'join', 'quit', 'move', 'chat', 'death', 'inventory', 'teleport', 'pickup', 'drop', 'block_break', 'block_place'];
 
@@ -350,6 +351,13 @@ export default function PlayerPresencePanel() {
               </div>
             </ConsoleCard>
           </div>
+
+          {selectedId ? (
+            <ConsoleCard className="mt-3">
+              <ConsoleCardHeader title={`${selected?.name ?? selectedId} · 任務進度`} />
+              <QuestRuntimeStrip playerId={selectedId} />
+            </ConsoleCard>
+          ) : null}
 
           <ConsoleCard className="mt-3">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--console-border)] px-3 py-2">

@@ -134,6 +134,10 @@ def build_minecraft_spec() -> ModuleSpec:
                     "/minecraft/gm/runs",
                     "/minecraft/gm/tick",
                     "/minecraft/gm/react",
+                    "/minecraft/quests/progress",
+                    "/minecraft/quests/progress/apply",
+                    "/minecraft/quests/progress/summary",
+                    "/minecraft/quests/progress/heuristics",
                 ),
             ),
             ModuleCapability(

@@ -32,6 +32,7 @@ import {
   statusStripe,
   useVisibilityPoll,
 } from './monitor/shared';
+import QuestRuntimeStrip from './QuestRuntimeStrip';
 
 function actionTypeLabel(type: string): string {
   const map: Record<string, string> = {
@@ -276,6 +277,11 @@ export default function AiGmPanel() {
               </div>
             </ConsoleCard>
           </div>
+
+          <ConsoleCard className="mt-3">
+            <ConsoleCardHeader title="任務進度運行時" />
+            <QuestRuntimeStrip compact />
+          </ConsoleCard>
 
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader title="GM 決策時間軸" />

@@ -2,7 +2,8 @@
  * 任務／道具監控 — 世界意圖狀態帶。
  */
 import { useCallback, useEffect, useState } from 'react';
-import { fetchItems, fetchPendingWorldIntents, fetchQuests } from '../../api/linkin';
+import { fetchItems, fetchPendingWorldIntents, fetchQuestProgressSummary, fetchQuests } from '../../api/linkin';
+import QuestRuntimeStrip from './QuestRuntimeStrip';
 import { KpiSparkCard, StackBar } from '../../components/ui/monitor';
 import {
   ConsoleCard,
@@ -20,16 +21,23 @@ export default function QuestItemMonitorPanel() {
   const [items, setItems] = useState<Array<{ id: string; name: string; world_status?: string }>>([]);
   const [pendingQ, setPendingQ] = useState(0);
   const [pendingI, setPendingI] = useState(0);
+  const [activeProgress, setActiveProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [q, i, intents] = await Promise.all([fetchQuests(), fetchItems(), fetchPendingWorldIntents()]);
+      const [q, i, intents, progress] = await Promise.all([
+        fetchQuests(),
+        fetchItems(),
+        fetchPendingWorldIntents(),
+        fetchQuestProgressSummary(12),
+      ]);
       setQuests(q.quests as Array<{ id: string; title: string; world_status?: string }>);
       setItems(i.items as Array<{ id: string; name: string; world_status?: string }>);
       setPendingQ(intents.pending.quests.length);
       setPendingI(intents.pending.items.length);
+      setActiveProgress(progress.active);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -60,7 +68,12 @@ export default function QuestItemMonitorPanel() {
             <KpiSparkCard label="道具" value={String(items.length)} />
             <KpiSparkCard label="待落地任務" value={String(pendingQ)} />
             <KpiSparkCard label="待落地道具" value={String(pendingI)} />
+            <KpiSparkCard label="活躍進度" value={String(activeProgress)} accent={activeProgress > 0} />
           </KpiGrid6>
+          <ConsoleCard className="mt-3">
+            <ConsoleCardHeader title="任務進度運行時" />
+            <QuestRuntimeStrip />
+          </ConsoleCard>
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>任務狀態</ConsoleCardHeader>
             <div className="px-3 pb-3"><StackBar segments={questStack} /></div>

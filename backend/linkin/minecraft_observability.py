@@ -219,6 +219,14 @@ def build_monitor_summary() -> dict[str, Any]:
     except Exception:
         players_block = {}
 
+    active_quest_progress = 0
+    try:
+        from backend.linkin.quest_runtime import list_quest_progress
+
+        active_quest_progress = len(list_quest_progress(status="active"))
+    except Exception:
+        active_quest_progress = 0
+
     pending_briefs = [b for b in briefs if str(b.get("status") or "") in {"pending_builder", "planned"}]
     pipeline_evt = _last_event("narrative", "pipeline")
     bridge_errors = [
@@ -247,6 +255,7 @@ def build_monitor_summary() -> dict[str, Any]:
             "quest_count": len(quests),
             "item_count": len(items),
             "online_players": players_block.get("online_count", 0),
+            "active_quest_progress": active_quest_progress,
             "players_live": {
                 "online_count": players_block.get("online_count", 0),
                 "bridge_offline": players_block.get("bridge_offline"),
@@ -290,6 +299,19 @@ def build_ai_snapshot() -> dict[str, Any]:
     except Exception:
         players_block = {}
 
+    quest_runtime: dict[str, Any] = {}
+    try:
+        from backend.linkin.quest_runtime import build_active_quests_summary, list_quest_progress
+
+        active_rows = build_active_quests_summary(limit=10)
+        quest_runtime = {
+            "active_count": len(active_rows),
+            "completed_count": len(list_quest_progress(status="completed")),
+            "active_quests": active_rows,
+        }
+    except Exception:
+        quest_runtime = {}
+
     layout_summary = None
     try:
         from backend.linkin.layout_preview import build_layout_preview
@@ -315,6 +337,7 @@ def build_ai_snapshot() -> dict[str, Any]:
         "recent_events": recent.get("events") or [],
         "recent_errors": summary.get("recent_errors") or [],
         "players": players_block,
+        "quest_runtime": quest_runtime,
         "generated_at": time.time(),
     }
 
@@ -361,6 +384,21 @@ def build_ai_context(*, max_chars: int = 8000, fmt: str = "markdown") -> dict[st
             f"\n## 最近管線步驟\n- [{last.get('domain')}/{last.get('action')}] "
             f"{last.get('status')}: {last.get('summary')}"
         )
+
+    quest_rt = snap.get("quest_runtime") or {}
+    if quest_rt.get("active_quests"):
+        lines.append(f"\n## 任務進度（活躍 {quest_rt.get('active_count', 0)}）")
+        for row in (quest_rt.get("active_quests") or [])[:8]:
+            objs = row.get("objectives_detail") or []
+            done = row.get("objectives_done", 0)
+            total = row.get("objectives_total", len(objs))
+            obj_txt = "；".join(
+                f"{'✓' if o.get('done') else '○'}{o.get('title') or o.get('id')}" for o in objs[:4]
+            )
+            lines.append(
+                f"- [{row.get('player_id')}] {row.get('quest_title') or row.get('quest_id')} "
+                f"({done}/{total}) {obj_txt}"
+            )
 
     players = snap.get("players") or {}
     if players.get("bridge_offline") and not players.get("online_count"):
