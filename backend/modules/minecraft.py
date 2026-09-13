@@ -130,6 +130,10 @@ def build_minecraft_spec() -> ModuleSpec:
                     "/minecraft/players",
                     "/minecraft/players/events",
                     "/minecraft/players/ingest",
+                    "/minecraft/gm/config",
+                    "/minecraft/gm/runs",
+                    "/minecraft/gm/tick",
+                    "/minecraft/gm/react",
                 ),
             ),
             ModuleCapability(
@@ -154,6 +158,13 @@ def build_minecraft_spec() -> ModuleSpec:
                         "◎",
                         "玩家現場",
                         "在線玩家、背包與活動訊息流",
+                        capability="monitor",
+                    ),
+                    ModuleNavItem(
+                        "ai_gm",
+                        "♛",
+                        "AI 主持人",
+                        "玩家事件驅動任務進度與 NPC 回應",
                         capability="monitor",
                     ),
                 ),
@@ -250,6 +261,8 @@ def build_minecraft_spec() -> ModuleSpec:
             ("layout_preview", "layout-preview"),
             ("players", "player_presence"),
             ("player_monitor", "player_presence"),
+            ("gm", "ai_gm"),
+            ("ai_gm", "ai_gm"),
         ),
         health=minecraft_health,
     )

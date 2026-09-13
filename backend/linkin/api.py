@@ -86,6 +86,7 @@ linkin_router = APIRouter(prefix="/linkin", tags=["linkin"])
 def register_linkin(app) -> None:
     from backend.linkin.build_brief_api import build_brief_router
     from backend.linkin.map_api import register_map_routes
+    from backend.linkin.minecraft_ai_gm_api import register_minecraft_gm_routes
     from backend.linkin.minecraft_monitor_api import register_minecraft_monitor_routes
     from backend.linkin.narrative_api import register_narrative_routes
     from backend.linkin.narrative_pipeline_api import register_narrative_pipeline_routes
@@ -98,6 +99,7 @@ def register_linkin(app) -> None:
     register_narrative_pipeline_routes(app)
     register_map_routes(app)
     register_minecraft_monitor_routes(app)
+    register_minecraft_gm_routes(app)
 
 
 def _llm_ready() -> bool:
