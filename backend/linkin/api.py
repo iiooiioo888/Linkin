@@ -88,10 +88,10 @@ def register_linkin(app) -> None:
     from backend.linkin.map_api import register_map_routes
     from backend.linkin.minecraft_ai_gm_api import register_minecraft_gm_routes
     from backend.linkin.minecraft_monitor_api import register_minecraft_monitor_routes
-    from backend.linkin.quest_runtime_api import register_quest_runtime_routes
     from backend.linkin.narrative_api import register_narrative_routes
     from backend.linkin.narrative_pipeline_api import register_narrative_pipeline_routes
     from backend.linkin.narrative_world_api import world_intent_router
+    from backend.linkin.quest_runtime_api import register_quest_runtime_routes
 
     app.include_router(linkin_router)
     app.include_router(build_brief_router)
