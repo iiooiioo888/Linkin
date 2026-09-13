@@ -970,3 +970,49 @@ export const fetchMinecraftPlayerEvents = (params?: {
 
 export const ingestMinecraftPlayerEvent = (body: Record<string, unknown>) =>
   mc.post<{ ok: boolean; event?: MinecraftObservabilityEvent; error?: string }>('/minecraft/players/ingest', body);
+
+export type MinecraftGmConfig = {
+  enabled: boolean;
+  auto_apply: boolean;
+  dry_run: boolean;
+  max_actions_per_event: number;
+  cooldown_seconds: number;
+};
+
+export type MinecraftGmRun = {
+  id: string;
+  ts: number;
+  trigger_event_id?: string;
+  player_id?: string;
+  player_name?: string;
+  trigger_action?: string;
+  rationale?: string;
+  actions?: Array<Record<string, unknown>>;
+  apply_results?: Array<Record<string, unknown>>;
+  dry_run?: boolean;
+  auto_apply?: boolean;
+  applied?: boolean;
+  status?: string;
+  source?: string;
+};
+
+export const fetchMinecraftGmConfig = () =>
+  mc.get<{ config: MinecraftGmConfig }>('/minecraft/gm/config');
+
+export const updateMinecraftGmConfig = (patch: Partial<MinecraftGmConfig>) =>
+  mc.put<{ config: MinecraftGmConfig }>('/minecraft/gm/config', patch);
+
+export const fetchMinecraftGmRuns = (limit = 30) =>
+  mc.get<{ runs: MinecraftGmRun[]; count: number }>(`/minecraft/gm/runs?limit=${limit}`);
+
+export const tickMinecraftGm = (limit = 5) =>
+  mc.post<{ ok: boolean; processed?: number; results?: unknown[]; error?: string }>(
+    `/minecraft/gm/tick?limit=${limit}`,
+    {},
+  );
+
+export const reactMinecraftGm = (eventId: string, force = false) =>
+  mc.post<{ ok: boolean; run?: MinecraftGmRun; error?: string }>('/minecraft/gm/react', {
+    event_id: eventId,
+    force,
+  });

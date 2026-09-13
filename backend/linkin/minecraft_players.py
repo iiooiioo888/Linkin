@@ -336,7 +336,7 @@ def _record_player_event(
     bridge_offline: bool = False,
     dry_run: bool = False,
 ) -> dict[str, Any]:
-    return append_minecraft_event(
+    evt = append_minecraft_event(
         domain="player",
         action=action,
         status=status,
@@ -346,6 +346,13 @@ def _record_player_event(
         bridge_offline=bridge_offline,
         dry_run=dry_run,
     )
+    try:
+        from backend.linkin.minecraft_ai_gm import maybe_auto_react
+
+        maybe_auto_react(evt)
+    except Exception:
+        pass
+    return evt
 
 
 def _diff_and_emit(prev: dict[str, Any] | None, current: dict[str, Any], *, bridge_offline: bool) -> None:

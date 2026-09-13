@@ -71,6 +71,13 @@ const MINECRAFT_NAV: ModuleNavGroup[] = [
         hint: '在線玩家、背包與活動訊息流',
         capability: 'monitor',
       },
+      {
+        key: 'ai_gm',
+        icon: '♛',
+        label: 'AI 主持人',
+        hint: '玩家事件驅動任務進度與 NPC 回應',
+        capability: 'monitor',
+      },
     ],
   },
   {
