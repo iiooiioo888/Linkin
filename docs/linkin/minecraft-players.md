@@ -31,17 +31,67 @@ Linkin 透過 MineMCP 橋接（`get_online_players` / `get_player`）輪詢伺�
 
 ### Ingest 範例
 
+模組閘道（同源）：`POST /modules/minecraft/api/minecraft/players/ingest`  
+直連 Linkin API：`POST /linkin/minecraft/players/ingest`
+
+**聊天**
+
 ```json
-POST /linkin/minecraft/players/ingest
 {
   "action": "chat",
   "player": "Steve",
-  "message": "hello",
-  "summary": "Steve: hello"
+  "message": "大家好！",
+  "summary": "Steve: 大家好！"
+}
+```
+
+**死亡**
+
+```json
+{
+  "action": "death",
+  "player": "Alex",
+  "summary": "Alex 被殭屍擊敗",
+  "cause": "zombie",
+  "position": { "x": 120, "y": 64, "z": -30 }
+}
+```
+
+**破壞／放置方塊**
+
+```json
+{
+  "action": "block_break",
+  "player": "Steve",
+  "block": "DIAMOND_ORE",
+  "summary": "Steve 破壞了鑽石礦",
+  "position": { "x": 50, "y": 12, "z": 80 }
+}
+```
+
+```json
+{
+  "action": "block_place",
+  "player": "Alex",
+  "block": "OAK_PLANKS",
+  "summary": "Alex 放置了橡木木板",
+  "position": { "x": 10, "y": 64, "z": 20 }
 }
 ```
 
 允許的 `action`：`join`、`quit`、`move`、`chat`、`death`、`inventory`、`teleport`、`pickup`、`drop`、`block_break`、`block_place`。
+
+**驗證規則（400 由 `error` 欄位說明）：**
+
+| 錯誤碼 | 條件 |
+| --- | --- |
+| `missing_action` | 未提供 `action` |
+| `missing_player` | 未提供 `player`／`player_name`／`name` |
+| `chat_requires_message` | `chat` 需 `message` 或 `summary` |
+| `block_action_requires_block` | `block_break`／`block_place` 需 `block` |
+| `death_requires_summary` | `death` 需 `summary` 或 `message` |
+
+寫入事件會在 `details.source` 標記 `ingest`，面板以高亮顯示。
 
 ## AI 可觀測性
 
@@ -49,13 +99,24 @@ POST /linkin/minecraft/players/ingest
 - `GET /linkin/minecraft/ai/context` → Markdown 段落「玩家現場」
 - 公司工具 `minecraft_server_state` 與 `enhance_with_linkin_context` 均會帶入上述摘要
 
-查詢含「玩家／背包／在線」等關鍵字時也會注入 observability context。
+- 查詢含「玩家／背包／在線」等關鍵字時注入完整 observability context
+- **Minecraft 模組會話**、**敘事／管線任務**（`story_studio`）在「有在線玩家或近期活動」時，即使未命中關鍵字也會注入精簡「玩家現場」段落（token 上限約 900 字）
+
+## 布局預覽疊加
+
+`GET /linkin/minecraft/layout-preview` 回應新增：
+
+- `players[]`：在線玩家 XZ 座標、維度、背包摘要（需橋接有資料）
+- `players_live`：`online_count`、`bridge_offline`、`hint`（橋接離線時「等待橋接／玩家」）
+
+前端 `LayoutPreviewPanel` 以菱形標記疊加玩家，點選可跳轉玩家現場。
 
 ## 前端
 
 Minecraft 頂部選單 **玩家／現場 → 玩家現場**（`#/modules/minecraft/player_presence`）。
 
-監控總覽 KPI 含「在線玩家」並連至本頁。
+- **外部事件接入**：可複製 webhook 路徑與 chat／death／block JSON 範例
+- 監控總覽 KPI 含「在線玩家」與 `players_live` 摘要，連至本頁
 
 ## 隱私
 

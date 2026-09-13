@@ -25,6 +25,15 @@ _LINKIN_WORLD_RE = re.compile(
     re.IGNORECASE,
 )
 
+_NARRATIVE_PIPELINE_RE = re.compile(
+    r"("
+    r"narrative|敘事|管線|pipeline|phase\s*[0-5]|"
+    r"map\s*plan|地圖計畫|build\s*brief|建築落地|"
+    r"世界意圖|待落地|story_studio"
+    r")",
+    re.IGNORECASE,
+)
+
 _MC_OBSERVABILITY_RE = re.compile(
     r"("
     r"minecraft|minemcp|mine\s*mcp|"
@@ -101,6 +110,32 @@ def constitution_brief() -> str:
     )
 
 
+def _is_minecraft_context(state: StateInput) -> bool:
+    """Minecraft 模組會話或故事工作室管線。"""
+    if not isinstance(state, dict):
+        return False
+    meta = state.get("archive_metadata")
+    if isinstance(meta, dict):
+        module = str(meta.get("module_id") or meta.get("world_module") or "").strip().lower()
+        if module == "minecraft":
+            return True
+    template = str(state.get("company_template") or "").strip()
+    return template == "story_studio"
+
+
+def _is_narrative_pipeline_flow(query: str, state: StateInput) -> bool:
+    """敘事／管線相關查詢或 RAHO 活躍任務。"""
+    if is_linkin_complex_task(query):
+        return True
+    if _NARRATIVE_PIPELINE_RE.search(query or ""):
+        return True
+    if isinstance(state, dict):
+        raho = state.get("raho")
+        if isinstance(raho, dict) and raho.get("active"):
+            return True
+    return False
+
+
 def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
     """靈境 RAG 增強：命中世界觀關鍵詞時注入憲法摘要與知識庫檢索。
 
@@ -122,8 +157,9 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
         logger.debug("Minecraft MCP 摘要略過：%s", exc)
 
     obs_hit = bool(_MC_OBSERVABILITY_RE.search(query))
+    inject_full_obs = world_hit or mc_hit or obs_hit
     observability_block = ""
-    if world_hit or mc_hit or obs_hit:
+    if inject_full_obs:
         try:
             from backend.linkin.minecraft_observability import build_ai_context
 
@@ -132,7 +168,27 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
         except Exception as exc:
             logger.debug("Minecraft 可觀測性上下文略過：%s", exc)
 
-    if not world_hit and not mc_hit and not obs_hit:
+    players_presence_block = ""
+    minecraft_ctx = _is_minecraft_context(state)
+    narrative_flow = _is_narrative_pipeline_flow(query, state)
+    try:
+        from backend.linkin.minecraft_players import (
+            format_players_presence_markdown,
+            has_live_player_signal,
+        )
+
+        if (
+            has_live_player_signal()
+            and not inject_full_obs
+            and (minecraft_ctx or narrative_flow or world_hit or mc_hit)
+        ):
+            blob = format_players_presence_markdown(max_chars=900)
+            if blob:
+                players_presence_block = "\n" + blob
+    except Exception as exc:
+        logger.debug("玩家現場上下文略過：%s", exc)
+
+    if not world_hit and not mc_hit and not obs_hit and not players_presence_block:
         return {"linkin_context": {}}
 
     brief = constitution_brief() if world_hit else ""
@@ -160,7 +216,7 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
         overlays.append(_SYSTEM_OVERLAY)
     if mc_hit:
         overlays.append(_MC_SYSTEM_OVERLAY)
-    summary = f"{brief}{rag_block}{mcp_block}{observability_block}".strip()
+    summary = f"{brief}{rag_block}{mcp_block}{observability_block}{players_presence_block}".strip()
     return {
         "linkin_context": {
             "active": True,
@@ -168,7 +224,7 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
             "system_overlay": "\n".join(overlays),
             "complex": is_linkin_complex_task(query) or mc_hit,
             "minecraft": mc_hit,
-            "minecraft_observability": bool(observability_block),
+            "minecraft_observability": bool(observability_block or players_presence_block),
             "rag_hits": len(hits),
             "backend": backend,
         }

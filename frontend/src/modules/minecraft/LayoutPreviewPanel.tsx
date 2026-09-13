@@ -6,6 +6,7 @@ import {
   fetchMinecraftLayoutPreview,
   type LayoutPreviewData,
   type LayoutPreviewFeature,
+  type LayoutPreviewPlayer,
 } from '../../api/linkin';
 import {
   ConsoleCard,
@@ -16,8 +17,25 @@ import {
   PanelShell,
   SectionHeader,
 } from '../../components/ui/ConsoleLayout';
+import { minecraftHref, useVisibilityPoll } from './monitor/shared';
+
+const PLAYER_COLOR = '#ff6b6b';
 
 type ViewTransform = { scale: number; tx: number; ty: number };
+
+function playerAtPoint(
+  players: LayoutPreviewPlayer[],
+  wx: number,
+  wz: number,
+): LayoutPreviewPlayer | null {
+  for (let i = players.length - 1; i >= 0; i -= 1) {
+    const p = players[i];
+    const dx = wx - p.x;
+    const dz = wz - p.z;
+    if (dx * dx + dz * dz <= 16) return p;
+  }
+  return null;
+}
 
 function featureAtPoint(
   features: LayoutPreviewFeature[],
@@ -48,11 +66,15 @@ function featureAtPoint(
 function LayoutCanvas({
   data,
   selectedId,
+  selectedPlayerId,
   onSelect,
+  onSelectPlayer,
 }: {
   data: LayoutPreviewData;
   selectedId: string | null;
+  selectedPlayerId: string | null;
   onSelect: (f: LayoutPreviewFeature | null) => void;
+  onSelectPlayer: (p: LayoutPreviewPlayer | null) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
@@ -140,7 +162,14 @@ function LayoutCanvas({
           const sx = e.clientX - rect.left;
           const sy = e.clientY - rect.top;
           const w = toWorld(sx, sy);
-          onSelect(featureAtPoint(data.features, w.x, w.z));
+          const player = playerAtPoint(data.players ?? [], w.x, w.z);
+          if (player) {
+            onSelectPlayer(player);
+            onSelect(null);
+          } else {
+            onSelect(featureAtPoint(data.features, w.x, w.z));
+            onSelectPlayer(null);
+          }
         }
       }
     }
@@ -266,11 +295,72 @@ function LayoutCanvas({
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
           {data.features.map(renderFeature)}
+          {(data.players ?? []).map((player) => {
+            const p = toScreen(player.x, player.z);
+            const selected = player.id === selectedPlayerId;
+            const r = selected ? 8 : 6;
+            return (
+              <g key={`player-${player.id}`}>
+                <polygon
+                  points={`${p.x},${p.y - r} ${p.x + r},${p.y} ${p.x},${p.y + r} ${p.x - r},${p.y}`}
+                  fill={PLAYER_COLOR}
+                  stroke={selected ? '#f7f8f8' : '#ffb4b4'}
+                  strokeWidth={selected ? 2.5 : 1.5}
+                  opacity={0.95}
+                />
+                <text
+                  x={p.x}
+                  y={p.y - r - 4}
+                  textAnchor="middle"
+                  fill="#ffb4b4"
+                  fontSize="9"
+                  fontFamily="monospace"
+                >
+                  {player.name}
+                </text>
+                <title>{`${player.name} @ ${player.x}, ${player.y ?? '?'}, ${player.z}`}</title>
+              </g>
+            );
+          })}
         </svg>
+        {data.players_live?.waiting ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25">
+            <span className="rounded bg-black/60 px-3 py-1.5 text-[11px] text-[var(--console-muted)]">
+              {data.players_live.hint ?? '等待橋接／玩家'}
+            </span>
+          </div>
+        ) : null}
         <div className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/50 px-2 py-1 text-[9px] text-[#8a8f98]">
-          XZ 俯視 · {data.region || '—'} · {data.note}
+          XZ 俯視 · {data.region || '—'}
+          {(data.players?.length ?? 0) > 0 ? ` · 在線 ${data.players!.length}` : ''}
+          · {data.note}
         </div>
       </div>
+    </div>
+  );
+}
+
+function PlayerDetail({ player }: { player: LayoutPreviewPlayer }) {
+  const held = player.held_summary;
+  const inv = player.inventory_summary ?? [];
+  return (
+    <div className="space-y-2 text-xs text-[var(--console-muted)]">
+      <div className="font-medium text-[var(--console-text)]">{player.name}</div>
+      <div>座標：X {player.x} · Y {player.y ?? '—'} · Z {player.z}</div>
+      <div>維度：{player.dimension ?? '—'}</div>
+      {player.health != null ? <div>生命：{player.health}</div> : null}
+      <div>
+        主手：{held ? `${held.name} ×${held.count}` : '—'}
+      </div>
+      {inv.length ? (
+        <div>背包摘要：{inv.map((i) => `${i.name}×${i.count}`).join('、')}</div>
+      ) : null}
+      <a
+        href={`${minecraftHref('player_presence')}?player=${encodeURIComponent(player.id)}`}
+        className="inline-block text-[var(--console-accent)] hover:underline"
+      >
+        打開玩家現場詳情 →
+      </a>
     </div>
   );
 }
@@ -312,14 +402,13 @@ export default function LayoutPreviewPanel() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<LayoutPreviewFeature | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<LayoutPreviewPlayer | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
       const res = await fetchMinecraftLayoutPreview();
       setData(res);
-      setSelected(null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -327,11 +416,9 @@ export default function LayoutPreviewPanel() {
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useVisibilityPoll(load, 8000);
 
-  const selectedFeature = selected ?? (data?.features[0] ?? null);
+  const selectedFeature = selected ?? (selectedPlayer ? null : (data?.features[0] ?? null));
 
   return (
     <PanelShell scroll={false}>
@@ -341,8 +428,17 @@ export default function LayoutPreviewPanel() {
 
           <SectionHeader
             title="布局預覽"
-            description="Linkin 原生 2D 俯視 — map_plan、建築意圖、NPC 待落地（不需 Dynmap／橋接）"
+            description="Linkin 原生 2D 俯視 — 計畫要素 + 在線玩家疊加（玩家需橋接或 ingest）"
           />
+
+          {data?.players_live?.bridge_offline && !(data.players?.length) ? (
+            <PanelAlert tone="notice">
+              MineMCP 橋接離線 — 僅顯示計畫布局；連線後會疊加在線玩家位置。
+              <a href={minecraftHref('bridge_monitor')} className="ml-2 text-[var(--console-accent)] hover:underline">
+                橋接監控 →
+              </a>
+            </PanelAlert>
+          ) : null}
 
           {data?.empty ? (
             <ConsoleCard className="mt-2">
@@ -374,7 +470,13 @@ export default function LayoutPreviewPanel() {
                     {data.map_plan.estimated_blocks != null ? ` · ~${data.map_plan.estimated_blocks} 方塊` : ''}
                   </p>
                 ) : null}
-                <LayoutCanvas data={data} selectedId={selected?.id ?? null} onSelect={setSelected} />
+                <LayoutCanvas
+                  data={data}
+                  selectedId={selected?.id ?? null}
+                  selectedPlayerId={selectedPlayer?.id ?? null}
+                  onSelect={setSelected}
+                  onSelectPlayer={setSelectedPlayer}
+                />
               </ConsoleCard>
 
               <div className="space-y-3">
@@ -391,12 +493,14 @@ export default function LayoutPreviewPanel() {
                 </ConsoleCard>
 
                 <ConsoleCard>
-                  <ConsoleCardHeader>要素詳情</ConsoleCardHeader>
+                  <ConsoleCardHeader>{selectedPlayer ? '玩家詳情' : '要素詳情'}</ConsoleCardHeader>
                   <div className="px-3 pb-3">
-                    {selectedFeature ? (
+                    {selectedPlayer ? (
+                      <PlayerDetail player={selectedPlayer} />
+                    ) : selectedFeature ? (
                       <FeatureDetail feature={selectedFeature} />
                     ) : (
-                      <p className="text-xs text-[var(--console-faint)]">點選地圖上的要素</p>
+                      <p className="text-xs text-[var(--console-faint)]">點選地圖上的要素或玩家</p>
                     )}
                   </div>
                 </ConsoleCard>
@@ -405,6 +509,7 @@ export default function LayoutPreviewPanel() {
                   <ConsoleCardHeader>統計</ConsoleCardHeader>
                   <div className="px-3 pb-3 text-[10px] text-[var(--console-muted)]">
                     <div>要素：{data.counts.total}</div>
+                    <div>在線玩家：{data.players?.length ?? 0}</div>
                     <div>plots：{data.counts.plots}</div>
                     <div>建築意圖：{data.counts.build_briefs}</div>
                     <div>NPC 待落地：{data.counts.npc_intents}</div>

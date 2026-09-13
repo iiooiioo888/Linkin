@@ -139,3 +139,23 @@ def test_minecraft_query_injects_mcp_without_rag():
     assert resolve_linkin_company_template(
         {"query": query, "company_template": "quick_task", "linkin_context": ctx}
     ) == "story_studio"
+
+
+def test_story_studio_injects_players_without_keyword(monkeypatch):
+    monkeypatch.setattr(
+        "backend.linkin.minecraft_players.has_live_player_signal",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "backend.linkin.minecraft_players.format_players_presence_markdown",
+        lambda **kwargs: "## 玩家現場\n- 在線 1 人\n- Steve [world] (0, 64, 0) 背包=—",
+    )
+    ctx = enhance_with_linkin_context(
+        {
+            "query": "幫我檢查這段對白是否通順",
+            "company_template": "story_studio",
+        }
+    )["linkin_context"]
+    assert ctx["active"] is True
+    assert ctx["minecraft_observability"] is True
+    assert "玩家現場" in ctx["summary"]

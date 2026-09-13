@@ -247,6 +247,11 @@ def build_monitor_summary() -> dict[str, Any]:
             "quest_count": len(quests),
             "item_count": len(items),
             "online_players": players_block.get("online_count", 0),
+            "players_live": {
+                "online_count": players_block.get("online_count", 0),
+                "bridge_offline": players_block.get("bridge_offline"),
+                "recent_events": len(players_block.get("recent_activity") or []),
+            },
         },
         "players": players_block,
         "world_status": {

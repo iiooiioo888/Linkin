@@ -23,9 +23,11 @@ import {
   SectionHeader,
 } from '../../components/ui/ConsoleLayout';
 import {
+  CopyButton,
   EmptyStateCta,
   formatTs,
   minecraftHref,
+  playerActionLabel,
   statusLabel,
   statusStripe,
   useVisibilityPoll,
@@ -33,9 +35,53 @@ import {
 
 const PLAYER_ACTIONS = ['', 'join', 'quit', 'move', 'chat', 'death', 'inventory', 'teleport', 'pickup', 'drop', 'block_break', 'block_place'];
 
+const INGEST_WEBHOOK_PATH = '/linkin/minecraft/players/ingest';
+
+const INGEST_EXAMPLES: Array<{ label: string; body: Record<string, unknown> }> = [
+  {
+    label: 'player/chat',
+    body: { action: 'chat', player: 'Steve', message: '大家好！', summary: 'Steve: 大家好！' },
+  },
+  {
+    label: 'player/death',
+    body: {
+      action: 'death',
+      player: 'Alex',
+      summary: 'Alex 被殭屍擊敗',
+      cause: 'zombie',
+      position: { x: 120, y: 64, z: -30 },
+    },
+  },
+  {
+    label: 'player/block_break',
+    body: {
+      action: 'block_break',
+      player: 'Steve',
+      block: 'DIAMOND_ORE',
+      summary: 'Steve 破壞了鑽石礦',
+      position: { x: 50, y: 12, z: 80 },
+    },
+  },
+  {
+    label: 'player/block_place',
+    body: {
+      action: 'block_place',
+      player: 'Alex',
+      block: 'OAK_PLANKS',
+      summary: 'Alex 放置了橡木木板',
+      position: { x: 10, y: 64, z: 20 },
+    },
+  },
+];
+
 function posText(pos?: { x?: number; y?: number; z?: number } | null): string {
   if (!pos) return '—';
   return `${Math.round(pos.x ?? 0)}, ${Math.round(pos.y ?? 0)}, ${Math.round(pos.z ?? 0)}`;
+}
+
+function isIngestedEvent(evt: MinecraftObservabilityEvent): boolean {
+  const details = evt.details as Record<string, unknown> | undefined;
+  return details?.source === 'ingest';
 }
 
 function InventoryGrid({ detail }: { detail: MinecraftPlayerDetail }) {
@@ -151,12 +197,42 @@ export default function PlayerPresencePanel() {
     () => players.find((p) => p.id === selectedId) ?? null,
     [players, selectedId],
   );
+  const ingestedCount = events.filter(isIngestedEvent).length;
 
   return (
     <PanelShell scroll={false}>
       <ConsoleCenterColumn>
         <ConsoleColumnScroll>
           {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
+
+          <ConsoleCard className="mb-3">
+            <ConsoleCardHeader>橋接狀態</ConsoleCardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-3 text-xs">
+              <div className="text-[var(--console-muted)]">
+                <div>
+                  狀態：
+                  <span className={bridgeOffline ? 'text-[var(--console-amber)]' : 'text-[var(--console-green)]'}>
+                    {bridgeOffline ? '離線／未啟用' : snapshot?.bridge?.connected ? '已連線' : '—'}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[10px] text-[var(--console-faint)]">
+                  {bridgeOffline
+                    ? '不會捏造玩家位置；可透過下方 ingest 接入 chat／death／方塊事件。'
+                    : '每 5s 輪詢 MineMCP 更新在線玩家與背包。'}
+                </div>
+              </div>
+              {bridgeOffline ? (
+                <a href={minecraftHref('bridge_monitor')} className="console-btn text-xs">
+                  打開橋接監控
+                </a>
+              ) : (
+                <a href={minecraftHref('minecraft')} className="console-btn-ghost text-xs">
+                  橋接操作
+                </a>
+              )}
+            </div>
+          </ConsoleCard>
+
           {bridgeOffline ? (
             <PanelAlert tone="notice">
               MineMCP 橋接離線或未啟用 — 不會捏造玩家位置或背包。已 ingest 的活動事件仍會顯示。
@@ -179,6 +255,7 @@ export default function PlayerPresencePanel() {
             />
             <KpiSparkCard label="橋接" value={bridgeOffline ? '離線' : snapshot?.bridge?.connected ? '已連線' : '—'} accent={!bridgeOffline} />
             <KpiSparkCard label="活動事件" value={String(events.length)} />
+            <KpiSparkCard label="Ingest 事件" value={String(ingestedCount)} accent={ingestedCount > 0} />
           </KpiGrid6>
 
           {bridgeOffline && !players.length ? (
@@ -191,6 +268,33 @@ export default function PlayerPresencePanel() {
               ]}
             />
           ) : null}
+
+          <ConsoleCard className="mt-3">
+            <ConsoleCardHeader>外部事件接入</ConsoleCardHeader>
+            <div className="space-y-3 px-3 pb-3 text-xs text-[var(--console-muted)]">
+              <p>
+                橋接無法推送 chat／death／方塊事件。請讓 Bukkit 插件或腳本 POST 至下方路徑（模組閘道：
+                <code className="mx-1 rounded bg-black/30 px-1">/modules/minecraft/api/minecraft/players/ingest</code>）。
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="rounded bg-black/30 px-2 py-1 font-mono text-[10px]">POST {INGEST_WEBHOOK_PATH}</code>
+                <CopyButton text={INGEST_WEBHOOK_PATH} label="複製路徑" />
+              </div>
+              <div className="space-y-2">
+                {INGEST_EXAMPLES.map((example) => (
+                  <div key={example.label} className="rounded border border-[var(--console-border)] bg-black/15 p-2">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className="font-mono text-[10px] text-[var(--console-accent)]">{example.label}</span>
+                      <CopyButton text={JSON.stringify(example.body, null, 2)} label="複製 JSON" />
+                    </div>
+                    <pre className="max-h-28 overflow-auto font-mono text-[9px] text-[var(--console-faint)]">
+                      {JSON.stringify(example.body, null, 2)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ConsoleCard>
 
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
             <ConsoleCard>
@@ -259,7 +363,7 @@ export default function PlayerPresencePanel() {
                     className="ml-1 rounded border border-[var(--console-border)] bg-black/20 px-1 py-0.5 text-[10px]"
                   >
                     {PLAYER_ACTIONS.map((a) => (
-                      <option key={a || 'all'} value={a}>{a || '全部'}</option>
+                      <option key={a || 'all'} value={a}>{a ? playerActionLabel(a) : '全部'}</option>
                     ))}
                   </select>
                 </label>
@@ -274,18 +378,30 @@ export default function PlayerPresencePanel() {
               </p>
             ) : (
               <ul className="divide-y divide-[var(--console-border)] px-1 pb-2">
-                {events.map((evt) => (
-                  <li key={evt.id} className="mon-task-card px-2 py-2 text-xs" data-priority={statusStripe(evt.status)}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[10px] text-[var(--console-faint)]">{formatTs(evt.ts)}</span>
-                      <span className="rounded bg-[var(--console-card)] px-1.5 py-0.5 text-[10px]">
-                        {evt.action}
-                      </span>
-                      <span className="text-[var(--console-accent)]">{statusLabel(evt.status)}</span>
-                    </div>
-                    <p className="mt-1 text-[var(--console-text)]">{evt.summary}</p>
-                  </li>
-                ))}
+                {events.map((evt) => {
+                  const ingested = isIngestedEvent(evt);
+                  return (
+                    <li
+                      key={evt.id}
+                      className={`mon-task-card px-2 py-2 text-xs ${ingested ? 'border-l-2 border-l-[var(--console-accent)] bg-[var(--console-accent)]/5' : ''}`}
+                      data-priority={statusStripe(evt.status)}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-[10px] text-[var(--console-faint)]">{formatTs(evt.ts)}</span>
+                        <span className="rounded bg-[var(--console-card)] px-1.5 py-0.5 text-[10px]">
+                          {playerActionLabel(evt.action)}
+                        </span>
+                        {ingested ? (
+                          <span className="rounded bg-[var(--console-accent)]/15 px-1.5 py-0.5 text-[10px] text-[var(--console-accent)]">
+                            Ingest
+                          </span>
+                        ) : null}
+                        <span className="text-[var(--console-accent)]">{statusLabel(evt.status)}</span>
+                      </div>
+                      <p className="mt-1 text-[var(--console-text)]">{evt.summary}</p>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </ConsoleCard>

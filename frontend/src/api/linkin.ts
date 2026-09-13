@@ -783,6 +783,11 @@ export type MinecraftMonitorSummary = {
     quest_count: number;
     item_count: number;
     online_players?: number;
+    players_live?: {
+      online_count: number;
+      bridge_offline?: boolean;
+      recent_events?: number;
+    };
   };
   players?: MinecraftPlayersAiBlock;
   world_status: Record<string, Record<string, number>>;
@@ -806,6 +811,26 @@ export type LayoutPreviewFeature = {
   rect?: { x1: number; z1: number; x2: number; z2: number };
   polyline?: { points: Array<{ x: number; z: number }>; width: number };
   meta?: Record<string, unknown>;
+};
+
+export type LayoutPreviewPlayer = {
+  id: string;
+  name: string;
+  x: number;
+  y?: number | null;
+  z: number;
+  dimension?: string | null;
+  health?: number | null;
+  gamemode?: string | null;
+  held_summary?: { name: string; count: number } | null;
+  inventory_summary?: Array<{ name: string; count: number }>;
+};
+
+export type LayoutPreviewPlayersLive = {
+  online_count: number;
+  bridge_offline?: boolean;
+  waiting?: boolean;
+  hint?: string | null;
 };
 
 export type LayoutPreviewData = {
@@ -839,7 +864,10 @@ export type LayoutPreviewData = {
     bounds: { x1: number; z1: number; x2: number; z2: number };
     has_map_plan: boolean;
     region: string | null;
+    online_players?: number;
   };
+  players?: LayoutPreviewPlayer[];
+  players_live?: LayoutPreviewPlayersLive;
   generated_at: number;
 };
 

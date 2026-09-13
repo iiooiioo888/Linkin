@@ -463,7 +463,10 @@ def register_company_tools(registry: Any) -> None:
     )
     registry.register(
         name="minecraft_server_state",
-        description="讀取 Minecraft 伺服器可觀測狀態（橋接、待落地意圖、近期動作、錯誤）",
+        description=(
+            "讀取 Minecraft 伺服器可觀測狀態：橋接健康、在線玩家座標、"
+            "背包摘要、近期玩家活動（chat/death/move 等）、待落地意圖與錯誤"
+        ),
         parameters={
             "max_chars": {
                 "type": "integer",
