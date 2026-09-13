@@ -19,6 +19,7 @@ from backend.linkin.minecraft_players import (
     list_player_events,
     list_players_snapshot,
 )
+from backend.linkin.minecraft_situation import build_situation_dimension, build_situation_snapshot
 
 monitor_router = APIRouter(prefix="/linkin/minecraft", tags=["linkin-minecraft-monitor"])
 
@@ -88,6 +89,21 @@ def api_ai_context(
     format: str = Query("markdown", pattern="^(markdown|json)$"),
 ) -> dict[str, Any]:
     return build_ai_context(max_chars=max_chars, fmt=format)
+
+
+@monitor_router.get("/situation")
+def api_situation_snapshot() -> dict[str, Any]:
+    return build_situation_snapshot()
+
+
+@monitor_router.get("/situation/{dimension}")
+def api_situation_dimension(dimension: str) -> dict[str, Any]:
+    block = build_situation_dimension(dimension)
+    if block is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=f"unknown dimension: {dimension}")
+    return block
 
 
 @monitor_router.get("/layout-preview")

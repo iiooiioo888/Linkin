@@ -909,12 +909,29 @@ export type LayoutPreviewData = {
   generated_at: number;
 };
 
+export type MinecraftSituationDimension = {
+  status: 'ok' | 'partial' | 'unknown';
+  signals: Array<{ name: string; value: unknown; unit?: string; note?: string }>;
+  summary: string;
+  confidence: number;
+};
+
+export type MinecraftSituationSnapshot = {
+  generated_at: number;
+  market: MinecraftSituationDimension;
+  economy: MinecraftSituationDimension;
+  land: MinecraftSituationDimension;
+  players: MinecraftSituationDimension;
+  hints: string[];
+};
+
 export type MinecraftAiSnapshot = MinecraftMonitorSummary & {
   pending_intents: PendingWorldIntents & { count: number };
   latest_map_plan: MapPlan | null;
   layout_summary?: LayoutPreviewData['layout_summary'];
   active_workspaces: Array<{ workspace_id: string; state: string; draft_keys: string[] }>;
   recent_events: MinecraftObservabilityEvent[];
+  situation?: MinecraftSituationSnapshot;
 };
 
 export type MinecraftAiContext = {
@@ -974,6 +991,14 @@ export type MinecraftPlayersAiBlock = {
 
 export const fetchMinecraftMonitorSummary = () =>
   mc.get<MinecraftMonitorSummary>('/minecraft/monitor/summary');
+
+export const fetchMinecraftSituation = () =>
+  mc.get<MinecraftSituationSnapshot>('/minecraft/situation');
+
+export const fetchMinecraftSituationDimension = (dimension: string) =>
+  mc.get<MinecraftSituationDimension & { generated_at: number; dimension: string }>(
+    `/minecraft/situation/${encodeURIComponent(dimension)}`,
+  );
 
 export const fetchMinecraftAiSnapshot = () => mc.get<MinecraftAiSnapshot>('/minecraft/ai/snapshot');
 

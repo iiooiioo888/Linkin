@@ -33,6 +33,7 @@ import {
   useVisibilityPoll,
 } from './monitor/shared';
 import QuestRuntimeStrip from './QuestRuntimeStrip';
+import SituationStrip from './SituationStrip';
 
 function actionTypeLabel(type: string): string {
   const map: Record<string, string> = {
@@ -211,6 +212,12 @@ export default function AiGmPanel() {
           />
 
           {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
+
+          <ConsoleCard className="mb-3">
+            <div className="px-3 py-2">
+              <SituationStrip compact pollMs={10000} />
+            </div>
+          </ConsoleCard>
 
           <KpiGrid6>
             <KpiSparkCard label="GM 狀態" value={config?.enabled ? '啟用' : '停用'} accent={Boolean(config?.enabled)} />

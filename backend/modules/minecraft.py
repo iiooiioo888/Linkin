@@ -123,6 +123,7 @@ def build_minecraft_spec() -> ModuleSpec:
                 api_prefix=_PREFIX,
                 routes=(
                     "/minecraft/monitor/summary",
+                    "/minecraft/situation",
                     "/minecraft/ai/snapshot",
                     "/minecraft/ai/events",
                     "/minecraft/ai/context",
