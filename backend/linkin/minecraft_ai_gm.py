@@ -332,12 +332,21 @@ def build_gm_context(event: dict[str, Any] | None = None) -> dict[str, Any]:
     if event:
         heuristic_hints = evaluate_heuristics(event, player_id=trigger_player or None)
 
+    situation: dict[str, Any] = {}
+    try:
+        from backend.linkin.minecraft_situation import compact_situation_for_context
+
+        situation = compact_situation_for_context()
+    except Exception:
+        situation = {}
+
     ctx: dict[str, Any] = {
         "bridge": {
             "enabled": bridge.get("enabled"),
             "connected": bridge.get("connected"),
             "dry_run": bridge.get("dry_run"),
         },
+        "situation": situation,
         "players": players_block,
         "active_quests": active_quests,
         "heuristic_hints": heuristic_hints,
@@ -354,6 +363,11 @@ def _build_gm_prompt(context: dict[str, Any], event: dict[str, Any]) -> str:
     summary = event.get("summary") or ""
     details = event.get("details") or {}
 
+    situation = context.get("situation") or {}
+    situation_text = json.dumps(situation, ensure_ascii=False)[:1200]
+    hints = situation.get("hints") or []
+    hints_text = "\n".join(f"- {h}" for h in hints[:6]) if hints else "（無）"
+
     quests_text = json.dumps(context.get("active_quests") or [], ensure_ascii=False)[:1500]
     npcs_text = json.dumps(context.get("npcs") or [], ensure_ascii=False)[:800]
     players_text = json.dumps(
@@ -363,6 +377,8 @@ def _build_gm_prompt(context: dict[str, Any], event: dict[str, Any]) -> str:
 
     return (
         "你是 Minecraft RPG 的 AI 遊戲主持人（GM）。根據玩家事件決定少量、安全的回應動作。\n"
+        "決策前必須考量四維情境（市況 market／經濟 economy／地土 land／玩家 players），"
+        "優先選擇與情境相符的 hint、任務進度或 NPC 回應；信號不足時保守 noop。\n"
         "只輸出 JSON：{\"rationale\":\"...\",\"actions\":[...]}\n"
         "允許的 action.type：quest_progress、npc_say、hint、noop。\n"
         "禁止：place_block、break_block、fill、大規模破壞、任意 execute_command。\n"
@@ -371,6 +387,8 @@ def _build_gm_prompt(context: dict[str, Any], event: dict[str, Any]) -> str:
         "npc_say 欄位：npc_name, message, target_player（可選）。\n"
         "hint 欄位：message, target_player（可選，僅面板提示）。\n"
         "最多 3 個 actions；若無需回應請用 noop。\n\n"
+        f"四維情境快照：{situation_text}\n"
+        f"情境提示：\n{hints_text}\n\n"
         f"觸發事件：玩家={player_name} action={action} summary={summary}\n"
         f"事件詳情：{json.dumps(details, ensure_ascii=False)[:400]}\n"
         f"在線玩家：{players_text}\n"

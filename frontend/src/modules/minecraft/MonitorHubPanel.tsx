@@ -14,6 +14,7 @@ import {
   WarnBar,
 } from '../../components/ui/ConsoleLayout';
 import AiEventsPanel from './monitor/AiEventsPanel';
+import SituationStrip from './SituationStrip';
 import {
   BridgeSetupCard,
   EmptyStateCta,
@@ -106,6 +107,12 @@ export default function MonitorHubPanel() {
               近期異常 {data.recent_errors.length} 筆 · 最後：{data.recent_errors[0]?.summary}
             </WarnBar>
           ) : null}
+
+          <ConsoleCard className="mb-3">
+            <div className="px-3 py-2">
+              <SituationStrip />
+            </div>
+          </ConsoleCard>
 
           <div className="mb-2 flex items-center justify-between gap-2">
             <SectionHeader title="KPI 總覽" className="mb-0" />

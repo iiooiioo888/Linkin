@@ -322,6 +322,14 @@ def build_ai_snapshot() -> dict[str, Any]:
     except Exception:
         layout_summary = None
 
+    situation: dict[str, Any] = {}
+    try:
+        from backend.linkin.minecraft_situation import compact_situation_for_context
+
+        situation = compact_situation_for_context()
+    except Exception:
+        situation = {}
+
     return {
         "bridge": summary["bridge"],
         "bridge_setup": summary.get("bridge_setup"),
@@ -338,6 +346,7 @@ def build_ai_snapshot() -> dict[str, Any]:
         "recent_errors": summary.get("recent_errors") or [],
         "players": players_block,
         "quest_runtime": quest_runtime,
+        "situation": situation,
         "generated_at": time.time(),
     }
 
@@ -347,23 +356,51 @@ def build_ai_context(*, max_chars: int = 8000, fmt: str = "markdown") -> dict[st
     max_chars = max(500, min(int(max_chars or 8000), 32000))
     snap = build_ai_snapshot()
     plugins = snap.get("plugins") or {}
+    situation = snap.get("situation") or {}
     lines: list[str] = [
         "# Minecraft 伺服器可觀測狀態",
         "",
-        "## 橋接",
-        (
-            f"- enabled={snap['bridge'].get('enabled')} connected={snap['bridge'].get('connected')} "
-            f"dry_run={snap['bridge'].get('dry_run')} world={snap['bridge'].get('world')}"
-        ),
-        "",
-        "## 地圖插件",
-        (
-            f"- active={plugins.get('active_map_plugin')} map_url={plugins.get('map_url')} "
-            f"reachable={plugins.get('reachable_count')}/{plugins.get('configured_count')}"
-        ),
-        "",
-        "## KPI",
+        "## 四維情境快照",
     ]
+    if situation:
+        for dim_key, dim_label in (
+            ("market", "市況"),
+            ("economy", "經濟"),
+            ("land", "地土"),
+            ("players", "玩家"),
+        ):
+            block = situation.get(dim_key) or {}
+            status = block.get("status") or "unknown"
+            summary_txt = block.get("summary") or "—"
+            conf = block.get("confidence")
+            conf_txt = f" conf={conf}" if conf is not None else ""
+            lines.append(f"- {dim_label} [{status}]{conf_txt}: {summary_txt}")
+        hints = situation.get("hints") or []
+        if hints:
+            lines.append("\n### GM 情境提示")
+            for hint in hints[:6]:
+                lines.append(f"- {hint}")
+    else:
+        lines.append("- 情境快照不可用")
+
+    lines.extend(
+        [
+            "",
+            "## 橋接",
+            (
+                f"- enabled={snap['bridge'].get('enabled')} connected={snap['bridge'].get('connected')} "
+                f"dry_run={snap['bridge'].get('dry_run')} world={snap['bridge'].get('world')}"
+            ),
+            "",
+            "## 地圖插件",
+            (
+                f"- active={plugins.get('active_map_plugin')} map_url={plugins.get('map_url')} "
+                f"reachable={plugins.get('reachable_count')}/{plugins.get('configured_count')}"
+            ),
+            "",
+            "## KPI",
+        ]
+    )
     for key, val in (snap.get("kpis") or {}).items():
         lines.append(f"- {key}: {val}")
 
