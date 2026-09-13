@@ -236,7 +236,7 @@ def validate_gm_actions(actions: list[Any], *, max_actions: int) -> list[dict[st
         if action_type == "noop":
             safe.append({"type": "noop"})
             continue
-        cleaned = {"type": action_type}
+        cleaned: dict[str, Any] = {"type": action_type}
         for key, val in raw.items():
             if key == "type":
                 continue
