@@ -295,6 +295,12 @@
       "skillPath": "skills/mcp-builder/SKILL.md",
       "computedHash": "826e46adf81e1372282e205c34e1a2ee876e72148007726e4a2512599d2fef7b"
     },
+    "mediacrawler": {
+      "source": "NanmiCoder/MediaCrawler",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "a111ac0ce94be1ebc36880c5c615280925543af09f5143c47aee923386defce5"
+    },
     "migrate-to-codex": {
       "source": "openai/skills",
       "sourceType": "github",

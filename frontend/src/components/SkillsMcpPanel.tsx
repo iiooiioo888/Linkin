@@ -28,6 +28,7 @@ import {
 import { fetchPlugins, togglePlugin, type PluginCatalogEntry } from '../api/plugins';
 import { openChatContextDetail, openContextModal } from '../lib/contextUi';
 import { jumpToContextMonitor } from '../lib/rahoUi';
+import MediaCrawlerPanel from './MediaCrawlerPanel';
 import { PanelSection, PanelShell, consoleLayout } from './ui/ConsoleLayout';
 
 type SubTab = 'skills' | 'mcp' | 'viz';
@@ -295,6 +296,7 @@ function SkillsSection() {
 
   return (
     <div>
+      <MediaCrawlerPanel />
       <ErrorBar message={error} />
       <OkBar message={message} />
 

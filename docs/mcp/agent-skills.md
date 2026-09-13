@@ -19,6 +19,18 @@
 
 驗證路徑：前端 `/#/monitor/skills` → 技能分頁應顯示 ~102 條 managed 技能（來源欄位、類型標籤）。
 
+## MediaCrawler 多平台採集（mediacrawler）
+
+上游：[NanmiCoder/MediaCrawler](https://github.com/NanmiCoder/MediaCrawler)（技能包於 `.agents/skills/mediacrawler/`；採集引擎需另行 clone）。
+
+| 入口 | 說明 |
+|------|------|
+| 控制台 `/#/monitor/skills` | MediaCrawler 採集卡片（配置、任務、結果） |
+| 對話觸發 | 啟用 `mediacrawler` 技能後描述採集需求 |
+| API | `GET /mediacrawler/status` · `POST /mediacrawler/jobs` · `GET /mediacrawler/jobs/{id}/results` |
+
+伺服器前置：`MEDIACRAWLER_HOME` 指向 clone 目錄；`EVOL_MEDIACRAWLER_ENABLED=true` 啟用實際爬取（預設僅乾跑校驗）。v1 支援 Cookie 登入；QR 需在伺服器手動執行上游 CLI。
+
 ## Token 用量看板（token-dashboard）
 
 上游：[fuyi-git/token-dashboard](https://github.com/fuyi-git/token-dashboard)（vendored 於 `.agents/skills/token-dashboard/`）。

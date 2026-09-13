@@ -289,6 +289,9 @@ from backend.company.runtime_api import register_runtime_api
 
 register_runtime_api(app)
 register_billing(app)
+from backend.mediacrawler import register_mediacrawler
+
+register_mediacrawler(app)
 
 
 @app.exception_handler(InsufficientCreditsError)
