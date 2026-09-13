@@ -104,6 +104,10 @@ def test_apply_gm_actions_dry_run_quest(linkin_env):
         [{"type": "quest_progress", "quest_id": "quest-test1", "status": "advance", "note": "n"}],
         dry_run=True,
         auto_apply=False,
+        trigger_event={
+            "id": "mcevt-dry",
+            "entity_refs": {"player_id": "steve", "player_name": "Steve"},
+        },
     )
     assert results[0]["status"] == "dry_run"
 

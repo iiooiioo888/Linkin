@@ -255,22 +255,68 @@ def build_gm_context(event: dict[str, Any] | None = None) -> dict[str, Any]:
     from backend.linkin.knowledge import list_entities
     from backend.linkin.minecraft import monitor_status
     from backend.linkin.minecraft_players import build_players_ai_block
+    from backend.linkin.quest_runtime import (
+        build_active_quests_for_player,
+        build_active_quests_summary,
+        ensure_quest_objectives,
+        evaluate_heuristics,
+    )
 
     bridge = monitor_status()
     players_block = build_players_ai_block(max_players=6, max_events=4)
     quests = list_entities("quests")
     npcs = list_entities("npcs")
+
+    trigger_player = ""
+    if event:
+        trigger_player = _player_id_from_event(event)
+
+    if trigger_player:
+        runtime_active = build_active_quests_for_player(trigger_player)
+    else:
+        runtime_active = build_active_quests_summary(limit=8)
+
     active_quests = [
         {
-            "id": q.get("id"),
-            "title": q.get("title"),
-            "player_id": q.get("player_id"),
-            "region": q.get("region"),
-            "description": (str(q.get("description") or ""))[:200],
-            "gm_progress": q.get("gm_progress") or [],
+            "id": row.get("quest_id"),
+            "title": row.get("quest_title"),
+            "player_id": row.get("player_id"),
+            "region": row.get("quest_region"),
+            "status": row.get("status"),
+            "objectives_done": row.get("objectives_done"),
+            "objectives_total": row.get("objectives_total"),
+            "objectives": [
+                {
+                    "id": o.get("id"),
+                    "title": o.get("title"),
+                    "done": o.get("done"),
+                }
+                for o in (row.get("objectives_detail") or [])
+            ],
+            "last_event_id": row.get("last_event_id"),
         }
-        for q in quests
+        for row in runtime_active
     ][:8]
+
+    # 補充尚未開始的任務定義（供 GM 指派新進度）
+    started_ids = {str(r.get("quest_id")) for r in runtime_active}
+    for q in quests:
+        qid = str(q.get("id") or "")
+        if qid in started_ids or len(active_quests) >= 12:
+            continue
+        active_quests.append(
+            {
+                "id": qid,
+                "title": q.get("title"),
+                "player_id": q.get("player_id"),
+                "region": q.get("region"),
+                "status": "not_started",
+                "objectives": [
+                    {"id": o.get("id"), "title": o.get("title"), "done": False}
+                    for o in ensure_quest_objectives(q)
+                ],
+            }
+        )
     nearby_npcs = [
         {
             "id": n.get("id"),
@@ -282,6 +328,10 @@ def build_gm_context(event: dict[str, Any] | None = None) -> dict[str, Any]:
         for n in npcs
     ][:8]
 
+    heuristic_hints: list[dict[str, Any]] = []
+    if event:
+        heuristic_hints = evaluate_heuristics(event, player_id=trigger_player or None)
+
     ctx: dict[str, Any] = {
         "bridge": {
             "enabled": bridge.get("enabled"),
@@ -290,6 +340,7 @@ def build_gm_context(event: dict[str, Any] | None = None) -> dict[str, Any]:
         },
         "players": players_block,
         "active_quests": active_quests,
+        "heuristic_hints": heuristic_hints,
         "npcs": nearby_npcs,
         "trigger_event": event,
     }
@@ -315,7 +366,8 @@ def _build_gm_prompt(context: dict[str, Any], event: dict[str, Any]) -> str:
         "只輸出 JSON：{\"rationale\":\"...\",\"actions\":[...]}\n"
         "允許的 action.type：quest_progress、npc_say、hint、noop。\n"
         "禁止：place_block、break_block、fill、大規模破壞、任意 execute_command。\n"
-        "quest_progress 欄位：quest_id, objective, status(advance|complete), note。\n"
+        "quest_progress 欄位：quest_id, objective（目標 id，見 active_quests.objectives）, "
+        "status(advance|complete|failed), note。\n"
         "npc_say 欄位：npc_name, message, target_player（可選）。\n"
         "hint 欄位：message, target_player（可選，僅面板提示）。\n"
         "最多 3 個 actions；若無需回應請用 noop。\n\n"
@@ -378,31 +430,52 @@ def decide_gm_actions(context: dict[str, Any], event: dict[str, Any], *, max_act
     }
 
 
-def _apply_quest_progress(action: dict[str, Any], *, dry_run: bool) -> dict[str, Any]:
-    from backend.linkin.knowledge import list_entities, upsert_entity
+def _apply_quest_progress(
+    action: dict[str, Any],
+    *,
+    dry_run: bool,
+    trigger_event: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    from backend.linkin.quest_runtime import apply_quest_progress
 
     quest_id = str(action.get("quest_id") or "").strip()
     if not quest_id:
         return {"ok": False, "status": "skipped", "reason": "missing_quest_id"}
-    quest = next((q for q in list_entities("quests") if str(q.get("id")) == quest_id), None)
-    if not quest:
-        return {"ok": False, "status": "skipped", "reason": "quest_not_found"}
-    if dry_run:
-        return {"ok": True, "status": "dry_run", "quest_id": quest_id}
-    progress = list(quest.get("gm_progress") or [])
-    progress.append(
-        {
-            "ts": time.time(),
-            "objective": str(action.get("objective") or ""),
-            "status": str(action.get("status") or "advance"),
-            "note": str(action.get("note") or "")[:200],
-        }
+
+    player_id = str(action.get("player_id") or "").strip()
+    if not player_id and trigger_event:
+        player_id = _player_id_from_event(trigger_event)
+    if not player_id:
+        return {"ok": False, "status": "skipped", "reason": "missing_player_id", "quest_id": quest_id}
+
+    objective_id = action.get("objective") or action.get("objective_id")
+    action_status = str(action.get("status") or "advance").strip().lower()
+    if action_status not in {"advance", "complete", "failed"}:
+        action_status = "advance"
+
+    result = apply_quest_progress(
+        player_id=player_id,
+        quest_id=quest_id,
+        objective_id=str(objective_id) if objective_id else None,
+        status=action_status,
+        note=str(action.get("note") or "")[:200],
+        last_event_id=str(trigger_event.get("id") or "") if trigger_event else None,
+        dry_run=dry_run,
+        source="gm",
     )
-    patch: dict[str, Any] = {"gm_progress": progress[-20:]}
-    if str(action.get("status") or "") == "complete":
-        patch["gm_status"] = "completed"
-    saved = upsert_entity("quests", {**quest, **patch})
-    return {"ok": True, "status": "applied", "quest_id": quest_id, "quest": saved}
+    if not result.get("ok"):
+        reason = str(result.get("reason") or "error")
+        return {"ok": False, "status": "skipped", "reason": reason, **result}
+    status = str(result.get("status") or "applied")
+    return {
+        "ok": True,
+        "status": status,
+        "quest_id": quest_id,
+        "player_id": player_id,
+        "objective_id": result.get("objective_id"),
+        "quest_status": result.get("quest_status"),
+        "progress": result.get("progress"),
+    }
 
 
 def _tellraw_message(message: str, target: str | None = None) -> str:
@@ -471,7 +544,7 @@ def apply_gm_actions(
             results.append({"type": "noop", "status": "noop"})
             continue
         if action_type == "quest_progress":
-            out = _apply_quest_progress(action, dry_run=effective_dry_run)
+            out = _apply_quest_progress(action, dry_run=effective_dry_run, trigger_event=trigger_event)
             results.append({"type": "quest_progress", **out})
             continue
         if action_type == "npc_say":

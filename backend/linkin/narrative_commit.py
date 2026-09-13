@@ -78,18 +78,23 @@ def _commit_quest(payload: dict[str, Any]) -> dict[str, Any]:
     region = str(payload.get("region") or "织庭都").strip() or "织庭都"
     title = str(payload.get("title") or f"{quest_type}：{region}草稿").strip()
     description = str(payload.get("description") or "").strip() or f"敘事工作區提交的{quest_type}草稿。"
-    quest = {
-        "id": str(payload.get("id") or f"quest-{uuid.uuid4().hex[:10]}"),
-        "player_id": str(payload.get("player_id") or payload.get("playerId") or "traveler-01"),
-        "quest_type": quest_type,
-        "difficulty": difficulty,
-        "region": region,
-        "title": title,
-        "description": description,
-        "rewards": payload.get("rewards") or {"灵丝碎片": 3},
-        "source": "narrative_workspace",
-        "world_status": "pending_world",
-    }
+    from backend.linkin.quest_objectives import attach_objectives_if_missing
+
+    quest = attach_objectives_if_missing(
+        {
+            "id": str(payload.get("id") or f"quest-{uuid.uuid4().hex[:10]}"),
+            "player_id": str(payload.get("player_id") or payload.get("playerId") or "traveler-01"),
+            "quest_type": quest_type,
+            "difficulty": difficulty,
+            "region": region,
+            "title": title,
+            "description": description,
+            "rewards": payload.get("rewards") or {"灵丝碎片": 3},
+            "objectives": payload.get("objectives"),
+            "source": "narrative_workspace",
+            "world_status": "pending_world",
+        }
+    )
     saved = upsert_entity("quests", quest)
     get_store().upsert(
         COL_EVENTS,
