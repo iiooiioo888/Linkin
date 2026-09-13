@@ -151,6 +151,25 @@ def test_players_api_list_and_detail(client: TestClient, monkeypatch):
     assert detail_body["player"]["slots"][0]["name"] == "NETHERITE_PICKAXE"
 
 
+def test_ingest_validation(client: TestClient):
+    missing = client.post("/linkin/minecraft/players/ingest", json={"player": "Steve"})
+    assert missing.status_code == 200
+    assert missing.json()["ok"] is False
+    assert missing.json()["error"] == "missing_action"
+
+    chat = client.post(
+        "/linkin/minecraft/players/ingest",
+        json={"action": "chat", "player": "Steve"},
+    )
+    assert chat.json()["error"] == "chat_requires_message"
+
+    block = client.post(
+        "/linkin/minecraft/players/ingest",
+        json={"action": "block_break", "player": "Steve", "summary": "broke"},
+    )
+    assert block.json()["error"] == "block_action_requires_block"
+
+
 def test_players_events_and_ingest(client: TestClient, monkeypatch):
     monkeypatch.setattr(
         "backend.linkin.minecraft.monitor_status",
@@ -175,6 +194,7 @@ def test_players_events_and_ingest(client: TestClient, monkeypatch):
     assert ev_body["count"] >= 1
     assert ev_body["events"][0]["domain"] == "player"
     assert ev_body["events"][0]["action"] == "chat"
+    assert ev_body["events"][0]["details"]["source"] == "ingest"
 
 
 def test_ai_snapshot_includes_players(client: TestClient, monkeypatch):

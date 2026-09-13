@@ -3,7 +3,7 @@
  */
 import { MiniProgressBar } from '../../../components/ui/monitor';
 import { ConsoleCard, ConsoleCardHeader } from '../../../components/ui/ConsoleLayout';
-import { formatTs, statusLabel, statusStripe, useAiEvents } from './shared';
+import { formatTs, playerActionLabel, statusLabel, statusStripe, useAiEvents } from './shared';
 
 export default function AiEventsPanel({ compact = false }: { compact?: boolean }) {
   const { events, error, reload } = useAiEvents(compact ? 8 : 24);
@@ -37,11 +37,11 @@ export default function AiEventsPanel({ compact = false }: { compact?: boolean }
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-[10px] text-[var(--console-faint)]">{formatTs(evt.ts)}</span>
                     <span className="rounded bg-[var(--console-card)] px-1.5 py-0.5 text-[10px]">
-                      {evt.domain}/{evt.action}
+                      {evt.domain === 'player' ? playerActionLabel(evt.action) : `${evt.domain}/${evt.action}`}
                     </span>
                     <span className="text-[var(--console-accent)]">{statusLabel(evt.status)}</span>
-                    {evt.dry_run ? <span className="text-[var(--console-amber)]">dry-run</span> : null}
-                    {evt.bridge_offline ? <span className="text-[var(--console-red)]">bridge_offline</span> : null}
+                    {evt.dry_run ? <span className="text-[var(--console-amber)]">乾跑</span> : null}
+                    {evt.bridge_offline ? <span className="text-[var(--console-red)]">橋接離線</span> : null}
                   </div>
                   <p className="mt-1 text-[var(--console-text)]">{evt.summary}</p>
                 </div>

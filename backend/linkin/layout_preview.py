@@ -24,6 +24,7 @@ KIND_COLORS: dict[str, str] = {
     "npc_intent": "#30d158",
     "quest_intent": "#bf5af2",
     "item_intent": "#5ac8fa",
+    "player": "#ff6b6b",
 }
 
 LEGEND_ITEMS: list[dict[str, str]] = [
@@ -34,7 +35,67 @@ LEGEND_ITEMS: list[dict[str, str]] = [
     {"kind": "landmark", "label": "地標", "color": KIND_COLORS["landmark"]},
     {"kind": "build_brief", "label": "建築意圖（預估）", "color": KIND_COLORS["build_brief"]},
     {"kind": "npc_intent", "label": "NPC 待落地", "color": KIND_COLORS["npc_intent"]},
+    {"kind": "player", "label": "在線玩家（即時）", "color": KIND_COLORS["player"]},
 ]
+
+
+def compose_layout_players() -> dict[str, Any]:
+    """從玩家現場模組取得可疊加於 2D 布局的即時座標。"""
+    try:
+        from backend.linkin.minecraft_players import list_players_snapshot
+
+        snap = list_players_snapshot(sync=False)
+    except Exception:
+        return {
+            "players": [],
+            "players_live": {
+                "online_count": 0,
+                "bridge_offline": True,
+                "waiting": True,
+                "hint": "等待橋接／玩家",
+            },
+        }
+
+    players_out: list[dict[str, Any]] = []
+    for player in snap.get("players") or []:
+        pos = player.get("position")
+        if not isinstance(pos, dict):
+            continue
+        try:
+            x = float(pos.get("x"))
+            z = float(pos.get("z"))
+        except (TypeError, ValueError):
+            continue
+        y = pos.get("y")
+        inv = player.get("inventory_summary") or []
+        held = inv[0] if inv else None
+        players_out.append(
+            {
+                "id": player.get("id"),
+                "name": player.get("name"),
+                "x": int(round(x)),
+                "y": int(round(float(y))) if y is not None else None,
+                "z": int(round(z)),
+                "dimension": player.get("dimension") or player.get("world"),
+                "health": player.get("health"),
+                "gamemode": player.get("gamemode"),
+                "held_summary": held,
+                "inventory_summary": inv[:6],
+            }
+        )
+
+    bridge_offline = bool(snap.get("bridge_offline"))
+    online_count = int(snap.get("online_count") or 0)
+    waiting = bridge_offline and online_count == 0 and not players_out
+    return {
+        "players": players_out,
+        "players_live": {
+            "online_count": online_count,
+            "bridge_offline": bridge_offline,
+            "waiting": waiting,
+            "hint": "等待橋接／玩家" if waiting else None,
+        },
+    }
 
 
 def _offset_from_seed(seed: str, index: int, radius: int = 24) -> tuple[int, int]:
@@ -456,7 +517,16 @@ def build_layout_preview(
         ]
         features.extend(normalize_world_intent_features(pending_npcs[:12], seed=seed, hub=hub))
 
+    live = compose_layout_players()
+    live_players = live.get("players") or []
+
     bounds = _compute_bounds(features, plan_bounds)
+    for player in live_players:
+        bounds["x1"] = min(bounds["x1"], int(player["x"]) - 8)
+        bounds["z1"] = min(bounds["z1"], int(player["z"]) - 8)
+        bounds["x2"] = max(bounds["x2"], int(player["x"]) + 8)
+        bounds["z2"] = max(bounds["z2"], int(player["z"]) + 8)
+
     width = bounds["x2"] - bounds["x1"]
     depth = bounds["z2"] - bounds["z1"]
     center_x = (bounds["x1"] + bounds["x2"]) // 2
@@ -488,11 +558,14 @@ def build_layout_preview(
         "legend": LEGEND_ITEMS,
         "features": features,
         "counts": counts,
+        "players": live_players,
+        "players_live": live.get("players_live") or {},
         "layout_summary": {
             "feature_count": counts["total"],
             "bounds": bounds,
             "has_map_plan": plan_meta is not None,
             "region": region_name or (plan_meta or {}).get("region"),
+            "online_players": len(live_players),
         },
         "generated_at": time.time(),
     }
@@ -500,6 +573,7 @@ def build_layout_preview(
 
 __all__ = [
     "build_layout_preview",
+    "compose_layout_players",
     "normalize_build_brief_features",
     "normalize_plot_features",
     "normalize_world_intent_features",

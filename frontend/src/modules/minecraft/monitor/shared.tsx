@@ -19,6 +19,24 @@ export function statusStripe(status: string): 'p1' | 'p2' | 'p3' | 'idle' {
   return 'idle';
 }
 
+const PLAYER_ACTION_LABELS: Record<string, string> = {
+  join: '上線',
+  quit: '下線',
+  move: '移動',
+  teleport: '傳送',
+  inventory: '背包變更',
+  chat: '聊天',
+  death: '死亡',
+  pickup: '拾取',
+  drop: '丟棄',
+  block_break: '破壞方塊',
+  block_place: '放置方塊',
+};
+
+export function playerActionLabel(action: string): string {
+  return PLAYER_ACTION_LABELS[action] ?? action;
+}
+
 export function statusLabel(status: string): string {
   const map: Record<string, string> = {
     ok: '正常',
@@ -26,7 +44,7 @@ export function statusLabel(status: string): string {
     partial: '部分',
     failed: '失敗',
     skipped: '略過',
-    dry_run: 'Dry-run',
+    dry_run: '乾跑',
     bridge_offline: '橋接離線',
     pending_world: '待落地',
     pending_builder: '待建築',

@@ -42,6 +42,9 @@ export default function MonitorHubPanel() {
   const plugins = data?.plugins;
   const pendingBuild = data?.kpis.pending_build_briefs ?? 0;
   const pendingWorld = data?.kpis.pending_world_intents ?? 0;
+  const playersLive = data?.kpis.players_live;
+  const onlinePlayers = playersLive?.online_count ?? data?.kpis.online_players ?? data?.players?.online_count ?? 0;
+  const recentPlayerEvents = playersLive?.recent_events ?? 0;
   const mapUrl = plugins?.map_url?.trim() || '';
   const bridgeOffline = Boolean(data?.bridge?.enabled && !data?.bridge?.connected && !data?.bridge?.dry_run);
 
@@ -113,9 +116,9 @@ export default function MonitorHubPanel() {
             <KpiGrid6>
             <KpiSparkCard
               label="在線玩家"
-              value={String(data?.kpis.online_players ?? data?.players?.online_count ?? 0)}
-              accent={Boolean(data?.kpis.online_players ?? data?.players?.online_count)}
-              spark={[0, 1, data?.kpis.online_players ?? 0, data?.kpis.online_players ?? 0]}
+              value={String(onlinePlayers)}
+              accent={Boolean(onlinePlayers)}
+              spark={[0, 1, onlinePlayers, onlinePlayers]}
             />
             <KpiSparkCard
               label="待建築意圖"
@@ -134,9 +137,14 @@ export default function MonitorHubPanel() {
             <KpiSparkCard label="任務" value={String(data?.kpis.quest_count ?? 0)} />
             <KpiSparkCard label="道具" value={String(data?.kpis.item_count ?? 0)} />
           </KpiGrid6>
-          <div className="mt-1 text-right text-[10px]">
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+            <span className="text-[var(--console-faint)]">
+              玩家現場
+              {playersLive?.bridge_offline ? ' · 橋接離線' : ' · 即時'}
+              {recentPlayerEvents > 0 ? ` · 近期活動 ${recentPlayerEvents}` : ''}
+            </span>
             <a href={minecraftHref('player_presence')} className="text-[var(--console-accent)] hover:underline">
-              在線玩家 {data?.kpis.online_players ?? data?.players?.online_count ?? 0} · 打開玩家現場 →
+              在線 {onlinePlayers} · 打開玩家現場 →
             </a>
           </div>
 

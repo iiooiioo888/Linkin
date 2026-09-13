@@ -625,12 +625,8 @@ def list_player_events(
     }
 
 
-def ingest_player_event(body: dict[str, Any]) -> dict[str, Any]:
-    """外部插件 webhook：追加玩家活動（chat/death/block 等）。"""
-    action = str(body.get("action") or body.get("type") or "").strip().lower()
-    if not action:
-        return {"ok": False, "error": "missing_action"}
-    allowed = {
+_INGEST_ACTIONS = frozenset(
+    {
         "join",
         "quit",
         "move",
@@ -643,16 +639,53 @@ def ingest_player_event(body: dict[str, Any]) -> dict[str, Any]:
         "block_break",
         "block_place",
     }
-    if action not in allowed:
-        return {"ok": False, "error": f"unsupported_action:{action}"}
+)
 
+
+def validate_ingest_body(body: dict[str, Any]) -> str | None:
+    """驗證 ingest payload；回傳 error code 或 None。"""
+    if not isinstance(body, dict):
+        return "invalid_body"
+    action = str(body.get("action") or body.get("type") or "").strip().lower()
+    if not action:
+        return "missing_action"
+    if action not in _INGEST_ACTIONS:
+        return f"unsupported_action:{action}"
+
+    name = str(body.get("player") or body.get("player_name") or body.get("name") or "").strip()
+    if not name:
+        return "missing_player"
+    if len(name) > 64:
+        return "player_name_too_long"
+
+    details = body.get("details") if isinstance(body.get("details"), dict) else {}
+    message = body.get("message") or body.get("summary") or details.get("message")
+    block = body.get("block") or details.get("block")
+
+    if action == "chat" and not str(message or "").strip():
+        return "chat_requires_message"
+    if action in {"block_break", "block_place"} and not block:
+        return "block_action_requires_block"
+    if action == "death" and not str(body.get("summary") or message or "").strip():
+        return "death_requires_summary"
+    return None
+
+
+def ingest_player_event(body: dict[str, Any]) -> dict[str, Any]:
+    """外部插件 webhook：追加玩家活動（chat/death/block 等）。"""
+    err = validate_ingest_body(body)
+    if err:
+        return {"ok": False, "error": err}
+
+    action = str(body.get("action") or body.get("type") or "").strip().lower()
     name = str(body.get("player") or body.get("player_name") or body.get("name") or "unknown").strip()
     player_id = str(body.get("player_id") or body.get("uuid") or _player_key(name))
     summary = str(body.get("summary") or body.get("message") or f"{name} {action}").strip()
     details = body.get("details") if isinstance(body.get("details"), dict) else {}
-    for key in ("message", "position", "item", "block", "dimension"):
+    for key in ("message", "position", "item", "block", "dimension", "cause", "killer"):
         if key in body and key not in details:
             details[key] = body[key]
+    details["source"] = "ingest"
 
     evt = _record_player_event(
         action=action,
@@ -664,6 +697,52 @@ def ingest_player_event(body: dict[str, Any]) -> dict[str, Any]:
         dry_run=bool(body.get("dry_run")),
     )
     return {"ok": True, "event": evt}
+
+
+def has_live_player_signal() -> bool:
+    """是否有在線玩家或近期玩家活動（供 AI 上下文門控）。"""
+    block = build_players_ai_block(max_players=1, max_events=3)
+    if int(block.get("online_count") or 0) > 0:
+        return True
+    return bool(block.get("recent_activity"))
+
+
+def format_players_presence_markdown(
+    *,
+    max_players: int = 6,
+    max_events: int = 5,
+    max_chars: int = 1200,
+) -> str:
+    """精簡「玩家現場」Markdown（token 預算友好）。"""
+    block = build_players_ai_block(max_players=max_players, max_events=max_events)
+    online = int(block.get("online_count") or 0)
+    recent = block.get("recent_activity") or []
+    if online <= 0 and not recent:
+        return ""
+
+    lines = ["## 玩家現場"]
+    if block.get("bridge_offline") and online <= 0:
+        lines.append("- 橋接離線 — 僅顯示外部 ingest 活動")
+    if online > 0:
+        lines.append(f"- 在線 {online} 人")
+        for player in (block.get("players") or [])[:max_players]:
+            pos = player.get("position") or {}
+            pos_txt = (
+                f" ({int(pos.get('x', 0))}, {int(pos.get('y', 0))}, {int(pos.get('z', 0))})"
+                if pos
+                else ""
+            )
+            dim = player.get("dimension") or player.get("world") or "?"
+            inv = player.get("inventory_summary") or []
+            inv_txt = ", ".join(f"{i.get('name')}×{i.get('count')}" for i in inv[:3]) if inv else "—"
+            lines.append(f"- {player.get('name')} [{dim}]{pos_txt} 背包={inv_txt}")
+    for line in (block.get("activity_lines") or [])[:max_events]:
+        lines.append(f"- 活動：{line}")
+
+    text = "\n".join(lines).strip()
+    if len(text) > max_chars:
+        text = text[: max_chars - 20].rstrip() + "\n…(truncated)"
+    return text
 
 
 def build_players_ai_block(*, max_players: int = 8, max_events: int = 6) -> dict[str, Any]:
@@ -692,11 +771,14 @@ def build_players_ai_block(*, max_players: int = 8, max_events: int = 6) -> dict
 
 __all__ = [
     "build_players_ai_block",
+    "format_players_presence_markdown",
     "get_player_detail",
+    "has_live_player_signal",
     "ingest_player_event",
     "list_player_events",
     "list_players_snapshot",
     "normalize_player_record",
     "reset_player_state",
     "sync_players_from_bridge",
+    "validate_ingest_body",
 ]

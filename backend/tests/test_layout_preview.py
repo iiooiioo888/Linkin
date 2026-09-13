@@ -140,6 +140,34 @@ def test_build_layout_preview_empty(linkin_env):
     assert preview["features"] == []
 
 
+def test_build_layout_preview_includes_players(linkin_env, monkeypatch):
+    plan = _sample_plan()
+    upsert_entity("map_plans", {**plan, "status": "planned"})
+    monkeypatch.setattr(
+        "backend.linkin.layout_preview.compose_layout_players",
+        lambda: {
+            "players": [
+                {
+                    "id": "steve",
+                    "name": "Steve",
+                    "x": 100,
+                    "y": 64,
+                    "z": -20,
+                    "dimension": "world",
+                    "inventory_summary": [{"name": "DIAMOND_SWORD", "count": 1}],
+                    "held_summary": {"name": "DIAMOND_SWORD", "count": 1},
+                }
+            ],
+            "players_live": {"online_count": 1, "bridge_offline": False, "waiting": False},
+        },
+    )
+    preview = build_layout_preview()
+    assert len(preview["players"]) == 1
+    assert preview["players"][0]["name"] == "Steve"
+    assert preview["players_live"]["online_count"] == 1
+    assert preview["bounds"]["x1"] <= 100 <= preview["bounds"]["x2"]
+
+
 def test_layout_preview_api(client, linkin_env):
     plan = _sample_plan()
     upsert_entity("map_plans", {**plan, "status": "planned"})
