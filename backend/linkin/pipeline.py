@@ -31,7 +31,8 @@ _MC_OBSERVABILITY_RE = re.compile(
     r"橋接|bridge|伺服器|server\s*map|"
     r"dynmap|bluemap|squaremap|地圖插件|插件中心|"
     r"map\s*plan|地圖計畫|待落地|build\s*brief|建築落地|"
-    r"npc.*落地|任務.*落地|世界意圖"
+    r"npc.*落地|任務.*落地|世界意圖|"
+    r"玩家|player|背包|inventory|在線|在线|現場"
     r")",
     re.IGNORECASE,
 )
@@ -131,7 +132,7 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
         except Exception as exc:
             logger.debug("Minecraft 可觀測性上下文略過：%s", exc)
 
-    if not world_hit and not mc_hit:
+    if not world_hit and not mc_hit and not obs_hit:
         return {"linkin_context": {}}
 
     brief = constitution_brief() if world_hit else ""

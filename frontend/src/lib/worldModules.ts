@@ -61,6 +61,19 @@ export type WorldModuleSpec = {
 
 const MINECRAFT_NAV: ModuleNavGroup[] = [
   {
+    id: 'players_group',
+    label: '玩家／現場',
+    items: [
+      {
+        key: 'player_presence',
+        icon: '◎',
+        label: '玩家現場',
+        hint: '在線玩家、背包與活動訊息流',
+        capability: 'monitor',
+      },
+    ],
+  },
+  {
     id: 'monitor',
     label: '總覽／監控',
     items: [

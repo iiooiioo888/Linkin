@@ -95,12 +95,15 @@ def list_minecraft_events(
     since: float | None = None,
     cursor: str | None = None,
     limit: int = 50,
+    domain: str | None = None,
 ) -> dict[str, Any]:
     """分頁列出事件（時間正序）。cursor 為上一頁最後一筆 id。"""
     limit = max(1, min(int(limit or 50), 200))
     rows = _read_all_events()
     if since is not None:
         rows = [r for r in rows if float(r.get("ts") or 0) >= float(since)]
+    if domain:
+        rows = [r for r in rows if str(r.get("domain")) == domain]
     rows.sort(key=lambda r: float(r.get("ts") or 0))
 
     start_idx = 0
@@ -208,6 +211,13 @@ def build_monitor_summary() -> dict[str, Any]:
     quests = list_entities("quests")
     items = list_entities("items")
     pending = list_pending_intents()
+    players_block: dict[str, Any] = {}
+    try:
+        from backend.linkin.minecraft_players import build_players_ai_block
+
+        players_block = build_players_ai_block(max_players=12, max_events=0)
+    except Exception:
+        players_block = {}
 
     pending_briefs = [b for b in briefs if str(b.get("status") or "") in {"pending_builder", "planned"}]
     pipeline_evt = _last_event("narrative", "pipeline")
@@ -236,7 +246,9 @@ def build_monitor_summary() -> dict[str, Any]:
             "npc_count": len(npcs),
             "quest_count": len(quests),
             "item_count": len(items),
+            "online_players": players_block.get("online_count", 0),
         },
+        "players": players_block,
         "world_status": {
             "npcs": _count_by_status(npcs),
             "quests": _count_by_status(quests),
@@ -265,6 +277,13 @@ def build_ai_snapshot() -> dict[str, Any]:
     latest_map = sorted(map_plans, key=lambda p: str(p.get("id") or ""), reverse=True)
     workspaces = [ws.to_dict() for ws in get_narrative_registry().list_for_task(include_terminal=True)]
     recent = list_minecraft_events(limit=10)
+    players_block: dict[str, Any] = {}
+    try:
+        from backend.linkin.minecraft_players import build_players_ai_block
+
+        players_block = build_players_ai_block(max_players=8, max_events=8)
+    except Exception:
+        players_block = {}
 
     layout_summary = None
     try:
@@ -290,6 +309,7 @@ def build_ai_snapshot() -> dict[str, Any]:
         "pipeline_timeline": summary.get("pipeline_timeline") or [],
         "recent_events": recent.get("events") or [],
         "recent_errors": summary.get("recent_errors") or [],
+        "players": players_block,
         "generated_at": time.time(),
     }
 
@@ -336,6 +356,28 @@ def build_ai_context(*, max_chars: int = 8000, fmt: str = "markdown") -> dict[st
             f"\n## 最近管線步驟\n- [{last.get('domain')}/{last.get('action')}] "
             f"{last.get('status')}: {last.get('summary')}"
         )
+
+    players = snap.get("players") or {}
+    if players.get("bridge_offline") and not players.get("online_count"):
+        lines.append("\n## 玩家現場")
+        lines.append("- 橋接離線或未啟用 — 無即時玩家資料（不捏造）")
+    elif players.get("online_count"):
+        lines.append(f"\n## 玩家現場（在線 {players.get('online_count')}）")
+        for p in (players.get("players") or [])[:6]:
+            pos = p.get("position") or {}
+            pos_txt = (
+                f" @ ({int(pos.get('x', 0))}, {int(pos.get('y', 0))}, {int(pos.get('z', 0))})"
+                if pos
+                else ""
+            )
+            dim = p.get("dimension") or p.get("world") or "?"
+            inv = p.get("inventory_summary") or []
+            inv_txt = ", ".join(f"{i.get('name')}×{i.get('count')}" for i in inv[:4]) if inv else "—"
+            lines.append(
+                f"- {p.get('name')} [{dim}]{pos_txt} HP={p.get('health') or '?'} 背包={inv_txt}"
+            )
+        for line in (players.get("activity_lines") or [])[:5]:
+            lines.append(f"- 活動：{line}")
 
     events = snap.get("recent_events") or []
     if events:

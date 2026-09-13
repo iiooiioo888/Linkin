@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Body, Query
 
 from backend.linkin.layout_preview import build_layout_preview
 from backend.linkin.minecraft_observability import (
@@ -12,6 +12,12 @@ from backend.linkin.minecraft_observability import (
     build_ai_snapshot,
     build_monitor_summary,
     list_minecraft_events,
+)
+from backend.linkin.minecraft_players import (
+    get_player_detail,
+    ingest_player_event,
+    list_player_events,
+    list_players_snapshot,
 )
 
 monitor_router = APIRouter(prefix="/linkin/minecraft", tags=["linkin-minecraft-monitor"])
@@ -32,8 +38,48 @@ def api_ai_events(
     since: float | None = Query(None, description="Unix timestamp 下限"),
     cursor: str | None = Query(None, description="上一頁最後一筆事件 id"),
     limit: int = Query(50, ge=1, le=200),
+    domain: str | None = Query(None, description="依 domain 篩選，例如 player"),
 ) -> dict[str, Any]:
-    return list_minecraft_events(since=since, cursor=cursor, limit=limit)
+    page = list_minecraft_events(since=since, cursor=cursor, limit=limit)
+    if domain:
+        events = [e for e in page.get("events") or [] if str(e.get("domain")) == domain]
+        page = {**page, "events": events, "count": len(events)}
+    return page
+
+
+@monitor_router.get("/players")
+def api_list_players(sync: bool = Query(True, description="是否觸發橋接輪詢")) -> dict[str, Any]:
+    return list_players_snapshot(sync=sync)
+
+
+@monitor_router.get("/players/events")
+def api_player_events(
+    since: float | None = Query(None),
+    cursor: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    player_id: str | None = Query(None),
+    action: str | None = Query(None),
+) -> dict[str, Any]:
+    return list_player_events(
+        since=since,
+        cursor=cursor,
+        limit=limit,
+        player_id=player_id,
+        action=action,
+    )
+
+
+@monitor_router.get("/players/{player_id}")
+def api_player_detail(
+    player_id: str,
+    sync: bool = Query(False, description="強制向橋接拉取最新詳情"),
+) -> dict[str, Any]:
+    return get_player_detail(player_id, sync=sync)
+
+
+@monitor_router.post("/players/ingest")
+def api_ingest_player_event(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    return ingest_player_event(body)
 
 
 @monitor_router.get("/ai/context")

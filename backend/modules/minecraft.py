@@ -127,6 +127,9 @@ def build_minecraft_spec() -> ModuleSpec:
                     "/minecraft/ai/events",
                     "/minecraft/ai/context",
                     "/minecraft/layout-preview",
+                    "/minecraft/players",
+                    "/minecraft/players/events",
+                    "/minecraft/players/ingest",
                 ),
             ),
             ModuleCapability(
@@ -142,6 +145,19 @@ def build_minecraft_spec() -> ModuleSpec:
             ),
         ),
         nav_groups=(
+            ModuleNavGroup(
+                id="players_group",
+                label="玩家／現場",
+                items=(
+                    ModuleNavItem(
+                        "player_presence",
+                        "◎",
+                        "玩家現場",
+                        "在線玩家、背包與活動訊息流",
+                        capability="monitor",
+                    ),
+                ),
+            ),
             ModuleNavGroup(
                 id="monitor",
                 label="總覽／監控",
@@ -232,6 +248,8 @@ def build_minecraft_spec() -> ModuleSpec:
             ("server_map", "server-map"),
             ("dynmap", "server-map"),
             ("layout_preview", "layout-preview"),
+            ("players", "player_presence"),
+            ("player_monitor", "player_presence"),
         ),
         health=minecraft_health,
     )

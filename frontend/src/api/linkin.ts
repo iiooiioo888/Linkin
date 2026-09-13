@@ -782,7 +782,9 @@ export type MinecraftMonitorSummary = {
     npc_count: number;
     quest_count: number;
     item_count: number;
+    online_players?: number;
   };
+  players?: MinecraftPlayersAiBlock;
   world_status: Record<string, Record<string, number>>;
   last_pipeline: MinecraftObservabilityEvent | null;
   pipeline_timeline?: MinecraftObservabilityEvent[];
@@ -857,6 +859,53 @@ export type MinecraftAiContext = {
   snapshot: MinecraftAiSnapshot;
 };
 
+export type MinecraftPlayerSummary = {
+  id: string;
+  name: string;
+  uuid?: string | null;
+  dimension?: string | null;
+  world?: string | null;
+  position?: { x: number; y: number; z: number } | null;
+  health?: number | null;
+  food?: number | null;
+  gamemode?: string | null;
+  last_seen?: number;
+  inventory_summary?: Array<{ name: string; count: number }>;
+};
+
+export type MinecraftPlayersSnapshot = {
+  bridge: {
+    enabled?: boolean;
+    connected?: boolean;
+    dry_run?: boolean;
+    live?: boolean;
+  };
+  bridge_offline: boolean;
+  online_count: number;
+  players: MinecraftPlayerSummary[];
+  generated_at: number;
+};
+
+export type MinecraftPlayerDetail = MinecraftPlayerSummary & {
+  online?: boolean;
+  inventory?: {
+    slots?: Array<{ slot?: number | string; name: string; count: number }>;
+    armor?: Array<{ slot?: number | string; name: string; count: number }>;
+    held?: { name: string; count: number } | null;
+  };
+  held?: { name: string; count: number } | null;
+  armor?: Array<{ slot?: number | string; name: string; count: number }>;
+  slots?: Array<{ slot?: number | string; name: string; count: number }>;
+};
+
+export type MinecraftPlayersAiBlock = {
+  bridge_offline?: boolean;
+  online_count?: number;
+  players?: MinecraftPlayerSummary[];
+  recent_activity?: MinecraftObservabilityEvent[];
+  activity_lines?: string[];
+};
+
 export const fetchMinecraftMonitorSummary = () =>
   mc.get<MinecraftMonitorSummary>('/minecraft/monitor/summary');
 
@@ -887,3 +936,37 @@ export const fetchMinecraftLayoutPreview = (params?: { plan_id?: string; region?
   const suffix = qs.toString() ? `?${qs}` : '';
   return mc.get<LayoutPreviewData>(`/minecraft/layout-preview${suffix}`);
 };
+
+export const fetchMinecraftPlayers = (sync = true) =>
+  mc.get<MinecraftPlayersSnapshot>(`/minecraft/players?sync=${sync ? 'true' : 'false'}`);
+
+export const fetchMinecraftPlayerDetail = (playerId: string, sync = false) =>
+  mc.get<{ ok: boolean; error?: string; bridge_offline?: boolean; player: MinecraftPlayerDetail | null }>(
+    `/minecraft/players/${encodeURIComponent(playerId)}?sync=${sync ? 'true' : 'false'}`,
+  );
+
+export const fetchMinecraftPlayerEvents = (params?: {
+  since?: number;
+  cursor?: string;
+  limit?: number;
+  player_id?: string;
+  action?: string;
+}) => {
+  const qs = new URLSearchParams();
+  if (params?.since != null) qs.set('since', String(params.since));
+  if (params?.cursor) qs.set('cursor', params.cursor);
+  if (params?.limit != null) qs.set('limit', String(params.limit));
+  if (params?.player_id) qs.set('player_id', params.player_id);
+  if (params?.action) qs.set('action', params.action);
+  const suffix = qs.toString() ? `?${qs}` : '';
+  return mc.get<{
+    events: MinecraftObservabilityEvent[];
+    count: number;
+    total?: number;
+    next_cursor: string | null;
+    has_more?: boolean;
+  }>(`/minecraft/players/events${suffix}`);
+};
+
+export const ingestMinecraftPlayerEvent = (body: Record<string, unknown>) =>
+  mc.post<{ ok: boolean; event?: MinecraftObservabilityEvent; error?: string }>('/minecraft/players/ingest', body);
