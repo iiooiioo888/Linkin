@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.linkin.api import register_linkin
+from backend.linkin.constitution import reset_cache as reset_constitution_cache
 from backend.linkin.knowledge import reset_store, upsert_entity
 from backend.linkin.layout_preview import (
     build_layout_preview,
@@ -16,7 +17,6 @@ from backend.linkin.layout_preview import (
 )
 from backend.linkin.map_plan import fallback_map_plan, gather_narrative_context
 from backend.linkin.narrative_registry import reset_narrative_registry
-from backend.linkin.constitution import reset_cache as reset_constitution_cache
 
 
 @pytest.fixture()

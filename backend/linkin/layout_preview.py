@@ -56,7 +56,7 @@ def _parse_xyz(raw: Any) -> tuple[int, int, int] | None:
 
 def _footprint_radius(block_count: int) -> int:
     """Estimate half-width of a square footprint from block count."""
-    side = max(4, min(32, int(math.ceil(math.sqrt(max(block_count, 1))))))
+    side = max(4, min(32, math.ceil(math.sqrt(max(block_count, 1)))))
     return max(2, side // 2)
 
 
@@ -388,10 +388,10 @@ def _select_map_plan(plan_id: str | None, region: str | None) -> dict[str, Any] 
     if region:
         regional = [p for p in plans if str(p.get("region") or "") == region]
         if regional:
-            return sorted(regional, key=lambda p: str(p.get("id") or ""), reverse=True)[0]
+            return max(regional, key=lambda p: str(p.get("id") or ""))
     if not plans:
         return None
-    return sorted(plans, key=lambda p: str(p.get("id") or ""), reverse=True)[0]
+    return max(plans, key=lambda p: str(p.get("id") or ""))
 
 
 def build_layout_preview(
