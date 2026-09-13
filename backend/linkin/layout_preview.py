@@ -61,9 +61,12 @@ def compose_layout_players() -> dict[str, Any]:
         pos = player.get("position")
         if not isinstance(pos, dict):
             continue
+        x_raw, z_raw = pos.get("x"), pos.get("z")
+        if x_raw is None or z_raw is None:
+            continue
         try:
-            x = float(pos.get("x"))
-            z = float(pos.get("z"))
+            x = float(x_raw)
+            z = float(z_raw)
         except (TypeError, ValueError):
             continue
         y = pos.get("y")
@@ -73,9 +76,9 @@ def compose_layout_players() -> dict[str, Any]:
             {
                 "id": player.get("id"),
                 "name": player.get("name"),
-                "x": int(round(x)),
-                "y": int(round(float(y))) if y is not None else None,
-                "z": int(round(z)),
+                "x": round(x),
+                "y": round(float(y)) if y is not None else None,
+                "z": round(z),
                 "dimension": player.get("dimension") or player.get("world"),
                 "health": player.get("health"),
                 "gamemode": player.get("gamemode"),

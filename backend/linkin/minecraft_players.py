@@ -469,8 +469,8 @@ def sync_players_from_bridge(*, force: bool = False) -> dict[str, Any]:
             )
 
         for pid, record in current.items():
-            prev = _state_cache.get(pid)
-            _diff_and_emit(prev, record, bridge_offline=bridge_offline)
+            cached = _state_cache.get(pid)
+            _diff_and_emit(cached, record, bridge_offline=bridge_offline)
             _state_cache[pid] = record
 
         for pid, prev in list(_state_cache.items()):
@@ -658,7 +658,8 @@ def validate_ingest_body(body: dict[str, Any]) -> str | None:
     if len(name) > 64:
         return "player_name_too_long"
 
-    details = body.get("details") if isinstance(body.get("details"), dict) else {}
+    raw_details = body.get("details")
+    details: dict[str, Any] = raw_details if isinstance(raw_details, dict) else {}
     message = body.get("message") or body.get("summary") or details.get("message")
     block = body.get("block") or details.get("block")
 
@@ -681,7 +682,8 @@ def ingest_player_event(body: dict[str, Any]) -> dict[str, Any]:
     name = str(body.get("player") or body.get("player_name") or body.get("name") or "unknown").strip()
     player_id = str(body.get("player_id") or body.get("uuid") or _player_key(name))
     summary = str(body.get("summary") or body.get("message") or f"{name} {action}").strip()
-    details = body.get("details") if isinstance(body.get("details"), dict) else {}
+    raw_details = body.get("details")
+    details: dict[str, Any] = raw_details if isinstance(raw_details, dict) else {}
     for key in ("message", "position", "item", "block", "dimension", "cause", "killer"):
         if key in body and key not in details:
             details[key] = body[key]

@@ -172,7 +172,10 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
     minecraft_ctx = _is_minecraft_context(state)
     narrative_flow = _is_narrative_pipeline_flow(query, state)
     try:
-        from backend.linkin.minecraft_players import format_players_presence_markdown, has_live_player_signal
+        from backend.linkin.minecraft_players import (
+            format_players_presence_markdown,
+            has_live_player_signal,
+        )
 
         if (
             has_live_player_signal()

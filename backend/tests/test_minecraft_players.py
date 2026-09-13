@@ -210,7 +210,8 @@ def test_ai_snapshot_includes_players(client: TestClient, monkeypatch):
     assert snap.status_code == 200
     players = snap.json().get("players") or {}
     assert players.get("online_count") == 1
-    assert players.get("players")[0]["name"] == "Alex"
+    player_list = players.get("players") or []
+    assert player_list[0]["name"] == "Alex"
 
     ctx = client.get("/linkin/minecraft/ai/context?max_chars=4000")
     assert "玩家現場" in ctx.json()["context"]
