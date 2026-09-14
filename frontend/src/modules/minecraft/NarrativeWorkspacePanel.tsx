@@ -39,6 +39,7 @@ import {
   type WorldIntentPreview,
 } from '../../api/linkin';
 import { consoleLayout } from '../../lib/consoleLayout';
+import { NARRATIVE_REGION_OPTIONS } from './localeRegions';
 
 const DRAFT_LABELS: Record<string, string> = {
   story_arc: '故事主線',
@@ -807,10 +808,9 @@ export default function NarrativeWorkspacePanel() {
             onChange={(e) => setRegion(e.target.value)}
             className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]"
           >
-            <option value="织庭都">織庭都</option>
-            <option value="精灵森林">精靈森林</option>
-            <option value="裂隙港">裂隙港</option>
-            <option value="宁渊谷">寧淵谷</option>
+            {NARRATIVE_REGION_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
         </label>
         <label className="text-[10px] text-[#8a8f98]">

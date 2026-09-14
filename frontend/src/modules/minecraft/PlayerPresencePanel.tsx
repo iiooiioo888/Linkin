@@ -23,8 +23,10 @@ import {
   SectionHeader,
 } from '../../components/ui/ConsoleLayout';
 import {
+  BridgeSetupBanner,
   CopyButton,
   EmptyStateCta,
+  bridgeLiveReady,
   formatTs,
   minecraftHref,
   playerActionLabel,
@@ -193,6 +195,8 @@ export default function PlayerPresencePanel() {
   }, [selectedId, loadDetail]);
 
   const bridgeOffline = Boolean(snapshot?.bridge_offline);
+  const bridgeLive = bridgeLiveReady(snapshot?.bridge);
+  const onlineDisplay = bridgeLive ? String(snapshot?.online_count ?? 0) : '待接橋';
   const players = snapshot?.players ?? [];
   const selected = useMemo(
     () => players.find((p) => p.id === selectedId) ?? null,
@@ -205,6 +209,12 @@ export default function PlayerPresencePanel() {
       <ConsoleCenterColumn>
         <ConsoleColumnScroll>
           {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
+
+          {bridgeOffline ? (
+            <div className="mb-3">
+              <BridgeSetupBanner bridge={snapshot?.bridge} />
+            </div>
+          ) : null}
 
           <ConsoleCard className="mb-3">
             <ConsoleCardHeader>橋接狀態</ConsoleCardHeader>
@@ -250,9 +260,9 @@ export default function PlayerPresencePanel() {
           <KpiGrid6>
             <KpiSparkCard
               label="在線玩家"
-              value={String(snapshot?.online_count ?? 0)}
-              accent={Boolean(snapshot?.online_count)}
-              spark={[0, 1, snapshot?.online_count ?? 0, snapshot?.online_count ?? 0]}
+              value={onlineDisplay}
+              accent={bridgeLive && Boolean(snapshot?.online_count)}
+              spark={bridgeLive ? [0, 1, snapshot?.online_count ?? 0, snapshot?.online_count ?? 0] : [0, 0, 0, 0]}
             />
             <KpiSparkCard label="橋接" value={bridgeOffline ? '離線' : snapshot?.bridge?.connected ? '已連線' : '—'} accent={!bridgeOffline} />
             <KpiSparkCard label="活動事件" value={String(events.length)} />
@@ -302,7 +312,9 @@ export default function PlayerPresencePanel() {
               <ConsoleCardHeader>在線玩家</ConsoleCardHeader>
               <ul className="divide-y divide-[var(--console-border)]">
                 {!players.length ? (
-                  <li className="px-3 py-4 text-xs text-[var(--console-faint)]">目前無在線玩家</li>
+                  <li className="px-3 py-4 text-xs text-[var(--console-faint)]">
+                    {bridgeOffline ? '橋接未就緒 — 無即時在線列表（非世界為空）' : '目前無在線玩家'}
+                  </li>
                 ) : (
                   players.map((player: MinecraftPlayerSummary) => (
                     <li key={player.id}>

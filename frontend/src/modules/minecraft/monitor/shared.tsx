@@ -175,11 +175,75 @@ export function useAiEvents(limit = 20, pollMs = 10000) {
   return { events, error, reload: load };
 }
 
+export type BridgeLike = {
+  enabled?: boolean;
+  connected?: boolean;
+  dry_run?: boolean;
+  token_configured?: boolean;
+};
+
+export function bridgeNeedsSetup(
+  bridge?: BridgeLike | null,
+  setup?: { all_ready?: boolean; token_set?: boolean } | null,
+): boolean {
+  if (!bridge) return true;
+  if (!bridge.enabled) return true;
+  if (!bridge.token_configured && !setup?.token_set) return true;
+  if (bridge.dry_run) return true;
+  if (!bridge.connected) return true;
+  if (setup && setup.all_ready === false) return true;
+  return false;
+}
+
+/** 可信任 MineMCP 即時玩家／世界 KPI */
+export function bridgeLiveReady(bridge?: BridgeLike | null): boolean {
+  return Boolean(bridge?.enabled && bridge?.token_configured && bridge?.connected && !bridge?.dry_run);
+}
+
 export function bridgeKpi(bridge: MinecraftMonitorSummary['bridge'] | undefined) {
-  if (!bridge?.enabled) return { label: '未啟用', pct: 0, color: 'var(--console-faint)' };
+  if (!bridge?.enabled) return { label: '待設定', pct: 0, color: 'var(--console-faint)' };
+  if (!bridge.token_configured) return { label: '待 Token', pct: 8, color: 'var(--console-amber)' };
   if (bridge.connected) return { label: '線上', pct: 100, color: 'var(--console-green)' };
-  if (bridge.dry_run) return { label: 'Dry-run', pct: 55, color: 'var(--console-amber)' };
+  if (bridge.dry_run) return { label: '乾跑', pct: 55, color: 'var(--console-amber)' };
   return { label: '離線', pct: 12, color: 'var(--console-red)' };
+}
+
+export type BridgeSetup = NonNullable<MinecraftMonitorSummary['bridge_setup']>;
+
+export function formatBridgeProbeLine(
+  setup?: BridgeSetup | null,
+  probe?: { ok?: boolean; connected?: boolean; dry_run?: boolean; message?: string; error?: string } | null,
+): string {
+  const fromProbe = String(probe?.message || probe?.error || '').trim();
+  const fromSetup = String(setup?.probe_message || '').trim();
+  const msg = fromProbe || fromSetup;
+  const isDry = Boolean(probe?.dry_run ?? setup?.dry_run);
+  if (isDry) {
+    if (msg) return msg;
+    return '本地乾跑探測：未向 MineMCP 發送 JSON-RPC';
+  }
+  if (setup?.connected || probe?.connected) {
+    return msg || 'MineMCP 已連線';
+  }
+  if (msg) return msg;
+  if (setup?.enabled && setup?.all_ready) {
+    return '已啟用但未連線 — 請確認 MineMCP 插件是否運行';
+  }
+  return '請完成環境變數 checklist 後再探測';
+}
+
+export function formatBridgeAuditLine(row: {
+  tool?: string;
+  ok?: boolean;
+  error?: string;
+  dry_run?: boolean;
+}): string {
+  const tool = row.tool ?? 'bridge';
+  if (row.dry_run && (tool.includes('probe') || row.error === 'bridge_offline')) {
+    return `${tool} · 本地乾跑探測（未連線 MineMCP）`;
+  }
+  if (row.ok) return `${tool} · 成功`;
+  return `${tool} · ${row.error || '失敗'}`;
 }
 
 export function CopyButton({ text, label = '複製' }: { text: string; label?: string }) {
@@ -232,15 +296,47 @@ export function EmptyStateCta({
   );
 }
 
-type BridgeSetup = NonNullable<MinecraftMonitorSummary['bridge_setup']>;
+export function BridgeSetupBanner({
+  setup,
+  bridge,
+}: {
+  setup?: BridgeSetup | null;
+  bridge?: BridgeLike | null;
+}) {
+  if (!bridgeNeedsSetup(bridge, setup)) return null;
+  const missing: string[] = [];
+  if (!bridge?.enabled && !setup?.enabled) missing.push('EVOL_MC_MCP_ENABLED');
+  if (!bridge?.token_configured && !setup?.token_set) missing.push('EVOL_MC_MCP_TOKEN');
+  if (bridge?.dry_run || setup?.dry_run) missing.push('實際連線（目前為乾跑或未啟用）');
+  else if (!bridge?.connected && !setup?.connected) missing.push('MineMCP 連線');
+  return (
+    <EmptyStateCta
+      title="MineMCP 橋接尚未就緒"
+      hint={
+        missing.length
+          ? `待完成：${missing.join('、')}。完成設定並 Ping 探測後，監控 KPI 才會反映伺服器現場。`
+          : '請在橋接健康頁完成環境變數並探測連線。'
+      }
+      actions={[
+        { label: '橋接健康與設定指南', href: minecraftHref('bridge_monitor'), primary: true },
+        {
+          label: '文件：minecraft-mcp.md',
+          href: 'https://github.com/iiooiioo888/Linkin/blob/master/docs/linkin/minecraft-mcp.md',
+        },
+      ]}
+    />
+  );
+}
 
 export function BridgeSetupCard({
   setup,
+  probe,
   compact = false,
   onProbe,
   probing = false,
 }: {
   setup?: BridgeSetup | null;
+  probe?: { ok?: boolean; connected?: boolean; dry_run?: boolean; message?: string; error?: string } | null;
   compact?: boolean;
   onProbe?: () => void;
   probing?: boolean;
@@ -251,15 +347,7 @@ export function BridgeSetupCard({
     { key: 'EVOL_MC_MCP_TOKEN', ok: setup?.token_set, label: 'TOKEN' },
     { key: 'EVOL_MC_MCP_WORLD', ok: setup?.world_set, label: 'WORLD' },
   ];
-  const probeText = setup?.probe_message
-    ? setup.probe_message
-    : setup?.connected
-      ? 'MineMCP 已連線'
-      : setup?.dry_run
-        ? '乾跑模式：未向 MineMCP 發送探測'
-        : setup?.enabled && setup?.all_ready
-          ? '已啟用但未連線 — 請檢查 MineMCP 是否運行'
-          : '請完成上方 checklist 後再探測';
+  const probeText = formatBridgeProbeLine(setup, probe);
 
   return (
     <div className={compact ? 'text-xs' : ''}>

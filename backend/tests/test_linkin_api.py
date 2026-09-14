@@ -499,6 +499,7 @@ def test_minecraft_status_dry_run_call_and_dispatch(client: TestClient):
     assert probe.status_code == 200
     assert probe.json()["dry_run"] is True
     assert probe.json()["connected"] is False
+    assert "乾跑" in probe.json().get("message", "") or "JSON-RPC" in probe.json().get("message", "")
 
     placed = client.post(
         "/linkin/minecraft/call",

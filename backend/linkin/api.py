@@ -731,13 +731,25 @@ def minecraft_probe() -> dict[str, Any]:
     from backend.tools.minecraft_mcp import probe_connection
 
     result = probe_connection()
+    is_dry = bool(result.get("dry_run"))
+    connected = bool(result.get("connected"))
+    if is_dry:
+        probe_status = "dry_run"
+        bridge_offline = False
+        summary = str(result.get("message") or "本地乾跑探測：未向 MineMCP 發送 JSON-RPC")
+    else:
+        probe_status = "ok" if connected else "bridge_offline"
+        bridge_offline = not connected
+        summary = f"MineMCP 遠端探測：{'已連線' if connected else '未連線'}"
+        if result.get("error"):
+            summary = f"{summary}（{result.get('error')}）"
     safe_append_minecraft_event(
         domain="bridge",
         action="probe",
-        status="ok" if result.get("connected") else "bridge_offline",
-        summary=f"MineMCP 探測 connected={result.get('connected')} dry_run={result.get('dry_run')}",
-        dry_run=bool(result.get("dry_run")),
-        bridge_offline=not bool(result.get("connected")),
+        status=probe_status,
+        summary=summary,
+        dry_run=is_dry,
+        bridge_offline=bridge_offline,
         details={"message": result.get("message"), "error": result.get("error")},
     )
     return result

@@ -20,6 +20,7 @@ import {
   type BuildingPreview,
 } from '../../api/linkin';
 import BuildingViewer from './BuildingViewer';
+import { narrativeRegionLabel } from './localeRegions';
 import { activityNavPath } from '../../lib/monitorTabs';
 import { buildingPostcardUri } from '../../lib/visualCards';
 import MediaGallery from '../../components/media/MediaGallery';
@@ -274,7 +275,7 @@ export default function BuildPanel() {
           <label className="text-[10px] text-[#8a8f98]">區域
             <select value={region} onChange={(e) => setRegion(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-[12px]">
               {Object.keys(regionStyles).map((item) => (
-                <option key={item} value={item}>{item}</option>
+                <option key={item} value={item}>{narrativeRegionLabel(item)}</option>
               ))}
             </select>
           </label>

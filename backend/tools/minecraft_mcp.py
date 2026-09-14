@@ -441,7 +441,7 @@ def probe_connection(cfg: MinecraftMcpConfig | None = None, client: httpx.Client
             "ok": True,
             "connected": False,
             "dry_run": True,
-            "message": "乾跑模式：未向 MineMCP 發送探測",
+            "message": "本地乾跑探測：未向 MineMCP 發送 JSON-RPC（工具清單為靜態預覽）",
             "tools": list(COMPANY_TOOL_NAMES),
         }
     rpc = jsonrpc_request("tools/list", {}, cfg=cfg, client=client)

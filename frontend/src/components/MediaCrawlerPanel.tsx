@@ -39,15 +39,15 @@ const TYPE_LABELS: Record<string, string> = {
   creator: '創作者主頁',
 };
 
-function tierLabel(tier: MediaCrawlerStatus['tier']): string {
-  if (tier === 'enabled') return '已啟用';
-  if (tier === 'available') return '可用（需配置）';
+function tierLabel(tier: MediaCrawlerStatus['tier'], cookieConfigured: boolean): string {
+  if (tier === 'enabled' && cookieConfigured) return '已啟用';
+  if (tier === 'available' || !cookieConfigured) return '可用（需配置）';
   return '需配置';
 }
 
-function tierTone(tier: MediaCrawlerStatus['tier']): string {
-  if (tier === 'enabled') return 'bg-emerald-500/15 text-emerald-400';
-  if (tier === 'available') return 'bg-sky-500/15 text-sky-300';
+function tierTone(tier: MediaCrawlerStatus['tier'], cookieConfigured: boolean): string {
+  if (tier === 'enabled' && cookieConfigured) return 'bg-emerald-500/15 text-emerald-400';
+  if (tier === 'available' || !cookieConfigured) return 'bg-amber-500/15 text-amber-300';
   return 'bg-amber-500/15 text-amber-300';
 }
 
@@ -109,6 +109,14 @@ export default function MediaCrawlerPanel() {
 
   const platformOptions = useMemo(() => status?.platforms ?? Object.keys(PLATFORM_LABELS), [status]);
   const typeOptions = useMemo(() => status?.crawl_types ?? Object.keys(TYPE_LABELS), [status]);
+  const cookieReady = Boolean(status?.cookie_configured);
+  const canStartRealRun = cookieReady && Boolean(status?.enabled);
+  const startDisabled = busy || (!form.dry_run && !canStartRealRun);
+  const startBlockReason = !form.dry_run && !cookieReady
+    ? '實際採集需先保存平台 Cookie。'
+    : !form.dry_run && !status?.enabled
+      ? 'EVOL_MEDIACRAWLER_ENABLED 未啟用，僅可乾跑校驗。'
+      : '';
 
   const onSaveCookie = async () => {
     setBusy(true);
@@ -170,8 +178,8 @@ export default function MediaCrawlerPanel() {
           </p>
         </div>
         {status ? (
-          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${tierTone(status.tier)}`}>
-            {tierLabel(status.tier)}
+          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${tierTone(status.tier, cookieReady)}`}>
+            {tierLabel(status.tier, cookieReady)}
           </span>
         ) : null}
       </div>
@@ -196,6 +204,12 @@ export default function MediaCrawlerPanel() {
           <p>Cookie：{status.cookie_configured ? status.cookie_preview : '未配置'}</p>
           <p>運行中：{status.running_jobs ?? 0} / {status.max_concurrent_jobs}</p>
         </div>
+      ) : null}
+
+      {status && !cookieReady ? (
+        <p className="mb-3 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-[10px] text-amber-200/90">
+          尚未配置 Cookie — 可進行「乾跑校驗」；取消乾跑並保存 Cookie 後才能啟動實際採集任務。
+        </p>
       ) : null}
 
       <div className="mb-4 grid gap-3 lg:grid-cols-2">
@@ -258,9 +272,12 @@ export default function MediaCrawlerPanel() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={btnCls} disabled={busy} onClick={() => void onValidate()}>校驗配置</button>
-            <button type="button" className={btnPrimaryCls} disabled={busy} onClick={() => void onStart()}>啟動任務</button>
+            <button type="button" className={btnPrimaryCls} disabled={startDisabled} onClick={() => void onStart()}>啟動任務</button>
             <button type="button" className={btnCls} disabled={busy} onClick={() => void load()}>重新整理</button>
           </div>
+          {startBlockReason ? (
+            <p className="text-[10px] text-amber-300/90">{startBlockReason}</p>
+          ) : null}
         </div>
       </div>
 
