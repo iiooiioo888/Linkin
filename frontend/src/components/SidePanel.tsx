@@ -473,7 +473,7 @@ function TaskRoster({
 }) {
   const tasks = useMonitorStore(useShallow(selectTaskRoster));
   const [query, setQuery] = useState('');
-  const [openCols, setOpenCols] = useState<Set<TaskColumnKey>>(() => new Set(['queue', 'running', 'done']));
+  const [openCols, setOpenCols] = useState<Set<TaskColumnKey>>(() => new Set(['queue', 'running', 'done', 'failed']));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

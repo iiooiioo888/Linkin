@@ -1,5 +1,5 @@
 /**
- * 控制台統一三欄：隊列 / 執行中 / 已完成。
+ * 控制台任務看板欄（隊列 / 執行中 / 已完成 / 失敗等，由呼叫端定義 columns）。
  */
 import type { ReactNode } from 'react';
 

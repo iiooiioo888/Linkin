@@ -82,7 +82,10 @@ export default function MessageList({
   }
 
   return (
-    <div ref={scrollerRef} className={`min-h-0 flex-1 overflow-y-auto ${variant === 'drawer' ? 'px-4 py-4' : 'px-4 py-5 sm:px-6'}`}>
+    <div
+      ref={scrollerRef}
+      className={`ws-message-scroller min-h-0 flex-1 overflow-y-auto ${variant === 'drawer' ? 'px-4 py-4' : 'px-4 py-5 sm:px-6'}`}
+    >
       <div className={`flex flex-col gap-4 ${variant === 'drawer' ? '' : 'mx-auto w-full max-w-3xl'}`}>
         {messages.length === 0 && (
           <div className={`flex flex-col items-center gap-8 text-center ${variant === 'drawer' ? 'py-10' : 'py-20 sm:py-28'}`}>

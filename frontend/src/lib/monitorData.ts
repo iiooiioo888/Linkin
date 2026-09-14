@@ -120,20 +120,23 @@ export type StackSegment = { label: string; value: number; color: string };
 
 export function buildStatusStack(stats: {
   tasks_running?: number;
+  tasks_pending?: number;
   tasks_completed?: number;
   tasks_failed?: number;
   tasks_total?: number;
 }): StackSegment[] {
-  const running = stats.tasks_running ?? 0;
   const done = stats.tasks_completed ?? 0;
   const failed = stats.tasks_failed ?? 0;
-  const total = stats.tasks_total ?? running + done + failed;
-  const queue = Math.max(0, total - running - done - failed);
+  const pending = stats.tasks_pending ?? 0;
+  const runningActive = Math.max(0, (stats.tasks_running ?? 0) - pending);
+  const total = stats.tasks_total ?? pending + runningActive + done + failed;
+  const orphan = Math.max(0, total - pending - runningActive - done - failed);
+  const queue = pending + orphan;
   return [
-    { label: '執行', value: running, color: 'var(--console-blue)' },
+    { label: '隊列', value: queue, color: 'var(--console-dim)' },
+    { label: '執行', value: runningActive, color: 'var(--console-blue)' },
     { label: '完成', value: done, color: 'var(--console-green)' },
     { label: '失敗', value: failed, color: 'var(--console-danger)' },
-    { label: '隊列', value: queue, color: 'var(--console-dim)' },
   ].filter((s) => s.value > 0);
 }
 

@@ -298,7 +298,7 @@ export default function SystemMetricsPanel() {
             <KpiGrid6>
               {[
                 { label: '快取命中', value: `${hitPct}%`, accent: true },
-                { label: '任務成功率', value: `${sys?.success_rate ?? 0}%`, unit: '%' },
+                { label: '任務成功率', value: `${sys?.success_rate ?? 0}%` },
                 {
                   label: '反思均輪次',
                   value: reflectionTrace?.avg_iterations != null ? String(reflectionTrace.avg_iterations) : '—',
@@ -311,7 +311,6 @@ export default function SystemMetricsPanel() {
                   key={kpi.label}
                   label={kpi.label}
                   value={kpi.value}
-                  unit={kpi.unit}
                   spark={spark}
                   accent={kpi.accent}
                 />

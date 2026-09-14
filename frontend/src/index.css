@@ -2010,7 +2010,7 @@ body.scroll-lock {
   display: grid;
   flex: 1;
   min-height: 0;
-  grid-template-columns: repeat(3, minmax(148px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -6087,6 +6087,24 @@ body.scroll-lock {
 
   .ws-main > .apple-input-bar {
     flex-shrink: 0;
+  }
+
+  /* 訊息列表底部留白：避免最後一則被 Context 分頁列 + composer + 底部 Tab 遮住 */
+  .ws.is-chat-only .ws-main {
+    min-height: 0;
+  }
+
+  .ws-message-scroller {
+    scroll-padding-bottom: 16px;
+    padding-bottom: calc(12px + var(--ws-mobile-chrome-reserve, 200px) + var(--safe-area-bottom));
+  }
+
+  .ws.is-chat-only .ws-bottom.is-off ~ .apple-input-bar {
+    --ws-mobile-chrome-reserve: 168px;
+  }
+
+  .ws.is-chat-only .ws-bottom:not(.is-off) ~ .apple-input-bar {
+    --ws-mobile-chrome-reserve: 300px;
   }
 }
 
