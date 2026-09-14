@@ -128,7 +128,9 @@ def _generate_system_prompt(state: StateInput) -> str:
     from backend.core.locale_prompt import ui_language_system_overlay
 
     system = templates.GENERATE_INITIAL_ANSWER_SYSTEM
-    locale_line = ui_language_system_overlay(state.get("ui_language"))
+    raw_lang = state.get("ui_language")
+    ui_lang = raw_lang if isinstance(raw_lang, str) else None
+    locale_line = ui_language_system_overlay(ui_lang)
     if locale_line:
         system = f"{locale_line}\n\n{system}"
     linkin = state.get("linkin_context") or {}
