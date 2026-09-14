@@ -23,7 +23,7 @@ function DimCell({
   block,
 }: {
   keyName: string;
-  block: { status?: string; summary?: string; confidence?: number };
+  block?: { status?: string; summary?: string; confidence?: number } | null;
 }) {
   const label = DIM_LABELS[keyName] || keyName;
   const status = block?.status || 'unknown';
@@ -55,8 +55,12 @@ export default function SituationStrip({ compact = false, pollMs = 15000 }: Situ
     setError(null);
     try {
       const snap = await fetchMinecraftSituation();
+      if (!snap || typeof snap !== 'object') {
+        throw new Error('情境快照格式異常');
+      }
       setData(snap);
     } catch (err) {
+      setData(null);
       setError((err as Error).message);
     } finally {
       setLoading(false);
@@ -92,10 +96,10 @@ export default function SituationStrip({ compact = false, pollMs = 15000 }: Situ
           <DimCell key={key} keyName={key} block={data[key]} />
         ))}
       </div>
-      {!compact && data.hints?.length ? (
+      {!compact && Array.isArray(data.hints) && data.hints.length ? (
         <ul className="list-inside list-disc space-y-0.5 text-[9px] text-[var(--console-faint)]">
-          {data.hints.slice(0, 4).map((hint) => (
-            <li key={hint}>{hint}</li>
+          {data.hints.slice(0, 4).map((hint, idx) => (
+            <li key={`${idx}-${hint}`}>{hint}</li>
           ))}
         </ul>
       ) : null}
