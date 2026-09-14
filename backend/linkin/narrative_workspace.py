@@ -15,12 +15,18 @@
 
 from __future__ import annotations
 
+import json
+import os
+import threading
 import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any
+
+_persist_lock = threading.Lock()
 
 # 錯誤碼（寫死，前後端共用）
 ERR_WORKSPACE_UNKNOWN = "ERR_WORKSPACE_UNKNOWN"
@@ -69,11 +75,75 @@ class WorkspaceVerdict:
     workspace: EphemeralWorkspace | None = None
 
 
-class WorkspaceRegistry:
-    """工作區註冊表（記憶體；重啟即清空，符合「不得超過當前任務」）。"""
+def _default_persist_path() -> Path:
+    return Path(os.getenv("EVOL_LINKIN_DATA_DIR", "data/linkin")) / "narrative_workspaces.json"
 
-    def __init__(self) -> None:
+
+class WorkspaceRegistry:
+    """工作區註冊表（草稿持久化至磁碟；commit 仍須顯式呼叫）。"""
+
+    def __init__(self, persist_path: Path | None = None) -> None:
+        self._persist_path = persist_path or _default_persist_path()
         self._by_id: dict[str, EphemeralWorkspace] = {}
+        self._load_from_disk()
+
+    def _load_from_disk(self) -> None:
+        path = self._persist_path
+        if not path.exists():
+            return
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            rows = raw.get("workspaces") if isinstance(raw, dict) else None
+            if not isinstance(rows, list):
+                return
+            for item in rows:
+                if not isinstance(item, dict):
+                    continue
+                ws_id = str(item.get("workspace_id") or "").strip()
+                if not ws_id:
+                    continue
+                state_raw = str(item.get("state") or WorkspaceState.ACTIVE.value)
+                try:
+                    state = WorkspaceState(state_raw)
+                except ValueError:
+                    state = WorkspaceState.ACTIVE
+                drafts = item.get("drafts")
+                self._by_id[ws_id] = EphemeralWorkspace(
+                    workspace_id=ws_id,
+                    task_id=str(item.get("task_id") or ""),
+                    snapshot_id=str(item.get("snapshot_id") or ""),
+                    state=state,
+                    drafts=dict(drafts) if isinstance(drafts, dict) else {},
+                    created_at=float(item.get("created_at") or time.time()),
+                )
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            return
+
+    def _persist(self) -> None:
+        path = self._persist_path
+        rows = [
+            {
+                "workspace_id": ws.workspace_id,
+                "task_id": ws.task_id,
+                "snapshot_id": ws.snapshot_id,
+                "state": ws.state.value,
+                "drafts": ws.drafts,
+                "created_at": ws.created_at,
+            }
+            for ws in self._by_id.values()
+            if ws.state in (WorkspaceState.ACTIVE, WorkspaceState.AWAITING_CONFIRMATION)
+        ]
+        payload = {"workspaces": rows, "saved_at": time.time()}
+        with _persist_lock:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def clear_persistence(self) -> None:
+        """測試用：刪除磁碟草稿。"""
+        with _persist_lock:
+            if self._persist_path.exists():
+                self._persist_path.unlink()
+        self._by_id.clear()
 
     # ── 生命週期 ─────────────────────────────────────────────
     def begin(self, task_id: str, snapshot_id: str) -> EphemeralWorkspace:
@@ -83,6 +153,7 @@ class WorkspaceRegistry:
             snapshot_id=snapshot_id,
         )
         self._by_id[ws.workspace_id] = ws
+        self._persist()
         return ws
 
     def get(self, workspace_id: str) -> EphemeralWorkspace | None:
@@ -118,6 +189,8 @@ class WorkspaceRegistry:
             ):
                 ws.state = WorkspaceState.DISCARDED
                 count += 1
+        if count:
+            self._persist()
         return count
 
     # ── 草稿（記憶體，不落地） ────────────────────────────────
@@ -128,6 +201,7 @@ class WorkspaceRegistry:
         if ws.state is not WorkspaceState.ACTIVE:
             return WorkspaceVerdict(False, ERR_WORKSPACE_NOT_ACTIVE, ws)
         ws.drafts[key] = value
+        self._persist()
         return WorkspaceVerdict(True, workspace=ws)
 
     # ── 落庫（顯式寫入 API；writer 由呼叫方注入） ─────────────
@@ -152,6 +226,7 @@ class WorkspaceRegistry:
             return WorkspaceVerdict(False, ERR_CONFIRM_CHOICE_INVALID, ws)
         writer(dict(ws.drafts))
         ws.state = WorkspaceState.COMMITTED
+        self._persist()
         return WorkspaceVerdict(True, workspace=ws)
 
     # ── L0 刷新衝突（§4.7 預設保留成果） ──────────────────────
@@ -162,6 +237,8 @@ class WorkspaceRegistry:
             if ws.state is WorkspaceState.ACTIVE and ws.snapshot_id != new_snapshot_id:
                 ws.state = WorkspaceState.AWAITING_CONFIRMATION
                 affected.append(ws.workspace_id)
+        if affected:
+            self._persist()
         return affected
 
     def confirm(
@@ -185,6 +262,7 @@ class WorkspaceRegistry:
         else:
             ws.snapshot_id = new_snapshot_id or ws.snapshot_id
             ws.state = WorkspaceState.ACTIVE
+        self._persist()
         return WorkspaceVerdict(True, workspace=ws)
 
 

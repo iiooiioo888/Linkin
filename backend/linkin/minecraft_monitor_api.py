@@ -20,6 +20,7 @@ from backend.linkin.minecraft_players import (
     list_players_snapshot,
 )
 from backend.linkin.minecraft_situation import build_situation_dimension, build_situation_snapshot
+from backend.linkin.minecraft_situation_rules import list_rule_runs, run_situation_rules
 
 monitor_router = APIRouter(prefix="/linkin/minecraft", tags=["linkin-minecraft-monitor"])
 
@@ -94,6 +95,28 @@ def api_ai_context(
 @monitor_router.get("/situation")
 def api_situation_snapshot() -> dict[str, Any]:
     return build_situation_snapshot()
+
+
+@monitor_router.get("/situation/rules")
+def api_situation_rules(
+    limit: int = Query(10, ge=1, le=50, description="最近規則執行紀錄筆數"),
+) -> dict[str, Any]:
+    snap = build_situation_snapshot()
+    return {
+        "snapshot": {
+            "generated_at": snap.get("generated_at"),
+            "rule_recommendations": snap.get("rule_recommendations") or [],
+            "region_focus": snap.get("region_focus") or {},
+        },
+        "recent_runs": list_rule_runs(limit),
+    }
+
+
+@monitor_router.post("/situation/rules/run")
+def api_run_situation_rules(
+    dry_run: bool = Query(True, description="僅建議不自動套用"),
+) -> dict[str, Any]:
+    return run_situation_rules(dry_run=dry_run)
 
 
 @monitor_router.get("/situation/{dimension}")

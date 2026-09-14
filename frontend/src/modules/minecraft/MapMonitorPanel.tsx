@@ -1,7 +1,7 @@
 /**
  * 地圖監控 — map plans、預覽／落地狀態、方塊估算。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { type MapPlan } from '../../api/linkin';
 import { createModuleClient } from '../../api/modules';
 import { KpiSparkCard, MiniProgressBar } from '../../components/ui/monitor';
@@ -14,36 +14,40 @@ import {
   PanelAlert,
   PanelShell,
 } from '../../components/ui/ConsoleLayout';
-import { statusLabel, statusStripe } from './monitor/shared';
+import { statusLabel, statusStripe, useVisibilityPoll } from './monitor/shared';
 
 const mc = createModuleClient('minecraft');
 
 export default function MapMonitorPanel() {
   const [plans, setPlans] = useState<MapPlan[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await mc.get<{ map_plans: MapPlan[]; count: number }>('/map/plans');
+      const res = await mc.get<{ map_plans?: MapPlan[]; count?: number }>('/map/plans');
       setPlans(res.map_plans ?? []);
     } catch {
       try {
-        const summary = await mc.get<{ kpis: { map_plan_count: number } }>('/minecraft/monitor/summary');
-        if (!summary.kpis.map_plan_count) setPlans([]);
+        const summary = await mc.get<{ kpis?: { map_plan_count?: number } }>('/minecraft/monitor/summary');
+        const planCount = summary.kpis?.map_plan_count ?? 0;
+        if (!planCount) setPlans([]);
         else {
-          const snap = await mc.get<{ latest_map_plan: MapPlan | null }>('/minecraft/ai/snapshot');
+          const snap = await mc.get<{ latest_map_plan?: MapPlan | null }>('/minecraft/ai/snapshot');
           setPlans(snap.latest_map_plan ? [snap.latest_map_plan] : []);
         }
       } catch (err) {
         setError((err as Error).message);
       }
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useVisibilityPoll(load, 15000);
+
+  const dataReady = !loading;
 
   const applied = plans.filter((p) => p.status === 'applied').length;
   const partial = plans.filter((p) => p.status === 'partial').length;
@@ -63,7 +67,7 @@ export default function MapMonitorPanel() {
 
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>地圖計畫 · generate / preview / apply</ConsoleCardHeader>
-            {!plans.length ? (
+            {dataReady && !plans.length ? (
               <div className="space-y-2 px-3 pb-3 text-xs text-[var(--console-faint)]">
                 <p>尚無地圖計畫 — 請在「地圖計畫」或敘事工作區生成。</p>
                 <div className="flex flex-wrap gap-2">

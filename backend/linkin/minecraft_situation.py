@@ -595,7 +595,7 @@ def build_situation_snapshot() -> dict[str, Any]:
 
     hints = _build_hints(market, economy, land, players_dim)
 
-    return {
+    snap = {
         "generated_at": now,
         "market": market,
         "economy": economy,
@@ -603,6 +603,18 @@ def build_situation_snapshot() -> dict[str, Any]:
         "players": players_dim,
         "hints": hints,
     }
+
+    try:
+        from backend.linkin.minecraft_situation_rules import (
+            enrich_situation_snapshot,
+            rules_enabled,
+        )
+
+        if rules_enabled():
+            return enrich_situation_snapshot(snap)
+    except Exception:
+        pass
+    return snap
 
 
 def build_situation_dimension(dimension: str) -> dict[str, Any] | None:
@@ -625,6 +637,10 @@ def compact_situation_for_context(snap: dict[str, Any] | None = None) -> dict[st
     """精簡版供 prompt／context 注入。"""
     full = snap or build_situation_snapshot()
     compact: dict[str, Any] = {"generated_at": full.get("generated_at"), "hints": full.get("hints") or []}
+    if full.get("rule_recommendations"):
+        compact["rule_recommendations"] = full.get("rule_recommendations")
+    if full.get("region_focus"):
+        compact["region_focus"] = full.get("region_focus")
     for dim in ("market", "economy", "land", "players"):
         block = full.get(dim) or {}
         compact[dim] = {

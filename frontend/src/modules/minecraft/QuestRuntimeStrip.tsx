@@ -42,7 +42,11 @@ export function QuestRuntimeStrip({ playerId, compact = false }: { playerId?: st
         active = active.filter((r) => r.player_id?.toLowerCase() === playerId.toLowerCase());
       }
       setRows(active);
-      setStats({ active: data.active, completed: data.completed, failed: data.failed });
+      setStats({
+        active: data?.active ?? 0,
+        completed: data?.completed ?? 0,
+        failed: data?.failed ?? 0,
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {

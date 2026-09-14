@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 
 TRACE_LABEL = "minecraft_ai_gm"
 
-ALLOWED_ACTION_TYPES = frozenset({"quest_progress", "npc_say", "hint", "noop"})
+ALLOWED_ACTION_TYPES = frozenset(
+    {"quest_progress", "npc_say", "hint", "player_assist", "region_focus", "noop"}
+)
 REACT_ACTIONS = frozenset(
     {
         "join",
@@ -333,10 +335,20 @@ def build_gm_context(event: dict[str, Any] | None = None) -> dict[str, Any]:
         heuristic_hints = evaluate_heuristics(event, player_id=trigger_player or None)
 
     situation: dict[str, Any] = {}
+    rule_recommendations: list[dict[str, Any]] = []
     try:
         from backend.linkin.minecraft_situation import compact_situation_for_context
+        from backend.linkin.minecraft_situation_rules import evaluate_situation_rules, rules_enabled
 
         situation = compact_situation_for_context()
+        if rules_enabled():
+            rule_eval = evaluate_situation_rules()
+            rule_recommendations = rule_eval.get("recommendations") or []
+            if rule_recommendations:
+                situation = {
+                    **situation,
+                    "rule_recommendations": rule_recommendations[:6],
+                }
     except Exception:
         situation = {}
 
@@ -347,6 +359,7 @@ def build_gm_context(event: dict[str, Any] | None = None) -> dict[str, Any]:
             "dry_run": bridge.get("dry_run"),
         },
         "situation": situation,
+        "rule_recommendations": rule_recommendations,
         "players": players_block,
         "active_quests": active_quests,
         "heuristic_hints": heuristic_hints,
@@ -367,6 +380,15 @@ def _build_gm_prompt(context: dict[str, Any], event: dict[str, Any]) -> str:
     situation_text = json.dumps(situation, ensure_ascii=False)[:1200]
     hints = situation.get("hints") or []
     hints_text = "\n".join(f"- {h}" for h in hints[:6]) if hints else "（無）"
+    rule_recs = context.get("rule_recommendations") or situation.get("rule_recommendations") or []
+    rules_text = ""
+    if rule_recs:
+        lines = [
+            f"- [{r.get('action_type')}] {r.get('message')}"
+            for r in rule_recs[:5]
+            if isinstance(r, dict) and r.get("message")
+        ]
+        rules_text = "\n".join(lines)
 
     quests_text = json.dumps(context.get("active_quests") or [], ensure_ascii=False)[:1500]
     npcs_text = json.dumps(context.get("npcs") or [], ensure_ascii=False)[:800]
@@ -380,15 +402,18 @@ def _build_gm_prompt(context: dict[str, Any], event: dict[str, Any]) -> str:
         "決策前必須考量四維情境（市況 market／經濟 economy／地土 land／玩家 players），"
         "優先選擇與情境相符的 hint、任務進度或 NPC 回應；信號不足時保守 noop。\n"
         "只輸出 JSON：{\"rationale\":\"...\",\"actions\":[...]}\n"
-        "允許的 action.type：quest_progress、npc_say、hint、noop。\n"
+        "允許的 action.type：quest_progress、npc_say、hint、player_assist、region_focus、noop。\n"
         "禁止：place_block、break_block、fill、大規模破壞、任意 execute_command。\n"
         "quest_progress 欄位：quest_id, objective（目標 id，見 active_quests.objectives）, "
         "status(advance|complete|failed), note。\n"
         "npc_say 欄位：npc_name, message, target_player（可選）。\n"
         "hint 欄位：message, target_player（可選，僅面板提示）。\n"
-        "最多 3 個 actions；若無需回應請用 noop。\n\n"
+        "player_assist 欄位：assist_type, message, target_player（可選，玩家協助提示）。\n"
+        "region_focus 欄位：focus_mode(at_hotspot|away_from_spawn), center{x,z}, message（僅標記焦點，不寫地形）。\n"
+        "最多 3 個 actions；若無需回應請用 noop；經濟未知時勿捏造物價。\n\n"
         f"四維情境快照：{situation_text}\n"
-        f"情境提示：\n{hints_text}\n\n"
+        f"情境提示：\n{hints_text}\n"
+        f"規則建議：\n{rules_text or '（無）'}\n\n"
         f"觸發事件：玩家={player_name} action={action} summary={summary}\n"
         f"事件詳情：{json.dumps(details, ensure_ascii=False)[:400]}\n"
         f"在線玩家：{players_text}\n"
@@ -542,6 +567,63 @@ def _apply_hint(action: dict[str, Any]) -> dict[str, Any]:
     return {"ok": True, "status": "log_only", "message": message}
 
 
+def _apply_player_assist(
+    action: dict[str, Any],
+    *,
+    dry_run: bool,
+    bridge: dict[str, Any],
+) -> dict[str, Any]:
+    message = str(action.get("message") or "").strip()
+    if not message:
+        return {"ok": False, "status": "skipped", "reason": "empty_message"}
+    assist_type = str(action.get("assist_type") or "general").strip()
+    target = action.get("target_player")
+    payload = {
+        "assist_type": assist_type,
+        "message": message,
+        "target_player": target,
+    }
+    if dry_run or bridge.get("dry_run") or not bridge.get("connected"):
+        return {
+            "ok": True,
+            "status": "log_only",
+            **payload,
+            "bridge_offline": not bridge.get("connected"),
+        }
+    npc_action = {
+        "type": "npc_say",
+        "npc_name": "系統",
+        "message": message,
+        "target_player": target,
+    }
+    npc_result = _apply_npc_say(npc_action, dry_run=False, bridge=bridge)
+    return {
+        "ok": npc_result.get("ok", False),
+        "status": npc_result.get("status", "log_only"),
+        **payload,
+        "via": "npc_say",
+    }
+
+
+def _apply_region_focus(action: dict[str, Any]) -> dict[str, Any]:
+    from backend.linkin.minecraft_situation_rules import set_region_focus
+
+    focus_mode = str(action.get("focus_mode") or "at_hotspot").strip()
+    center = action.get("center")
+    if not isinstance(center, dict):
+        center = {}
+    marker = {
+        "focus_mode": focus_mode,
+        "center": center,
+        "suggested_offset_blocks": action.get("suggested_offset_blocks"),
+        "message": str(action.get("message") or "")[:300],
+        "updated_at": time.time(),
+        "source_rule": action.get("source_rule"),
+    }
+    set_region_focus(marker)
+    return {"ok": True, "status": "log_only", "region_focus": marker}
+
+
 def apply_gm_actions(
     actions: list[dict[str, Any]],
     *,
@@ -572,6 +654,14 @@ def apply_gm_actions(
         if action_type == "hint":
             out = _apply_hint(action)
             results.append({"type": "hint", **out})
+            continue
+        if action_type == "player_assist":
+            out = _apply_player_assist(action, dry_run=effective_dry_run, bridge=bridge)
+            results.append({"type": "player_assist", **out})
+            continue
+        if action_type == "region_focus":
+            out = _apply_region_focus(action)
+            results.append({"type": "region_focus", **out})
             continue
         results.append({"type": action_type, "status": "denied"})
 
@@ -718,6 +808,19 @@ def gm_tick(limit: int = 5) -> dict[str, Any]:
     if not cfg.get("enabled"):
         return {"ok": False, "error": "gm_disabled", "processed": 0}
 
+    rules_result: dict[str, Any] | None = None
+    try:
+        from backend.linkin.minecraft_situation_rules import rules_enabled, run_situation_rules
+
+        if rules_enabled():
+            dry_run = bool(cfg.get("dry_run", True)) or not bool(cfg.get("auto_apply", False))
+            rules_result = run_situation_rules(
+                auto_apply=bool(cfg.get("auto_apply", False)),
+                dry_run=dry_run,
+            )
+    except Exception:
+        logger.warning("GM tick 規則評估失敗", exc_info=True)
+
     page = list_minecraft_events(limit=100, domain="player")
     candidates = [
         e
@@ -734,6 +837,7 @@ def gm_tick(limit: int = 5) -> dict[str, Any]:
         "ok": True,
         "processed": len(results),
         "results": results,
+        "rules": rules_result,
     }
 
 
