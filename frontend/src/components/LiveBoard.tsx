@@ -132,7 +132,7 @@ function WorkflowStrip({
       n: '4',
       label: '計費用量',
       hint: 'AI 與 Docker 成本',
-      tab: 'billing',
+      tab: 'models',
       done: false,
     },
   ];
@@ -760,9 +760,6 @@ export default function LiveBoard({
   const handleAlertJump = (tab: MonitorTab, detail?: string) => {
     onOpenTab?.(tab);
     if (detail && tab === 'agents') onOpenAgent?.(detail);
-    if (detail && tab === 'credits') {
-      window.location.hash = `#/monitor/credits/${detail}`;
-    }
   };
 
   return (

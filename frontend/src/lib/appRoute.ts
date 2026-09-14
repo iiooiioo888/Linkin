@@ -7,8 +7,7 @@
  *   #/monitor/agents/{agentId}
  *   #/monitor/lab | #/monitor/lab/{prompt|firecrawl|archify|ponytail|quant|maps|mcp|ab}
  *   #/monitor/integrations | #/monitor/integrations/{memos|openviking|weknora|yao|ouroboros|openpencil}
- *   #/monitor/credits | #/monitor/credits/{overview|cloud|pools|contribution|contributor|appeals|admin}
- *   #/monitor/billing → credits/cloud（Docker + 阿里雲 BSS）
+ *   #/monitor/credits | #/monitor/billing（已移除積分中心；正規化至 models）
  *   #/monitor/context | #/monitor/context/{taskId}
  *   #/monitor/world | #/monitor/npcs | #/monitor/quests | #/monitor/items | #/monitor/studio
  *   #/monitor/building | #/monitor/minecraft | #/monitor/admin

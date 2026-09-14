@@ -33,8 +33,6 @@ export type ConsoleTab =
   | 'pipeline'
   | 'metrics'
   | 'models'
-  | 'credits'
-  | 'billing'
   | 'feedback'
   | 'lab'
   | 'llm'
@@ -267,7 +265,7 @@ export default function AppShell({
           }}
           onMobileWallet={() => {
             onViewChange('monitor');
-            onMonitorTabChange('credits');
+            onMonitorTabChange('models');
           }}
         />
       )}
@@ -279,7 +277,7 @@ export default function AppShell({
         memoryCount={statusInfo.memoryCount}
         onOpenCredits={() => {
           onViewChange('monitor');
-          onMonitorTabChange('credits');
+          onMonitorTabChange('models');
         }}
       />
     </div>

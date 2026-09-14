@@ -35,8 +35,6 @@ const L0Panel = lazy(() => import('./L0Panel'));
 const SkillsMcpPanel = lazy(() => import('./SkillsMcpPanel'));
 const IntegrationsPanel = lazy(() => import('./IntegrationsPanel'));
 const ContextPanel = lazy(() => import('./ContextPanel'));
-const BillingCreditsHub = lazy(() => import('./billing/BillingCreditsHub'));
-
 interface MonitorViewProps {
   onOpenTask: (task: TaskProgress) => void;
   onOpenTrace?: (taskId: string) => void;
@@ -225,7 +223,6 @@ export default function MonitorView({
           </MobileLiteGate>
         )}
         {tab === 'models' && <ModelCallPanel />}
-        {(tab === 'credits' || tab === 'billing') && <BillingCreditsHub liteShell={isMobileLite} />}
         {tab === 'feedback' && (
           <MobileLiteGate gated={isMobileDesktopOnlyPanel('feedback')}>
             <UserFeedbackPanel />
