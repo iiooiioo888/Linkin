@@ -1,13 +1,11 @@
 /**
  * CloudConsoleView — 雲控制台（監控 / 實例 / 告警 / 事件）
- * 費用帳單已整合至靈境積分中心（#/monitor/credits/cloud）
  */
 import { useState } from 'react';
 import AlertsPanel from './AlertsPanel';
 import DockerView from './DockerView';
 import EventsPanel from './EventsPanel';
 import MonitoringPanel from './MonitoringPanel';
-import { jumpToCreditsSection } from '../lib/billingUi';
 import {
   ConsoleLeftRail,
   ConsoleCenterColumn,
@@ -43,15 +41,6 @@ export default function CloudConsoleView({ embedded = false }: { embedded?: bool
 
   const content = (
     <div className={consoleLayout.pageContent}>
-      {!embedded ? (
-        <button
-          type="button"
-          onClick={() => jumpToCreditsSection('cloud')}
-          className="mb-2 w-full rounded-lg border border-[var(--console-blue)]/25 bg-[var(--console-blue)]/5 px-3 py-2 text-left text-[11px] text-[var(--console-sub)] hover:bg-[var(--console-blue)]/10"
-        >
-          <span className="text-[var(--console-blue)]">費用帳單</span> 已整合至靈境積分中心 → 雲與 Docker
-        </button>
-      ) : null}
       <CloudSectionBody tab={tab} />
     </div>
   );
@@ -97,14 +86,10 @@ export default function CloudConsoleView({ embedded = false }: { embedded?: bool
         </ConsoleCenterColumn>
         <ConsoleRightRail>
           <ConsoleColumnScroll>
-            <ConsoleSnippetList title="計費">
-              <button
-                type="button"
-                onClick={() => jumpToCreditsSection('cloud')}
-                className="text-left text-[11px] text-[var(--console-blue)]"
-              >
-                前往靈境積分 · 雲與 Docker
-              </button>
+            <ConsoleSnippetList title="提示">
+              <p className="text-[11px] text-[var(--console-sub)]">
+                Docker 與雲資源費用仍由後端計量；任務扣款請在對話區查看餘額。
+              </p>
             </ConsoleSnippetList>
           </ConsoleColumnScroll>
         </ConsoleRightRail>

@@ -20,6 +20,7 @@ interface TopBarProps {
   onOpenSettings: () => void;
   onToggleSidebar: () => void;
   onMonitorTabChange?: (tab: MonitorTab) => void;
+  onViewChange?: (view: ViewKey) => void;
 }
 
 export default function TopBar({
@@ -33,6 +34,7 @@ export default function TopBar({
   onOpenSettings,
   onToggleSidebar,
   onMonitorTabChange,
+  onViewChange,
 }: TopBarProps) {
   const { t, i18n } = useTranslation();
   const activity = resolveActivity(activeView, monitorTab);
@@ -98,10 +100,10 @@ export default function TopBar({
 
       <div className="flex shrink-0 items-center gap-0.5">
         <span className="md:hidden">
-          <WalletBadge minimal onOpenBilling={() => onMonitorTabChange?.('credits')} />
+          <WalletBadge minimal onOpenBilling={() => onViewChange?.('chat')} />
         </span>
         <span className="hidden md:inline-flex">
-          <WalletBadge onOpenBilling={() => onMonitorTabChange?.('credits')} />
+          <WalletBadge onOpenBilling={() => onViewChange?.('chat')} />
         </span>
 
         {llmConfigured === false && (

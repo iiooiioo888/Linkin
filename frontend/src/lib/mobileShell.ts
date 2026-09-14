@@ -5,7 +5,6 @@
  * ≥768px：完整控制台密度與三欄布局。
  */
 import type { MonitorTab } from '../components/AppShell';
-import type { CreditsSectionKey } from './billingUi';
 import type { MonitorNavGroup } from './monitorTabs';
 
 export const MOBILE_SHELL_MAX_WIDTH_PX = 767;
@@ -18,7 +17,6 @@ export type ShellMode = 'lite' | 'full';
 export const MOBILE_LITE_PRIMARY_TABS: ReadonlySet<MonitorTab> = new Set([
   'live',
   'tasks',
-  'credits',
   'models',
 ]);
 
@@ -29,6 +27,7 @@ export const MOBILE_LITE_ADVANCED_TABS: ReadonlySet<MonitorTab> = new Set([
   'feedback',
   'metrics',
   'billing',
+  'credits',
   'llm',
   'memory',
   'context',
@@ -51,25 +50,10 @@ export const MOBILE_DESKTOP_ONLY_PANELS: ReadonlySet<MonitorTab> = new Set([
   'pipeline',
 ]);
 
-/** 積分中心：行動預設僅總覽；其餘放進階 */
-export const MOBILE_LITE_CREDITS_SECTIONS: ReadonlySet<CreditsSectionKey> = new Set([
-  'overview',
-]);
-
-export const MOBILE_DESKTOP_ONLY_CREDITS_SECTIONS: ReadonlySet<CreditsSectionKey> = new Set([
-  'admin',
-  'contributor',
-  'cloud',
-  'pools',
-  'contribution',
-  'appeals',
-]);
-
 /** SidePanel 主導航保留的分頁鍵 */
 export const MOBILE_LITE_NAV_PRIMARY_KEYS: ReadonlySet<string> = new Set([
   'live',
   'tasks',
-  'credits',
   'models',
 ]);
 
@@ -83,10 +67,6 @@ export function isMobileLitePrimaryTab(tab: MonitorTab | string): boolean {
 
 export function isMobileDesktopOnlyPanel(tab: MonitorTab | string): boolean {
   return MOBILE_DESKTOP_ONLY_PANELS.has(tab as MonitorTab);
-}
-
-export function isMobileDesktopOnlyCreditsSection(section: CreditsSectionKey): boolean {
-  return MOBILE_DESKTOP_ONLY_CREDITS_SECTIONS.has(section);
 }
 
 export function partitionNavGroupsForMobileLite(groups: MonitorNavGroup[]): {

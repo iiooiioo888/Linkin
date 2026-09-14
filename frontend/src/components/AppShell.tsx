@@ -207,6 +207,7 @@ export default function AppShell({
         onOpenSettings={onOpenSettings}
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
         onMonitorTabChange={onMonitorTabChange}
+        onViewChange={onViewChange}
       />
 
       {/* ══ 中间区域：ActivityBar + SidePanel + Main + RightPanel ══ */}
@@ -267,7 +268,7 @@ export default function AppShell({
           }}
           onMobileWallet={() => {
             onViewChange('monitor');
-            onMonitorTabChange('credits');
+            onMonitorTabChange('models');
           }}
         />
       )}
@@ -278,8 +279,7 @@ export default function AppShell({
         taskCount={statusInfo.taskCount}
         memoryCount={statusInfo.memoryCount}
         onOpenCredits={() => {
-          onViewChange('monitor');
-          onMonitorTabChange('credits');
+          onViewChange('chat');
         }}
       />
     </div>

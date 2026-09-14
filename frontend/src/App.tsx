@@ -29,6 +29,7 @@ import {
 } from './lib/storage';
 import { coerceTaskProgressStatus, isTerminalTaskStatus, looksLikeCompanyQuery } from './lib/chatWorkspace';
 import { hydrateWorldModules } from './lib/worldModules';
+import { normalizeMonitorTab } from './lib/monitorTabs';
 import { splitThink } from './lib/splitThink';
 import AppShell from './components/AppShell';
 import ContextModal from './components/ContextModal';
@@ -1037,7 +1038,7 @@ export default function App() {
       if (tab === 'grill') {
         requestRoleGrillDesk(focusAgentId && !isLinkinStudioAgent(focusAgentId) ? focusAgentId : undefined);
       }
-      const resolved = tab === 'grill' ? 'agents' : tab;
+      const resolved = tab === 'grill' ? 'agents' : normalizeMonitorTab(tab);
       const keepAgent =
         (resolved === 'agents' && !isLinkinStudioAgent(focusAgentId)) ||
         (resolved === 'studio' && isLinkinStudioAgent(focusAgentId));
@@ -1223,8 +1224,7 @@ export default function App() {
               onDecisionResolved={handleDecisionResolved}
               onTaskStatePatch={handleTaskStatePatch}
               onOpenBilling={() => {
-                setActiveView('monitor');
-                setMonitorTab('credits');
+                setActiveView('chat');
               }}
               liveSpent={turnSpent}
             />
@@ -1294,7 +1294,7 @@ export default function App() {
         }}
         onGoUsage={() => {
           setSettingsOpen(false);
-          handleMonitorTabChange('credits');
+          handleMonitorTabChange('models');
         }}
       />
       <ContextModal

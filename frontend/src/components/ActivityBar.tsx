@@ -195,8 +195,7 @@ function MobileBottomBar({
   const onMonitor = activeView === 'monitor' || activeView === 'traces' || activeView === 'task' || activeView === 'raho';
   const tasksActive =
     onMonitor && (monitorTab === 'tasks' || monitorTab === 'pipeline' || activeView === 'traces');
-  const walletActive =
-    onMonitor && (monitorTab === 'credits' || monitorTab === 'billing' || monitorTab === 'models');
+  const walletActive = onMonitor && monitorTab === 'models';
 
   return (
     <>
