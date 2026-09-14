@@ -352,7 +352,7 @@ export default function ChatView({
 
   return (
     <div
-      className={`ws${!showMonitor ? ' is-chat-only' : ' has-monitor'}${monitorSheetOpen ? ' is-monitor-open' : ''}`}
+      className={`ws flex min-h-0 flex-1 flex-col${!showMonitor ? ' is-chat-only' : ' has-monitor'}${monitorSheetOpen ? ' is-monitor-open' : ''}`}
     >
       <div className="ws-main">
         <nav className="ws-nav">

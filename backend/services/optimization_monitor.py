@@ -47,6 +47,7 @@ def _system_task_stats() -> dict[str, Any]:
         return {
             "tasks_total": 0,
             "tasks_running": 0,
+            "tasks_pending": 0,
             "tasks_completed": 0,
             "tasks_failed": 0,
             "success_rate": 0.0,
@@ -54,12 +55,15 @@ def _system_task_stats() -> dict[str, Any]:
             "total_iterations": 0,
         }
     completed = [t for t in tasks if t.status == "completed"]
-    failed = [t for t in tasks if t.status == "failed"]
-    running = [t for t in tasks if t.status in ("running", "pending")]
+    failed = [t for t in tasks if t.status in ("failed", "cancelled", "interrupted")]
+    pending = [t for t in tasks if t.status == "pending"]
+    running_only = [t for t in tasks if t.status == "running"]
+    running = pending + running_only
     scored = [t.score for t in completed if isinstance(t.score, (int, float))]
     return {
         "tasks_total": len(tasks),
         "tasks_running": len(running),
+        "tasks_pending": len(pending),
         "tasks_completed": len(completed),
         "tasks_failed": len(failed),
         "success_rate": round(len(completed) / len(tasks) * 100, 1) if tasks else 0.0,

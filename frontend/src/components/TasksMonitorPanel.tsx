@@ -213,6 +213,7 @@ export default function TasksMonitorPanel({
   const queueCount = tasksInColumn(tasks, 'queue').length;
   const runningCount = tasksInColumn(tasks, 'running').length;
   const doneCount = tasksInColumn(tasks, 'done').length;
+  const failedCount = tasksInColumn(tasks, 'failed').length;
   const statusStack = buildStatusStack(stats ?? {});
   const taskMatrix = buildTaskDistributionMatrix(tasks);
   const capacityWarn = runningCount >= 10;
@@ -257,11 +258,11 @@ export default function TasksMonitorPanel({
         </div>
         <div className="rd-stat">
           <span className="rd-stat-l">已完成</span>
-          <span className={`rd-stat-v ${doneCount ? 'ok' : ''}`}>{stats?.tasks_completed ?? doneCount}</span>
+          <span className={`rd-stat-v ${doneCount ? 'ok' : ''}`}>{doneCount}</span>
         </div>
         <div className="rd-stat">
           <span className="rd-stat-l">失敗</span>
-          <span className={`rd-stat-v ${(stats?.tasks_failed ?? 0) > 0 ? 'er' : ''}`}>{stats?.tasks_failed ?? 0}</span>
+          <span className={`rd-stat-v ${failedCount > 0 ? 'er' : ''}`}>{failedCount}</span>
         </div>
         <div className="rd-stat">
           <span className="rd-stat-l">成功率</span>

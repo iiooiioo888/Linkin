@@ -268,14 +268,17 @@ def collect_dashboard() -> dict[str, Any]:
         memories = []
 
     completed = [t for t in tasks if t["status"] == "completed"]
-    failed = [t for t in tasks if t["status"] == "failed"]
-    running = [t for t in tasks if t["status"] in ("running", "pending")]
+    failed = [t for t in tasks if t["status"] in ("failed", "cancelled", "interrupted")]
+    pending = [t for t in tasks if t["status"] == "pending"]
+    running_only = [t for t in tasks if t["status"] == "running"]
+    running = pending + running_only
     scored = [t["score"] for t in completed if isinstance(t["score"], (int, float))]
 
     stats = {
         "tasks_total": len(tasks),
         "tasks_completed": len(completed),
         "tasks_failed": len(failed),
+        "tasks_pending": len(pending),
         "tasks_running": len(running),
         "success_rate": round(len(completed) / len(tasks) * 100, 1) if tasks else 0,
         "avg_score": round(sum(scored) / len(scored), 2) if scored else None,

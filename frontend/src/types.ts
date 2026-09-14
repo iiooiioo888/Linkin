@@ -832,6 +832,8 @@ export interface DashboardStats {
   tasks_total: number;
   tasks_completed: number;
   tasks_failed: number;
+  /** 僅 pending；tasks_running 仍含 pending+running 以相容舊欄位 */
+  tasks_pending?: number;
   tasks_running: number;
   /** 成功率（0~100） */
   success_rate: number;
@@ -1530,6 +1532,7 @@ export interface OptimizationMonitorData {
   system_stats?: {
     tasks_total: number;
     tasks_running: number;
+    tasks_pending?: number;
     tasks_completed: number;
     tasks_failed: number;
     success_rate: number;

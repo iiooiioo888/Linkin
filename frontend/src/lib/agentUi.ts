@@ -117,11 +117,12 @@ export function itemsInColumn(items: AgentWorkItem[], key: WorkItemColumnKey): A
   return items.filter((item) => workItemColumnKey(item.status) === key);
 }
 
-/** 控制台任務列表同一套三欄：隊列 → 執行中 → 已完成 */
+/** 控制台任務列表四欄：隊列 → 執行中 → 已完成 → 失敗（含取消／中斷） */
 export const TASK_COLUMNS = [
   { key: 'queue', label: '隊列', statuses: ['pending'] },
   { key: 'running', label: '執行中', statuses: ['running'] },
-  { key: 'done', label: '已完成', statuses: ['completed', 'failed', 'cancelled', 'interrupted'] },
+  { key: 'done', label: '已完成', statuses: ['completed'] },
+  { key: 'failed', label: '失敗', statuses: ['failed', 'cancelled', 'interrupted'] },
 ] as const;
 
 export type TaskColumnKey = (typeof TASK_COLUMNS)[number]['key'];
