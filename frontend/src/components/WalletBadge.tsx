@@ -28,7 +28,7 @@ export default function WalletBadge({ onOpenBilling, compact = false, minimal = 
           ? 'border-[color-mix(in_srgb,var(--console-amber)_35%,transparent)] bg-[color-mix(in_srgb,var(--console-amber)_10%,transparent)] console-status-amber hover:bg-[color-mix(in_srgb,var(--console-amber)_16%,transparent)]'
           : 'border-[color-mix(in_srgb,var(--console-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] console-status-accent hover:bg-[color-mix(in_srgb,var(--console-accent)_16%,transparent)]'
       }`}
-      title={low ? '積分偏低，點擊前往帳務中心' : '點擊查看靈境積分'}
+      title={low ? '積分偏低，請在對話中查看餘額與用量' : '點擊返回對話查看餘額'}
     >
       <span className={low ? 'apple-dot apple-dot--warn' : 'apple-dot apple-dot--ok'} />
       {minimal ? label : compact ? `${label} 積分` : `積分 ${label}`}

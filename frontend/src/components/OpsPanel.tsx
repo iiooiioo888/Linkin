@@ -84,13 +84,6 @@ export default function OpsPanel() {
               <ConsoleSnippetList title="目前區塊">
                 <p className="text-[11px] text-[var(--console-sub)]">{OPS_HINTS[tab]}</p>
               </ConsoleSnippetList>
-              {tab === 'cloud' ? (
-                <ConsoleSnippetList title="計費整合">
-                  <p className="text-[11px] text-[var(--console-sub)]">
-                    雲費用帳單已整合至靈境積分中心 → 雲與 Docker
-                  </p>
-                </ConsoleSnippetList>
-              ) : null}
               <ConsoleSnippetList title="提示">
                 <div className={consoleLayout.snippetRow}>
                   <span>整頁滾動</span>
