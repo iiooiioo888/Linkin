@@ -122,7 +122,9 @@ export default function BillingCreditsHub({ liteShell = false }: { liteShell?: b
   const [lockPreview, setLockPreview] = useState<LockPreview>({ amount: 10, days: 30, multiplier: 1.02 });
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [topupAmount, setTopupAmount] = useState('5000');
+  const [topupAmount, setTopupAmount] = useState('');
+  const topupNumeric = Number(topupAmount);
+  const topupValid = topupAmount.trim() !== '' && Number.isFinite(topupNumeric) && topupNumeric > 0;
 
   const refresh = useCallback(async () => {
     try {
@@ -303,7 +305,9 @@ export default function BillingCreditsHub({ liteShell = false }: { liteShell?: b
                           切換
                         </button>
                       ) : (
-                        <span className="text-[10px] text-[var(--console-accent)]">使用中</span>
+                        <span className="shrink-0 text-[10px] text-[var(--console-accent)]" aria-current="true">
+                          使用中
+                        </span>
                       )}
                     </div>
                   );
@@ -601,10 +605,31 @@ export default function BillingCreditsHub({ liteShell = false }: { liteShell?: b
     if (section === 'overview') {
       return (
         <>
-          <ConsoleSnippetList title="快速充值">
+          <ConsoleSnippetList title="快速充值（開發／測試）">
             <div className="flex gap-2">
-              <input type="number" value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} className="min-w-0 flex-1 rounded border border-[var(--console-line)] bg-[var(--console-bg)] px-2 py-1 text-[11px]" />
-              <button type="button" disabled={busy} onClick={() => void run(() => topupBillingCredits(Number(topupAmount)), '充值成功')} className="shrink-0 text-[11px] text-[var(--console-blue)]">充值</button>
+              <input
+                type="number"
+                min={1}
+                placeholder="輸入積分"
+                value={topupAmount}
+                onChange={(e) => setTopupAmount(e.target.value)}
+                className="min-w-0 flex-1 rounded border border-[var(--console-line)] bg-[var(--console-bg)] px-2 py-1 text-[11px]"
+              />
+              <button
+                type="button"
+                disabled={busy || !topupValid}
+                onClick={() => {
+                  if (!topupValid) return;
+                  const ok = window.confirm(
+                    `確認充值 ${fmtCredits(topupNumeric)} 靈境積分？此為開發／測試用，請再次確認金額。`,
+                  );
+                  if (!ok) return;
+                  void run(() => topupBillingCredits(topupNumeric), '充值成功');
+                }}
+                className="shrink-0 text-[11px] text-[var(--console-blue)] disabled:opacity-40"
+              >
+                充值
+              </button>
             </div>
           </ConsoleSnippetList>
           <ConsoleSnippetList title="分類帳">
@@ -750,9 +775,14 @@ export default function BillingCreditsHub({ liteShell = false }: { liteShell?: b
               {(wallet.plans as { id: string; name_zh: string }[]).slice(0, 4).map((p) => (
                 <ConsolePlanChip
                   key={p.id}
-                  label={p.name_zh}
+                  label={wallet.account?.plan_id === p.id ? `${p.name_zh} · 使用中` : p.name_zh}
                   active={wallet.account?.plan_id === p.id}
-                  onClick={wallet.account?.plan_id === p.id ? undefined : () => void run(() => assignBillingPlan(p.id), `已切換至 ${p.name_zh}`)}
+                  hint={wallet.account?.plan_id === p.id ? '目前方案' : undefined}
+                  onClick={
+                    wallet.account?.plan_id === p.id
+                      ? undefined
+                      : () => void run(() => assignBillingPlan(p.id), `已切換至 ${p.name_zh}`)
+                  }
                 />
               ))}
             </div>

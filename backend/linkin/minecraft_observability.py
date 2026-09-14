@@ -161,7 +161,11 @@ def _recent_errors(limit: int = 5) -> list[dict[str, Any]]:
     bad_status = {"failed", "partial", "bridge_offline", "error", "cancelled"}
     out: list[dict[str, Any]] = []
     for row in reversed(rows):
+        if row.get("dry_run"):
+            continue
         status = str(row.get("status") or "")
+        if status in {"dry_run", "ok"}:
+            continue
         if status in bad_status or row.get("bridge_offline"):
             out.append(row)
         if len(out) >= limit:

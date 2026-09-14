@@ -125,7 +125,12 @@ def _format_injected_context(state: StateInput) -> str:
 
 
 def _generate_system_prompt(state: StateInput) -> str:
+    from backend.core.locale_prompt import ui_language_system_overlay
+
     system = templates.GENERATE_INITIAL_ANSWER_SYSTEM
+    locale_line = ui_language_system_overlay(state.get("ui_language"))
+    if locale_line:
+        system = f"{locale_line}\n\n{system}"
     linkin = state.get("linkin_context") or {}
     if isinstance(linkin, dict) and linkin.get("active") and linkin.get("system_overlay"):
         return f"{linkin['system_overlay']}\n{system}"

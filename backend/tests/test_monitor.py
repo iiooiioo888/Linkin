@@ -255,6 +255,43 @@ def test_agent_monitor_groups_live_kanban_by_role(tmp_path, monkeypatch):
     assert data["summary"]["roles_busy"] >= 1
 
 
+def test_agent_monitor_coerces_completed_task_work_items(tmp_path, monkeypatch):
+    from backend.services.agent_monitor import collect_agent_monitor
+
+    monkeypatch.setenv("EVOL_COMPANY_RUN_LOG_DIR", str(tmp_path / "empty_runs"))
+    monkeypatch.setenv("EVOL_ROLE_CATALOG_PATH", str(tmp_path / "role_catalog.json"))
+    from backend.company.role_catalog import reset_catalog_cache
+
+    reset_catalog_cache()
+    rec = TaskRecord("co-done", "已完成任務", "company", "quick_task")
+    rec.resolved_path = "company"
+    rec.status = "completed"
+    rec.phase = "done"
+    rec.answer = "done"
+    rec.kanban = {
+        "executing": [
+            {
+                "id": "stale-1",
+                "title": "殘留 executing",
+                "assignee": "js_dev",
+                "updated_at": "2026-08-26T07:00:00+00:00",
+            }
+        ],
+    }
+    monkeypatch.setattr(task_manager, "tasks", {"co-done": rec})
+
+    data = collect_agent_monitor()
+    by_id = {a["id"]: a for a in data["agents"]}
+
+    assert data["summary"]["running_company_tasks"] == 0
+    assert by_id["js_dev"]["executing"] == 0
+    assert by_id["js_dev"]["done"] >= 1
+    assert "co-done" not in by_id["js_dev"]["active_task_ids"]
+    stale = next(i for i in by_id["js_dev"]["work_items"] if i["id"] == "stale-1")
+    assert stale["status"] == "done"
+    assert stale["task_status"] == "completed"
+
+
 def test_agent_monitor_manager_and_synthesizer_coordinate(tmp_path, monkeypatch):
     from backend.services.agent_monitor import collect_agent_monitor
 

@@ -328,6 +328,8 @@ class ChatRequest(BaseModel):
     company_template: str = "quick_task"
     # 多輪對話歷史：[{"role": "user"|"assistant", "content": "..."}, ...]
     history: list[dict[str, str]] = []
+    # 前端 i18n（zh-TW / en）→ 約束回覆語言
+    ui_language: str | None = None
     # RAHO：用戶 Grill-Me 鎖定後的戰役簡報
     semantic_lock: dict[str, Any] | None = None
     skip_user_grill: bool = False
@@ -914,6 +916,8 @@ async def chat(req: ChatRequest):
     lock = req.semantic_lock or {}
     if isinstance(lock, dict) and lock.get("locked_brief"):
         query = str(lock["locked_brief"])
+    from backend.core.locale_prompt import normalize_ui_language
+
     initial_state = {
         "query": query,
         "session_id": session_id,
@@ -926,6 +930,7 @@ async def chat(req: ChatRequest):
         "execution_strategy": req.execution_strategy,
         "company_template": req.company_template,
         "semantic_lock": lock if isinstance(lock, dict) else {},
+        "ui_language": normalize_ui_language(req.ui_language),
     }
     result = await evoloop_graph.ainvoke(initial_state)
     return ChatResponse(
@@ -1167,6 +1172,7 @@ async def chat_stream(req: ChatRequest):
             chat_billing_snapshot,
             end_chat_billing,
         )
+        from backend.core.locale_prompt import normalize_ui_language
 
         billing_token = begin_chat_billing(session_id)
         state: dict[str, Any] = {
@@ -1175,6 +1181,7 @@ async def chat_stream(req: ChatRequest):
             "task_id": session_id,
             "history": req.history or [],
             "semantic_lock": req.semantic_lock or {},
+            "ui_language": normalize_ui_language(req.ui_language),
         }
         lock = req.semantic_lock or {}
         if isinstance(lock, dict) and lock.get("locked_brief"):

@@ -646,10 +646,14 @@ class TaskManager:
     async def _run_simple_task(self, record: TaskRecord) -> None:
         """簡單任務：記憶檢索 → OPC 上下文增強 → 生成 → 反思迴圈。"""
         tracer = TraceLogger(record.task_id)
+        opts = record.options or {}
+        from backend.core.locale_prompt import normalize_ui_language
+
         state: dict[str, Any] = {
             "query": record.query,
             "session_id": record.task_id,
             "history": [],
+            "ui_language": normalize_ui_language(opts.get("ui_language")),
         }
         try:
             self._set_phase(record, "retrieve_memories")

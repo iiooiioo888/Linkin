@@ -242,6 +242,8 @@ export interface TaskOptions {
   locked_brief?: string;
   /** 需求審計官核發的戰術指令 JSON */
   auditor_ticket?: AuditorTicket;
+  /** 前端 i18n 語系（zh-TW / en） */
+  ui_language?: string;
 }
 
 /** 任務即時狀態（POST /tasks + GET /tasks/{id}） */
