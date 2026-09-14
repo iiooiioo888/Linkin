@@ -17,7 +17,11 @@ export function StatusColumnBoard({
   return (
     <div className={`rd-board ${compact ? 'rd-board--compact' : ''}`}>
       {columns.map((col) => (
-        <section key={col.key} className={`rd-col ${selectedKey === col.key ? 'sel' : ''}`}>
+        <section
+          key={col.key}
+          className={`rd-col ${selectedKey === col.key ? 'sel' : ''}`}
+          data-task-column={col.key}
+        >
           <button
             type="button"
             className="rd-col-h"

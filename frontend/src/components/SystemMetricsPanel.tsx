@@ -37,6 +37,7 @@ import {
   WarnBar,
   consoleLayout,
 } from './ui/ConsoleLayout';
+import { formatPercentKpiParts, normalizePercentNumber } from '../lib/formatMetrics';
 import { useMonitorStore } from '../stores/monitorStore';
 
 type MetricRow = {
@@ -215,6 +216,7 @@ export default function SystemMetricsPanel() {
   const cache = data?.llm_cache;
   const hitPct = Math.round((cache?.hit_rate ?? 0) * 100);
   const sys = data?.system_stats;
+  const taskSuccessPct = normalizePercentNumber(sys?.success_rate);
   const reflectionTrace = data?.reflection_trace;
   const activeCount = data?.roadmap?.filter((r) => r.status === 'active').length ?? 0;
   const recentCycles = reflectionTrace?.recent_cycles ?? [];
@@ -298,7 +300,10 @@ export default function SystemMetricsPanel() {
             <KpiGrid6>
               {[
                 { label: '快取命中', value: `${hitPct}%`, accent: true },
-                { label: '任務成功率', value: `${sys?.success_rate ?? 0}%` },
+                {
+                  label: '任務成功率',
+                  ...formatPercentKpiParts(taskSuccessPct ?? 0),
+                },
                 {
                   label: '反思均輪次',
                   value: reflectionTrace?.avg_iterations != null ? String(reflectionTrace.avg_iterations) : '—',
@@ -311,8 +316,9 @@ export default function SystemMetricsPanel() {
                   key={kpi.label}
                   label={kpi.label}
                   value={kpi.value}
+                  unit={'unit' in kpi ? kpi.unit : undefined}
                   spark={spark}
-                  accent={kpi.accent}
+                  accent={'accent' in kpi ? kpi.accent : undefined}
                 />
               ))}
             </KpiGrid6>

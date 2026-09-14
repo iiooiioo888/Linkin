@@ -16,6 +16,7 @@ import TaskPanel, {
   STANDARD_PHASES,
   phaseIndex,
 } from './TaskPanel';
+import { formatPercentLabel } from '../lib/formatMetrics';
 import { buildStatusStack, buildTaskDistributionMatrix, taskPriority } from '../lib/monitorData';
 import ErrorState from './ui/ErrorState';
 import { StackBar, TaskDistributionMatrix, TaskPriorityCard } from './ui/monitor';
@@ -256,17 +257,19 @@ export default function TasksMonitorPanel({
           <span className="rd-stat-l">執行中</span>
           <span className="rd-stat-v">{runningCount}</span>
         </div>
-        <div className="rd-stat">
+        <div className="rd-stat" data-testid="task-stat-done">
           <span className="rd-stat-l">已完成</span>
           <span className={`rd-stat-v ${doneCount ? 'ok' : ''}`}>{doneCount}</span>
         </div>
-        <div className="rd-stat">
+        <div className="rd-stat" data-testid="task-stat-failed">
           <span className="rd-stat-l">失敗</span>
           <span className={`rd-stat-v ${failedCount > 0 ? 'er' : ''}`}>{failedCount}</span>
         </div>
         <div className="rd-stat">
           <span className="rd-stat-l">成功率</span>
-          <span className={`rd-stat-v ${(stats?.success_rate ?? 0) > 0 ? 'ok' : ''}`}>{stats?.success_rate ?? 0}%</span>
+          <span className={`rd-stat-v ${(stats?.success_rate ?? 0) > 0 ? 'ok' : ''}`}>
+            {formatPercentLabel(stats?.success_rate ?? 0)}
+          </span>
         </div>
         <div className="rd-stat">
           <span className="rd-stat-l">平均評分</span>
