@@ -5,6 +5,7 @@
  * 控制面版视图、OPC 右侧诊断面板。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ChatMessage, ChatSession, TaskProgress } from './types';
 import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, startUserGrill, streamAuditor, TaskWebSocket } from './api/client';
 import type { ChatBillingFootnote } from './api/client';
@@ -26,7 +27,7 @@ import {
   saveActiveSessionId,
   saveSessions,
 } from './lib/storage';
-import { coerceTaskProgressStatus, looksLikeCompanyQuery } from './lib/chatWorkspace';
+import { coerceTaskProgressStatus, isTerminalTaskStatus, looksLikeCompanyQuery } from './lib/chatWorkspace';
 import { hydrateWorldModules } from './lib/worldModules';
 import { splitThink } from './lib/splitThink';
 import AppShell from './components/AppShell';
@@ -55,6 +56,7 @@ function createSession(): ChatSession {
 }
 
 export default function App() {
+  const { i18n } = useTranslation();
   // ── 会话管理 ──
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
     const loaded = loadSessions();
@@ -533,7 +535,7 @@ export default function App() {
               ),
             }));
           },
-        }, history, { semantic_lock: semanticLock });
+        }, history, { semantic_lock: semanticLock, ui_language: i18n.language });
         return;
       }
 
@@ -547,6 +549,7 @@ export default function App() {
             ...options.taskOptions,
             semantic_brief: workQuery !== query ? workQuery : options.taskOptions?.semantic_brief,
             auditor_ticket: options.taskOptions?.auditor_ticket,
+            ui_language: i18n.language,
           },
         );
         updateSession(sessionId, (s) => ({
@@ -566,10 +569,10 @@ export default function App() {
 
         const applyProgress = (progress: TaskProgress) => {
           // 執行中若新快照缺 raho／pending 欄位，保留上一幀待決，避免決策列被輪詢冲掉
-          const running =
+          const progressRunning =
             progress.status === 'running' || progress.status === 'pending';
           let mergedProgress = progress;
-          if (running && lastProgress?.raho) {
+          if (progressRunning && lastProgress?.raho) {
             const prevPending = lastProgress.raho.pending_decisions ?? [];
             if (!progress.raho) {
               mergedProgress = { ...progress, raho: { ...lastProgress.raho } };
@@ -582,6 +585,10 @@ export default function App() {
           }
           lastProgress = mergedProgress;
           const liveDraft = mergedProgress.answer?.trim() ?? '';
+          const terminal = isTerminalTaskStatus(mergedProgress.status);
+          const running =
+            !terminal &&
+            (mergedProgress.status === 'running' || mergedProgress.status === 'pending');
           const roleThink = Object.values(mergedProgress.kanban ?? {})
             .flat()
             .map((it) => String(it.thinking ?? '').trim())
@@ -601,7 +608,7 @@ export default function App() {
                     taskState: mergedProgress,
                     content: liveDraft || m.content,
                     thinking: roleThink || eventThink || m.thinking,
-                    streaming: running,
+                    streaming: terminal ? false : running,
                   }
                 : m,
             ),
@@ -767,7 +774,7 @@ export default function App() {
         setSending(false);
       }
     },
-    [activeSession, updateSession],
+    [activeSession, i18n.language, updateSession],
   );
 
   const handleGrillAnswer = useCallback(

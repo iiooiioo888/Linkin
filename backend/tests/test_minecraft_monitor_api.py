@@ -105,6 +105,22 @@ def test_ai_snapshot_and_context(client: TestClient):
     assert blob["chars"] > 0
 
 
+def test_recent_errors_excludes_dry_run_probe(client: TestClient):
+    append_minecraft_event(
+        domain="bridge",
+        action="probe",
+        status="dry_run",
+        summary="MineMCP 探測 connected=False dry_run=True",
+        dry_run=True,
+        details={"connected": False, "dry_run": True},
+    )
+    res = client.get("/linkin/minecraft/monitor/summary")
+    assert res.status_code == 200
+    errors = res.json().get("recent_errors") or []
+    assert not any(e.get("dry_run") for e in errors)
+    assert not any("dry_run=True" in str(e.get("summary") or "") for e in errors)
+
+
 def test_map_plans_list(client: TestClient):
     res = client.get("/linkin/map/plans")
     assert res.status_code == 200

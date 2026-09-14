@@ -417,8 +417,24 @@ def _ingest_live_task(agents: dict[str, dict[str, Any]], task: TaskRecord) -> No
     live_running = task.status in {"running", "pending"}
     kanban = task.kanban or {}
 
+    def _effective_item_status(raw: str) -> str:
+        status = _status_key(raw)
+        if live_running:
+            return status
+        if task.status == "completed":
+            if status in OPEN_STATUSES:
+                return WorkItemStatus.DONE.value
+            return status
+        if task.status in {"cancelled", "interrupted"}:
+            if status in OPEN_STATUSES:
+                return WorkItemStatus.CANCELLED.value
+            return status
+        if task.status == "failed" and status in OPEN_STATUSES:
+            return WorkItemStatus.BLOCKED.value
+        return status
+
     for raw_status, items in kanban.items():
-        status = _status_key(raw_status)
+        status = _effective_item_status(raw_status)
         for item in items or []:
             if not isinstance(item, dict):
                 continue
@@ -545,6 +561,34 @@ def _ingest_live_task(agents: dict[str, dict[str, Any]], task: TaskRecord) -> No
         for role in _roles_for_event(payload):
             if role in agents:
                 _append_event(agents[role], payload, task)
+
+
+_TERMINAL_TASK_STATUSES = frozenset({"completed", "failed", "cancelled", "interrupted"})
+
+
+def _coerce_terminal_task_work_items(agents: dict[str, dict[str, Any]], task: TaskRecord) -> None:
+    """終態任務：清掉 live 工作項上的 executing／審查中等殘值。"""
+    if task.status not in _TERMINAL_TASK_STATUSES:
+        return
+    if task.status == "completed":
+        target = WorkItemStatus.DONE.value
+    elif task.status == "failed":
+        target = WorkItemStatus.BLOCKED.value
+    else:
+        target = WorkItemStatus.CANCELLED.value
+    tid = task.task_id
+    for agent in agents.values():
+        active_ids = agent.get("active_task_ids") or []
+        if tid in active_ids:
+            agent["active_task_ids"] = [x for x in active_ids if x != tid]
+        for item in agent.get("work_items") or []:
+            if item.get("task_id") != tid or item.get("source") != "live":
+                continue
+            st = _status_key(item.get("status"))
+            if st in OPEN_STATUSES:
+                item["status"] = target
+                item["task_status"] = task.status
+                item["updated_at"] = _now_iso()
 
 
 def _ingest_run_logs(agents: dict[str, dict[str, Any]]) -> None:
@@ -1182,6 +1226,7 @@ def collect_agent_monitor() -> dict[str, Any]:
             running_company += 1
         try:
             _ingest_live_task(agents, rec)
+            _coerce_terminal_task_work_items(agents, rec)
         except Exception:
             logger.warning("聚合任務 %s 的角色資料失敗（已跳過）", rec.task_id, exc_info=True)
 

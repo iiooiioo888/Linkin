@@ -4,6 +4,7 @@ import type { ChatMessage, TaskProgress } from '../types';
 import { resumeTask, sendFeedback } from '../api/client';
 import { cancelTaskAndSync } from '../lib/taskCancel';
 import { splitThink } from '../lib/splitThink';
+import { isRunningTaskStatus, isTerminalTaskStatus } from '../lib/chatWorkspace';
 import { ReflectionRadar } from './ReflectionCharts';
 import MarkdownBody from './media/MarkdownBody';
 import TaskPanel from './TaskPanel';
@@ -54,8 +55,10 @@ export default function MessageBubble({
   const parsed = splitThink(message.content);
   const thinking = (message.thinking || parsed.thinking).trim();
   const visible = parsed.content || message.content;
+  const taskTerminal = isTerminalTaskStatus(message.taskState?.status);
+  const showThinkProgress = Boolean(message.streaming && !taskTerminal);
   const runningTask =
-    message.taskState?.status === 'running' || message.taskState?.status === 'pending';
+    isRunningTaskStatus(message.taskState?.status) && !taskTerminal && !message.streaming;
 
   const handleCancelTask = async (taskId: string) => {
     setCancelError(null);
@@ -172,9 +175,9 @@ export default function MessageBubble({
           ) : (
             <div className="evo-msg-assistant space-y-3">
               {thinking && (
-                <details open={Boolean(message.streaming)} className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+                <details open={showThinkProgress} className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
                   <summary className="cursor-pointer text-[11px] font-medium text-[#8E8E93]">
-                    思考過程{message.streaming ? ' · 進行中' : ''}
+                    思考過程{showThinkProgress ? ' · 進行中' : taskTerminal ? ' · 已完成' : ''}
                   </summary>
                   <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[#AEAEB2]">
                     {thinking}
@@ -185,9 +188,14 @@ export default function MessageBubble({
                 <div className="markdown-body">
                   {runningTask && (
                     <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-[#636366]">
-                      {message.streaming || runningTask ? '生成中' : '回覆'}
+                      生成中
                     </p>
                   )}
+                  {!runningTask && visible && message.taskState && !taskTerminal ? (
+                    <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-[#636366]">
+                      回覆
+                    </p>
+                  ) : null}
                   <MarkdownBody markdown={visible} />
                 </div>
               ) : (

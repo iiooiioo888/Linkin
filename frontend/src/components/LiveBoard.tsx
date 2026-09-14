@@ -91,13 +91,15 @@ function WorkflowStrip({
   const apiReady =
     routes.some((r) => r.configured && r.enabled) || Boolean(feed.llmOps?.configured);
   const pinned = feed.agents.filter((a) => Boolean(a.preferred_model || a.preferred_provider)).length;
-  const running = feed.runningTasks > 0 || feed.live;
+  const taskRunning =
+    feed.runningTasks > 0 || (feed.summary?.running_company_tasks ?? 0) > 0;
   const steps: Array<{
     n: string;
     label: string;
     hint: string;
     tab: MonitorTab;
     done: boolean;
+    active?: boolean;
     onClick?: () => void;
   }> = [
     {
@@ -121,9 +123,10 @@ function WorkflowStrip({
     {
       n: '3',
       label: '執行任務',
-      hint: running ? '進行中' : '佇列與進度',
+      hint: taskRunning ? '進行中' : '佇列與進度',
       tab: 'tasks',
-      done: running,
+      done: !taskRunning && (feed.summary?.work_items_done ?? 0) > 0,
+      active: taskRunning,
     },
     {
       n: '4',
@@ -138,6 +141,8 @@ function WorkflowStrip({
     <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
       {steps.map((s, i) => {
         const next = i === nextIdx;
+        const header =
+          s.done ? '完成' : s.active ? '進行中' : next ? '下一步' : s.n;
         return (
           <button
             key={s.tab}
@@ -153,10 +158,10 @@ function WorkflowStrip({
           >
             <p
               className={`text-[10px] font-bold uppercase tracking-wider ${
-                next ? 'console-status-blue' : s.done ? 'console-status-green' : 'text-[var(--console-faint)]'
+                next ? 'console-status-blue' : s.done ? 'console-status-green' : s.active ? 'console-status-blue' : 'text-[var(--console-faint)]'
               }`}
             >
-              {s.done ? '完成' : next ? '下一步' : s.n}
+              {header}
             </p>
             <p className="mt-0.5 text-[13px] font-semibold text-[var(--console-ink)]">{s.label}</p>
             <p className="text-[10px] text-[var(--console-sub)]">{s.hint}</p>
