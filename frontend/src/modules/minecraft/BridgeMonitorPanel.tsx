@@ -42,7 +42,7 @@ export default function BridgeMonitorPanel() {
       setStatus(st);
       setSetup(summary.bridge_setup ?? null);
       const audits = (st.recent ?? []) as MinecraftAudit[];
-      const bridgeEv = ev.events.filter((e) => e.domain === 'bridge');
+      const bridgeEv = (ev.events ?? []).filter((e) => e.domain === 'bridge');
       setBridgeEvents(audits);
       if (bridgeEv.length) {
         setBridgeEvents(

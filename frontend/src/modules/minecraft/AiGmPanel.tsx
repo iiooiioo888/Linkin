@@ -40,6 +40,8 @@ function actionTypeLabel(type: string): string {
     quest_progress: '任務進度',
     npc_say: 'NPC 發言',
     hint: '提示',
+    player_assist: '玩家協助',
+    region_focus: '區域焦點',
     noop: '無動作',
   };
   return map[type] || type;
@@ -133,9 +135,9 @@ export default function AiGmPanel() {
         fetchMinecraftGmRuns(30),
         fetchMinecraftPlayerEvents({ limit: 20 }),
       ]);
-      setConfig(cfgRes.config);
-      setRuns(runsRes.runs);
-      setPlayerEvents([...(evRes.events || [])].reverse());
+      setConfig(cfgRes?.config ?? null);
+      setRuns(runsRes?.runs ?? []);
+      setPlayerEvents([...(evRes?.events ?? [])].reverse());
       setLastRefresh(Date.now());
     } catch (err) {
       setError((err as Error).message);

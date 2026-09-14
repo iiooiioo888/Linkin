@@ -96,6 +96,18 @@ export default function SituationStrip({ compact = false, pollMs = 15000 }: Situ
           <DimCell key={key} keyName={key} block={data[key]} />
         ))}
       </div>
+      {!compact && Array.isArray(data.rule_recommendations) && data.rule_recommendations.length ? (
+        <div className="rounded border border-[var(--console-border)] bg-[var(--console-surface)] px-2 py-1.5">
+          <span className="text-[9px] font-medium text-[#c9a961]">規則建議</span>
+          <ul className="mt-1 space-y-0.5 text-[9px] text-[var(--console-sub)]">
+            {data.rule_recommendations.slice(0, 3).map((rec) => (
+              <li key={rec.id}>
+                <span className="text-[var(--console-cyan)]">[{rec.action_type}]</span> {rec.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {!compact && Array.isArray(data.hints) && data.hints.length ? (
         <ul className="list-inside list-disc space-y-0.5 text-[9px] text-[var(--console-faint)]">
           {data.hints.slice(0, 4).map((hint, idx) => (

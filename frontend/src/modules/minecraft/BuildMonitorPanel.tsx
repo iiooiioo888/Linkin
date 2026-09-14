@@ -1,7 +1,7 @@
 /**
  * 建築落地監控 — build-brief jobs、方塊、取消／partial。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { fetchBuildBriefs, type BuildBrief } from '../../api/linkin';
 import { KpiSparkCard, MiniProgressBar } from '../../components/ui/monitor';
 import {
@@ -13,25 +13,26 @@ import {
   PanelAlert,
   PanelShell,
 } from '../../components/ui/ConsoleLayout';
-import { statusLabel, statusStripe } from './monitor/shared';
+import { statusLabel, statusStripe, useVisibilityPoll } from './monitor/shared';
 
 export default function BuildMonitorPanel() {
   const [briefs, setBriefs] = useState<BuildBrief[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setError(null);
     try {
       const res = await fetchBuildBriefs();
-      setBriefs(res.build_briefs);
+      setBriefs(res.build_briefs ?? []);
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useVisibilityPoll(load, 15000);
 
   const pending = briefs.filter((b) => (b.status ?? '') === 'pending_builder').length;
   const built = briefs.filter((b) => ['built', 'dispatched'].includes(b.status ?? '')).length;
@@ -50,7 +51,7 @@ export default function BuildMonitorPanel() {
           </KpiGrid6>
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>Build Brief 任務</ConsoleCardHeader>
-            {!briefs.length ? (
+            {!loading && !briefs.length ? (
               <p className="px-3 pb-3 text-xs text-[var(--console-faint)]">尚無建築意圖 — 請在敘事工作區 commit 後產生。</p>
             ) : (
               <ul className="divide-y divide-[var(--console-border)]">

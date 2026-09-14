@@ -1,7 +1,7 @@
 /**
  * NPC 監控 — 庫存、pending_world / applied / partial。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { fetchNpcs, fetchPendingWorldIntents, type NpcCard } from '../../api/linkin';
 import { KpiSparkCard, StackBar } from '../../components/ui/monitor';
 import {
@@ -13,7 +13,7 @@ import {
   PanelAlert,
   PanelShell,
 } from '../../components/ui/ConsoleLayout';
-import { statusLabel, statusStripe } from './monitor/shared';
+import { statusLabel, statusStripe, useVisibilityPoll } from './monitor/shared';
 
 type NpcRow = NpcCard & { id?: string; world_status?: string; source?: string };
 
@@ -21,21 +21,22 @@ export default function NpcMonitorPanel() {
   const [npcs, setNpcs] = useState<NpcRow[]>([]);
   const [pending, setPending] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setError(null);
     try {
       const [npcRes, intentRes] = await Promise.all([fetchNpcs(), fetchPendingWorldIntents()]);
-      setNpcs(npcRes.npcs as NpcRow[]);
-      setPending(intentRes.pending.npcs.length);
+      setNpcs((npcRes.npcs as NpcRow[]) ?? []);
+      setPending(intentRes.pending?.npcs?.length ?? 0);
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useVisibilityPoll(load, 15000);
 
   const counts = { pending_world: 0, applied: 0, partial: 0, other: 0 };
   for (const npc of npcs) {
@@ -67,6 +68,9 @@ export default function NpcMonitorPanel() {
           </ConsoleCard>
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>NPC 清單 · world_status</ConsoleCardHeader>
+            {!loading && !npcs.length ? (
+              <p className="px-3 pb-3 text-xs text-[var(--console-faint)]">尚無 NPC 資料。</p>
+            ) : null}
             <ul className="divide-y divide-[var(--console-border)]">
               {npcs.map((npc) => (
                 <li key={npc.id ?? npc.name} className="mon-task-card px-3 py-2 text-xs" data-priority={statusStripe(npc.world_status ?? 'other')}>

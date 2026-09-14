@@ -1,7 +1,7 @@
 /**
  * 任務／道具監控 — 世界意圖狀態帶。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { fetchItems, fetchPendingWorldIntents, fetchQuestProgressSummary, fetchQuests } from '../../api/linkin';
 import QuestRuntimeStrip from './QuestRuntimeStrip';
 import { KpiSparkCard, StackBar } from '../../components/ui/monitor';
@@ -14,7 +14,7 @@ import {
   PanelAlert,
   PanelShell,
 } from '../../components/ui/ConsoleLayout';
-import { statusLabel, statusStripe } from './monitor/shared';
+import { statusLabel, statusStripe, useVisibilityPoll } from './monitor/shared';
 
 export default function QuestItemMonitorPanel() {
   const [quests, setQuests] = useState<Array<{ id: string; title: string; world_status?: string }>>([]);
@@ -23,6 +23,7 @@ export default function QuestItemMonitorPanel() {
   const [pendingI, setPendingI] = useState(0);
   const [activeProgress, setActiveProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setError(null);
@@ -33,19 +34,21 @@ export default function QuestItemMonitorPanel() {
         fetchPendingWorldIntents(),
         fetchQuestProgressSummary(12),
       ]);
-      setQuests(q.quests as Array<{ id: string; title: string; world_status?: string }>);
-      setItems(i.items as Array<{ id: string; name: string; world_status?: string }>);
-      setPendingQ(intents.pending.quests.length);
-      setPendingI(intents.pending.items.length);
-      setActiveProgress(progress.active);
+      setQuests((q.quests as Array<{ id: string; title: string; world_status?: string }>) ?? []);
+      setItems((i.items as Array<{ id: string; name: string; world_status?: string }>) ?? []);
+      setPendingQ(intents.pending?.quests?.length ?? 0);
+      setPendingI(intents.pending?.items?.length ?? 0);
+      setActiveProgress(progress?.active ?? 0);
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useVisibilityPoll(load, 15000);
+
+  const dataReady = !loading;
 
   const questStack = [
     { label: '待落地', value: pendingQ, color: 'var(--console-amber)' },
@@ -77,6 +80,9 @@ export default function QuestItemMonitorPanel() {
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>任務狀態</ConsoleCardHeader>
             <div className="px-3 pb-3"><StackBar segments={questStack} /></div>
+            {dataReady && !quests.length ? (
+              <p className="px-3 pb-2 text-xs text-[var(--console-faint)]">尚無任務資料。</p>
+            ) : null}
             <ul className="divide-y divide-[var(--console-border)] border-t border-[var(--console-border)]">
               {quests.slice(0, 12).map((q) => (
                 <li key={q.id} className="mon-task-card px-3 py-2 text-xs" data-priority={statusStripe(q.world_status ?? 'other')}>

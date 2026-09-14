@@ -916,6 +916,16 @@ export type MinecraftSituationDimension = {
   confidence: number;
 };
 
+export type MinecraftSituationRuleRecommendation = {
+  id: string;
+  action_type: string;
+  message: string;
+  rationale?: string;
+  priority?: number;
+  auto_apply_safe?: boolean;
+  payload?: Record<string, unknown>;
+};
+
 export type MinecraftSituationSnapshot = {
   generated_at: number;
   market: MinecraftSituationDimension;
@@ -923,6 +933,8 @@ export type MinecraftSituationSnapshot = {
   land: MinecraftSituationDimension;
   players: MinecraftSituationDimension;
   hints: string[];
+  rule_recommendations?: MinecraftSituationRuleRecommendation[];
+  region_focus?: Record<string, unknown>;
 };
 
 export type MinecraftAiSnapshot = MinecraftMonitorSummary & {

@@ -71,6 +71,16 @@ def _player_event(action: str = "chat", player: str = "Steve") -> dict:
     )
 
 
+def test_validate_gm_actions_player_assist_and_region_focus():
+    raw = [
+        {"type": "player_assist", "message": "協助", "assist_type": "general"},
+        {"type": "region_focus", "focus_mode": "at_hotspot", "center": {"x": 1, "z": 2}},
+    ]
+    safe = validate_gm_actions(raw, max_actions=5)
+    types = {a["type"] for a in safe}
+    assert types == {"player_assist", "region_focus"}
+
+
 def test_validate_gm_actions_filters_unsafe():
     raw = [
         {"type": "npc_say", "message": "hi"},
