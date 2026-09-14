@@ -41,17 +41,19 @@ export default function MonitorHubPanel() {
   const lastPipe = data?.last_pipeline;
   const timeline = data?.pipeline_timeline ?? [];
   const plugins = data?.plugins;
-  const pendingBuild = data?.kpis.pending_build_briefs ?? 0;
-  const pendingWorld = data?.kpis.pending_world_intents ?? 0;
-  const playersLive = data?.kpis.players_live;
-  const onlinePlayers = playersLive?.online_count ?? data?.kpis.online_players ?? data?.players?.online_count ?? 0;
+  const kpis = data?.kpis;
+  const pendingBuild = kpis?.pending_build_briefs ?? 0;
+  const pendingWorld = kpis?.pending_world_intents ?? 0;
+  const playersLive = kpis?.players_live;
+  const onlinePlayers = playersLive?.online_count ?? kpis?.online_players ?? data?.players?.online_count ?? 0;
+  const summaryReady = Boolean(data) && !loading;
   const recentPlayerEvents = playersLive?.recent_events ?? 0;
   const mapUrl = plugins?.map_url?.trim() || '';
   const bridgeOffline = Boolean(data?.bridge?.enabled && !data?.bridge?.connected && !data?.bridge?.dry_run);
 
   const emptyActions: Array<{ show: boolean; title: string; hint?: string; actions: Array<{ label: string; href: string; primary?: boolean }> }> = [
     {
-      show: !lastPipe && !timeline.length,
+      show: summaryReady && !lastPipe && !timeline.length,
       title: '尚無管線執行紀錄',
       hint: '從敘事工作區執行 Phase 0–5 一鍵管線，或手動生成／提交草稿。',
       actions: [
@@ -59,7 +61,7 @@ export default function MonitorHubPanel() {
       ],
     },
     {
-      show: !mapUrl,
+      show: summaryReady && !mapUrl,
       title: '尚未設定伺服器地圖 URL',
       hint: '在插件中心啟用 Dynmap／BlueMap 並填寫公開 URL。',
       actions: [
@@ -68,7 +70,7 @@ export default function MonitorHubPanel() {
       ],
     },
     {
-      show: bridgeOffline || (!data?.bridge?.enabled && !data?.bridge?.dry_run),
+      show: summaryReady && (bridgeOffline || (!data?.bridge?.enabled && !data?.bridge?.dry_run)),
       title: data?.bridge?.enabled ? 'MineMCP 橋接離線' : 'MineMCP 尚未啟用',
       hint: '落地操作將 dry-run 或失敗。請設定 EVOL_MC_MCP_* 並探測連線。',
       actions: [
@@ -77,7 +79,7 @@ export default function MonitorHubPanel() {
       ],
     },
     {
-      show: pendingBuild > 0,
+      show: summaryReady && pendingBuild > 0,
       title: `待建築意圖 ${pendingBuild} 筆`,
       hint: '可在建築落地監控查看進度，或從敘事管線觸發 apply。',
       actions: [
@@ -86,7 +88,7 @@ export default function MonitorHubPanel() {
       ],
     },
     {
-      show: pendingWorld > 0,
+      show: summaryReady && pendingWorld > 0,
       title: `待世界意圖 ${pendingWorld} 筆`,
       hint: 'NPC／任務／道具待落地，可在對應監控或敘事工作區確認。',
       actions: [
@@ -139,10 +141,10 @@ export default function MonitorHubPanel() {
               accent={Boolean(pendingWorld)}
               spark={[1, 2, 3, 2, pendingWorld]}
             />
-            <KpiSparkCard label="地圖計畫" value={String(data?.kpis.map_plan_count ?? 0)} />
-            <KpiSparkCard label="NPC" value={String(data?.kpis.npc_count ?? 0)} />
-            <KpiSparkCard label="任務" value={String(data?.kpis.quest_count ?? 0)} />
-            <KpiSparkCard label="道具" value={String(data?.kpis.item_count ?? 0)} />
+            <KpiSparkCard label="地圖計畫" value={String(kpis?.map_plan_count ?? 0)} />
+            <KpiSparkCard label="NPC" value={String(kpis?.npc_count ?? 0)} />
+            <KpiSparkCard label="任務" value={String(kpis?.quest_count ?? 0)} />
+            <KpiSparkCard label="道具" value={String(kpis?.item_count ?? 0)} />
           </KpiGrid6>
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[10px]">
             <span className="text-[var(--console-faint)]">
@@ -207,12 +209,12 @@ export default function MonitorHubPanel() {
             <ConsoleCardHeader>地圖與布局</ConsoleCardHeader>
             <div className="flex flex-wrap items-center gap-2 px-3 pb-3 text-xs">
               <span className="text-[var(--console-muted)]">
-                地圖計畫 {data?.kpis.map_plan_count ?? 0} 筆
+                地圖計畫 {kpis?.map_plan_count ?? 0} 筆
               </span>
               <a href={minecraftHref('layout-preview')} className="console-btn">
                 布局預覽
               </a>
-              {(data?.kpis.map_plan_count ?? 0) === 0 ? (
+              {(kpis?.map_plan_count ?? 0) === 0 ? (
                 <>
                   <a href={minecraftHref('narrative')} className="console-btn-ghost">
                     生成敘事／地圖

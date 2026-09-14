@@ -139,7 +139,11 @@ export function useMonitorSummary(pollMs = 12000) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      setData(await fetchMinecraftMonitorSummary());
+      const summary = await fetchMinecraftMonitorSummary();
+      if (!summary?.kpis || typeof summary.kpis !== 'object') {
+        throw new Error('監控摘要格式異常（缺少 kpis）');
+      }
+      setData(summary);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -160,7 +164,7 @@ export function useAiEvents(limit = 20, pollMs = 10000) {
     setError(null);
     try {
       const res = await fetchMinecraftAiEvents({ limit });
-      setEvents(res.events.slice().reverse());
+      setEvents((res.events ?? []).slice().reverse());
     } catch (err) {
       setError((err as Error).message);
     }
