@@ -272,7 +272,14 @@ export default function MediaCrawlerPanel() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={btnCls} disabled={busy} onClick={() => void onValidate()}>校驗配置</button>
-            <button type="button" className={btnPrimaryCls} disabled={startDisabled} onClick={() => void onStart()}>
+            <button
+              type="button"
+              className={btnPrimaryCls}
+              disabled={startDisabled}
+              data-testid="mediacrawler-start"
+              data-dry-run={form.dry_run ? 'true' : 'false'}
+              onClick={() => void onStart()}
+            >
               {form.dry_run ? '乾跑啟動' : '啟動任務'}
             </button>
             <button type="button" className={btnCls} disabled={busy} onClick={() => void load()}>重新整理</button>

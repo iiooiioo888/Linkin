@@ -271,4 +271,30 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.getByTestId('viz-plugin-dsh-context')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/Context 可視化|dsh-context/)).toBeVisible();
   });
+
+  test('監控任務：看板含失敗欄且 KPI 已完成與欄位計數一致', async ({ page }) => {
+    await page.goto('/#/monitor/tasks');
+    await expect(page.locator('[data-task-column="failed"] .rd-col-h', { hasText: '失敗' })).toBeVisible({
+      timeout: 15_000,
+    });
+    const doneColText = await page.locator('[data-task-column="done"] .rd-col-h span:last-child').textContent();
+    const doneStatText = await page.getByTestId('task-stat-done').locator('.rd-stat-v').textContent();
+    expect((doneColText ?? '').trim()).toBe((doneStatText ?? '').trim());
+  });
+
+  test('系統總覽：任務成功率 KPI 不得出現雙重 %%', async ({ page }) => {
+    await page.goto('/#/monitor/metrics');
+    await expect(page.getByText('系統總覽').first()).toBeVisible({ timeout: 15_000 });
+    const value = page.locator('.mon-kpi-spark', { hasText: '任務成功率' }).locator('.mon-kpi-spark__value');
+    await expect(value).toBeVisible({ timeout: 15_000 });
+    await expect(value).not.toContainText('%%');
+  });
+
+  test('MediaCrawler：乾跑預設時主按鈕為乾跑啟動', async ({ page }) => {
+    await page.goto('/#/monitor/skills');
+    await expect(page.getByTestId('mediacrawler-panel')).toBeVisible({ timeout: 15_000 });
+    const start = page.getByTestId('mediacrawler-start');
+    await expect(start).toHaveAttribute('data-dry-run', 'true');
+    await expect(start).toHaveText('乾跑啟動');
+  });
 });

@@ -68,7 +68,7 @@ jobs:
         if: steps.pages.outputs.enabled == 'true'
         working-directory: ./frontend
         # 跳過 prebuild：export 已在上一步嘗試；檔案已在倉庫內。
-        run: npx tsc -b && npx vite build
+        run: npx tsc -b && npx vite build && node scripts/verify-ux-bundle.mjs
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
           VITE_GITHUB_PAGES: 'true'
