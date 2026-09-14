@@ -3,6 +3,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { deleteQuest, fetchQuests, generateQuest, type Quest } from '../../api/linkin';
+import { NARRATIVE_REGION_OPTIONS } from './localeRegions';
 import { questCardUri } from '../../lib/visualCards';
 import MediaGallery from '../../components/media/MediaGallery';
 import PendingWorldIntentsBanner from './PendingWorldIntentsBanner';
@@ -87,10 +88,9 @@ export default function QuestPanel() {
         </label>
         <label className="text-[10px] text-[#8a8f98]">區域
           <select value={region} onChange={(e) => setRegion(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]">
-            <option value="织庭都">織庭都</option>
-            <option value="精灵森林">精靈森林</option>
-            <option value="裂隙港">裂隙港</option>
-            <option value="宁渊谷">寧淵谷</option>
+            {NARRATIVE_REGION_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
         </label>
         <div className="flex items-end">

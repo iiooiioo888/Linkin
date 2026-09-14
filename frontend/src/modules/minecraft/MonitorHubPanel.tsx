@@ -16,10 +16,13 @@ import {
 import AiEventsPanel from './monitor/AiEventsPanel';
 import SituationStrip from './SituationStrip';
 import {
+  BridgeSetupBanner,
   BridgeSetupCard,
   EmptyStateCta,
   PipelineTimeline,
   bridgeKpi,
+  bridgeLiveReady,
+  bridgeNeedsSetup,
   formatTs,
   minecraftHref,
   statusLabel,
@@ -49,7 +52,11 @@ export default function MonitorHubPanel() {
   const summaryReady = Boolean(data) && !loading;
   const recentPlayerEvents = playersLive?.recent_events ?? 0;
   const mapUrl = plugins?.map_url?.trim() || '';
+  const bridgeSetupPending = bridgeNeedsSetup(data?.bridge, data?.bridge_setup);
+  const bridgeLive = bridgeLiveReady(data?.bridge);
   const bridgeOffline = Boolean(data?.bridge?.enabled && !data?.bridge?.connected && !data?.bridge?.dry_run);
+  const kpiBridgeHold = !bridgeLive;
+  const liveKpi = (n: number | undefined) => (kpiBridgeHold ? '待接橋' : String(n ?? 0));
 
   const emptyActions: Array<{ show: boolean; title: string; hint?: string; actions: Array<{ label: string; href: string; primary?: boolean }> }> = [
     {
@@ -70,13 +77,19 @@ export default function MonitorHubPanel() {
       ],
     },
     {
-      show: summaryReady && (bridgeOffline || (!data?.bridge?.enabled && !data?.bridge?.dry_run)),
-      title: data?.bridge?.enabled ? 'MineMCP 橋接離線' : 'MineMCP 尚未啟用',
-      hint: '落地操作將 dry-run 或失敗。請設定 EVOL_MC_MCP_* 並探測連線。',
+      show: summaryReady && bridgeSetupPending,
+      title: data?.bridge?.enabled ? 'MineMCP 橋接尚未就緒' : 'MineMCP 尚未啟用',
+      hint: '監控上的「0」不代表世界為空，而是橋接未連線。請完成 EVOL_MC_MCP_* 設定並 Ping 探測。',
       actions: [
         { label: '橋接健康監控', href: minecraftHref('bridge_monitor'), primary: true },
         { label: '橋接操作面板', href: minecraftHref('minecraft') },
       ],
+    },
+    {
+      show: summaryReady && bridgeOffline,
+      title: 'MineMCP 已啟用但離線',
+      hint: '插件未運行或 Token／URL 錯誤。落地操作將失敗或僅記錄審計。',
+      actions: [{ label: '橋接健康監控', href: minecraftHref('bridge_monitor'), primary: true }],
     },
     {
       show: summaryReady && pendingBuild > 0,
@@ -110,6 +123,12 @@ export default function MonitorHubPanel() {
             </WarnBar>
           ) : null}
 
+          {summaryReady && bridgeSetupPending ? (
+            <div className="mb-3">
+              <BridgeSetupBanner bridge={data?.bridge} setup={data?.bridge_setup} />
+            </div>
+          ) : null}
+
           <ConsoleCard className="mb-3">
             <div className="px-3 py-2">
               <SituationStrip />
@@ -125,9 +144,9 @@ export default function MonitorHubPanel() {
             <KpiGrid6>
             <KpiSparkCard
               label="在線玩家"
-              value={String(onlinePlayers)}
-              accent={Boolean(onlinePlayers)}
-              spark={[0, 1, onlinePlayers, onlinePlayers]}
+              value={liveKpi(onlinePlayers)}
+              accent={!kpiBridgeHold && Boolean(onlinePlayers)}
+              spark={kpiBridgeHold ? [0, 0, 0, 0] : [0, 1, onlinePlayers, onlinePlayers]}
             />
             <KpiSparkCard
               label="待建築意圖"
@@ -149,11 +168,11 @@ export default function MonitorHubPanel() {
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[10px]">
             <span className="text-[var(--console-faint)]">
               玩家現場
-              {playersLive?.bridge_offline ? ' · 橋接離線' : ' · 即時'}
+              {kpiBridgeHold ? ' · 待接橋（KPI 非即時）' : playersLive?.bridge_offline ? ' · 橋接離線' : ' · 即時'}
               {recentPlayerEvents > 0 ? ` · 近期活動 ${recentPlayerEvents}` : ''}
             </span>
             <a href={minecraftHref('player_presence')} className="text-[var(--console-accent)] hover:underline">
-              在線 {onlinePlayers} · 打開玩家現場 →
+              {kpiBridgeHold ? '設定橋接後查看在線玩家' : `在線 ${onlinePlayers}`} · 打開玩家現場 →
             </a>
           </div>
 

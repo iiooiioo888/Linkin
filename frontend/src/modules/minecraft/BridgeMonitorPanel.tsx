@@ -22,7 +22,16 @@ import {
   WarnBar,
 } from '../../components/ui/ConsoleLayout';
 import AiEventsPanel from './monitor/AiEventsPanel';
-import { BridgeSetupCard, bridgeKpi, formatTs, minecraftHref, useVisibilityPoll } from './monitor/shared';
+import {
+  BridgeSetupCard,
+  bridgeKpi,
+  bridgeNeedsSetup,
+  formatBridgeAuditLine,
+  formatBridgeProbeLine,
+  formatTs,
+  minecraftHref,
+  useVisibilityPoll,
+} from './monitor/shared';
 
 export default function BridgeMonitorPanel() {
   const [status, setStatus] = useState<MinecraftStatus | null>(null);
@@ -75,13 +84,14 @@ export default function BridgeMonitorPanel() {
   };
 
   const bridge = bridgeKpi(status ?? undefined);
-  const probeMsg = status?.probe?.message || status?.probe?.error || setup?.probe_message;
+  const probeLine = formatBridgeProbeLine(setup, status?.probe ?? undefined);
+  const setupPending = bridgeNeedsSetup(status ?? undefined, setup);
   const plainStatus = status?.connected
     ? 'MineMCP 已連線，可執行落地操作。'
     : status?.dry_run
-      ? '目前為乾跑模式：工具可呼叫但不會寫入世界。'
+      ? `乾跑模式：工具呼叫僅記錄審計，不寫入世界。${probeLine ? ` 探測：${probeLine}` : ''}`
       : status?.enabled
-        ? `已啟用但未連線。${probeMsg || '請確認 MineMCP 插件是否運行、Token 是否正確。'}`
+        ? `已啟用但未連線。${probeLine || '請確認 MineMCP 插件是否運行、Token 是否正確。'}`
         : '橋接未啟用：請設定 EVOL_MC_MCP_ENABLED=true 與 TOKEN。';
 
   return (
@@ -89,8 +99,10 @@ export default function BridgeMonitorPanel() {
       <ConsoleCenterColumn>
         <ConsoleColumnScroll>
           {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
-          {!status?.connected && status?.enabled ? (
-            <WarnBar>MineMCP 已啟用但未連線 — 落地操作將 dry-run 或失敗。</WarnBar>
+          {setupPending ? (
+            <WarnBar>
+              橋接設定未完成或尚未連線 — 請依下方 checklist 設定環境變數；探測結果與審計會標示「本地乾跑」或「未連線」。
+            </WarnBar>
           ) : null}
           <ConsoleCard>
             <div className="flex items-center justify-between gap-2 border-b border-[var(--console-border)] px-3 py-2">
@@ -113,7 +125,7 @@ export default function BridgeMonitorPanel() {
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>環境配置 · 不顯示密鑰</ConsoleCardHeader>
             <div className="px-3 pb-3">
-              <BridgeSetupCard setup={setup} onProbe={() => void onProbe()} probing={busy} />
+              <BridgeSetupCard setup={setup} probe={status?.probe} onProbe={() => void onProbe()} probing={busy} />
             </div>
           </ConsoleCard>
           <ConsoleCard className="mt-3">
@@ -125,11 +137,9 @@ export default function BridgeMonitorPanel() {
                 {bridgeEvents.slice(0, 12).map((row, idx) => (
                   <li key={`${row.ts}-${idx}`} className="px-3 py-2">
                     <div className="text-[var(--console-faint)]">{row.ts ? formatTs(Number(row.ts)) : '—'}</div>
-                    <div className={row.ok ? 'text-[var(--console-green)]' : 'text-[var(--console-red)]'}>
-                      {row.tool ?? 'bridge'} {row.ok ? 'ok' : 'error'}
-                      {row.dry_run ? ' · dry-run' : ''}
+                    <div className={row.ok || row.dry_run ? 'text-[var(--console-muted)]' : 'text-[var(--console-red)]'}>
+                      {formatBridgeAuditLine(row)}
                     </div>
-                    {row.error ? <div className="text-[var(--console-red)]">{row.error}</div> : null}
                   </li>
                 ))}
               </ul>

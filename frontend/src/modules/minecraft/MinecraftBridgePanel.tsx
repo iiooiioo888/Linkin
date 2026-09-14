@@ -1,7 +1,7 @@
 /**
  * MinecraftBridgePanel — MineMCP 連線狀態、工具呼叫與審計。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   callMinecraftTool,
   fetchMinecraftStatus,
@@ -23,6 +23,7 @@ export default function MinecraftBridgePanel() {
   const [player, setPlayer] = useState('');
   const [command, setCommand] = useState('time set day');
   const [confirmed, setConfirmed] = useState(false);
+  const [dryRunAck, setDryRunAck] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
   const load = useCallback(async () => {
@@ -89,6 +90,25 @@ export default function MinecraftBridgePanel() {
   };
 
   const mode = status?.dry_run ? '乾跑（未連伺服器）' : status?.connected ? '已連線' : '未連線';
+
+  const executeBlock = useMemo(() => {
+    if (!status?.token_configured) {
+      return { disabled: true, reason: 'Token 未設定 — 請配置 EVOL_MC_MCP_TOKEN 後再執行工具。' };
+    }
+    if (status.dry_run && !dryRunAck) {
+      return {
+        disabled: true,
+        reason: '目前為乾跑模式：勾選下方確認後才可送出（不會寫入世界）。',
+      };
+    }
+    if (!status.connected && !status.dry_run) {
+      return { disabled: true, reason: '橋接未連線 — 請先完成啟用並 Ping 探測。' };
+    }
+    if (tool === 'execute_command' && !confirmed) {
+      return { disabled: true, reason: 'execute_command 需勾選「敏感操作已二次確認」。' };
+    }
+    return { disabled: false, reason: '' };
+  }, [status, dryRunAck, tool, confirmed]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
@@ -172,7 +192,21 @@ export default function MinecraftBridgePanel() {
             </>
           )}
         </div>
-        <button type="button" disabled={busy !== 'idle'} onClick={() => void onCall()} className="mt-3 rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40">
+        {status?.dry_run ? (
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-[#8a8f98]">
+            <input type="checkbox" checked={dryRunAck} onChange={(e) => setDryRunAck(e.target.checked)} />
+            我了解乾跑模式：僅記錄審計，不會寫入 Minecraft 世界
+          </label>
+        ) : null}
+        {executeBlock.reason ? (
+          <p className="mt-2 text-[11px] text-amber-300/90">{executeBlock.reason}</p>
+        ) : null}
+        <button
+          type="button"
+          disabled={busy !== 'idle' || executeBlock.disabled}
+          onClick={() => void onCall()}
+          className="mt-3 rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40"
+        >
           執行
         </button>
         {result && (
