@@ -55,17 +55,16 @@ export default function MonitorAlertMode({
         tone: 'warn',
         title: t('monitorAlert.highDocker'),
         detail: `${fmtCredits(dockerRate)}/h`,
-        tab: 'credits',
+        tab: 'ops',
       });
     }
     if (unhealthyKeysCount > 0) {
       items.push({
         id: 'unhealthy-keys',
-        tone: 'danger',
+        tone: 'warn',
         title: t('monitorAlert.unhealthyKeys', { count: unhealthyKeysCount }),
         detail: t('monitorAlert.unhealthyKeysHint'),
-        tab: 'credits',
-        detailId: 'contributor',
+        tab: 'llm',
       });
     }
     const busyAgents = (agents?.agents ?? []).filter((a) => a.status === 'busy' && (a.metrics?.budget_alerts ?? 0) > 0);

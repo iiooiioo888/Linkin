@@ -1224,7 +1224,7 @@ export default function App() {
               onTaskStatePatch={handleTaskStatePatch}
               onOpenBilling={() => {
                 setActiveView('monitor');
-                setMonitorTab('credits');
+                setMonitorTab('models');
               }}
               liveSpent={turnSpent}
             />
@@ -1294,7 +1294,7 @@ export default function App() {
         }}
         onGoUsage={() => {
           setSettingsOpen(false);
-          handleMonitorTabChange('credits');
+          handleMonitorTabChange('models');
         }}
       />
       <ContextModal

@@ -98,10 +98,10 @@ export default function TopBar({
 
       <div className="flex shrink-0 items-center gap-0.5">
         <span className="md:hidden">
-          <WalletBadge minimal onOpenBilling={() => onMonitorTabChange?.('credits')} />
+          <WalletBadge minimal />
         </span>
         <span className="hidden md:inline-flex">
-          <WalletBadge onOpenBilling={() => onMonitorTabChange?.('credits')} />
+          <WalletBadge />
         </span>
 
         {llmConfigured === false && (
