@@ -34,7 +34,6 @@ export default function TopBar({
   onOpenSettings,
   onToggleSidebar,
   onMonitorTabChange,
-  onViewChange,
 }: TopBarProps) {
   const { t, i18n } = useTranslation();
   const activity = resolveActivity(activeView, monitorTab);
