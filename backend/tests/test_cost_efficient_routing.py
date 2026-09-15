@@ -59,17 +59,16 @@ class TestChatStreamSimpleStrategy:
             patch("backend.core.nodes.call_llm", side_effect=fake_eval),
             patch("backend.core.evaluation.call_llm", side_effect=fake_eval),
             patch("backend.core.nodes._memory_store", store),
-            TestClient(app) as client,
+            TestClient(app) as client,client.stream(
+            "POST",
+            "/chat/stream",
+            json={"query": long_query, "execution_strategy": "simple"},
+        ) as resp
         ):
-            with client.stream(
-                "POST",
-                "/chat/stream",
-                json={"query": long_query, "execution_strategy": "simple"},
-            ) as resp:
-                assert resp.status_code == 200
-                for line in resp.iter_lines():
-                    if line:
-                        lines.append(line)
+            assert resp.status_code == 200
+            for line in resp.iter_lines():
+                if line:
+                    lines.append(line)
 
         joined = "\n".join(lines)
         assert "event: company" not in joined
@@ -93,24 +92,23 @@ class TestCompanyStreamPostReflect:
         monkeypatch.setattr(CompanyOrchestrator, "execute", _fake_execute)
 
         phases: list[str] = []
-        with TestClient(app) as client:
-            with client.stream(
-                "POST",
-                "/chat/stream",
-                json={
-                    "query": "請設計並實現一個完整的微服務系統架構",
-                    "execution_strategy": "company",
-                },
-            ) as resp:
-                for line in resp.iter_lines():
-                    if not line or not line.startswith("data:"):
-                        continue
-                    try:
-                        payload = json.loads(line.split("data:", 1)[1].strip())
-                    except json.JSONDecodeError:
-                        continue
-                    if "phase" in payload:
-                        phases.append(str(payload["phase"]))
+        with TestClient(app) as client, client.stream(
+            "POST",
+            "/chat/stream",
+            json={
+                "query": "請設計並實現一個完整的微服務系統架構",
+                "execution_strategy": "company",
+            },
+        ) as resp:
+            for line in resp.iter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                try:
+                    payload = json.loads(line.split("data:", 1)[1].strip())
+                except json.JSONDecodeError:
+                    continue
+                if "phase" in payload:
+                    phases.append(str(payload["phase"]))
 
         assert "post_company_reflect_skipped" in phases
         assert "reflect" not in phases

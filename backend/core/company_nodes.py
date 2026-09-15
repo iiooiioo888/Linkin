@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 
 # ─── 複雜度判斷規則（實作於 execution_path，此處保留相容別名） ──
 
-from backend.core.execution_path import (
-    is_complex_task as _is_complex_task,
-    needs_opc_context as _needs_opc_context,
-)
+from backend.core import execution_path as _execution_path
+
+_is_complex_task = _execution_path.is_complex_task
+_needs_opc_context = _execution_path.needs_opc_context
 
 
 # ─── OPC 上下文增強節點 ──────────────────────────────────────

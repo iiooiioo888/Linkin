@@ -40,7 +40,7 @@ from backend.company.roles import BUILTIN_TEMPLATES
 from backend.core import nodes
 from backend.core.company_nodes import enhance_with_opc_context
 from backend.core.execution_path import resolve_execution_path
-from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD
+from backend.core.graph import PASS_THRESHOLD
 from backend.core.post_company_reflect import post_company_reflect_mode
 from backend.core.reflection_limits import reflection_max_iterations
 from backend.integrations.recall_bridge import enhance_with_recall_context
