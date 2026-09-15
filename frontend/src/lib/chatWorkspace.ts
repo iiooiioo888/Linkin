@@ -410,17 +410,42 @@ export function hasUnresolvedDecision(message: Pick<ChatMessage, 'taskState'>): 
 }
 
 /**
- * 與後端 `_COMPANY_KEYWORDS` / `_complex_query_length` 對齊。
- * 自動模式下只有這類查詢才建任務、才分裂左右監控。
+ * 與後端 `execution_path.resolve_execution_path` 對齊（不含 OPC／cost_speed 配置）。
+ * 自動模式下這類查詢才建任務、才分裂左右監控，避免靈境／MC 複雜查詢誤走 SSE 簡單路徑。
  */
 const COMPANY_QUERY_RE =
   /开发|設計|设计|构建|實現|实现|建立|打造|完整|系統|系统|專案|项目|多步|架構|架构|重构|遷移|迁移|deploy|develop|build|implement|design|create|refactor|migrate|project|system|application|故事|小說|小说|撰寫|撰写|長文|长文|\d+\s*字/i;
 
 const COMPANY_QUERY_LENGTH = 200;
 
+const LINKIN_WORLD_RE =
+  /灵境|靈境|linkin|织庭|織庭|自由舟|宁渊|寧淵|灵丝|靈絲|织梦者|織夢者|精灵森林|精靈森林|裂隙港|织庭都|織庭都|宁渊谷|寧淵谷|aetherthread|will of linkin/i;
+
+const LINKIN_WORK_RE =
+  /建造|建筑|建築|扩建|擴建|改建|主城|NPC|角色卡|任务|任務|主线|主線|支线|支線|道具|附魔|世界观|世界觀|宪法|憲法|BuilderAI|minecraft|方块|方塊|放置|坐标|座標/i;
+
+const MC_EXPLICIT_RE =
+  /minecraft|minemcp|pose_block|place_block|fill_block|break_block|get_player|get_online_players/i;
+
+const MC_COORD_RE =
+  /\(?\s*-?\d+(?:\.\d+)?\s*[,，\s]\s*-?\d+(?:\.\d+)?\s*[,，\s]\s*-?\d+(?:\.\d+)?/;
+
+const MC_BLOCK_RE =
+  /方块|方塊|钻石|鑽石|橡木|石英|放置|破坏|破壞|填满|填滿|玩家信息|玩家資訊/i;
+
+function isLinkinComplexTask(query: string): boolean {
+  return LINKIN_WORLD_RE.test(query) && LINKIN_WORK_RE.test(query);
+}
+
+function isMinecraftControlQuery(query: string): boolean {
+  if (MC_EXPLICIT_RE.test(query)) return true;
+  return MC_COORD_RE.test(query) && MC_BLOCK_RE.test(query);
+}
+
 export function looksLikeCompanyQuery(query: string): boolean {
   const q = (query || '').trim();
   if (!q) return false;
+  if (isLinkinComplexTask(q) || isMinecraftControlQuery(q)) return true;
   if (q.length >= COMPANY_QUERY_LENGTH) return true;
   return COMPANY_QUERY_RE.test(q);
 }

@@ -90,6 +90,8 @@ def test_low_score_triggers_reflection_loop():
 
 def test_loop_stops_at_max_iterations():
     # 評分緩慢上升但仍低於門檻，避免動態迭代提前終止，直到 max_iterations
+    # 使用 medium 複雜度查詢，避免 simple 路徑的 EVOL_SIMPLE_MAX_ITERATIONS 上限
+    loop_query = "請說明" + "Python 列表推導式" * 8 + "的常見寫法與注意事項"
     responses = ["這是足夠長度的初始回答內容"]
     for i in range(3):
         responses += [
@@ -106,7 +108,7 @@ def test_loop_stops_at_max_iterations():
         patch("backend.core.evaluation.call_llm", side_effect=fake),
         patch("backend.core.nodes._memory_store", store),
     ):
-        result = build_graph().invoke({"query": "測試問題"})
+        result = build_graph().invoke({"query": loop_query})
 
     # 達最大迭代後強制收尾，最終回答為最後一次改進版本
     assert result["final_answer"] == "這是第 3 輪改進後的完整回答"

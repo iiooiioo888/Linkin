@@ -1033,69 +1033,80 @@ async def _company_stream(req: ChatRequest):
             data = msg["data"]
 
             if evt == "_done":
-                # 公司執行完成 → 進入反思迴圈
+                from backend.core.post_company_reflect import post_company_reflect_mode
+
                 final_output = data.get("final_output", "")
                 company_result = data
+                reflect_mode = post_company_reflect_mode()
 
                 yield f"event: phase\ndata: {json_mod.dumps({'phase': 'company_done', 'success': data.get('success', False)}, ensure_ascii=False)}\n\n"
 
-                # 將公司產出交給反思閉環評估
-                eval_state = {
+                eval_state: dict[str, Any] = {
                     "query": query,
                     "current_answer": final_output,
                     "session_id": session_id,
                     "company_result": company_result,
                 }
+                final_answer = final_output
 
-                # 輸出長度守門：超標時把「精簡」當成額外一輪改進目標（預算由節點控管）
-                eval_state.update(await asyncio.to_thread(nodes.enforce_output_length, eval_state))
-
-                yield f"event: phase\ndata: {json_mod.dumps({'phase': 'evaluate'})}\n\n"
-                eval_state.update(await asyncio.to_thread(nodes.evaluate_answer, eval_state))
-                eval_data = {
-                    'score': eval_state.get('score'),
-                    'iteration': 0,
-                    'multi_dim': eval_state.get('multi_dim_evaluation', {}),
-                }
-                yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
-
-                # 反思迴圈
-                prev_score = eval_state.get('score', 0.0)
-                while (
-                    eval_state.get('score', 0.0) < PASS_THRESHOLD
-                    and eval_state.get('iteration', 0) < MAX_ITERATIONS
-                ) or eval_state.get("length_directive"):
-                    cur = eval_state.get('score', 0.0)
-                    if eval_state.get('iteration', 0) >= 1:
-                        if cur - prev_score < 0.5 and not eval_state.get("length_directive"):
-                            yield f"event: phase\ndata: {json_mod.dumps({'phase': 'early_stop', 'reason': '分數提升不足'}, ensure_ascii=False)}\n\n"
-                            break
-                    prev_score = cur
-
-                    yield f"event: phase\ndata: {json_mod.dumps({'phase': 'reflect', 'iteration': eval_state.get('iteration', 0)})}\n\n"
-                    eval_state.update(await asyncio.to_thread(nodes.reflect, eval_state))
-
-                    yield f"event: phase\ndata: {json_mod.dumps({'phase': 'improve', 'iteration': eval_state.get('iteration', 0)})}\n\n"
-                    eval_state.update(await asyncio.to_thread(nodes.improve_answer, eval_state))
-
+                if reflect_mode == "off":
+                    yield f"event: phase\ndata: {json_mod.dumps({'phase': 'post_company_reflect_skipped', 'mode': 'off'}, ensure_ascii=False)}\n\n"
+                elif reflect_mode == "evaluate":
+                    eval_state.update(await asyncio.to_thread(nodes.enforce_output_length, eval_state))
                     yield f"event: phase\ndata: {json_mod.dumps({'phase': 'evaluate'})}\n\n"
                     eval_state.update(await asyncio.to_thread(nodes.evaluate_answer, eval_state))
                     eval_data = {
                         'score': eval_state.get('score'),
-                        'iteration': eval_state.get('iteration', 0),
+                        'iteration': 0,
                         'multi_dim': eval_state.get('multi_dim_evaluation', {}),
                     }
                     yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
+                    final_answer = eval_state.get('current_answer', final_output)
+                else:
                     eval_state.update(await asyncio.to_thread(nodes.enforce_output_length, eval_state))
+                    yield f"event: phase\ndata: {json_mod.dumps({'phase': 'evaluate'})}\n\n"
+                    eval_state.update(await asyncio.to_thread(nodes.evaluate_answer, eval_state))
+                    eval_data = {
+                        'score': eval_state.get('score'),
+                        'iteration': 0,
+                        'multi_dim': eval_state.get('multi_dim_evaluation', {}),
+                    }
+                    yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
 
-                final_answer = eval_state.get('current_answer', final_output)
-                eval_state['final_answer'] = final_answer
+                    prev_score = eval_state.get('score', 0.0)
+                    while (
+                        eval_state.get('score', 0.0) < PASS_THRESHOLD
+                        and eval_state.get('iteration', 0) < MAX_ITERATIONS
+                    ) or eval_state.get("length_directive"):
+                        cur = eval_state.get('score', 0.0)
+                        if eval_state.get('iteration', 0) >= 1:
+                            if cur - prev_score < 0.5 and not eval_state.get("length_directive"):
+                                yield f"event: phase\ndata: {json_mod.dumps({'phase': 'early_stop', 'reason': '分數提升不足'}, ensure_ascii=False)}\n\n"
+                                break
+                        prev_score = cur
 
-                # 存入記憶
-                try:
-                    await asyncio.to_thread(nodes.save_memory, eval_state)
-                except Exception:
-                    pass
+                        yield f"event: phase\ndata: {json_mod.dumps({'phase': 'reflect', 'iteration': eval_state.get('iteration', 0)})}\n\n"
+                        eval_state.update(await asyncio.to_thread(nodes.reflect, eval_state))
+
+                        yield f"event: phase\ndata: {json_mod.dumps({'phase': 'improve', 'iteration': eval_state.get('iteration', 0)})}\n\n"
+                        eval_state.update(await asyncio.to_thread(nodes.improve_answer, eval_state))
+
+                        yield f"event: phase\ndata: {json_mod.dumps({'phase': 'evaluate'})}\n\n"
+                        eval_state.update(await asyncio.to_thread(nodes.evaluate_answer, eval_state))
+                        eval_data = {
+                            'score': eval_state.get('score'),
+                            'iteration': eval_state.get('iteration', 0),
+                            'multi_dim': eval_state.get('multi_dim_evaluation', {}),
+                        }
+                        yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
+                        eval_state.update(await asyncio.to_thread(nodes.enforce_output_length, eval_state))
+
+                    final_answer = eval_state.get('current_answer', final_output)
+                    eval_state['final_answer'] = final_answer
+                    try:
+                        await asyncio.to_thread(nodes.save_memory, eval_state)
+                    except Exception:
+                        pass
 
                 done_company: dict[str, Any] = {
                     'answer': final_answer,
@@ -1138,11 +1149,9 @@ async def chat_stream(req: ChatRequest):
 
     統一模式：複雜任務（公司運行時路徑）自動降級為同步 /chat。
     """
-    from backend.core.company_nodes import _is_complex_task
+    from backend.core.execution_path import chat_stream_uses_company_sse
 
-    if req.execution_strategy == "company" or (
-        req.execution_strategy == "auto" and _is_complex_task(req.query)
-    ):
+    if chat_stream_uses_company_sse(req.query, req.execution_strategy):
         # 公司運行時：SSE 串流進度（優化 #11）
         return StreamingResponse(
             _company_stream(req),
@@ -1175,6 +1184,10 @@ async def chat_stream(req: ChatRequest):
         from backend.core.locale_prompt import normalize_ui_language
 
         billing_token = begin_chat_billing(session_id)
+        from backend.core.cost_speed_router import classify_task_complexity
+        from backend.core.reflection_limits import reflection_max_iterations
+
+        strategy = (req.execution_strategy or "auto").strip().lower()
         state: dict[str, Any] = {
             "query": req.query,
             "session_id": session_id,
@@ -1182,7 +1195,13 @@ async def chat_stream(req: ChatRequest):
             "history": req.history or [],
             "semantic_lock": req.semantic_lock or {},
             "ui_language": normalize_ui_language(req.ui_language),
+            "execution_strategy": req.execution_strategy,
         }
+        if strategy == "simple":
+            state["task_complexity"] = "simple"
+        else:
+            state["task_complexity"] = classify_task_complexity(state["query"])
+        simple_max_iter = reflection_max_iterations(state)
         lock = req.semantic_lock or {}
         if isinstance(lock, dict) and lock.get("locked_brief"):
             state["query"] = str(lock["locked_brief"])
@@ -1285,7 +1304,7 @@ async def chat_stream(req: ChatRequest):
             prev_score = state.get('score', 0.0)
             while (
                 state.get("score", 0.0) < PASS_THRESHOLD
-                and state.get("iteration", 0) < MAX_ITERATIONS
+                and state.get("iteration", 0) < simple_max_iter
             ) or state.get("length_directive"):
                 current_score = state.get('score', 0.0)
                 # 動態迭代檢查：分數變化率過低時提前終止（優化 #4）
