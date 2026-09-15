@@ -44,6 +44,7 @@ from backend.core.company_nodes import (
     enhance_with_opc_context,
 )
 from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD
+from backend.core.reflection_limits import reflection_max_iterations
 from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.linkin.pipeline import (
     enhance_with_linkin_context,
@@ -719,6 +720,8 @@ class TaskManager:
             "session_id": record.task_id,
             "history": [],
             "ui_language": normalize_ui_language(opts.get("ui_language")),
+            "execution_strategy": record.strategy if record.strategy == "simple" else "auto",
+            "task_complexity": "simple",
         }
         try:
             self._set_phase(record, "retrieve_memories")
@@ -815,10 +818,20 @@ class TaskManager:
 
     # ── 反思迭代迴圈（三條路徑共用） ──
 
+    def _reflection_max_iterations(self, record: TaskRecord, state: dict[str, Any]) -> int:
+        merged = {
+            **state,
+            "execution_strategy": record.strategy,
+        }
+        if record.resolved_path == "simple":
+            merged["execution_strategy"] = "simple"
+        return reflection_max_iterations(merged)
+
     async def _run_reflection_loop(
         self, record: TaskRecord, state: dict[str, Any], tracer: TraceLogger
     ) -> None:
         """評估 → 反思 → 改進迭代迴圈（直到達標或達最大迭代；長度指令未消化時多跑一輪）。"""
+        max_iter = self._reflection_max_iterations(record, state)
         # 輸出長度守門：超標時把「精簡」當成額外一輪改進目標（預算由節點控管）
         state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
         self._set_phase(record, "evaluate")
@@ -838,7 +851,7 @@ class TaskManager:
 
         while (
             state.get("score", 0.0) < PASS_THRESHOLD
-            and state.get("iteration", 0) < MAX_ITERATIONS
+            and state.get("iteration", 0) < max_iter
         ) or state.get("length_directive"):
             if self._check_cancelled(record):
                 return

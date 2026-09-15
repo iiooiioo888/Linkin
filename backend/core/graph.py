@@ -69,8 +69,10 @@ def should_improve(state: StateInput) -> str:
     if score >= pass_threshold:
         return "finalize"
 
-    # 條件 2：達最大迭代
-    if iteration >= MAX_ITERATIONS:
+    # 條件 2：達最大迭代（簡單路徑可經 EVOL_SIMPLE_MAX_ITERATIONS 壓低）
+    from backend.core.reflection_limits import reflection_max_iterations
+
+    if iteration >= reflection_max_iterations(state):
         return "finalize"
 
     # 條件 3：分數變化率過低（提前終止）

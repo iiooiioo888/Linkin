@@ -260,6 +260,8 @@ class TestCompanyStreamLengthGate:
         from backend.company.orchestrator import CompanyOrchestrator
         from backend.main import app
 
+        monkeypatch.setenv("EVOL_POST_COMPANY_REFLECT", "full")
+
         concise = "精簡後的架構方案：三層服務。"
         long_output = "說" * 4500  # complex 任務上限 4000
 
