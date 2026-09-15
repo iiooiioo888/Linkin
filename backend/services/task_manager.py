@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
 from backend.company.events import CompanyEvent
 from backend.company.orchestrator import CompanyOrchestrator
+from backend.company.precomputed_planner import normalize_precomputed
 from backend.company.roles import BUILTIN_TEMPLATES
 from backend.core import nodes
 from backend.core.company_nodes import (
@@ -79,6 +80,8 @@ CANCEL_GRACE_SECONDS = 45
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 TASK_KEY_PREFIX = "evoloop:task:"
 TASK_TTL_SECONDS = 7 * 86400
+COMPANY_PERSIST_DEBOUNCE_SEC = float(os.getenv("EVOL_TASK_PERSIST_DEBOUNCE_SEC", "0.35"))
+COMPANY_PERSIST_EVERY_N = max(1, int(os.getenv("EVOL_TASK_PERSIST_EVERY_N", "8")))
 
 
 class TaskRecord:
@@ -199,6 +202,24 @@ def _task_ticket(record: TaskRecord) -> dict[str, Any] | None:
     return ticket if isinstance(ticket, dict) else None
 
 
+def _task_precomputed_planner(record: TaskRecord) -> dict[str, Any] | None:
+    opts = record.options or {}
+    return normalize_precomputed(opts.get("precomputed_planner") or opts.get("battle_plan"))
+
+
+def _post_company_reflect_mode() -> str:
+    """公司任務完成後反思閉環：off（預設）| evaluate | full。"""
+    legacy_skip = os.getenv("EVOL_SKIP_POST_COMPANY_REFLECT", "").strip().lower()
+    if legacy_skip in ("1", "true", "yes", "on"):
+        return "off"
+    raw = os.getenv("EVOL_POST_COMPANY_REFLECT", "off").strip().lower()
+    if raw in ("0", "off", "skip", "false", "no", ""):
+        return "off"
+    if raw in ("evaluate", "eval", "once"):
+        return "evaluate"
+    return "full"
+
+
 def _apply_commander_result(record: TaskRecord, result: dict[str, Any]) -> None:
     commander = result.get("commander")
     battle = result.get("battle_plan")
@@ -228,6 +249,9 @@ class TaskManager:
         self._running_tasks: dict[str, asyncio.Task] = {}
         # 主 event loop（lifespan 設定）：供 worker 執行緒／外部行程安全派發任務
         self._loop: asyncio.AbstractEventLoop | None = None
+        # 公司任務 Redis 快照防抖（執行中事件批寫）
+        self._persist_pending: dict[str, asyncio.TimerHandle] = {}
+        self._persist_event_counters: dict[str, int] = {}
 
     # ── Redis 持久化 ──
 
@@ -264,6 +288,44 @@ class TaskManager:
             )
         except Exception as exc:
             logger.warning("任務持久化寫入失敗：%s", exc)
+
+    def _should_batch_persist(self, record: TaskRecord) -> bool:
+        return record.resolved_path == "company" and record.status == "running"
+
+    def _cancel_scheduled_persist(self, task_id: str) -> None:
+        handle = self._persist_pending.pop(task_id, None)
+        if handle is not None:
+            handle.cancel()
+
+    def _flush_persist(self, task_id: str) -> None:
+        record = self.tasks.get(task_id) or self.get_task(task_id)
+        if record is not None:
+            self._persist(record)
+
+    def _schedule_persist(self, record: TaskRecord, *, force: bool = False) -> None:
+        if force or not self._should_batch_persist(record):
+            self._cancel_scheduled_persist(record.task_id)
+            self._persist(record)
+            return
+        tid = record.task_id
+        count = self._persist_event_counters.get(tid, 0) + 1
+        self._persist_event_counters[tid] = count
+        if count % COMPANY_PERSIST_EVERY_N == 0:
+            self._cancel_scheduled_persist(tid)
+            self._persist(record)
+            return
+        self._cancel_scheduled_persist(tid)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._persist(record)
+            return
+
+        def _fire() -> None:
+            self._persist_pending.pop(tid, None)
+            self._flush_persist(tid)
+
+        self._persist_pending[tid] = loop.call_later(COMPANY_PERSIST_DEBOUNCE_SEC, _fire)
 
     def _load_from_redis(self, task_id: str) -> TaskRecord | None:
         client = self._get_redis()
@@ -517,7 +579,7 @@ class TaskManager:
             "event": "phase_change",
             "data": {"phase": phase, **data},
         })
-        self._persist(record)
+        self._schedule_persist(record, force=True)
         # WebSocket 实时推送（fire-and-forget）
         self._broadcast_event(record.task_id, "phase_change", {"phase": phase, **data})
 
@@ -534,7 +596,8 @@ class TaskManager:
         record.events.append({"ts": time.time(), "event": event, "data": data})
         if len(record.events) > MAX_EVENTS_PER_TASK:
             record.events = record.events[-MAX_EVENTS_PER_TASK:]
-        self._persist(record)
+        force = event in ("cancel_requested", "resume_requested") or event == "phase_change"
+        self._schedule_persist(record, force=force)
         # WebSocket 实时推送
         self._broadcast_event(record.task_id, event, data)
 
@@ -542,6 +605,8 @@ class TaskManager:
         """任務結束（完成/失敗）：持久化並寫入 JSONL 存檔。"""
         if record.finished_at is None:
             record.finished_at = time.time()
+        self._cancel_scheduled_persist(record.task_id)
+        self._persist_event_counters.pop(record.task_id, None)
         self._persist(record)
         # WebSocket 推送任务完成/失败事件
         self._broadcast_event(record.task_id, "task_finished", {
@@ -809,6 +874,33 @@ class TaskManager:
             })
             state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
 
+    async def _run_post_company_reflection(
+        self, record: TaskRecord, state: dict[str, Any], tracer: TraceLogger
+    ) -> None:
+        """公司路徑專用：預設跳過完整反思閉環（可經環境變數恢復）。"""
+        mode = _post_company_reflect_mode()
+        if mode == "off":
+            self._add_event(record, "post_company_reflect_skipped", {"mode": "off"})
+            tracer.log_phase_change("post_company_reflect_skipped", data={"mode": "off"})
+            return
+        if mode == "evaluate":
+            self._set_phase(record, "evaluate")
+            tracer.log_phase_change("evaluate")
+            state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
+            state.update(await asyncio.to_thread(nodes.evaluate_answer, state))
+            tracer.log_evaluation(
+                score=state.get("score"),
+                iteration=0,
+                **eval_trace_kwargs(state.get("multi_dim_evaluation")),
+            )
+            self._add_event(record, "evaluation", {
+                "score": state.get("score"),
+                "iteration": 0,
+                "mode": "evaluate_only",
+            })
+            return
+        await self._run_reflection_loop(record, state, tracer)
+
     # ── 公司運行時執行 ──
 
     def _attach_company_listener(
@@ -917,7 +1009,11 @@ class TaskManager:
         self._orchestrators[record.task_id] = orchestrator
 
         try:
-            result = await orchestrator.execute(record.query, ticket=_task_ticket(record))
+            result = await orchestrator.execute(
+                record.query,
+                ticket=_task_ticket(record),
+                precomputed_planner=_task_precomputed_planner(record),
+            )
         except asyncio.CancelledError:
             if record.status in ("running", "pending"):
                 record.status = "cancelled"
@@ -968,7 +1064,7 @@ class TaskManager:
             "score": 0.0,
         }
         try:
-            await self._run_reflection_loop(record, state, tracer)
+            await self._run_post_company_reflection(record, state, tracer)
         except Exception as exc:
             logger.warning("任務 %s 評估迴圈失敗（保留公司產出）：%s", record.task_id, exc)
 
@@ -1015,7 +1111,11 @@ class TaskManager:
         self._orchestrators[record.task_id] = orchestrator
 
         try:
-            result = await orchestrator.execute(company_query, ticket=_task_ticket(record))
+            result = await orchestrator.execute(
+                company_query,
+                ticket=_task_ticket(record),
+                precomputed_planner=_task_precomputed_planner(record),
+            )
         except asyncio.CancelledError:
             # 強制中斷：保存檢查點供斷點續跑，狀態收尾交給 _run_unified_task
             self._save_company_checkpoint(record, orchestrator, record.phase)
@@ -1073,7 +1173,7 @@ class TaskManager:
             "score": 0.0,
         }
         try:
-            await self._run_reflection_loop(record, state, tracer)
+            await self._run_post_company_reflection(record, state, tracer)
         except Exception as exc:
             logger.warning("任務 %s 評估迴圈失敗（保留公司產出）：%s", record.task_id, exc)
 

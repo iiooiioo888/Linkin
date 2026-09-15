@@ -242,6 +242,8 @@ export interface TaskOptions {
   locked_brief?: string;
   /** 需求審計官核發的戰術指令 JSON */
   auditor_ticket?: AuditorTicket;
+  /** 審計／L3 已產出的 L4+L3 規劃快照（避免任務內重算） */
+  precomputed_planner?: Record<string, unknown>;
   /** 前端 i18n 語系（zh-TW / en） */
   ui_language?: string;
 }

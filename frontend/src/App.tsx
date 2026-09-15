@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ChatMessage, ChatSession, TaskProgress } from './types';
+import type { ChatMessage, ChatSession, TaskOptions, TaskProgress } from './types';
 import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, startUserGrill, streamAuditor, TaskWebSocket } from './api/client';
 import type { ChatBillingFootnote } from './api/client';
 import { formatChatBillingFootnote, requestWalletRefresh } from './lib/billingUi';
@@ -20,6 +20,7 @@ import {
   syncAppRouteHash,
 } from './lib/appRoute';
 import { isLinkinStudioAgent, requestRoleGrillDesk } from './lib/agentUi';
+import { battleBlocked, battleFromPlanner, hasReusablePlanner } from './lib/plannerReuse';
 import {
   loadActiveSessionId,
   loadSessions,
@@ -303,6 +304,8 @@ export default function App() {
 
       let workQuery = query;
       let semanticLock: Record<string, unknown> = {};
+      let precomputedPlanner: Record<string, unknown> | undefined =
+        options.taskOptions?.precomputed_planner as Record<string, unknown> | undefined;
       if (!options.skipGrill && options.executionStrategy !== 'simple') {
         try {
           const grill =
@@ -366,19 +369,27 @@ export default function App() {
               locked_brief: grill.locked_brief,
               ticket: grill.ticket ?? null,
             };
+            if (grill.planner && hasReusablePlanner(grill.planner)) {
+              precomputedPlanner = grill.planner;
+            }
             try {
-              const battle = await planBattle(
-                (grill.ticket ?? undefined) as Record<string, unknown> | undefined,
-                grill.locked_brief,
-              );
+              let battle = battleFromPlanner(grill.planner ?? null) ?? undefined;
+              if (!hasReusablePlanner(grill.planner)) {
+                battle = await planBattle(
+                  (grill.ticket ?? undefined) as Record<string, unknown> | undefined,
+                  grill.locked_brief,
+                );
+              }
               updateSession(sessionId, (s) => ({
                 ...s,
                 updatedAt: Date.now(),
                 messages: s.messages.map((m) =>
-                  m.id === assistantId ? { ...m, battle, grill: { ...grill, originalQuery: query } } : m,
+                  m.id === assistantId
+                    ? { ...m, battle: battle ?? undefined, grill: { ...grill, originalQuery: query } }
+                    : m,
                 ),
               }));
-              if (battle.status === 'REJECT_TO_L4' || battle.status === 'ESCALATE_TO_USER') {
+              if (battleBlocked(battle)) {
                 updateSession(sessionId, (s) => ({
                   ...s,
                   messages: s.messages.map((m) =>
@@ -387,7 +398,7 @@ export default function App() {
                           ...m,
                           streaming: false,
                           content:
-                            battle.status === 'REJECT_TO_L4'
+                            battle?.status === 'REJECT_TO_L4'
                               ? 'L3 退回 L4：門票缺件，拒絕拆解。'
                               : 'L3 上交用戶：約束內不可行。',
                           battle,
@@ -549,7 +560,10 @@ export default function App() {
           {
             ...options.taskOptions,
             semantic_brief: workQuery !== query ? workQuery : options.taskOptions?.semantic_brief,
-            auditor_ticket: options.taskOptions?.auditor_ticket,
+            auditor_ticket:
+              (semanticLock.ticket as TaskOptions['auditor_ticket'])
+              ?? options.taskOptions?.auditor_ticket,
+            precomputed_planner: precomputedPlanner,
             ui_language: i18n.language,
           },
         );
@@ -824,25 +838,28 @@ export default function App() {
             executionStrategy: (msg.executionStrategy ?? 'auto') as SendOptions['executionStrategy'],
             companyTemplate: 'quick_task' as const,
           };
-          let battleBlocked = false;
+          let blocked = false;
           try {
-            const battle = await planBattle(
-              (next.ticket ?? undefined) as Record<string, unknown> | undefined,
-              next.locked_brief || '',
-            );
+            let battle = battleFromPlanner(next.planner ?? null) ?? undefined;
+            if (!hasReusablePlanner(next.planner)) {
+              battle = await planBattle(
+                (next.ticket ?? undefined) as Record<string, unknown> | undefined,
+                next.locked_brief || '',
+              );
+            }
             updateSession(sessionId, (s) => ({
               ...s,
               messages: s.messages.map((m) =>
-                m.id === messageId ? { ...m, battle } : m,
+                m.id === messageId ? { ...m, battle: battle ?? undefined } : m,
               ),
             }));
-            if (battle.status === 'REJECT_TO_L4' || battle.status === 'ESCALATE_TO_USER') {
-              battleBlocked = true;
+            if (battleBlocked(battle)) {
+              blocked = true;
             }
           } catch {
             // L3 不可用時仍進入公司運行時
           }
-          if (battleBlocked) {
+          if (blocked) {
             return;
           }
           void sendQuery(next.locked_brief || grill.originalQuery || answer, {
@@ -853,6 +870,9 @@ export default function App() {
               ...opts.taskOptions,
               semantic_brief: next.locked_brief || grill.originalQuery,
               auditor_ticket: next.ticket ?? undefined,
+              precomputed_planner: hasReusablePlanner(next.planner)
+                ? (next.planner as Record<string, unknown>)
+                : opts.taskOptions?.precomputed_planner,
             },
           });
         }
@@ -896,6 +916,9 @@ export default function App() {
           ...opts.taskOptions,
           semantic_brief: grill?.locked_brief || grill?.originalQuery,
           auditor_ticket: ticket,
+          precomputed_planner: hasReusablePlanner(grill?.planner)
+            ? (grill?.planner as Record<string, unknown>)
+            : opts.taskOptions?.precomputed_planner,
         },
       });
     },
