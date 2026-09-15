@@ -52,7 +52,7 @@ describe('llmOpsHealth', () => {
         next_check_at: '',
       },
       api_routes: [],
-    } as LlmOpsData;
+    } as unknown as LlmOpsData;
     expect(llmOpsHealthLabel(data).text).toBe('金鑰驗證失敗');
   });
 });
