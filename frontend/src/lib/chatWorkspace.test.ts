@@ -4,7 +4,16 @@ import {
   coerceTaskProgressStatus,
   isLiveMonitorTask,
   isTerminalTaskStatus,
+  looksLikeCompanyQuery,
 } from './chatWorkspace';
+
+describe('looksLikeCompanyQuery', () => {
+  it('matches linkin and minecraft heuristics', () => {
+    expect(looksLikeCompanyQuery('在灵境精灵森林建造一座树桥聚落')).toBe(true);
+    expect(looksLikeCompanyQuery('在坐标(100, 64, 200)处放置一个钻石块')).toBe(true);
+    expect(looksLikeCompanyQuery('今天天氣如何')).toBe(false);
+  });
+});
 
 describe('task terminal status helpers', () => {
   it('treats cancelled and interrupted as terminal', () => {

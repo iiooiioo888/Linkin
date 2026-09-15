@@ -38,17 +38,14 @@ from backend.company.orchestrator import CompanyOrchestrator
 from backend.company.precomputed_planner import normalize_precomputed
 from backend.company.roles import BUILTIN_TEMPLATES
 from backend.core import nodes
-from backend.core.company_nodes import (
-    _is_complex_task,
-    _needs_opc_context,
-    enhance_with_opc_context,
-)
+from backend.core.company_nodes import enhance_with_opc_context
+from backend.core.execution_path import resolve_execution_path
 from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD
+from backend.core.post_company_reflect import post_company_reflect_mode
 from backend.core.reflection_limits import reflection_max_iterations
 from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.linkin.pipeline import (
     enhance_with_linkin_context,
-    is_linkin_complex_task,
     prefix_query_with_linkin,
     resolve_linkin_company_template,
 )
@@ -209,16 +206,8 @@ def _task_precomputed_planner(record: TaskRecord) -> dict[str, Any] | None:
 
 
 def _post_company_reflect_mode() -> str:
-    """公司任務完成後反思閉環：off（預設）| evaluate | full。"""
-    legacy_skip = os.getenv("EVOL_SKIP_POST_COMPANY_REFLECT", "").strip().lower()
-    if legacy_skip in ("1", "true", "yes", "on"):
-        return "off"
-    raw = os.getenv("EVOL_POST_COMPANY_REFLECT", "off").strip().lower()
-    if raw in ("0", "off", "skip", "false", "no", ""):
-        return "off"
-    if raw in ("evaluate", "eval", "once"):
-        return "evaluate"
-    return "full"
+    """相容別名；實作見 ``post_company_reflect_mode``。"""
+    return post_company_reflect_mode()
 
 
 def _apply_commander_result(record: TaskRecord, result: dict[str, Any]) -> None:
@@ -645,36 +634,8 @@ class TaskManager:
     # ── 執行策略解析 ──
 
     def _resolve_path(self, record: TaskRecord) -> str:
-        """依執行策略與任務內容解析實際執行路徑。
-
-        回傳值：
-        - "opc": 工業任務且 OPC 服務可用 → 6 級閉環
-        - "company": 複雜任務 → 公司運行時
-        - "simple": 簡單任務 → 單次生成
-        """
-        strategy = record.strategy
-
-        if strategy == "simple":
-            return "simple"
-        if strategy == "company":
-            return "company"
-
-        # auto：依規則判斷
-        query = record.query
-
-        # 工業任務優先走 OPC 6 級閉環
-        if _needs_opc_context(query):
-            return "opc"
-
-        # 靈境世界觀建造／NPC／任務／道具走公司運行時
-        if is_linkin_complex_task(query):
-            return "company"
-
-        # 複雜任務走公司運行時
-        if _is_complex_task(query):
-            return "company"
-
-        return "simple"
+        """依執行策略與任務內容解析實際執行路徑（與 route_by_complexity / SSE 共用）。"""
+        return resolve_execution_path(record.query, record.strategy)
 
     # ── 統一管線執行 ──
 
@@ -819,10 +780,7 @@ class TaskManager:
     # ── 反思迭代迴圈（三條路徑共用） ──
 
     def _reflection_max_iterations(self, record: TaskRecord, state: dict[str, Any]) -> int:
-        merged = {
-            **state,
-            "execution_strategy": record.strategy,
-        }
+        merged = {**state, "execution_strategy": record.strategy}
         if record.resolved_path == "simple":
             merged["execution_strategy"] = "simple"
         return reflection_max_iterations(merged)

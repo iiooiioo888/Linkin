@@ -1033,11 +1033,11 @@ async def _company_stream(req: ChatRequest):
             data = msg["data"]
 
             if evt == "_done":
-                from backend.services.task_manager import _post_company_reflect_mode
+                from backend.core.post_company_reflect import post_company_reflect_mode
 
                 final_output = data.get("final_output", "")
                 company_result = data
-                reflect_mode = _post_company_reflect_mode()
+                reflect_mode = post_company_reflect_mode()
 
                 yield f"event: phase\ndata: {json_mod.dumps({'phase': 'company_done', 'success': data.get('success', False)}, ensure_ascii=False)}\n\n"
 
@@ -1149,11 +1149,9 @@ async def chat_stream(req: ChatRequest):
 
     統一模式：複雜任務（公司運行時路徑）自動降級為同步 /chat。
     """
-    from backend.core.company_nodes import _is_complex_task
+    from backend.core.execution_path import chat_stream_uses_company_sse
 
-    if req.execution_strategy == "company" or (
-        req.execution_strategy == "auto" and _is_complex_task(req.query)
-    ):
+    if chat_stream_uses_company_sse(req.query, req.execution_strategy):
         # 公司運行時：SSE 串流進度（優化 #11）
         return StreamingResponse(
             _company_stream(req),

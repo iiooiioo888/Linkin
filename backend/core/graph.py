@@ -75,6 +75,12 @@ def should_improve(state: StateInput) -> str:
     if iteration >= reflection_max_iterations(state):
         return "finalize"
 
+    # 公司路徑僅評估一次（EVOL_POST_COMPANY_REFLECT=evaluate）
+    if state.get("company_result") and str(
+        state.get("post_company_reflect_mode") or ""
+    ).strip().lower() == "evaluate":
+        return "finalize"
+
     # 條件 3：分數變化率過低（提前終止）
     reflections = state.get("reflections", [])
     if len(reflections) >= 1:
@@ -141,7 +147,11 @@ def build_graph():
     graph.add_conditional_edges(
         "run_company",
         should_evaluate_company,
-        {"evaluate_answer": "enforce_output_length", "archive_state": "archive_state"},
+        {
+            "evaluate_answer": "enforce_output_length",
+            "archive_state": "archive_state",
+            "company_finalize": "decide_final_answer",
+        },
     )
 
     # ── 簡單任務路徑 ──

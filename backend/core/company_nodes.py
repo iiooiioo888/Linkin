@@ -19,7 +19,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import re
 from typing import Any
 
 from backend.company.orchestrator import CompanyOrchestrator
@@ -28,48 +27,12 @@ from backend.core.state import StateInput
 
 logger = logging.getLogger(__name__)
 
-# ─── 複雜度判斷規則 ───────────────────────────────────────────
+# ─── 複雜度判斷規則（實作於 execution_path，此處保留相容別名） ──
 
-# 觸發公司運行時的關鍵詞（複雜任務特徵）
-_COMPANY_KEYWORDS = re.compile(
-    r"(开发|設計|设计|构建|實現|实现|建立|打造|完整|系統|系统|專案|项目|"
-    r"多步|架構|架构|重构|遷移|迁移|deploy|develop|build|implement|design|"
-    r"create|refactor|migrate|project|system|application|"
-    r"故事|小說|小说|撰寫|撰写|長文|长文|\d+\s*字)",
-    re.IGNORECASE,
+from backend.core.execution_path import (
+    is_complex_task as _is_complex_task,
+    needs_opc_context as _needs_opc_context,
 )
-
-# 觸發 OPC 上下文注入的工業關鍵詞
-_OPC_KEYWORDS = re.compile(
-    r"(感測|传感|溫度|温度|壓力|压力|流量|閥門|阀门|閥|阀|馬達|马达|電機|电机|"
-    r"設備|设备|製程|制程|工業|工业|產線|产线|opc|sensor|temperature|pressure|"
-    r"flow|valve|motor|equipment|industrial|plc)",
-    re.IGNORECASE,
-)
-
-# 複雜任務的 query 長度門檻（字符數，P2 自適應反饋可動態調整）
-_COMPLEX_QUERY_LENGTH = 200
-
-
-def _complex_query_length() -> int:
-    try:
-        from backend.core.routing_feedback import adaptive_length_threshold
-        return adaptive_length_threshold(_COMPLEX_QUERY_LENGTH)
-    except Exception:
-        return _COMPLEX_QUERY_LENGTH
-
-
-def _is_complex_task(query: str) -> bool:
-    """規則判斷任務是否複雜（需要公司運行時）。"""
-    threshold = _complex_query_length()
-    if len(query) >= threshold:
-        return True
-    return bool(_COMPANY_KEYWORDS.search(query))
-
-
-def _needs_opc_context(query: str) -> bool:
-    """判斷任務是否需要 OPC 工業上下文。"""
-    return bool(_OPC_KEYWORDS.search(query))
 
 
 # ─── OPC 上下文增強節點 ──────────────────────────────────────
@@ -130,51 +93,17 @@ def route_by_complexity(state: StateInput) -> str:
     - "run_company": 走公司運行時
     - "generate_initial_answer": 走單次生成
     """
-    strategy = state.get("execution_strategy", "auto")
-
-    if strategy == "simple":
-        return "generate_initial_answer"
-    if strategy == "company":
-        return "run_company"
+    from backend.core.execution_path import route_by_complexity_target
 
     query = state.get("query", "")
-    complexity = state.get("task_complexity")
-
-    try:
-        from backend.linkin.pipeline import is_linkin_complex_task
-        from backend.tools.minecraft_mcp import is_minecraft_control_query
-
-        if is_linkin_complex_task(query):
-            logger.info("靈境世界觀任務判定為複雜，啟用公司運行時")
-            return "run_company"
-        if is_minecraft_control_query(query):
-            logger.info("Minecraft MCP 控制任務判定為複雜，啟用公司運行時")
-            return "run_company"
-    except Exception as exc:
-        logger.debug("靈境／Minecraft 複雜度判斷略過：%s", exc)
-
-    try:
-        from backend.core.cost_speed_router import (
-            classify_task_complexity,
-            cost_speed_enabled,
-            resolve_path_for_complexity,
-        )
-
-        if cost_speed_enabled():
-            level = complexity or classify_task_complexity(query)
-            path = resolve_path_for_complexity(level)  # type: ignore[arg-type]
-            if path == "company":
-                logger.info("cost_speed 判定為 %s，啟用公司運行時", level)
-                return "run_company"
-            return "generate_initial_answer"
-    except Exception as exc:
-        logger.warning("cost_speed 路徑路由失敗，回退規則判斷：%s", exc)
-
-    # auto：規則判斷（向後相容）
-    if _is_complex_task(query):
-        logger.info("任務判定為複雜，啟用公司運行時")
-        return "run_company"
-    return "generate_initial_answer"
+    target = route_by_complexity_target(
+        query,
+        str(state.get("execution_strategy", "auto")),
+        task_complexity=state.get("task_complexity"),
+    )
+    if target == "run_company":
+        logger.info("任務解析為公司運行時（query 前 80 字）：%s", query[:80])
+    return target
 
 
 # ─── 公司運行時節點 ──────────────────────────────────────────
@@ -243,12 +172,15 @@ def run_company(state: StateInput) -> dict[str, Any]:
         final_output = result.get("final_output", "")
 
         # 成功：將產出設為 current_answer，交由 evaluate_answer 評估迭代
+        from backend.core.post_company_reflect import post_company_reflect_mode
+
         return {
             "current_answer": final_output,
             "company_result": result,
             "company_kanban": result.get("kanban", {}),
             "company_budget": result.get("budget", {}),
             "iteration": 0,
+            "post_company_reflect_mode": post_company_reflect_mode(),
         }
 
     except Exception as exc:
@@ -269,7 +201,8 @@ def should_evaluate_company(state: StateInput) -> str:
     """公司運行時執行後路由（優化 #2：錯誤回退策略）。
 
     路由邏輯：
-    - 成功 → evaluate_answer（進入評估迭代迴圈）
+    - 成功 + 預設 post reflect off → 直接定稿（與 Task/SSE 一致）
+    - 成功 + evaluate/full → 進入評估／反思閉環
     - 失敗但有部分產出 → evaluate_answer（嘗試用反思閉環修復）
     - 失敗且無產出 → archive_state → END
 
@@ -277,6 +210,13 @@ def should_evaluate_company(state: StateInput) -> str:
     """
     company_result = state.get("company_result", {})
     if company_result.get("success", False):
+        mode = str(state.get("post_company_reflect_mode") or "").strip().lower()
+        if not mode:
+            from backend.core.post_company_reflect import post_company_reflect_mode
+
+            mode = post_company_reflect_mode()
+        if mode == "off":
+            return "company_finalize"
         return "evaluate_answer"
 
     # 優化 #2：失敗時嘗試回退到簡單模式
