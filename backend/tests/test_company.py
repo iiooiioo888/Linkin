@@ -1509,12 +1509,17 @@ class TestCompanyGraphIntegration:
         company_result = result.get("company_result", {})
         assert company_result.get("success") is False
 
-    def test_should_evaluate_company_success(self):
-        """公司執行成功時路由到 evaluate_answer（進入迭代迴圈）。"""
+    def test_should_evaluate_company_success(self, monkeypatch):
+        """預設 post reflect off：成功時直接 company_finalize；full 仍進評估。"""
         from backend.core.company_nodes import should_evaluate_company
 
+        monkeypatch.delenv("EVOL_POST_COMPANY_REFLECT", raising=False)
+        monkeypatch.delenv("EVOL_SKIP_POST_COMPANY_REFLECT", raising=False)
         state = {"company_result": {"success": True}}
-        assert should_evaluate_company(state) == "evaluate_answer"
+        assert should_evaluate_company(state) == "company_finalize"
+
+        monkeypatch.setenv("EVOL_POST_COMPANY_REFLECT", "full")
+        assert should_evaluate_company({"company_result": {"success": True}}) == "evaluate_answer"
 
     def test_should_evaluate_company_failure(self):
         """公司執行失敗時路由到 archive_state（跳過迭代）。"""
@@ -1528,6 +1533,7 @@ class TestCompanyGraphIntegration:
         from backend.core.graph import build_graph
 
         monkeypatch.setenv("EVOL_MERGE_REVIEW_SYNTH", "false")
+        monkeypatch.setenv("EVOL_POST_COMPANY_REFLECT", "full")
 
         company_responses = [
             "高品質公司產出",     # Developer 執行
@@ -1562,9 +1568,11 @@ class TestCompanyGraphIntegration:
         assert not result.get("reflections")
         assert result["company_result"]["success"] is True
 
-    def test_company_mode_iterates_on_low_score(self):
+    def test_company_mode_iterates_on_low_score(self, monkeypatch):
         """公司模式產出經評估分數過低時，觸發反思迭代迴圈。"""
         from backend.core.graph import build_graph
+
+        monkeypatch.setenv("EVOL_POST_COMPANY_REFLECT", "full")
 
         company_responses = [
             "公司產出（品質待改進）",   # Developer 執行
