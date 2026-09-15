@@ -503,6 +503,20 @@ def refresh_interval_sec(cfg: dict[str, Any] | None = None) -> int:
     return max(60, min(3600, raw))
 
 
+def _is_auth_catalog_error(error: str) -> bool:
+    """爬取目錄時的金鑰／授權失敗（不應因靜態回退而標為健康）。 """
+    e = (error or "").lower()
+    return (
+        "401" in e
+        or "403" in e
+        or "unauthorized" in e
+        or "invalid api key" in e
+        or "incorrect api key" in e
+        or "authentication" in e
+        or "api key" in e and ("invalid" in e or "missing" in e)
+    )
+
+
 def fetch_catalog(
     api_base: str,
     api_key: str,
@@ -545,7 +559,10 @@ def fetch_catalog(
         logger.info("預設模型 %s 不可用，改為 %s（provider=%s）", current_model, chosen, kind)
 
     elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
-    ok = source == "crawl" or (source in {"static", "configured"} and bool(allowed))
+    auth_error = _is_auth_catalog_error(error)
+    ok = not auth_error and (
+        source == "crawl" or (source in {"static", "configured"} and bool(allowed))
+    )
     return {
         "provider": kind,
         "model": chosen,
@@ -556,6 +573,7 @@ def fetch_catalog(
         "catalog_error": error,
         "catalog_url": url,
         "elapsed_ms": elapsed_ms,
+        "auth_error": auth_error,
         "ok": ok,
     }
 
@@ -633,7 +651,7 @@ def refresh_model_catalog(*, reason: str = "manual", route_id: str | None = None
             "catalog_url": catalog["catalog_url"],
             "ops_last_reason": reason,
             "ops_last_ok_at": _now_iso() if ok else cfg.get("ops_last_ok_at") or "",
-            "ops_last_error": catalog["catalog_error"],
+            "ops_last_error": "" if ok else (catalog["catalog_error"] or ""),
             "ops_last_latency_ms": catalog["elapsed_ms"],
             "ops_consecutive_fail": 0 if ok else int(cfg.get("ops_consecutive_fail") or 0) + 1,
         }

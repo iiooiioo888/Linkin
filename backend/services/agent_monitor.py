@@ -1192,7 +1192,7 @@ def _collect_account_budget_summary() -> dict[str, Any]:
         uid = default_anonymous_user()
         acct = get_billing_service().get_account(uid)
         summary["linkin_credits"] = {
-            "label": "靈境積分",
+            "label": "用量額度",
             "unit": "credits",
             "balance_credits": round(float(acct.get("balance_credits") or 0), 2),
             "monthly_quota_credits": round(float(acct.get("monthly_quota_credits") or 0), 2),
