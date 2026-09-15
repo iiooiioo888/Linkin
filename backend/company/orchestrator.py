@@ -34,6 +34,12 @@ from backend.company.docker_tools import (
     execute_docker_tool,
 )
 from backend.company.events import CompanyEvent, EventBus
+from backend.company.precomputed_planner import (
+    campaign_snapshot,
+    commander_snapshot,
+    normalize_precomputed,
+    precomputed_usable,
+)
 from backend.company.prompts import PromptConfig
 from backend.company.role_catalog import resolve_runtime
 from backend.company.role_memory import get_role_memory
@@ -51,6 +57,16 @@ from backend.core.llm import call_llm, llm_kwargs_for_role, parse_json_response,
 from backend.services.docker_manager import DockerManager, get_docker_manager
 
 logger = logging.getLogger(__name__)
+
+# _log 與 EventBus 同時發出的結構化事件：避免 JSONL 雙寫
+_RUN_LOG_BUS_MIRROR_EVENTS = frozenset({
+    "company_start",
+    "campaign_planned",
+    "decompose_done",
+    "tool_call",
+    "tool_result",
+    "phase",
+})
 
 
 async def _llm_thread(fn, *args, **kwargs):
@@ -187,7 +203,12 @@ class CompanyOrchestrator:
     # 公開 API
     # ═══════════════════════════════════════════════════════════
 
-    async def execute(self, goal: str, ticket: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def execute(
+        self,
+        goal: str,
+        ticket: dict[str, Any] | None = None,
+        precomputed_planner: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """執行公司目標，回傳最終結果。
 
         這是主要的進入點，執行完整的公司運行流程。
@@ -259,15 +280,49 @@ class CompanyOrchestrator:
                 "pressure": round(self.budget.budget_pressure, 2),
             }, degraded=True, level=logging.WARNING)
 
+        precomputed = normalize_precomputed(precomputed_planner)
+
         # ── 階段 1a：L4 需求審計官譯製戰役 DAG ──
         self._log("phase", {"phase": "campaign_plan", "module": "RahoPlanner"})
         self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "campaign_plan"})
         try:
-            from backend.company.raho.planner import plan_campaign
+            from backend.company.raho.planner import CampaignMap, plan_campaign
             from backend.company.raho.protocol import RahoLayer, raho_enabled
             from backend.company.raho.store import STORE as _RAHO_STORE
 
-            if raho_enabled():
+            snap_campaign = campaign_snapshot(precomputed)
+            if raho_enabled() and snap_campaign:
+                campaign = CampaignMap.from_dict(snap_campaign, goal)
+                self._campaign = campaign.to_dict()
+                if self._run_id:
+                    _RAHO_STORE.set_campaign(self._run_id, self._campaign, goal)
+                    _RAHO_STORE.add_node(
+                        self._run_id,
+                        from_layer=int(RahoLayer.L4_AUDITOR),
+                        to_layer=int(RahoLayer.L3_COMMANDER),
+                        kind="campaign",
+                        summary=campaign.brief(240),
+                        status="resolved",
+                        payload=self._campaign,
+                        goal=goal,
+                        from_role="requirement_auditor",
+                        to_role="tactical_commander",
+                    )
+                self.events.emit(CompanyEvent.CAMPAIGN_PLANNED, {
+                    "node_count": len(campaign.nodes),
+                    "source": campaign.source,
+                    "campaign": self._campaign,
+                })
+                self._log("campaign_planned", {
+                    "node_count": len(campaign.nodes),
+                    "source": campaign.source,
+                })
+                self._log(
+                    "planner_reused",
+                    {"layer": "L4", "aspect": "campaign", "node_count": len(campaign.nodes)},
+                    level=logging.INFO,
+                )
+            elif raho_enabled():
                 campaign = await asyncio.to_thread(plan_campaign, goal)
                 self._campaign = campaign.to_dict()
                 if self._run_id:
@@ -293,6 +348,11 @@ class CompanyOrchestrator:
                     "node_count": len(campaign.nodes),
                     "source": campaign.source,
                 })
+                self._log(
+                    "planner_computed",
+                    {"layer": "L4", "aspect": "campaign", "node_count": len(campaign.nodes)},
+                    level=logging.INFO,
+                )
         except Exception:
             logger.debug("L4 戰役規劃略過", exc_info=True)
 
@@ -311,8 +371,23 @@ class CompanyOrchestrator:
             l4_ticket = ticket if isinstance(ticket, dict) else None
             if l4_ticket is None:
                 l4_ticket = extract_ticket(goal)
-            if raho_enabled() and l4_ticket:
+            snap_commander = commander_snapshot(precomputed)
+            pack: dict[str, Any] | None = None
+            if raho_enabled() and l4_ticket and snap_commander and precomputed_usable(precomputed):
+                pack = snap_commander
+                self._log(
+                    "planner_reused",
+                    {"layer": "L3", "aspect": "commander", "status": pack.get("status")},
+                    level=logging.INFO,
+                )
+            elif raho_enabled() and l4_ticket:
                 pack = await asyncio.to_thread(command_from_ticket, l4_ticket)
+                self._log(
+                    "planner_computed",
+                    {"layer": "L3", "aspect": "commander", "status": pack.get("status")},
+                    level=logging.INFO,
+                )
+            if pack is not None:
                 self._commander = pack
                 if pack.get("status") == "REJECT_TO_L4":
                     defects = "；".join(pack.get("defects") or ["門票檢查未過"])
@@ -2252,13 +2327,15 @@ class CompanyOrchestrator:
             **data,
         }
         self._run_log.append(entry)
-        append_run_record(entry)
+        # 與 EventBus 鏡像重疊的生命週期事件只寫一次 JSONL（由 _persist_bus_event 落盤）
+        if event not in _RUN_LOG_BUS_MIRROR_EVENTS:
+            append_run_record(entry)
         if degraded:
             level = max(level, logging.INFO)
         logger.log(level, "公司事件：%s %s", event, entry)
 
     def _persist_bus_event(self, event: CompanyEvent, data: dict[str, Any]) -> None:
-        """EventBus 監聽器：將生命週期事件同步寫入持久軌跡 sink。"""
+        """EventBus 監聽器：公司生命週期事件唯一 JSONL 寫入路徑。"""
         payload = dict(data)
         record = {
             "ts": utc_now_iso(),
