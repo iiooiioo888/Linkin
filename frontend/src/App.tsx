@@ -547,7 +547,11 @@ export default function App() {
               ),
             }));
           },
-        }, history, { semantic_lock: semanticLock, ui_language: i18n.language });
+        }, history, {
+          semantic_lock: semanticLock,
+          ui_language: i18n.language,
+          executionStrategy: options.executionStrategy,
+        });
         return;
       }
 

@@ -85,7 +85,11 @@ export function sendChatStream(
   sessionId: string,
   callbacks: StreamCallbacks,
   history?: Array<{ role: string; content: string }>,
-  extra?: { semantic_lock?: Record<string, unknown>; ui_language?: string },
+  extra?: {
+    semantic_lock?: Record<string, unknown>;
+    ui_language?: string;
+    executionStrategy?: 'auto' | 'simple' | 'company';
+  },
 ): AbortController {
   const controller = new AbortController();
 
@@ -102,6 +106,7 @@ export function sendChatStream(
             history: history ?? [],
             semantic_lock: extra?.semantic_lock ?? {},
             ui_language: extra?.ui_language ?? undefined,
+            execution_strategy: extra?.executionStrategy ?? 'auto',
           }),
           signal: controller.signal,
         }),
