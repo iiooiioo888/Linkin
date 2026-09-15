@@ -34,16 +34,16 @@ from backend.company.docker_tools import (
     execute_docker_tool,
 )
 from backend.company.events import CompanyEvent, EventBus
-from backend.company.prompts import PromptConfig
-from backend.company.role_catalog import resolve_runtime
-from backend.company.role_memory import get_role_memory
-from backend.company.roles import STANDARD_ROLES, RoleType
 from backend.company.precomputed_planner import (
     campaign_snapshot,
     commander_snapshot,
     normalize_precomputed,
     precomputed_usable,
 )
+from backend.company.prompts import PromptConfig
+from backend.company.role_catalog import resolve_runtime
+from backend.company.role_memory import get_role_memory
+from backend.company.roles import STANDARD_ROLES, RoleType
 from backend.company.run_log import append_run_record, utc_now_iso
 from backend.company.state import (
     BudgetTier,

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,7 +10,6 @@ import pytest
 from backend.company.precomputed_planner import normalize_precomputed, precomputed_usable
 from backend.company.run_log import run_log_path
 from backend.services.task_manager import TaskManager, TaskRecord, _post_company_reflect_mode
-
 
 VALID_TICKET = {
     "status": "APPROVED_FOR_PLANNING",
