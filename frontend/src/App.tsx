@@ -1247,7 +1247,7 @@ export default function App() {
               onDecisionResolved={handleDecisionResolved}
               onTaskStatePatch={handleTaskStatePatch}
               onOpenBilling={() => {
-                setActiveView('chat');
+                handleMonitorTabChange('models');
               }}
               liveSpent={turnSpent}
             />

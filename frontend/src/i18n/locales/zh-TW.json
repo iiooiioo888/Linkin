@@ -43,7 +43,7 @@
     "liveCost": "已耗",
     "insufficientBalance": "積分不足，請先充值",
     "lowBalanceWarn": "餘額可能不足以完成此任務",
-    "openWallet": "前往錢包",
+    "openWallet": "調用用量",
     "estHint": "預估",
     "send": "發送"
   },

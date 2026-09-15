@@ -279,7 +279,7 @@ export default function AppShell({
         taskCount={statusInfo.taskCount}
         memoryCount={statusInfo.memoryCount}
         onOpenCredits={() => {
-          onViewChange('chat');
+          onMonitorTabChange('models');
         }}
       />
     </div>
