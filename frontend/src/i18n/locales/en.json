@@ -104,9 +104,9 @@
     "budgetAlertCount": "{{count}} budget alert(s) active",
     "accountHubBudget": "Hub daily API budget (USD)",
     "accountHubHint": "Per-user Hub call limit — separate from per-role USD caps",
-    "accountLinkinCredits": "Linkin credits",
-    "accountCreditsHint": "Task billing wallet — not mixed with role USD budgets",
-    "creditsUnit": "credits",
+    "accountLinkinCredits": "Usage allowance",
+    "accountCreditsHint": "Platform task usage balance — separate from per-role USD caps",
+    "creditsUnit": "units",
     "creditsMonthlyUsed": "Monthly used {{used}} / {{quota}}"
   },
   "mobileShell": {

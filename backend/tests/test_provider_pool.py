@@ -438,6 +438,31 @@ def test_probe_pool_health_optional_ping(monkeypatch):
     assert "deepseek-v4-pro" in snap["opened"]
 
 
+def test_auth_catalog_error_detection():
+    from backend.core.provider_pool import _is_auth_catalog_error
+
+    assert _is_auth_catalog_error("HTTP Error 401: Unauthorized")
+    assert not _is_auth_catalog_error("目錄為空，改用靜態清單")
+
+
+def test_fetch_catalog_auth_failure_not_healthy(monkeypatch):
+    from backend.core.provider_pool import fetch_catalog
+
+    def fail_models(url, key, timeout=15.0):
+        raise RuntimeError("HTTP Error 401: Unauthorized")
+
+    monkeypatch.setattr("backend.core.provider_pool._http_get_json", fail_models)
+    result = fetch_catalog(
+        "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+        "bad-key",
+        "qwen3.8-flash",
+        "token-plan",
+    )
+    assert result["auth_error"] is True
+    assert result["ok"] is False
+    assert "401" in result["catalog_error"]
+
+
 def test_run_ops_once_includes_active_probe(monkeypatch):
     from backend.services.llm_ops import run_ops_once
 

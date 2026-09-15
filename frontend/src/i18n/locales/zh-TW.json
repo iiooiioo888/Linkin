@@ -104,9 +104,9 @@
     "budgetAlertCount": "預算告警 {{count}} 則",
     "accountHubBudget": "Hub 日 API 預算（USD）",
     "accountHubHint": "Hub 用戶呼叫日限額，與角色 USD 預算分開",
-    "accountLinkinCredits": "靈境積分",
-    "accountCreditsHint": "任務計費錢包，不與角色 USD 預算混算",
-    "creditsUnit": "積分",
+    "accountLinkinCredits": "用量額度",
+    "accountCreditsHint": "平台任務用量餘額，不與角色 USD 預算混算",
+    "creditsUnit": "單位",
     "creditsMonthlyUsed": "本月已用 {{used}} / {{quota}}"
   },
   "mobileShell": {

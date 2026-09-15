@@ -9,6 +9,7 @@ import { catalogGroupKey, familyLabel } from '../lib/llmCatalog';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { LlmOpsData, ModelRateCard } from '../types';
 import ApiRoutesEditor from './ApiRoutesEditor';
+import { isAuthCatalogError, llmOpsHealthLabel, llmOpsShowLastError } from '../lib/llmOpsHealth';
 import {
   ConsoleCenterColumn,
   ConsoleColumnScroll,
@@ -43,16 +44,6 @@ function rateField(data: LlmOpsData | null, modelId: string, field: keyof ModelR
   return fmtPerMillion(n);
 }
 
-function healthLabel(data: LlmOpsData | null): { text: string; tone: string } {
-  const ops = data?.ops;
-  if (!ops) return { text: '未知', tone: 'text-[var(--console-sub)]' };
-  if (!ops.enabled) return { text: '定時任務已停用', tone: 'console-status-amber' };
-  if (ops.consecutive_fail >= 3) return { text: '連續失敗', tone: 'console-status-danger' };
-  if (ops.stale) return { text: '目錄過期', tone: 'console-status-amber' };
-  if (ops.last_error) return { text: '上次有錯，已回退', tone: 'console-status-amber' };
-  return { text: '健康', tone: 'console-status-green' };
-}
-
 export default function LlmOpsPanel() {
   const [data, setData] = useState<LlmOpsData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +69,7 @@ export default function LlmOpsPanel() {
 
   const ops = data?.ops;
   const models = data?.catalog ?? [];
-  const health = healthLabel(data);
+  const health = llmOpsHealthLabel(data);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return models;
@@ -297,9 +288,15 @@ export default function LlmOpsPanel() {
                   </span>
                 </div>
               </ConsoleSnippetList>
-              {ops?.last_error ? (
+              {ops && llmOpsShowLastError(ops) ? (
                 <ConsoleSnippetList title="上次錯誤">
-                  <p className="text-[11px] console-status-amber">{ops.last_error}</p>
+                  <p
+                    className={`text-[11px] ${
+                      isAuthCatalogError(ops.last_error) ? 'console-status-danger' : 'console-status-amber'
+                    }`}
+                  >
+                    {ops.last_error}
+                  </p>
                   <p className="text-[10px] text-[var(--console-faint)]">連續失敗 {ops.consecutive_fail}</p>
                 </ConsoleSnippetList>
               ) : null}

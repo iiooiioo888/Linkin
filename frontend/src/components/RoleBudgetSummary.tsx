@@ -189,7 +189,10 @@ export function AccountBudgetBanner({ summary }: { summary?: AccountBudgetSummar
   if (!summary) return null;
   const hub = summary.hub_daily;
   const credits = summary.linkin_credits;
-  if (!hub && !credits) return null;
+  const showCredits =
+    credits &&
+    (credits.balance_credits > 0 || credits.monthly_quota_credits > 0 || credits.monthly_used_credits > 0);
+  if (!hub && !showCredits) return null;
 
   const hubPct =
     hub && hub.daily_limit_usd > 0
@@ -223,7 +226,7 @@ export function AccountBudgetBanner({ summary }: { summary?: AccountBudgetSummar
           <p className="mt-1 text-[9px] text-[var(--console-faint)]">{t('roles.accountHubHint')}</p>
         </div>
       ) : null}
-      {credits ? (
+      {showCredits ? (
         <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-2">
           <p className="text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
             {t('roles.accountLinkinCredits')}

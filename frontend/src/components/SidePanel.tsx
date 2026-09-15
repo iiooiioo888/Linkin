@@ -10,6 +10,7 @@ import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApi
 import { agentRahoLabel, jumpToL0Kernel, COMMAND_CHAIN, INSPECT_CHAIN, KERNEL_CHAIN, RAHO_LAYERS, isRahoSpineRole } from '../lib/rahoUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { fetchLlmOps } from '../api/client';
+import { routeProbeDotClass, routeProbeTone } from '../lib/llmOpsHealth';
 import type { ApiRoutePublic, ChatSession, RoleAgent, TaskSummary } from '../types';
 import {
   LAB_NAV_GROUPS,
@@ -425,9 +426,16 @@ function ApiRouteRoster() {
               }`}
             >
               <span
-                className={`h-2 w-2 shrink-0 rounded-full ${
-                  !route.enabled ? 'bg-[#8E8E93]' : route.configured ? 'bg-[#30D158]' : 'bg-[#FF9F0A]'
-                }`}
+                className={`h-2 w-2 shrink-0 rounded-full ${routeProbeDotClass(routeProbeTone(route))}`}
+                title={
+                  route.catalog_error
+                    ? route.catalog_error
+                    : !route.configured
+                      ? '未設金鑰'
+                      : route.enabled
+                        ? '已啟用'
+                        : '已停用'
+                }
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[12px] font-medium text-[#F5F5F7]">
