@@ -123,3 +123,7 @@ Minecraft 頂部選單 **玩家／現場 → 玩家現場**（`#/modules/minecra
 ## 隱私
 
 聊天 ingest 可能含 PII；營運面板如實顯示，請限制面板存取。Linkin 不記錄密碼或 Token。
+
+## 解析注意
+
+MineMCP `get_online_players` 若回傳英文空狀態句（如 `No players are currently online.`），必須視為空名單，**不可**拆成玩家名；否則 Monitor Hub KPI 會顯示在線 1，玩家現場列表則出現該英文句。
