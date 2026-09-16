@@ -1057,17 +1057,20 @@ export interface ContainerTaskPublic {
 }
 
 export async function fetchContainerConfig(): Promise<{ enabled: boolean; allowlist: string[] }> {
-  const resp = await fetch(apiUrl('/linkin/containers/config'), { headers: attachGateHeaders() });
+  const resp = await fetch(apiUrl('/linkin/containers/config'), attachGateHeaders());
   if (!resp.ok) throw new Error(`讀取容器配置失敗（HTTP ${resp.status}）`);
   return resp.json();
 }
 
 export async function createContainerTask(body: ContainerTaskCreateBody): Promise<{ task_id: string; status: string }> {
-  const resp = await fetch(apiUrl('/linkin/containers/tasks'), {
-    method: 'POST',
-    headers: attachGateHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(body),
-  });
+  const resp = await fetch(
+    apiUrl('/linkin/containers/tasks'),
+    attachGateHeaders({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  );
   if (!resp.ok) {
     const detail = await resp.text();
     throw new Error(detail || `提交容器任務失敗（HTTP ${resp.status}）`);
@@ -1076,9 +1079,10 @@ export async function createContainerTask(body: ContainerTaskCreateBody): Promis
 }
 
 export async function fetchContainerTask(taskId: string): Promise<ContainerTaskPublic> {
-  const resp = await fetch(apiUrl(`/linkin/containers/tasks/${encodeURIComponent(taskId)}`), {
-    headers: attachGateHeaders(),
-  });
+  const resp = await fetch(
+    apiUrl(`/linkin/containers/tasks/${encodeURIComponent(taskId)}`),
+    attachGateHeaders(),
+  );
   if (!resp.ok) throw new Error(`讀取容器任務失敗（HTTP ${resp.status}）`);
   return resp.json();
 }
@@ -1086,11 +1090,13 @@ export async function fetchContainerTask(taskId: string): Promise<ContainerTaskP
 /** 臨時容器任務 WebSocket（日誌 + finished）。 */
 export class ContainerTaskWebSocket {
   private ws: WebSocket | null = null;
+  private taskId: string;
+  private onMessage: (msg: TaskWsMessage) => void;
 
-  constructor(
-    private taskId: string,
-    private onMessage: (msg: TaskWsMessage) => void,
-  ) {}
+  constructor(taskId: string, onMessage: (msg: TaskWsMessage) => void) {
+    this.taskId = taskId;
+    this.onMessage = onMessage;
+  }
 
   connect(): void {
     this.ws = new WebSocket(wsUrl(`/linkin/containers/tasks/${encodeURIComponent(this.taskId)}/ws`));

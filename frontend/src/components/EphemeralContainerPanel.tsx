@@ -131,8 +131,8 @@ export default function EphemeralContainerPanel() {
   if (enabled === false) {
     return (
       <ErrorState
-        title="臨時容器未啟用"
-        message="後端請設定 EVOL_EPHEMERAL_CONTAINERS=1 並確保 Docker 可用。"
+        kind="generic"
+        message="臨時容器未啟用：後端請設定 EVOL_EPHEMERAL_CONTAINERS=1 並確保 Docker 可用。"
       />
     );
   }
