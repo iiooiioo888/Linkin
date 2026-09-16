@@ -352,8 +352,11 @@ def _parse_online_players_payload(data: Any) -> list[str]:
         # online_count / count == 0 且無名單 → 空
         for key in ("online_count", "count"):
             if key in data:
+                raw = data.get(key)
+                if raw is None:
+                    continue
                 try:
-                    if int(data.get(key)) == 0:
+                    if int(raw) == 0:
                         return []
                 except (TypeError, ValueError):
                     pass
