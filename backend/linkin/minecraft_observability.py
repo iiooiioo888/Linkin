@@ -208,6 +208,78 @@ def _recent_errors(limit: int = 5) -> list[dict[str, Any]]:
     return out
 
 
+def count_minecraft_events_since(since_ts: float) -> int:
+    """統計自 since_ts 以來的可觀測性事件筆數（供監控 KPI）。"""
+    cutoff = float(since_ts)
+    rows = _read_all_events()
+    return sum(1 for row in rows if float(row.get("ts") or 0) >= cutoff)
+
+
+def resolve_ai_gm_status(cfg: dict[str, Any]) -> str:
+    """AI 主持人狀態：offline / dry-run / active / idle。"""
+    if not cfg.get("enabled"):
+        return "offline"
+    if cfg.get("dry_run"):
+        return "dry-run"
+    if cfg.get("auto_apply"):
+        return "active"
+    return "idle"
+
+
+def aggregate_ai_monitor_kpis(now: float | None = None) -> dict[str, Any]:
+    """Monitor Hub：AI 可觀測性 KPI（GM、事件、情境提示）。不捏造玩家數。"""
+    ts_now = float(now if now is not None else time.time())
+    since_24h = ts_now - 86400.0
+
+    events_24h = count_minecraft_events_since(since_24h)
+
+    gm_cfg: dict[str, Any] = {}
+    gm_last: dict[str, Any] | None = None
+    gm_runs_24h = 0
+    try:
+        from backend.linkin.minecraft_ai_gm import get_gm_config, list_gm_runs
+
+        gm_cfg = get_gm_config()
+        runs_page = list_gm_runs(limit=200)
+        runs = runs_page.get("runs") or []
+        gm_last = runs[0] if runs else None
+        gm_runs_24h = sum(1 for run in runs if float(run.get("ts") or 0) >= since_24h)
+    except Exception:
+        gm_cfg = {}
+
+    last_actions = 0
+    if gm_last:
+        actions = gm_last.get("actions") or []
+        last_actions = len([a for a in actions if str((a or {}).get("type") or "") != "noop"])
+
+    situation_hint: str | None = None
+    try:
+        from backend.linkin.minecraft_situation import build_situation_snapshot
+
+        snap = build_situation_snapshot()
+        hints = snap.get("hints") or []
+        if hints:
+            situation_hint = str(hints[0]).strip()[:160] or None
+    except Exception:
+        situation_hint = None
+
+    return {
+        "events_24h": events_24h,
+        "gm_status": resolve_ai_gm_status(gm_cfg),
+        "gm_enabled": bool(gm_cfg.get("enabled")),
+        "gm_dry_run": bool(gm_cfg.get("dry_run", True)),
+        "gm_auto_apply": bool(gm_cfg.get("auto_apply")),
+        "gm_cooldown_seconds": float(gm_cfg.get("cooldown_seconds") or 30),
+        "gm_runs_24h": gm_runs_24h,
+        "gm_last_run_ts": float(gm_last.get("ts") or 0) if gm_last else None,
+        "gm_last_action_count": last_actions,
+        "gm_last_applied": bool(gm_last.get("applied")) if gm_last else False,
+        "gm_last_dry_run": bool(gm_last.get("dry_run")) if gm_last else None,
+        "gm_last_trigger_action": (str(gm_last.get("trigger_action") or "").strip() or None) if gm_last else None,
+        "situation_hint": situation_hint,
+    }
+
+
 def _bridge_setup_block(bridge: dict[str, Any]) -> dict[str, Any]:
     raw_probe = bridge.get("probe")
     probe: dict[str, Any] = raw_probe if isinstance(raw_probe, dict) else {}
@@ -300,6 +372,7 @@ def build_monitor_summary() -> dict[str, Any]:
                 "bridge_offline": players_block.get("bridge_offline"),
                 "recent_events": len(players_block.get("recent_activity") or []),
             },
+            "ai": aggregate_ai_monitor_kpis(),
         },
         "players": players_block,
         "world_status": {
@@ -543,12 +616,15 @@ def safe_append_minecraft_event(**kwargs: Any) -> None:
 
 
 __all__ = [
+    "aggregate_ai_monitor_kpis",
     "append_minecraft_event",
     "build_ai_context",
     "build_ai_snapshot",
     "build_monitor_summary",
+    "count_minecraft_events_since",
     "list_minecraft_events",
     "recent_pipeline_events",
     "reset_minecraft_events",
+    "resolve_ai_gm_status",
     "safe_append_minecraft_event",
 ]

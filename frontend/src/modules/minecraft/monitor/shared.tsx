@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchMinecraftAiEvents,
   fetchMinecraftMonitorSummary,
+  type MinecraftAiMonitorKpis,
   type MinecraftMonitorSummary,
   type MinecraftObservabilityEvent,
 } from '../../../api/linkin';
@@ -198,6 +199,26 @@ export function bridgeNeedsSetup(
 /** 可信任 MineMCP 即時玩家／世界 KPI */
 export function bridgeLiveReady(bridge?: BridgeLike | null): boolean {
   return Boolean(bridge?.enabled && bridge?.token_configured && bridge?.connected && !bridge?.dry_run);
+}
+
+const AI_GM_STATUS_LABELS: Record<string, string> = {
+  offline: '離線',
+  'dry-run': '乾跑',
+  active: '執行中',
+  idle: '待命中',
+};
+
+export function aiGmStatusLabel(status: string | undefined): string {
+  if (!status) return '—';
+  return AI_GM_STATUS_LABELS[status] ?? status;
+}
+
+export function formatAiGmLastAction(kpis: MinecraftAiMonitorKpis | undefined): string {
+  if (!kpis?.gm_last_run_ts) return '—';
+  const n = kpis.gm_last_action_count ?? 0;
+  const mode = kpis.gm_last_dry_run ? '乾跑' : kpis.gm_last_applied ? '已套用' : '記錄';
+  const trigger = kpis.gm_last_trigger_action ? ` · ${kpis.gm_last_trigger_action}` : '';
+  return `${n} 動作 · ${mode}${trigger}`;
 }
 
 export function bridgeKpi(bridge: MinecraftMonitorSummary['bridge'] | undefined) {

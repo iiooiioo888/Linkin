@@ -20,9 +20,11 @@ import {
   BridgeSetupCard,
   EmptyStateCta,
   PipelineTimeline,
+  aiGmStatusLabel,
   bridgeKpi,
   bridgeLiveReady,
   bridgeNeedsSetup,
+  formatAiGmLastAction,
   formatTs,
   minecraftHref,
   statusLabel,
@@ -51,6 +53,10 @@ export default function MonitorHubPanel() {
   const onlinePlayers = playersLive?.online_count ?? kpis?.online_players ?? data?.players?.online_count ?? 0;
   const summaryReady = Boolean(data) && !loading;
   const recentPlayerEvents = playersLive?.recent_events ?? 0;
+  const aiKpi = kpis?.ai;
+  const aiStatus = aiKpi?.gm_status ?? 'offline';
+  const aiEvents24h = aiKpi?.events_24h ?? 0;
+  const aiAccent = aiStatus === 'active' || aiStatus === 'idle';
   const mapUrl = plugins?.map_url?.trim() || '';
   const bridgeSetupPending = bridgeNeedsSetup(data?.bridge, data?.bridge_setup);
   const bridgeLive = bridgeLiveReady(data?.bridge);
@@ -165,6 +171,70 @@ export default function MonitorHubPanel() {
             <KpiSparkCard label="任務" value={String(kpis?.quest_count ?? 0)} />
             <KpiSparkCard label="道具" value={String(kpis?.item_count ?? 0)} />
           </KpiGrid6>
+
+          <div className="mt-3 mb-2 flex flex-wrap items-center justify-between gap-2">
+            <SectionHeader title="AI 監控" className="mb-0" />
+            <div className="flex flex-wrap gap-2 text-[10px]">
+              <a href={minecraftHref('ai_gm')} className="rounded-md border border-[var(--console-border)] px-2 py-0.5 text-[var(--console-accent)] hover:underline">
+                AI 主持人
+              </a>
+              <a href={minecraftHref('bridge_monitor')} className="rounded-md border border-[var(--console-border)] px-2 py-0.5 text-[var(--console-muted)] hover:underline">
+                橋接事件
+              </a>
+            </div>
+          </div>
+          <KpiGrid6>
+            <KpiSparkCard
+              label="AI 事件（24h）"
+              value={String(aiEvents24h)}
+              accent={aiEvents24h > 0}
+              spark={[1, 2, 3, 2, aiEvents24h]}
+            />
+            <KpiSparkCard
+              label="AI 狀態"
+              value={aiGmStatusLabel(aiStatus)}
+              accent={aiAccent}
+              spark={aiStatus === 'offline' ? [0, 0, 0, 0] : [1, 2, 2, 3]}
+            />
+            <KpiSparkCard
+              label="GM 最近動作"
+              value={formatAiGmLastAction(aiKpi)}
+              accent={Boolean(aiKpi?.gm_last_applied)}
+            />
+            <KpiSparkCard
+              label="GM 冷卻"
+              value={aiKpi?.gm_enabled ? `${aiKpi.gm_cooldown_seconds ?? 30}s` : '—'}
+            />
+            <KpiSparkCard
+              label="GM 決策（24h）"
+              value={String(aiKpi?.gm_runs_24h ?? 0)}
+              accent={Boolean(aiKpi?.gm_runs_24h)}
+            />
+            <KpiSparkCard
+              label="GM 模式"
+              value={
+                !aiKpi?.gm_enabled
+                  ? '停用'
+                  : aiKpi.gm_dry_run
+                    ? '乾跑'
+                    : aiKpi.gm_auto_apply
+                      ? '自動套用'
+                      : '手動'
+              }
+            />
+          </KpiGrid6>
+          {aiKpi?.situation_hint ? (
+            <p className="mt-1 text-[10px] text-[var(--console-faint)]">
+              情境：{aiKpi.situation_hint}
+            </p>
+          ) : null}
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[var(--console-faint)]">
+            <span>
+              AI 可見事件與玩家 KPI 分開統計；在線玩家僅計真人，不含 GM／NPC 虛擬身分。
+              {aiKpi?.gm_last_run_ts ? ` · GM 上次 ${formatTs(aiKpi.gm_last_run_ts)}` : ''}
+            </span>
+          </div>
+
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[10px]">
             <span className="text-[var(--console-faint)]">
               玩家現場

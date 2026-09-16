@@ -800,6 +800,22 @@ export type MinecraftBridgeSetup = {
   probe_message?: string;
 };
 
+export type MinecraftAiMonitorKpis = {
+  events_24h: number;
+  gm_status: 'offline' | 'dry-run' | 'active' | 'idle';
+  gm_enabled?: boolean;
+  gm_dry_run?: boolean;
+  gm_auto_apply?: boolean;
+  gm_cooldown_seconds?: number;
+  gm_runs_24h?: number;
+  gm_last_run_ts?: number | null;
+  gm_last_action_count?: number;
+  gm_last_applied?: boolean;
+  gm_last_dry_run?: boolean | null;
+  gm_last_trigger_action?: string | null;
+  situation_hint?: string | null;
+};
+
 export type MinecraftMonitorSummary = {
   bridge: {
     enabled?: boolean;
@@ -826,6 +842,7 @@ export type MinecraftMonitorSummary = {
       bridge_offline?: boolean;
       recent_events?: number;
     };
+    ai?: MinecraftAiMonitorKpis;
   };
   players?: MinecraftPlayersAiBlock;
   world_status: Record<string, Record<string, number>>;

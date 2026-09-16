@@ -9,7 +9,14 @@ from fastapi.testclient import TestClient
 from backend.linkin.api import register_linkin
 from backend.linkin.constitution import reset_cache as reset_constitution_cache
 from backend.linkin.knowledge import reset_store
-from backend.linkin.minecraft_observability import append_minecraft_event, reset_minecraft_events
+from backend.linkin.minecraft_ai_gm import reset_gm_state, update_gm_config
+from backend.linkin.minecraft_observability import (
+    aggregate_ai_monitor_kpis,
+    append_minecraft_event,
+    count_minecraft_events_since,
+    reset_minecraft_events,
+    resolve_ai_gm_status,
+)
 from backend.linkin.narrative_registry import reset_narrative_registry
 
 
@@ -52,6 +59,37 @@ def test_monitor_summary_empty(client: TestClient):
     assert isinstance(body["pipeline_timeline"], list)
     assert body["kpis"]["map_plan_count"] == 0
     assert body["bridge_setup"]["token_set"] is False
+    ai = body["kpis"].get("ai") or {}
+    assert ai.get("gm_status") == "offline"
+    assert ai.get("events_24h") == 0
+
+
+def test_aggregate_ai_monitor_kpis_events_and_gm(linkin_env, monkeypatch):
+    reset_gm_state()
+    now = 1_700_000_000.0
+    monkeypatch.setattr("backend.linkin.minecraft_observability.time.time", lambda: now)
+    append_minecraft_event(domain="map", action="generate", status="ok", summary="事件 A")
+    append_minecraft_event(domain="player", action="join", status="ok", summary="事件 B")
+    assert count_minecraft_events_since(now - 86400) == 2
+
+    update_gm_config({"enabled": True, "dry_run": True, "auto_apply": False, "cooldown_seconds": 45})
+    assert resolve_ai_gm_status({"enabled": True, "dry_run": True, "auto_apply": False}) == "dry-run"
+    assert resolve_ai_gm_status({"enabled": True, "dry_run": False, "auto_apply": True}) == "active"
+    assert resolve_ai_gm_status({"enabled": False}) == "offline"
+
+    kpis = aggregate_ai_monitor_kpis(now=now)
+    assert kpis["events_24h"] == 2
+    assert kpis["gm_status"] == "dry-run"
+    assert kpis["gm_cooldown_seconds"] == 45.0
+
+
+def test_monitor_summary_includes_ai_kpis(client: TestClient):
+    append_minecraft_event(domain="gm", action="react", status="dry_run", summary="GM 測試", dry_run=True)
+    res = client.get("/linkin/minecraft/monitor/summary")
+    body = res.json()
+    ai = body["kpis"]["ai"]
+    assert ai["events_24h"] >= 1
+    assert "gm_status" in ai
 
 
 def test_monitor_summary_pipeline_timeline(client: TestClient):
