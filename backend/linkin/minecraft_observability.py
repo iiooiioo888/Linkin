@@ -156,9 +156,31 @@ def recent_pipeline_events(limit: int = 10) -> list[dict[str, Any]]:
     return matched[-limit:]
 
 
+def _latest_successful_bridge_probe_ts(rows: list[dict[str, Any]]) -> float | None:
+    """最新一次成功的橋接探測時間戳（用於壓掉其後已恢復的離線錯誤）。"""
+    latest: float | None = None
+    for row in rows:
+        if str(row.get("domain") or "") != "bridge":
+            continue
+        if str(row.get("action") or "") != "probe":
+            continue
+        if row.get("dry_run") or row.get("bridge_offline"):
+            continue
+        if str(row.get("status") or "") != "ok":
+            continue
+        try:
+            ts = float(row.get("ts") or 0)
+        except (TypeError, ValueError):
+            continue
+        if latest is None or ts > latest:
+            latest = ts
+    return latest
+
+
 def _recent_errors(limit: int = 5) -> list[dict[str, Any]]:
     rows = _read_all_events()
     bad_status = {"failed", "partial", "bridge_offline", "error", "cancelled"}
+    recovered_after = _latest_successful_bridge_probe_ts(rows)
     out: list[dict[str, Any]] = []
     for row in reversed(rows):
         if row.get("dry_run"):
@@ -166,6 +188,19 @@ def _recent_errors(limit: int = 5) -> list[dict[str, Any]]:
         status = str(row.get("status") or "")
         if status in {"dry_run", "ok"}:
             continue
+        # 已有更新的成功探測時，不再把舊的 bridge probe 離線事件當「近期錯誤」
+        if (
+            recovered_after is not None
+            and str(row.get("domain") or "") == "bridge"
+            and str(row.get("action") or "") == "probe"
+            and (status == "bridge_offline" or row.get("bridge_offline"))
+        ):
+            try:
+                ts = float(row.get("ts") or 0)
+            except (TypeError, ValueError):
+                ts = 0.0
+            if ts < recovered_after:
+                continue
         if status in bad_status or row.get("bridge_offline"):
             out.append(row)
         if len(out) >= limit:

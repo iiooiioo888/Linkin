@@ -105,6 +105,32 @@ def test_ai_snapshot_and_context(client: TestClient):
     assert blob["chars"] > 0
 
 
+def test_recent_errors_drops_superseded_bridge_offline_probe(client: TestClient):
+    """成功探測後，舊的 bridge_offline probe 不應再出現在 recent_errors。"""
+    append_minecraft_event(
+        domain="bridge",
+        action="probe",
+        status="bridge_offline",
+        summary="MineMCP 遠端探測：未連線（MCP HTTP 失敗：404）",
+        bridge_offline=True,
+        details={"error": "404"},
+    )
+    append_minecraft_event(
+        domain="bridge",
+        action="probe",
+        status="ok",
+        summary="MineMCP 遠端探測：已連線",
+        bridge_offline=False,
+    )
+    res = client.get("/linkin/minecraft/monitor/summary")
+    assert res.status_code == 200
+    errors = res.json().get("recent_errors") or []
+    assert not any(
+        e.get("bridge_offline") and str(e.get("action")) == "probe" for e in errors
+    )
+    assert not any("404" in str(e.get("summary") or "") for e in errors)
+
+
 def test_recent_errors_excludes_dry_run_probe(client: TestClient):
     append_minecraft_event(
         domain="bridge",
