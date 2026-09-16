@@ -126,6 +126,13 @@ async def _lifespan(_app: FastAPI):
         logger.warning("啟動時已取消任務清理失敗：%s", exc)
     # 主 loop 註冊：供 MCP server 等無 loop 執行緒安全派發任務
     task_manager._loop = asyncio.get_running_loop()
+    from backend.ephemeral_containers.config import ephemeral_containers_enabled
+    from backend.ephemeral_containers.worker import container_task_worker
+
+    if ephemeral_containers_enabled():
+        container_task_worker.bind_loop(asyncio.get_running_loop())
+        container_task_worker.start()
+        logger.info("臨時容器 worker 已啟動（EVOL_EPHEMERAL_CONTAINERS）")
     # 技能庫與 MCP：載入設定並把啟用 server 的工具掛進 tool_registry
     try:
         from backend.company.mcp_clients import mcp_registry
@@ -209,9 +216,14 @@ async def _lifespan(_app: FastAPI):
                 logger.warning("已取消任務清理失敗：%s", exc)
 
     cleanup_task = asyncio.create_task(_cancelled_task_cleanup_loop())
+    ect_worker_stop = None
+    if ephemeral_containers_enabled():
+        ect_worker_stop = container_task_worker
     try:
         yield
     finally:
+        if ect_worker_stop is not None:
+            await ect_worker_stop.stop()
         cleanup_task.cancel()
         contribution_task.cancel()
         rollover_task.cancel()
@@ -281,6 +293,9 @@ app.add_middleware(
 # AI Hub 旁路面：/api/v1/*（Nginx 剝除 /api 時另掛 /v1/*）
 register_hub(app)
 register_linkin(app)
+from backend.ephemeral_containers.api import register_ephemeral_containers
+
+register_ephemeral_containers(app)
 register_modules(app)
 from backend.integrations.api import register_integrations
 
