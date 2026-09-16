@@ -40,6 +40,17 @@ const PLAYER_ACTIONS = ['', 'join', 'quit', 'move', 'chat', 'death', 'inventory'
 
 const INGEST_WEBHOOK_PATH = '/linkin/minecraft/players/ingest';
 
+/** 優先 API 設定；否則用目前站台 hostname:25565（略過 localhost）。 */
+function resolveJoinAddressHint(fromApi?: string | null): string | null {
+  const configured = (fromApi || '').trim();
+  if (configured) return configured;
+  if (typeof window === 'undefined') return null;
+  const host = window.location.hostname;
+  if (!host || host === 'localhost' || host === '127.0.0.1') return null;
+  return `${host}:25565`;
+}
+
+
 const INGEST_EXAMPLES: Array<{ label: string; body: Record<string, unknown> }> = [
   {
     label: 'player/chat',
@@ -203,6 +214,7 @@ export default function PlayerPresencePanel() {
     [players, selectedId],
   );
   const ingestedCount = events.filter(isIngestedEvent).length;
+  const joinAddress = resolveJoinAddressHint(snapshot?.join_address);
 
   return (
     <PanelShell scroll={false}>
@@ -280,6 +292,21 @@ export default function PlayerPresencePanel() {
             />
           ) : null}
 
+          {!bridgeOffline && !players.length && !loading ? (
+            <EmptyStateCta
+              title="目前沒有玩家在線"
+              hint={
+                joinAddress
+                  ? `伺服器目前為空。在 Minecraft「多人遊戲」加入 ${joinAddress} 即可上線；面板會在約 5 秒內刷新。`
+                  : '伺服器目前為空。請用多人遊戲加入本機 Paper 伺服器（預設埠 25565）即可上線；亦可設定 EVOL_MC_JOIN_ADDRESS 顯示公開位址。'
+              }
+              actions={[
+                { label: '打開伺服器地圖', href: minecraftHref('server-map') },
+                { label: '橋接健康', href: minecraftHref('bridge_monitor') },
+              ]}
+            />
+          ) : null}
+
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader>外部事件接入</ConsoleCardHeader>
             <div className="space-y-3 px-3 pb-3 text-xs text-[var(--console-muted)]">
@@ -313,7 +340,18 @@ export default function PlayerPresencePanel() {
               <ul className="divide-y divide-[var(--console-border)]">
                 {!players.length ? (
                   <li className="px-3 py-4 text-xs text-[var(--console-faint)]">
-                    {bridgeOffline ? '橋接未就緒 — 無即時在線列表（非世界為空）' : '目前無在線玩家'}
+                    <div>
+                      {bridgeOffline
+                        ? '橋接未就緒 — 無即時在線列表（非世界為空）'
+                        : '目前沒有玩家在線'}
+                    </div>
+                    {!bridgeOffline && joinAddress ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
+                        <span>加入伺服器：</span>
+                        <code className="rounded bg-black/30 px-1.5 py-0.5 font-mono">{joinAddress}</code>
+                        <CopyButton text={joinAddress} label="複製位址" />
+                      </div>
+                    ) : null}
                   </li>
                 ) : (
                   players.map((player: MinecraftPlayerSummary) => (

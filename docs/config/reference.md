@@ -52,6 +52,7 @@
 | `EVOL_MC_MCP_RPC_PATH` | `/sse` | JSON-RPC 路徑 |
 | `EVOL_MC_MCP_WORLD` | `world` | 預設世界 |
 | `EVOL_MC_MCP_MAX_FILL` | `5000` | 單次 fill 上限 |
+| `EVOL_MC_JOIN_ADDRESS` | — | 玩家現場空狀態「加入伺服器」位址（host:port） |
 
 ### 量化行情工具
 

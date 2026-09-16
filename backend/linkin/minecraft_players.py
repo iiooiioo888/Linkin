@@ -320,6 +320,15 @@ def _parse_online_players_payload(data: Any) -> list[str]:
     return []
 
 
+
+def resolve_join_address() -> str | None:
+    """公開加入位址（給空狀態 CTA）；未設定時回 None，不捏造。"""
+    import os
+
+    raw = (os.getenv("EVOL_MC_JOIN_ADDRESS") or "").strip()
+    return raw or None
+
+
 def _bridge_status() -> dict[str, Any]:
     from backend.linkin.minecraft import monitor_status
 
@@ -536,6 +545,7 @@ def list_players_snapshot(*, sync: bool = True) -> dict[str, Any]:
         "bridge_offline": bool(bridge.get("dry_run") or (bridge.get("enabled") and not bridge.get("connected"))),
         "online_count": len(summaries),
         "players": summaries,
+        "join_address": resolve_join_address(),
         "generated_at": time.time(),
     }
 
@@ -788,6 +798,7 @@ __all__ = [
     "list_players_snapshot",
     "normalize_player_record",
     "reset_player_state",
+    "resolve_join_address",
     "sync_players_from_bridge",
     "validate_ingest_body",
 ]

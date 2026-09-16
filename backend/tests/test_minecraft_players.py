@@ -228,3 +228,17 @@ def test_players_api_offline_honest(client: TestClient, monkeypatch):
     assert body["bridge_offline"] is True
     assert body["online_count"] == 0
     assert body["players"] == []
+
+
+def test_players_snapshot_includes_join_address(client: TestClient, monkeypatch):
+    monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "false")
+    monkeypatch.setenv("EVOL_MC_JOIN_ADDRESS", "47.79.23.223:25565")
+    monkeypatch.setattr(
+        "backend.linkin.minecraft.monitor_status",
+        lambda: {"enabled": False, "connected": False, "dry_run": True},
+    )
+    res = client.get("/linkin/minecraft/players?sync=false")
+    body = res.json()
+    assert body["online_count"] == 0
+    assert body["players"] == []
+    assert body["join_address"] == "47.79.23.223:25565"

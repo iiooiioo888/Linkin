@@ -978,6 +978,8 @@ export type MinecraftPlayersSnapshot = {
   bridge_offline: boolean;
   online_count: number;
   players: MinecraftPlayerSummary[];
+  /** 公開加入位址（EVOL_MC_JOIN_ADDRESS）；空狀態 CTA 用 */
+  join_address?: string | null;
   generated_at: number;
 };
 
