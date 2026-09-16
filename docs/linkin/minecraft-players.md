@@ -115,9 +115,15 @@ Linkin 透過 MineMCP 橋接（`get_online_players` / `get_player`）輪詢伺�
 
 Minecraft 頂部選單 **玩家／現場 → 玩家現場**（`#/modules/minecraft/player_presence`）。
 
+空狀態文案為繁中「目前沒有玩家在線」；可設 `EVOL_MC_JOIN_ADDRESS`（或前端以站台 hostname:25565 推斷）顯示「加入伺服器」複製提示。
+
 - **外部事件接入**：可複製 webhook 路徑與 chat／death／block JSON 範例
 - 監控總覽 KPI 含「在線玩家」與 `players_live` 摘要，連至本頁
 
 ## 隱私
 
 聊天 ingest 可能含 PII；營運面板如實顯示，請限制面板存取。Linkin 不記錄密碼或 Token。
+
+## 解析注意
+
+MineMCP `get_online_players` 若回傳英文空狀態句（如 `No players are currently online.`），必須視為空名單，**不可**拆成玩家名；否則 Monitor Hub KPI 會顯示在線 1，玩家現場列表則出現該英文句。
