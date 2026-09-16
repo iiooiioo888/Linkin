@@ -15,12 +15,13 @@ import logging
 import os
 import re
 import threading
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import count
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -296,7 +297,15 @@ def jsonrpc_request(
     cfg: MinecraftMcpConfig | None = None,
     client: httpx.Client | None = None,
 ) -> dict[str, Any]:
-    """對 MineMCP 發送 JSON-RPC。測試可注入 httpx.Client。"""
+    """對 MineMCP 發送 JSON-RPC（標準 MCP SSE 傳輸）。測試可注入 httpx.Client。
+
+    真實 MineMCP（Javalin）實作 MCP HTTP+SSE：
+      1. GET <url>/sse?token=…（Accept: text/event-stream）→ 串流先送 `endpoint` 事件，
+         內含 /messages?sessionId=…（之後的 jsonrpc 回應都從同一串流推回）。
+      2. POST /messages?sessionId=…（JSON-RPC body）→ 202 Accepted。
+      3. 串流以 `message` 事件推送 jsonrpc 回應（依 id 配對）。
+    舊寫法直接 POST /sse 對真實 MineMCP 是 404（/sse 沒有 POST 路由）。
+    """
     cfg = cfg or load_config()
     payload = {
         "jsonrpc": "2.0",
@@ -304,27 +313,115 @@ def jsonrpc_request(
         "method": method,
         "params": params or {},
     }
-    headers = {"Content-Type": "application/json"}
-    if cfg.token:
-        headers["Authorization"] = f"Bearer {cfg.token}"
-    url = _rpc_endpoint(cfg)
+    sse_url = _rpc_endpoint(cfg)
     owns_client = client is None
     http_client = client if client is not None else httpx.Client(timeout=cfg.timeout)
     try:
-        response = http_client.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        try:
-            body = response.json()
-        except json.JSONDecodeError:
-            return {"ok": False, "error": f"非 JSON 回應：{response.text[:300]}"}
-        parsed = _extract_rpc_payload(body)
-        parsed["http_status"] = response.status_code
-        return parsed
+        return _sse_rpc_roundtrip(http_client, sse_url, payload, cfg)
     except httpx.HTTPError as exc:
         return {"ok": False, "error": f"MCP HTTP 失敗：{exc}"}
     finally:
         if owns_client:
             http_client.close()
+
+
+def _sse_rpc_roundtrip(
+    http_client: httpx.Client,
+    sse_url: str,
+    payload: dict[str, Any],
+    cfg: MinecraftMcpConfig,
+) -> dict[str, Any]:
+    """一次 MCP-SSE 請求往返：握手 → 拿 endpoint → POST → 從串流配對回應。"""
+    post_headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+    }
+    if cfg.token:
+        post_headers["Authorization"] = f"Bearer {cfg.token}"
+    deadline = time.monotonic() + cfg.timeout
+    with http_client.stream("GET", sse_url, headers={"Accept": "text/event-stream"}) as resp:
+        resp.raise_for_status()
+        event_name: str | None = None
+        messages_url: str | None = None
+        posted = False
+        for raw in resp.iter_lines():
+            if time.monotonic() > deadline:
+                return {"ok": False, "error": f"MCP SSE 等待回應逾時（{cfg.timeout}s）", "http_status": None}
+            line = str(raw).rstrip()
+            if not line:
+                event_name = None
+                continue
+            if line.startswith("event:"):
+                event_name = line[6:].strip()
+                continue
+            if not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            evt = event_name or "message"
+            if evt == "endpoint" and messages_url is None:
+                messages_url = urljoin(cfg.url, data)
+                if not posted:
+                    r2 = http_client.post(messages_url, json=payload, headers=post_headers)
+                    r2.raise_for_status()
+                    posted = True
+                    # 相容「POST 直接回 JSON」的伺服器（非 202 非同步）
+                    try:
+                        body = r2.json()
+                    except json.JSONDecodeError:
+                        body = None
+                    if isinstance(body, dict) and body.get("id") == payload["id"]:
+                        parsed = _extract_rpc_payload(body)
+                        parsed["http_status"] = r2.status_code
+                        return parsed
+            elif evt == "message":
+                try:
+                    body = json.loads(data)
+                except json.JSONDecodeError:
+                    continue
+                if body.get("id") == payload["id"]:
+                    parsed = _extract_rpc_payload(body)
+                    parsed["http_status"] = 202
+                    return parsed
+    return {"ok": False, "error": "MCP SSE 連線提前結束（未收到回應）", "http_status": None}
+
+
+def _map_remote_arguments(remote_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """把公司端的座標參數（x/y/z/volume）對映成 MineMCP 的 schema（position 字串）。
+
+    MineMCP inputSchema：pose_block/break_block 收 position+block_type；
+    fill_block 收 start_position/end_position/block_type。world 一律捨棄（伺服器預設世界）。
+    """
+    args = dict(arguments or {})
+    args.pop("world", None)
+    if remote_name in ("pose_block", "break_block"):
+        position = args.pop("position", None)
+        if position is None:
+            try:
+                position = f"{int(args.pop('x'))},{int(args.pop('y'))},{int(args.pop('z'))}"
+            except (KeyError, TypeError, ValueError):
+                return args
+        out: dict[str, Any] = {"position": position}
+        block_type = args.pop("block_type", None) or args.pop("material", None)
+        if block_type:
+            out["block_type"] = block_type
+        args.update(out)
+        return args
+    if remote_name == "fill_block":
+        start = args.pop("start_position", None)
+        end = args.pop("end_position", None)
+        if start is None or end is None:
+            try:
+                start = f"{int(args.pop('x1'))},{int(args.pop('y1'))},{int(args.pop('z1'))}"
+                end = f"{int(args.pop('x2'))},{int(args.pop('y2'))},{int(args.pop('z2'))}"
+            except (KeyError, TypeError, ValueError):
+                return args
+        out = {"start_position": start, "end_position": end}
+        block_type = args.pop("block_type", None) or args.pop("material", None)
+        if block_type:
+            out["block_type"] = block_type
+        args.update(out)
+        return args
+    return args
 
 
 def _deny_file_tool(remote_name: str, cfg: MinecraftMcpConfig) -> dict[str, Any] | None:
@@ -395,7 +492,7 @@ def call_mcp_tool(
     started = datetime.now(timezone.utc)
     rpc = jsonrpc_request(
         "tools/call",
-        {"name": remote_name, "arguments": arguments},
+        {"name": remote_name, "arguments": _map_remote_arguments(remote_name, arguments)},
         cfg=cfg,
         client=client,
     )
