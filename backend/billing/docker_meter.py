@@ -27,6 +27,7 @@ from backend.billing.docker_pricing import (
 from backend.billing.errors import InsufficientCreditsError
 from backend.billing.metering import meter_docker
 from backend.billing.quota import get_billing_service
+from backend.company.docker_tools import DOCKER_SERVICE_HOURLY_RATES
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +195,10 @@ class DockerBillingTracker:
             svc = c.get("service", c.get("name", ""))
             if not svc or svc == "_docker_unavailable":
                 continue
+            # 只對費率表內的核心服務計費；其餘容器（WeKnora/Minecraft 等）不
+            # 進入靈境積分計費，避免 list_containers 放寬後誤扣。
+            if svc not in DOCKER_SERVICE_HOURLY_RATES:
+                continue
             status = str(c.get("status", ""))
             uptime = float(c.get("uptime_seconds", 0))
             with self._lock:
@@ -230,6 +235,8 @@ class DockerBillingTracker:
         """容器停止時最終結算。"""
         from backend.services.docker_manager import get_docker_manager
 
+        if service not in DOCKER_SERVICE_HOURLY_RATES:
+            return None
         uid = (user_id or self.clear_owner(service) or self.owner_of(service)).strip()
         dm = get_docker_manager()
         uptime = 0.0
@@ -296,6 +303,8 @@ class DockerBillingTracker:
             for c in dm.list_containers():
                 svc = c.get("service", c.get("name", ""))
                 if not svc or svc == "_docker_unavailable":
+                    continue
+                if svc not in DOCKER_SERVICE_HOURLY_RATES:
                     continue
                 if not str(c.get("status", "")).startswith("Up"):
                     continue

@@ -2087,6 +2087,8 @@ async def docker_budget():
             svc = c.get("service", c["name"])
             if svc == "_docker_unavailable":
                 continue
+            if svc not in DOCKER_SERVICE_HOURLY_RATES:
+                continue
             rate = get_service_hourly_rate(svc)
             uptime_s = float(c.get("uptime_seconds", 0))
             hours = uptime_s / 3600.0
@@ -2131,9 +2133,9 @@ async def docker_logs(service: str, tail: int = 100):
 
 @app.get("/docker/stats")
 async def docker_stats():
-    """獲取容器資源使用統計。"""
+    """獲取容器資源使用統計（含主機 CPU/記憶體/磁碟總覽）。"""
     dm = get_docker_manager()
-    return {"stats": dm.get_stats()}
+    return {"stats": dm.get_stats(), "host": dm.host_stats()}
 
 
 @app.get("/docker/health")

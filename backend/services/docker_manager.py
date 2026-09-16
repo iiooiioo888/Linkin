@@ -4,7 +4,7 @@
 完整控制權：查詢狀態、讀取日誌、重啟服務、資源監控、健康檢查。
 
 所有操作均帶有安全檢查：
-- 僅允許操作 evoloop 項目容器（透過 COMPOSE_PROJECT 標籤過濾）
+- 監控層列出本機全部容器（跨 compose project）；寫操作以運行中容器為準
 - 寫操作（重啟）記錄審計日誌
 - Docker socket 不可用時優雅降級
 """
@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
+import time
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
@@ -99,10 +101,7 @@ class DockerManager:
             return self._stub_list_containers()
 
         try:
-            containers = self._client.containers.list(
-                all=True,
-                filters={"label": f"com.docker.compose.project={self._project}"},
-            )
+            containers = self._client.containers.list(all=True)
         except Exception as exc:
             logger.error("查詢容器列表失敗：%s", exc)
             return []
@@ -179,9 +178,7 @@ class DockerManager:
 
         stats = {}
         try:
-            containers = self._client.containers.list(
-                filters={"label": f"com.docker.compose.project={self._project}"},
-            )
+            containers = self._client.containers.list()
         except Exception as exc:
             logger.error("查詢資源統計失敗：%s", exc)
             return {}
@@ -212,6 +209,48 @@ class DockerManager:
                 stats[service] = {"error": str(exc)}
 
         return stats
+
+    def host_stats(self) -> dict[str, Any]:
+        """主機資源總覽（psutil）：CPU / 記憶體 / 磁碟 / swap / load / 執行時間。
+
+        Returns:
+            {available, hostname, cpu_percent, cpu_count, mem_*, disk_*,
+             swap_*, load, uptime_seconds}；psutil 缺失或採集失敗時 available=False
+        """
+        try:
+            import psutil
+        except ImportError:
+            return {"available": False, "error": "psutil 未安裝"}
+        try:
+            mem = psutil.virtual_memory()
+            swap = psutil.swap_memory()
+            disk = shutil.disk_usage("/")
+            try:
+                load = [round(v, 2) for v in psutil.getloadavg()]
+            except OSError:
+                load = []
+            return {
+                "available": True,
+                "hostname": os.uname().nodename,
+                "cpu_percent": round(psutil.cpu_percent(interval=0.1), 1),
+                "cpu_count": psutil.cpu_count(),
+                "mem_total": mem.total,
+                "mem_used": mem.used,
+                "mem_available": mem.available,
+                "mem_percent": round(mem.percent, 1),
+                "disk_total": disk.total,
+                "disk_used": disk.used,
+                "disk_free": disk.free,
+                "disk_percent": round(disk.used / max(disk.total, 1) * 100.0, 1),
+                "swap_total": swap.total,
+                "swap_used": swap.used,
+                "swap_percent": round(swap.percent, 1),
+                "load": load,
+                "uptime_seconds": int(max(0.0, time.time() - psutil.boot_time())),
+            }
+        except Exception as exc:  # pragma: no cover — 採集失敗降級
+            logger.warning("主機資源採集失敗：%s", exc)
+            return {"available": False, "error": str(exc)}
 
     def health_check(self) -> dict[str, Any]:
         """檢查所有服務的健康狀態。
@@ -353,9 +392,7 @@ class DockerManager:
         if not self.available:
             return []
         try:
-            containers = self._client.containers.list(
-                filters={"label": f"com.docker.compose.project={self._project}"},
-            )
+            containers = self._client.containers.list()
             return [self._extract_service(c.name) for c in containers]
         except Exception:
             return []

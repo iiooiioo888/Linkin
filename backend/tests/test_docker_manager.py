@@ -142,6 +142,53 @@ class TestDockerManagerMock:
         assert containers[0]["service"] == "backend"
         assert containers[0]["status"] == "running"
         assert containers[0]["health"] == "healthy"
+        # 監控層列出全部容器：不再帶 compose project label 過濾
+        mock_client.containers.list.assert_called_with(all=True)
+
+    def test_host_stats_available(self, docker_manager, monkeypatch):
+        """host_stats 在 psutil 可用時回傳 available=True 與關鍵欄位。"""
+        import types
+
+        class Mem:
+            total = 8 * 1024**3
+            used = 2 * 1024**3
+            available = 6 * 1024**3
+            percent = 25.0
+
+        class Swap:
+            total = 1024**3
+            used = 0
+            percent = 0.0
+
+        fake = types.SimpleNamespace(
+            virtual_memory=lambda: Mem(),
+            swap_memory=lambda: Swap(),
+            cpu_percent=lambda interval=0.1: 12.3,
+            cpu_count=lambda: 4,
+            getloadavg=lambda: (0.1, 0.2, 0.3),
+            boot_time=lambda: 1_700_000_000.0,
+        )
+        monkeypatch.setitem(__import__("sys").modules, "psutil", fake)
+        out = docker_manager.host_stats()
+        assert out["available"] is True
+        assert out["cpu_count"] == 4
+        assert out["mem_total"] == Mem.total
+        assert "disk_total" in out
+        assert "uptime_seconds" in out
+
+    def test_host_stats_without_psutil(self, docker_manager, monkeypatch):
+        import builtins
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "psutil":
+                raise ImportError("no psutil")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        out = docker_manager.host_stats()
+        assert out["available"] is False
+        assert "psutil" in out.get("error", "")
 
     def test_format_ports_dict_shape(self):
         """docker-py NetworkSettings.Ports dict（含 127.0.0.1 绑定）。"""

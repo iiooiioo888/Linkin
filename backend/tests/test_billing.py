@@ -516,6 +516,44 @@ def test_docker_settle_tick_skips_unowned_integration_containers(billing_store, 
         reset_docker_billing_tracker(None)
 
 
+
+def test_docker_settle_tick_skips_non_rate_table_even_if_owned(billing_store, monkeypatch):
+    """費率表白名單：即便誤 assign_owner 到 WeKnora 等也不計費。"""
+    from backend.billing.docker_meter import DockerBillingTracker, reset_docker_billing_tracker
+
+    tracker = DockerBillingTracker()
+    reset_docker_billing_tracker(tracker)
+    billing_store.ensure_account("dockuser", "pro")
+    tracker.assign_owner("frontend", "dockuser")
+    tracker.assign_owner("weknora", "dockuser")
+    tracker._included_used_hours["dockuser"] = 999.0
+    from backend.billing.docker_meter import _month_key
+
+    tracker._included_period["dockuser"] = _month_key()
+
+    class FakeDM:
+        available = True
+
+        def list_containers(self):
+            return [
+                {"service": "frontend", "status": "Up 2 minutes", "uptime_seconds": 120.0},
+                {"service": "weknora", "status": "Up 1 hour", "uptime_seconds": 3600.0},
+            ]
+
+    monkeypatch.setattr("backend.services.docker_manager.get_docker_manager", lambda: FakeDM())
+
+    token = billing_user_id.set("dockuser")
+    try:
+        charges = tracker.settle_tick("dockuser")
+        billed = {c["service"] for c in charges}
+        assert "frontend" in billed
+        assert "weknora" not in billed
+        assert tracker.on_stop("weknora", user_id="dockuser") is None
+    finally:
+        billing_user_id.reset(token)
+        reset_docker_billing_tracker(None)
+
+
 def test_preflight_billable_container_run_enforces_balance(billing_store, monkeypatch):
     from backend.billing.docker_api import preflight_billable_container_run
     from backend.billing.errors import InsufficientCreditsError
