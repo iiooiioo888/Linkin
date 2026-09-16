@@ -14,9 +14,17 @@ MineMCP（Paper 1.21 插件）  HTTP /sse?token=
 Minecraft 世界
 ```
 
-## 為什麼不是直接 POST `/sse`
+## 傳輸：標準 MCP HTTP+SSE（不是直接 POST `/sse`）
 
-MineMCP 給編輯器的 MCP 連線 URL 是 `http://localhost:3000/sse?token=…`。本倉庫用 **JSON-RPC `tools/call`** 打同一端點（Token 放 query，並附 `Authorization: Bearer`）。放置方塊的**遠端工具名是 `pose_block`**（MineMCP 拼寫），對內與角色目錄使用 `place_block`，並註冊別名 `pose_block`。
+MineMCP（Javalin）實作的是 MCP HTTP+SSE 傳輸，三步：
+
+1. `GET /sse?token=…`（`Accept: text/event-stream`）→ 串流先送 `event: endpoint`，內含 `/messages?sessionId=…`
+2. `POST /messages?sessionId=…`（JSON-RPC `tools/call` body）→ `202 Accepted`
+3. 同一個 SSE 串流以 `event: message` 推送 jsonrpc 回應（依 `id` 配對）
+
+客戶端（`backend/tools/minecraft_mcp.py`）每次呼叫走一次完整往返；`/sse` 本身沒有 POST 路由，直接 POST 會 404。遠端工具名是 `pose_block`（MineMCP 拼寫），對內與角色目錄使用 `place_block`，並註冊別名 `pose_block`。
+
+參數對映：公司端 `{x, y, z, material}` → 遠端 `{position: "x,y,z", block_type: …}`；`fill_block` 的 `{x1..z2}` → `{start_position, end_position}`；`world` 一律捨棄（MineMCP 用伺服器預設世界）。
 
 檔案系統工具（`write_file` 等）預設封鎖，不對角色開放。
 
@@ -36,7 +44,7 @@ MineMCP 預設埠 3000，與本專案前端預設 **3001**、後端 **8000** 錯
 | `EVOL_MC_MCP_ENABLED` | `false` | `true` 才對 MineMCP 發真實請求 |
 | `EVOL_MC_MCP_URL` | `http://127.0.0.1:3000` | 不含 path |
 | `EVOL_MC_MCP_TOKEN` | （空） | 與插件 config.yml 相同；未設定則永遠乾跑 |
-| `EVOL_MC_MCP_RPC_PATH` | `/sse` | JSON-RPC 路徑 |
+| `EVOL_MC_MCP_RPC_PATH` | `/sse` | MCP SSE 握手路徑 |
 | `EVOL_MC_MCP_WORLD` | `world` | 預設世界名 |
 | `EVOL_MC_MCP_TIMEOUT` | `30` | 秒 |
 | `EVOL_MC_MCP_MAX_FILL` | `5000` | 單次 fill 上限（再與憲法取小） |
