@@ -13,7 +13,10 @@ from backend.linkin.constitution import reset_cache as reset_constitution_cache
 from backend.linkin.knowledge import reset_store
 from backend.linkin.minecraft_observability import reset_minecraft_events
 from backend.linkin.minecraft_players import (
+    _parse_online_players_payload,
+    build_players_ai_block,
     list_player_events,
+    list_players_snapshot,
     normalize_player_record,
     reset_player_state,
     sync_players_from_bridge,
@@ -242,3 +245,35 @@ def test_players_snapshot_includes_join_address(client: TestClient, monkeypatch)
     assert body["online_count"] == 0
     assert body["players"] == []
     assert body["join_address"] == "47.79.23.223:25565"
+
+
+def test_english_empty_online_text_not_a_player():
+    """MineMCP 常回英文空狀態句；不得當成玩家名（否則 KPI=1、列表顯示該句）。"""
+    assert _parse_online_players_payload("No players are currently online.") == []
+    assert _parse_online_players_payload({"raw_text": "No players are currently online."}) == []
+    assert _parse_online_players_payload({"raw_text": "There are no players online."}) == []
+    assert _parse_online_players_payload(["Steve", "No players are currently online."]) == ["Steve"]
+    assert _parse_online_players_payload(["Alex"]) == ["Alex"]
+
+
+def test_english_empty_sync_clears_stale_and_matches_kpi(client: TestClient, monkeypatch):
+    # 先用真實玩家污染 cache
+    detail = {"name": "Steve", "location": {"x": 1, "y": 64, "z": 1}}
+    _mock_bridge(monkeypatch, online=["Steve"], player_detail=detail)
+    sync_players_from_bridge(force=True)
+    assert list_players_snapshot(sync=False)["online_count"] == 1
+
+    # MineMCP 改回英文空狀態句
+    monkeypatch.setattr(
+        "backend.tools.minecraft_mcp.get_online_players",
+        lambda *_a, **_k: {"ok": True, "text": "No players are currently online."},
+    )
+    sync_players_from_bridge(force=True)
+    snap = list_players_snapshot(sync=False)
+    assert snap["online_count"] == 0
+    assert snap["players"] == []
+
+    # Monitor Hub 路徑（build_players_ai_block）須與面板一致
+    block = build_players_ai_block(sync=True)
+    assert block["online_count"] == 0
+    assert block["players"] == []

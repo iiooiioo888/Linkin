@@ -974,6 +974,7 @@ export type MinecraftPlayersSnapshot = {
     connected?: boolean;
     dry_run?: boolean;
     live?: boolean;
+    token_configured?: boolean;
   };
   bridge_offline: boolean;
   online_count: number;

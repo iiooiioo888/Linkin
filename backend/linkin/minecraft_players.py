@@ -292,6 +292,32 @@ def normalize_player_record(raw: Any, *, fallback_name: str | None = None) -> di
     }
 
 
+# Java 常用名：字母數字底線。拒收狀態句，避免把
+# "No players are currently online." 誤當玩家名（KPI=1／列表顯示英文空句）。
+_PLAYER_NAME_RE = re.compile(r"^[A-Za-z0-9_]{1,16}$")
+_EMPTY_ONLINE_RE = re.compile(
+    r"(?i)^\s*(?:no players?(?:\s+are)?\s+currently\s+online\.?|"
+    r"there are no players online\.?|"
+    r"online players?:\s*0|"
+    r"players online:\s*0|"
+    r"currently no players online\.?|"
+    r"目前沒有玩家在線\.?|"
+    r"目前無在線玩家\.?|"
+    r"沒有玩家在線\.?)\s*$"
+)
+
+
+def _is_plausible_player_name(name: str) -> bool:
+    text = str(name or "").strip()
+    if not text or not _PLAYER_NAME_RE.match(text):
+        return False
+    lowered = text.lower()
+    # 狀態殘句關鍵字（即使長度碰巧合法也不收）
+    if any(tok in lowered for tok in ("player", "online", "server", "empty", "none")):
+        return False
+    return True
+
+
 def _parse_online_players_payload(data: Any) -> list[str]:
     """從 get_online_players 回應提取玩家名列表。"""
     if data is None:
@@ -299,24 +325,70 @@ def _parse_online_players_payload(data: Any) -> list[str]:
     if isinstance(data, list):
         names: list[str] = []
         for item in data:
-            if isinstance(item, str) and item.strip():
-                names.append(item.strip())
+            if isinstance(item, str):
+                candidate = item.strip()
+                if not candidate or _EMPTY_ONLINE_RE.match(candidate):
+                    continue
+                if _is_plausible_player_name(candidate):
+                    names.append(candidate)
             elif isinstance(item, dict):
                 n = item.get("name") or item.get("username")
-                if n:
+                if n and _is_plausible_player_name(str(n)):
                     names.append(str(n).strip())
         return names
     if isinstance(data, dict):
-        players = data.get("players") or data.get("online") or data.get("names")
+        raw_text = data.get("raw_text")
+        if isinstance(raw_text, str) and raw_text.strip():
+            text = raw_text.strip()
+            if _EMPTY_ONLINE_RE.match(text):
+                return []
+            # 純狀態句（含空白）不當名；僅允許逗號／換行分隔的多名
+            if any(ch.isspace() for ch in text) and ("," in text or "\n" in text):
+                return _parse_online_players_payload(
+                    [p.strip() for p in re.split(r"[\n,]+", text) if p.strip()]
+                )
+            if any(ch.isspace() for ch in text) or not _is_plausible_player_name(text):
+                return []
+            return [text]
+
+        # online_count / count == 0 且無名單 → 空
+        for key in ("online_count", "count"):
+            if key in data:
+                try:
+                    if int(data.get(key)) == 0:
+                        return []
+                except (TypeError, ValueError):
+                    pass
+
+        players = data.get("players")
+        if players is None:
+            online_val = data.get("online")
+            # online 可能是名單 list，或人數 int（勿把 int 當名單）
+            if isinstance(online_val, list):
+                players = online_val
+            elif isinstance(online_val, int):
+                if online_val == 0:
+                    return []
+                players = data.get("names")
+            else:
+                players = online_val if online_val is not None else data.get("names")
+
         if isinstance(players, list):
             return _parse_online_players_payload(players)
         if isinstance(players, str):
-            return [p.strip() for p in players.split(",") if p.strip()]
-        raw_text = data.get("raw_text")
-        if raw_text:
-            return [p.strip() for p in re.split(r"[\n,]+", str(raw_text)) if p.strip()]
+            if _EMPTY_ONLINE_RE.match(players.strip()):
+                return []
+            return _parse_online_players_payload(
+                [p.strip() for p in players.split(",") if p.strip()]
+            )
+        return []
     if isinstance(data, str):
-        return [p.strip() for p in re.split(r"[\n,]+", data) if p.strip()]
+        text = data.strip()
+        if not text or _EMPTY_ONLINE_RE.match(text):
+            return []
+        return _parse_online_players_payload(
+            [p.strip() for p in re.split(r"[\n,]+", text) if p.strip()]
+        )
     return []
 
 
@@ -541,6 +613,7 @@ def list_players_snapshot(*, sync: bool = True) -> dict[str, Any]:
             "connected": bridge.get("connected"),
             "dry_run": bridge.get("dry_run"),
             "live": bridge.get("live"),
+            "token_configured": bridge.get("token_configured"),
         },
         "bridge_offline": bool(bridge.get("dry_run") or (bridge.get("enabled") and not bridge.get("connected"))),
         "online_count": len(summaries),
@@ -764,9 +837,13 @@ def format_players_presence_markdown(
     return text
 
 
-def build_players_ai_block(*, max_players: int = 8, max_events: int = 6) -> dict[str, Any]:
-    """供 snapshot/context 使用的玩家現場摘要。"""
-    snap = list_players_snapshot(sync=False)
+def build_players_ai_block(*, max_players: int = 8, max_events: int = 6, sync: bool = True) -> dict[str, Any]:
+    """供 snapshot/context 使用的玩家現場摘要。
+
+    預設 sync=True，與 PlayerPresencePanel（/players?sync=true）共用同一輪詢結果，
+    避免 Monitor Hub KPI 讀到過期 cache 而面板已清空（或相反）。
+    """
+    snap = list_players_snapshot(sync=sync)
     bridge_offline = snap.get("bridge_offline")
     players = (snap.get("players") or [])[:max_players]
     events_page = list_player_events(limit=max_events * 3)
