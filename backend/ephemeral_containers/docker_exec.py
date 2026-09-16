@@ -6,7 +6,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from backend.ephemeral_containers.config import LABEL_MANAGED, LABEL_TASK_ID
 from backend.ephemeral_containers.models import ContainerTaskCreate

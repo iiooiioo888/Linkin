@@ -109,8 +109,8 @@ def test_live_jsonrpc_posts_pose_block(monkeypatch):
         yield ""
         yield "event: message"
         yield (
-            'data: {"jsonrpc":"2.0","id":%s,'
-            '"result":{"content":[{"type":"text","text":"placed"}]}}' % captured["json"]["id"]
+            f'data: {{"jsonrpc":"2.0","id":{captured["json"]["id"]},'
+            '"result":{"content":[{"type":"text","text":"placed"}]}}'
         )
         yield ""
 
