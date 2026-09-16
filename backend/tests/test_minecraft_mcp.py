@@ -103,18 +103,35 @@ def test_live_jsonrpc_posts_pose_block(monkeypatch):
 
     captured: dict[str, object] = {}
 
+    def sse_lines():
+        yield "event: endpoint"
+        yield "data: /messages?sessionId=fake-session"
+        yield ""
+        yield "event: message"
+        yield (
+            'data: {"jsonrpc":"2.0","id":%s,'
+            '"result":{"content":[{"type":"text","text":"placed"}]}}' % captured["json"]["id"]
+        )
+        yield ""
+
     class FakeResp:
-        status_code = 200
+        status_code = 202
 
         def raise_for_status(self):
             return None
 
+        def iter_lines(self):
+            return iter(sse_lines())
+
         def json(self):
-            return {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "result": {"content": [{"type": "text", "text": "placed"}]},
-            }
+            return None
+
+    class FakeStreamCtx:
+        def __enter__(self):
+            return FakeResp()
+
+        def __exit__(self, *args):
+            return False
 
     class FakeClient:
         def __init__(self, *args, **kwargs):
@@ -129,6 +146,11 @@ def test_live_jsonrpc_posts_pose_block(monkeypatch):
         def close(self):
             return None
 
+        def stream(self, method, url, headers=None):
+            captured["sse_url"] = url
+            captured["sse_headers"] = headers
+            return FakeStreamCtx()
+
         def post(self, url, json=None, headers=None):
             captured["url"] = url
             captured["json"] = json
@@ -139,10 +161,45 @@ def test_live_jsonrpc_posts_pose_block(monkeypatch):
     result = mcp.place_block(10, 64, 20, "DIAMOND_BLOCK")
     assert result["ok"] is True
     assert result["dry_run"] is False
-    assert "token=secret-token" in str(captured["url"])
+    assert "token=secret-token" in str(captured["sse_url"])
+    assert captured["sse_headers"] == {"Accept": "text/event-stream"}
+    assert "/messages?sessionId=fake-session" in str(captured["url"])
     assert captured["json"]["method"] == "tools/call"
     assert captured["json"]["params"]["name"] == "pose_block"
-    assert captured["json"]["params"]["arguments"]["x"] == 10
+    # 公司端 x/y/z/material → MineMCP schema（position/block_type）
+    assert captured["json"]["params"]["arguments"] == {
+        "position": "10,64,20",
+        "block_type": "DIAMOND_BLOCK",
+    }
+
+
+def test_live_jsonrpc_handshake_error(monkeypatch):
+    monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "true")
+    monkeypatch.setenv("EVOL_MC_MCP_TOKEN", "secret-token")
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def close(self):
+            return None
+
+        def stream(self, method, url, headers=None):
+            raise httpx.ConnectError("connection refused", request=httpx.Request("GET", url))
+
+        def post(self, url, json=None, headers=None):
+            return None
+
+    monkeypatch.setattr(httpx, "Client", FakeClient)
+    result = mcp.get_online_players()
+    assert result["ok"] is False
+    assert "MCP HTTP 失敗" in result["error"]
 
 
 def test_company_registry_has_minecraft_tools():
