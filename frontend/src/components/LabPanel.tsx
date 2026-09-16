@@ -26,6 +26,7 @@ import MediaGallery from './media/MediaGallery';
 import PromptEditor from './PromptEditor';
 import StrategyCatalogPanel from './StrategyCatalogPanel';
 import StrategyMapPanel from './StrategyMapPanel';
+import EphemeralContainerPanel from './EphemeralContainerPanel';
 import ErrorState from './ui/ErrorState';
 
 const DEMO_BEFORE = `你是一位工業助手。根據感測資料回答問題。
@@ -574,6 +575,8 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
             ))}
           </div>
         )}
+
+        {tab === 'runner' && <EphemeralContainerPanel />}
 
         {tab === 'quant' && <StrategyCatalogPanel />}
 

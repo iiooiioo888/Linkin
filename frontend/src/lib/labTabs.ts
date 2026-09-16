@@ -1,7 +1,7 @@
 /**
  * 實驗室子分頁 — Firecrawl / Prompt Optimizer / Archify / Ponytail / 策略庫 / 策略圖 等。
  */
-export type LabSubTab = 'prompt' | 'firecrawl' | 'archify' | 'ponytail' | 'quant' | 'maps' | 'mcp' | 'ab';
+export type LabSubTab = 'prompt' | 'firecrawl' | 'archify' | 'ponytail' | 'quant' | 'maps' | 'mcp' | 'ab' | 'runner';
 
 export type LabTabItem = {
   key: LabSubTab;
@@ -59,6 +59,7 @@ export const LAB_INTEGRATION_TABS: LabTabItem[] = [
 ];
 
 export const LAB_EXTRA_TABS: LabTabItem[] = [
+  { key: 'runner', icon: '⎈', label: '容器', hint: '臨時 Docker 任務' },
   { key: 'mcp', icon: '◇', label: 'MCP', hint: 'OPC／記憶／爬蟲開關' },
   { key: 'ab', icon: '▣', label: 'A/B', hint: '提示詞對照' },
 ];
