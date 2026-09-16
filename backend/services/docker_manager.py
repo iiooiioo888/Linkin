@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
 
@@ -396,16 +397,67 @@ class DockerManager:
         return (cpu_usage / system_usage) * num_cpus * 100.0
 
     @staticmethod
-    def _format_ports(ports: list[dict]) -> list[str]:
-        """格式化端口列表為可讀字串。"""
+    def normalize_docker_ports(ports: Any) -> list[str]:
+        """將 docker-py 端口結構（dict 或 list）統一為可讀字串列表。"""
         if not ports:
             return []
-        formatted = []
+        if isinstance(ports, Mapping):
+            return DockerManager._format_ports_dict(ports)
+        if isinstance(ports, list):
+            return DockerManager._format_ports_list(ports)
+        return []
+
+    @staticmethod
+    def _format_ports(ports: Any) -> list[str]:
+        """格式化端口為可讀字串（相容 docker-py ``Container.ports`` dict 與 API list）。"""
+        return DockerManager.normalize_docker_ports(ports)
+
+    @staticmethod
+    def _format_ports_list(ports: list[dict]) -> list[str]:
+        """``docker ps`` 風格 list：``PublicPort`` / ``PrivatePort`` / ``IP``。"""
+        formatted: list[str] = []
         for p in ports:
-            if p.get("PublicPort"):
-                formatted.append(f"{p['PublicPort']}:{p['PrivatePort']}/{p.get('Type', 'tcp')}")
-            elif "PrivatePort" in p:
-                formatted.append(f"{p['PrivatePort']}/{p.get('Type', 'tcp')}")
+            if not isinstance(p, dict):
+                continue
+            proto = p.get("Type", "tcp")
+            private = p.get("PrivatePort")
+            public = p.get("PublicPort")
+            ip = (p.get("IP") or "").strip()
+            if public and private is not None:
+                if ip and ip not in ("0.0.0.0", "::"):
+                    formatted.append(f"{ip}:{public}:{private}/{proto}")
+                else:
+                    formatted.append(f"{public}:{private}/{proto}")
+            elif private is not None:
+                formatted.append(f"{private}/{proto}")
+        return formatted
+
+    @staticmethod
+    def _format_ports_dict(ports: Mapping[str, Any]) -> list[str]:
+        """``NetworkSettings.Ports`` dict：``3000/tcp`` → host bindings。"""
+        formatted: list[str] = []
+        for key, bindings in ports.items():
+            key_s = str(key)
+            if "/" in key_s:
+                private_s, proto = key_s.split("/", 1)
+            else:
+                private_s, proto = key_s, "tcp"
+            if not bindings:
+                formatted.append(f"{private_s}/{proto}")
+                continue
+            binding_list = bindings if isinstance(bindings, list) else [bindings]
+            for binding in binding_list:
+                if not isinstance(binding, dict):
+                    continue
+                host_ip = (binding.get("HostIp") or "").strip()
+                host_port = (binding.get("HostPort") or "").strip()
+                if not host_port:
+                    formatted.append(f"{private_s}/{proto}")
+                    continue
+                if host_ip and host_ip not in ("0.0.0.0", "", "::"):
+                    formatted.append(f"{host_ip}:{host_port}:{private_s}/{proto}")
+                else:
+                    formatted.append(f"{host_port}:{private_s}/{proto}")
         return formatted
 
     def _stub_list_containers(self) -> list[dict[str, Any]]:

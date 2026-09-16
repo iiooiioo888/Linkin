@@ -467,6 +467,79 @@ def test_appeals_basic(billing_store):
     assert any(i["appeal_id"] == created["appeal_id"] for i in items)
 
 
+def test_docker_settle_tick_skips_unowned_integration_containers(billing_store, monkeypatch):
+    """list_containers 含 WeKnora/Minecraft 等未 assign_owner 的容器时不误扣费。"""
+    from backend.billing.docker_meter import DockerBillingTracker, reset_docker_billing_tracker
+
+    tracker = DockerBillingTracker()
+    reset_docker_billing_tracker(tracker)
+    billing_store.ensure_account("dockuser", "pro")
+    tracker.assign_owner("frontend", "dockuser")
+    tracker._included_used_hours["dockuser"] = 999.0
+    from backend.billing.docker_meter import _month_key
+
+    tracker._included_period["dockuser"] = _month_key()
+
+    class FakeDM:
+        available = True
+
+        def list_containers(self):
+            return [
+                {
+                    "service": "frontend",
+                    "status": "Up 2 minutes",
+                    "uptime_seconds": 120.0,
+                },
+                {
+                    "service": "weknora",
+                    "status": "Up 1 hour",
+                    "uptime_seconds": 3600.0,
+                },
+                {
+                    "service": "minecraft",
+                    "status": "Up 30 minutes",
+                    "uptime_seconds": 1800.0,
+                },
+            ]
+
+    monkeypatch.setattr("backend.services.docker_manager.get_docker_manager", lambda: FakeDM())
+
+    token = billing_user_id.set("dockuser")
+    try:
+        charges = tracker.settle_tick("dockuser")
+        billed = {c["service"] for c in charges}
+        assert "frontend" in billed
+        assert "weknora" not in billed
+        assert "minecraft" not in billed
+    finally:
+        billing_user_id.reset(token)
+        reset_docker_billing_tracker(None)
+
+
+def test_preflight_billable_container_run_enforces_balance(billing_store, monkeypatch):
+    from backend.billing.docker_api import preflight_billable_container_run
+    from backend.billing.errors import InsufficientCreditsError
+    from backend.billing.quota import get_billing_service
+
+    monkeypatch.setenv("LINKIN_BILLING_FORCE", "1")
+    svc = get_billing_service()
+    svc.ensure_account("ephemeral_user", "free")
+    acct = svc.get_account("ephemeral_user")
+    if float(acct.get("balance_credits") or 0) > 0:
+        svc.debit_credits(
+            "ephemeral_user",
+            float(acct["balance_credits"]),
+            source="test",
+            reference="drain",
+        )
+    token = billing_user_id.set("ephemeral_user")
+    try:
+        with pytest.raises(InsufficientCreditsError):
+            preflight_billable_container_run("task-runner")
+    finally:
+        billing_user_id.reset(token)
+
+
 def test_docker_settle_tick_debits_credits(billing_store, monkeypatch):
     from backend.billing.docker_meter import DockerBillingTracker, reset_docker_billing_tracker
 

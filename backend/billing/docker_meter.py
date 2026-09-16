@@ -93,7 +93,7 @@ class DockerBillingTracker:
 
     def ensure_can_start(self, service: str, user_id: str | None = None) -> None:
         """啟動前預檢：至少保留 N 分鐘運行費率對應積分（依方案費率）。"""
-        if not billing_enabled() and not user_id:
+        if not billing_enabled():
             return
         uid = (user_id or current_billing_user() or default_anonymous_user()).strip()
         plan_id = self._plan_id_for_user(uid)
@@ -196,7 +196,13 @@ class DockerBillingTracker:
                 continue
             status = str(c.get("status", ""))
             uptime = float(c.get("uptime_seconds", 0))
-            owner = (user_id or self.owner_of(svc)).strip()
+            with self._lock:
+                assigned = self._owners.get(svc)
+            if not assigned:
+                continue
+            owner = assigned.strip()
+            if user_id and owner != user_id.strip():
+                continue
 
             if not status.startswith("Up"):
                 if uptime <= 0:

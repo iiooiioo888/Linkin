@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
 
 from backend.auth.gate import ws_authorized
-from backend.ephemeral_containers.config import ephemeral_containers_enabled, image_allowlist
 from backend.ephemeral_containers.broadcaster import container_task_broadcaster
+from backend.ephemeral_containers.config import ephemeral_containers_enabled, image_allowlist
 from backend.ephemeral_containers.models import ContainerTaskCreate, ContainerTaskPublic
 from backend.ephemeral_containers.store import container_task_store
 from backend.ephemeral_containers.worker import container_task_worker

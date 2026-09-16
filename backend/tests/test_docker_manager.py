@@ -143,6 +143,64 @@ class TestDockerManagerMock:
         assert containers[0]["status"] == "running"
         assert containers[0]["health"] == "healthy"
 
+    def test_format_ports_dict_shape(self):
+        """docker-py NetworkSettings.Ports dict（含 127.0.0.1 绑定）。"""
+        from backend.services.docker_manager import DockerManager
+
+        ports = {
+            "3000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "3000"}],
+            "5432/tcp": None,
+        }
+        assert DockerManager.normalize_docker_ports(ports) == [
+            "127.0.0.1:3000:3000/tcp",
+            "5432/tcp",
+        ]
+
+    def test_format_ports_dict_ipv6_and_wildcard(self):
+        from backend.services.docker_manager import DockerManager
+
+        ports = {
+            "8080/tcp": [
+                {"HostIp": "0.0.0.0", "HostPort": "8080"},
+                {"HostIp": "::", "HostPort": "8080"},
+            ],
+            "49153/tcp": [{"HostIp": "0.0.0.0", "HostPort": "49153"}],
+        }
+        out = DockerManager.normalize_docker_ports(ports)
+        assert "8080:8080/tcp" in out
+        assert out.count("8080:8080/tcp") == 2
+        assert "49153:49153/tcp" in out
+
+    def test_format_ports_list_with_bind_ip(self):
+        from backend.services.docker_manager import DockerManager
+
+        ports = [
+            {
+                "IP": "127.0.0.1",
+                "PrivatePort": 3000,
+                "PublicPort": 3000,
+                "Type": "tcp",
+            }
+        ]
+        assert DockerManager.normalize_docker_ports(ports) == [
+            "127.0.0.1:3000:3000/tcp",
+        ]
+
+    def test_list_containers_with_port_dict(self, docker_manager, mock_client):
+        """list_containers 應正確格式化 docker-py ports dict。"""
+        mock_container = MagicMock()
+        mock_container.name = "test_project-frontend-1"
+        mock_container.status = "running"
+        mock_container.image.tags = ["evoloop-frontend:latest"]
+        mock_container.ports = {
+            "3000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "3000"}],
+        }
+        mock_container.attrs = {"State": {"StartedAt": "2024-01-01T00:00:00Z"}}
+        mock_client.containers.list.return_value = [mock_container]
+
+        containers = docker_manager.list_containers()
+        assert containers[0]["ports"] == ["127.0.0.1:3000:3000/tcp"]
+
     def test_list_containers_empty(self, docker_manager, mock_client):
         """空容器列表。"""
         mock_client.containers.list.return_value = []
@@ -455,10 +513,69 @@ class TestDockerApiEndpoints:
         monkeypatch.setattr(
             "backend.services.docker_manager.DOCKER_AVAILABLE", False
         )
+        monkeypatch.setattr("backend.services.docker_manager._docker_manager", None)
         from fastapi.testclient import TestClient
 
         from backend.main import app
         return TestClient(app)
+
+    def test_docker_restart_endpoint_with_billing_force_zero_balance(
+        self, client, monkeypatch, tmp_path
+    ):
+        """啟用計費且餘額不足時，运维 restart 仍不應 402（无启动预留预检）。"""
+        monkeypatch.setenv("LINKIN_BILLING_FORCE", "1")
+        monkeypatch.setenv("LINKIN_BILLING_DB", str(tmp_path / "bill.db"))
+        from backend.billing.quota import BillingService, get_billing_service, reset_billing_service
+        from backend.billing.store import BillingStore
+
+        reset_billing_service(BillingService(BillingStore(str(tmp_path / "bill.db"))))
+        svc = get_billing_service()
+        svc.ensure_account("broke", "free")
+        acct = svc.get_account("broke")
+        if float(acct.get("balance_credits") or 0) > 0:
+            svc.debit_credits(
+                "broke",
+                float(acct["balance_credits"]),
+                source="test",
+                reference="drain",
+            )
+        from backend.billing.context import billing_user_id
+
+        token = billing_user_id.set("broke")
+        try:
+            response = client.post("/docker/restart/backend")
+            assert response.status_code == 200
+        finally:
+            billing_user_id.reset(token)
+            reset_billing_service(None)
+
+    def test_docker_start_endpoint_with_billing_force_zero_balance(
+        self, client, monkeypatch, tmp_path
+    ):
+        monkeypatch.setenv("LINKIN_BILLING_FORCE", "1")
+        monkeypatch.setenv("LINKIN_BILLING_DB", str(tmp_path / "bill2.db"))
+        from backend.billing.context import billing_user_id
+        from backend.billing.quota import BillingService, get_billing_service, reset_billing_service
+        from backend.billing.store import BillingStore
+
+        reset_billing_service(BillingService(BillingStore(str(tmp_path / "bill2.db"))))
+        svc = get_billing_service()
+        svc.ensure_account("broke2", "free")
+        acct = svc.get_account("broke2")
+        if float(acct.get("balance_credits") or 0) > 0:
+            svc.debit_credits(
+                "broke2",
+                float(acct["balance_credits"]),
+                source="test",
+                reference="drain",
+            )
+        token = billing_user_id.set("broke2")
+        try:
+            response = client.post("/docker/start/backend")
+            assert response.status_code == 200
+        finally:
+            billing_user_id.reset(token)
+            reset_billing_service(None)
 
     def test_docker_status_endpoint(self, client):
         """GET /docker/status 應回傳 JSON。"""

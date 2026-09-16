@@ -49,7 +49,7 @@ class ContainerTaskWorker:
             try:
                 await asyncio.to_thread(self._execute_sync, task_id)
             except Exception as exc:
-                logger.exception("worker 執行失敗 %s: %s", task_id, exc)
+                logger.exception("worker 執行失敗 %s", task_id)
             finally:
                 self._queue.task_done()
 
