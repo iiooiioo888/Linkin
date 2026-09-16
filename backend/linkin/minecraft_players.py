@@ -313,9 +313,7 @@ def _is_plausible_player_name(name: str) -> bool:
         return False
     lowered = text.lower()
     # 狀態殘句關鍵字（即使長度碰巧合法也不收）
-    if any(tok in lowered for tok in ("player", "online", "server", "empty", "none")):
-        return False
-    return True
+    return not any(tok in lowered for tok in ("player", "online", "server", "empty", "none"))
 
 
 def _parse_online_players_payload(data: Any) -> list[str]:
