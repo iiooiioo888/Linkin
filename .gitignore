@@ -218,3 +218,13 @@ frontend/test-results/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+# Runtime traces at repo root（上游誤提交的歷史殘留；軌跡一律寫 EVOL_TRACE_DIR）
+/trace_*.jsonl
+
+# Local runtime artifacts
+.deploy-backups/
+/data/
+backend/data/billing.sqlite3
+backend/data/hub_data.sqlite3
+backend/data/linkin/map_plans.json
+backend/data/linkin/minecraft_plugin_settings.json

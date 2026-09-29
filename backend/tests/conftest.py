@@ -27,6 +27,19 @@ def _isolate_company_run_log_dir(tmp_path, monkeypatch):
     monkeypatch.setenv("EVOL_COMPANY_RUN_LOG_DIR", str(tmp_path / "company_runs"))
     yield
 
+
+@pytest.fixture(autouse=True)
+def _isolate_trace_and_checkpoint_dirs(tmp_path, monkeypatch):
+    """所有測試共用：將任務軌跡與檢查點寫入暫存，避免污染真實目錄。
+
+    漏掉這個隔離時，走 `TestClient` 的端到端用例（如 /chat/stream、
+    /tasks）會把 `trace_*.jsonl` 落到 repo 根目錄或 `backend/data/traces/`，
+    造成工作區髒亂，並讓已被上游誤提交的根目錄 trace 持續被改写。
+    """
+    monkeypatch.setenv("EVOL_TRACE_DIR", str(tmp_path / "traces"))
+    monkeypatch.setenv("EVOL_CHECKPOINT_DIR", str(tmp_path / "checkpoints"))
+    yield
+
 @pytest.fixture(autouse=True)
 def _isolate_role_catalog(tmp_path, monkeypatch):
     """所有測試共用：角色目錄寫入暫存，避免污染真實 data/。"""
