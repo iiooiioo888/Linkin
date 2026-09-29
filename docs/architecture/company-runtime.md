@@ -115,10 +115,10 @@ Planning → Ready → Executing → In Review → Done
 
 | 層級 | 適用場景 | 預設模型 |
 |------|----------|----------|
-| `SUMMARY` | 低複雜度 | gpt-4o-mini |
-| `ROUTINE` | 中複雜度 | gpt-4o-mini |
-| `REASONING` | 高複雜度 | gpt-4o |
-| `CRITICAL` | 關鍵任務 | gpt-4o |
+| `SUMMARY` | 低複雜度 | gpt-5.6-luna |
+| `ROUTINE` | 中複雜度 | gpt-5.6-luna |
+| `REASONING` | 高複雜度 | gpt-5.6-sol |
+| `CRITICAL` | 關鍵任務 | gpt-5.6-sol |
 
 ### 預算壓力
 

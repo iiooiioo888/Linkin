@@ -7,22 +7,44 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any
 
 BASELINE_TOKENS_PER_CREDIT = int(os.getenv("LINKIN_CREDIT_BASELINE_TOKENS", "1000"))
 
-# 模型倍率（相對 baseline）
-MODEL_MULTIPLIERS: dict[str, float] = {
-    "gpt-4o-mini": float(os.getenv("LINKIN_CREDIT_MULT_GPT4O_MINI", "0.3")),
-    "gpt-4o": float(os.getenv("LINKIN_CREDIT_MULT_GPT4O", "1.5")),
-    "gpt-4": 1.5,
-    "claude": 1.5,
+# 價檔常數。有價目的機型不手寫倍率，改由 in+4×out 混合單價落檔（見 tier_for_mixed_price）。
+_FRONTIER_MULT = float(os.getenv("LINKIN_CREDIT_MULT_FRONTIER", "5.0"))
+_SMALL_MULT = float(os.getenv("LINKIN_CREDIT_MULT_SMALL", "0.3"))
+_STANDARD_MULT = float(os.getenv("LINKIN_CREDIT_MULT_GPT4O", "1.5"))
+_ADVANCED_MULT = float(os.getenv("LINKIN_CREDIT_MULT_ADVANCED", "3.0"))
+_BASELINE_MULT = 1.0
+
+# 混合單價上限（USD / 1M，input + 4×output）。錨點：
+# gpt-4o-mini ≈ 2.55、luna ≈ 5、mercury ≈ 8.5 → small；
+# glm-5.3 ≈ 13.8、kimi-k2.7-code ≈ 16 → baseline；
+# qwen3.8-max ≈ 21、gpt-4o ≈ 42.5、terra ≈ 50 → standard；
+# sol ≈ 123 → advanced；astra ≈ 210 → frontier。
+# 零計價（探針）單獨成檔，不得套用小檔。
+_TIER_SMALL_MAX = 10.0
+_TIER_BASE_MAX = 20.0
+_TIER_STANDARD_MAX = 60.0
+_TIER_ADVANCED_MAX = 160.0
+
+# 價目表沒有的名稱才走家族別名。尺寸詞必須是獨立片段，禁止用子串
+# （「gemini」含有「mini」，整詞掃描會把旗艦收成小檔）。
+_SMALL_TOKENS = frozenset({"mini", "nano", "small", "flash", "haiku"})
+_ADVANCED_TOKENS = frozenset({"o1", "o3", "opus", "thinking"})
+_TIER_ALIAS_KEYS = frozenset({"baseline", "small", "advanced", "frontier"})
+_FAMILY_ALIASES: dict[str, float] = {
+    "baseline": _BASELINE_MULT,
+    "small": _SMALL_MULT,
+    "advanced": _ADVANCED_MULT,
+    "frontier": _FRONTIER_MULT,
+    "gpt-4": _STANDARD_MULT,
+    "claude": _STANDARD_MULT,
     "gemini": 1.2,
-    "o1": 3.0,
-    "o3": 3.0,
-    "advanced": float(os.getenv("LINKIN_CREDIT_MULT_ADVANCED", "3.0")),
-    "baseline": 1.0,
-    "small": float(os.getenv("LINKIN_CREDIT_MULT_SMALL", "0.3")),
+    "o1": _ADVANCED_MULT,
+    "o3": _ADVANCED_MULT,
 }
 
 REFLECTION_CREDITS_PER_ITER = float(os.getenv("LINKIN_CREDIT_REFLECTION_ITER", "2"))
@@ -52,16 +74,79 @@ def _normalize_model(model: str) -> str:
     return m
 
 
-def model_multiplier(model: str) -> float:
+def _segments(model: str) -> set[str]:
+    return {part for part in re.split(r"[^a-z0-9]+", model) if part}
+
+
+def mixed_unit_price(input_usd: float, output_usd: float) -> float:
+    """in + 4×out。輸出權重對齊既有落檔註記，避免只看輸入把貴模型收成小檔。"""
+    return float(input_usd) + 4.0 * float(output_usd)
+
+
+def tier_for_mixed_price(mixed: float) -> float:
+    if mixed <= 0:
+        return 0.0
+    if mixed <= _TIER_SMALL_MAX:
+        return _SMALL_MULT
+    if mixed <= _TIER_BASE_MAX:
+        return _BASELINE_MULT
+    if mixed <= _TIER_STANDARD_MAX:
+        return _STANDARD_MULT
+    if mixed <= _TIER_ADVANCED_MAX:
+        return _ADVANCED_MULT
+    return _FRONTIER_MULT
+
+
+def match_multiplier_table(model: str, mults: dict[str, Any]) -> float:
+    """自訂倍率表。尺寸詞只認獨立片段，家族鍵只認前綴邊界。"""
     m = _normalize_model(model)
-    if any(k in m for k in ("o1", "o3", "opus", "thinking")):
-        return MODEL_MULTIPLIERS.get("advanced", 3.0)
-    if any(k in m for k in ("mini", "nano", "small", "flash", "haiku")):
-        return MODEL_MULTIPLIERS.get("small", 0.3)
-    for key, mult in MODEL_MULTIPLIERS.items():
-        if key in m:
-            return mult
-    return MODEL_MULTIPLIERS.get("baseline", 1.0)
+    exact = mults.get(m)
+    if exact is not None:
+        return float(exact)
+    segments = _segments(m)
+    if segments & _ADVANCED_TOKENS:
+        return float(mults.get("advanced", _ADVANCED_MULT))
+    if segments & _SMALL_TOKENS:
+        return float(mults.get("small", _SMALL_MULT))
+    for key in sorted(mults, key=len, reverse=True):
+        if key in _TIER_ALIAS_KEYS:
+            continue
+        if m == key or m.startswith(f"{key}-") or m.startswith(f"{key}."):
+            return float(mults[key])
+    return float(mults.get("baseline", _BASELINE_MULT))
+
+
+def model_multiplier(model: str) -> float:
+    """有價目用混合單價落檔；沒有價目才用家族別名。禁止用子串猜檔。"""
+    m = _normalize_model(model)
+    if not m:
+        return _BASELINE_MULT
+    # 舊環境變數只釘錨點機型，不改整檔。未設定時仍走價目分檔。
+    if m == "gpt-4o-mini":
+        pinned = os.getenv("LINKIN_CREDIT_MULT_GPT4O_MINI")
+        if pinned:
+            return float(pinned)
+    if m == "gpt-4o":
+        pinned = os.getenv("LINKIN_CREDIT_MULT_GPT4O")
+        if pinned:
+            return float(pinned)
+    from backend.company.rate_card import get_model_rate_cards
+
+    card = get_model_rate_cards().get(m)
+    if card is not None:
+        return tier_for_mixed_price(mixed_unit_price(card.get("input", 0.0), card.get("output", 0.0)))
+    return match_multiplier_table(m, _FAMILY_ALIASES)
+
+
+def effective_model_multipliers() -> dict[str, float]:
+    """價目表每一型的實際倍率，加上無價目時才用的家族別名。"""
+    from backend.company.rate_card import get_model_rate_cards
+
+    priced = {
+        name: tier_for_mixed_price(mixed_unit_price(card.get("input", 0.0), card.get("output", 0.0)))
+        for name, card in get_model_rate_cards().items()
+    }
+    return {**_FAMILY_ALIASES, **priced}
 
 
 def credits_for_llm_tokens(model: str, input_tokens: int, output_tokens: int) -> float:
@@ -134,7 +219,7 @@ def public_rate_card() -> dict[str, Any]:
     return {
         "unit": "靈境積分（Linkin Credit）",
         "baseline_tokens_per_credit": BASELINE_TOKENS_PER_CREDIT,
-        "model_multipliers": MODEL_MULTIPLIERS,
+        "model_multipliers": effective_model_multipliers(),
         "reflection_per_iteration": REFLECTION_CREDITS_PER_ITER,
         "raho_layers": RAHO_LAYER_CREDITS,
         "quant_api_call": QUANT_API_CREDITS,

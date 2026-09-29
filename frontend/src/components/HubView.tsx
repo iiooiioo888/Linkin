@@ -340,7 +340,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
             ) : (
               <p className="text-xs text-[var(--console-faint)]">
                 結果會顯示於此。Agent 會依工具呼叫 StocksX / LittleCrawler / StoryForge / PysdnOPC
-                讀取，再由 GPT-5.6 Sol 生成；限流則降級 Qwen3.5-Max。工業寫入必須走 opc_service 護欄。
+                讀取，再由 GPT-5.6 Sol 生成；限流則降級 Qwen3.8-Max。工業寫入必須走 opc_service 護欄。
               </p>
             )}
           </div>

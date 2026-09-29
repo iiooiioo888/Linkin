@@ -128,7 +128,7 @@ PROVIDER_PRESETS: dict[str, dict[str, str]] = {
     "zhipu": {
         "name": "智譜 GLM",
         "api_base": "https://open.bigmodel.cn/api/paas/v4",
-        "model": "glm-5.2",
+        "model": "glm-5.3",
     },
     "ollama": {
         "name": "Ollama（本地）",

@@ -198,15 +198,15 @@ class TestTierRouter:
         monkeypatch.setattr("backend.core.llm_config.get_explicit_model", lambda: "")
         router = TierRouter(BudgetConfig())
         model = router.resolve_model(BudgetTier.ROUTINE, budget_pressure=0.0)
-        assert model == "gpt-4o-mini"
+        assert model == "gpt-5.6-luna"
 
     def test_resolve_model_degraded(self):
         config = BudgetConfig(
-            degrade_chain={BudgetTier.CRITICAL: "gpt-4o-mini"}
+            degrade_chain={BudgetTier.CRITICAL: "gpt-5.6-luna"}
         )
         router = TierRouter(config)
         model = router.resolve_model(BudgetTier.CRITICAL, budget_pressure=0.95)
-        assert model == "gpt-4o-mini"  # 降級
+        assert model == "gpt-5.6-luna"  # 降級
 
 
 class TestBudgetManager:
@@ -261,7 +261,7 @@ class TestBudgetManager:
         monkeypatch.setattr("backend.core.llm_config.get_explicit_model", lambda: "")
         bm = BudgetManager(BudgetConfig())
         model = bm.resolve_model_for_tier(BudgetTier.ROUTINE)
-        assert model == "gpt-4o-mini"
+        assert model == "gpt-5.6-luna"
 
     def test_to_dict(self):
         bm = BudgetManager(BudgetConfig(task_limit_usd=1.0))

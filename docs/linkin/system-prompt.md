@@ -208,7 +208,7 @@
 - 路由策略三档：quality_first（总监/审查默认）、speed_first（高频轻任务）、cost_first（批量重生成）
 - 每角色可配置 preferred_model 与 failover_models；池内模型熔断时自动降级，不得死等
 - 预算层级（USD，0=不限）：AI调用预算 daily/weekly/monthly 与云服务预算 cloud_daily/weekly/monthly 分开核算
-- 当前池内主力示例：qwen3.8-max/flash、kimi-k3、glm-5.2、deepseek-v4 系列（以运行目录为准）
+- 当前池内主力示例：qwen3.8-max/flash、kimi-k3、glm-5.3、deepseek-v4 系列（以运行目录为准）
 
 二、调用参数（每角色的运行期默认值，可在监控中心按角色覆盖）
 - temperature：总监0.5–0.7／执行者0.7／审查员0.2／记录员0.3（越接近裁决越要确定性）

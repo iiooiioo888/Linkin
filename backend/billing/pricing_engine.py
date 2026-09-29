@@ -19,12 +19,13 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "cache_read_mult": 0.1,
     "cache_write_mult": 1.25,
     "l3_cache_hit_mult": 0.1,
+    # 只有家族／價檔別名。具體機型倍率由 credits.model_multiplier 依價目表計算，
+    # 避免與 credits.py 各寫一份之後漂移。此表裡的機型鍵若與預設不同，視為管理員釘選。
     "model_multipliers": {
         "baseline": 1.0,
-        "gpt-4o-mini": 0.3,
-        "gpt-4o": 1.5,
-        "advanced": 3.0,
         "small": 0.3,
+        "advanced": 3.0,
+        "frontier": 5.0,
     },
     "role_weights": {"L5": 10, "L4": 6, "L3": 3, "L2": 1.5, "L1": 0.5, "L0": 0.2, "default": 1.0},
     "tool_coefficients": {"default": 1.0, "quant": 0.5, "docker": 1.0, "opc": 1.0},
@@ -41,16 +42,23 @@ def _normalize_model(model: str) -> str:
 
 
 def model_multiplier(config: dict[str, Any], model: str) -> float:
+    """預設走價目分檔。設定裡釘了與預設別名表不同的機型鍵時，該鍵優先。"""
+    from backend.billing.credits import match_multiplier_table, model_multiplier as price_multiplier
+
     mults = config.get("model_multipliers") or {}
     m = _normalize_model(model)
-    if any(k in m for k in ("o1", "o3", "opus", "thinking")):
-        return float(mults.get("advanced", 3.0))
-    if any(k in m for k in ("mini", "nano", "small", "flash", "haiku")):
-        return float(mults.get("small", 0.3))
-    for key, val in mults.items():
-        if key in m:
-            return float(val)
-    return float(mults.get("baseline", 1.0))
+    default_mults = _DEFAULT_CONFIG["model_multipliers"]
+    pinned = m in mults and (m not in default_mults or float(mults[m]) != float(default_mults[m]))
+    if pinned:
+        return float(mults[m])
+    if mults == default_mults:
+        return price_multiplier(model)
+    # 管理員改過別名表、但沒釘這台機型：無價目時沿用該表，有價目仍以價目為準。
+    from backend.company.rate_card import get_model_rate_cards
+
+    if m in get_model_rate_cards():
+        return price_multiplier(model)
+    return match_multiplier_table(m, mults)
 
 
 def role_weight(config: dict[str, Any], role: str = "") -> float:

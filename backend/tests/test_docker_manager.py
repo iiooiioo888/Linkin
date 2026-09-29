@@ -176,6 +176,28 @@ class TestDockerManagerMock:
         assert "disk_total" in out
         assert "uptime_seconds" in out
 
+    def test_host_stats_available_without_os_uname(self, docker_manager, monkeypatch):
+        """Windows 沒有 os.uname：取 hostname 不得把整輪主機指標降級成 available=False。"""
+        import types
+
+        mem = types.SimpleNamespace(
+            total=8 * 1024**3, used=2 * 1024**3, available=6 * 1024**3, percent=25.0
+        )
+        swap = types.SimpleNamespace(total=1024**3, used=0, percent=0.0)
+        fake = types.SimpleNamespace(
+            virtual_memory=lambda: mem,
+            swap_memory=lambda: swap,
+            cpu_percent=lambda interval=0.1: 12.3,
+            cpu_count=lambda: 4,
+            getloadavg=lambda: (0.1, 0.2, 0.3),
+            boot_time=lambda: 1_700_000_000.0,
+        )
+        monkeypatch.setitem(__import__("sys").modules, "psutil", fake)
+        monkeypatch.delattr(__import__("os"), "uname", raising=False)
+        out = docker_manager.host_stats()
+        assert out["available"] is True
+        assert "hostname" in out
+
     def test_host_stats_without_psutil(self, docker_manager, monkeypatch):
         import builtins
         real_import = builtins.__import__

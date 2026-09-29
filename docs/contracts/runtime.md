@@ -258,10 +258,10 @@
 - **狀態**: ✅ 已實現
 
 ## CONTRACT-ID: C-UI-003
-- **條款**: 外部整合 GUI（MemOS／OpenViking／WeKnora／Yao／Ouroboros／OpenPencil）僅提供顯式啟停與動作；未啟用時不得暗示自動接入
-- **來源**: C-INTEG-002／§3 可視化
+- **條款**: 前端任務狀態矩陣必須由後端 `export_matrix` 生成並逐格一致；禁止手抄缺格後由 `evaluate()` 兜底放行後端會拒絕的組合
+- **來源**: TODO §3.4／§9.2（commit `95fac8b`）
 - **優先級**: P2
-- **驗證**: frontend IntegrationsPanel ＋ pytest::backend/tests/test_integrations_api.py
+- **驗證**: pytest::backend/tests/test_contracts.py::test_contract_c_ui_003_frontend_matrix_matches_backend ＋ `backend/scripts/export_task_state_matrix.py` ＋ `frontend/src/lib/taskStateMatrix.ts`
 - **狀態**: ✅ 已實現
 
 ## CONTRACT-ID: C-UI-004
@@ -270,6 +270,13 @@
 - **優先級**: P2
 - **驗證**: pytest::backend/tests/test_context_insight.py ＋ pytest::backend/tests/test_context_session_bind.py ＋ pytest::backend/tests/test_plugins_api.py ＋ frontend ChatBottomPanel／ContextPanel（embed 無任務選擇器、鎖死本會話）／ContextModal／InputBar `/context`／`/context peek`／SkillsMcpPanel 可視化分頁／e2e::core-flow
 - **狀態**: ✅ 已實現（對話頁 Context 永遠綁定當前會話；外來 taskId 忽略；embed 無跨對話選擇器；pytest::test_context_session_bind）
+
+## CONTRACT-ID: C-UI-005
+- **條款**: 外部整合 GUI（MemOS／OpenViking／WeKnora／Yao／Ouroboros／OpenPencil）僅提供顯式啟停與動作；未啟用時不得暗示自動接入
+- **來源**: C-INTEG-002／§3 可視化（原誤佔 C-UI-003，2026-09-29 讓出編號給矩陣防漂移契約）
+- **優先級**: P2
+- **驗證**: frontend IntegrationsPanel ＋ pytest::backend/tests/test_integrations_api.py
+- **狀態**: ✅ 已實現
 
 ## CONTRACT-ID: C-INTEG-001
 - **條款**: 外部整合（MemOS／OpenViking／WeKnora／Yao／Ouroboros／OpenPencil）一律 fail-open；每次呼叫寫審計軌跡並附原因碼

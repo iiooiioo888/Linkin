@@ -115,7 +115,7 @@ Linkin/
 │   ├── tools/ · hub/ · memory/ · services/
 │   ├── config/                  #   執行期 JSON（價卡等）
 │   ├── data/ · scripts/
-│   └── tests/                   #   pytest（約 639 筆收錄）
+│   └── tests/                   #   pytest（2026-09-29 對帳 1128 passed；本機預設暫存鎖住時需另指定 --basetemp）
 ├── opc_service/                 # OPC UA + guard（見 opc_service/README.md）
 ├── frontend/                    # React 19 + Vite（預設 :3001）
 ├── vendor/archify/              # 策略圖 CLI

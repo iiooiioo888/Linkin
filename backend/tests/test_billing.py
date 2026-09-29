@@ -15,6 +15,7 @@ from backend.billing.context import (
     end_chat_billing,
 )
 from backend.billing.credits import credits_for_raho_layer
+from backend.billing.credits import model_multiplier as credit_model_multiplier
 from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
 from backend.billing.metering import (
     meter_llm,
@@ -37,7 +38,12 @@ from backend.billing.pools_service import (
     TransferForbiddenError,
     evaluate_reserve_tier,
 )
-from backend.billing.pricing_engine import compute_cost_credits, compute_cost_with_meta
+from backend.billing.pricing_engine import (
+    DEFAULT_PRICING_CONFIG,
+    compute_cost_credits,
+    compute_cost_with_meta,
+    model_multiplier as engine_model_multiplier,
+)
 from backend.billing.quota import BillingService, reset_billing_service
 from backend.billing.reward_engine import compute_reward, quality_score
 from backend.billing.store import BillingStore, reset_billing_store
@@ -279,6 +285,47 @@ def test_cost_formula_cache_metadata_missing(billing_store):
         cache_metadata_missing=True,
     )
     assert meta["flags"].get("cache_metadata_missing") is True
+
+
+# 2026-09 現行世代價檔：依價目表 in+4×out 混合單價落檔（零計價不得套小檔）
+CURRENT_GEN_MULTIPLIERS = {
+    "gpt-6-astra": 5.0,
+    "gpt-5.6-sol": 3.0,
+    "gpt-5.6-terra": 1.5,
+    "gemini-3.1-pro": 1.5,
+    "qwen3.8-max": 1.5,
+    "qwen-max": 1.5,
+    "gpt-5.6-luna": 0.3,
+    "mimo-v2.5-pro": 0.3,
+    "qwen-turbo": 0.3,
+    "qwen3.7-plus": 0.3,
+    "nemotron-3.5-lightning": 0.0,
+}
+
+
+def test_current_generation_multipliers_match_price_tier():
+    """現行世代不得整批落到 baseline 1.0，且兩套計費引擎同檔。"""
+    for model, mult in CURRENT_GEN_MULTIPLIERS.items():
+        assert credit_model_multiplier(model) == mult, model
+        assert engine_model_multiplier(DEFAULT_PRICING_CONFIG, model) == mult, model
+
+
+def test_gemini_name_contains_mini_substring():
+    """gemini 一詞內含 mini：不得把未列價的旗艦家族收成小檔。"""
+    assert credit_model_multiplier("gemini-3.1-pro") == 1.5
+    assert credit_model_multiplier("gemini-3.1-flash") == 0.3
+    assert credit_model_multiplier("vendor/gemini-3.1-pro") == 1.5
+    assert credit_model_multiplier("gemini-pro") == 1.2
+    assert engine_model_multiplier(DEFAULT_PRICING_CONFIG, "gemini-pro") == 1.2
+
+
+def test_multipliers_follow_mixed_price_not_name():
+    """相近混合單價同檔：plus 與 luna 同價帶，不得因名稱沒有 flash 而落到 baseline。"""
+    order = ["qwen3.8-flash", "qwen3.7-plus", "glm-5.3", "qwen3.8-max", "gpt-5.6-sol", "gpt-6-astra"]
+    mults = [credit_model_multiplier(m) for m in order]
+    assert mults == [0.3, 0.3, 1.0, 1.5, 3.0, 5.0]
+    assert mults == sorted(mults)
+    assert credit_model_multiplier("nemotron-3.5-lightning") == 0.0
 
 
 def test_l3_cache_hit_savings(billing_store):

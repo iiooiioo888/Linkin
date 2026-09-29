@@ -506,10 +506,10 @@ def _default_tier_models() -> dict[BudgetTier, str]:
             BudgetTier.SUMMARY: configured,
         }
     return {
-        BudgetTier.CRITICAL: "gpt-4o",
-        BudgetTier.REASONING: "gpt-4o",
-        BudgetTier.ROUTINE: "gpt-4o-mini",
-        BudgetTier.SUMMARY: "gpt-4o-mini",
+        BudgetTier.CRITICAL: "gpt-5.6-sol",
+        BudgetTier.REASONING: "gpt-5.6-sol",
+        BudgetTier.ROUTINE: "gpt-5.6-luna",
+        BudgetTier.SUMMARY: "gpt-5.6-luna",
     }
 
 

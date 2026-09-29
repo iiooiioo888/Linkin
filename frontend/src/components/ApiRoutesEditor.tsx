@@ -81,9 +81,9 @@ export const PROVIDER_PRESETS = [
     value: 'zhipu',
     label: '智譜 GLM',
     apiBase: 'https://open.bigmodel.cn/api/paas/v4',
-    defaultModel: 'glm-5.2',
-    hint: 'glm-4 系列已退役；現行 GLM-5.3／5.2／5.1／5（1M～200K 上下文）',
-    models: ['glm-5.3', 'glm-5.3-flash', 'glm-5.2', 'glm-5.1', 'glm-5'],
+    defaultModel: 'glm-5.3',
+    hint: 'glm-4 系列與 glm-5.2 已退役；現行 GLM-5.3／5.3-flash／5.1／5（1M～200K 上下文）',
+    models: ['glm-5.3', 'glm-5.3-flash', 'glm-5.1', 'glm-5', 'glm-5.2'],
   },
   {
     value: 'ollama',

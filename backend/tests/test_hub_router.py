@@ -51,7 +51,7 @@ def test_default_chain_no_claude() -> None:
         "gpt-5.6-sol",
         "gemini-3.1-pro",
         "deepseek-v4-flash",
-        "glm-5.2",
+        "glm-5.3",
     )
     chain = failover_chain("gpt-5.6-sol", "US", None)
     assert chain[0] == "gpt-5.6-sol"
@@ -90,7 +90,7 @@ def test_failover_switches_on_429() -> None:
 
 def test_cn_failover_chain() -> None:
     chain = failover_chain("deepseek-v4-flash", "CN", None)
-    assert chain == ["deepseek-v4-flash", "qwen3.5-max", "mimo-v2.5-pro"]
+    assert chain == ["deepseek-v4-flash", "qwen3.8-max", "mimo-v2.5-pro"]
 
 
 @pytest.mark.asyncio

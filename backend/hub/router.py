@@ -148,7 +148,7 @@ def failover_chain(primary: str, region: str, whitelist: list[str] | None) -> li
             chain.remove(primary)
         chain.insert(0, primary)
         if primary == QUALITY_FLAGSHIP and AGENT_FALLBACK not in chain:
-            # Agent 二次呼叫降級契約：Sol → Qwen3.5-Max 仍可經白名單插入
+            # Agent 二次呼叫降級契約：Sol → Qwen3.8-Max 仍可經白名單插入
             pass
     if whitelist:
         allowed = set(whitelist)
@@ -157,9 +157,9 @@ def failover_chain(primary: str, region: str, whitelist: list[str] | None) -> li
 
 
 def agent_synthesis_chain(region: str, whitelist: list[str] | None) -> list[str]:
-    """金融場景二次生成：GPT-5.6 Sol，限流則 Qwen3.5-Max。"""
+    """金融場景二次生成：GPT-5.6 Sol，限流則 Qwen3.8-Max。"""
     if region.upper() == "CN":
-        chain = ["qwen3.5-max", "deepseek-v4-flash", "mimo-v2.5-pro"]
+        chain = ["qwen3.8-max", "deepseek-v4-flash", "mimo-v2.5-pro"]
     else:
         chain = [QUALITY_FLAGSHIP, AGENT_FALLBACK]
     if whitelist:

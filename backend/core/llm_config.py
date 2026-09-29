@@ -51,9 +51,9 @@ def get_runtime_config() -> dict:
             from backend.core.provider_pool import classify_provider, static_catalog
 
             rows = static_catalog(classify_provider(api_base, ""))
-            cfg["model"] = rows[0]["id"] if rows else "gpt-4o"
+            cfg["model"] = rows[0]["id"] if rows else "gpt-5.6-luna"
         else:
-            cfg["model"] = "gpt-4o"
+            cfg["model"] = "gpt-5.6-luna"
     return cfg
 
 

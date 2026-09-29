@@ -31,7 +31,7 @@
 | `AGENTS.md`：所有 LLM 必須經 `backend.core.llm.call_llm` | Hermes 若直連廠商 SDK 即違規 | Hermes 叢集 **只打 LiteLLM OpenAI 相容端點**，節點模組禁止 `import openai` 等 SDK |
 | `opc_service/guard.py` 為 OPC 寫入唯一護欄 | PysdnOPC 工具若直寫標籤即違規 | 工具執行層只呼叫 `opc_service` REST，禁止繞過護欄 |
 | Redis 已用於任務持久化（TTL 7 天） | Key 碰撞 | Hub 使用獨立前綴 `hub:` / `semantic:` / `provider:` / `budget:` |
-| `backend/company/budget.py` 的 `_MODEL_COST_PER_1M_TOKENS` 原僅覆蓋 gpt-4o 家族與舊 DeepSeek | 與 Hub 九模型目錄不一致，未知模型會落入保守單價 (1.0, 4.0) | Hub 使用獨立價目表（§1.6）；公司運行時價目表已同步補上 Hub 九模型單價（**不含任何 Claude ID**），LangGraph 預設仍走 `gpt-4o` / `gpt-4o-mini`，兩邊計數器不共用 |
+| `backend/company/budget.py` 的 `_MODEL_COST_PER_1M_TOKENS` 原僅覆蓋 gpt-4o 家族與舊 DeepSeek | 與 Hub 九模型目錄不一致，未知模型會落入保守單價 (1.0, 4.0) | Hub 使用獨立價目表（§1.6）；公司運行時價目表已同步補上 Hub 九模型單價（**不含任何 Claude ID**），LangGraph 預設仍走 `gpt-5.6-sol` / `gpt-5.6-luna`，兩邊計數器不共用 |
 | `backend/tests/test_architecture.py` 已禁止節點模組 `import anthropic` | Hub 若直連 Anthropic SDK 會被架構測試擋下 | Hermes 只打 LiteLLM；Hub 目錄校驗額外拒絕 Claude 字串 |
 | 現有基礎設施僅 Redis + ChromaDB，無 PostgreSQL / Kong / Jaeger | 新元件 | 以獨立 Compose 服務新增，不改現有 `evoloop-backend` 容器職責 |
 
@@ -48,9 +48,9 @@ C4Context
     System(hub, "AI Hub", "多模型編排、預算攔截、故障轉移、Agent 任務")
     System_Ext(openai, "OpenAI 相容上游", "GPT-5.6 Sol")
     System_Ext(google, "Google AI", "Gemini 3.1 Pro")
-    System_Ext(cn, "中國區上游", "DeepSeek V4 Flash / Qwen3.5-Max / MiMo-V2.5-Pro")
+    System_Ext(cn, "中國區上游", "DeepSeek V4 Flash / Qwen3.8-Max / MiMo-V2.5-Pro")
     System_Ext(speed, "極速上游", "Mercury 2 / Nemotron 3.5 Lightning")
-    System_Ext(oss, "開源備援", "GLM-5.2 / Kimi K3")
+    System_Ext(oss, "開源備援", "GLM-5.3 / Kimi K3")
     System_Ext(tools, "GitHub 微服務", "StocksX / LittleCrawler / StoryForge / PysdnOPC / UI-web")
     Rel(user, hub, "HTTPS JSON", "HTTP/2")
     Rel(hub, openai, "Chat Completions", "HTTPS JSON")
@@ -177,10 +177,10 @@ Nginx **維持原樣**，只服務 SPA 與舊產品 API。兩邊路徑集合不�
 | 多模態旗艦 | `gemini-3.1-pro` | `google` | 1.25 | 12.00 | — | 2,097,152 | `vision,video,audio,pdf` |
 | 性價比中國主力 | `mimo-v2.5-pro` | `mimo` | 0.21 | 0.83 | — | — | `agent`（Agent 能力第 3） |
 | 長文本中國主力 | `deepseek-v4-flash` | `deepseek` | 0.22 | 0.66 | — | 1,310,720 | `longctx,moe-284b` |
-| 開源衍生中國主力 | `qwen3.5-max` | `qwen` | 0.30 | 1.20 | — | 151,000+ | `cn,open-derivative` |
+| 開源衍生中國主力 | `qwen3.8-max` | `qwen` | 1.65 | 4.95 | — | 1,000,000 | `cn,open-derivative` |
 | 極速 | `mercury-2` | `inception` | 0.50 | 2.00 | 938 | — | `speed` |
 | 極速免費 | `nemotron-3.5-lightning` | `nvidia` | 0.00 | 0.00 | ~670 | — | `speed,free` |
-| 開源備援 | `glm-5.2` | `zhipu` | 0.10 | 0.40 | — | — | `oss,mit,no-geo-lock`；HF 開源榜 85 |
+| 開源備援 | `glm-5.3` | `zhipu` | 1.00 | 3.20 | — | 1,000,000 | `oss,mit,no-geo-lock`；HF 開源榜 87 |
 | 開源最大 | `kimi-k3` | `moonshot` | 0.40 | 1.50 | — | — | `oss,2.8t-params` |
 
 目錄為**封閉白名單**：`model` / `preferred_models[]` / `x-failover-config.model_whitelist[]` 的合法集合必須與此表 9 個 ID 完全一致。探針可覆寫單價與延遲，**不得**動態新增模型 ID。
@@ -194,7 +194,7 @@ Nginx **維持原樣**，只服務 SPA 與舊產品 API。兩邊路徑集合不�
 | Failover / Race | 鏈與競速配對寫死為本表 ID；單元測試 `test_hub_catalog_excludes_claude` 斷言目錄、OpenAPI enum、Router `INTEL` 三集合相等且不含 Claude |
 | 錯誤文案 | 使用者訊息不得出現「已切換至 Claude」等歷史文案 |
 
-**屬地合規硬規則：** 若 `X-Client-Region` 或 GeoIP 判定為 `CN`（中國大陸），路由引擎 **強制優先且僅允許** 將候選集限制為 `{deepseek-v4-flash, qwen3.5-max, mimo-v2.5-pro}`（DeepSeek / Qwen 為合規主力，MiMo 為同屬中國區性價比備援），禁止將 prompt / 檔案發往 `openai` / `google` / `inception` / `nvidia` 境外端點。`glm-5.2` 僅在 CN 候選全部熔斷後、且使用者 `data_egress_ack=true` 時才允許（預設 false）。
+**屬地合規硬規則：** 若 `X-Client-Region` 或 GeoIP 判定為 `CN`（中國大陸），路由引擎 **強制優先且僅允許** 將候選集限制為 `{deepseek-v4-flash, qwen3.8-max, mimo-v2.5-pro}`（DeepSeek / Qwen 為合規主力，MiMo 為同屬中國區性價比備援），禁止將 prompt / 檔案發往 `openai` / `google` / `inception` / `nvidia` 境外端點。`glm-5.3` 僅在 CN 候選全部熔斷後、且使用者 `data_egress_ack=true` 時才允許（預設 false）。
 
 ---
 
@@ -254,10 +254,10 @@ Base URL（對外公網）：`https://hub.example.com`
           "gemini-3.1-pro",
           "mimo-v2.5-pro",
           "deepseek-v4-flash",
-          "qwen3.5-max",
+          "qwen3.8-max",
           "mercury-2",
           "nemotron-3.5-lightning",
-          "glm-5.2",
+          "glm-5.3",
           "kimi-k3"
         ]
       }
@@ -326,7 +326,7 @@ Content-Type: application/json; charset=utf-8
 X-Request-Id: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
 X-Client-Region: TW
 x-routing-strategy: quality_first
-x-failover-config: {"connect_timeout_ms":25000,"read_timeout_ms":120000,"max_retries":3,"backoff_base":2,"model_whitelist":["gpt-5.6-sol","gemini-3.1-pro","deepseek-v4-flash","glm-5.2"],"enable_race":false}
+x-failover-config: {"connect_timeout_ms":25000,"read_timeout_ms":120000,"max_retries":3,"backoff_base":2,"model_whitelist":["gpt-5.6-sol","gemini-3.1-pro","deepseek-v4-flash","glm-5.3"],"enable_race":false}
 
 {
   "model": "gpt-5.6-sol",
@@ -597,10 +597,10 @@ components:
         - gemini-3.1-pro
         - mimo-v2.5-pro
         - deepseek-v4-flash
-        - qwen3.5-max
+        - qwen3.8-max
         - mercury-2
         - nemotron-3.5-lightning
-        - glm-5.2
+        - glm-5.3
         - kimi-k3
     ProviderCode:
       type: string
@@ -880,8 +880,8 @@ COMMENT ON COLUMN users.preferred_models IS
 --   "maxItems": 8,
 --   "uniqueItems": true,
 --   "items": { "enum": ["gpt-5.6-sol","gemini-3.1-pro","mimo-v2.5-pro",
---                       "deepseek-v4-flash","qwen3.5-max","mercury-2",
---                       "nemotron-3.5-lightning","glm-5.2","kimi-k3"] }
+--                       "deepseek-v4-flash","qwen3.8-max","mercury-2",
+--                       "nemotron-3.5-lightning","glm-5.3","kimi-k3"] }
 -- }
 
 CREATE TABLE call_logs (
@@ -1016,10 +1016,10 @@ ChromaDB 僅存意圖摘要向量（384 維），供「近義命中」二期使�
 | :--- | ---: |
 | gpt-5.6-sol | 96 |
 | gemini-3.1-pro | 92 |
+| qwen3.8-max | 90 |
 | mimo-v2.5-pro | 88 |
-| qwen3.5-max | 86 |
+| glm-5.3 | 87 |
 | kimi-k3 | 85 |
-| glm-5.2 | 85 |
 | deepseek-v4-flash | 84 |
 | mercury-2 | 78 |
 | nemotron-3.5-lightning | 74 |
@@ -1055,19 +1055,19 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Iterable
 
-CN_SET = frozenset({"deepseek-v4-flash", "qwen3.5-max", "mimo-v2.5-pro"})
+CN_SET = frozenset({"deepseek-v4-flash", "qwen3.8-max", "mimo-v2.5-pro"})
 INTEL = {
     "gpt-5.6-sol": 96,
     "gemini-3.1-pro": 92,
+    "qwen3.8-max": 90,
     "mimo-v2.5-pro": 88,
-    "qwen3.5-max": 86,
+    "glm-5.3": 87,
     "kimi-k3": 85,
-    "glm-5.2": 85,
     "deepseek-v4-flash": 84,
     "mercury-2": 78,
     "nemotron-3.5-lightning": 74,
 }
-DEFAULT_CHAIN = ("gpt-5.6-sol", "gemini-3.1-pro", "deepseek-v4-flash", "glm-5.2")
+DEFAULT_CHAIN = ("gpt-5.6-sol", "gemini-3.1-pro", "deepseek-v4-flash", "glm-5.3")
 CONNECT_TIMEOUT_S = 25.0
 READ_TIMEOUT_S = 120.0
 MAX_RETRIES = 3
@@ -1143,10 +1143,10 @@ def provider_of(model: str) -> str:
         "gemini-3.1-pro": "google",
         "mimo-v2.5-pro": "mimo",
         "deepseek-v4-flash": "deepseek",
-        "qwen3.5-max": "qwen",
+        "qwen3.8-max": "qwen",
         "mercury-2": "inception",
         "nemotron-3.5-lightning": "nvidia",
-        "glm-5.2": "zhipu",
+        "glm-5.3": "zhipu",
         "kimi-k3": "moonshot",
     }[model]
 ```
@@ -1157,9 +1157,9 @@ def provider_of(model: str) -> str:
 - 重試：指數退避，**基數 2**，**最多 3 次**（含首次共 4 次嘗試落在同一模型上，之後才切模型）。
 - 等待秒數：`sleep = BACKOFF_BASE ** attempt + uniform(0, 0.2)`，attempt 從 0 起：1s、2s、4s。
 - 切換條件：HTTP 429、503、連線失敗、讀取逾時、熔斷器 Open。
-- 預設鏈（非 CN）：**gpt-5.6-sol → gemini-3.1-pro → deepseek-v4-flash → glm-5.2**。
+- 預設鏈（非 CN）：**gpt-5.6-sol → gemini-3.1-pro → deepseek-v4-flash → glm-5.3**。
 - 若白名單不含下一跳，跳過該跳。
-- CN：鏈為 **deepseek-v4-flash → qwen3.5-max → mimo-v2.5-pro**（無境外、無 glm 除非 `data_egress_ack`）。
+- CN：鏈為 **deepseek-v4-flash → qwen3.8-max → mimo-v2.5-pro**（無境外、無 glm 除非 `data_egress_ack`）。
 
 ```python
 def backoff_sleep(attempt: int) -> float:
@@ -1168,7 +1168,7 @@ def backoff_sleep(attempt: int) -> float:
 
 def failover_chain(primary: str, region: str, whitelist: list[str] | None) -> list[str]:
     if region.upper() == "CN":
-        chain = ["deepseek-v4-flash", "qwen3.5-max", "mimo-v2.5-pro"]
+        chain = ["deepseek-v4-flash", "qwen3.8-max", "mimo-v2.5-pro"]
     else:
         chain = list(DEFAULT_CHAIN)
         if primary in chain:
@@ -1301,7 +1301,7 @@ sequenceDiagram
     participant S as StocksX :9101
     participant L as LiteLLM
     participant G as GPT-5.6 Sol
-    participant Q as Qwen3.5-Max
+    participant Q as Qwen3.8-Max
     participant J as Jaeger
 
     U->>K: POST /api/v1/agent/tasks<br/>Authorization: Bearer ak_live_...
@@ -1318,7 +1318,7 @@ sequenceDiagram
     S-->>A: {"current_price":1888,"pe_ratio":28.5}
     A->>L: 二次 completion messages+tool
     L->>G: 生成投資建議
-    Note over L,G: 若 429/503 → 改打 Qwen3.5-Max
+    Note over L,G: 若 429/503 → 改打 Qwen3.8-Max
     G-->>L: 最終 content
     L-->>A: chat.completion
     A->>H: TaskSucceeded
@@ -1456,7 +1456,7 @@ StocksX 200：
 }
 ```
 
-**降級：** 若 GPT-5.6 Sol 回 429/503，同一 messages 改 `model=qwen3.5-max`（中國主力，長文本足夠承載 tool JSON）。記錄 `failover_hops=1`，`chosen_provider=qwen`。
+**降級：** 若 GPT-5.6 Sol 回 429/503，同一 messages 改 `model=qwen3.8-max`（中國主力，長文本足夠承載 tool JSON）。記錄 `failover_hops=1`，`chosen_provider=qwen`。
 
 ## 5.4 回傳使用者 + Tracing
 
@@ -1479,7 +1479,7 @@ StocksX 200：
 }
 ```
 
-Jaeger 必含 spans：`kong.request` → `hub.budget_guard` → `hermes.task` → `llm.gpt-5.6-sol#1` → `rpc.StocksX_get_price` → `llm.gpt-5.6-sol#2`（或 `llm.qwen3.5-max#2`）。每個 span 帶 `user.id`、`model`、`cost_usd`。
+Jaeger 必含 spans：`kong.request` → `hub.budget_guard` → `hermes.task` → `llm.gpt-5.6-sol#1` → `rpc.StocksX_get_price` → `llm.gpt-5.6-sol#2`（或 `llm.qwen3.8-max#2`）。每個 span 帶 `user.id`、`model`、`cost_usd`。
 
 PysdnOPC 若被掛載：只允許 `PysdnOPC_read` 進入金融場景預設工具集；`PysdnOPC_write` 必須額外 `scope=opc:write` 且走 `opc_service` 護欄，本場景不得出現。
 
@@ -1517,7 +1517,7 @@ X-Timeout-Ms: 8000
 
 `POST http://storyforge:9103/rpc/StoryForge_draft`
 
-JWT：`aud=storyforge`，`scope=story:draft`。本工具只回結構大綱，最終敘事仍由 GPT-5.6 Sol（或 Qwen3.5-Max）合成，避免雙重計費與幻構事實。
+JWT：`aud=storyforge`，`scope=story:draft`。本工具只回結構大綱，最終敘事仍由 GPT-5.6 Sol（或 Qwen3.8-Max）合成，避免雙重計費與幻構事實。
 
 ```json
 {
@@ -1661,7 +1661,7 @@ Agent 任務：建立時用 `expected_output_tokens=4096` 且再乘工具次數�
 
 | 異常場景 | 狀態碼 | 系統自動處理動作 | 使用者看到的訊息 | 運維告警 |
 | :--- | :--- | :--- | :--- | :--- |
-| 主模型逾時（讀取 >120s） | 504（Failover 仍失敗時）或 200（切換成功） | 立即 Failover 至 Gemini 3.1 Pro 或 DeepSeek V4 Flash，再 GLM-5.2；寫 `failover_hops` | 切換成功：「當前高峰期，已為您切換至備用高速通道」。鏈耗盡：「上游回應逾時，請稍後重試。」 | P2（鏈耗盡）；P4（單跳成功） |
+| 主模型逾時（讀取 >120s） | 504（Failover 仍失敗時）或 200（切換成功） | 立即 Failover 至 Gemini 3.1 Pro 或 DeepSeek V4 Flash，再 GLM-5.3；寫 `failover_hops` | 切換成功：「當前高峰期，已為您切換至備用高速通道」。鏈耗盡：「上游回應逾時，請稍後重試。」 | P2（鏈耗盡）；P4（單跳成功） |
 | 主模型 429 / 503 | 200 或 503 | 指數退避 3 次後切備援；熔斷器計入失敗 | 切換成功：同上「備用高速通道」。全部不可用：「模型服務暫時繁忙，請稍後再試。」 | P2 若單模型 Open ≥ 2 分鐘 |
 | 返回內容涉及敏感詞 | 400 | 截斷 `choices[].message.content` 為空；`finish_reason=content_filter`；寫審計表 / `call_logs.status=filtered`；**不** 把原文送前端 | 「生成內容不符合社區規範，請修改問題」 | P3（同一 user 10min ≥ 5 次升 P2） |
 | Hermes Agent 行程崩潰 | 503 對同步面；任務面 `status=running` 保持 | Kubernetes `restartPolicy=Always`；Pod 新啟動後從 Redis `hub:task:{id}` 恢復 cursor；會話 token 不落磁碟 | 輪詢端無感知（內部重試）。若 30s 未恢復：任務 `failed`，「代理服務重啟中，請重新提交任務。」 | P1（CrashLoopBackOff） |
@@ -1696,7 +1696,7 @@ Agent 任務：建立時用 `expected_output_tokens=4096` 且再乘工具次數�
 - [x] 公開面 `POST /api/v1/chat/completions`、`POST /api/v1/agent/tasks`、`GET /api/v1/agent/tasks/{task_id}` 已落地；契約測試 HUB-R1–R9
 - [x] `GET /api/v1/catalog` 回傳九模型目錄；探針 `probe_once` 寫入 `provider:metrics` EWMA
 - [x] Failover 跳過熔斷 Open 模型；`speed_first` 同步競速 Gemini × Mercury
-- [x] Agent 雙步：規劃呼叫 → StocksX JWT RPC → GPT-5.6 Sol 合成（429 則 Qwen3.5-Max）
+- [x] Agent 雙步：規劃呼叫 → StocksX JWT RPC → GPT-5.6 Sol 合成（429 則 Qwen3.8-Max）
 - [x] 前端 `HubView` 操作台；Vite `/api/v1` 代理不剝前綴（與 Nginx 最長前綴對齊）
 - [x] 五倉工具 JSON 契約落地：StocksX 行情/基本面、LittleCrawler 白名單爬取、StoryForge 大綱、PysdnOPC 只讀經 `opc_service`；寫入 400 `OPC_GUARD_REQUIRED`
 - [x] Agent `tool_arguments` 依工具推導，不再把所有工具硬編碼為 `symbol=600519.SH`
@@ -1711,7 +1711,7 @@ Agent 任務：建立時用 `expected_output_tokens=4096` 且再乘工具次數�
 | HUB-R4 | `speed_first` + `enable_race=true` | 並發 Gemini 與 Mercury；敗者連線關閉 |
 | HUB-R5 | `spent_today + estimate > daily_limit` | 403，零上游請求（用 mock 斷言） |
 | HUB-R6 | 敏感詞 | 400，審計有、正文無 |
-| HUB-R7 | `POST /api/v1/agent/tasks` 茅台 | 出現 StocksX RPC；二次模型為 Sol 或 Qwen3.5-Max |
+| HUB-R7 | `POST /api/v1/agent/tasks` 茅台 | 出現 StocksX RPC；二次模型為 Sol 或 Qwen3.8-Max |
 | HUB-R8 | Body `model=not-in-catalog-xyz` 或任何非 §1.6 ID | 400 `UNSUPPORTED_MODEL`，零上游請求（mock 斷言無 HTTPS） |
 | HUB-R9 | Body `model=claude-opus-5` / `claude-fable-5` / `anthropic/...` | 400 `UNSUPPORTED_MODEL`，零上游請求；回應不得建議切換至 Claude |
 | HUB-R10 | Agent `tools=[LittleCrawler_fetch, PysdnOPC_read]` | 200 任務成功；crawler 白名單 JSON；OPC `via=opc_service` 且 `guard_bypassed=false` |

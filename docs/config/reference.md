@@ -24,7 +24,7 @@
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
 | `OPENAI_API_BASE` | — | 可選端點（如 `https://api.deepseek.com`、`https://openrouter.ai/api/v1`） |
-| `EVOL_MODEL` | `gpt-4o` | 預設模型（會被模型池 clamp） |
+| `EVOL_MODEL` | 未設時：無端點為 `gpt-5.6-luna`，有端點則該供應商模型池首項 | 預設模型（會被模型池 clamp） |
 | `EVOL_EMBED_MODEL` | `text-embedding-3-small` | 嵌入模型（用於記憶檢索和語義快取） |
 
 多組 API 請用控制台「配置 → API 路由」（或頂欄齒輪）或 `POST /config/routes` 寫入 `llm_config.json` 的 `api_routes`，不必再靠單一環境變數切換供應商。
@@ -153,7 +153,7 @@
   "deepseek-v4-flash": [0.22, 0.66],
   "deepseek-v4-pro": [0.66, 1.98],
   "deepseek-v4-flash-vision-exp": [0.22, 0.66],
-  "qwen-turbo": [0.05, 0.10]
+  "qwen-turbo": [0.05, 0.20]
 }
 ```
 
@@ -173,7 +173,7 @@ OPENAI_API_KEY=sk-your-key-here
 # OPENAI_API_BASE=https://api.deepseek.com
 
 # 模型（會被模型池 clamp）
-EVOL_MODEL=gpt-4o
+EVOL_MODEL=gpt-5.6-luna
 
 # 模型池運維
 EVOL_LLM_OPS_ENABLED=true

@@ -35,7 +35,7 @@ MAX_SRP_VERBS = 3
 RUSH_DEADLINE_HOURS = 48
 DEFAULT_MAX_PARALLEL = 5
 DEFAULT_TIMEOUT_MINUTES = 120
-DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_MODEL = "gpt-5.6-luna"
 
 STATUS_PLAN_READY = "PLAN_READY"
 STATUS_REJECT_L4 = "REJECT_TO_L4"
@@ -277,7 +277,7 @@ battle_plan:
   plan_id: "PLAN-20260908-001"
   based_on_l4_json: "L4-JSON-HASH-XXXX"
   global_settings:
-    default_model: "gpt-4o-mini"
+    default_model: "gpt-5.6-luna"
     max_parallel_workers: 5
     global_timeout_minutes: 120
   dag_nodes:

@@ -23,10 +23,10 @@ HUB_CATALOG: frozenset[str] = frozenset(
         "gemini-3.1-pro",
         "mimo-v2.5-pro",
         "deepseek-v4-flash",
-        "qwen3.5-max",
+        "qwen3.8-max",
         "mercury-2",
         "nemotron-3.5-lightning",
-        "glm-5.2",
+        "glm-5.3",
         "kimi-k3",
     }
 )
@@ -46,6 +46,7 @@ LEGACY_RUNTIME_MODELS: frozenset[str] = frozenset(
         "deepseek-v4-flash",
         "deepseek-v4-pro",
         "deepseek-v4-flash-vision-exp",
+        "deepseek-v4-flash-0731",
         "qwen-turbo",
         "qwen-plus",
         "qwen-max",
@@ -69,19 +70,20 @@ LEGACY_RUNTIME_MODELS: frozenset[str] = frozenset(
         "tts-1",
         "gpt-image-1",
         # 2026-09 預設模型清單更新：現行世代運行時模型（價目表已收錄）
-        "qwen3.8-max",
         "qwen3.8-flash",
         "qwen3.7-plus",
         "qwen3.7-flash",
         "kimi-k2.7-code",
         "kimi-k2.6",
-        "glm-5.3",
         "glm-5.3-flash",
         "glm-5.1",
         "glm-5",
         "gpt-6-astra",
         "gpt-5.6-terra",
         "gpt-5.6-luna",
+        # 已退役但仍計價：舊配置／歷史帳單相容
+        "qwen3.5-max",
+        "glm-5.2",
     }
 )
 
@@ -104,6 +106,14 @@ class TestHubCatalogExcludesClaude:
         assert not missing, f"budget.py 缺少 Hub 模型：{sorted(missing)}"
         extra = keys - HUB_CATALOG - LEGACY_RUNTIME_MODELS
         assert not extra, f"價目表出現目錄外模型（禁止靜默新增）：{sorted(extra)}"
+
+    def test_hub_unit_prices_match_rate_card(self) -> None:
+        from backend.hub.catalog import PRICE_PER_1M
+
+        costs = get_model_costs()
+        for model, pair in PRICE_PER_1M.items():
+            assert costs[model][0] == pytest.approx(pair[0])
+            assert costs[model][1] == pytest.approx(pair[1])
 
     def test_hub_sol_and_gemini_unit_prices(self) -> None:
         assert CostTracker.estimate_cost("gpt-5.6-sol", 1_000_000, 1_000_000) == 33.0
@@ -139,7 +149,7 @@ class TestHubCatalogExcludesClaude:
             "gpt-5.6-sol",
             "gemini-3.1-pro",
             "deepseek-v4-flash",
-            "glm-5.2",
+            "glm-5.3",
         ]
         for model in chain:
             lowered = model.lower()
@@ -156,7 +166,7 @@ class TestHubCatalogExcludesClaude:
             "gpt-5.6-sol",
             "gemini-3.1-pro",
             "deepseek-v4-flash",
-            "glm-5.2",
+            "glm-5.3",
         )
         from backend.hub.catalog import HUB_CATALOG as LIVE
 

@@ -4,7 +4,7 @@
 > 今以「實作模組存在性 + `backend/tests/test_contracts.py` 契約測試 + 全量 pytest」三方交叉核對，重寫為真實狀態。
 >
 > **對帳依據**：`pytest backend/tests` = **1128 passed / 0 failed / 1 skipped**；`test_contracts.py` **36 條契約全綠**
-> （C-AUDIT / C-SEAT / C-STATE / C-COMP / C-LLM / C-L0 / C-PLUGIN / C-UI / C-PERF）。
+> （C-AUDIT / C-SEAT / C-STATE / C-COMP / C-LLM / C-L0 / C-PLUGIN / C-UI / C-INTEG / C-PERF，共 44 條；C-UI-003 為矩陣防漂移，整合 GUI 為 C-UI-005）。
 > 未勾選者＝**經核實仍未實作**（目前僅 §3 與 §6 的人工盤點項），非「未及確認」。
 >
 > **本輪附帶修復**：`backend/ephemeral_containers/worker.py` 重複 lifespan 的 event-loop 崩潰（commit `decee9a`，已推上游），

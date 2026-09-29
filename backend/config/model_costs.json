@@ -134,6 +134,19 @@
     "long_context": 0.44,
     "request": 0.05
   },
+  "deepseek-v4-flash-0731": {
+    "input": 0.22,
+    "output": 0.66,
+    "cached_input": 0.022,
+    "cache_write": 0.28,
+    "reasoning": 0.66,
+    "search": 8.0,
+    "tool": 0.05,
+    "batch_input": 0.11,
+    "batch_output": 0.33,
+    "long_context": 0.44,
+    "request": 0.05
+  },
   "deepseek-v4-pro": {
     "input": 0.66,
     "output": 1.98,

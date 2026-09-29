@@ -108,7 +108,7 @@ class TestHubAcceptance:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert data["model"] in {"gemini-3.1-pro", "deepseek-v4-flash", "glm-5.2"}
+        assert data["model"] in {"gemini-3.1-pro", "deepseek-v4-flash", "glm-5.3"}
         assert data["failover_hops"] >= 1
         assert data["chosen_provider"] in {"google", "deepseek", "zhipu"}
 
@@ -169,8 +169,8 @@ class TestHubAcceptance:
         traces = data["result"]["tool_traces"]
         assert traces[0]["tool"] == "StocksX_get_price"
         assert traces[0]["data"]["current_price"] == 1888
-        assert data["result"]["model"] in {"gpt-5.6-sol", "qwen3.5-max"}
-        assert any("gpt-5.6-sol" in c["model"] or "qwen3.5-max" in c["model"] for c in runtime.upstream_calls)
+        assert data["result"]["model"] in {"gpt-5.6-sol", "qwen3.8-max"}
+        assert any("gpt-5.6-sol" in c["model"] or "qwen3.8-max" in c["model"] for c in runtime.upstream_calls)
 
     def test_hub_r8_unknown_model_no_upstream(self, client: TestClient) -> None:
         before = len(runtime.upstream_calls)

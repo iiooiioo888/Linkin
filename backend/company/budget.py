@@ -96,7 +96,7 @@ class TierRouter:
                     degraded,
                 )
                 return degraded
-        return self.config.tier_models.get(tier, "gpt-4o-mini")
+        return self.config.tier_models.get(tier, "gpt-5.6-luna")
 
     def select_tier(
         self,
@@ -515,7 +515,7 @@ class BudgetManager:
 
         用戶顯式配置過 LLM 模型時（如 Qwen 端點），所有層級
         動態跟隨該模型，避免使用端點不存在的預設模型
-        （如 gpt-4o-mini）。此檢查在每次調用時動態執行，
+        （如 gpt-5.6-luna）。此檢查在每次調用時動態執行，
         確保配置變更即時生效。
         """
         from backend.core.llm_config import get_explicit_model

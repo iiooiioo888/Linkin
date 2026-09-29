@@ -12,10 +12,10 @@ HUB_CATALOG: frozenset[str] = frozenset(
         "gemini-3.1-pro",
         "mimo-v2.5-pro",
         "deepseek-v4-flash",
-        "qwen3.5-max",
+        "qwen3.8-max",
         "mercury-2",
         "nemotron-3.5-lightning",
-        "glm-5.2",
+        "glm-5.3",
         "kimi-k3",
     }
 )
@@ -23,10 +23,10 @@ HUB_CATALOG: frozenset[str] = frozenset(
 INTEL: dict[str, int] = {
     "gpt-5.6-sol": 96,
     "gemini-3.1-pro": 92,
+    "qwen3.8-max": 90,
     "mimo-v2.5-pro": 88,
-    "qwen3.5-max": 86,
+    "glm-5.3": 87,
     "kimi-k3": 85,
-    "glm-5.2": 85,
     "deepseek-v4-flash": 84,
     "mercury-2": 78,
     "nemotron-3.5-lightning": 74,
@@ -37,10 +37,10 @@ PROVIDER_OF: dict[str, str] = {
     "gemini-3.1-pro": "google",
     "mimo-v2.5-pro": "mimo",
     "deepseek-v4-flash": "deepseek",
-    "qwen3.5-max": "qwen",
+    "qwen3.8-max": "qwen",
     "mercury-2": "inception",
     "nemotron-3.5-lightning": "nvidia",
-    "glm-5.2": "zhipu",
+    "glm-5.3": "zhipu",
     "kimi-k3": "moonshot",
 }
 
@@ -50,10 +50,10 @@ PRICE_PER_1M: dict[str, tuple[float, float]] = {
     "gemini-3.1-pro": (1.25, 12.00),
     "mimo-v2.5-pro": (0.21, 0.83),
     "deepseek-v4-flash": (0.22, 0.66),
-    "qwen3.5-max": (0.30, 1.20),
+    "qwen3.8-max": (1.65, 4.95),
     "mercury-2": (0.50, 2.00),
     "nemotron-3.5-lightning": (0.00, 0.00),
-    "glm-5.2": (0.10, 0.40),
+    "glm-5.3": (1.00, 3.20),
     "kimi-k3": (0.40, 1.50),
 }
 
@@ -62,31 +62,31 @@ DEFAULT_LATENCY_MS: dict[str, float] = {
     "gemini-3.1-pro": 480.0,
     "mimo-v2.5-pro": 420.0,
     "deepseek-v4-flash": 390.0,
-    "qwen3.5-max": 450.0,
+    "qwen3.8-max": 430.0,
     "mercury-2": 80.0,
     "nemotron-3.5-lightning": 95.0,
-    "glm-5.2": 500.0,
+    "glm-5.3": 470.0,
     "kimi-k3": 540.0,
 }
 
 CN_SET: frozenset[str] = frozenset(
-    {"deepseek-v4-flash", "qwen3.5-max", "mimo-v2.5-pro"}
+    {"deepseek-v4-flash", "qwen3.8-max", "mimo-v2.5-pro"}
 )
 DEFAULT_CHAIN: tuple[str, ...] = (
     "gpt-5.6-sol",
     "gemini-3.1-pro",
     "deepseek-v4-flash",
-    "glm-5.2",
+    "glm-5.3",
 )
 CN_CHAIN: tuple[str, ...] = (
     "deepseek-v4-flash",
-    "qwen3.5-max",
+    "qwen3.8-max",
     "mimo-v2.5-pro",
 )
 RACE_PAIR: tuple[str, str] = ("gemini-3.1-pro", "mercury-2")
 QUALITY_FLAGSHIP = "gpt-5.6-sol"
 COST_PREFERRED = "deepseek-v4-flash"
-AGENT_FALLBACK = "qwen3.5-max"
+AGENT_FALLBACK = "qwen3.8-max"
 
 FORBIDDEN_MODEL_RE = re.compile(
     r"(?i)claude|anthropic|opus-|sonnet-|haiku-|fable"

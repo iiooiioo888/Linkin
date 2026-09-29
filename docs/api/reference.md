@@ -212,7 +212,7 @@ L3 回應 L2 `[GRILL]`（資料缺失／工具不足／邏輯矛盾／單純確�
 {
   "api_key": "sk-...",
   "api_base": "https://api.openai.com/v1",
-  "model": "gpt-4o"
+  "model": "gpt-5.6-terra"
 }
 ```
 

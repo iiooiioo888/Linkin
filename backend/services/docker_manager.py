@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 import shutil
 import time
 from collections.abc import Mapping
@@ -231,7 +232,7 @@ class DockerManager:
                 load = []
             return {
                 "available": True,
-                "hostname": os.uname().nodename,
+                "hostname": platform.node(),
                 "cpu_percent": round(psutil.cpu_percent(interval=0.1), 1),
                 "cpu_count": psutil.cpu_count(),
                 "mem_total": mem.total,
