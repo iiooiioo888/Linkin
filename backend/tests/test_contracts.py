@@ -764,3 +764,65 @@ def test_contract_c_ui_002_button_enabled_matches_deny_matrix():
     for cell in deny_cells:
         assert cell["button_enabled"] is False
         assert cell["error_code"]
+
+
+def test_contract_c_ui_003_frontend_matrix_matches_backend() -> None:
+    """C-UI-003（§3.4／§9.2）：前端 MATRIX 必須由後端生成且逐格一致。
+
+    背景：前端原手抄矩陣，缺 15 個 `*|l0_refresh` 格子；`evaluate()` 對缺格
+    兜底回 allow，使 UI 放行後端必然拒絕的組合（如 `auditing|l0_refresh`）。
+    本測試以生成器對 `frontend/src/lib/taskStateMatrix.ts` 做等值比對，
+    防止再次漂移。
+    """
+    import io
+    import re
+    from pathlib import Path
+
+    from backend.company.task_state_machine import export_matrix
+    from backend.scripts.export_task_state_matrix import render
+
+    root = Path(__file__).resolve().parents[2]
+    target = root / "frontend" / "src" / "lib" / "taskStateMatrix.ts"
+    assert target.exists(), f"前端矩陣檔不存在：{target}"
+
+    source = io.open(target, encoding="utf-8").read()
+    # 1) 檔案內容必須等於生成器輸出（代表未被手改）
+    assert render(source) == source, (
+        "前端 taskStateMatrix.ts 與後端矩陣不同步；"
+        "請執行 PYTHONPATH=/opt/linkin .venv/bin/python -m backend.scripts.export_task_state_matrix"
+    )
+
+    # 2) 逐格比對：前端不得缺格，值必須一致
+    body = source.split("export const MATRIX: Record<string, MatrixDecision> = {")[1].split("\n};")[0]
+    frontend: dict[str, dict[str, str | None]] = {}
+    for line in body.splitlines():
+        m = re.match(r"\s*'([a-z0-9_]+)\|([a-z0-9_]+)':\s*\{(.*?)\},?\s*$", line)
+        if not m:
+            continue
+        state, action, rest = m.groups()
+
+        def _g(pat: str, default: str | None = "") -> str | None:
+            hit = re.search(pat, rest)
+            return hit.group(1) if hit else default
+
+        frontend[f"{state}|{action}"] = {
+            "verdict": _g(r"verdict:\s*'(\w+)'"),
+            "next_state": _g(r"nextState:\s*'(\w+)'", None),
+            "error_code": _g(r"errorCode:\s*'(\w+)'", ""),
+        }
+
+    backend = {
+        f"{c['state']}|{c['action']}": {
+            "verdict": c["verdict"],
+            "next_state": c["next_state"],
+            "error_code": c["error_code"] or "",
+        }
+        for c in export_matrix()["cells"]
+    }
+
+    missing = sorted(set(backend) - set(frontend))
+    extra = sorted(set(frontend) - set(backend))
+    assert not missing, f"前端缺格（會兜底成 allow 而放行後端 DENY）：{missing}"
+    assert not extra, f"前端有後端不存在的格：{extra}"
+    for key, expected in backend.items():
+        assert frontend[key] == expected, f"{key} 不一致：前端={frontend[key]} 後端={expected}"
