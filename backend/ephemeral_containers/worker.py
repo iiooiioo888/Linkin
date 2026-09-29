@@ -25,13 +25,28 @@ class ContainerTaskWorker:
     def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
 
+    def _reset_queue(self) -> None:
+        """重建隊列，使其綁定當前 event loop。
+
+        ``asyncio.Queue`` 在建立時即綁定 loop；本模組的單例
+        （``container_task_worker``）於 import 時建立，之後若在同進程中
+        再跑一次 lifespan（測試用 ``TestClient``、未來的 reload／多 app），
+        舊 Queue 會殘留於已關閉的 loop，使 ``stop()`` 拋
+        ``RuntimeError: ... is bound to a different event loop``。
+        因此每次 ``start()``／``stop()`` 都換一個新 Queue。
+        """
+        self._queue = asyncio.Queue()
+
     def start(self) -> None:
         if self._task is not None:
             return
+        self._reset_queue()
         self._task = asyncio.create_task(self._run_loop())
 
     async def stop(self) -> None:
         if self._task is None:
+            # 未啟動：仍確保隊列不殘留於已關閉的 loop
+            self._reset_queue()
             return
         self._task.cancel()
         try:
@@ -39,6 +54,7 @@ class ContainerTaskWorker:
         except asyncio.CancelledError:
             pass
         self._task = None
+        self._reset_queue()
 
     def enqueue(self, task_id: str) -> None:
         self._queue.put_nowait(task_id)
