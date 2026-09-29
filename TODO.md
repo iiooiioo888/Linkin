@@ -296,8 +296,8 @@
 
 ### 6.2 目錄與適配
 
-- [ ] 盤點 `https://deepseek.club/plugins` 可用插件類型（工具、檢索、工作流、UI 擴充等），對照本專案模組契約產出適配表。
-- [ ] 盤點 `https://github.com/topics/dsh-plugin` 相關倉庫／套件：能力類型、授權、依賴、安裝方式（npm／pip／git submodule 等）、與本專案模組契約的適配缺口；產出對照表與優先適配清單。
+- [x] 盤點 `https://deepseek.club/plugins` 可用插件類型（工具、檢索、工作流、UI 擴充等），對照本專案模組契約產出適配表。（見 docs/linkin/plugin-ecosystem-survey.md）
+- [x] 盤點 `https://github.com/topics/dsh-plugin` 相關倉庫／套件：能力類型、授權、依賴、安裝方式（npm／pip／git submodule 等）、與本專案模組契約的適配缺口；產出對照表與優先適配清單。（見 docs/linkin/plugin-ecosystem-survey.md）
 - [x] 每個外掛（無論來源）對應一個 `backend/modules/` 條目（或子目錄），具備：模組 ID、顯示名、版本、**來源標籤**（`deepseek-club` | `dsh-plugin`）、能力聲明、依賴、預設關閉／需顯式啟用、倉庫／目錄 URL、**最高可掛載席位層級**。
 - [x] dsh-plugin 適配須定義：清單同步策略；**預設手動 pin 版本**；目錄刷新為可選且須顯式開啟；本地快取路徑、簽名／完整性校驗（若適用）、與現有 `GET /modules` 列表合併規則。
 - [x] 禁止插件直連模型供應商 SDK；LLM 一律經 `backend.core.llm.call_llm`。
