@@ -1,4 +1,4 @@
-"""OPC 失敗必須留下狀態標記，並讓 /health 的 degraded 為真。"""
+"""OPC 失敗標記 /health degraded；成功 sense 或進程啟動後應恢復。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.core.company_nodes import enhance_with_opc_context
-from backend.core.opc_degrade import note_opc_unavailable, opc_health_view, reset_opc_health
+from backend.core.opc_degrade import (
+    note_opc_from_sense_result,
+    note_opc_unavailable,
+    opc_health_view,
+    reset_opc_health,
+)
 from opc_service.sense import OPCUnavailableError, sense_opc
 
 
@@ -22,16 +27,16 @@ async def test_sense_failure_is_explicit_and_visible_on_health(monkeypatch):
     async def boom(_state):
         raise OPCUnavailableError("connection refused")
 
-    monkeypatch.setattr("opc_service.sense.sense_opc", boom)
-    result = await enhance_with_opc_context({"query": "讀取反應釜溫度"})
-
-    assert result["opc_context"]["opc_status"] == "unavailable"
-    assert result["opc_context"]["reason"] == "connection refused"
-    assert opc_health_view()["opc_status"] == "unavailable"
-
     from backend.main import app
 
     with TestClient(app) as client:
+        monkeypatch.setattr("opc_service.sense.sense_opc", boom)
+        result = await enhance_with_opc_context({"query": "讀取反應釜溫度"})
+
+        assert result["opc_context"]["opc_status"] == "unavailable"
+        assert result["opc_context"]["reason"] == "connection refused"
+        assert opc_health_view()["opc_status"] == "unavailable"
+
         body = client.get("/health").json()
 
     assert body["status"] == "ok"
@@ -67,6 +72,34 @@ async def test_successful_reading_clears_degraded(monkeypatch):
     assert result["opc_context"]["opc_status"] == "available"
     assert "T1" in result["opc_context"]["summary"]
     assert opc_health_view() == {"opc_status": "ok", "reason": ""}
+
+
+def test_note_opc_from_sense_result_clears_on_success():
+    note_opc_unavailable("down")
+    note_opc_from_sense_result({"opc_status": "available", "opc_readings": {}})
+    assert opc_health_view() == {"opc_status": "ok", "reason": ""}
+
+
+def test_note_opc_from_sense_result_marks_unavailable():
+    note_opc_from_sense_result(
+        {"opc_status": "unavailable", "opc_reason": "connection refused"}
+    )
+    assert opc_health_view() == {
+        "opc_status": "unavailable",
+        "reason": "connection refused",
+    }
+
+
+def test_app_lifespan_resets_opc_health_on_startup():
+    note_opc_unavailable("stale from prior run")
+    from backend.main import app
+
+    with TestClient(app) as client:
+        body = client.get("/health").json()
+
+    assert body["status"] == "ok"
+    assert body["degraded"] is False
+    assert body["opc"]["opc_status"] == "ok"
 
 
 @pytest.mark.asyncio

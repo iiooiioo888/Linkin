@@ -61,7 +61,7 @@ async def enhance_with_opc_context(state: StateInput) -> dict[str, Any]:
     服務不可用時寫入 opc_status=unavailable，並讓 /health 的 degraded 為真。
     此節點是 async，圖必須用 ainvoke；同步 invoke 會被 LangGraph 拒絕。
     """
-    from backend.core.opc_degrade import note_opc_available, note_opc_unavailable
+    from backend.core.opc_degrade import note_opc_from_sense_result, note_opc_unavailable
 
     query = state.get("query", "")
     if not _needs_opc_context(query):
@@ -77,14 +77,14 @@ async def enhance_with_opc_context(state: StateInput) -> dict[str, Any]:
         note_opc_unavailable(reason)
         return _opc_context("unavailable", reason=reason)
 
+    note_opc_from_sense_result(result)
+
     if str(result.get("opc_status") or "") == "unavailable":
         reason = str(result.get("opc_reason") or "OPC 不可用")
-        note_opc_unavailable(reason)
         return _opc_context("unavailable", reason=reason)
 
     readings = result.get("opc_readings") or {}
     if not readings:
-        note_opc_available()
         return _opc_context("available", reason="無讀數")
 
     summary_lines = ["【工業數據上下文（OPC 即時讀數）】"]
@@ -92,7 +92,6 @@ async def enhance_with_opc_context(state: StateInput) -> dict[str, Any]:
         summary_lines.append(
             f"- {tag}: {info.get('value')} (品質: {info.get('quality', 'Good')})"
         )
-    note_opc_available()
     return _opc_context("available", readings=readings, summary="\n".join(summary_lines))
 
 

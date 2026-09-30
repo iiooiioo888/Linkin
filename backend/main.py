@@ -112,6 +112,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
+    from backend.core.opc_degrade import reset_opc_health
+
+    reset_opc_health()
     # 重啟回灌：從 Redis 載回任務記錄，修復任務列表／管線重啟後清空
     try:
         await asyncio.to_thread(task_manager.rehydrate)
