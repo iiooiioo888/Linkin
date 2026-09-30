@@ -59,6 +59,14 @@ def _require_score(state: StateInput) -> float:
     return float(state["score"])
 
 
+def _fallback_score(state: StateInput) -> bool:
+    """回退分數不可用來判斷「提升不足」。跨過通過門檻仍會終止，見 follow-up。"""
+    multi = state.get("multi_dim_evaluation") or {}
+    if not isinstance(multi, dict):
+        return False
+    return bool(multi.get("fallback_used")) or multi.get("score_source") == "fallback"
+
+
 def should_improve(state: StateInput) -> str:
     """條件路由（優化 #4：動態迭代策略）。
 
@@ -95,6 +103,12 @@ def should_improve(state: StateInput) -> str:
         prev_score = reflections[-1].get("score", 0.0)
         improvement = score - prev_score
         if improvement < MIN_SCORE_IMPROVEMENT and iteration >= 1:
+            if _fallback_score(state):
+                logger.info(
+                    "回退分數不作為提前終止依據（第 %d 輪，提升 %.2f）",
+                    iteration, improvement,
+                )
+                return "reflect"
             logger.info(
                 "動態迭代終止：分數提升 %.2f < 閾值 %.2f（第 %d 輪）",
                 improvement, MIN_SCORE_IMPROVEMENT, iteration,
