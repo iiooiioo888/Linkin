@@ -117,6 +117,9 @@ class TaskRecord:
         self.created_at = time.time()
         self.finished_at: float | None = None
         self.raho: dict[str, Any] = {}
+        self.length_compliance: dict[str, Any] | None = None
+        self.length_warning: bool = False
+        self.length_refused: bool = False
 
     def to_dict(self, events_limit: int | None = 50) -> dict[str, Any]:
         """任務快照。events_limit=None 或 0 表示回傳全部事件。"""
@@ -152,6 +155,9 @@ class TaskRecord:
             "created_at": self.created_at,
             "finished_at": self.finished_at,
             "raho": self.raho,
+            "length_compliance": self.length_compliance,
+            "length_warning": self.length_warning,
+            "length_refused": self.length_refused,
         }
 
     def to_snapshot(self) -> dict[str, Any]:
@@ -192,6 +198,9 @@ class TaskRecord:
         finished = data.get("finished_at")
         record.finished_at = float(finished) if finished is not None else None
         record.raho = data.get("raho") or {}
+        record.length_compliance = data.get("length_compliance")
+        record.length_warning = bool(data.get("length_warning"))
+        record.length_refused = bool(data.get("length_refused"))
         return record
 
 
@@ -591,6 +600,27 @@ class TaskManager:
         # WebSocket 实时推送
         self._broadcast_event(record.task_id, event, data)
 
+    def _evaluation_event_data(self, state: dict[str, Any], **fields: Any) -> dict[str, Any]:
+        data = dict(fields)
+        data.update(nodes.length_gate_event_fields(state))
+        return data
+
+    def _sync_length_gate_from_state(self, record: TaskRecord, state: dict[str, Any]) -> None:
+        compliance = state.get("length_compliance")
+        record.length_compliance = dict(compliance) if isinstance(compliance, dict) else None
+        record.length_warning = bool(state.get("length_warning"))
+        record.length_refused = bool(state.get("length_refused"))
+
+    def _length_gate_finish_payload(self, record: TaskRecord) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if isinstance(record.length_compliance, dict) and record.length_compliance:
+            payload["length_compliance"] = record.length_compliance
+        if record.length_warning:
+            payload["length_warning"] = True
+        if record.length_refused:
+            payload["length_refused"] = True
+        return payload
+
     def _finish(self, record: TaskRecord) -> None:
         """任務結束（完成/失敗）：持久化並寫入 JSONL 存檔。"""
         if record.finished_at is None:
@@ -604,6 +634,7 @@ class TaskManager:
             "score": record.score,
             "iteration": record.iteration,
             "error": record.error,
+            **self._length_gate_finish_payload(record),
         })
         if record.status == "completed":
             self._archive_task(record)
@@ -763,7 +794,9 @@ class TaskManager:
 
             await self._run_reflection_loop(record, state, tracer)
 
-            record.answer = state.get("current_answer", "")
+            record.answer = str(
+                state.get("final_answer") or state.get("current_answer") or ""
+            )
             record.score = state.get("score")
             record.iteration = state.get("iteration", 0)
             if record.status != "cancelled" and not record.cancel_requested:
@@ -810,10 +843,11 @@ class TaskManager:
             iteration=0,
             **eval_trace_kwargs(state.get("multi_dim_evaluation")),
         )
-        self._add_event(record, "evaluation", {
-            "score": state.get("score"),
-            "iteration": 0,
-        })
+        self._add_event(record, "evaluation", self._evaluation_event_data(
+            state,
+            score=state.get("score"),
+            iteration=0,
+        ))
         if self._check_cancelled(record):
             return
 
@@ -846,11 +880,16 @@ class TaskManager:
                 iteration=state.get("iteration", 0),
                 **eval_trace_kwargs(state.get("multi_dim_evaluation")),
             )
-            self._add_event(record, "evaluation", {
-                "score": state.get("score"),
-                "iteration": state.get("iteration", 0),
-            })
+            self._add_event(record, "evaluation", self._evaluation_event_data(
+                state,
+                score=state.get("score"),
+                iteration=state.get("iteration", 0),
+            ))
             state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
+            self._sync_length_gate_from_state(record, state)
+
+        state.update(await asyncio.to_thread(nodes.finalize_task_answer, state))
+        self._sync_length_gate_from_state(record, state)
 
     async def _run_post_company_reflection(
         self, record: TaskRecord, state: dict[str, Any], tracer: TraceLogger
@@ -871,11 +910,14 @@ class TaskManager:
                 iteration=0,
                 **eval_trace_kwargs(state.get("multi_dim_evaluation")),
             )
-            self._add_event(record, "evaluation", {
-                "score": state.get("score"),
-                "iteration": 0,
-                "mode": "evaluate_only",
-            })
+            self._add_event(record, "evaluation", self._evaluation_event_data(
+                state,
+                score=state.get("score"),
+                iteration=0,
+                mode="evaluate_only",
+            ))
+            state.update(await asyncio.to_thread(nodes.finalize_task_answer, state))
+            self._sync_length_gate_from_state(record, state)
             return
         await self._run_reflection_loop(record, state, tracer)
 
@@ -1046,9 +1088,13 @@ class TaskManager:
         except Exception as exc:
             logger.warning("任務 %s 評估迴圈失敗（保留公司產出）：%s", record.task_id, exc)
 
-        record.answer = state.get("current_answer", "")
+        record.answer = str(
+            state.get("final_answer") or state.get("current_answer") or ""
+        )
         record.score = state.get("score")
         record.iteration = state.get("iteration", 0)
+        if not record.length_compliance and state.get("length_compliance"):
+            self._sync_length_gate_from_state(record, state)
         if record.status != "cancelled" and not record.cancel_requested:
             record.status = "completed"
             record.resumable = False
@@ -1155,9 +1201,13 @@ class TaskManager:
         except Exception as exc:
             logger.warning("任務 %s 評估迴圈失敗（保留公司產出）：%s", record.task_id, exc)
 
-        record.answer = state.get("current_answer", "")
+        record.answer = str(
+            state.get("final_answer") or state.get("current_answer") or ""
+        )
         record.score = state.get("score")
         record.iteration = state.get("iteration", 0)
+        if not record.length_compliance and state.get("length_compliance"):
+            self._sync_length_gate_from_state(record, state)
         if record.status != "cancelled" and not record.cancel_requested:
             record.status = "completed"
             self._set_phase(record, "done")
@@ -1310,7 +1360,9 @@ class TaskManager:
             except Exception as exc:
                 logger.warning("任務 %s 評估迴圈失敗（保留 OPC 產出）：%s", record.task_id, exc)
 
-            record.answer = state.get("current_answer", "")
+            record.answer = str(
+                state.get("final_answer") or state.get("current_answer") or ""
+            )
             record.score = state.get("score")
             record.iteration = state.get("iteration", 0)
             if record.status != "cancelled" and not record.cancel_requested:

@@ -7,7 +7,7 @@ import asyncio
 import json
 import logging
 import os
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from backend.core.evaluation import CrossModelEvaluator, get_evaluator
 from backend.core.llm import call_llm, parse_json_response
@@ -65,6 +65,28 @@ def _length_compliance(status: str, actual: int, limit: int, rewrites: int) -> d
         "target_chars": limit,
         "rewrites": rewrites,
     }
+
+
+def length_gate_event_fields(state: StateInput) -> dict[str, Any]:
+    """從圖狀態擷取長度守門結果，供 Task API / SSE 事件附加（僅增欄位、不刪既有鍵）。"""
+    out: dict[str, Any] = {}
+    compliance = state.get("length_compliance")
+    if isinstance(compliance, dict) and compliance:
+        out["length_compliance"] = dict(compliance)
+    if state.get("length_warning"):
+        out["length_warning"] = True
+    if state.get("length_refused"):
+        out["length_refused"] = True
+    return out
+
+
+def finalize_task_answer(state: StateInput) -> dict:
+    """與 LangGraph 收尾一致：decide_final_answer → enforce_final_length。"""
+    merged: dict[str, Any] = {}
+    merged.update(decide_final_answer(state))
+    interim = {**state, **merged}
+    merged.update(enforce_final_length(interim))
+    return merged
 
 # Phase 2：使用 ChromaDB 向量記憶庫
 _memory_store = VectorMemoryStore()
