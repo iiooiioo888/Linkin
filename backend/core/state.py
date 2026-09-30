@@ -87,6 +87,12 @@ class EvoLoopState(OPCStateFields, total=False):
     length_directive: str
     # 重寫預算用盡仍超標時的說明（不阻斷交付）
     length_warnings: list[str]
+    # 長度守門的結構化結果：status 為 ok 或 failed
+    length_compliance: dict[str, Any]
+    # 預算用盡但仍交付不合規文本時為 true
+    length_warning: bool
+    # EVOL_FAIL_CLOSED_ON_LENGTH 或比例門檻拒絕交付時為 true
+    length_refused: bool
 
     # ---- 輸出 ----
     final_answer: str

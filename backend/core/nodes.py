@@ -21,8 +21,50 @@ from backend.services.archiver import save_session_archive, save_session_archive
 
 logger = logging.getLogger(__name__)
 
-# 超長回答最多丢回反思閉環重寫的次數（用盡後交付最短版本並記警告）
+# 超長回答最多丢回反思閉環重寫的次數。執行時以 _max_length_rewrites() 為準。
 MAX_LENGTH_REWRITES = int(os.getenv("EVOL_MAX_LENGTH_REWRITES", "2"))
+
+
+def _env_bool(name: str) -> bool:
+    return os.getenv(name, "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _max_length_rewrites() -> int:
+    raw = os.getenv("EVOL_MAX_LENGTH_REWRITES", str(MAX_LENGTH_REWRITES)).strip()
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return MAX_LENGTH_REWRITES
+
+
+def _min_length_accept_ratio() -> float:
+    """EVOL_MIN_LENGTH_ACCEPT_RATIO 語義（寫死）。
+
+    這是超限容忍倍數，不是過短門檻，也不是「實際長度 / 上限 >= ratio 才通過」。
+    通過條件永遠是 len(answer) <= limit。
+    ratio <= 0（預設 0）：不套用比例。預算用盡後仍可帶 length_warning 交付最短版。
+    ratio > 0：僅當 len(best) <= limit * ratio 才允許帶警告交付。
+    例：limit=1000、ratio=1.2 → 最短版 <= 1200 才可帶警告交付；更長則拒絕交付。
+    """
+    raw = os.getenv("EVOL_MIN_LENGTH_ACCEPT_RATIO", "0").strip()
+    try:
+        return float(raw)
+    except ValueError:
+        return 0.0
+
+
+def _fail_closed_on_length() -> bool:
+    """EVOL_FAIL_CLOSED_ON_LENGTH 預設 false：標記失敗，仍交付最短版。"""
+    return _env_bool("EVOL_FAIL_CLOSED_ON_LENGTH")
+
+
+def _length_compliance(status: str, actual: int, limit: int, rewrites: int) -> dict:
+    return {
+        "status": status,
+        "actual_chars": actual,
+        "target_chars": limit,
+        "rewrites": rewrites,
+    }
 
 # Phase 2：使用 ChromaDB 向量記憶庫
 _memory_store = VectorMemoryStore()
@@ -357,36 +399,62 @@ def _resolve_output_limit(state: StateInput) -> int:
 def _enforce_output_length(state: StateInput, field: str) -> dict:
     answer = str(state.get(field) or "")
     limit = _resolve_output_limit(state)
+    used = int(state.get("length_rewrites") or 0)
+    if state.get("length_refused"):
+        return {
+            "length_directive": "",
+            "length_refused": True,
+            "length_warning": False,
+            "max_output_chars": limit,
+            "length_compliance": state.get("length_compliance") or _length_compliance(
+                "failed", len(answer), limit, used,
+            ),
+        }
     if len(answer) <= limit:
+        cleared = {
+            "max_output_chars": limit,
+            "length_compliance": _length_compliance("ok", len(answer), limit, used),
+            "length_warning": False,
+        }
         if not state.get("length_directive"):
-            return {}
-        return {"length_directive": "", "max_output_chars": limit}
+            return cleared
+        return {**cleared, "length_directive": ""}
 
     best = str(state.get("length_best_answer") or "")
     if not best or len(answer) < len(best):
         best = answer
 
-    used = state.get("length_rewrites", 0)
-    if used >= MAX_LENGTH_REWRITES:
-        # 預算用盡：改交付歷次最短的一版並記警告，不再回環（保證閉環終止）
+    if used >= _max_length_rewrites():
+        ratio = _min_length_accept_ratio()
+        # ratio <= 0 表示不套用「len(best) <= limit * ratio」這條容忍帶。
+        within_ratio = ratio <= 0 or len(best) <= limit * ratio
+        refuse = _fail_closed_on_length() or not within_ratio
         warnings = list(state.get("length_warnings", []))
-        warnings.append(
-            f"已重寫 {used} 次仍有 {len(answer)} 字，超過 {limit} 字上限，"
-            f"改交付最短版本（{len(best)} 字）。"
-        )
+        if refuse:
+            warnings.append(
+                f"已重寫 {used} 次仍有 {len(answer)} 字，超過 {limit} 字上限，拒絕交付。"
+            )
+        else:
+            warnings.append(
+                f"已重寫 {used} 次仍有 {len(answer)} 字，超過 {limit} 字上限，"
+                f"改交付最短版本（{len(best)} 字）。"
+            )
         log_node(
             state, "enforce_output_length",
-            gate=field, length=len(answer), limit=limit, exhausted=True,
+            gate=field, length=len(answer), limit=limit, exhausted=True, refused=refuse,
         )
         exhausted: dict = {
             "length_directive": "",
             "length_warnings": warnings,
             "length_best_answer": best,
             "max_output_chars": limit,
-            field: best,
+            "length_compliance": _length_compliance("failed", len(answer), limit, used),
+            "length_warning": not refuse,
+            "length_refused": refuse,
+            field: "" if refuse else best,
         }
         if field == "final_answer":
-            exhausted["current_answer"] = best
+            exhausted["current_answer"] = "" if refuse else best
         return exhausted
 
     directive = templates.LENGTH_DIRECTIVE.format(
@@ -440,6 +508,13 @@ def decide_final_answer(state: StateInput) -> dict:
     - 回答過短（< 10 字）→ 標記警告
     - 回答與問題完全無關 → 標記警告
     """
+    if state.get("length_refused"):
+        return {
+            "final_answer": "",
+            "quality_warnings": ["長度不合規，已拒絕交付"],
+            "length_warning": False,
+        }
+
     answer = state.get("current_answer", "")
     query = state.get("query", "")
     warnings: list[str] = []

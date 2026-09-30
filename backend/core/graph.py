@@ -18,7 +18,9 @@
 長度守門（enforce_output_length / enforce_final_length，同一實作的兩個地點）：
   超過依任務複雜度解析出的輸出上限時寫入 length_directive，
   由 should_rewrite_length 路由回 reflect，讓閉環把「精簡」當成一項改進目標；
-  重寫預算（EVOL_MAX_LENGTH_REWRITES，預設 2 次）用盡後改交付歷次最短的一版並記警告。
+  重寫預算（EVOL_MAX_LENGTH_REWRITES，預設 2 次）用盡後寫入 length_compliance.status=failed。
+  預設仍交付最短版並設 length_warning。EVOL_FAIL_CLOSED_ON_LENGTH=true 時拒絕交付。
+  EVOL_MIN_LENGTH_ACCEPT_RATIO 預設 0（不套用）。大於 0 時，只有 len(best) <= limit * ratio 才可帶警告交付。
 
 執行策略（execution_strategy）：
   - "auto"（預設）: 依規則自動判斷複雜度

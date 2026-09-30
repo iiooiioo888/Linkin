@@ -150,6 +150,10 @@ class TestLengthRewriteBudget:
         assert result["final_answer"] == _answer(1000)
         assert result.get("length_warnings")
         assert "800" in result["length_warnings"][0]
+        assert result["length_compliance"]["status"] == "failed"
+        assert result["length_compliance"]["target_chars"] == 800
+        assert result["length_warning"] is True
+        assert result["length_refused"] is False
         # 沒有第三次重寫（generate/reflect/improve/reflect/improve/evaluate）
         assert len(fake.prompts) == 6
 
@@ -357,3 +361,57 @@ class TestLimitFollowsComplexity:
 
         assert update["max_output_chars"] == limit
         assert f"上限 {limit} 字元" in update["length_directive"]
+
+
+class TestLengthCompliance:
+    def _over_budget(self) -> dict:
+        return {
+            "query": "什麼是 Python？",
+            "task_complexity": "simple",
+            "current_answer": "說" * 1000,
+            "length_rewrites": 2,
+            "length_best_answer": "說" * 1000,
+        }
+
+    def test_default_delivers_shortest_with_explicit_failure(self, monkeypatch):
+        monkeypatch.delenv("EVOL_FAIL_CLOSED_ON_LENGTH", raising=False)
+        monkeypatch.delenv("EVOL_MIN_LENGTH_ACCEPT_RATIO", raising=False)
+        update = nodes.enforce_output_length(self._over_budget())
+        assert update["current_answer"] == "說" * 1000
+        assert update["length_compliance"]["status"] == "failed"
+        assert update["length_compliance"]["actual_chars"] == 1000
+        assert update["length_compliance"]["target_chars"] == 800
+        assert update["length_compliance"]["rewrites"] == 2
+        assert update["length_warning"] is True
+        assert update["length_refused"] is False
+
+    def test_fail_closed_refuses_delivery(self, monkeypatch):
+        monkeypatch.setenv("EVOL_FAIL_CLOSED_ON_LENGTH", "true")
+        update = nodes.enforce_output_length(self._over_budget())
+        assert update["current_answer"] == ""
+        assert update["length_refused"] is True
+        assert update["length_warning"] is False
+        assert update["length_compliance"]["status"] == "failed"
+        decided = nodes.decide_final_answer({
+            **self._over_budget(),
+            "current_answer": "",
+            "initial_answer": "說" * 1000,
+            "length_refused": True,
+            "score": 9.0,
+        })
+        assert decided["final_answer"] == ""
+
+    def test_ratio_rejects_above_limit_times_ratio(self, monkeypatch):
+        monkeypatch.delenv("EVOL_FAIL_CLOSED_ON_LENGTH", raising=False)
+        monkeypatch.setenv("EVOL_MIN_LENGTH_ACCEPT_RATIO", "1.1")
+        update = nodes.enforce_output_length(self._over_budget())
+        assert update["length_refused"] is True
+        assert update["current_answer"] == ""
+
+    def test_ratio_allows_warning_inside_band(self, monkeypatch):
+        monkeypatch.delenv("EVOL_FAIL_CLOSED_ON_LENGTH", raising=False)
+        monkeypatch.setenv("EVOL_MIN_LENGTH_ACCEPT_RATIO", "1.3")
+        update = nodes.enforce_output_length(self._over_budget())
+        assert update["length_refused"] is False
+        assert update["length_warning"] is True
+        assert update["current_answer"] == "說" * 1000
