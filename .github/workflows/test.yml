@@ -42,6 +42,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Audit LangGraph packages (pip-audit)
+        run: |
+          pip install pip-audit
+          # 只審本變更的安全地板。全檔 pip-audit 目前會因 chromadb 1.5.9
+          # （PYSEC-2026-311 / 3813 / 3814 / 3815，尚無修復版）失敗，不在本任務範圍。
+          printf '%s\n' 'langgraph>=1.0.10' 'langgraph-checkpoint>=3.0.0' > /tmp/langgraph-floor.txt
+          pip-audit -r /tmp/langgraph-floor.txt
+
       - name: Lint check (Ruff)
         run: |
           pip install ruff

@@ -3,6 +3,8 @@
 # ?„å»ºä¸Šä??‡ï?é¡¹ç›®?¹ç›®å½•ï?docker-compose ä¸­æ?å®?context: .ï¼?
 FROM python:3.12-slim
 
+ENV LANGGRAPH_STRICT_MSGPACK=true
+
 WORKDIR /app
 
 # å®‰è?ç³»ç?ä¾è?ï¼ˆchromadb ?€è¦?g++ ç¼–è? hnswlibï¼?

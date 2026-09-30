@@ -29,9 +29,8 @@
 import logging
 import os
 
+import opc_service.msgpack_safety  # noqa: F401  # 必須先於 langgraph，見該模組說明
 from langgraph.graph import END, START, StateGraph
-
-logger = logging.getLogger(__name__)
 
 from backend.core import nodes
 from backend.core.company_nodes import (
@@ -43,6 +42,8 @@ from backend.core.company_nodes import (
 from backend.core.state import EvoLoopState, StateInput
 from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.linkin.pipeline import enhance_with_linkin_context
+
+logger = logging.getLogger(__name__)
 
 # 可透過環境變數調整；測試中也可 monkeypatch 此模組常數
 PASS_THRESHOLD = float(os.getenv("EVOL_PASS_THRESHOLD", "8"))

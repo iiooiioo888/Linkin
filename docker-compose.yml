@@ -28,6 +28,8 @@ services:
       - DOCKER_COMPOSE_PROJECT=evoloop
       # 監控中心即時標籤經 opc_service REST，禁止直連 UA
       - OPC_SERVICE_URL=http://opc_service:8001
+      # 未來若啟用 checkpointer，限制 msgpack 反序列化白名單。無 checkpointer 時不修復 CVE。
+      - LANGGRAPH_STRICT_MSGPACK=true
       # LLM 模型池定時爬取（OpenRouter / 通用端點 /models）
       - EVOL_LLM_OPS_ENABLED=true
       - EVOL_LLM_OPS_INTERVAL_SEC=300
@@ -110,6 +112,7 @@ services:
       # 默认启用模拟 OPC 服务器（开发测试用）
       - OPC_SIM_ENABLED=true
       - OPC_SIM_PORT=4840
+      - LANGGRAPH_STRICT_MSGPACK=true
     volumes:
       - opc_audit_data:/app/opc_service/audit_logs
       # 日誌持久化

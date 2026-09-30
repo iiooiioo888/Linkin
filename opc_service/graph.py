@@ -14,6 +14,7 @@ import os
 from collections.abc import Callable
 from typing import Any
 
+import opc_service.msgpack_safety  # noqa: F401  # 必須先於 langgraph，見該模組說明
 from langgraph.graph import END, StateGraph
 
 from opc_service.act import act_opc

@@ -4,7 +4,12 @@ pydantic>=2.9
 python-dotenv>=1.0
 aiofiles>=24.2
 litellm>=1.52
-langgraph>=0.2.50
+# Security floor (CVE-2025-64439): do not resolve below langgraph 1.0.10 / checkpoint 3.0.0.
+# No SqliteSaver, AsyncSqliteSaver, or checkpoint.sqlite call sites, so no SQLite checkpointer package.
+# Floor, not a lock: pip still installs the newest release that satisfies it.
+# LANGGRAPH_STRICT_MSGPACK does not run deserialization while no checkpointer is configured.
+langgraph>=1.0.10
+langgraph-checkpoint>=3.0.0
 langchain>=0.3
 langchain-core>=0.3
 chromadb>=0.5

@@ -3,6 +3,8 @@
 # ?„å»ºä¸Šä??‡ï?é¡¹ç›®?¹ç›®å½•ï?docker-compose ä¸­æ?å®?context: .ï¼?
 FROM python:3.12-slim
 
+ENV LANGGRAPH_STRICT_MSGPACK=true
+
 WORKDIR /app
 
 # å®‰è? Python ä¾è?ï¼ˆå?å¤åˆ¶ requirements ä»¥åˆ©??Docker å±‚ç?å­˜ï?
