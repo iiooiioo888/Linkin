@@ -69,6 +69,17 @@ def _fallback_score(state: StateInput) -> bool:
     return bool(multi.get("fallback_used")) or multi.get("score_source") == "fallback"
 
 
+def _prev_reflection_score(state: StateInput) -> float | None:
+    """上一輪反思紀錄中的分數；缺失時回 None（禁止默認 0.0 觸發提前終止）。"""
+    reflections = state.get("reflections", [])
+    if not reflections:
+        return None
+    entry = reflections[-1]
+    if "score" not in entry or entry.get("score") is None:
+        return None
+    return float(entry["score"])
+
+
 def should_improve(state: StateInput) -> str:
     """條件路由（優化 #4：動態迭代策略）。
 
@@ -100,9 +111,8 @@ def should_improve(state: StateInput) -> str:
         return "finalize"
 
     # 條件 3：分數變化率過低（提前終止）
-    reflections = state.get("reflections", [])
-    if len(reflections) >= 1:
-        prev_score = reflections[-1].get("score", 0.0)
+    prev_score = _prev_reflection_score(state)
+    if prev_score is not None:
         improvement = score - prev_score
         if improvement < MIN_SCORE_IMPROVEMENT and iteration >= 1:
             if _fallback_score(state):
@@ -118,6 +128,17 @@ def should_improve(state: StateInput) -> str:
             return "finalize"
 
     return "reflect"
+
+
+def reflection_should_continue(state: StateInput) -> bool:
+    """Task 手抄反思迴圈是否進入 reflect/improve（與 LangGraph ``should_improve`` 邊一致）。
+
+    ``length_directive`` 時圖會在 evaluate 前先 rewrite；Task 迴圈在尾端 enforce 後
+    以同一旗標多拉一輪 reflect。
+    """
+    if state.get("length_directive"):
+        return True
+    return should_improve(state) == "reflect"
 
 
 def should_rewrite_length(state: StateInput) -> str:
