@@ -22,7 +22,7 @@ import {
   type ModuleNavItem,
 } from './worldModules';
 
-export type CoreActivityKey = 'chat' | 'console' | 'lab';
+export type CoreActivityKey = 'chat' | 'console' | 'lab' | 'company';
 export type ActivityKey = CoreActivityKey | string;
 
 export type ConsoleNavKey = MonitorTab | 'traces';
@@ -260,10 +260,11 @@ export function isConsoleTab(tab: MonitorTab | string | null | undefined): boole
 }
 
 export function resolveActivity(
-  view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho',
+  view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho' | 'company',
   monitorTab: MonitorTab,
 ): ActivityKey {
   if (view === 'chat') return 'chat';
+  if (view === 'company') return 'company';
   if (view === 'traces' || view === 'task' || view === 'raho') return 'console';
   if (monitorTab === 'lab') return 'lab';
   const moduleId = moduleIdForTab(monitorTab);
@@ -272,7 +273,7 @@ export function resolveActivity(
 }
 
 export function isWorkActivity(
-  view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho',
+  view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho' | 'company',
   monitorTab: MonitorTab,
 ): boolean {
   return resolveActivity(view, monitorTab) === 'console';
@@ -308,6 +309,7 @@ export function navItemsForActivity(activity: ActivityKey): MonitorTabItem[] {
 
 export function activityTitle(activity: ActivityKey): string {
   if (activity === 'chat') return '對話';
+  if (activity === 'company') return '公司';
   if (activity === 'lab') return '實驗室';
   if (activity === 'console') return '控制台';
   const spec = getWorldModule(normalizeActivityAlias(activity) ?? activity);
@@ -335,12 +337,13 @@ export function activityNavPath(tab: ConsoleNavKey): string {
 }
 
 export function consoleChromeLabel(
-  view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho',
+  view: 'chat' | 'monitor' | 'traces' | 'task' | 'raho' | 'company',
   monitorTab: MonitorTab,
   _labLabel?: string,
   traceTaskId?: string | null,
 ): string {
   if (view === 'chat') return '';
+  if (view === 'company') return '公司';
   if (view === 'traces') {
     const path = navPathForTab('traces');
     return traceTaskId ? `${path} · ${traceTaskId.slice(0, 8)}…` : path;
@@ -360,14 +363,14 @@ export function isWorkTab(tab: MonitorTab): boolean {
 export function defaultTabForActivity(activity: ActivityKey): MonitorTab {
   const resolved = normalizeActivityAlias(activity) ?? activity;
   if (resolved === 'lab') return 'lab';
-  if (resolved === 'console' || resolved === 'chat') return 'live';
+  if (resolved === 'console' || resolved === 'chat' || resolved === 'company') return 'live';
   const spec = getWorldModule(resolved);
   if (spec?.defaultPage) return normalizeMonitorTab(spec.defaultPage);
   return 'live';
 }
 
 export function isCoreActivity(activity: ActivityKey): activity is CoreActivityKey {
-  return activity === 'chat' || activity === 'console' || activity === 'lab';
+  return activity === 'chat' || activity === 'console' || activity === 'lab' || activity === 'company';
 }
 
 export { hashPageForTab, listWorldModules, moduleIdForTab };

@@ -11,17 +11,12 @@ import {
   type MinecraftPlayerSummary,
   type MinecraftPlayersSnapshot,
 } from '../../api/linkin';
-import { KpiSparkCard } from '../../components/ui/monitor';
 import {
   ConsoleCard,
   ConsoleCardHeader,
-  ConsoleCenterColumn,
-  ConsoleColumnScroll,
-  KpiGrid6,
   PanelAlert,
-  PanelShell,
-  SectionHeader,
 } from '../../components/ui/ConsoleLayout';
+import { McHeader, McMetrics, McPage } from './McChrome';
 import {
   BridgeSetupBanner,
   CopyButton,
@@ -89,8 +84,8 @@ const INGEST_EXAMPLES: Array<{ label: string; body: Record<string, unknown> }> =
 ];
 
 function posText(pos?: { x?: number; y?: number; z?: number } | null): string {
-  if (!pos) return '—';
-  return `${Math.round(pos.x ?? 0)}, ${Math.round(pos.y ?? 0)}, ${Math.round(pos.z ?? 0)}`;
+  if (!pos || pos.x == null || pos.y == null || pos.z == null) return '';
+  return `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}`;
 }
 
 function isIngestedEvent(evt: MinecraftObservabilityEvent): boolean {
@@ -112,7 +107,7 @@ function InventoryGrid({ detail }: { detail: MinecraftPlayerDetail }) {
       <div>
         <p className="mb-1 text-[10px] text-[var(--console-faint)]">主手</p>
         <div className="rounded border border-[var(--console-border)] bg-black/20 px-2 py-1.5">
-          {held ? `${held.name} ×${held.count}` : '—'}
+          {held ? `${held.name} ×${held.count}` : '空手'}
         </div>
       </div>
       <div>
@@ -135,9 +130,9 @@ function InventoryGrid({ detail }: { detail: MinecraftPlayerDetail }) {
           {Array.from({ length: 36 }, (_, idx) => {
             const item = slotMap.get(idx) ?? slotMap.get(String(idx));
             return (
-              <div
+                <div
                 key={idx}
-                className="flex min-h-[2.5rem] flex-col justify-center rounded border border-[var(--console-border)] bg-black/20 px-1 py-0.5 text-[9px]"
+                className="flex min-h-[2.5rem] flex-col justify-center rounded border border-[var(--console-border)] bg-black/20 px-1 py-0.5 text-[11px]"
                 title={item ? `${item.name} ×${item.count}` : `slot ${idx}`}
               >
                 <span className="text-[var(--console-faint)]">{idx}</span>
@@ -207,7 +202,6 @@ export default function PlayerPresencePanel() {
 
   const bridgeOffline = Boolean(snapshot?.bridge_offline);
   const bridgeLive = bridgeLiveReady(snapshot?.bridge);
-  const onlineDisplay = bridgeLive ? String(snapshot?.online_count ?? 0) : '待接橋';
   const players = snapshot?.players ?? [];
   const selected = useMemo(
     () => players.find((p) => p.id === selectedId) ?? null,
@@ -216,70 +210,35 @@ export default function PlayerPresencePanel() {
   const ingestedCount = events.filter(isIngestedEvent).length;
   const joinAddress = resolveJoinAddressHint(snapshot?.join_address);
 
+  const presenceMetrics = [
+    bridgeLive ? { label: '在線玩家', value: snapshot?.online_count ?? players.length } : null,
+    events.length ? { label: '活動事件', value: events.length } : null,
+    ingestedCount ? { label: '外部接入', value: ingestedCount } : null,
+  ].filter((item): item is { label: string; value: number } => Boolean(item));
+
   return (
-    <PanelShell scroll={false}>
-      <ConsoleCenterColumn>
-        <ConsoleColumnScroll>
+    <McPage>
           {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
 
-          {bridgeOffline ? (
-            <div className="mb-3">
-              <BridgeSetupBanner bridge={snapshot?.bridge} />
-            </div>
-          ) : null}
+          <McHeader
+            title="玩家現場"
+            lead={
+              error && !snapshot
+                ? '這次沒有讀到伺服器上的玩家。'
+                : bridgeOffline
+                  ? '橋接未連線，這裡不編造玩家位置或背包。已接入的聊天、死亡與方塊事件仍會留下。'
+                  : '每 5 秒從 MineMCP 更新在線玩家與背包。'
+            }
+            aside={
+              <a href={bridgeOffline ? minecraftHref('bridge_monitor') : minecraftHref('minecraft')} className="mc-link is-primary">
+                {bridgeOffline ? '橋接健康' : '橋接操作'}
+              </a>
+            }
+          />
 
-          <ConsoleCard className="mb-3">
-            <ConsoleCardHeader>橋接狀態</ConsoleCardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-3 text-xs">
-              <div className="text-[var(--console-muted)]">
-                <div>
-                  狀態：
-                  <span className={bridgeOffline ? 'text-[var(--console-amber)]' : 'text-[var(--console-green)]'}>
-                    {bridgeOffline ? '離線／未啟用' : snapshot?.bridge?.connected ? '已連線' : '—'}
-                  </span>
-                </div>
-                <div className="mt-0.5 text-[10px] text-[var(--console-faint)]">
-                  {bridgeOffline
-                    ? '不會捏造玩家位置；可透過下方 ingest 接入 chat／death／方塊事件。'
-                    : '每 5s 輪詢 MineMCP 更新在線玩家與背包。'}
-                </div>
-              </div>
-              {bridgeOffline ? (
-                <a href={minecraftHref('bridge_monitor')} className="console-btn text-xs">
-                  打開橋接監控
-                </a>
-              ) : (
-                <a href={minecraftHref('minecraft')} className="console-btn-ghost text-xs">
-                  橋接操作
-                </a>
-              )}
-            </div>
-          </ConsoleCard>
-
-          {bridgeOffline ? (
-            <PanelAlert tone="notice">
-              MineMCP 橋接離線或未啟用 — 不會捏造玩家位置或背包。已 ingest 的活動事件仍會顯示。
-            </PanelAlert>
-          ) : null}
-
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <SectionHeader title="玩家現場" className="mb-0" />
-            <span className="text-[9px] text-[var(--console-faint)]">
-              {loading ? '刷新中…' : snapshot?.generated_at ? `更新 ${formatTs(snapshot.generated_at)} · 5s` : '自動刷新 5s'}
-            </span>
-          </div>
-
-          <KpiGrid6>
-            <KpiSparkCard
-              label="在線玩家"
-              value={onlineDisplay}
-              accent={bridgeLive && Boolean(snapshot?.online_count)}
-              spark={bridgeLive ? [0, 1, snapshot?.online_count ?? 0, snapshot?.online_count ?? 0] : [0, 0, 0, 0]}
-            />
-            <KpiSparkCard label="橋接" value={bridgeOffline ? '離線' : snapshot?.bridge?.connected ? '已連線' : '—'} accent={!bridgeOffline} />
-            <KpiSparkCard label="活動事件" value={String(events.length)} />
-            <KpiSparkCard label="Ingest 事件" value={String(ingestedCount)} accent={ingestedCount > 0} />
-          </KpiGrid6>
+          {bridgeOffline ? <BridgeSetupBanner bridge={snapshot?.bridge} /> : null}
+          {presenceMetrics.length ? <McMetrics items={presenceMetrics} /> : null}
+          {loading && !snapshot ? <p className="mc-empty">正在讀取玩家現場…</p> : null}
 
           {bridgeOffline && !players.length ? (
             <EmptyStateCta
@@ -292,7 +251,7 @@ export default function PlayerPresencePanel() {
             />
           ) : null}
 
-          {!bridgeOffline && !players.length && !loading ? (
+          {!error && !bridgeOffline && !players.length && !loading ? (
             <EmptyStateCta
               title="目前沒有玩家在線"
               hint={
@@ -307,32 +266,29 @@ export default function PlayerPresencePanel() {
             />
           ) : null}
 
-          <ConsoleCard className="mt-3">
-            <ConsoleCardHeader>外部事件接入</ConsoleCardHeader>
-            <div className="space-y-3 px-3 pb-3 text-xs text-[var(--console-muted)]">
+          <details className="mc-panel">
+            <summary className="mc-panel__title">外部事件接入</summary>
+            <div className="mt-3 space-y-3 text-[13px] text-[var(--console-sub)]">
               <p>
-                橋接無法推送 chat／death／方塊事件。請讓 Bukkit 插件或腳本 POST 至下方路徑（模組閘道：
-                <code className="mx-1 rounded bg-black/30 px-1">/modules/minecraft/api/minecraft/players/ingest</code>）。
+                聊天、死亡與方塊事件要由插件 POST 進來。路徑{' '}
+                <code className="rounded bg-black/30 px-1">{INGEST_WEBHOOK_PATH}</code>
               </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <code className="rounded bg-black/30 px-2 py-1 font-mono text-[10px]">POST {INGEST_WEBHOOK_PATH}</code>
-                <CopyButton text={INGEST_WEBHOOK_PATH} label="複製路徑" />
-              </div>
+              <CopyButton text={INGEST_WEBHOOK_PATH} label="複製路徑" />
               <div className="space-y-2">
                 {INGEST_EXAMPLES.map((example) => (
-                  <div key={example.label} className="rounded border border-[var(--console-border)] bg-black/15 p-2">
+                  <div key={example.label} className="rounded-xl border border-[var(--console-line)] bg-[var(--console-bg)] p-3">
                     <div className="mb-1 flex items-center justify-between gap-2">
-                      <span className="font-mono text-[10px] text-[var(--console-accent)]">{example.label}</span>
+                      <span className="text-[12px] text-[var(--console-accent)]">{example.label}</span>
                       <CopyButton text={JSON.stringify(example.body, null, 2)} label="複製 JSON" />
                     </div>
-                    <pre className="max-h-28 overflow-auto font-mono text-[9px] text-[var(--console-faint)]">
+                    <pre className="max-h-28 overflow-auto font-mono text-[12px] text-[var(--console-sub)]">
                       {JSON.stringify(example.body, null, 2)}
                     </pre>
                   </div>
                 ))}
               </div>
             </div>
-          </ConsoleCard>
+          </details>
 
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
             <ConsoleCard>
@@ -341,9 +297,11 @@ export default function PlayerPresencePanel() {
                 {!players.length ? (
                   <li className="px-3 py-4 text-xs text-[var(--console-faint)]">
                     <div>
-                      {bridgeOffline
-                        ? '橋接未就緒 — 無即時在線列表（非世界為空）'
-                        : '目前沒有玩家在線'}
+                      {error && !snapshot
+                        ? '沒有名單可顯示。'
+                        : bridgeOffline
+                          ? '橋接未就緒，所以沒有即時在線列表。這不代表世界是空的。'
+                          : '目前沒有玩家在線'}
                     </div>
                     {!bridgeOffline && joinAddress ? (
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
@@ -363,13 +321,17 @@ export default function PlayerPresencePanel() {
                       >
                         <div className="flex justify-between gap-2">
                           <span className="font-medium">{player.name}</span>
-                          <span className="text-[var(--console-faint)]">{player.gamemode ?? '—'}</span>
+                          {player.gamemode ? <span className="text-[var(--console-faint)]">{player.gamemode}</span> : null}
                         </div>
                         <div className="mt-0.5 text-[var(--console-muted)]">
-                          {player.dimension ?? player.world ?? '?'} · {posText(player.position)}
+                          {[player.dimension ?? player.world, posText(player.position)].filter(Boolean).join(' · ')}
                         </div>
-                        <div className="text-[10px] text-[var(--console-faint)]">
-                          HP {player.health ?? '—'} · 飽食 {player.food ?? '—'} · {formatTs(player.last_seen)}
+                        <div className="text-[12px] text-[var(--console-faint)]">
+                          {[
+                            player.health != null ? `生命 ${player.health}` : '',
+                            player.food != null ? `飽食 ${player.food}` : '',
+                            player.last_seen ? formatTs(player.last_seen) : '',
+                          ].filter(Boolean).join(' · ')}
                         </div>
                       </button>
                     </li>
@@ -387,11 +349,16 @@ export default function PlayerPresencePanel() {
                   <p className="text-xs text-[var(--console-faint)]">選擇左側玩家查看背包</p>
                 ) : detail ? (
                   <>
-                    <dl className="mb-3 grid grid-cols-2 gap-2 text-[11px]">
-                      <div><dt className="text-[var(--console-faint)]">UUID</dt><dd className="truncate font-mono">{detail.uuid ?? '—'}</dd></div>
-                      <div><dt className="text-[var(--console-faint)]">維度</dt><dd>{detail.dimension ?? detail.world ?? '—'}</dd></div>
-                      <div><dt className="text-[var(--console-faint)]">座標</dt><dd>{posText(detail.position)}</dd></div>
-                      <div><dt className="text-[var(--console-faint)]">生命／飽食</dt><dd>{detail.health ?? '—'} / {detail.food ?? '—'}</dd></div>
+                    <dl className="mc-facts mb-3">
+                      {detail.uuid ? <div><dt>UUID</dt><dd className="truncate font-mono">{detail.uuid}</dd></div> : null}
+                      {detail.dimension || detail.world ? <div><dt>維度</dt><dd>{detail.dimension ?? detail.world}</dd></div> : null}
+                      {posText(detail.position) ? <div><dt>座標</dt><dd>{posText(detail.position)}</dd></div> : null}
+                      {detail.health != null || detail.food != null ? (
+                        <div>
+                          <dt>生命／飽食</dt>
+                          <dd>{[detail.health != null ? String(detail.health) : null, detail.food != null ? String(detail.food) : null].filter(Boolean).join(' / ')}</dd>
+                        </div>
+                      ) : null}
                     </dl>
                     <InventoryGrid detail={detail} />
                   </>
@@ -431,8 +398,8 @@ export default function PlayerPresencePanel() {
               </div>
             </div>
             {!events.length ? (
-              <p className="px-3 py-3 text-xs text-[var(--console-faint)]">
-                尚無玩家活動 — 玩家上線／移動／背包變更會自動記錄；亦可 POST ingest 接入插件。
+              <p className="mc-empty px-3 py-3">
+                玩家上線、移動或變更背包之後，活動會記在這裡。
               </p>
             ) : (
               <ul className="divide-y divide-[var(--console-border)] px-1 pb-2">
@@ -463,8 +430,6 @@ export default function PlayerPresencePanel() {
               </ul>
             )}
           </ConsoleCard>
-        </ConsoleColumnScroll>
-      </ConsoleCenterColumn>
-    </PanelShell>
+    </McPage>
   );
 }

@@ -25,20 +25,20 @@ export default function SettingsModal({
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div
-        className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#141416] shadow-2xl"
+        className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[var(--console-card)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-5 py-3">
           <div>
-            <p className="text-sm font-semibold text-[#F5F5F7]">API 與角色</p>
-            <p className="mt-0.5 text-[11px] text-[#8E8E93]">
+            <p className="text-sm font-semibold text-[var(--console-ink)]">API 與角色</p>
+            <p className="mt-0.5 text-[11px] text-[var(--console-sub)]">
               先加入供應商，再到每個角色指定模型與 Token
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-2 py-1 text-[#8E8E93] hover:bg-white/[0.06]"
+            className="rounded-lg px-2 py-1 text-[var(--console-sub)] hover:bg-white/[0.06]"
             aria-label="關閉"
           >
             ✕
@@ -46,28 +46,28 @@ export default function SettingsModal({
         </div>
 
         <div className="grid shrink-0 grid-cols-3 gap-px border-b border-white/[0.06] bg-white/[0.06]">
-          <div className="bg-[#141416] px-3 py-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#64D2FF]">1 配置</p>
-            <p className="text-[11px] text-[#AEAEB2]">千問／DeepSeek／Kimi／OpenRouter</p>
+          <div className="bg-[var(--console-card)] px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-accent)]">1 配置</p>
+            <p className="text-[11px] text-[var(--console-sub)]">千問／DeepSeek／Kimi／OpenRouter</p>
           </div>
           <button
             type="button"
-            className="bg-[#141416] px-3 py-2 text-left hover:bg-white/[0.03]"
+            className="bg-[var(--console-card)] px-3 py-2 text-left hover:bg-white/[0.03]"
             onClick={() => {
               requestRoleSettingsDesk();
               onGoAgents?.();
             }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#636366]">2 角色</p>
-            <p className="text-[11px] text-[#AEAEB2]">模型與 Token</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">2 角色</p>
+            <p className="text-[11px] text-[var(--console-sub)]">模型與 Token</p>
           </button>
           <button
             type="button"
-            className="bg-[#141416] px-3 py-2 text-left hover:bg-white/[0.03]"
+            className="bg-[var(--console-card)] px-3 py-2 text-left hover:bg-white/[0.03]"
             onClick={() => onGoUsage?.()}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#636366]">3 計費</p>
-            <p className="text-[11px] text-[#AEAEB2]">AI 用量與基礎設施</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">3 計費</p>
+            <p className="text-[11px] text-[var(--console-sub)]">AI 用量與基礎設施</p>
           </button>
         </div>
 
@@ -76,7 +76,7 @@ export default function SettingsModal({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] px-5 py-3">
-          <p className="text-[11px] text-[#636366]">
+          <p className="text-[11px] text-[var(--console-sub)]">
             完整管理在「{navPathForTab('llm')}」
           </p>
           <div className="flex flex-wrap gap-2">
@@ -87,7 +87,7 @@ export default function SettingsModal({
                   requestRoleSettingsDesk();
                   onGoAgents();
                 }}
-                className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-[#AEAEB2] hover:bg-white/[0.06]"
+                className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-[var(--console-sub)] hover:bg-white/[0.06]"
               >
                 {navPathForTab('agents')}
               </button>
@@ -96,7 +96,7 @@ export default function SettingsModal({
               <button
                 type="button"
                 onClick={onGoConsole}
-                className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-[#64D2FF] hover:bg-[#007AFF]/10"
+                className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-[var(--console-accent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]"
               >
                 {navPathForTab('llm')}
               </button>

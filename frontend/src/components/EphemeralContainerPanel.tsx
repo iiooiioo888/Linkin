@@ -141,10 +141,10 @@ export default function EphemeralContainerPanel() {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,360px)_1fr]">
       <section className="apple-card apple-card--pad flex flex-col gap-3">
         <h2 className="apple-title">隔離容器任務</h2>
-        <p className="text-[11px] text-[#8E8E93]">
+        <p className="text-[11px] text-[var(--console-sub)]">
           非 root · 唯讀根檔案系統 · 預設無網路 · 逾時自動終止並刪除容器。
         </p>
-        <label className="text-[11px] text-[#8E8E93]">
+        <label className="text-[11px] text-[var(--console-sub)]">
           映像（白名單）
           <select
             className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-2 py-2 text-[13px]"
@@ -156,7 +156,7 @@ export default function EphemeralContainerPanel() {
             ))}
           </select>
         </label>
-        <label className="text-[11px] text-[#8E8E93]">
+        <label className="text-[11px] text-[var(--console-sub)]">
           命令（shell 或 JSON 陣列）
           <textarea
             className="mt-1 w-full min-h-[72px] rounded-lg border border-white/10 bg-black/30 px-2 py-2 font-mono text-[12px]"
@@ -164,7 +164,7 @@ export default function EphemeralContainerPanel() {
             onChange={(e) => setCommand(e.target.value)}
           />
         </label>
-        <label className="text-[11px] text-[#8E8E93]">
+        <label className="text-[11px] text-[var(--console-sub)]">
           逾時（秒）
           <input
             type="number"
@@ -175,12 +175,12 @@ export default function EphemeralContainerPanel() {
             onChange={(e) => setTimeoutSec(Number(e.target.value))}
           />
         </label>
-        <label className="flex items-center gap-2 text-[12px] text-[#AEAEB2]">
+        <label className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
           <input
             type="checkbox"
             checked={network}
             onChange={(e) => setNetwork(e.target.checked)}
-            className="accent-[#007AFF]"
+            className="accent-[var(--console-accent)]"
           />
           允許網路（預設關閉）
         </label>
@@ -188,15 +188,15 @@ export default function EphemeralContainerPanel() {
           type="button"
           disabled={busy}
           onClick={() => void handleSubmit()}
-          className="rounded-full bg-[#007AFF] px-4 py-2 text-[13px] font-bold text-white disabled:opacity-50"
+          className="rounded-full bg-[var(--console-accent)] px-4 py-2 text-[13px] font-bold text-white disabled:opacity-50"
         >
           {busy ? '執行中…' : '提交任務'}
         </button>
         {taskId && (
-          <p className="font-mono text-[11px] text-[#8E8E93]">task: {taskId}</p>
+          <p className="font-mono text-[11px] text-[var(--console-sub)]">task: {taskId}</p>
         )}
         {status && <p className="text-[12px] text-[#34C759]">狀態：{status}</p>}
-        {error && <p className="text-[12px] text-[#FF3B30]">{error}</p>}
+        {error && <p className="text-[12px] text-[var(--console-danger)]">{error}</p>}
       </section>
       <section className="apple-card flex min-h-[320px] flex-col">
         <div className="apple-card__head">

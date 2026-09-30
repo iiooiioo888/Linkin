@@ -333,7 +333,7 @@ export default function MediaCrawlerPanel() {
                 {selectedJob.error ? ` · ${selectedJob.error}` : ''}
               </p>
               {selectedJob.log_tail ? (
-                <pre className="max-h-28 overflow-auto rounded-lg bg-black/40 p-2 font-mono text-[10px] text-[#AEAEB2]">{selectedJob.log_tail}</pre>
+                <pre className="max-h-28 overflow-auto rounded-lg bg-black/40 p-2 font-mono text-[10px] text-[var(--console-sub)]">{selectedJob.log_tail}</pre>
               ) : null}
               {selectedJob.results && selectedJob.results.length > 0 ? (
                 <table className="w-full text-left text-[10px]">

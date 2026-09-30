@@ -322,7 +322,7 @@ function SkillsSection() {
 
       {preview !== null && (
         <div className="mb-4">
-          <pre className="max-h-48 overflow-auto rounded-xl border border-white/[0.08] bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-[#AEAEB2]">{preview}</pre>
+          <pre className="max-h-48 overflow-auto rounded-xl border border-white/[0.08] bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-[var(--console-sub)]">{preview}</pre>
           <button type="button" className={`${btnCls} mt-1`} onClick={() => setPreview(null)}>收起預覽</button>
         </div>
       )}
@@ -352,7 +352,7 @@ function SkillsSection() {
               <label className="text-[10px] text-[var(--console-sub)]">單技能字元上限
                 <input type="number" className={`${inputCls} mt-1 w-28`} value={form.skill_budget} onChange={(e) => setForm({ ...form, skill_budget: Number(e.target.value) })} />
               </label>
-              <label className="flex items-center gap-1.5 pb-1.5 text-[11px] text-[#AEAEB2]">
+              <label className="flex items-center gap-1.5 pb-1.5 text-[11px] text-[var(--console-sub)]">
                 <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} />
                 啟用
               </label>
@@ -682,11 +682,11 @@ function McpSection() {
               <label className="text-[10px] text-[var(--console-sub)]">逾時（秒）
                 <input type="number" className={`${inputCls} mt-1 w-24`} value={form.timeout} onChange={(e) => setForm({ ...form, timeout: Number(e.target.value) })} />
               </label>
-              <label className="flex items-center gap-1.5 pb-1.5 text-[11px] text-[#AEAEB2]">
+              <label className="flex items-center gap-1.5 pb-1.5 text-[11px] text-[var(--console-sub)]">
                 <input type="checkbox" checked={form.readonly} onChange={(e) => setForm({ ...form, readonly: e.target.checked })} />
                 唯讀工具
               </label>
-              <label className="flex items-center gap-1.5 pb-1.5 text-[11px] text-[#AEAEB2]">
+              <label className="flex items-center gap-1.5 pb-1.5 text-[11px] text-[var(--console-sub)]">
                 <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} />
                 啟用
               </label>
@@ -721,7 +721,7 @@ function McpSection() {
             <button type="button" className={btnCls} onClick={() => { setCallBox(null); setCallResult(null); }}>關閉</button>
           </div>
           {callResult !== null && (
-            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-black/40 p-2 font-mono text-[11px] leading-relaxed text-[#AEAEB2]">{callResult}</pre>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-black/40 p-2 font-mono text-[11px] leading-relaxed text-[var(--console-sub)]">{callResult}</pre>
           )}
         </section>
       )}
@@ -827,7 +827,7 @@ function VizPluginsSection() {
       <OkBar message={message} />
       <p className="mb-3 text-[12px] leading-relaxed text-[var(--console-sub)]">
         dsh-plugin 可視化適配。預設關閉；啟用後解鎖 Context 面板／瀏覽器／
-        <code className="text-[11px] text-[#AEAEB2]">/context</code> 命令表面。靈感來自{' '}
+        <code className="text-[11px] text-[var(--console-sub)]">/context</code> 命令表面。靈感來自{' '}
         <a
           href="https://github.com/bowenliang123/dsh-context"
           target="_blank"
@@ -849,14 +849,14 @@ function VizPluginsSection() {
                   {p.repo} · pin {p.pin_version || p.default_pin || '—'} · {p.source_tag}
                 </p>
                 {p.commands?.length ? (
-                  <p className="mt-1 text-[10px] text-[#AEAEB2]">命令：{p.commands.join(' · ')}</p>
+                  <p className="mt-1 text-[10px] text-[var(--console-sub)]">命令：{p.commands.join(' · ')}</p>
                 ) : null}
               </div>
-              <label className="flex shrink-0 cursor-pointer items-center gap-2 text-[11px] text-[#AEAEB2]">
+              <label className="flex shrink-0 cursor-pointer items-center gap-2 text-[11px] text-[var(--console-sub)]">
                 <span>{p.enabled ? '啟用' : '關閉'}</span>
                 <input
                   type="checkbox"
-                  className="accent-[#64D2FF]"
+                  className="accent-[var(--console-accent)]"
                   checked={Boolean(p.enabled)}
                   disabled={busyId === p.plugin_id}
                   onChange={(e) => void onToggle(p.plugin_id, e.target.checked)}

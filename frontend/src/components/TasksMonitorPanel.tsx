@@ -34,10 +34,10 @@ type StatusFilter = TaskColumnKey;
 
 const STATUS_META: Record<string, { label: string; cls: string; dot: string }> = {
   pending: { label: '隊列', cls: 'text-[#FF9500]', dot: 'bg-[#FF9500]' },
-  running: { label: '執行中', cls: 'text-[#007AFF]', dot: 'bg-[#007AFF]' },
+  running: { label: '執行中', cls: 'text-[var(--console-accent)]', dot: 'bg-[var(--console-accent)]' },
   completed: { label: '已完成', cls: 'text-[#34C759]', dot: 'bg-[#34C759]' },
-  failed: { label: '失敗', cls: 'text-[#FF3B30]', dot: 'bg-[#FF3B30]' },
-  cancelled: { label: '已取消', cls: 'text-[#8E8E93]', dot: 'bg-[#8E8E93]' },
+  failed: { label: '失敗', cls: 'text-[var(--console-danger)]', dot: 'bg-[var(--console-danger)]' },
+  cancelled: { label: '已取消', cls: 'text-[var(--console-sub)]', dot: 'bg-[var(--console-sub)]' },
   interrupted: { label: '中斷', cls: 'text-[#FF9500]', dot: 'bg-[#FF9500]' },
 };
 
@@ -88,9 +88,9 @@ function PhaseStrip({ task }: { task: TaskSummary }) {
             title={p.label}
             className={`h-1 flex-1 rounded-full transition-colors ${
               failed && i === idx
-                ? 'bg-[#FF3B30]'
+                ? 'bg-[var(--console-danger)]'
                 : passed
-                  ? 'bg-[#007AFF]'
+                  ? 'bg-[var(--console-accent)]'
                   : active
                     ? 'progress-shimmer'
                     : 'bg-white/[0.08]'
@@ -223,7 +223,7 @@ export default function TasksMonitorPanel({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas">
       <div className="rd-th">
         <h2>任務列表 — {tasks.length}</h2>
-        <span className="apple-data text-[10px] text-[#636366]">
+        <span className="apple-data text-[10px] text-[var(--console-sub)]">
           {connected ? '即時同步' : '離線資料'}
         </span>
       </div>
@@ -320,27 +320,27 @@ export default function TasksMonitorPanel({
         {focusTaskId && (
           <div className="hidden min-h-0 min-w-0 flex-1 flex-col overflow-y-auto border-l border-white/[0.06] lg:flex">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.06] bg-[#0d0d0f]/95 px-6 py-3 backdrop-blur">
-              <p className="truncate text-[12px] font-medium text-[#F5F5F7]">
+              <p className="truncate text-[12px] font-medium text-[var(--console-ink)]">
                 {detail?.query ?? focusTaskId.slice(0, 8)}
               </p>
               <button
                 type="button"
                 onClick={() => onFocusTask(null)}
-                className="shrink-0 rounded-lg px-2 py-1 text-[11px] text-[#8E8E93] hover:bg-white/[0.06] hover:text-[#F5F5F7]"
+                className="shrink-0 rounded-lg px-2 py-1 text-[11px] text-[var(--console-sub)] hover:bg-white/[0.06] hover:text-[var(--console-ink)]"
               >
                 關閉
               </button>
             </div>
             <div className={consoleLayout.cardBody}>
               {detailLoading && !detail && (
-                <p className={`${consoleLayout.emptySm} text-[12px] text-[#636366]`}>載入任務…</p>
+                <p className={`${consoleLayout.emptySm} text-[12px] text-[var(--console-sub)]`}>載入任務…</p>
               )}
               {detailError && (
                 <ErrorState kind="generic" message={detailError} compact />
               )}
               {detail && (
                 <>
-                  <div className="mb-4 flex flex-wrap gap-3 text-[11px] text-[#8E8E93]">
+                  <div className="mb-4 flex flex-wrap gap-3 text-[11px] text-[var(--console-sub)]">
                     <span>ID {detail.task_id.slice(0, 8)}</span>
                     <span>·</span>
                     <span>{PATH_META[detail.resolved_path]?.label ?? detail.resolved_path}</span>
@@ -376,7 +376,7 @@ export default function TasksMonitorPanel({
             <button
               type="button"
               onClick={() => onFocusTask(null)}
-              className="rounded-lg px-3 py-1 text-[12px] text-[#8E8E93]"
+              className="rounded-lg px-3 py-1 text-[12px] text-[var(--console-sub)]"
             >
               關閉
             </button>

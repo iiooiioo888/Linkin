@@ -5,7 +5,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { createItem, deleteItem, fetchItems, type Item } from '../../api/linkin';
 import { itemTileUri } from '../../lib/visualCards';
 import MediaGallery, { VisualThumb } from '../../components/media/MediaGallery';
+import { mcLabel } from './localeRegions';
 import PendingWorldIntentsBanner from './PendingWorldIntentsBanner';
+import { McHeader, McPage, McPanel } from './McChrome';
 
 export default function ItemPanel() {
   const [items, setItems] = useState<Item[]>([]);
@@ -65,16 +67,15 @@ export default function ItemPanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold">道具庫</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">屬性須落在稀有度平衡區間；生成前會檢索避免重複</p>
-        </div>
-        <button type="button" onClick={() => void load()} className="rounded-xl border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98]">重新整理</button>
-      </div>
+    <McPage>
+      <McHeader
+        title="道具"
+        lead="屬性要落在稀有度區間。新增前會先查既有道具，避免重複。"
+        aside={<button type="button" onClick={() => void load()} className="mc-btn">重新整理</button>}
+      />
+      <div className="mc-workspace">
       <PendingWorldIntentsBanner kind="item" compact />
-      {error && <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {error && <p className="mc-error">{error}</p>}
 
       {items.length > 0 && (
         <div className="mb-4">
@@ -83,7 +84,7 @@ export default function ItemPanel() {
             filter
             items={items.map((item, index) => ({
               src: itemTileUri(item.name, item.rarity, item.type),
-              caption: `${item.name} · ${item.rarity}`,
+              caption: `${item.name} · ${mcLabel(item.rarity)}`,
               alt: item.name,
               tags: `${item.type},${item.rarity}`,
               size: item.rarity === 'legendary' || item.rarity === 'epic' ? 'large' : index % 5 === 0 ? 'large' : 'small',
@@ -92,74 +93,75 @@ export default function ItemPanel() {
         </div>
       )}
 
-      <div className="mb-4 grid gap-2 rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3 sm:grid-cols-2 lg:grid-cols-6">
-        <label className="text-[10px] text-[#8a8f98] lg:col-span-2">名稱
-          <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
-        </label>
-        <label className="text-[10px] text-[#8a8f98]">類型
-          <select value={type} onChange={(e) => setType(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]">
-            <option value="武器">武器</option>
-            <option value="防具">防具</option>
-            <option value="消耗品">消耗品</option>
-          </select>
-        </label>
-        <label className="text-[10px] text-[#8a8f98]">稀有度
-          <select value={rarity} onChange={(e) => setRarity(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]">
-            <option value="common">common</option>
-            <option value="uncommon">uncommon</option>
-            <option value="rare">rare</option>
-            <option value="epic">epic</option>
-            <option value="legendary">legendary</option>
-          </select>
-        </label>
-        <label className="text-[10px] text-[#8a8f98]">主屬性
-          <input type="number" value={power} onChange={(e) => setPower(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
-        </label>
-        <label className="text-[10px] text-[#8a8f98] sm:col-span-2 lg:col-span-5">描述
-          <input value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
-        </label>
-        <div className="flex items-end">
-          <button type="button" disabled={busy || !name} onClick={() => void onCreate()} className="w-full rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40">
-            新增
-          </button>
+      <McPanel title="新增道具" hint="屬性會對照稀有度">
+        <div className="mc-form">
+          <label>名稱
+            <input value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label>類型
+            <select value={type} onChange={(e) => setType(e.target.value)}>
+              <option value="武器">武器</option>
+              <option value="防具">防具</option>
+              <option value="消耗品">消耗品</option>
+            </select>
+          </label>
+          <label>稀有度
+            <select value={rarity} onChange={(e) => setRarity(e.target.value)}>
+              <option value="common">普通</option>
+              <option value="uncommon">優良</option>
+              <option value="rare">稀有</option>
+              <option value="epic">史詩</option>
+              <option value="legendary">傳說</option>
+            </select>
+          </label>
+          <label>主屬性
+            <input type="number" value={power} onChange={(e) => setPower(Number(e.target.value))} />
+          </label>
+          <label>描述
+            <input value={description} onChange={(e) => setDescription(e.target.value)} />
+          </label>
+          <div>
+            <button type="button" disabled={busy || !name} onClick={() => void onCreate()} className="mc-btn is-primary">
+              {busy ? '新增中' : '新增'}
+            </button>
+          </div>
         </div>
-      </div>
+      </McPanel>
 
-      <div className="overflow-auto rounded-xl border border-white/[0.08]">
-        <table className="w-full min-w-[520px] text-left text-[12px]">
-          <thead className="bg-[#1C1C1E] text-[10px] uppercase tracking-wide text-[#8a8f98]">
+      <div className="mc-table-wrap">
+        <table>
+          <thead>
             <tr>
-              <th className="px-3 py-2 font-medium">名稱</th>
-              <th className="px-3 py-2 font-medium">類型</th>
-              <th className="px-3 py-2 font-medium">稀有度</th>
-              <th className="px-3 py-2 font-medium">屬性</th>
-              <th className="px-3 py-2 font-medium"></th>
+              <th>名稱</th>
+              <th>類型</th>
+              <th>稀有度</th>
+              <th>屬性</th>
+              <th />
             </tr>
           </thead>
           <tbody>
             {items.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-[#636366]">尚無道具</td>
+                <td colSpan={5} className="mc-empty">還沒有道具。</td>
               </tr>
             )}
             {items.map((item) => (
-              <tr key={item.id} className="border-t border-white/[0.06]">
-                <td className="px-3 py-2">
+              <tr key={item.id}>
+                <td>
                   <span className="inline-flex items-center gap-2">
                     <VisualThumb src={itemTileUri(item.name, item.rarity, item.type)} alt={item.name} className="h-8 w-8" />
                     {item.name}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-[#AEAEB2]">{item.type}</td>
-                <td className="px-3 py-2 text-[#AEAEB2]">{item.rarity}</td>
-                <td className="px-3 py-2 text-[#8a8f98]">{JSON.stringify(item.attributes)}</td>
-                <td className="px-3 py-2">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void onDelete(item.id)}
-                    className="text-[10px] text-red-400 disabled:opacity-40"
-                  >
+                <td>{item.type}</td>
+                <td>{mcLabel(item.rarity)}</td>
+                <td>
+                  {item.attributes && Object.keys(item.attributes).length
+                    ? Object.entries(item.attributes).map(([key, value]) => `${key} ${String(value)}`).join(' · ')
+                    : '無附加屬性'}
+                </td>
+                <td>
+                  <button type="button" disabled={busy} onClick={() => void onDelete(item.id)} className="mc-danger">
                     刪除
                   </button>
                 </td>
@@ -168,6 +170,7 @@ export default function ItemPanel() {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </McPage>
   );
 }

@@ -1,16 +1,16 @@
 /* 登入頁 OPC v3 — gold/dark card + 分層金字塔標誌 */
 
 .login-page {
-  --login-bg: #0a0a0d;
-  --login-card: #111116;
-  --login-line: #22222a;
-  --login-line-hi: #2e2e38;
-  --login-ink: #e8e8ec;
-  --login-sub: #7a7a86;
-  --login-faint: #4a4a54;
-  --login-dim: #2a2a32;
-  --login-accent: #c9a961;
-  --login-accent-hi: #e0c078;
+  --login-bg: #0b0a09;
+  --login-card: #161410;
+  --login-line: #2e2923;
+  --login-line-hi: #40392f;
+  --login-ink: #f4efe6;
+  --login-sub: #b3aa9c;
+  --login-faint: #8a8174;
+  --login-dim: #3a342c;
+  --login-accent: #e4c27a;
+  --login-accent-hi: #f0d7a0;
   --login-accent-dk: #6e5a32;
   --login-cyan: #5fb8c9;
   --login-green: #6fa87f;
@@ -120,7 +120,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 22px 24px 6px;
+  padding: 28px 24px 6px;
   text-align: center;
 }
 
@@ -130,9 +130,10 @@
 
 .login-title {
   margin: 0;
-  font-size: 20px;
+  font-family: 'Noto Serif TC', 'Songti TC', serif;
+  font-size: 22px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.04em;
   color: var(--login-ink);
 }
 

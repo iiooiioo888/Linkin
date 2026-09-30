@@ -170,6 +170,7 @@ def generate_workspace_drafts(workspace_id: str, body: dict[str, Any] | None = N
     return {
         "ok": True,
         "source": generated.get("source") or "llm",
+        "agents": list(generated.get("agents") or []),
         "replaced_keys": written,
         "workspace": _workspace_detail(refreshed),
         "draft_keys": sorted(refreshed.drafts.keys()),
@@ -200,6 +201,7 @@ def seed_starter_pack(workspace_id: str, body: dict[str, Any] | None = None) -> 
     return {
         "ok": True,
         "source": generated.get("source") or "fallback",
+        "agents": list(generated.get("agents") or []),
         "workspace": _workspace_detail(refreshed),
         "draft_keys": sorted(refreshed.drafts.keys()),
     }

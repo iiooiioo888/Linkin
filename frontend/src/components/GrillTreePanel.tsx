@@ -332,31 +332,31 @@ export default function GrillTreePanel({
     >
       {embedded ? (
         <div className="mb-3 flex items-end justify-between gap-3">
-          <p className="text-[12px] text-[#8E8E93]">
+          <p className="text-[12px] text-[var(--console-sub)]">
             {compact
               ? '角色即質詢節點。點層級切換工作台，下方是此角色的任用。'
               : focusRoleId
                 ? '此角色相關的指揮／審查邊會反白。點層級可切換角色。'
                 : '點層級即可切到對應角色工作台。'}
           </p>
-          <button type="button" className="rd-btn text-[11px] text-[#0A84FF]" onClick={() => void reload()}>
+          <button type="button" className="rd-btn text-[11px] text-[var(--console-accent)]" onClick={() => void reload()}>
             重新整理
           </button>
         </div>
       ) : (
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-[15px] font-semibold text-[#F5F5F7]">遞歸質詢樹</h2>
-            <p className="mt-1 text-[12px] text-[#8E8E93]">
+            <h2 className="text-[15px] font-semibold text-[var(--console-ink)]">遞歸質詢樹</h2>
+            <p className="mt-1 text-[12px] text-[var(--console-sub)]">
               指揮鏈 L5→L4→L3→L2；L1 獨立驗收；L0 滲透。點層級或邊即可跳到對應角色／核心。
             </p>
           </div>
-          <button type="button" className="rd-btn text-[11px] text-[#0A84FF]" onClick={() => void reload()}>
+          <button type="button" className="rd-btn text-[11px] text-[var(--console-accent)]" onClick={() => void reload()}>
             重新整理
           </button>
         </div>
       )}
-      {error && <p className="mb-3 text-[12px] text-[#FF453A]">{error}</p>}
+      {error && <p className="mb-3 text-[12px] text-[var(--console-danger)]">{error}</p>}
 
       <OrgMap
         trees={trees}
@@ -390,21 +390,21 @@ export default function GrillTreePanel({
       ) : null}
 
       {showNodeTrees && trees.length === 0 && blocked.length === 0 && pending.length === 0 && (
-        <p className={`${compact ? 'py-4' : 'py-16'} text-center text-[13px] text-[#636366]`}>
+        <p className={`${compact ? 'py-4' : 'py-16'} text-center text-[13px] text-[var(--console-sub)]`}>
           {compact ? '尚無進行中的質詢。複雜任務啟動後會掛在此角色上。' : '尚無質詢鏈。複雜任務啟動後會在此展開。'}
         </p>
       )}
 
       {showNodeTrees ? <div className="space-y-4">
         {trees.map((tree) => (
-          <article key={tree.tree_id} className="rounded-xl border border-white/[0.06] bg-[#1C1C1E] p-4">
+          <article key={tree.tree_id} className="rounded-xl border border-white/[0.06] bg-[var(--console-card)] p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div>
-                <div className="text-[12px] text-[#8E8E93]">run {tree.run_id.slice(0, 8)}</div>
-                <div className="text-[13px] text-[#F5F5F7]">{tree.goal || '（戰役）'}</div>
+                <div className="text-[12px] text-[var(--console-sub)]">run {tree.run_id.slice(0, 8)}</div>
+                <div className="text-[13px] text-[var(--console-ink)]">{tree.goal || '（戰役）'}</div>
               </div>
               {tree.open_count > 0 && (
-                <span className="rounded-full bg-[#FF453A]/15 px-2 py-0.5 text-[10px] text-[#FF453A]">
+                <span className="rounded-full bg-[color-mix(in_srgb,var(--console-danger)_15%,transparent)] px-2 py-0.5 text-[10px] text-[var(--console-danger)]">
                   {tree.open_count} 處阻塞
                 </span>
               )}
@@ -417,8 +417,8 @@ export default function GrillTreePanel({
                       type="button"
                       className={`rounded-md border px-2 py-1 text-[10px] ${
                         focusNodeId === node.node_id
-                          ? 'border-[#64D2FF] bg-[#64D2FF]/10 text-[#F5F5F7]'
-                          : 'border-white/10 bg-white/[0.03] text-[#AEAEB2]'
+                          ? 'border-[var(--console-accent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] text-[var(--console-ink)]'
+                          : 'border-white/10 bg-white/[0.03] text-[var(--console-sub)]'
                       }`}
                       title={node.success_criteria}
                       onClick={() => {
@@ -456,7 +456,7 @@ export default function GrillTreePanel({
       </div> : null}
 
       {embedded ? null : (
-        <p className="mt-6 text-center text-[11px] text-[#636366]">
+        <p className="mt-6 text-center text-[11px] text-[var(--console-sub)]">
           指揮鏈點層級開工作台；L1 開憲兵；L0 開環境與記憶核心。
         </p>
       )}

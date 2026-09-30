@@ -414,13 +414,13 @@ export function OrgReportTree({
         ))}
       </div>
       {layers.length < 2 ? (
-        <p className="mt-2 text-[10px] text-[#636366]">
+        <p className="mt-2 text-[10px] text-[var(--console-sub)]">
           {missing > 0 ? '下級不在此名冊' : reportsHere > 0 ? '直屬已列於上方' : '無上級，亦無直屬下級'}
         </p>
       ) : null}
-      {missing > 0 ? <p className="mt-2 text-[10px] text-[#636366]">另 {missing} 位下級不在此名冊</p> : null}
+      {missing > 0 ? <p className="mt-2 text-[10px] text-[var(--console-sub)]">另 {missing} 位下級不在此名冊</p> : null}
       {layers.length < 2 && canDelegate.length > 0 ? (
-        <p className="mt-2 text-[10px] text-[#636366]">
+        <p className="mt-2 text-[10px] text-[var(--console-sub)]">
           可委派 {canDelegate.slice(0, 4).map(roleLabel).join('、')}
           {canDelegate.length > 4 ? ` 等 ${canDelegate.length}` : ''}
         </p>
@@ -482,7 +482,7 @@ export function TaskStatusBlock({
           </button>
           );
         })}
-        {preview.length === 0 ? <p className="py-2 text-center text-[11px] text-[#636366]">尚無工作項</p> : null}
+        {preview.length === 0 ? <p className="py-2 text-center text-[11px] text-[var(--console-sub)]">尚無工作項</p> : null}
       </div>
     </div>
   );
@@ -523,7 +523,7 @@ export function TokenUsageBlock({ agent }: { agent: RoleAgent }) {
           </svg>
           <div className="rd-center">
             <span className="apple-data text-[15px] font-bold leading-none">{used.toLocaleString()}</span>
-            <span className="mt-0.5 text-[7.5px] uppercase tracking-wide text-[#636366]">tok</span>
+            <span className="mt-0.5 text-[7.5px] uppercase tracking-wide text-[var(--console-sub)]">tok</span>
           </div>
         </div>
         <div className="rd-tk-brk">
@@ -674,7 +674,7 @@ export function EventTimelineBlock({ events }: { events: AgentEvent[] }) {
     <div className="rd-sec">
       <div className="rd-tt">事件時間線</div>
       {events.length === 0 ? (
-        <p className="py-1 text-[11px] text-[#636366]">尚無此角色事件</p>
+        <p className="py-1 text-[11px] text-[var(--console-sub)]">尚無此角色事件</p>
       ) : (
         <div className="rd-ev">
           {events.slice(0, 8).map((ev, i) => {
@@ -683,10 +683,10 @@ export function EventTimelineBlock({ events }: { events: AgentEvent[] }) {
               <div key={`${ev.ts}-${ev.event}-${i}`} className="rd-ev-row">
                 <span className={`rd-ev-dot ${bad ? 'er' : 'go'}`} />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[10.5px] text-[#AEAEB2]">
+                  <div className="truncate text-[10.5px] text-[var(--console-sub)]">
                     {ev.title ? `${ev.title} — ${eventLabel(ev.event)}` : eventLabel(ev.event)}
                   </div>
-                  <div className="apple-data text-[8.5px] text-[#636366]">{fmtWhen(ev.ts)}</div>
+                  <div className="apple-data text-[8.5px] text-[var(--console-sub)]">{fmtWhen(ev.ts)}</div>
                 </div>
               </div>
             );
@@ -747,7 +747,7 @@ export function RahoChainBlock({ agent, onOpenGrill }: { agent: RoleAgent; onOpe
         ))}
       </div>
       {targets.length > 0 ? (
-        <p className="mt-2 text-[10px] text-[#636366]">
+        <p className="mt-2 text-[10px] text-[var(--console-sub)]">
           可質詢{' '}
           {targets.map((id, idx) => (
             <button
@@ -763,7 +763,7 @@ export function RahoChainBlock({ agent, onOpenGrill }: { agent: RoleAgent; onOpe
         </p>
       ) : null}
       {submit.length > 0 ? (
-        <p className="mt-1 text-[10px] text-[#636366]">
+        <p className="mt-1 text-[10px] text-[var(--console-sub)]">
           交付{' '}
           {submit.map((id, idx) => (
             <button
@@ -779,7 +779,7 @@ export function RahoChainBlock({ agent, onOpenGrill }: { agent: RoleAgent; onOpe
         </p>
       ) : null}
       {escalate.length > 0 && escalate.some((id) => !targets.includes(id)) ? (
-        <p className="mt-1 text-[10px] text-[#636366]">
+        <p className="mt-1 text-[10px] text-[var(--console-sub)]">
           可上呈{' '}
           {escalate
             .filter((id) => !targets.includes(id))
@@ -823,7 +823,7 @@ export function GrillFeedBlock({
     <div className="rd-sec">
       <div className="rd-tt">此角色質詢</div>
       {nodes.length === 0 ? (
-        <p className="py-1 text-[11px] text-[#636366]">尚無與此角色相關的質詢</p>
+        <p className="py-1 text-[11px] text-[var(--console-sub)]">尚無與此角色相關的質詢</p>
       ) : (
         <div className="rd-ev">
           {nodes.slice(0, 6).map((node) => (
@@ -835,11 +835,11 @@ export function GrillFeedBlock({
             >
               <span className="rd-ev-dot" style={{ background: rahoTone(node.status) }} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[10.5px] text-[#AEAEB2]">
+                <div className="truncate text-[10.5px] text-[var(--console-sub)]">
                   {nodeRoleLabel(node, 'from')} → {nodeRoleLabel(node, 'to')}
                 </div>
                 <div className="truncate text-[10px] text-[#EBEBF5]">{node.summary}</div>
-                <div className="apple-data text-[8.5px] text-[#636366]">
+                <div className="apple-data text-[8.5px] text-[var(--console-sub)]">
                   {kindLabel(node.kind_label || node.kind)} · {statusLabel(node.status)}
                 </div>
               </div>
@@ -864,14 +864,14 @@ export function L0ContextBlock({ snapshot }: { snapshot?: L0Snapshot | null }) {
           開核心
         </button>
       </div>
-      <p className="text-[11px] leading-relaxed text-[#AEAEB2]">
+      <p className="text-[11px] leading-relaxed text-[var(--console-sub)]">
         {radar?.bias_instructions || '環境壓力正常，依規格驗收。'}
       </p>
-      <p className={`mt-1 text-[10px] ${radar?.energy_save ? 'text-[#FF9F0A]' : 'text-[#636366]'}`}>
+      <p className={`mt-1 text-[10px] ${radar?.energy_save ? 'text-[var(--console-amber)]' : 'text-[var(--console-sub)]'}`}>
         壓力 {pressure}%{radar?.energy_save ? ' · 節能模式' : ''}
       </p>
-      {knowledge ? <p className="mt-1 text-[10px] text-[#8E8E93]">知識：{knowledge.content}</p> : null}
-      {lesson ? <p className="mt-1 text-[10px] text-[#8E8E93]">記憶：{lesson.summary}</p> : null}
+      {knowledge ? <p className="mt-1 text-[10px] text-[var(--console-sub)]">知識：{knowledge.content}</p> : null}
+      {lesson ? <p className="mt-1 text-[10px] text-[var(--console-sub)]">記憶：{lesson.summary}</p> : null}
     </div>
   );
 }

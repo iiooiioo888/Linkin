@@ -25,12 +25,12 @@ export default function LcLineChart({
       animation: false,
       tooltip: {
         trigger: 'axis',
-        backgroundColor: 'rgba(28,28,30,0.92)',
-        borderColor: 'rgba(255,255,255,0.08)',
-        textStyle: { color: '#F5F5F7', fontSize: 11 },
+        backgroundColor: 'rgba(25,24,21,0.94)',
+        borderColor: 'rgba(228,194,122,0.28)',
+        textStyle: { color: '#f4efe6', fontSize: 11 },
       },
       legend: named
-        ? { top: 0, textStyle: { color: '#AEAEB2', fontSize: 10 }, icon: 'circle', itemWidth: 8, itemHeight: 8 }
+        ? { top: 0, textStyle: { color: '#b3aa9c', fontSize: 10 }, icon: 'circle', itemWidth: 8, itemHeight: 8 }
         : undefined,
       grid: { left: 40, right: 12, top: named ? 28 : 10, bottom: 24, containLabel: false },
       xAxis: {

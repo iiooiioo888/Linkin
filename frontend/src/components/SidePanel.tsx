@@ -84,33 +84,33 @@ function SessionList({
   return (
     <>
       <div className="border-b border-white/[0.06] p-2.5">
-        <p className="mb-2 px-0.5 text-[10px] font-bold uppercase tracking-wider text-[#636366]">對話</p>
+        <p className="mb-2 px-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">對話</p>
         <button
           onClick={onNewSession}
-          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-[#F5F5F7] transition-colors hover:bg-white/[0.06]"
+          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-[var(--console-ink)] transition-colors hover:bg-white/[0.06]"
         >
           新對話
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-1.5">
         {sessions.length === 0 && (
-          <p className="mt-8 px-3 text-center text-[11px] text-[#636366]">尚無對話紀錄</p>
+          <p className="mt-8 px-3 text-center text-[11px] text-[var(--console-sub)]">尚無對話紀錄</p>
         )}
         {sessions.map((session) => (
           <div
             key={session.id}
             className={`group mb-0.5 flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 transition-colors ${
               session.id === activeSessionId
-                ? 'bg-white/[0.06] text-[#F5F5F7]'
-                : 'text-[#AEAEB2] hover:bg-white/[0.03] hover:text-[#F5F5F7]'
+                ? 'bg-white/[0.06] text-[var(--console-ink)]'
+                : 'text-[var(--console-sub)] hover:bg-white/[0.03] hover:text-[var(--console-ink)]'
             }`}
             onClick={() => onSelectSession(session.id)}
           >
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium text-[#F5F5F7]">
+              <p className="truncate text-[13px] font-medium text-[var(--console-ink)]">
                 {session.title || '新對話'}
               </p>
-              <p className="text-[10px] text-[#8E8E93]">{formatRelative(session.updatedAt)}</p>
+              <p className="text-[10px] text-[var(--console-sub)]">{formatRelative(session.updatedAt)}</p>
             </div>
             <button
               onClick={(e) => {
@@ -124,8 +124,8 @@ function SessionList({
               }}
               className={`shrink-0 rounded-lg px-1.5 py-1 text-[10px] transition-all ${
                 confirmingId === session.id
-                  ? 'bg-[#FF3B30]/20 text-[#FF3B30] opacity-100'
-                  : 'text-[#636366] opacity-0 hover:bg-[#FF3B30]/15 hover:text-[#FF3B30] group-hover:opacity-100'
+                  ? 'bg-[color-mix(in_srgb,var(--console-danger)_20%,transparent)] text-[var(--console-danger)] opacity-100'
+                  : 'text-[var(--console-sub)] opacity-0 hover:bg-[color-mix(in_srgb,var(--console-danger)_15%,transparent)] hover:text-[var(--console-danger)] group-hover:opacity-100'
               }`}
               aria-label="刪除會話"
             >
@@ -283,14 +283,14 @@ function AgentRoster({
       </div>
       {rows.length === 0 ? (
         <div className="px-4 py-8 text-center">
-          <p className="text-[12px] text-[#AEAEB2]">
+          <p className="text-[12px] text-[var(--console-sub)]">
             {searching ? '沒有符合搜尋的角色' : scope === 'alert' ? '目前沒有告警' : scope === 'live' ? '目前沒有限定角色' : '尚無名冊'}
           </p>
           {(scope !== 'all' || searching) && (
             <button
               type="button"
               onClick={clearFilters}
-              className="mt-2 text-[11px] text-[#64D2FF] hover:underline"
+              className="mt-2 text-[11px] text-[var(--console-accent)] hover:underline"
             >
               顯示全部角色
             </button>
@@ -325,7 +325,7 @@ function AgentRoster({
                 <span className={`ar-dot ${row.layer === 0 ? 'wait' : ''}`} />
                 <span className="min-w-0 flex-1 truncate">
                   {row.short}
-                  <span className="ml-1 text-[9px] text-[#636366]">{row.label}</span>
+                  <span className="ml-1 text-[9px] text-[var(--console-sub)]">{row.label}</span>
                 </span>
               </button>
             );
@@ -348,8 +348,8 @@ function AgentRoster({
               <span className={`ar-dot ${live ? 'on' : wait ? 'wait' : err ? 'err' : ''}`} />
               <span className="min-w-0 flex-1 truncate">
                 {agent.name}
-                <span className="ml-1 text-[9px] text-[#636366]">{agentRahoLabel(agent)}</span>
-                {agent.enabled === false ? <span className="ml-1 text-[9px] text-[#FF3B30]">停</span> : null}
+                <span className="ml-1 text-[9px] text-[var(--console-sub)]">{agentRahoLabel(agent)}</span>
+                {agent.enabled === false ? <span className="ml-1 text-[9px] text-[var(--console-danger)]">停</span> : null}
               </span>
               {count > 0 ? <span className="ar-rr">{count}</span> : null}
             </button>
@@ -395,21 +395,21 @@ function ApiRouteRoster() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 space-y-1.5 border-b border-white/[0.06] px-3 pb-3 pt-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#636366]">已配置的 API</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">已配置的 API</p>
           <button
             type="button"
             onClick={() => dispatchNewApiRoute()}
-            className="rounded-md px-1.5 py-0.5 text-[10px] text-[#64D2FF] hover:bg-white/[0.06]"
+            className="rounded-md px-1.5 py-0.5 text-[10px] text-[var(--console-accent)] hover:bg-white/[0.06]"
           >
             新增
           </button>
         </div>
-        <p className="text-[10px] text-[#8E8E93]">
+        <p className="text-[10px] text-[var(--console-sub)]">
           {routes.length} 組 · 策略 {strategy}
         </p>
       </div>
       {routes.length === 0 ? (
-        <p className="px-3 py-8 text-center text-[11px] text-[#636366]">
+        <p className="px-3 py-8 text-center text-[11px] text-[var(--console-sub)]">
           尚未加入 API。請在右側選擇供應商並填入金鑰。
         </p>
       ) : (
@@ -421,8 +421,8 @@ function ApiRouteRoster() {
               onClick={() => dispatchEditApiRoute(route.id)}
               className={`mx-1.5 mb-0.5 flex w-[calc(100%-12px)] items-center gap-2 rounded-lg px-2.5 py-1.5 text-left ${
                 activeId === route.id
-                  ? 'bg-white/[0.06] text-[#F5F5F7]'
-                  : 'text-[#AEAEB2] hover:bg-white/[0.03] hover:text-[#F5F5F7]'
+                  ? 'bg-white/[0.06] text-[var(--console-ink)]'
+                  : 'text-[var(--console-sub)] hover:bg-white/[0.03] hover:text-[var(--console-ink)]'
               }`}
             >
               <span
@@ -438,11 +438,11 @@ function ApiRouteRoster() {
                 }
               />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[12px] font-medium text-[#F5F5F7]">
+                <span className="block truncate text-[12px] font-medium text-[var(--console-ink)]">
                   {route.name}
-                  {route.is_default ? <span className="ml-1 text-[9px] text-[#64D2FF]">預設</span> : null}
+                  {route.is_default ? <span className="ml-1 text-[9px] text-[var(--console-accent)]">預設</span> : null}
                 </span>
-                <span className="block truncate text-[10px] text-[#636366]">
+                <span className="block truncate text-[10px] text-[var(--console-sub)]">
                   {route.provider_label || route.provider} · {route.allowed_models.length} 模型
                 </span>
               </span>
@@ -456,10 +456,10 @@ function ApiRouteRoster() {
 
 const TASK_STATUS_DOT: Record<string, string> = {
   pending: 'bg-[#FF9500]',
-  running: 'bg-[#007AFF] animate-pulse',
+  running: 'bg-[var(--console-accent)] animate-pulse',
   completed: 'bg-[#34C759]',
-  failed: 'bg-[#FF3B30]',
-  cancelled: 'bg-[#8E8E93]',
+  failed: 'bg-[var(--console-danger)]',
+  cancelled: 'bg-[var(--console-sub)]',
   interrupted: 'bg-[#FF9500]',
 };
 
@@ -523,11 +523,11 @@ function TaskRoster({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="搜尋任務／ID"
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] text-[#F5F5F7] placeholder:text-[#636366] outline-none focus:border-[#007AFF]/50"
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] text-[var(--console-ink)] placeholder:text-[var(--console-sub)] outline-none focus:border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)]"
         />
       </div>
       {filtered.length === 0 ? (
-        <p className="px-3 py-8 text-center text-[11px] text-[#636366]">
+        <p className="px-3 py-8 text-center text-[11px] text-[var(--console-sub)]">
           {tasks.length === 0 ? '尚無任務紀錄' : '無符合結果'}
         </p>
       ) : (
@@ -553,29 +553,29 @@ function TaskRoster({
                 >
                   <span className="inline-block w-2 font-mono text-[#48484A]">{open ? '▾' : '▸'}</span>
                   <span>{row.label}</span>
-                  <span className="ml-auto font-mono text-[10px] text-[#636366]">{row.count}</span>
+                  <span className="ml-auto font-mono text-[10px] text-[var(--console-sub)]">{row.count}</span>
                 </button>
               );
             }
             const { task } = row;
             const active = task.task_id === focusTaskId;
-            const dot = TASK_STATUS_DOT[task.status] ?? 'bg-[#8E8E93]';
+            const dot = TASK_STATUS_DOT[task.status] ?? 'bg-[var(--console-sub)]';
             return (
               <button
                 type="button"
                 onClick={() => onPick(task.task_id)}
                 className={`mx-2 mb-0.5 flex w-[calc(100%-16px)] items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors ${
                   active
-                    ? 'bg-white/[0.06] text-[#F5F5F7]'
-                    : 'text-[#AEAEB2] hover:bg-white/[0.03] hover:text-[#F5F5F7]'
+                    ? 'bg-white/[0.06] text-[var(--console-ink)]'
+                    : 'text-[var(--console-sub)] hover:bg-white/[0.03] hover:text-[var(--console-ink)]'
                 }`}
               >
                 <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12px] font-medium text-[#F5F5F7]">
+                  <span className="block truncate text-[12px] font-medium text-[var(--console-ink)]">
                     {task.query || task.task_id.slice(0, 8)}
                   </span>
-                  <span className="block truncate text-[10px] text-[#636366]">
+                  <span className="block truncate text-[10px] text-[var(--console-sub)]">
                     {task.resolved_path || task.strategy} · {task.phase}
                   </span>
                 </span>
@@ -817,8 +817,8 @@ export default function SidePanel({
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/[0.06] p-2 md:hidden">
-          <span className="text-[11px] font-bold text-[#AEAEB2]">導航</span>
-          <button onClick={onClose} className="rounded-lg px-2 py-0.5 text-[#8E8E93] hover:bg-white/[0.06]">
+          <span className="text-[11px] font-bold text-[var(--console-sub)]">導航</span>
+          <button onClick={onClose} className="rounded-lg px-2 py-0.5 text-[var(--console-sub)] hover:bg-white/[0.06]">
             ✕
           </button>
         </div>

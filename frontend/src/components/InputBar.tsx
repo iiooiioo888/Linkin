@@ -6,7 +6,6 @@ import { COMPANY_TEMPLATES } from '../types';
 import type { CompanyTemplate, TaskOptions } from '../types';
 import { openChatContextDetail, openContextModal } from '../lib/contextUi';
 import { useWallet } from '../hooks/useWallet';
-import InputCreditBar, { estimateCredits, MIN_SEND_CREDITS } from './chat/InputCreditBar';
 
 export interface SendOptions {
   executionStrategy: 'auto' | 'simple' | 'company';
@@ -25,9 +24,10 @@ interface InputBarProps {
    * 不得在此處自行 openContextModal() 以免回落其他會話軌跡。
    */
   onContextCommand?: (mode: 'detail' | 'peek') => void;
-  onOpenBilling?: () => void;
-  liveSpent?: number | null;
 }
+
+/** 餘額低於此值才擋發送；實際扣款由後端結算，輸入列不再顯示預估 */
+const MIN_SEND_CREDITS = 0.5;
 
 const STRATEGIES: { key: 'auto' | 'simple' | 'company'; label: string }[] = [
   { key: 'auto', label: '自動' },
@@ -38,13 +38,13 @@ const STRATEGIES: { key: 'auto' | 'simple' | 'company'; label: string }[] = [
 const SLASH_COMMANDS = [
   {
     cmd: '/context',
-    label: 'Context 詳細區',
-    hint: '對話底部：組成／瀏覽器／事件（dsh-context）',
+    label: '查看上下文',
+    hint: '在對話底部看這次用了哪些資料',
   },
   {
     cmd: '/context peek',
-    label: 'Context Peek',
-    hint: '浮動預覽模態（不離開當前頁）',
+    label: '預覽上下文',
+    hint: '彈出預覽，不離開目前對話',
   },
 ] as const;
 
@@ -53,8 +53,6 @@ export default function InputBar({
   onSend,
   compact = false,
   onContextCommand,
-  onOpenBilling,
-  liveSpent,
 }: InputBarProps) {
   const { t } = useTranslation();
   const { account } = useWallet(12000);
@@ -114,8 +112,7 @@ export default function InputBar({
   };
 
   const balance = account?.balance_credits ?? null;
-  const estCost = estimateCredits(text, executionStrategy);
-  const insufficient = balance !== null && balance < Math.max(MIN_SEND_CREDITS, estCost);
+  const insufficient = balance !== null && balance < MIN_SEND_CREDITS;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -171,18 +168,18 @@ export default function InputBar({
     <div className={`apple-input-bar shrink-0 ${compact ? '!px-0 !py-0 !border-0' : ''}`}>
       <div className={`relative mx-auto w-full ${compact ? '' : 'max-w-3xl'}`}>
         {showAdvanced && (
-          <div className="mb-2 rounded-xl border border-white/[0.06] bg-[#1C1C1E] p-3">
-            <p className="mb-2 text-[10px] font-medium text-[#636366]">進階</p>
+          <div className="mb-2 rounded-xl border border-white/[0.06] bg-[var(--console-card)] p-3">
+            <p className="mb-2 text-[10px] font-medium text-[var(--console-sub)]">進階</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {[
-                { label: '預算 ($)', value: budgetLimit, set: setBudgetLimit },
-                { label: '並行', value: maxParallel, set: setMaxParallel },
-                { label: '迭代', value: maxIterations, set: setMaxIterations },
-                { label: '審查', value: maxReviewRounds, set: setMaxReviewRounds },
-                { label: '門檻', value: passThreshold, set: setPassThreshold },
+                { label: '花費上限', value: budgetLimit, set: setBudgetLimit },
+                { label: '同時幾路', value: maxParallel, set: setMaxParallel },
+                { label: '重試次數', value: maxIterations, set: setMaxIterations },
+                { label: '審查次數', value: maxReviewRounds, set: setMaxReviewRounds },
+                { label: '通過分數', value: passThreshold, set: setPassThreshold },
               ].map((f) => (
                 <div key={f.label}>
-                  <label className="mb-0.5 block text-[10px] text-[#636366]">{f.label}</label>
+                  <label className="mb-0.5 block text-[10px] text-[var(--console-sub)]">{f.label}</label>
                   <input
                     type="number"
                     value={f.value}
@@ -198,14 +195,14 @@ export default function InputBar({
         )}
 
         {slashMatches.length > 0 && (
-          <div className="absolute bottom-full left-0 z-20 mb-2 w-72 overflow-hidden rounded-xl border border-white/[0.08] bg-[#1C1C1E] shadow-xl">
-            <p className="px-3 py-1.5 text-[10px] text-[#636366]">斜線命令</p>
+          <div className="absolute bottom-full left-0 z-20 mb-2 w-72 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--console-card)] shadow-xl">
+            <p className="px-3 py-1.5 text-[10px] text-[var(--console-sub)]">斜線命令</p>
             {slashMatches.map((c, i) => (
               <button
                 key={c.cmd}
                 type="button"
                 className={`flex w-full flex-col gap-0.5 px-3 py-2 text-left ${
-                  i === slashIndex ? 'bg-[#0A84FF]/15' : 'hover:bg-white/[0.04]'
+                  i === slashIndex ? 'bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)]' : 'hover:bg-white/[0.04]'
                 }`}
                 onMouseEnter={() => setSlashIndex(i)}
                 onClick={() => {
@@ -213,17 +210,17 @@ export default function InputBar({
                   else if (c.cmd === '/context peek') runContextCommand('peek');
                 }}
               >
-                <span className="font-mono text-[12px] text-[#64D2FF]">{c.cmd}</span>
-                <span className="text-[11px] text-[#F5F5F7]">{c.label}</span>
-                <span className="text-[10px] text-[#8E8E93]">{c.hint}</span>
+                <span className="font-mono text-[12px] text-[var(--console-accent)]">{c.cmd}</span>
+                <span className="text-[11px] text-[var(--console-ink)]">{c.label}</span>
+                <span className="text-[10px] text-[var(--console-sub)]">{c.hint}</span>
               </button>
             ))}
           </div>
         )}
 
         {showMenu && (
-          <div className="absolute bottom-full left-0 z-10 mb-2 w-52 rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-1.5 shadow-xl">
-            <p className="px-2 py-1 text-[10px] text-[#636366]">執行模式</p>
+          <div className="absolute bottom-full left-0 z-10 mb-2 w-52 rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-1.5 shadow-xl">
+            <p className="px-2 py-1 text-[10px] text-[var(--console-sub)]">執行模式</p>
             {STRATEGIES.map((s) => (
               <button
                 key={s.key}
@@ -231,8 +228,8 @@ export default function InputBar({
                 onClick={() => setExecutionStrategy(s.key)}
                 className={`flex w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] ${
                   executionStrategy === s.key
-                    ? 'bg-[#0A84FF]/15 text-[#64B5FF]'
-                    : 'text-[#AEAEB2] hover:bg-white/[0.04]'
+                    ? 'bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] text-[#64B5FF]'
+                    : 'text-[var(--console-sub)] hover:bg-white/[0.04]'
                 }`}
               >
                 {s.label}
@@ -258,47 +255,38 @@ export default function InputBar({
                 setShowAdvanced((v) => !v);
                 setShowMenu(false);
               }}
-              className="mt-1 w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[#AEAEB2] hover:bg-white/[0.04]"
+              className="mt-1 w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[var(--console-sub)] hover:bg-white/[0.04]"
             >
               進階選項…
             </button>
             <button
               type="button"
-              className="mt-1 w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[#AEAEB2] hover:bg-white/[0.04] hover:text-[#64D2FF]"
+              className="mt-1 w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[var(--console-sub)] hover:bg-white/[0.04] hover:text-[var(--console-accent)]"
               onClick={() => {
                 setShowMenu(false);
                 runContextCommand('detail');
               }}
             >
-              Context 詳細區（/context）
+              查看上下文
             </button>
             <button
               type="button"
-              className="mt-1 w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[#AEAEB2] hover:bg-white/[0.04] hover:text-[#64D2FF]"
+              className="mt-1 w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[var(--console-sub)] hover:bg-white/[0.04] hover:text-[var(--console-accent)]"
               onClick={() => {
                 setShowMenu(false);
                 runContextCommand('peek');
               }}
             >
-              Context Peek（/context peek）
+              預覽上下文
             </button>
             <a
               href="#/monitor/integrations"
-              className="mt-1 block w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[#AEAEB2] hover:bg-white/[0.04] hover:text-[#64D2FF]"
+              className="mt-1 block w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[var(--console-sub)] hover:bg-white/[0.04] hover:text-[var(--console-accent)]"
               onClick={() => setShowMenu(false)}
             >
-              外部整合（MemOS／Viking…）
+              外部工具
             </a>
           </div>
-        )}
-
-        {!compact && (
-          <InputCreditBar
-            text={text}
-            strategy={executionStrategy}
-            liveSpent={liveSpent}
-            onOpenBilling={onOpenBilling}
-          />
         )}
 
         <form onSubmit={handleSubmit} className="apple-composer">
@@ -321,8 +309,8 @@ export default function InputBar({
               type="button"
               onClick={() => setShowMenu((v) => !v)}
               disabled={disabled}
-              className={`rounded-lg px-2 py-1 text-[11px] text-[#98989D] hover:bg-white/[0.04] hover:text-[#F5F5F7] ${
-                showMenu ? 'bg-white/[0.06] text-[#F5F5F7]' : ''
+              className={`rounded-lg px-2 py-1 text-[11px] text-[var(--console-faint)] hover:bg-white/[0.04] hover:text-[var(--console-ink)] ${
+                showMenu ? 'bg-white/[0.06] text-[var(--console-ink)]' : ''
               }`}
             >
               {strategyLabel}

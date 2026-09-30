@@ -55,7 +55,7 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <p className="apple-title">即時產出</p>
-          <p className="mt-1 text-[10px] text-[#636366]">
+          <p className="mt-1 text-[10px] text-[var(--console-sub)]">
             {pathLabel}
             {running ? ' · 進行中' : ` · ${task.status}`}
             {(task.created_at ?? 0) > 0 && ` · ${eventClock(task.created_at as number)} 開始`}
@@ -65,7 +65,7 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
           <button
             type="button"
             onClick={() => onOpenTrace(task.task_id)}
-            className="rounded-lg border border-white/[0.08] px-2 py-1 text-[10px] font-medium text-[#8E8E93] hover:border-[#0A84FF]/40 hover:text-[#64B5FF]"
+            className="rounded-lg border border-white/[0.08] px-2 py-1 text-[10px] font-medium text-[var(--console-sub)] hover:border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] hover:text-[#64B5FF]"
           >
             軌跡
           </button>
@@ -81,12 +81,12 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
       ) : null}
 
       <MonitorSection title="當前階段" hint={phaseLabel} badge={running ? 'LIVE' : undefined}>
-        <p className="text-[12px] leading-relaxed text-[#AEAEB2]">{task.query.slice(0, 120)}</p>
+        <p className="text-[12px] leading-relaxed text-[var(--console-sub)]">{task.query.slice(0, 120)}</p>
       </MonitorSection>
 
       {liveThink && (
         <MonitorSection title="思考過程" hint={`${liveThink.length} 字`}>
-          <pre className="max-h-[220px] overflow-y-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[#AEAEB2]">
+          <pre className="max-h-[220px] overflow-y-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[var(--console-sub)]">
             {liveThink}
           </pre>
         </MonitorSection>
@@ -94,11 +94,11 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
 
       <MonitorSection title="生成內容" hint={liveText ? `${liveText.length} 字` : '等待寫入'}>
         {liveText ? (
-          <div className="markdown-body max-h-[320px] overflow-y-auto text-[12px] leading-relaxed text-[#F5F5F7]">
+          <div className="markdown-body max-h-[320px] overflow-y-auto text-[12px] leading-relaxed text-[var(--console-ink)]">
             <MarkdownBody markdown={liveText} className="" />
           </div>
         ) : (
-          <p className="py-6 text-center text-[11px] text-[#636366]">
+          <p className="py-6 text-center text-[11px] text-[var(--console-sub)]">
             {running ? '模型正在生成，內容會即時出現於此' : '尚無草稿'}
           </p>
         )}
@@ -132,18 +132,18 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
                       </div>
                       {think && (
                         <details className="mt-1.5">
-                          <summary className="cursor-pointer text-[10px] text-[#636366]">思考過程</summary>
-                          <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-[#8E8E93]">
+                          <summary className="cursor-pointer text-[10px] text-[var(--console-sub)]">思考過程</summary>
+                          <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-[var(--console-sub)]">
                             {think}
                           </pre>
                         </details>
                       )}
                       {output ? (
-                        <p className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[#AEAEB2]">
+                        <p className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[var(--console-sub)]">
                           {output}
                         </p>
                       ) : (
-                        <p className="mt-1 text-[11px] text-[#636366]">{running ? '此角色尚未寫入' : '無產出'}</p>
+                        <p className="mt-1 text-[11px] text-[var(--console-sub)]">{running ? '此角色尚未寫入' : '無產出'}</p>
                       )}
                     </div>
                   );
@@ -161,12 +161,12 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
               const body = eventText(ev);
               return (
                 <div key={`${ev.ts}-${ev.event}-${i}`} className="border-b border-white/[0.06] pb-2 last:border-0">
-                  <p className="flex items-baseline justify-between gap-2 text-[11px] font-bold text-[#F5F5F7]">
+                  <p className="flex items-baseline justify-between gap-2 text-[11px] font-bold text-[var(--console-ink)]">
                     <span className="min-w-0 truncate">{ev.event.replace(/_/g, ' ')}</span>
-                    <span className="shrink-0 font-mono text-[9px] font-normal text-[#636366]">{eventClock(ev.ts)}</span>
+                    <span className="shrink-0 font-mono text-[9px] font-normal text-[var(--console-sub)]">{eventClock(ev.ts)}</span>
                   </p>
                   {body && (
-                    <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[#AEAEB2]">
+                    <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-[11px] leading-relaxed text-[var(--console-sub)]">
                       {body}
                     </p>
                   )}

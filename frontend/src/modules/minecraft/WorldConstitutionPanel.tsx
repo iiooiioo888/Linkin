@@ -6,6 +6,7 @@ import { fetchConstitution, fetchEvents, fetchOverview, saveConstitution, type C
 import { activityNavPath } from '../../lib/monitorTabs';
 import { eventCardUri, factionBannerUri, schoolBannerUri } from '../../lib/visualCards';
 import MediaGallery from '../../components/media/MediaGallery';
+import { McHeader, McMetrics, McPage } from './McChrome';
 
 export default function WorldConstitutionPanel() {
   const [data, setData] = useState<Constitution | null>(null);
@@ -58,52 +59,45 @@ export default function WorldConstitutionPanel() {
   const factions = data?.factions ?? [];
   const schools = (data?.magic?.schools as Array<Record<string, string>> | undefined) ?? [];
 
+  const worldName = data?.world_name_zh_hant || data?.world_name || '靈境·Linkin';
+  const metrics = overview
+    ? [
+        { label: 'NPC', value: overview.npc_count },
+        { label: '任務', value: overview.quest_count },
+        { label: '事件', value: overview.event_count ?? events.length },
+        { label: '知識庫', value: overview.compliance.rag.chroma ? 'Chroma' : 'JSON' },
+      ]
+    : [];
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold">世界觀憲法</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            {data?.world_name_zh_hant || data?.world_name || '靈境·Linkin'} · 最高約束層
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button type="button" onClick={() => void load()} className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]">
-            重新整理
-          </button>
-          <button type="button" onClick={() => void save()} disabled={saving} className="rounded-xl border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-2 py-1 text-[11px] text-[#64D2FF] disabled:opacity-40">
-            {saving ? '儲存中' : '儲存憲法'}
-          </button>
-        </div>
-      </div>
+    <McPage>
+      <McHeader
+        title="世界觀"
+        lead={`${worldName}。憲法約束 NPC、任務與道具；連線與建築派發在橋接頁。`}
+        aside={
+          <>
+            <button type="button" onClick={() => void load()} className="mc-btn">重新整理</button>
+            <button type="button" onClick={() => void save()} disabled={saving} className="mc-btn is-primary">
+              {saving ? '儲存中' : '儲存憲法'}
+            </button>
+          </>
+        }
+      />
+      <div className="mc-workspace">
+      {error && <p className="mc-error">{error}</p>}
+      {message && <p className="mc-note">{message}</p>}
+      <McMetrics items={metrics} />
 
-      {error && <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
-      {message && <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">{message}</div>}
-
-      <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {[
-          { label: 'NPC', value: String(overview?.npc_count ?? '—') },
-          { label: '任務', value: String(overview?.quest_count ?? '—') },
-          { label: '事件', value: String(overview?.event_count ?? events.length ?? '—') },
-          { label: 'RAG', value: overview?.compliance.rag.chroma ? 'Chroma' : 'JSON 降級' },
-        ].map((card) => (
-          <div key={card.label} className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2">
-            <p className="text-[10px] text-[#8a8f98]">{card.label}</p>
-            <p className="text-sm font-medium">{card.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mb-4 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[11px] text-[#8a8f98]">
+      <div className="mb-4 rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2 text-[11px] text-[#8a8f98]">
         世界觀約束 NPC／任務／道具。Minecraft 連線、建築派發與審計在
-        <a href="#/modules/minecraft/bridge" className="ml-1 text-[#64D2FF] hover:underline">
+        <a href="#/modules/minecraft/bridge" className="ml-1 text-[var(--console-accent)] hover:underline">
           {activityNavPath('minecraft')}
         </a>
         。
       </div>
 
       <div className="mb-4 grid gap-3 lg:grid-cols-2">
-        <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
+        <section className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
           <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">三大陣營</h3>
           {factions.length > 0 && (
             <div className="mb-3">
@@ -126,15 +120,17 @@ export default function WorldConstitutionPanel() {
             {factions.map((faction) => (
               <div key={String(faction.id || faction.name)} className="rounded-lg border border-white/[0.06] px-2.5 py-2">
                 <p className="text-[13px] font-medium">{String(faction.name)} <span className="text-[10px] text-[#8a8f98]">{String(faction.alignment || '')}</span></p>
-                <p className="mt-1 text-[11px] text-[#AEAEB2]">{String(faction.creed || '')}</p>
+                <p className="mt-1 text-[11px] text-[var(--console-sub)]">{String(faction.creed || '')}</p>
               </div>
             ))}
           </div>
         </section>
-        <section className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
+        <section className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
           <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">靈絲術</h3>
-          <p className="text-[13px] font-medium">{String(data?.magic?.name || '—')} · {String(data?.magic?.alias || '')}</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-[#AEAEB2]">{String(data?.magic?.principle || '')}</p>
+          <p className="text-[13px] font-medium">
+            {[data?.magic?.name, data?.magic?.alias].filter(Boolean).join(' · ') || '尚未記載'}
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-[var(--console-sub)]">{String(data?.magic?.principle || '')}</p>
           {schools.length > 0 && (
             <div className="mt-3">
               <MediaGallery
@@ -157,7 +153,7 @@ export default function WorldConstitutionPanel() {
       </div>
 
       {events.length > 0 && (
-        <section className="mb-4 rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
+        <section className="mb-4 rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
           <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">歷史事件</h3>
           <div className="mb-3">
             <MediaGallery
@@ -174,19 +170,22 @@ export default function WorldConstitutionPanel() {
             {events.map((event) => (
               <li key={event.id} className="rounded-lg border border-white/[0.06] px-2.5 py-2">
                 <p className="text-[13px] font-medium">{event.title || event.kind || event.id}</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-[#AEAEB2]">{event.text}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-[var(--console-sub)]">{event.text}</p>
               </li>
             ))}
           </ul>
         </section>
       )}
 
-      <label className="mb-1 text-[11px] text-[#8a8f98]">憲法 JSON</label>
+      <details className="mc-panel">
+        <summary className="mc-panel__title">直接編輯憲法</summary>
       <textarea
         value={jsonText}
         onChange={(e) => setJsonText(e.target.value)}
-        className="min-h-[280px] flex-1 rounded-xl border border-white/[0.08] bg-black/30 p-3 font-mono text-[11px] leading-relaxed text-[#d4d4d8] outline-none focus:border-[#64D2FF]/40"
+        className="mt-3 min-h-[280px] w-full rounded-xl border p-3 font-mono text-[12px] leading-relaxed"
       />
-    </div>
+      </details>
+      </div>
+    </McPage>
   );
 }

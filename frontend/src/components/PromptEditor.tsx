@@ -17,7 +17,7 @@ export default function PromptEditor({
   language?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#1C1C1E]">
+    <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--console-card)]">
       <Editor
         height={height}
         language={language}
@@ -40,7 +40,7 @@ export default function PromptEditor({
           tabSize: 2,
         }}
         loading={
-          <div className="flex h-full items-center justify-center text-[12px] text-[#8E8E93]">
+          <div className="flex h-full items-center justify-center text-[12px] text-[var(--console-sub)]">
             載入編輯器…
           </div>
         }

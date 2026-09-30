@@ -331,7 +331,7 @@ export default function RahoOpsView({
         </main>
 
         {/* 不用 .rd-rp（其 width/overflow 為 unlayered，會蓋掉本页工具類），改以等效樣式 */}
-        <aside className="flex max-h-[46vh] w-full min-w-0 shrink-0 flex-col overflow-hidden border-t border-[var(--apple-hairline)] bg-[#141416] lg:max-h-none lg:w-[420px] lg:border-l lg:border-t-0">
+        <aside className="flex max-h-[46vh] w-full min-w-0 shrink-0 flex-col overflow-hidden border-t border-[var(--apple-hairline)] bg-[var(--console-card)] lg:max-h-none lg:w-[420px] lg:border-l lg:border-t-0">
           <SeatIODrawer
             row={selectedRow}
             detail={detail}

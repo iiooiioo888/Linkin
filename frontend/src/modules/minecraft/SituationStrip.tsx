@@ -1,9 +1,10 @@
 /**
- * 四維情境快照 — 市況／經濟／地土／玩家（唯讀 Phase 1）
+ * 四維情境快照 — 市況／經濟／地土／玩家。
  */
 import { useCallback, useState } from 'react';
 import { fetchMinecraftSituation, type MinecraftSituationSnapshot } from '../../api/linkin';
 import { formatTs, statusLabel, useVisibilityPoll } from './monitor/shared';
+import './minecraft.css';
 
 const DIM_LABELS: Record<string, string> = {
   market: '市況',
@@ -11,12 +12,6 @@ const DIM_LABELS: Record<string, string> = {
   land: '地土',
   players: '玩家',
 };
-
-function statusTone(status: string): string {
-  if (status === 'ok') return 'text-[var(--console-green)]';
-  if (status === 'partial') return 'text-[var(--console-amber)]';
-  return 'text-[var(--console-faint)]';
-}
 
 function DimCell({
   keyName,
@@ -26,16 +21,23 @@ function DimCell({
   block?: { status?: string; summary?: string; confidence?: number } | null;
 }) {
   const label = DIM_LABELS[keyName] || keyName;
-  const status = block?.status || 'unknown';
+  const status = block?.status || '';
+  const tone = status === 'ok' ? ' is-ok' : status === 'partial' ? ' is-partial' : '';
+  const summary = (block?.summary || '').trim();
   return (
-    <div className="min-w-0 flex-1 rounded border border-[var(--console-border)] bg-[var(--console-surface)] px-2 py-1.5">
-      <div className="flex items-center justify-between gap-1">
-        <span className="text-[10px] font-medium text-[#c9a961]">{label}</span>
-        <span className={`text-[9px] ${statusTone(status)}`}>{statusLabel(status)}</span>
+    <div className="mc-dim">
+      <div className="mc-row__top">
+        <span className="mc-dim__label">{label}</span>
+        {status ? <span className={`mc-dim__status${tone}`}>{statusLabel(status)}</span> : null}
       </div>
-      <p className="mt-0.5 line-clamp-2 text-[9px] text-[var(--console-sub)]">{block?.summary || '—'}</p>
+      <p className="mc-dim__summary">{summary || '這一面還沒有觀察。'}</p>
       {typeof block?.confidence === 'number' ? (
-        <span className="text-[8px] text-[var(--console-faint)]">信心 {Math.round(block.confidence * 100)}%</span>
+        <div className="mc-dim__bar">
+          <span>
+            <i style={{ width: `${Math.round(Math.min(1, Math.max(0, block.confidence)) * 100)}%` }} />
+          </span>
+          <em>信心 {Math.round(block.confidence * 100)}%</em>
+        </div>
       ) : null}
     </div>
   );
@@ -44,9 +46,10 @@ function DimCell({
 type SituationStripProps = {
   compact?: boolean;
   pollMs?: number;
+  embedded?: boolean;
 };
 
-export default function SituationStrip({ compact = false, pollMs = 15000 }: SituationStripProps) {
+export default function SituationStrip({ compact = false, pollMs = 15000, embedded = false }: SituationStripProps) {
   const [data, setData] = useState<MinecraftSituationSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,48 +73,60 @@ export default function SituationStrip({ compact = false, pollMs = 15000 }: Situ
   useVisibilityPoll(load, pollMs);
 
   if (error) {
-    return <p className="text-[10px] text-[var(--console-red)]">情境快照：{error}</p>;
+    return <p className="mc-error">情境讀取失敗：{error}</p>;
   }
 
   if (!data && loading) {
-    return <p className="text-[10px] text-[var(--console-faint)]">載入情境快照…</p>;
+    return <p className="mc-empty">正在讀取情境…</p>;
   }
 
   if (!data) {
-    return <p className="text-[10px] text-[var(--console-faint)]">情境快照不可用</p>;
+    return <p className="mc-empty">情境快照目前不可用。</p>;
   }
 
   const dims = ['market', 'economy', 'land', 'players'] as const;
+  const recs = Array.isArray(data.rule_recommendations) ? data.rule_recommendations.slice(0, 3) : [];
+  const hints = Array.isArray(data.hints) ? data.hints.slice(0, 4) : [];
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[10px] font-medium text-[var(--console-ink)]">四維情境</span>
-        <button type="button" className="console-btn-ghost text-[9px]" onClick={() => void load()} disabled={loading}>
-          {loading ? '刷新中…' : `更新 ${formatTs(data.generated_at)}`}
-        </button>
-      </div>
-      <div className={`flex gap-2 ${compact ? 'flex-col sm:flex-row' : 'flex-col md:flex-row'}`}>
+    <div className="mc-page__inner" style={{ gap: 12, maxWidth: 'none', margin: 0 }}>
+      {!embedded ? (
+        <div className="mc-row__top">
+          <span className="mc-panel__title">四維情境</span>
+          <span className="mc-panel__hint">{loading ? '讀取中' : formatTs(data.generated_at)}</span>
+          <button type="button" className="mc-btn" onClick={() => void load()} disabled={loading}>
+            重新整理
+          </button>
+        </div>
+      ) : (
+        <div className="mc-row__top">
+          <span className="mc-panel__hint">{loading ? '讀取中' : formatTs(data.generated_at)}</span>
+          <button type="button" className="mc-btn" onClick={() => void load()} disabled={loading}>
+            重新整理
+          </button>
+        </div>
+      )}
+      <div className="mc-situation">
         {dims.map((key) => (
           <DimCell key={key} keyName={key} block={data[key]} />
         ))}
       </div>
-      {!compact && Array.isArray(data.rule_recommendations) && data.rule_recommendations.length ? (
-        <div className="rounded border border-[var(--console-border)] bg-[var(--console-surface)] px-2 py-1.5">
-          <span className="text-[9px] font-medium text-[#c9a961]">規則建議</span>
-          <ul className="mt-1 space-y-0.5 text-[9px] text-[var(--console-sub)]">
-            {data.rule_recommendations.slice(0, 3).map((rec) => (
-              <li key={rec.id}>
-                <span className="text-[var(--console-cyan)]">[{rec.action_type}]</span> {rec.message}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {!compact && recs.length ? (
+        <ul className="mc-list">
+          {recs.map((rec) => (
+            <li key={rec.id} className="mc-row">
+              <span className="mc-row__status">{rec.action_type}</span>
+              <span>{rec.message}</span>
+            </li>
+          ))}
+        </ul>
       ) : null}
-      {!compact && Array.isArray(data.hints) && data.hints.length ? (
-        <ul className="list-inside list-disc space-y-0.5 text-[9px] text-[var(--console-faint)]">
-          {data.hints.slice(0, 4).map((hint, idx) => (
-            <li key={`${idx}-${hint}`}>{hint}</li>
+      {!compact && hints.length ? (
+        <ul className="mc-list">
+          {hints.map((hint, idx) => (
+            <li key={`${idx}-${hint}`} className="mc-note">
+              {hint}
+            </li>
           ))}
         </ul>
       ) : null}

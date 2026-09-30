@@ -68,6 +68,15 @@ function MoreIcon() {
   );
 }
 
+function CompanyIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path d="M3 15.5V7.2L9 3.5l6 3.7v8.3" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M7 15.5V10.5h4v5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function ConsoleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
@@ -148,11 +157,7 @@ function ActivityButtons({
             className={
               isBottom
                 ? `activity-tab-bottom touch-manipulation ${active ? 'is-active' : ''}`
-                : `mb-0.5 flex h-9 w-9 touch-manipulation items-center justify-center rounded-lg transition-colors ${
-                    active
-                      ? 'bg-white/[0.08] text-[#F5F5F7]'
-                      : 'text-[#636366] hover:bg-white/[0.04] hover:text-[#AEAEB2]'
-                  }`
+                : `activity-rail-btn touch-manipulation ${active ? 'is-active' : ''}`
             }
             title={item.label}
             aria-label={item.label}
@@ -193,6 +198,7 @@ function MobileBottomBar({
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
   const onMonitor = activeView === 'monitor' || activeView === 'traces' || activeView === 'task' || activeView === 'raho';
+  const companyActive = activity === 'company';
   const tasksActive =
     onMonitor && (monitorTab === 'tasks' || monitorTab === 'pipeline' || activeView === 'traces');
   const walletActive = onMonitor && monitorTab === 'models';
@@ -208,6 +214,15 @@ function MobileBottomBar({
         >
           <span className="activity-tab-bottom__icon"><ChatIcon active={activity === 'chat'} /></span>
           <span className="activity-tab-bottom__label">{t('nav.chat')}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onActivityChange('company')}
+          className={`activity-tab-bottom touch-manipulation ${companyActive ? 'is-active' : ''}`}
+          aria-current={companyActive ? 'page' : undefined}
+        >
+          <span className="activity-tab-bottom__icon"><CompanyIcon /></span>
+          <span className="activity-tab-bottom__label">{t('nav.company')}</span>
         </button>
         <button
           type="button"
@@ -286,6 +301,7 @@ export default function ActivityBar({
   const modules = useWorldModules();
   const items: BarItem[] = [
     { key: 'chat', label: t('nav.chat'), icon: (on) => <ChatIcon active={on} /> },
+    { key: 'company', label: t('nav.company'), icon: () => <CompanyIcon /> },
     { key: 'console', label: t('nav.console'), icon: () => <ConsoleIcon /> },
     ...modules.map((spec) => ({
       key: spec.id,
@@ -296,7 +312,7 @@ export default function ActivityBar({
   ];
 
   if (placement === 'bottom') {
-    const overflowItems = items.filter((i) => i.key !== 'chat');
+    const overflowItems = items.filter((i) => i.key !== 'chat' && i.key !== 'company');
     return (
       <MobileBottomBar
         activity={activity}
@@ -312,7 +328,7 @@ export default function ActivityBar({
 
   return (
     <nav
-      className="hidden w-11 shrink-0 flex-col items-center border-r border-white/[0.06] apple-chrome py-2 md:flex"
+      className="activity-rail hidden md:flex"
       aria-label="主活動"
     >
       <ActivityButtons

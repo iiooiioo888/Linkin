@@ -47,7 +47,10 @@ def _llm_ready() -> bool:
 
 
 def fallback_starter_pack(*, region: str = "织庭都", theme: str = "靈丝残章") -> dict[str, Any]:
-    """無 LLM 時的確定性草案包。"""
+    """無 LLM 時的確定性草案包。風格與屬性落在憲法允許區間。"""
+    from backend.linkin.app_agents import default_build_style
+
+    style = default_build_style(region)
     return {
         "story_arc": {
             "title": theme,
@@ -80,14 +83,14 @@ def fallback_starter_pack(*, region: str = "织庭都", theme: str = "靈丝残�
             "name": "靈丝殘章",
             "type": "消耗品",
             "rarity": "common",
-            "attributes": {"power": 12},
+            "attributes": {"power": 8},
             "description": f"與「{theme}」共鳴的碎片，可觸發後續任務線。",
         },
         "build_brief": {
             "title": f"{region}序章廣場",
             "region": region,
             "location": "0,64,0",
-            "style": "织庭盟",
+            "style": style,
             "prompt": f"帶金線紋樣的開場廣場，中央有契約碑，呼應「{theme}」。",
             "block_count": 800,
             "notes": "Phase 0 僅落庫意圖；MineMCP 建造見 Phase 2。",
@@ -103,30 +106,17 @@ def generate_starter_pack(*, region: str = "织庭都", theme: str = "靈丝残�
         return {"drafts": fallback_starter_pack(region=region, theme=theme), "source": "fallback"}
 
     try:
-        from backend.core.llm import call_llm
+        from backend.linkin.app_agents import dispatch_application_drafts
 
-        try:
-            from backend.linkin.prompts import inherit_prompt
-
-            system = inherit_prompt("narrative_director")
-        except Exception:
-            system = "你是靈境·Linkin 敘事總監。輸出須符合世界觀憲法，禁止現實政治與寫實暴力。"
-        prompt = (
-            "為 Minecraft RPG Phase 0 生成一組故事草案包。只輸出 JSON 物件，鍵固定為："
-            "story_arc, quest, npc, item, build_brief。\n"
-            "story_arc 含 title, summary, region, chapters[], tags[]。\n"
-            "quest 含 title, quest_type, difficulty, region, description, player_id。\n"
-            "npc 含 name, faction, occupation, personality, backstory, location, speech_style。\n"
-            "item 含 name, type(武器/防具/消耗品), rarity(common/uncommon/rare), attributes, description。\n"
-            "build_brief 含 title, region, location, style, prompt, block_count, notes。\n"
-            f"區域：{region}\n主題：{theme}\n"
+        dispatched = dispatch_application_drafts(
+            brief=f"區域 {region}，主題 {theme}",
+            keys=["story_arc", "quest", "npc", "item", "build_brief"],
+            region=region,
+            theme=theme,
         )
-        raw = (call_llm(prompt, system=system) or "").strip()
-        parsed = _extract_json_object(raw)
-        if parsed and all(k in parsed for k in ("story_arc", "quest", "npc", "item", "build_brief")):
-            return {"drafts": parsed, "source": "llm"}
+        return {"drafts": dispatched["drafts"], "source": "llm", "agents": dispatched["agents"]}
     except Exception:
-        logger.warning("一鍵草案 LLM 失敗，改用本地模板", exc_info=True)
+        logger.warning("一鍵草案應用席失敗，改用本地模板", exc_info=True)
 
     return {"drafts": fallback_starter_pack(region=region, theme=theme), "source": "fallback"}
 

@@ -14,9 +14,8 @@ import {
   ConsoleCenterColumn,
   ConsoleColumnScroll,
   PanelAlert,
-  PanelShell,
-  SectionHeader,
 } from '../../components/ui/ConsoleLayout';
+import { McHeader, McLinks, McPage } from './McChrome';
 import { minecraftHref, useVisibilityPoll } from './monitor/shared';
 
 const PLAYER_COLOR = '#ff6b6b';
@@ -331,7 +330,7 @@ function LayoutCanvas({
           </div>
         ) : null}
         <div className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/50 px-2 py-1 text-[9px] text-[#8a8f98]">
-          XZ 俯視 · {data.region || '—'}
+          XZ 俯視{data.region ? ` · ${data.region}` : ''}
           {(data.players?.length ?? 0) > 0 ? ` · 在線 ${data.players!.length}` : ''}
           · {data.note}
         </div>
@@ -346,12 +345,10 @@ function PlayerDetail({ player }: { player: LayoutPreviewPlayer }) {
   return (
     <div className="space-y-2 text-xs text-[var(--console-muted)]">
       <div className="font-medium text-[var(--console-text)]">{player.name}</div>
-      <div>座標：X {player.x} · Y {player.y ?? '—'} · Z {player.z}</div>
-      <div>維度：{player.dimension ?? '—'}</div>
+      <div>座標：X {player.x}{player.y != null ? ` · Y ${player.y}` : ''} · Z {player.z}</div>
+      {player.dimension ? <div>維度：{player.dimension}</div> : null}
       {player.health != null ? <div>生命：{player.health}</div> : null}
-      <div>
-        主手：{held ? `${held.name} ×${held.count}` : '—'}
-      </div>
+      <div>主手：{held ? `${held.name} ×${held.count}` : '空手'}</div>
       {inv.length ? (
         <div>背包摘要：{inv.map((i) => `${i.name}×${i.count}`).join('、')}</div>
       ) : null}
@@ -421,15 +418,20 @@ export default function LayoutPreviewPanel() {
   const selectedFeature = selected ?? (selectedPlayer ? null : (data?.features[0] ?? null));
 
   return (
-    <PanelShell scroll={false}>
+    <McPage fill>
+      <McHeader
+        title="布局預覽"
+        lead="用俯視圖看地圖計畫、建築與地標。玩家位置要等橋接連上才會疊上去。"
+        aside={
+          <button type="button" className="mc-btn" onClick={() => void load()}>
+            {loading ? '讀取中' : '重新整理'}
+          </button>
+        }
+      />
+      <div className="mc-workspace mc-workspace--fill">
       <ConsoleCenterColumn>
         <ConsoleColumnScroll className="flex min-h-0 flex-1 flex-col">
           {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
-
-          <SectionHeader
-            title="布局預覽"
-            description="Linkin 原生 2D 俯視 — 計畫要素 + 在線玩家疊加（玩家需橋接或 ingest）"
-          />
 
           {data?.players_live?.bridge_offline && !(data.players?.length) ? (
             <PanelAlert tone="notice">
@@ -445,20 +447,13 @@ export default function LayoutPreviewPanel() {
               <ConsoleCardHeader>尚無可預覽的布局</ConsoleCardHeader>
               <div className="space-y-3 px-3 pb-4 text-xs text-[var(--console-muted)]">
                 <p>請先從敘事工作區生成 map_plan，或提交建築／世界意圖。</p>
-                <div className="flex flex-wrap gap-2">
-                  <a href="#/modules/minecraft/narrative" className="console-btn">
-                    敘事工作區
-                  </a>
-                  <a href="#/modules/minecraft/map_plan" className="console-btn-ghost">
-                    地圖計畫
-                  </a>
-                  <a href="#/modules/minecraft/plugin-hub" className="console-btn-ghost">
-                    插件中心（Dynmap）
-                  </a>
-                  <a href="#/modules/minecraft/server-map" className="console-btn-ghost">
-                    伺服器地圖
-                  </a>
-                </div>
+                <McLinks
+                  links={[
+                    { href: '#/modules/minecraft/narrative', label: '敘事工作區', primary: true },
+                    { href: '#/modules/minecraft/map_plan', label: '地圖計畫' },
+                    { href: '#/modules/minecraft/server-map', label: '伺服器地圖' },
+                  ]}
+                />
               </div>
             </ConsoleCard>
           ) : data ? (
@@ -507,24 +502,31 @@ export default function LayoutPreviewPanel() {
 
                 <ConsoleCard>
                   <ConsoleCardHeader>統計</ConsoleCardHeader>
-                  <div className="px-3 pb-3 text-[10px] text-[var(--console-muted)]">
-                    <div>要素：{data.counts.total}</div>
-                    <div>在線玩家：{data.players?.length ?? 0}</div>
-                    <div>plots：{data.counts.plots}</div>
-                    <div>建築意圖：{data.counts.build_briefs}</div>
-                    <div>NPC 待落地：{data.counts.npc_intents}</div>
-                  </div>
+                  <dl className="mc-facts">
+                    {[
+                      data.counts.total ? { label: '要素', value: data.counts.total } : null,
+                      data.players?.length ? { label: '在線玩家', value: data.players.length } : null,
+                      data.counts.plots ? { label: '地塊', value: data.counts.plots } : null,
+                      data.counts.build_briefs ? { label: '建築', value: data.counts.build_briefs } : null,
+                      data.counts.npc_intents ? { label: '待落地 NPC', value: data.counts.npc_intents } : null,
+                    ]
+                      .filter((row): row is { label: string; value: number } => Boolean(row))
+                      .map((row) => (
+                        <div key={row.label}>
+                          <dt>{row.label}</dt>
+                          <dd>{row.value}</dd>
+                        </div>
+                      ))}
+                  </dl>
                 </ConsoleCard>
               </div>
             </div>
           ) : null}
 
-          {loading ? <p className="mt-2 text-xs text-[var(--console-faint)]">載入中…</p> : null}
-          <button type="button" className="console-btn-ghost mt-2 text-xs" onClick={() => void load()}>
-            重新載入
-          </button>
+          {loading && !data ? <p className="mc-empty">正在讀取布局…</p> : null}
         </ConsoleColumnScroll>
       </ConsoleCenterColumn>
-    </PanelShell>
+      </div>
+    </McPage>
   );
 }

@@ -24,7 +24,7 @@ import SidePanel from './SidePanel';
 import StatusBar from './StatusBar';
 import TopBar from './TopBar';
 
-export type ViewKey = 'chat' | 'monitor' | 'traces' | 'task' | 'raho';
+export type ViewKey = 'chat' | 'monitor' | 'traces' | 'task' | 'raho' | 'company';
 /** 控制台分頁。模組頁（世界觀／Admin…）是字串鍵，不進此聯合。 */
 export type ConsoleTab =
   | 'live'
@@ -131,6 +131,10 @@ export default function AppShell({
 
   // 切主視圖時：桌面展開側欄；行動端維持關閉以免遮罩蓋住主內容
   useEffect(() => {
+    if (activeView === 'company') {
+      setSidebarOpen(false);
+      return;
+    }
     setSidebarOpen(isDesktop);
   }, [activeView, isDesktop]);
 
@@ -145,6 +149,7 @@ export default function AppShell({
   useEffect(() => {
     // 二級整頁（軌跡／任務詳情／席位監察）不參與「上次分頁」記憶，
     // 否則會把它們帶進來的 monitorTab 預設值寫回控制台記憶
+    if (activeView === 'company') return;
     if (activeView === 'traces' || activeView === 'task' || activeView === 'raho') {
       lastTabByActivity.current.console = lastTabByActivity.current.console ?? 'live';
       return;
@@ -156,6 +161,11 @@ export default function AppShell({
 
   const handleActivityChange = useCallback(
     (next: ActivityKey) => {
+      if (next === 'company') {
+        setSidebarOpen(false);
+        if (activity !== 'company') onViewChange('company');
+        return;
+      }
       if (isDesktop) setSidebarOpen(true);
       if (next === activity) return;
       if (next === 'chat') {
@@ -220,6 +230,7 @@ export default function AppShell({
         />
 
         {/* 侧面板（移动端覆盖层） */}
+        {activeView !== 'company' && (
         <SidePanel
           activeView={activeView}
           sessions={sessions}
@@ -243,6 +254,7 @@ export default function AppShell({
           labSubTab={labSubTab}
           onLabSubTabChange={onLabSubTabChange}
         />
+        )}
 
         {/* 主内容区 */}
         <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col">{children}</main>

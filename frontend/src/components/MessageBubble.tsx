@@ -176,10 +176,10 @@ export default function MessageBubble({
             <div className="evo-msg-assistant space-y-3">
               {thinking && (
                 <details open={showThinkProgress} className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
-                  <summary className="cursor-pointer text-[11px] font-medium text-[#8E8E93]">
+                  <summary className="cursor-pointer text-[11px] font-medium text-[var(--console-sub)]">
                     思考過程{showThinkProgress ? ' · 進行中' : taskTerminal ? ' · 已完成' : ''}
                   </summary>
-                  <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[#AEAEB2]">
+                  <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[var(--console-sub)]">
                     {thinking}
                   </pre>
                 </details>
@@ -187,24 +187,17 @@ export default function MessageBubble({
               {visible ? (
                 <div className="markdown-body">
                   {runningTask && (
-                    <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-[#636366]">
-                      生成中
-                    </p>
+                    <p className="mb-2 text-[11px] text-[var(--console-sub)]">生成中</p>
                   )}
-                  {!runningTask && visible && message.taskState && !taskTerminal ? (
-                    <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-[#636366]">
-                      回覆
-                    </p>
-                  ) : null}
                   <MarkdownBody markdown={visible} />
                 </div>
               ) : (
                 message.streaming && !thinking && (
-                  <div className="flex items-center gap-2 py-1 text-[13px] text-[#636366]">
+                  <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--console-sub)]">
                     <span className="inline-flex gap-1">
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#636366]" />
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#636366] [animation-delay:120ms]" />
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#636366] [animation-delay:240ms]" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--console-sub)]" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--console-sub)] [animation-delay:120ms]" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--console-sub)] [animation-delay:240ms]" />
                     </span>
                   </div>
                 )
@@ -219,25 +212,22 @@ export default function MessageBubble({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[11px] text-[#48484A] opacity-70 transition-opacity group-hover:opacity-100">
           <span>{formatTime(message.timestamp)}</span>
           {message.meta?.score != null && (
-            <span className="text-[#30D158]">{message.meta.score.toFixed(1)}</span>
+            <span className="text-[var(--console-green)]">{message.meta.score.toFixed(1)}</span>
           )}
           {!!message.meta?.iteration && <span>{message.meta.iteration} 輪</span>}
-          {message.meta?.billingFootnote ? (
-            <span className="text-[#64D2FF]" title="本次扣款摘要">{message.meta.billingFootnote}</span>
-          ) : null}
           {message.meta?.multiDim && (
-            <button type="button" onClick={() => setShowRadar((v) => !v)} className="hover:text-[#F5F5F7]">
+            <button type="button" onClick={() => setShowRadar((v) => !v)} className="hover:text-[var(--console-ink)]">
               {showRadar ? '收起評分' : '評分'}
             </button>
           )}
-          <button type="button" onClick={() => void handleCopy()} className="hover:text-[#F5F5F7]">
+          <button type="button" onClick={() => void handleCopy()} className="hover:text-[var(--console-ink)]">
             {copied ? '已複製' : '複製'}
           </button>
           <button
             type="button"
             onClick={() => void handleFeedback(2)}
             disabled={!!feedbackSent}
-            className={`disabled:opacity-30 ${feedbackSent === 2 ? 'text-[#30D158]' : 'hover:text-[#F5F5F7]'}`}
+            className={`disabled:opacity-30 ${feedbackSent === 2 ? 'text-[var(--console-green)]' : 'hover:text-[var(--console-ink)]'}`}
           >
             讚
           </button>
@@ -245,7 +235,7 @@ export default function MessageBubble({
             type="button"
             onClick={() => void handleFeedback(1)}
             disabled={!!feedbackSent}
-            className={`disabled:opacity-30 ${feedbackSent === 1 ? 'text-[#FF453A]' : 'hover:text-[#F5F5F7]'}`}
+            className={`disabled:opacity-30 ${feedbackSent === 1 ? 'text-[var(--console-danger)]' : 'hover:text-[var(--console-ink)]'}`}
           >
             差
           </button>

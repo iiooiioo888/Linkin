@@ -81,7 +81,7 @@ function JsonBlock({ value }: { value: unknown }) {
   if (value == null) return null;
   const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   return (
-    <pre className="mt-2 max-h-48 overflow-auto rounded-lg border border-white/[0.06] bg-black/40 p-2 text-[10px] leading-relaxed text-[#AEAEB2]">
+    <pre className="mt-2 max-h-48 overflow-auto rounded-lg border border-white/[0.06] bg-black/40 p-2 text-[10px] leading-relaxed text-[var(--console-sub)]">
       {text}
     </pre>
   );
@@ -152,11 +152,11 @@ function IntegrationCard({
           <p className="mt-1 text-[11px] leading-relaxed text-[var(--console-sub)]">{item.summary}</p>
           <p className="mt-1 font-mono text-[10px] text-[var(--console-faint)]">{item.base_url}</p>
         </div>
-        <label className="flex shrink-0 cursor-pointer items-center gap-2 text-[11px] text-[#AEAEB2]">
+        <label className="flex shrink-0 cursor-pointer items-center gap-2 text-[11px] text-[var(--console-sub)]">
           <span>{item.enabled ? '啟用' : '關閉'}</span>
           <input
             type="checkbox"
-            className="accent-[#64D2FF]"
+            className="accent-[var(--console-accent)]"
             checked={item.enabled}
             disabled={busy}
             onChange={(e) => onToggle(e.target.checked)}
@@ -213,7 +213,7 @@ function RecallWorkbench({ enabled }: { enabled: boolean }) {
           <h3 className="text-[13px] font-semibold text-[var(--console-ink)]">召回試跑</h3>
           <p className="text-[11px] text-[var(--console-sub)]">MemOS ＋ OpenViking ＋ WeKnora → 注入片段（不經 LLM）</p>
         </div>
-        <button type="button" className="text-[11px] text-[#0A84FF]" onClick={jumpToL0Kernel}>
+        <button type="button" className="text-[11px] text-[var(--console-accent)]" onClick={jumpToL0Kernel}>
           開啟 L0 核心 →
         </button>
       </div>
@@ -242,7 +242,7 @@ function RecallWorkbench({ enabled }: { enabled: boolean }) {
       {!enabled ? <p className="mt-2 text-[10px] text-[var(--console-faint)]">請先啟用至少一個召回類整合。</p> : null}
       {result ? (
         <div className="mt-3 space-y-2">
-          <div className="flex flex-wrap gap-2 text-[10px] text-[#AEAEB2]">
+          <div className="flex flex-wrap gap-2 text-[10px] text-[var(--console-sub)]">
             <span>原因碼 {result.reason_codes?.length ?? 0}</span>
             <span>降級來源 {(result.degraded_sources ?? []).join(', ') || '無'}</span>
           </div>
@@ -382,8 +382,8 @@ function OuroborosActions() {
           ambiguity（≤0.2 才准 Seed）
           <input className={`${inputCls} mt-1 w-28`} value={ambiguity} onChange={(e) => setAmbiguity(e.target.value)} />
         </label>
-        <label className="flex items-center gap-1.5 pb-1 text-[11px] text-[#AEAEB2]">
-          <input type="checkbox" className="accent-[#64D2FF]" checked={force} onChange={(e) => setForce(e.target.checked)} />
+        <label className="flex items-center gap-1.5 pb-1 text-[11px] text-[var(--console-sub)]">
+          <input type="checkbox" className="accent-[var(--console-accent)]" checked={force} onChange={(e) => setForce(e.target.checked)} />
           force 繞過閘門
         </label>
       </div>
@@ -574,11 +574,11 @@ export default function IntegrationsPanel() {
             <p>
               MemOS · OpenViking · WeKnora · Yao · Ouroboros · OpenPencil。預設關閉；啟用與動作皆為顯式，fail-open
               不阻斷主任務。深鏈：
-              <code className="ml-1 text-[10px] text-[#AEAEB2]">#/monitor/integrations/memos</code>
+              <code className="ml-1 text-[10px] text-[var(--console-sub)]">#/monitor/integrations/memos</code>
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full border border-white/[0.08] px-2.5 py-1 text-[10px] text-[#AEAEB2]">
+            <span className="rounded-full border border-white/[0.08] px-2.5 py-1 text-[10px] text-[var(--console-sub)]">
               已啟用 {summary.enabled}/{summary.total}
               {summary.degraded ? ` · 降級 ${summary.degraded}` : ''}
             </span>

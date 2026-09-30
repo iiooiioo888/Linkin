@@ -28,15 +28,15 @@ export function routeProbeTone(route: ApiRoutePublic): RouteProbeTone {
 export function routeProbeDotClass(tone: RouteProbeTone): string {
   switch (tone) {
     case 'disabled':
-      return 'bg-[#8E8E93]';
+      return 'bg-[var(--console-sub)]';
     case 'needsKey':
-      return 'bg-[#FF9F0A]';
+      return 'bg-[var(--console-amber)]';
     case 'auth':
-      return 'bg-[#FF453A]';
+      return 'bg-[var(--console-danger)]';
     case 'warn':
-      return 'bg-[#FF9F0A]';
+      return 'bg-[var(--console-amber)]';
     default:
-      return 'bg-[#30D158]';
+      return 'bg-[var(--console-green)]';
   }
 }
 

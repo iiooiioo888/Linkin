@@ -1,6 +1,7 @@
 {
   "nav": {
     "chat": "對話",
+    "company": "公司",
     "console": "控制台",
     "linkin": "Minecraft",
     "minecraft": "Minecraft",
@@ -33,18 +34,11 @@
   },
   "chat": {
     "emptyTitle": "開始對話",
-    "emptySubtitle": "簡單任務即時生成 · 複雜任務多角色協作",
-    "emptyPipelineHint": "送出訊息後，任務會依管線階段推進（感知 → 生成 → 評估 → 反思 → 輸出）。密集監控台留給運維人員，日常對話以精簡管線條為主。",
-    "pipelineRunning": "管線進行中",
-    "pinMonitor": "展開監控",
-    "monitorPinned": "已展開監控",
-    "balance": "餘額",
-    "estCost": "預估",
-    "liveCost": "已耗",
+    "emptySubtitle": "寫下要完成的事。短問題直接回答，較大的任務會自動分工。",
+    "pipelineRunning": "進行中",
+    "pinMonitor": "查看細節",
+    "monitorPinned": "已展開細節",
     "insufficientBalance": "積分不足，請先充值",
-    "lowBalanceWarn": "餘額可能不足以完成此任務",
-    "openWallet": "調用用量",
-    "estHint": "預估",
     "send": "發送"
   },
   "billing": {
@@ -59,9 +53,9 @@
     "cacheSavings": "快取節省"
   },
   "onboarding": {
-    "title": "開始任務",
-    "body": "在下方輸入需求即可啟動對話；複雜任務會自動走多角色管線。建議先使用「自動」執行模式。",
-    "monitorNote": "右側密集監控台適合運維；日常對話以精簡管線條為主。",
+    "title": "開始對話",
+    "body": "在下方寫下要完成的事。執行模式預設為自動。",
+    "monitorNote": "",
     "startCta": "開始對話"
   },
   "monitorAlert": {
@@ -106,7 +100,7 @@
     "accountHubHint": "Hub 用戶呼叫日限額，與角色 USD 預算分開",
     "accountLinkinCredits": "用量額度",
     "accountCreditsHint": "平台任務用量餘額，不與角色 USD 預算混算",
-    "creditsUnit": "單位",
+    "creditsUnit": "積分",
     "creditsMonthlyUsed": "本月已用 {{used}} / {{quota}}"
   },
   "mobileShell": {
@@ -149,8 +143,8 @@
     "dismiss": "關閉"
   },
   "gate": {
-    "titlePrefix": "重構 ",
-    "subtitle": "多角色編排控制面",
+    "titlePrefix": "靈境 ",
+    "subtitle": "登入後開始對話。",
     "account": "帳號",
     "secret": "密碼",
     "enter": "登入",

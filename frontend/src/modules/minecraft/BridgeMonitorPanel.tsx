@@ -11,20 +11,10 @@ import {
   type MinecraftBridgeSetup,
   type MinecraftStatus,
 } from '../../api/linkin';
-import { ResourceGauges } from '../../components/ui/monitor';
-import {
-  ConsoleCard,
-  ConsoleCardHeader,
-  ConsoleCenterColumn,
-  ConsoleColumnScroll,
-  PanelAlert,
-  PanelShell,
-  WarnBar,
-} from '../../components/ui/ConsoleLayout';
 import AiEventsPanel from './monitor/AiEventsPanel';
+import { McHeader, McLinks, McPage, McPanel } from './McChrome';
 import {
   BridgeSetupCard,
-  bridgeKpi,
   bridgeNeedsSetup,
   formatBridgeAuditLine,
   formatBridgeProbeLine,
@@ -59,7 +49,7 @@ export default function BridgeMonitorPanel() {
             ts: String(e.ts),
             tool: `${e.domain}/${e.action}`,
             ok: e.status === 'ok',
-            error: e.bridge_offline ? 'bridge_offline' : e.details?.error as string,
+            error: e.bridge_offline ? 'bridge_offline' : (e.details?.error as string),
             dry_run: e.dry_run,
           })),
         );
@@ -83,74 +73,73 @@ export default function BridgeMonitorPanel() {
     }
   };
 
-  const bridge = bridgeKpi(status ?? undefined);
   const probeLine = formatBridgeProbeLine(setup, status?.probe ?? undefined);
   const setupPending = bridgeNeedsSetup(status ?? undefined, setup);
-  const plainStatus = status?.connected
-    ? 'MineMCP 已連線，可執行落地操作。'
+  const headline = status?.connected
+    ? 'MineMCP 已連線，可以對世界做落地操作。'
     : status?.dry_run
-      ? `乾跑模式：工具呼叫僅記錄審計，不寫入世界。${probeLine ? ` 探測：${probeLine}` : ''}`
+      ? '目前是乾跑：呼叫只記審計，不會寫進世界。'
       : status?.enabled
-        ? `已啟用但未連線。${probeLine || '請確認 MineMCP 插件是否運行、Token 是否正確。'}`
-        : '橋接未啟用：請設定 EVOL_MC_MCP_ENABLED=true 與 TOKEN。';
+        ? '橋接已啟用，但還沒連上 MineMCP。'
+        : '橋接尚未啟用。';
+
+  const facts = [
+    status?.url ? { label: '位址', value: status.url.replace(/\/\/[^@]+@/, '//***@') } : null,
+    status?.world ? { label: '世界', value: status.world } : null,
+    { label: '即時寫入', value: status?.live ? '可以' : '不行' },
+    { label: '乾跑', value: status?.dry_run ? '是' : '否' },
+  ].filter((row): row is { label: string; value: string } => Boolean(row));
 
   return (
-    <PanelShell>
-      <ConsoleCenterColumn>
-        <ConsoleColumnScroll>
-          {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
-          {setupPending ? (
-            <WarnBar>
-              橋接設定未完成或尚未連線 — 請依下方 checklist 設定環境變數；探測結果與審計會標示「本地乾跑」或「未連線」。
-            </WarnBar>
-          ) : null}
-          <ConsoleCard>
-            <div className="flex items-center justify-between gap-2 border-b border-[var(--console-border)] px-3 py-2">
-              <ConsoleCardHeader className="border-0 p-0">橋接健康 · 狀態 / 探測 / 審計</ConsoleCardHeader>
-              <button type="button" className="console-btn-ghost text-xs" disabled={busy} onClick={() => void onProbe()}>
-                {busy ? '探測中…' : 'Ping 探測'}
-              </button>
+    <McPage>
+      <McHeader
+        title="橋接健康"
+        lead="MineMCP 是否啟用、憑證是否齊、探測是否真的打到伺服器。這裡不顯示密鑰。"
+        aside={
+          <button type="button" className="rd-btn" disabled={busy} onClick={() => void onProbe()}>
+            {busy ? '探測中…' : '探測連線'}
+          </button>
+        }
+      />
+      {error ? <p className="mc-error">{error}</p> : null}
+      {setupPending ? (
+        <p className="mc-note">設定還沒完成。補齊環境變數後再探測，監控才會反映伺服器現場。</p>
+      ) : null}
+
+      <McPanel title="連線">
+        <p className="mc-note">{headline}</p>
+        {probeLine ? <p className="mc-note" style={{ marginTop: 8 }}>{probeLine}</p> : null}
+        <dl className="mc-facts" style={{ marginTop: 12 }}>
+          {facts.map((fact) => (
+            <div key={fact.label}>
+              <dt>{fact.label}</dt>
+              <dd>{fact.value}</dd>
             </div>
-            <div className="flex flex-wrap gap-4 px-3 pb-3">
-              <ResourceGauges gauges={[{ label: 'MCP', pct: bridge.pct, color: bridge.color }]} />
-              <div className="text-xs text-[var(--console-muted)]">
-                <div>狀態：{bridge.label}</div>
-                <div>URL：{status?.url ? status.url.replace(/\/\/[^@]+@/, '//***@') : '—'}</div>
-                <div>世界：{status?.world ?? '—'}</div>
-                <div>Live：{status?.live ? '是' : '否'} · Dry-run：{status?.dry_run ? '是' : '否'}</div>
-                <div className="mt-2 rounded bg-[var(--console-card)] p-2 text-[var(--console-text)]">{plainStatus}</div>
-              </div>
-            </div>
-          </ConsoleCard>
-          <ConsoleCard className="mt-3">
-            <ConsoleCardHeader>環境配置 · 不顯示密鑰</ConsoleCardHeader>
-            <div className="px-3 pb-3">
-              <BridgeSetupCard setup={setup} probe={status?.probe} onProbe={() => void onProbe()} probing={busy} />
-            </div>
-          </ConsoleCard>
-          <ConsoleCard className="mt-3">
-            <ConsoleCardHeader>最近審計 / 錯誤</ConsoleCardHeader>
-            {!bridgeEvents.length ? (
-              <p className="px-3 pb-3 text-xs text-[var(--console-faint)]">尚無橋接事件 — 探測或執行工具後會出現。</p>
-            ) : (
-              <ul className="divide-y divide-[var(--console-border)] text-xs">
-                {bridgeEvents.slice(0, 12).map((row, idx) => (
-                  <li key={`${row.ts}-${idx}`} className="px-3 py-2">
-                    <div className="text-[var(--console-faint)]">{row.ts ? formatTs(Number(row.ts)) : '—'}</div>
-                    <div className={row.ok || row.dry_run ? 'text-[var(--console-muted)]' : 'text-[var(--console-red)]'}>
-                      {formatBridgeAuditLine(row)}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </ConsoleCard>
-          <AiEventsPanel compact />
-          <p className="mt-2 text-xs text-[var(--console-faint)]">
-            完整工具呼叫請使用「橋接」操作面板（<a href={minecraftHref('minecraft')} className="text-[var(--console-accent)] hover:underline">橋接</a>）。
-          </p>
-        </ConsoleColumnScroll>
-      </ConsoleCenterColumn>
-    </PanelShell>
+          ))}
+        </dl>
+      </McPanel>
+
+      <McPanel title="環境變數">
+        <BridgeSetupCard setup={setup} probe={status?.probe} onProbe={() => void onProbe()} probing={busy} />
+      </McPanel>
+
+      <McPanel title="最近紀錄">
+        {!bridgeEvents.length ? (
+          <p className="mc-empty">探測或呼叫工具之後，紀錄會出現在這裡。</p>
+        ) : (
+          <ul className="mc-list">
+            {bridgeEvents.slice(0, 12).map((row, idx) => (
+              <li key={`${row.ts}-${idx}`} className="mc-row">
+                {row.ts ? <p className="mc-row__meta">{formatTs(Number(row.ts))}</p> : null}
+                <p className={row.ok || row.dry_run ? 'mc-note' : 'mc-error'}>{formatBridgeAuditLine(row)}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </McPanel>
+
+      <AiEventsPanel compact />
+      <McLinks links={[{ href: minecraftHref('minecraft'), label: '打開橋接操作', primary: true }]} />
+    </McPage>
   );
 }

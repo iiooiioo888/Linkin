@@ -24,7 +24,6 @@ import {
   isGrillInteractive,
   isRunningTaskStatus,
   isTerminalTaskStatus,
-  numBudget,
   resolveContextTaskId,
   runningTaskMessage,
   wsFiles,
@@ -60,9 +59,6 @@ interface ChatViewProps {
   onDecisionPending?: (hasPending: boolean) => void;
   onDecisionResolved?: (decisionId?: string) => void;
   onTaskStatePatch?: (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => void;
-  onOpenBilling?: () => void;
-  /** SSE 本輪實際扣款（優先於任務預算 liveSpent） */
-  liveSpent?: number | null;
 }
 
 export default function ChatView({
@@ -85,8 +81,6 @@ export default function ChatView({
   onDecisionPending,
   onDecisionResolved,
   onTaskStatePatch,
-  onOpenBilling,
-  liveSpent: sseLiveSpent,
 }: ChatViewProps) {
   const live = activeTaskMessage(messages);
   const runningMsg = runningTaskMessage(messages);
@@ -281,13 +275,13 @@ export default function ChatView({
   const banners = (
     <>
       {llmConfigured === false && (
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#FF9F0A]/20 bg-[#FF9F0A]/8 px-4 py-2 sm:px-6">
-          <p className="text-[12px] text-[#FF9F0A]">尚未配置 API。請先加入千問／DeepSeek／Kimi／OpenRouter。</p>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--console-amber)_20%,transparent)] bg-[color-mix(in_srgb,var(--console-amber)_8%,transparent)] px-4 py-2 sm:px-6">
+          <p className="text-[12px] text-[var(--console-amber)]">尚未配置 API。請先加入千問／DeepSeek／Kimi／OpenRouter。</p>
           {onOpenSettings && (
             <button
               type="button"
               onClick={onOpenSettings}
-              className="shrink-0 rounded-lg bg-[#FF9F0A]/15 px-2.5 py-1 text-[11px] font-medium text-[#FF9F0A] hover:bg-[#FF9F0A]/25"
+              className="shrink-0 rounded-lg bg-[color-mix(in_srgb,var(--console-amber)_15%,transparent)] px-2.5 py-1 text-[11px] font-medium text-[var(--console-amber)] hover:bg-[color-mix(in_srgb,var(--console-amber)_25%,transparent)]"
             >
               加入 API
             </button>
@@ -330,15 +324,10 @@ export default function ChatView({
     />
   );
 
-  const taskSpent = task ? numBudget(task, 'task_spent') || numBudget(task, 'task_api_spent') : null;
-  const liveSpent = sseLiveSpent != null && sseLiveSpent > 0 ? sseLiveSpent : taskSpent;
-
   const composer = (
     <InputBar
       disabled={sending || grilling || waitingBattle}
       onSend={onSend}
-      onOpenBilling={onOpenBilling}
-      liveSpent={liveSpent}
       onContextCommand={(mode) => {
         // 對話頁 Context／Peek 一律綁定本會話解析結果，禁止選其他對話
         if (mode === 'peek') {
@@ -357,7 +346,13 @@ export default function ChatView({
       <div className="ws-main">
         <nav className="ws-nav">
           <div className="ws-crumb">
-            對話 / <strong>{title || (showMonitor ? '進行中任務' : '會話')}</strong>
+            {title ? (
+              <>
+                對話 / <strong>{title}</strong>
+              </>
+            ) : (
+              <strong>對話</strong>
+            )}
           </div>
           <div className="ws-nav-acts">
             {showMonitor && isMobile && (
@@ -376,9 +371,9 @@ export default function ChatView({
               className="ws-btn"
               onClick={() => openContextDetail()}
               data-testid="chat-nav-context"
-              title="開啟本對話詳細區 Context（/context）· 直接顯示本會話軌跡，不可切換其他對話"
+              title="查看這段對話用到的資料"
             >
-              Context
+              上下文
             </button>
             {onOpenSettings && (
               <button type="button" className="ws-btn ws-btn-icon" onClick={onOpenSettings} aria-label="設定">
@@ -460,7 +455,7 @@ export default function ChatView({
             </div>
           </div>
           <div className="ws-side-scroll">
-            <p className="ws-empty">正在載入角色／審計／計費…</p>
+            <p className="ws-empty">正在讀取這次任務</p>
           </div>
         </aside>
       )}

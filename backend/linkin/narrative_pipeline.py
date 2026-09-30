@@ -270,7 +270,11 @@ def run_narrative_pipeline(body: dict[str, Any]) -> dict[str, Any]:
                     _set(
                         "generate",
                         "ok",
-                        detail={"source": source, "replaced_keys": written},
+                        detail={
+                            "source": source,
+                            "replaced_keys": written,
+                            "agents": list(generated.get("agents") or []),
+                        },
                     )
                 except NarrativeGenerateError as exc:
                     if exc.code == "llm_unavailable":
@@ -284,7 +288,11 @@ def run_narrative_pipeline(body: dict[str, Any]) -> dict[str, Any]:
                                 "generate",
                                 "partial",
                                 message="LLM 不可用，已改用本地模板草案",
-                                detail={"source": "fallback", "replaced_keys": sorted(drafts.keys())},
+                                detail={
+                                    "source": generated.get("source") or "fallback",
+                                    "replaced_keys": sorted(drafts.keys()),
+                                    "agents": list(generated.get("agents") or []),
+                                },
                             )
                         except Exception as fallback_exc:
                             _set("generate", "error", message=str(fallback_exc))

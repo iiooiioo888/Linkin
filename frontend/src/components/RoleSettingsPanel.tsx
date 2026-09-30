@@ -195,7 +195,7 @@ function Field({
 }
 
 const inputCls =
-  'w-full rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-[12px] text-[#f7f8f8] outline-none focus:border-[#007AFF]/60';
+  'w-full rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-[12px] text-[var(--console-ink)] outline-none focus:border-[color-mix(in_srgb,var(--console-accent)_60%,transparent)]';
 
 function tokenHint(
   model: string,
@@ -247,7 +247,7 @@ function TokenSlider({
           step={step}
           value={Math.min(max, Math.max(min, value))}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="flex-1 accent-[#007AFF]"
+          className="flex-1 accent-[var(--console-accent)]"
         />
         <input
           type="number"
@@ -551,7 +551,7 @@ export default function RoleSettingsPanel({
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {(catalog?.api_routes?.length ?? 0) === 0 && catalog != null && (
-            <p className="md:col-span-2 lg:col-span-3 rounded-xl border border-[#FF9F0A]/25 bg-[#FF9F0A]/8 px-3 py-2 text-[12px] text-[#FF9F0A]">
+            <p className="md:col-span-2 lg:col-span-3 rounded-xl border border-[color-mix(in_srgb,var(--console-amber)_25%,transparent)] bg-[color-mix(in_srgb,var(--console-amber)_8%,transparent)] px-3 py-2 text-[12px] text-[var(--console-amber)]">
               尚未配置 API。請先到{' '}
               <a href="#/monitor/llm" className="font-medium underline">
                 {navPathForTab('llm')}
@@ -628,7 +628,7 @@ export default function RoleSettingsPanel({
             </select>
           </Field>
           {selectedRate ? (
-            <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2">
+            <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2">
               <p className="text-[10px] uppercase tracking-wider text-[#62666d]">價目 USD / 1M tokens</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {(selectedRate.items ?? []).map((item) => (
@@ -886,7 +886,7 @@ export default function RoleSettingsPanel({
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/[0.08] bg-[#141416] p-3">
+          <div className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
             <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#8a8f98]">SLA／告警</h4>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Field label="SLA 延遲 ms" hint="0=不檢查">
@@ -1015,7 +1015,7 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
                   onClick={() => applyPreset(p)}
                   className={`rounded border px-2 py-1 text-[11px] ${
                     presetId === p.id
-                      ? 'border-[#007AFF]/40 bg-[#007AFF]/15 text-[#64D2FF]'
+                      ? 'border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] text-[var(--console-accent)]'
                       : 'border-white/[0.08] text-[#8a8f98]'
                   }`}
                 >
@@ -1202,7 +1202,7 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
           <button
             type="button"
             disabled={busy || !name.trim()}
-            className="rounded border border-[#007AFF]/40 bg-[#007AFF]/15 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40"
+            className="rounded border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)] disabled:opacity-40"
             onClick={async () => {
               setBusy(true);
               setError(null);

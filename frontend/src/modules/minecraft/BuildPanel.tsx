@@ -24,6 +24,7 @@ import { narrativeRegionLabel } from './localeRegions';
 import { activityNavPath } from '../../lib/monitorTabs';
 import { buildingPostcardUri } from '../../lib/visualCards';
 import MediaGallery from '../../components/media/MediaGallery';
+import { McHeader, McPage } from './McChrome';
 
 const FALLBACK_REGION_STYLES: Record<string, string[]> = {
   织庭都: ['织梦典章', '白石圣殿', '契约广场', '金线回廊'],
@@ -247,62 +248,56 @@ export default function BuildPanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold">建築生成</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            BuilderAI.generate → nbtlib Gzip .schem（Sponge v3）＋ Base64，Three.js 預覽，單次 ≤ 5000 方塊。
-            連線探測在「{activityNavPath('minecraft')}」。
-          </p>
-        </div>
-        <button type="button" onClick={() => void load()} className="rounded-xl border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98]">
-          重新整理
-        </button>
-      </div>
+    <McPage>
+      <McHeader
+        title="建築"
+        lead={`描述會生成 Sponge 結構檔，並用立體預覽檢查。單次最多 5000 方塊。連線在「${activityNavPath('minecraft')}」。`}
+        aside={<button type="button" onClick={() => void load()} className="mc-btn">重新整理</button>}
+      />
+      <div className="mc-workspace">
       {error && <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
       {dispatchNote && <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">{dispatchNote}</div>}
       {briefNote && <div className="mb-3 rounded-md border border-[#c9a961]/30 bg-[#c9a961]/10 px-3 py-2 text-xs text-[#c9a961]">{briefNote}</div>}
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[#111113]">
+        <div className="flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--console-bg)]">
           <BuildingViewer preview={preview} loading={busy === 'preview' || busy === 'generate' || busy === 'import'} />
         </div>
         <div className="grid gap-2">
           <label className="text-[10px] text-[#8a8f98]">描述 prompt
-            <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} className="mt-1 min-h-[72px] w-full rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[12px]" />
+            <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} className="mt-1 min-h-[72px] w-full rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2 text-[12px]" />
           </label>
           <label className="text-[10px] text-[#8a8f98]">區域
-            <select value={region} onChange={(e) => setRegion(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-[12px]">
+            <select value={region} onChange={(e) => setRegion(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-[12px]">
               {Object.keys(regionStyles).map((item) => (
                 <option key={item} value={item}>{narrativeRegionLabel(item)}</option>
               ))}
             </select>
           </label>
           <label className="text-[10px] text-[#8a8f98]">風格模板（依區域篩選）
-            <select value={style} onChange={(e) => setStyle(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-[12px]">
+            <select value={style} onChange={(e) => setStyle(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-[12px]">
               {styles.map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}
             </select>
           </label>
           <label className="text-[10px] text-[#8a8f98]">坐標 location
-            <input value={location} onChange={(e) => setLocation(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-[12px]" />
+            <input value={location} onChange={(e) => setLocation(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-[12px]" />
           </label>
           <label className="text-[10px] text-[#8a8f98]">
             方塊數（上限 5000）
-            <input type="number" min={1} max={8000} value={blockCount} onChange={(e) => setBlockCount(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-[12px]" />
+            <input type="number" min={1} max={8000} value={blockCount} onChange={(e) => setBlockCount(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-[12px]" />
           </label>
-          {overLimit && <p className="text-[11px] text-[#FF9F0A]">超過 5000 方塊上限，送出將被後端拒絕</p>}
+          {overLimit && <p className="text-[11px] text-[var(--console-amber)]">超過 5000 方塊上限，送出將被後端拒絕</p>}
           <div className="mt-1 flex flex-wrap gap-2">
-            <button type="button" disabled={busy !== 'idle'} onClick={() => void onGenerate()} className="rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40">
+            <button type="button" disabled={busy !== 'idle'} onClick={() => void onGenerate()} className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)] disabled:opacity-40">
               {busy === 'generate' ? '生成中' : '生成建築方案'}
             </button>
             <button
               type="button"
               disabled={busy !== 'idle'}
               onClick={() => fileRef.current?.click()}
-              className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[#AEAEB2] disabled:opacity-40"
+              className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[var(--console-sub)] disabled:opacity-40"
             >
               {busy === 'import' ? '匯入中' : '匯入 .schem'}
             </button>
@@ -321,7 +316,7 @@ export default function BuildPanel() {
               <a
                 href={schematicUrl(selectedId)}
                 download={`${selectedId}.schem`}
-                className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[#AEAEB2]"
+                className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[var(--console-sub)]"
               >
                 下載 .schem
               </a>
@@ -333,7 +328,7 @@ export default function BuildPanel() {
               value={b64Input}
               onChange={(e) => setB64Input(e.target.value)}
               placeholder="H4sIAAAAAAAAA..."
-              className="mt-1 min-h-[72px] w-full rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 font-mono text-[11px] text-[#AEAEB2]"
+              className="mt-1 min-h-[72px] w-full rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2 font-mono text-[11px] text-[var(--console-sub)]"
             />
           </label>
           <div className="flex flex-wrap gap-2">
@@ -341,7 +336,7 @@ export default function BuildPanel() {
               type="button"
               disabled={busy !== 'idle' || !preview?.schematic_base64}
               onClick={() => void onCopyBase64()}
-              className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[#AEAEB2] disabled:opacity-40"
+              className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[var(--console-sub)] disabled:opacity-40"
             >
               {b64Copied ? '已複製' : '複製目前 Base64'}
             </button>
@@ -349,7 +344,7 @@ export default function BuildPanel() {
               type="button"
               disabled={busy !== 'idle' || !b64Input.trim()}
               onClick={() => void onImportBase64()}
-              className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[#AEAEB2] disabled:opacity-40"
+              className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[var(--console-sub)] disabled:opacity-40"
             >
               從 Base64 匯入
             </button>
@@ -365,24 +360,24 @@ export default function BuildPanel() {
       )}
 
       {buildBriefs.length > 0 && (
-        <section className="mt-6 rounded-xl border border-[#c9a961]/25 bg-[#1C1C1E] p-3">
-          <h3 className="mb-2 text-[11px] font-semibold text-[#c9a961]">敘事建築意圖（Phase 2 · {buildBriefs.length}）</h3>
-          <p className="mb-3 text-[10px] text-[#8a8f98]">來自敘事工作區 commit 的 build_brief；需手動「落地建築」，不會自動放置。</p>
+        <section className="mt-6 rounded-xl border border-[#c9a961]/25 bg-[var(--console-card)] p-3">
+          <h3 className="mb-2">待落地建築（{buildBriefs.length}）</h3>
+          <p className="mb-3 mc-note">這些建築來自敘事工作區。要放進遊戲，需手動落地。</p>
           <div className="space-y-2">
             {buildBriefs.map((brief) => (
               <article key={brief.id} className="rounded-lg border border-white/[0.08] bg-black/20 p-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h4 className="text-[12px] font-medium text-[#f7f8f8]">{brief.title}</h4>
+                  <h4 className="text-[12px] font-medium text-[var(--console-ink)]">{brief.title}</h4>
                   <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{brief.status}</span>
                   <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{brief.block_count} 方塊預算</span>
                 </div>
-                <p className="mt-1 text-[11px] text-[#AEAEB2]">{brief.prompt}</p>
+                <p className="mt-1 text-[11px] text-[var(--console-sub)]">{brief.prompt}</p>
                 <div className="mt-2 flex flex-wrap gap-3">
                   <button
                     type="button"
                     disabled={busy !== 'idle'}
                     onClick={() => void onBriefPreview(brief.id)}
-                    className="text-[10px] text-[#64D2FF] disabled:opacity-40"
+                    className="text-[10px] text-[var(--console-accent)] disabled:opacity-40"
                   >
                     預覽／估算
                   </button>
@@ -422,11 +417,11 @@ export default function BuildPanel() {
         </div>
       )}
       <div className="space-y-2">
-        {buildings.length === 0 && <p className="py-8 text-center text-xs text-[#636366]">尚無建築方案</p>}
+        {buildings.length === 0 && <p className="py-8 text-center text-xs text-[var(--console-sub)]">尚無建築方案</p>}
         {buildings.map((item) => (
           <article
             key={item.id}
-            className={`rounded-xl border p-3 ${selectedId === item.id ? 'border-[#64D2FF]/40 bg-[#64D2FF]/5' : 'border-white/[0.08] bg-[#1C1C1E]'}`}
+            className={`rounded-xl border p-3 ${selectedId === item.id ? 'border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_5%,transparent)]' : 'border-white/[0.08] bg-[var(--console-card)]'}`}
           >
             <div className="flex flex-wrap items-center gap-2">
               <h4 className="text-[13px] font-medium">{item.style}</h4>
@@ -440,16 +435,16 @@ export default function BuildPanel() {
               <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">v{item.schematic_version ?? 3}</span>
               {item.status && <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{item.status}</span>}
             </div>
-            <p className="mt-1 text-[12px] leading-relaxed text-[#AEAEB2]">{item.prompt}</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-[var(--console-sub)]">{item.prompt}</p>
             {item.note && <p className="mt-1 text-[11px] text-[#8a8f98]">{item.note}</p>}
             <div className="mt-2 flex flex-wrap gap-3">
-              <button type="button" disabled={busy !== 'idle'} onClick={() => void loadPreview(item.id)} className="text-[10px] text-[#64D2FF] disabled:opacity-40">
+              <button type="button" disabled={busy !== 'idle'} onClick={() => void loadPreview(item.id)} className="text-[10px] text-[var(--console-accent)] disabled:opacity-40">
                 3D 預覽
               </button>
-              <button type="button" disabled={busy !== 'idle'} onClick={() => void onDispatch(item.id)} className="text-[10px] text-[#64D2FF] disabled:opacity-40">
+              <button type="button" disabled={busy !== 'idle'} onClick={() => void onDispatch(item.id)} className="text-[10px] text-[var(--console-accent)] disabled:opacity-40">
                 發送到 Minecraft
               </button>
-              <a href={schematicUrl(item.id)} download={`${item.id}.schem`} className="text-[10px] text-[#AEAEB2]">
+              <a href={schematicUrl(item.id)} download={`${item.id}.schem`} className="text-[10px] text-[var(--console-sub)]">
                 下載 .schem
               </a>
               <button type="button" disabled={busy !== 'idle'} onClick={() => void onDelete(item.id)} className="text-[10px] text-red-400 disabled:opacity-40">
@@ -459,6 +454,7 @@ export default function BuildPanel() {
           </article>
         ))}
       </div>
-    </div>
+      </div>
+    </McPage>
   );
 }

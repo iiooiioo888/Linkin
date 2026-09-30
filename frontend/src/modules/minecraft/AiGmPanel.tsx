@@ -21,13 +21,13 @@ import {
   ConsoleColumnScroll,
   KpiGrid6,
   PanelAlert,
-  PanelShell,
-  SectionHeader,
 } from '../../components/ui/ConsoleLayout';
+import { McHeader, McPage } from './McChrome';
 import {
   EmptyStateCta,
   formatTs,
   minecraftHref,
+  playerActionLabel,
   statusLabel,
   statusStripe,
   useVisibilityPoll,
@@ -97,13 +97,13 @@ function ConfigToggles({
 }
 
 function RunRow({ run }: { run: MinecraftGmRun }) {
-  const types = (run.actions || []).map((a) => actionTypeLabel(String(a.type || '?'))).join('、') || '—';
-  const applied = run.applied ? '已套用' : run.dry_run ? 'Dry-run' : '僅記錄';
+  const types = (run.actions || []).map((a) => actionTypeLabel(String(a.type || ''))).filter(Boolean).join('、') || '沒有動作';
+  const applied = run.applied ? '已套用' : run.dry_run ? '乾跑' : '僅記錄';
   return (
     <div className="mon-task-card px-3 py-2" data-priority={statusStripe(run.status || 'idle')}>
       <div className="flex flex-wrap items-baseline justify-between gap-1">
         <span className="text-[11px] font-medium text-[var(--console-ink)]">
-          {run.player_name || run.player_id || '—'} · {run.trigger_action || '?'}
+          {run.player_name || run.player_id || '未知玩家'} · {run.trigger_action ? playerActionLabel(run.trigger_action) : '未記錄動作'}
         </span>
         <span className="text-[10px] text-[var(--console-faint)]">{formatTs(run.ts)}</span>
       </div>
@@ -200,18 +200,19 @@ export default function AiGmPanel() {
   const appliedCount = useMemo(() => runs.filter((r) => r.applied).length, [runs]);
 
   return (
-    <PanelShell scroll={false}>
-      <ConsoleCenterColumn>
+    <McPage>
+      <McHeader
+        title="AI 主持人"
+        lead="玩家進場、對話或死亡會變成決策，再反映到任務與 NPC。預設只演練，不會直接改世界。"
+        aside={
+          <button type="button" className="mc-btn" onClick={() => void load()} disabled={loading}>
+            {loading ? '讀取中' : lastRefresh ? `更新於 ${formatTs(lastRefresh / 1000)}` : '重新整理'}
+          </button>
+        }
+      />
+      <div className="mc-workspace">
+        <ConsoleCenterColumn>
         <ConsoleColumnScroll>
-          <SectionHeader
-            title="AI 主持人"
-            description="玩家事件 → 結構化決策 → 任務／NPC／提示（預設 dry-run）"
-            actions={
-              <button type="button" className="console-btn-ghost text-[10px]" onClick={() => void load()} disabled={loading}>
-                {loading ? '刷新中…' : `更新 ${formatTs(lastRefresh / 1000)} · 10s`}
-              </button>
-            }
-          />
 
           {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
 
@@ -221,14 +222,16 @@ export default function AiGmPanel() {
             </div>
           </ConsoleCard>
 
+          {config ? (
           <KpiGrid6>
-            <KpiSparkCard label="GM 狀態" value={config?.enabled ? '啟用' : '停用'} accent={Boolean(config?.enabled)} />
-            <KpiSparkCard label="模式" value={config?.dry_run ? 'Dry-run' : config?.auto_apply ? '自動套用' : '手動'} />
-            <KpiSparkCard label="決策數" value={String(runs.length)} />
+            <KpiSparkCard label="主持人" value={config.enabled ? '啟用' : '停用'} accent={Boolean(config.enabled)} />
+            <KpiSparkCard label="套用" value={config.dry_run ? '演練' : config.auto_apply ? '自動' : '手動'} />
+            <KpiSparkCard label="決策" value={String(runs.length)} />
             <KpiSparkCard label="已套用" value={String(appliedCount)} accent={appliedCount > 0} />
-            <KpiSparkCard label="冷卻" value={`${config?.cooldown_seconds ?? 30}s`} />
-            <KpiSparkCard label="每事件上限" value={String(config?.max_actions_per_event ?? 3)} />
+            <KpiSparkCard label="冷卻" value={`${config.cooldown_seconds} 秒`} />
+            <KpiSparkCard label="每次上限" value={String(config.max_actions_per_event)} />
           </KpiGrid6>
+          ) : null}
 
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
             <ConsoleCard>
@@ -241,7 +244,7 @@ export default function AiGmPanel() {
                 )}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button type="button" className="console-btn" disabled={acting || !config?.enabled} onClick={() => void handleTick()}>
-                    {acting ? '處理中…' : 'Tick 一次'}
+                    {acting ? '處理中' : '跑一輪'}
                   </button>
                   <button
                     type="button"
@@ -249,7 +252,7 @@ export default function AiGmPanel() {
                     disabled={acting || !latestEvent}
                     onClick={() => void handleReactLatest()}
                   >
-                    對最新事件 React
+                    回應最新事件
                   </button>
                 </div>
               </div>
@@ -278,7 +281,7 @@ export default function AiGmPanel() {
                             .finally(() => setActing(false));
                         }}
                       >
-                        React
+                        回應
                       </button>
                     </div>
                   ))
@@ -310,7 +313,8 @@ export default function AiGmPanel() {
             </div>
           </ConsoleCard>
         </ConsoleColumnScroll>
-      </ConsoleCenterColumn>
-    </PanelShell>
+        </ConsoleCenterColumn>
+      </div>
+    </McPage>
   );
 }

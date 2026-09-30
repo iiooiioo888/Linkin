@@ -218,7 +218,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
   const closePoints = (series?.close ?? []).map((row, i) => ({ x: i, y: row.v }));
 
   if (loading) {
-    return <p className="py-8 text-center text-[12px] text-[#8E8E93]">載入策略庫…</p>;
+    return <p className="py-8 text-center text-[12px] text-[var(--console-sub)]">載入策略庫…</p>;
   }
   if (error) {
     return <ErrorState kind="partial" message={error} onRetry={() => setReloadTick((n) => n + 1)} />;
@@ -234,7 +234,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
             策略庫
             <span className="sq-tree-badge">{selectedCount}</span>
           </div>
-          <span className="text-[10px] text-[#636366]">
+          <span className="text-[10px] text-[var(--console-sub)]">
             {data?.wired_count ?? 0} 可回測 · {data?.catalog_count ?? 0} 目錄
           </span>
         </header>
@@ -262,7 +262,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
         </div>
         <div className="sq-tree" role="tree" aria-label="回測策略庫">
           {groups.length === 0 ? (
-            <p className="px-3 py-6 text-center text-[11px] text-[#636366]">沒有符合的策略</p>
+            <p className="px-3 py-6 text-center text-[11px] text-[var(--console-sub)]">沒有符合的策略</p>
           ) : (
             groups.map((group) => {
               const expanded = open[group.id] !== false;
@@ -344,7 +344,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
           </button>
         </div>
         {previewError ? (
-          <p className="text-[10px] text-[#8E8E93]">工作流：{previewError}</p>
+          <p className="text-[10px] text-[var(--console-sub)]">工作流：{previewError}</p>
         ) : null}
         {active && preview?.workflow ? (
           <ArchifyFrame
@@ -355,21 +355,21 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
             compact={embedded}
           />
         ) : active ? (
-          <p className="py-6 text-center text-[12px] text-[#8E8E93]">載入工作流…</p>
+          <p className="py-6 text-center text-[12px] text-[var(--console-sub)]">載入工作流…</p>
         ) : (
-          <p className="py-6 text-center text-[11px] text-[#636366]">選策略後顯示工作流</p>
+          <p className="py-6 text-center text-[11px] text-[var(--console-sub)]">選策略後顯示工作流</p>
         )}
         <section className="apple-card sq-chart-card">
           <div className="apple-card__head">
             <h2 className="apple-title">權益曲線</h2>
-            <span className="text-[10px] text-[#8E8E93]">{appliedSymbol}</span>
+            <span className="text-[10px] text-[var(--console-sub)]">{appliedSymbol}</span>
           </div>
           {chartFail ? (
-            <p className="px-4 py-8 text-center text-[11px] text-[#636366]">{chartFail}</p>
+            <p className="px-4 py-8 text-center text-[11px] text-[var(--console-sub)]">{chartFail}</p>
           ) : chartLoading && !equityPoints.length ? (
-            <p className="px-4 py-8 text-center text-[11px] text-[#8E8E93]">載入權益曲線…</p>
+            <p className="px-4 py-8 text-center text-[11px] text-[var(--console-sub)]">載入權益曲線…</p>
           ) : active?.status !== 'wired' ? (
-            <p className="px-4 py-8 text-center text-[11px] text-[#636366]">規劃項沒有回測曲線</p>
+            <p className="px-4 py-8 text-center text-[11px] text-[var(--console-sub)]">規劃項沒有回測曲線</p>
           ) : equityPoints.length ? (
             <>
               <div className="sq-chart-stats">
@@ -395,7 +395,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
                 </div>
               </div>
               {chart?.demo ? (
-                <p className="px-4 pb-2 text-[10px] text-[#8E8E93]">{chart.note || '示範曲線（行情源暫時不可用）'}</p>
+                <p className="px-4 pb-2 text-[10px] text-[var(--console-sub)]">{chart.note || '示範曲線（行情源暫時不可用）'}</p>
               ) : null}
               <div className="apple-card__body apple-card__body--static apple-chart h-[220px]">
                 <LcLineChart
@@ -410,16 +410,16 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
               </div>
             </>
           ) : (
-            <p className="px-4 py-8 text-center text-[11px] text-[#636366]">尚無權益資料</p>
+            <p className="px-4 py-8 text-center text-[11px] text-[var(--console-sub)]">尚無權益資料</p>
           )}
         </section>
         <section className="apple-card sq-chart-card">
           <div className="apple-card__head">
             <h2 className="apple-title">收盤價</h2>
-            <span className="text-[10px] text-[#8E8E93]">K 線收盤</span>
+            <span className="text-[10px] text-[var(--console-sub)]">K 線收盤</span>
           </div>
           {chartLoading && !closePoints.length ? (
-            <p className="px-4 py-8 text-center text-[11px] text-[#8E8E93]">載入收盤價…</p>
+            <p className="px-4 py-8 text-center text-[11px] text-[var(--console-sub)]">載入收盤價…</p>
           ) : closePoints.length ? (
             <div className="apple-card__body apple-card__body--static apple-chart h-[180px]">
               <LcLineChart
@@ -428,7 +428,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
               />
             </div>
           ) : (
-            <p className="px-4 py-8 text-center text-[11px] text-[#636366]">尚無價格曲線</p>
+            <p className="px-4 py-8 text-center text-[11px] text-[var(--console-sub)]">尚無價格曲線</p>
           )}
         </section>
         <CapitalFlowPanel
@@ -444,8 +444,8 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
         {active ? (
           <>
             <h3 className="sq-tree-side-title">{active.name}</h3>
-            <p className="mt-1 font-mono text-[11px] text-[#8E8E93]">{active.engine || active.id}</p>
-            <p className="mt-2 text-[11px] text-[#636366]">
+            <p className="mt-1 font-mono text-[11px] text-[var(--console-sub)]">{active.engine || active.id}</p>
+            <p className="mt-2 text-[11px] text-[var(--console-sub)]">
               {active.status === 'wired'
                 ? `可回測。量化分析師用 market_backtest.strategy = ${active.engine || active.id}`
                 : '規劃項，尚未接通引擎，不可回測。'}
@@ -460,12 +460,12 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
             ) : null}
           </>
         ) : (
-          <p className="text-[11px] text-[#636366]">勾選可回測策略，交給量化研究桌角色引用。</p>
+          <p className="text-[11px] text-[var(--console-sub)]">勾選可回測策略，交給量化研究桌角色引用。</p>
         )}
         <p className="mt-4 text-[10px] leading-relaxed text-[#48484A]">
           已勾選 {selectedCount} / {wiredVisible.length} 可回測引擎。目錄項僅供對照 stock-quant 策略庫。
         </p>
-        <a href="#/monitor/lab/maps" className="mt-3 block text-[11px] text-[#0A84FF]">
+        <a href="#/monitor/lab/maps" className="mt-3 block text-[11px] text-[var(--console-accent)]">
           用策略圖可視化全部策略
         </a>
       </aside>

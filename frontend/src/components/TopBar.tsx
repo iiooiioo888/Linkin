@@ -42,6 +42,8 @@ export default function TopBar({
   const viewLabel =
     activity === 'chat'
       ? t('nav.chat')
+      : activity === 'company'
+        ? t('nav.company')
       : activity === 'lab'
         ? `${t('nav.lab')} · ${labSubTabLabel(labSubTab)}`
         : !isCoreActivity(activity)
@@ -55,6 +57,7 @@ export default function TopBar({
   return (
     <header className="app-topbar flex shrink-0 items-center gap-2 border-b apple-chrome px-4">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+        {activeView !== 'company' ? (
         <button
           onClick={onToggleSidebar}
           className="apple-icon-btn shrink-0 md:hidden"
@@ -64,9 +67,12 @@ export default function TopBar({
             <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
         </button>
+        ) : null}
 
-        <span className="shrink-0 text-[13px] font-semibold tracking-tight text-[var(--console-ink)]">
-          <span className="console-status-accent">靈境</span>·Linkin
+        <span className="brand-mark shrink-0 text-[15px] text-[var(--console-ink)]">
+          <span className="console-status-accent">靈境</span>
+          <span className="brand-mark__dot">·</span>
+          Linkin
         </span>
         {activity === 'console' && onMonitorTabChange ? (
           <>
@@ -91,7 +97,6 @@ export default function TopBar({
           </>
         ) : (
           <>
-            <span className="hidden text-[11px] text-[var(--console-faint)] md:inline">— Evoloop 運行時</span>
             <span className="min-w-0 truncate text-[12px] text-[var(--console-faint)]">· {viewLabel}</span>
           </>
         )}

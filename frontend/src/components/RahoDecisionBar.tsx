@@ -155,7 +155,7 @@ export default function RahoDecisionBar({
 
   return (
     <section
-      className={`raho-decision-bar relative z-[80] rounded-xl border border-[#FF453A]/40 bg-[#1C0B0A] p-3 shadow-lg pointer-events-auto ${
+      className={`raho-decision-bar relative z-[80] rounded-xl border border-[color-mix(in_srgb,var(--console-danger)_40%,transparent)] bg-[var(--console-danger-dk)] p-3 shadow-lg pointer-events-auto ${
         variant === 'chat' ? 'mb-0' : 'mb-3'
       }`}
       role="region"
@@ -164,14 +164,14 @@ export default function RahoDecisionBar({
       data-variant={variant}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="text-[11px] font-medium uppercase tracking-wide text-[#FF453A]">
+        <div className="text-[11px] font-medium uppercase tracking-wide text-[var(--console-danger)]">
           決策阻塞點
         </div>
-        <p className="text-[10px] text-[#8E8E93]">點選下方方案以繼續任務</p>
+        <p className="text-[10px] text-[var(--console-sub)]">點選下方方案以繼續任務</p>
       </div>
       {error && (
         <p
-          className="mb-2 rounded-md border border-[#FF453A]/30 bg-[#FF453A]/10 px-2 py-1.5 text-[11px] text-[#FF453A]"
+          className="mb-2 rounded-md border border-[color-mix(in_srgb,var(--console-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] px-2 py-1.5 text-[11px] text-[var(--console-danger)]"
           role="alert"
         >
           {error}
@@ -182,8 +182,8 @@ export default function RahoDecisionBar({
         const expired = remain <= 0;
         return (
           <div key={p.decision_id} className="mb-3 last:mb-0">
-            <p className="whitespace-pre-wrap text-[13px] text-[#F5F5F7]">{p.question}</p>
-            <p className="mt-1 text-[11px] text-[#8E8E93]">
+            <p className="whitespace-pre-wrap text-[13px] text-[var(--console-ink)]">{p.question}</p>
+            <p className="mt-1 text-[11px] text-[var(--console-sub)]">
               <button
                 type="button"
                 className="raho-edge-role"
@@ -193,7 +193,7 @@ export default function RahoDecisionBar({
               </button>
               {' · '}
               {expired ? (
-                <span className="text-[#FF9F0A]">等待裁決（計時已盡，仍可點選）</span>
+                <span className="text-[var(--console-amber)]">等待裁決（計時已盡，仍可點選）</span>
               ) : (
                 <>剩餘 {remain}s</>
               )}

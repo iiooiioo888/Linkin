@@ -98,7 +98,7 @@ export default function L0Panel({
             <>
               <button
                 type="button"
-                className="rd-btn text-[11px] text-[#AEAEB2]"
+                className="rd-btn text-[11px] text-[var(--console-sub)]"
                 onClick={() => openChatContextDetail()}
                 title="開啟對話詳細區 Context"
               >
@@ -106,27 +106,27 @@ export default function L0Panel({
               </button>
               <button
                 type="button"
-                className="rd-btn text-[11px] text-[#AEAEB2]"
+                className="rd-btn text-[11px] text-[var(--console-sub)]"
                 onClick={() => jumpToContextMonitor(undefined, { mirror: true })}
                 title="控制台 Context 鏡像"
               >
                 Context 鏡像
               </button>
-              <button type="button" className="rd-btn text-[11px] text-[#AEAEB2]" onClick={() => jumpToIntegrations()}>
+              <button type="button" className="rd-btn text-[11px] text-[var(--console-sub)]" onClick={() => jumpToIntegrations()}>
                 外部整合
               </button>
             </>
           ) : null}
-          <button type="button" className="rd-btn text-[11px] text-[#0A84FF]" onClick={() => void reload()}>
+          <button type="button" className="rd-btn text-[11px] text-[var(--console-accent)]" onClick={() => void reload()}>
             重新整理
           </button>
         </div>
       </div>
-      {error ? <p className="mb-3 text-[12px] text-[#FF453A]">{error}</p> : null}
+      {error ? <p className="mb-3 text-[12px] text-[var(--console-danger)]">{error}</p> : null}
 
       {!embed ? (
         <div className="l0-integ-bar">
-          <p className="mb-2 text-[10px] text-[#8E8E93]">
+          <p className="mb-2 text-[10px] text-[var(--console-sub)]">
             召回來源（MemOS／OpenViking／WeKnora）經協調器注入；啟用後才發網路請求。
           </p>
           <IntegrationsStrip density="compact" showSummary={false} pollMs={15000} />
@@ -158,7 +158,7 @@ export default function L0Panel({
       {tab === 'memory' && (
         <div className="l0-body">
           {traces.length === 0 ? (
-            <p className="py-10 text-center text-[12px] text-[#636366]">尚無記憶軌跡。質詢與簽核發生後會在此回放。</p>
+            <p className="py-10 text-center text-[12px] text-[var(--console-sub)]">尚無記憶軌跡。質詢與簽核發生後會在此回放。</p>
           ) : (
             <ol className="l0-list">
               {traces.map((trace) => (
@@ -185,7 +185,7 @@ export default function L0Panel({
       {tab === 'knowledge' && (
         <div className="l0-body">
           {knowledge.length === 0 ? (
-            <p className="py-10 text-center text-[12px] text-[#636366]">尚無引用實體。審計或拆解時會自動掛上知識卡。</p>
+            <p className="py-10 text-center text-[12px] text-[var(--console-sub)]">尚無引用實體。審計或拆解時會自動掛上知識卡。</p>
           ) : (
             <ol className="l0-graph">
               {knowledge.map((item) => (

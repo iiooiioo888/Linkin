@@ -44,9 +44,9 @@ export function npcPortraitUri(name: string, faction: string, occupation = ''): 
     </defs>
     <rect width="360" height="480" rx="28" fill="url(#g)"/>
     <circle cx="180" cy="188" r="86" fill="hsla(0,0%,100%,0.08)" stroke="hsl(${h},70%,68%)" stroke-width="3"/>
-    <text x="180" y="208" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="64" font-weight="700" fill="#F5F5F7">${esc(initials || '?')}</text>
-    <text x="180" y="332" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="22" font-weight="650" fill="#F5F5F7">${esc(name.slice(0, 16))}</text>
-    <text x="180" y="364" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#AEAEB2">${esc((occupation || faction).slice(0, 22))}</text>
+    <text x="180" y="208" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="64" font-weight="700" fill="#f4efe6">${esc(initials || '?')}</text>
+    <text x="180" y="332" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="22" font-weight="650" fill="#f4efe6">${esc(name.slice(0, 16))}</text>
+    <text x="180" y="364" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#b3aa9c">${esc((occupation || faction).slice(0, 22))}</text>
   </svg>`);
 }
 
@@ -59,10 +59,10 @@ export function itemTileUri(name: string, rarity: string, type: string): string 
         <stop offset="1" stop-color="hsl(${h},40%,8%)"/>
       </radialGradient>
     </defs>
-    <rect width="320" height="320" rx="24" fill="#111113"/>
+    <rect width="320" height="320" rx="24" fill="#12110f"/>
     <polygon points="160,36 276,108 276,212 160,284 44,212 44,108" fill="url(#r)" stroke="hsl(${h},80%,72%)" stroke-width="2.4"/>
-    <text x="160" y="168" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="28" font-weight="700" fill="#F5F5F7">${esc(name.slice(0, 8))}</text>
-    <text x="160" y="196" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="12" fill="#AEAEB2">${esc(rarity)} · ${esc(type)}</text>
+    <text x="160" y="168" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="28" font-weight="700" fill="#f4efe6">${esc(name.slice(0, 8))}</text>
+    <text x="160" y="196" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="12" fill="#b3aa9c">${esc(rarity)} · ${esc(type)}</text>
   </svg>`);
 }
 
@@ -78,19 +78,19 @@ export function factionBannerUri(name: string, alignment = '', creed = ''): stri
     <rect width="640" height="360" rx="24" fill="url(#b)"/>
     <circle cx="92" cy="180" r="46" fill="none" stroke="hsl(${h},75%,68%)" stroke-width="3"/>
     <circle cx="92" cy="180" r="18" fill="hsl(${h},75%,68%)"/>
-    <text x="168" y="160" font-family="ui-sans-serif,system-ui" font-size="32" font-weight="700" fill="#F5F5F7">${esc(name.slice(0, 18))}</text>
-    <text x="168" y="192" font-family="ui-sans-serif,system-ui" font-size="14" fill="#AEAEB2">${esc(alignment.slice(0, 28))}</text>
-    <text x="168" y="230" font-family="ui-sans-serif,system-ui" font-size="13" fill="#8E8E93">${esc(creed.slice(0, 42))}</text>
+    <text x="168" y="160" font-family="ui-sans-serif,system-ui" font-size="32" font-weight="700" fill="#f4efe6">${esc(name.slice(0, 18))}</text>
+    <text x="168" y="192" font-family="ui-sans-serif,system-ui" font-size="14" fill="#b3aa9c">${esc(alignment.slice(0, 28))}</text>
+    <text x="168" y="230" font-family="ui-sans-serif,system-ui" font-size="13" fill="#8a8174">${esc(creed.slice(0, 42))}</text>
   </svg>`);
 }
 
 export function questCardUri(title: string, questType: string, difficulty: string): string {
   const h = questType.includes('主') ? 28 : questType.includes('日') ? 145 : 210;
   return svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 280" width="480" height="280">
-    <rect width="480" height="280" rx="22" fill="#1C1C1E"/>
+    <rect width="480" height="280" rx="22" fill="#191815"/>
     <rect x="0" y="0" width="10" height="280" fill="hsl(${h},80%,58%)"/>
-    <text x="36" y="64" font-family="ui-sans-serif,system-ui" font-size="13" fill="#8E8E93">${esc(questType)} · ${esc(difficulty)}</text>
-    <text x="36" y="112" font-family="ui-sans-serif,system-ui" font-size="24" font-weight="700" fill="#F5F5F7">${esc(title.slice(0, 22))}</text>
+    <text x="36" y="64" font-family="ui-sans-serif,system-ui" font-size="13" fill="#8a8174">${esc(questType)} · ${esc(difficulty)}</text>
+    <text x="36" y="112" font-family="ui-sans-serif,system-ui" font-size="24" font-weight="700" fill="#f4efe6">${esc(title.slice(0, 22))}</text>
     <rect x="36" y="148" width="120" height="8" rx="4" fill="hsla(${h},70%,58%,0.45)"/>
     <rect x="36" y="168" width="200" height="8" rx="4" fill="rgba(255,255,255,0.08)"/>
     <rect x="36" y="188" width="160" height="8" rx="4" fill="rgba(255,255,255,0.06)"/>
@@ -122,10 +122,10 @@ export function buildingPostcardUri(input: {
     }
   }
   return svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" width="480" height="300">
-    <rect width="480" height="300" rx="22" fill="#111113"/>
+    <rect width="480" height="300" rx="22" fill="#12110f"/>
     ${cubes.join('')}
-    <text x="24" y="40" font-family="ui-sans-serif,system-ui" font-size="18" font-weight="700" fill="#F5F5F7">${esc(input.style.slice(0, 18))}</text>
-    <text x="24" y="64" font-family="ui-sans-serif,system-ui" font-size="12" fill="#8E8E93">${esc((input.region ?? '').slice(0, 20))}</text>
+    <text x="24" y="40" font-family="ui-sans-serif,system-ui" font-size="18" font-weight="700" fill="#f4efe6">${esc(input.style.slice(0, 18))}</text>
+    <text x="24" y="64" font-family="ui-sans-serif,system-ui" font-size="12" fill="#8a8174">${esc((input.region ?? '').slice(0, 20))}</text>
   </svg>`);
 }
 
@@ -156,8 +156,8 @@ export function agentPortraitUri(name: string, level: number, category = ''): st
   return svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
     <rect width="240" height="240" rx="28" fill="hsl(${h},38%,12%)"/>
     <circle cx="120" cy="108" r="54" fill="hsla(0,0%,100%,0.07)" stroke="hsl(${h},70%,62%)" stroke-width="3"/>
-    <text x="120" y="122" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="42" font-weight="700" fill="#F5F5F7">${esc(initials || '?')}</text>
-    <text x="120" y="188" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" font-weight="650" fill="#AEAEB2">L${level} · ${esc(name.slice(0, 12))}</text>
+    <text x="120" y="122" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="42" font-weight="700" fill="#f4efe6">${esc(initials || '?')}</text>
+    <text x="120" y="188" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" font-weight="650" fill="#b3aa9c">L${level} · ${esc(name.slice(0, 12))}</text>
   </svg>`);
 }
 
@@ -165,10 +165,10 @@ export function memoryTileUri(text: string, score?: number | string): string {
   const h = hue(text.slice(0, 24));
   const lines = wrapLines(text, 28, 5);
   return svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 280" width="420" height="280">
-    <rect width="420" height="280" rx="22" fill="#1C1C1E"/>
+    <rect width="420" height="280" rx="22" fill="#191815"/>
     <rect x="0" y="0" width="8" height="280" fill="hsl(${h},72%,52%)"/>
-    <text x="28" y="42" font-family="ui-sans-serif,system-ui" font-size="12" fill="#8E8E93">記憶${score != null && score !== '' ? ` · ${esc(String(score))}` : ''}</text>
-    ${lines.map((line, i) => `<text x="28" y="${84 + i * 28}" font-family="ui-sans-serif,system-ui" font-size="16" fill="#F5F5F7">${esc(line)}</text>`).join('')}
+    <text x="28" y="42" font-family="ui-sans-serif,system-ui" font-size="12" fill="#8a8174">記憶${score != null && score !== '' ? ` · ${esc(String(score))}` : ''}</text>
+    ${lines.map((line, i) => `<text x="28" y="${84 + i * 28}" font-family="ui-sans-serif,system-ui" font-size="16" fill="#f4efe6">${esc(line)}</text>`).join('')}
   </svg>`);
 }
 
@@ -183,8 +183,8 @@ export function schoolBannerUri(name: string, domain = ''): string {
     </defs>
     <rect width="480" height="260" rx="22" fill="url(#s)"/>
     <circle cx="72" cy="130" r="28" fill="none" stroke="hsl(${h},80%,68%)" stroke-width="2.4"/>
-    <text x="120" y="122" font-family="ui-sans-serif,system-ui" font-size="24" font-weight="700" fill="#F5F5F7">${esc(name.slice(0, 16))}</text>
-    <text x="120" y="154" font-family="ui-sans-serif,system-ui" font-size="13" fill="#AEAEB2">${esc(domain.slice(0, 28))}</text>
+    <text x="120" y="122" font-family="ui-sans-serif,system-ui" font-size="24" font-weight="700" fill="#f4efe6">${esc(name.slice(0, 16))}</text>
+    <text x="120" y="154" font-family="ui-sans-serif,system-ui" font-size="13" fill="#b3aa9c">${esc(domain.slice(0, 28))}</text>
   </svg>`);
 }
 
@@ -193,8 +193,8 @@ export function eventCardUri(title: string, kind = ''): string {
   return svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 240" width="480" height="240">
     <rect width="480" height="240" rx="20" fill="#141416"/>
     <rect x="24" y="24" width="64" height="8" rx="4" fill="hsl(${h},80%,58%)"/>
-    <text x="24" y="72" font-family="ui-sans-serif,system-ui" font-size="12" fill="#8E8E93">${esc(kind.slice(0, 18) || '事件')}</text>
-    <text x="24" y="112" font-family="ui-sans-serif,system-ui" font-size="22" font-weight="700" fill="#F5F5F7">${esc(title.slice(0, 20))}</text>
+    <text x="24" y="72" font-family="ui-sans-serif,system-ui" font-size="12" fill="#8a8174">${esc(kind.slice(0, 18) || '事件')}</text>
+    <text x="24" y="112" font-family="ui-sans-serif,system-ui" font-size="22" font-weight="700" fill="#f4efe6">${esc(title.slice(0, 20))}</text>
     <rect x="24" y="148" width="180" height="8" rx="4" fill="rgba(255,255,255,0.08)"/>
     <rect x="24" y="168" width="120" height="8" rx="4" fill="rgba(255,255,255,0.05)"/>
   </svg>`);
@@ -204,10 +204,10 @@ export function promptSnapshotUri(title: string, body: string, tone: 'before' | 
   const h = tone === 'after' ? 145 : 210;
   const lines = wrapLines(body, 34, 8);
   return svgUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" width="640" height="420">
-    <rect width="640" height="420" rx="24" fill="#111113"/>
+    <rect width="640" height="420" rx="24" fill="#12110f"/>
     <rect x="0" y="0" width="640" height="48" fill="hsl(${h},42%,14%)"/>
     <text x="24" y="32" font-family="ui-sans-serif,system-ui" font-size="14" font-weight="700" fill="hsl(${h},80%,72%)">${esc(title)}</text>
-    ${lines.map((line, i) => `<text x="28" y="${88 + i * 34}" font-family="ui-sans-serif,system-ui" font-size="16" fill="#F5F5F7">${esc(line)}</text>`).join('')}
+    ${lines.map((line, i) => `<text x="28" y="${88 + i * 34}" font-family="ui-sans-serif,system-ui" font-size="16" fill="#f4efe6">${esc(line)}</text>`).join('')}
   </svg>`);
 }
 

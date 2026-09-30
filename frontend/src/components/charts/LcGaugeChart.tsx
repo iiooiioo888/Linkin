@@ -44,7 +44,7 @@ export default function LcGaugeChart({
             valueAnimation: false,
             offsetCenter: [0, '8%'],
             formatter: () => `${value.toFixed(1)}\n/ ${max.toFixed(1)}`,
-            color: '#F5F5F7',
+            color: '#f4efe6',
             fontSize: 14,
             lineHeight: 18,
           },

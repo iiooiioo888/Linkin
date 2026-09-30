@@ -86,7 +86,7 @@ export default function MediaGallery({
   }, [payload, items, layout, filter]);
 
   if (items.length === 0) {
-    return <p className={`py-8 text-center text-xs text-[#636366] ${className}`}>{empty}</p>;
+    return <p className={`py-8 text-center text-xs text-[var(--console-sub)] ${className}`}>{empty}</p>;
   }
 
   return (

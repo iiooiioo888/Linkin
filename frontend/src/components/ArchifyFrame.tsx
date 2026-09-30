@@ -165,16 +165,16 @@ export default function ArchifyFrame({
       )}
       {!blobSrc && !fallbackSvg ? (
         loading ? (
-          <p className="py-8 text-center text-[12px] text-[#8E8E93]">Archify 繪製中…</p>
+          <p className="py-8 text-center text-[12px] text-[var(--console-sub)]">Archify 繪製中…</p>
         ) : (
-          <p className="py-8 text-center text-[11px] text-[#636366]">{error || '沒有圖表'}</p>
+          <p className="py-8 text-center text-[11px] text-[var(--console-sub)]">{error || '沒有圖表'}</p>
         )
       ) : null}
       {blobSrc && loading ? (
-        <p className="px-1 text-[10px] text-[#8E8E93]">Archify 繪製中…</p>
+        <p className="px-1 text-[10px] text-[var(--console-sub)]">Archify 繪製中…</p>
       ) : null}
       {error && fallbackSvg && !blobSrc ? (
-        <p className="px-1 text-[10px] text-[#8E8E93]">Archify CLI：{error}</p>
+        <p className="px-1 text-[10px] text-[var(--console-sub)]">Archify CLI：{error}</p>
       ) : null}
     </div>
   );

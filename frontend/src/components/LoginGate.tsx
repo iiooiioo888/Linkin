@@ -12,7 +12,6 @@ import './login/login.css';
 
 const REMEMBER_KEY = 'linkin.rememberDevice';
 const REMEMBERED_USER_KEY = 'linkin.rememberedUser';
-const APP_VERSION = '0.0.0';
 
 interface LoginGateProps {
   children: ReactNode;
@@ -43,7 +42,6 @@ export default function LoginGate({ children }: LoginGateProps) {
   const [remember, setRemember] = useState(readRememberDevice);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [latency, setLatency] = useState(12);
 
   useEffect(() => {
     if (readRememberDevice()) {
@@ -75,13 +73,6 @@ export default function LoginGate({ children }: LoginGateProps) {
 
   useEffect(() => {
     return subscribeGate(() => setOk(hasGate()));
-  }, []);
-
-  useEffect(() => {
-    const tick = () => setLatency(8 + Math.floor(Math.random() * 18));
-    tick();
-    const id = window.setInterval(tick, 4200);
-    return () => window.clearInterval(id);
   }, []);
 
   const onSubmit = async (e: FormEvent) => {
@@ -123,15 +114,6 @@ export default function LoginGate({ children }: LoginGateProps) {
     <div className="login-page">
       <OpcNetworkBackground />
       <form className="login-card" onSubmit={onSubmit} autoComplete="on">
-        <div className="login-status">
-          <div className="login-status__left">
-            <span className="login-status__dot" aria-hidden="true" />
-            <span className="login-status__core">{t('gate.statusCore')}</span>
-            <span className="login-status__online">{t('gate.statusOnline')}</span>
-          </div>
-          <span>AP-01 · {latency}ms</span>
-        </div>
-
         <div className="login-brand">
           <OpcPyramidLogo className="login-logo" />
           <h1 className="login-title">
@@ -177,9 +159,6 @@ export default function LoginGate({ children }: LoginGateProps) {
               />
               {t('gate.rememberDevice')}
             </label>
-            <button type="button" className="login-forgot" tabIndex={-1}>
-              {t('gate.forgotPassword')}
-            </button>
           </div>
 
           {error ? <p className="login-error">{error}</p> : null}
@@ -192,14 +171,6 @@ export default function LoginGate({ children }: LoginGateProps) {
             {busy ? t('gate.checking') : t('gate.enter')}
           </button>
         </div>
-
-        <footer className="login-footer">
-          <span className="login-footer__secure">{t('gate.secure')}</span>
-          <span className="login-footer__sep">·</span>
-          <span>v{APP_VERSION}</span>
-          <span className="login-footer__sep">·</span>
-          <span>TLS 1.3</span>
-        </footer>
       </form>
     </div>
   );

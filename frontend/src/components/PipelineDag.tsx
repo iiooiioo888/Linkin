@@ -14,9 +14,9 @@ import {
 import '@xyflow/react/dist/style.css';
 import { mapPhaseToDagNodeId } from '../lib/animLive';
 
-const BLUE = '#007AFF';
-const GREEN = '#34C759';
-const GRAY = '#8E8E93';
+const BLUE = '#e4c27a';
+const GREEN = '#8fbf9a';
+const GRAY = '#8a8174';
 
 const STAGES = [
   { id: 'sense', label: '感知', x: 40, y: 80 },
@@ -61,8 +61,8 @@ export default function PipelineDag({
           style: {
             borderRadius: 14,
             border: `1px solid ${hot ? BLUE : 'rgba(255,255,255,0.1)'}`,
-            background: hot ? 'rgba(0,122,255,0.22)' : 'rgba(44,44,46,0.92)',
-            color: hot ? '#fff' : '#F5F5F7',
+            background: hot ? 'rgba(228,194,122,0.22)' : '#191815',
+            color: '#f4efe6',
             fontSize: 12,
             fontWeight: 700,
             padding: '8px 14px',
@@ -95,7 +95,7 @@ export default function PipelineDag({
     <div className="apple-card overflow-hidden" style={{ height }}>
       <div className="apple-card__head">
         <h2 className="apple-title">管線 DAG</h2>
-        <span className="text-[10px] text-[#8E8E93]">{phase || 'IDLE'}</span>
+        <span className="text-[10px] text-[var(--console-sub)]">{phase || 'IDLE'}</span>
       </div>
       <div className="relative min-h-0 flex-1" style={{ height: height - 44 }}>
         <ReactFlow
@@ -117,7 +117,7 @@ export default function PipelineDag({
           <MiniMap
             nodeColor={(n) => (n.id === active ? BLUE : GREEN)}
             maskColor="rgba(0,0,0,0.55)"
-            className="!rounded-xl !border-white/10 !bg-[#1C1C1E]/90"
+            className="!rounded-xl !border-white/10 !bg-[color-mix(in_srgb,var(--console-card)_90%,transparent)]"
           />
         </ReactFlow>
       </div>

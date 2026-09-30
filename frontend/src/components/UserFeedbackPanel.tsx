@@ -40,7 +40,7 @@ function WordCloud({
         return (
           <span
             key={item.word}
-            className="rounded-md px-1.5 py-0.5 font-medium text-[#64D2FF]"
+            className="rounded-md px-1.5 py-0.5 font-medium text-[var(--console-accent)]"
             style={{ fontSize: `${size}px`, opacity }}
             title={`${item.count} 次`}
           >
@@ -124,7 +124,7 @@ export default function UserFeedbackPanel() {
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-[#141516]">
                   <div
-                    className="h-full rounded-full bg-[#007AFF]"
+                    className="h-full rounded-full bg-[var(--console-accent)]"
                     style={{ width: `${(count / signalTotal) * 100}%` }}
                   />
                 </div>
@@ -150,7 +150,7 @@ export default function UserFeedbackPanel() {
               .reverse()
               .map((rec, idx) => (
                 <div key={`${rec.session_id}-${idx}`} className="flex flex-wrap gap-2 px-3 py-2 text-xs">
-                  <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[#64D2FF]">
+                  <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[var(--console-accent)]">
                     {SIGNAL_LABELS[rec.signal ?? ''] ?? rec.signal}
                   </span>
                   {rec.score != null && (

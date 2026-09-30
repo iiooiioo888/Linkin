@@ -62,7 +62,7 @@ export default function CapitalFlowPanel({
         <div className="apple-card__head">
           <h2 className="apple-title">資金流</h2>
         </div>
-        <p className="px-4 py-8 text-center text-[11px] text-[#636366]">選策略後顯示資金流視圖</p>
+        <p className="px-4 py-8 text-center text-[11px] text-[var(--console-sub)]">選策略後顯示資金流視圖</p>
       </section>
     );
   }
@@ -73,7 +73,7 @@ export default function CapitalFlowPanel({
         <div className="apple-card__head">
           <h2 className="apple-title">資金流</h2>
         </div>
-        <p className="px-4 py-8 text-center text-[11px] text-[#8E8E93]">載入資金流…</p>
+        <p className="px-4 py-8 text-center text-[11px] text-[var(--console-sub)]">載入資金流…</p>
       </section>
     );
   }
@@ -99,7 +99,7 @@ export default function CapitalFlowPanel({
       <div className="apple-card__head">
         <div>
           <h2 className="apple-title">資金流</h2>
-          <p className="mt-0.5 text-[10px] text-[#8E8E93]">
+          <p className="mt-0.5 text-[10px] text-[var(--console-sub)]">
             {strategyName ?? data.name} · {data.symbol} · 初始 {data.initial_capital_fmt}
             {!wired ? ' · 示範路徑' : ''}
           </p>

@@ -1,19 +1,10 @@
 /**
- * NPC 監控 — 庫存、pending_world / applied / partial。
+ * NPC 監控 — 庫存與落地狀態。
  */
 import { useCallback, useState } from 'react';
 import { fetchNpcs, fetchPendingWorldIntents, type NpcCard } from '../../api/linkin';
-import { KpiSparkCard, StackBar } from '../../components/ui/monitor';
-import {
-  ConsoleCard,
-  ConsoleCardHeader,
-  ConsoleCenterColumn,
-  ConsoleColumnScroll,
-  KpiGrid6,
-  PanelAlert,
-  PanelShell,
-} from '../../components/ui/ConsoleLayout';
-import { statusLabel, statusStripe, useVisibilityPoll } from './monitor/shared';
+import { McHeader, McMetrics, McPage, McPanel } from './McChrome';
+import { statusLabel, useVisibilityPoll } from './monitor/shared';
 
 type NpcRow = NpcCard & { id?: string; world_status?: string; source?: string };
 
@@ -38,56 +29,49 @@ export default function NpcMonitorPanel() {
 
   useVisibilityPoll(load, 15000);
 
-  const counts = { pending_world: 0, applied: 0, partial: 0, other: 0 };
-  for (const npc of npcs) {
-    const st = npc.world_status ?? 'other';
-    if (st in counts) counts[st as keyof typeof counts] += 1;
-    else counts.other += 1;
-  }
-
-  const stack = [
-    { label: '待落地', value: counts.pending_world || pending, color: 'var(--console-amber)' },
-    { label: '已落地', value: counts.applied, color: 'var(--console-green)' },
-    { label: '部分', value: counts.partial, color: 'var(--console-blue)' },
-  ];
+  const applied = npcs.filter((npc) => npc.world_status === 'applied').length;
+  const partial = npcs.filter((npc) => npc.world_status === 'partial').length;
 
   return (
-    <PanelShell>
-      <ConsoleCenterColumn>
-        <ConsoleColumnScroll>
-          {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
-          <KpiGrid6>
-            <KpiSparkCard label="NPC 總數" value={String(npcs.length)} accent />
-            <KpiSparkCard label="待落地" value={String(pending)} />
-            <KpiSparkCard label="已落地" value={String(counts.applied)} />
-            <KpiSparkCard label="部分" value={String(counts.partial)} />
-          </KpiGrid6>
-          <ConsoleCard className="mt-3">
-            <ConsoleCardHeader>狀態分佈</ConsoleCardHeader>
-            <div className="px-3 pb-3"><StackBar segments={stack} /></div>
-          </ConsoleCard>
-          <ConsoleCard className="mt-3">
-            <ConsoleCardHeader>NPC 清單 · world_status</ConsoleCardHeader>
-            {!loading && !npcs.length ? (
-              <p className="px-3 pb-3 text-xs text-[var(--console-faint)]">尚無 NPC 資料。</p>
-            ) : null}
-            <ul className="divide-y divide-[var(--console-border)]">
-              {npcs.map((npc) => (
-                <li key={npc.id ?? npc.name} className="mon-task-card px-3 py-2 text-xs" data-priority={statusStripe(npc.world_status ?? 'other')}>
-                  <div className="flex justify-between gap-2">
-                    <span className="font-medium">{npc.name}</span>
-                    <span className="text-[var(--console-accent)]">{statusLabel(npc.world_status ?? '—')}</span>
+    <McPage>
+      <McHeader title="NPC" lead="角色卡與是否已落到世界。沒有狀態的角色只顯示名字與陣營。" />
+      {error ? <p className="mc-error">{error}</p> : null}
+      {loading && !npcs.length ? <p className="mc-empty">正在讀取 NPC…</p> : null}
+      {!error ? (
+      <McMetrics
+        items={[
+          { label: '角色', value: npcs.length },
+          { label: '待落地', value: pending },
+          { label: '已落地', value: applied },
+          { label: '部分落地', value: partial },
+        ]}
+      />
+      ) : null}
+      <McPanel title="角色清單">
+        {!error && !loading && !npcs.length ? (
+          <p className="mc-empty">還沒有 NPC。</p>
+        ) : (
+          <ul className="mc-list">
+            {npcs.map((npc) => {
+              const place = [npc.faction, npc.location].filter(Boolean).join(' · ');
+              return (
+                <li key={npc.id ?? npc.name} className="mc-row">
+                  <div className="mc-row__top">
+                    <span className="mc-row__title">{npc.name}</span>
+                    {npc.world_status ? (
+                      <span className="mc-row__status">{statusLabel(npc.world_status)}</span>
+                    ) : null}
                   </div>
-                  <div className="text-[var(--console-faint)]">{npc.faction} · {npc.location}</div>
+                  {place ? <p className="mc-row__meta">{place}</p> : null}
                   {npc.source === 'narrative_workspace' ? (
-                    <div className="mt-1 text-[10px] text-[var(--console-cyan)]">敘事工作區 · 可從世界意圖落地</div>
+                    <p className="mc-row__meta">來自敘事工作區</p>
                   ) : null}
                 </li>
-              ))}
-            </ul>
-          </ConsoleCard>
-        </ConsoleColumnScroll>
-      </ConsoleCenterColumn>
-    </PanelShell>
+              );
+            })}
+          </ul>
+        )}
+      </McPanel>
+    </McPage>
   );
 }

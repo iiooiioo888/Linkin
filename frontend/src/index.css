@@ -11,11 +11,11 @@
   --apple-label: var(--console-ink);
   --apple-secondary: var(--console-sub);
   --apple-tertiary: var(--console-faint);
-  --apple-hairline: color-mix(in srgb, var(--console-ink) 5%, transparent);
-  --apple-fill: color-mix(in srgb, var(--console-ink) 2.5%, transparent);
+  --apple-hairline: var(--console-line);
+  --apple-fill: color-mix(in srgb, var(--console-ink) 5%, transparent);
   --apple-canvas: var(--console-bg);
   --apple-canvas-elevated: var(--console-card-elevated);
-  --apple-surface: color-mix(in srgb, var(--console-ink) 3%, transparent);
+  --apple-surface: var(--console-card);
   --apple-light: var(--console-ink);
   --apple-radius: 10px;
   --apple-radius-lg: 14px;
@@ -25,7 +25,7 @@
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
   --app-topbar-height: 48px;
-  --app-statusbar-height: 22px;
+  --app-statusbar-height: 26px;
   --mobile-tab-bar-height: 56px;
 
   /* ---- 控制台 OCD 三欄設計 tokens（8pt grid · gold/dark v3） ---- */
@@ -34,19 +34,19 @@
   --u3: 24px;
   --u4: 32px;
   --u6: 48px;
-  --console-bg: #08080a;
-  --console-sidebar: #0c0c0f;
-  --console-card: #121216;
-  --console-card-elevated: #18181d;
-  --console-line: #1f1f25;
-  --console-line-strong: #2a2a32;
+  --console-bg: #0b0a09;
+  --console-sidebar: #12110f;
+  --console-card: #191815;
+  --console-card-elevated: #221f1b;
+  --console-line: #2e2923;
+  --console-line-strong: #40392f;
   --console-line-hi: var(--console-line-strong);
-  --console-ink: #e6e6ea;
-  --console-sub: #82828c;
-  --console-faint: #45454e;
-  --console-dim: #2e2e36;
-  --console-accent: #c9a961;
-  --console-accent-soft: #6e5a32;
+  --console-ink: #f4efe6;
+  --console-sub: #b3aa9c;
+  --console-faint: #8a8174;
+  --console-dim: #3a342c;
+  --console-accent: #e4c27a;
+  --console-accent-soft: #8d6e3a;
   --console-green: #6fa87f;
   --console-green-dk: #2e4a38;
   --console-blue: #7a92b8;
@@ -82,15 +82,9 @@ body {
   background-color: var(--apple-canvas);
   color: var(--apple-light);
   font-family:
-    'Inter',
-    -apple-system,
-    BlinkMacSystemFont,
-    'SF Pro Text',
-    'Segoe UI',
+    'Noto Sans TC',
     'PingFang TC',
     'Microsoft JhengHei',
-    ui-monospace,
-    monospace,
     sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -142,8 +136,97 @@ body.scroll-lock {
 }
 
 .apple-canvas {
-  background: var(--apple-canvas);
+  background:
+    radial-gradient(880px 360px at 0% 0%, color-mix(in srgb, var(--console-accent) 9%, transparent), transparent 68%),
+    var(--apple-canvas);
   color: var(--apple-light);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--console-accent) 36%, transparent);
+  color: var(--console-ink);
+}
+
+.brand-mark {
+  font-family: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.brand-mark__dot {
+  margin: 0 1px;
+  color: var(--console-faint);
+  font-weight: 400;
+}
+
+.app-topbar {
+  position: relative;
+}
+
+.app-topbar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 16px;
+  width: 56px;
+  height: 1px;
+  background: var(--console-accent);
+  pointer-events: none;
+}
+
+.activity-rail {
+  width: 52px;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border-right: 1px solid var(--console-line);
+  background: var(--console-sidebar);
+  padding: 10px 0;
+}
+
+.activity-rail-btn {
+  position: relative;
+  display: flex;
+  height: 36px;
+  width: 36px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--console-faint);
+  cursor: pointer;
+}
+
+.activity-rail-btn:hover {
+  background: color-mix(in srgb, var(--console-ink) 5%, transparent);
+  color: var(--console-ink);
+}
+
+.activity-rail-btn.is-active {
+  background: color-mix(in srgb, var(--console-accent) 14%, transparent);
+  color: var(--console-accent);
+}
+
+.activity-rail-btn.is-active::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: var(--console-accent);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--console-accent) 75%, white);
+  outline-offset: 2px;
 }
 
 /* ---- 控制台 OCD 三欄版面 ---- */
@@ -858,7 +941,7 @@ body.scroll-lock {
 }
 
 .apple-data {
-  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
   font-weight: 400;
   letter-spacing: -0.02em;
   color: var(--apple-light);
@@ -871,7 +954,7 @@ body.scroll-lock {
 }
 
 .apple-accent {
-  color: var(--apple-blue);
+  color: var(--console-accent);
 }
 
 .apple-dot {
@@ -901,16 +984,16 @@ body.scroll-lock {
 }
 
 .apple-btn-active {
-  border-color: color-mix(in srgb, var(--console-accent) 35%, transparent) !important;
-  background: rgba(10, 132, 255, 0.12) !important;
-  color: var(--apple-blue-soft) !important;
+  border-color: color-mix(in srgb, var(--console-accent) 45%, transparent) !important;
+  background: color-mix(in srgb, var(--console-accent) 14%, transparent) !important;
+  color: var(--console-accent) !important;
   border-radius: 8px;
 }
 
 /* ---- 輸入列 / 表單 / 頂欄工具 ---- */
 .apple-input-bar {
-  border-top: 1px solid var(--apple-hairline);
-  background: linear-gradient(to top, rgba(13, 13, 15, 0.98), rgba(13, 13, 15, 0.92));
+  border-top: 1px solid var(--console-line);
+  background: var(--console-sidebar);
   padding: 8px 16px calc(12px + var(--safe-area-bottom));
 }
 
@@ -935,11 +1018,8 @@ body.scroll-lock {
 }
 
 .apple-composer:focus-within {
-  box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.12);
-}
-
-.apple-composer:focus-within {
-  border-color: rgba(10, 132, 255, 0.4);
+  border-color: color-mix(in srgb, var(--console-accent) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--console-accent) 16%, transparent);
 }
 
 .apple-composer__field {
@@ -995,8 +1075,8 @@ body.scroll-lock {
 }
 
 .apple-segment__btn--active {
-  background: rgba(10, 132, 255, 0.16);
-  color: var(--apple-blue-soft);
+  background: color-mix(in srgb, var(--console-accent) 16%, transparent);
+  color: var(--console-accent);
 }
 
 .apple-segment__btn:disabled {
@@ -1015,7 +1095,7 @@ body.scroll-lock {
 }
 
 .apple-select:focus {
-  border-color: rgba(0, 122, 255, 0.4);
+  border-color: color-mix(in srgb, var(--console-accent) 65%, transparent);
 }
 
 .apple-field {
@@ -1030,7 +1110,7 @@ body.scroll-lock {
 }
 
 .apple-field:focus {
-  border-color: rgba(0, 122, 255, 0.4);
+  border-color: color-mix(in srgb, var(--console-accent) 65%, transparent);
 }
 
 .apple-field:disabled {
@@ -1062,8 +1142,8 @@ body.scroll-lock {
 }
 
 .apple-icon-btn--active {
-  background: rgba(0, 122, 255, 0.15);
-  color: var(--apple-blue-soft);
+  background: color-mix(in srgb, var(--console-accent) 16%, transparent);
+  color: var(--console-accent);
 }
 
 .apple-send-btn {
@@ -1074,8 +1154,8 @@ body.scroll-lock {
   height: 30px;
   border: none;
   border-radius: 50%;
-  background: var(--apple-blue);
-  color: #fff;
+  background: var(--console-accent);
+  color: #1a140c;
   cursor: pointer;
   transition: opacity 0.15s ease, transform 0.1s ease;
 }
@@ -1097,8 +1177,8 @@ body.scroll-lock {
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
+  border: 2px solid rgba(26, 20, 12, 0.35);
+  border-top-color: #1a140c;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -1115,11 +1195,16 @@ body.scroll-lock {
   shrink: 0;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid var(--apple-hairline);
-  background: rgba(22, 22, 24, 0.95);
+  border-top: 1px solid var(--console-line);
+  background: var(--console-sidebar);
   padding: 0 calc(12px + var(--safe-area-right)) 0 calc(12px + var(--safe-area-left));
-  font-size: 10px;
-  color: var(--apple-tertiary);
+  font-size: 11px;
+  color: var(--console-faint);
+}
+
+.apple-status-bar a:hover,
+.apple-status-bar button:hover {
+  color: var(--console-ink);
 }
 
 .apple-status-item {
@@ -1151,7 +1236,7 @@ body.scroll-lock {
 }
 
 .media-gallery {
-  --neiki-accent: #007aff;
+  --neiki-accent: var(--console-accent);
   --neiki-bg: #1c1c1e;
 }
 
@@ -1186,7 +1271,7 @@ body.scroll-lock {
 /* 深色細滾動條 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: color-mix(in srgb, var(--console-ink) 22%, transparent) transparent;
 }
 *::-webkit-scrollbar {
   width: 6px;
@@ -1203,8 +1288,8 @@ body.scroll-lock {
 /* ---- 對話訊息 ---- */
 .evo-msg-user {
   border-radius: 18px 18px 4px 18px;
-  background: var(--apple-blue);
-  color: #fff;
+  background: color-mix(in srgb, var(--console-accent) 86%, #fff);
+  color: #1a140c;
   padding: 10px 14px;
   font-size: 14px;
   line-height: 1.55;
@@ -1604,7 +1689,7 @@ body.scroll-lock {
     gap: 2px;
     height: var(--mobile-tab-bar-height);
     border-top: 1px solid var(--apple-hairline);
-    background: rgba(13, 13, 15, 0.94);
+    background: color-mix(in srgb, var(--console-sidebar) 94%, transparent);
     backdrop-filter: blur(16px) saturate(1.2);
     -webkit-backdrop-filter: blur(16px) saturate(1.2);
     padding: 0 var(--safe-area-right) 0 var(--safe-area-left);
@@ -1629,8 +1714,9 @@ body.scroll-lock {
   }
 
   .activity-tab-bottom.is-active {
-    color: var(--apple-label);
-    background: rgba(255, 255, 255, 0.06);
+    color: var(--console-ink);
+    background: transparent;
+    box-shadow: inset 0 2px 0 var(--console-accent);
   }
 
   .activity-tab-bottom__icon {
@@ -1807,8 +1893,8 @@ body.scroll-lock {
   align-items: center;
   justify-content: center;
   border-radius: 7px;
-  background: linear-gradient(135deg, var(--apple-blue), #5e5ce6);
-  color: #fff;
+  background: color-mix(in srgb, var(--console-accent) 22%, var(--console-card));
+  color: var(--console-accent);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1834,7 +1920,7 @@ body.scroll-lock {
   padding: 1px 6px;
   font-size: 9.5px;
   font-weight: 500;
-  background: rgba(10, 132, 255, 0.12);
+  background: color-mix(in srgb, var(--console-accent) 12%, transparent);
   color: var(--apple-blue-soft);
 }
 
@@ -1866,7 +1952,7 @@ body.scroll-lock {
   text-transform: none;
   font-size: 10px;
   font-weight: 500;
-  color: #64d2ff;
+  color: var(--console-accent);
 }
 
 .rd-acts {
@@ -2083,7 +2169,7 @@ body.scroll-lock {
 }
 
 .rd-col.sel {
-  border-color: rgba(10, 132, 255, 0.45);
+  border-color: color-mix(in srgb, var(--console-accent) 45%, transparent);
 }
 
 .rd-col-h {
@@ -2169,8 +2255,8 @@ body.scroll-lock {
 }
 
 .rd-tc.on {
-  border-color: rgba(10, 132, 255, 0.45);
-  background: rgba(10, 132, 255, 0.08);
+  border-color: color-mix(in srgb, var(--console-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--console-accent) 8%, transparent);
 }
 
 .rd-tc-t {
@@ -2409,15 +2495,15 @@ body.scroll-lock {
 }
 .rd-onode:hover,
 .rd-onode.cur {
-  border-color: rgba(10, 132, 255, 0.45);
-  background: rgba(10, 132, 255, 0.1);
+  border-color: color-mix(in srgb, var(--console-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--console-accent) 10%, transparent);
   color: var(--apple-blue-soft);
 }
 
 .rd-onode.cur {
   max-width: 148px;
   font-weight: 600;
-  box-shadow: 0 0 12px rgba(10, 132, 255, 0.15);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--console-accent) 15%, transparent);
 }
 
 .rd-onode small {
@@ -2470,7 +2556,7 @@ body.scroll-lock {
 }
 
 .rd-card:hover { border-color: var(--apple-hairline); }
-.rd-card.sel { border-color: rgba(10, 132, 255, 0.45); }
+.rd-card.sel { border-color: color-mix(in srgb, var(--console-accent) 45%, transparent); }
 .rd-card.sel::before {
   content: '';
   position: absolute;
@@ -2873,7 +2959,7 @@ body.scroll-lock {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 
 .rs-sub {
@@ -2907,7 +2993,7 @@ body.scroll-lock {
 }
 
 .rs-act:hover {
-  color: #f5f5f7;
+  color: var(--console-ink);
   background: rgba(255, 255, 255, 0.04);
 }
 
@@ -2917,9 +3003,9 @@ body.scroll-lock {
 }
 
 .rs-act--primary {
-  border-color: rgba(0, 122, 255, 0.4);
-  background: rgba(0, 122, 255, 0.15);
-  color: #64d2ff;
+  border-color: color-mix(in srgb, var(--console-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--console-accent) 15%, transparent);
+  color: var(--console-accent);
 }
 
 .rs-act--primary:disabled {
@@ -2992,7 +3078,7 @@ body.scroll-lock {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 
 .rs-budget-h span {
@@ -3020,7 +3106,7 @@ body.scroll-lock {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 
 .rs-sec-hint {
@@ -3087,7 +3173,7 @@ body.scroll-lock {
 
 .ar-fbtn:hover { color: var(--apple-secondary); }
 .ar-fbtn.on {
-  background: rgba(10, 132, 255, 0.12);
+  background: color-mix(in srgb, var(--console-accent) 12%, transparent);
   color: var(--apple-blue-soft);
 }
 .ar-fbtn.on.alert {
@@ -3161,7 +3247,7 @@ body.scroll-lock {
 }
 .ar-ri:hover { background: var(--apple-surface); color: var(--apple-label); }
 .ar-ri.on {
-  background: rgba(10, 132, 255, 0.1);
+  background: color-mix(in srgb, var(--console-accent) 10%, transparent);
   color: var(--apple-blue-soft);
 }
 .ar-dot {
@@ -3216,11 +3302,11 @@ body.scroll-lock {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: #007aff;
+  background: var(--console-accent);
   padding: 0 5px;
   font-size: 10px;
   font-weight: 700;
-  color: #fff;
+  color: #1a140c;
 }
 
 .sq-tree-tools {
@@ -3252,8 +3338,8 @@ body.scroll-lock {
 }
 
 .sq-tree-chip.on {
-  background: rgba(0, 122, 255, 0.16);
-  color: #64d2ff;
+  background: color-mix(in srgb, var(--console-accent) 16%, transparent);
+  color: var(--console-accent);
 }
 
 .sq-tree {
@@ -3292,7 +3378,7 @@ body.scroll-lock {
 .sq-tree-check input {
   width: 14px;
   height: 14px;
-  accent-color: #007aff;
+  accent-color: var(--console-accent);
 }
 
 .sq-tree-parent-label {
@@ -3325,8 +3411,8 @@ body.scroll-lock {
 
 .sq-tree-leaf.on,
 .sq-tree-leaf.cur {
-  background: rgba(0, 122, 255, 0.12);
-  color: #007aff;
+  background: color-mix(in srgb, var(--console-accent) 12%, transparent);
+  color: var(--console-accent);
 }
 
 .sq-tree-leaf-name {
@@ -3346,7 +3432,7 @@ body.scroll-lock {
 
 .sq-tree-leaf.on .sq-tree-id,
 .sq-tree-leaf.cur .sq-tree-id {
-  color: rgba(0, 122, 255, 0.7);
+  color: color-mix(in srgb, var(--console-accent) 70%, transparent);
 }
 
 .sq-box {
@@ -3364,8 +3450,9 @@ body.scroll-lock {
 }
 
 .sq-box.on {
-  border-color: #007aff;
-  background: #007aff;
+  border-color: var(--console-accent);
+  background: var(--console-accent);
+  color: #1a140c;
 }
 
 .sq-box.off {
@@ -3403,18 +3490,18 @@ body.scroll-lock {
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 10px;
   line-height: 1.45;
-  color: #aeaeB2;
+  color: var(--console-sub);
   white-space: pre-wrap;
 }
 
 .sq-tree-copy {
   margin-top: 10px;
   border-radius: 999px;
-  background: #007aff;
+  background: var(--console-accent);
   padding: 6px 12px;
   font-size: 11px;
   font-weight: 700;
-  color: #fff;
+  color: #1a140c;
 }
 
 .sq-tree-embed {
@@ -3432,7 +3519,7 @@ body.scroll-lock {
 }
 
 .sq-tree-parent-label.on {
-  color: #007aff;
+  color: var(--console-accent);
 }
 
 .sq-map {
@@ -3738,7 +3825,7 @@ body.scroll-lock {
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: #aeaeb2;
+  color: var(--console-sub);
 }
 
 .raho-legend-edge {
@@ -3750,21 +3837,21 @@ body.scroll-lock {
 }
 
 .raho-legend-edge:hover {
-  color: #64d2ff;
+  color: var(--console-accent);
 }
 
 .raho-legend-edge.on {
-  color: #64d2ff;
+  color: var(--console-accent);
 }
 
 .raho-legend-k {
-  color: #636366;
+  color: var(--console-sub);
 }
 
 .raho-desk-edges {
   margin-top: 6px;
   font-size: 10px;
-  color: #636366;
+  color: var(--console-sub);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -3849,8 +3936,8 @@ body.scroll-lock {
 }
 
 .raho-pyr-item.on {
-  border-color: rgba(10, 132, 255, 0.45);
-  background: rgba(10, 132, 255, 0.12);
+  border-color: color-mix(in srgb, var(--console-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--console-accent) 12%, transparent);
 }
 
 .raho-pyr-item.is-static {
@@ -3861,7 +3948,7 @@ body.scroll-lock {
 .raho-pyr-item.is-l0,
 .raho-desk-chip.is-l0 {
   border-color: rgba(100, 210, 255, 0.28);
-  color: #64d2ff;
+  color: var(--console-accent);
 }
 
 .raho-pyr-item.is-l1,
@@ -3881,7 +3968,7 @@ body.scroll-lock {
 }
 
 .raho-pyr-t {
-  color: #aeaeb2;
+  color: var(--console-sub);
 }
 
 .raho-pyr-n {
@@ -3909,7 +3996,7 @@ body.scroll-lock {
   width: 28px;
   flex-shrink: 0;
   font-size: 9px;
-  color: #636366;
+  color: var(--console-sub);
 }
 
 @media (max-width: 720px) {
@@ -3928,8 +4015,8 @@ body.scroll-lock {
 }
 
 .raho-edge.on {
-  background: rgba(10, 132, 255, 0.08);
-  outline: 1px solid rgba(10, 132, 255, 0.22);
+  background: color-mix(in srgb, var(--console-accent) 8%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--console-accent) 22%, transparent);
 }
 
 .raho-edge-dot {
@@ -3950,7 +4037,7 @@ body.scroll-lock {
 }
 
 .raho-edge-role {
-  color: #64d2ff;
+  color: var(--console-accent);
   background: none;
   border: 0;
   padding: 0;
@@ -3963,7 +4050,7 @@ body.scroll-lock {
 }
 
 .raho-edge-kind {
-  color: #636366;
+  color: var(--console-sub);
 }
 
 .raho-edge-sum {
@@ -3980,7 +4067,7 @@ body.scroll-lock {
 }
 
 .raho-edge-sum:hover {
-  color: #64d2ff;
+  color: var(--console-accent);
 }
 
 .raho-desk-chain {
@@ -4019,7 +4106,7 @@ body.scroll-lock {
   font-style: normal;
   letter-spacing: 0.02em;
   text-transform: none;
-  color: #aeaeb2;
+  color: var(--console-sub);
   font-weight: 500;
   font-size: 9px;
 }
@@ -4050,7 +4137,7 @@ body.scroll-lock {
   border-radius: 999px;
   padding: 4px 8px;
   background: rgba(255, 255, 255, 0.04);
-  color: #636366;
+  color: var(--console-sub);
   font-size: 10px;
 }
 
@@ -4095,7 +4182,7 @@ body.scroll-lock {
 .raho-grill-lead {
   margin: 8px 0 10px;
   font-size: 12px;
-  color: #aeaeb2;
+  color: var(--console-sub);
 }
 
 .raho-grill-meter {
@@ -4174,14 +4261,14 @@ body.scroll-lock {
 .raho-a span {
   display: block;
   font-size: 10px;
-  color: #636366;
+  color: var(--console-sub);
   margin-bottom: 2px;
 }
 
 .raho-q p,
 .raho-a p {
   margin: 0;
-  color: #f5f5f7;
+  color: var(--console-ink);
   line-height: 1.5;
 }
 
@@ -4197,7 +4284,7 @@ body.scroll-lock {
   margin-top: 10px;
   font-size: 13px;
   line-height: 1.5;
-  color: #f5f5f7;
+  color: var(--console-ink);
   white-space: pre-wrap;
 }
 
@@ -4231,7 +4318,7 @@ body.scroll-lock {
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: #1c1c1e;
-  color: #f5f5f7;
+  color: var(--console-ink);
   padding: 8px 10px;
   font-size: 13px;
   resize: none;
@@ -4254,19 +4341,19 @@ body.scroll-lock {
 .raho-btn--ghost {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #aeaeb2;
+  color: var(--console-sub);
 }
 
 .raho-battle-card {
-  border: 1px solid rgba(10, 132, 255, 0.32);
-  background: rgba(10, 132, 255, 0.06);
+  border: 1px solid color-mix(in srgb, var(--console-accent) 32%, transparent);
+  background: color-mix(in srgb, var(--console-accent) 6%, transparent);
   border-radius: 14px;
   padding: 14px;
   margin-top: 10px;
 }
 
 .raho-battle-card.is-ready {
-  border-color: rgba(10, 132, 255, 0.4);
+  border-color: color-mix(in srgb, var(--console-accent) 40%, transparent);
 }
 
 .raho-battle-card.is-failed {
@@ -4282,7 +4369,7 @@ body.scroll-lock {
 .raho-battle-kicker {
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #0a84ff;
+  color: var(--console-accent);
   font-weight: 600;
 }
 
@@ -4293,11 +4380,11 @@ body.scroll-lock {
   margin: 8px 0 0;
   padding-left: 18px;
   font-size: 12px;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 
 .raho-battle-checks li.is-pass {
-  color: #64d2ff;
+  color: var(--console-accent);
 }
 
 .raho-battle-checks li.is-fail {
@@ -4326,7 +4413,7 @@ body.scroll-lock {
 }
 
 .raho-battle-dag code {
-  color: #64d2ff;
+  color: var(--console-accent);
   margin-top: 2px;
 }
 
@@ -4346,7 +4433,7 @@ body.scroll-lock {
 .raho-battle-prompt summary,
 .raho-battle-yaml summary {
   cursor: pointer;
-  color: #64d2ff;
+  color: var(--console-accent);
 }
 
 .raho-battle-prompt pre,
@@ -4358,7 +4445,7 @@ body.scroll-lock {
   word-break: break-word;
   font-size: 11px;
   line-height: 1.45;
-  color: #f5f5f7;
+  color: var(--console-ink);
   background: rgba(0, 0, 0, 0.28);
   border-radius: 8px;
   padding: 8px;
@@ -4366,8 +4453,8 @@ body.scroll-lock {
 
 .raho-btn {
   border-radius: 8px;
-  background: #0a84ff;
-  color: #fff;
+  background: var(--console-accent);
+  color: #1a140c;
   font-size: 11px;
   padding: 6px 10px;
 }
@@ -4379,7 +4466,7 @@ body.scroll-lock {
 .raho-btn.ghost {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #aeaeb2;
+  color: var(--console-sub);
 }
 
 .l0-panel {
@@ -4407,7 +4494,7 @@ body.scroll-lock {
 .l0-title {
   font-size: 15px;
   font-weight: 600;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 
 .l0-sub {
@@ -4453,7 +4540,7 @@ body.scroll-lock {
 
 .l0-tab.on {
   border-color: rgba(100, 210, 255, 0.35);
-  color: #64d2ff;
+  color: var(--console-accent);
 }
 
 .l0-list {
@@ -4471,13 +4558,13 @@ body.scroll-lock {
 
 .l0-card-k {
   font-size: 10px;
-  color: #64d2ff;
+  color: var(--console-accent);
 }
 
 .l0-card-t {
   margin-top: 4px;
   font-size: 12px;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 
 .l0-card-f,
@@ -4490,7 +4577,7 @@ body.scroll-lock {
 .l0-link {
   margin-top: 10px;
   font-size: 11px;
-  color: #0a84ff;
+  color: var(--console-accent);
 }
 
 .l0-bias {
@@ -4518,7 +4605,7 @@ body.scroll-lock {
 
 .l0-metric strong {
   font-size: 13px;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 
 .l0-warn {
@@ -4583,7 +4670,7 @@ body.scroll-lock {
   background: rgba(100, 210, 255, 0.08);
   padding: 2px 8px;
   font-size: 10px;
-  color: #64d2ff;
+  color: var(--console-accent);
 }
 
 .l0-thermo {
@@ -4612,7 +4699,7 @@ body.scroll-lock {
   align-items: center;
   justify-content: center;
   font-size: 8px;
-  color: #f5f5f7;
+  color: var(--console-ink);
   writing-mode: vertical-rl;
 }
 
@@ -4660,7 +4747,7 @@ body.scroll-lock {
   overflow: hidden;
   background: var(--ws-bg);
   color: var(--ws-text);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
   font-size: 13px;
   line-height: 1.5;
   isolation: isolate;
@@ -4896,15 +4983,15 @@ body.scroll-lock {
 }
 
 .ws-btn-primary {
-  background: var(--ws-blue);
-  border-color: var(--ws-blue);
-  color: #fff;
+  background: var(--console-accent);
+  border-color: var(--console-accent);
+  color: #1a140c;
 }
 
 .ws-btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-  color: #fff;
-  box-shadow: var(--ws-glow);
+  background: color-mix(in srgb, var(--console-accent) 82%, white);
+  color: #1a140c;
+  box-shadow: none;
 }
 
 .ws-btn-danger {
@@ -5291,7 +5378,7 @@ body.scroll-lock {
   padding: 0 5px;
   border-radius: 4px;
   background: rgba(100, 210, 255, 0.14);
-  color: #64d2ff;
+  color: var(--console-accent);
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -5553,7 +5640,7 @@ body.scroll-lock {
   border-bottom: 1px solid var(--ws-border);
   background: var(--ws-panel);
   color: var(--ws-muted);
-  font-family: Inter, sans-serif;
+  font-family: 'Noto Sans TC', 'PingFang TC', sans-serif;
   font-size: 11px;
 }
 
@@ -5913,9 +6000,9 @@ body.scroll-lock {
 }
 
 .ws-msg.is-user .ws-msg-b {
-  background: var(--ws-blue);
-  color: #fff;
-  border: 1px solid var(--ws-blue);
+  background: color-mix(in srgb, var(--console-accent) 86%, #fff);
+  color: #1a140c;
+  border: 1px solid transparent;
   border-top-right-radius: 4px;
 }
 
@@ -6373,7 +6460,7 @@ body.scroll-lock {
 .integ-strip-link {
   font-size: 10px;
   font-weight: 600;
-  color: #0a84ff;
+  color: var(--console-accent);
 }
 .integ-strip-link:hover {
   text-decoration: underline;
@@ -6386,12 +6473,12 @@ body.scroll-lock {
   gap: 6px;
   font-size: 11px;
   font-weight: 600;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 .integ-strip-group-h span {
   font-size: 10px;
   font-weight: 400;
-  color: #636366;
+  color: var(--console-sub);
 }
 .integ-strip-row {
   display: flex;
@@ -6408,13 +6495,13 @@ body.scroll-lock {
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 500;
-  color: #aeaeb2;
+  color: var(--console-sub);
   transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
 .integ-chip:hover {
-  border-color: color-mix(in srgb, var(--integ-accent, #64d2ff) 45%, transparent);
-  background: color-mix(in srgb, var(--integ-accent, #64d2ff) 12%, transparent);
-  color: #f5f5f7;
+  border-color: color-mix(in srgb, var(--integ-accent, var(--console-accent)) 45%, transparent);
+  background: color-mix(in srgb, var(--integ-accent, var(--console-accent)) 12%, transparent);
+  color: var(--console-ink);
 }
 .integ-chip-glyph {
   font-size: 11px;
@@ -6423,15 +6510,15 @@ body.scroll-lock {
 .integ-chip-ms {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
-  color: #636366;
+  color: var(--console-sub);
 }
 .integ-chip.is-off {
-  color: #636366;
+  color: var(--console-sub);
   opacity: 0.72;
 }
 .integ-chip.is-ok {
   border-color: color-mix(in srgb, var(--integ-accent, #30d158) 35%, transparent);
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 .integ-chip.is-ok .integ-chip-glyph {
   color: var(--integ-accent, #30d158);
@@ -6445,8 +6532,8 @@ body.scroll-lock {
   color: #ff453a;
 }
 .integ-panel-focus {
-  outline: 1px solid color-mix(in srgb, var(--integ-accent, #64d2ff) 55%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--integ-accent, #64d2ff) 18%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--integ-accent, var(--console-accent)) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--integ-accent, var(--console-accent)) 18%, transparent);
 }
 .integ-hero {
   display: grid;
@@ -6461,7 +6548,7 @@ body.scroll-lock {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 .integ-hero p {
   margin: 0;
@@ -6522,7 +6609,7 @@ body.scroll-lock {
   color: #8e8e93;
 }
 .ctx-trend-col.is-active .ctx-trend-bar {
-  outline: 1px solid #64d2ff;
+  outline: 1px solid var(--console-accent);
   box-shadow: 0 0 0 2px rgba(100, 210, 255, 0.2);
 }
 .ctx-trend-bar {
@@ -6569,7 +6656,7 @@ body.scroll-lock {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: conic-gradient(#64d2ff calc(var(--p) * 1%), rgba(255, 255, 255, 0.08) 0);
+  background: conic-gradient(var(--console-accent) calc(var(--p) * 1%), rgba(255, 255, 255, 0.08) 0);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -6591,14 +6678,14 @@ body.scroll-lock {
 .ctx-ring-meta .value {
   font-size: 14px;
   font-weight: 600;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 .ctx-step-brief {
   margin-top: 10px;
   display: grid;
   gap: 6px;
   font-size: 11px;
-  color: #aeaeb2;
+  color: var(--console-sub);
 }
 .ctx-step-brief row,
 .ctx-step-brief .row {
@@ -6607,7 +6694,7 @@ body.scroll-lock {
   gap: 8px;
 }
 .ctx-step-brief .k {
-  color: #636366;
+  color: var(--console-sub);
   font-weight: 600;
 }
 .ctx-delta {
@@ -6671,7 +6758,7 @@ body.scroll-lock {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #f5f5f7;
+  color: var(--console-ink);
 }
 .ctx-panel.is-embed .ctx-embed-hero p {
   margin: 4px 0 0;
@@ -6742,7 +6829,7 @@ body.scroll-lock {
   background: rgba(191, 90, 242, 0.1);
 }
 .ctx-chip.is-mcp {
-  color: #64d2ff;
+  color: var(--console-accent);
   border-color: rgba(100, 210, 255, 0.35);
   background: rgba(100, 210, 255, 0.1);
 }

@@ -1,20 +1,11 @@
 /**
- * 任務／道具監控 — 世界意圖狀態帶。
+ * 任務／道具監控 — 庫存與落地狀態。
  */
 import { useCallback, useState } from 'react';
 import { fetchItems, fetchPendingWorldIntents, fetchQuestProgressSummary, fetchQuests } from '../../api/linkin';
 import QuestRuntimeStrip from './QuestRuntimeStrip';
-import { KpiSparkCard, StackBar } from '../../components/ui/monitor';
-import {
-  ConsoleCard,
-  ConsoleCardHeader,
-  ConsoleCenterColumn,
-  ConsoleColumnScroll,
-  KpiGrid6,
-  PanelAlert,
-  PanelShell,
-} from '../../components/ui/ConsoleLayout';
-import { statusLabel, statusStripe, useVisibilityPoll } from './monitor/shared';
+import { McHeader, McMetrics, McPage, McPanel } from './McChrome';
+import { statusLabel, useVisibilityPoll } from './monitor/shared';
 
 export default function QuestItemMonitorPanel() {
   const [quests, setQuests] = useState<Array<{ id: string; title: string; world_status?: string }>>([]);
@@ -48,62 +39,59 @@ export default function QuestItemMonitorPanel() {
 
   useVisibilityPoll(load, 15000);
 
-  const dataReady = !loading;
-
-  const questStack = [
-    { label: '待落地', value: pendingQ, color: 'var(--console-amber)' },
-    { label: '已落地', value: quests.filter((q) => q.world_status === 'applied').length, color: 'var(--console-green)' },
-    { label: '部分', value: quests.filter((q) => q.world_status === 'partial').length, color: 'var(--console-blue)' },
+  const metrics = [
+    { label: '任務', value: quests.length },
+    { label: '道具', value: items.length },
+    { label: '待落地任務', value: pendingQ },
+    { label: '待落地道具', value: pendingI },
   ];
-  const itemStack = [
-    { label: '待落地', value: pendingI, color: 'var(--console-amber)' },
-    { label: '已落地', value: items.filter((x) => x.world_status === 'applied').length, color: 'var(--console-green)' },
-    { label: '部分', value: items.filter((x) => x.world_status === 'partial').length, color: 'var(--console-blue)' },
-  ];
+  if (activeProgress > 0) metrics.push({ label: '進行中', value: activeProgress });
 
   return (
-    <PanelShell>
-      <ConsoleCenterColumn>
-        <ConsoleColumnScroll>
-          {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
-          <KpiGrid6>
-            <KpiSparkCard label="任務" value={String(quests.length)} accent />
-            <KpiSparkCard label="道具" value={String(items.length)} />
-            <KpiSparkCard label="待落地任務" value={String(pendingQ)} />
-            <KpiSparkCard label="待落地道具" value={String(pendingI)} />
-            <KpiSparkCard label="活躍進度" value={String(activeProgress)} accent={activeProgress > 0} />
-          </KpiGrid6>
-          <ConsoleCard className="mt-3">
-            <ConsoleCardHeader title="任務進度運行時" />
-            <QuestRuntimeStrip />
-          </ConsoleCard>
-          <ConsoleCard className="mt-3">
-            <ConsoleCardHeader>任務狀態</ConsoleCardHeader>
-            <div className="px-3 pb-3"><StackBar segments={questStack} /></div>
-            {dataReady && !quests.length ? (
-              <p className="px-3 pb-2 text-xs text-[var(--console-faint)]">尚無任務資料。</p>
-            ) : null}
-            <ul className="divide-y divide-[var(--console-border)] border-t border-[var(--console-border)]">
-              {quests.slice(0, 12).map((q) => (
-                <li key={q.id} className="mon-task-card px-3 py-2 text-xs" data-priority={statusStripe(q.world_status ?? 'other')}>
-                  <div className="flex justify-between"><span>{q.title}</span><span>{statusLabel(q.world_status ?? '—')}</span></div>
-                </li>
-              ))}
-            </ul>
-          </ConsoleCard>
-          <ConsoleCard className="mt-3">
-            <ConsoleCardHeader>道具狀態</ConsoleCardHeader>
-            <div className="px-3 pb-3"><StackBar segments={itemStack} /></div>
-            <ul className="divide-y divide-[var(--console-border)] border-t border-[var(--console-border)]">
-              {items.slice(0, 12).map((item) => (
-                <li key={item.id} className="mon-task-card px-3 py-2 text-xs" data-priority={statusStripe(item.world_status ?? 'other')}>
-                  <div className="flex justify-between"><span>{item.name}</span><span>{statusLabel(item.world_status ?? '—')}</span></div>
-                </li>
-              ))}
-            </ul>
-          </ConsoleCard>
-        </ConsoleColumnScroll>
-      </ConsoleCenterColumn>
-    </PanelShell>
+    <McPage>
+      <McHeader title="任務與道具" lead="庫存裡的任務、道具，以及玩家正在進行的進度。" />
+      {error ? <p className="mc-error">{error}</p> : null}
+      {loading && !quests.length && !items.length ? <p className="mc-empty">正在讀取任務與道具…</p> : null}
+      {!error ? <McMetrics items={metrics} /> : null}
+      <McPanel title="進行中的任務">
+        <QuestRuntimeStrip />
+      </McPanel>
+      <McPanel title="任務">
+        {!error && !loading && !quests.length ? (
+          <p className="mc-empty">還沒有任務。</p>
+        ) : (
+          <ul className="mc-list">
+            {quests.slice(0, 12).map((quest) => (
+              <li key={quest.id} className="mc-row">
+                <div className="mc-row__top">
+                  <span className="mc-row__title">{quest.title}</span>
+                  {quest.world_status ? (
+                    <span className="mc-row__status">{statusLabel(quest.world_status)}</span>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </McPanel>
+      <McPanel title="道具">
+        {!error && !loading && !items.length ? (
+          <p className="mc-empty">還沒有道具。</p>
+        ) : (
+          <ul className="mc-list">
+            {items.slice(0, 12).map((item) => (
+              <li key={item.id} className="mc-row">
+                <div className="mc-row__top">
+                  <span className="mc-row__title">{item.name}</span>
+                  {item.world_status ? (
+                    <span className="mc-row__status">{statusLabel(item.world_status)}</span>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </McPanel>
+    </McPage>
   );
 }

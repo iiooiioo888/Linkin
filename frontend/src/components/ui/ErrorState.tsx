@@ -34,8 +34,8 @@ export default function ErrorState({
       role="alert"
       className={`rounded-xl border px-3.5 ${compact ? 'py-2' : 'py-3'} ${
         kind === 'opc_guard' || kind === 'partial'
-          ? 'border-[#FF9F0A]/20 bg-[#FF9F0A]/8'
-          : 'border-[#FF453A]/20 bg-[#FF453A]/8'
+          ? 'border-[color-mix(in_srgb,var(--console-amber)_20%,transparent)] bg-[color-mix(in_srgb,var(--console-amber)_8%,transparent)]'
+          : 'border-[color-mix(in_srgb,var(--console-danger)_20%,transparent)] bg-[color-mix(in_srgb,var(--console-danger)_8%,transparent)]'
       }`}
     >
       <div className="flex items-start gap-2.5">
@@ -45,14 +45,14 @@ export default function ErrorState({
             {tone.title}
           </p>
           <p className="mt-0.5 text-[13px] leading-snug text-[var(--console-ink)]">{message}</p>
-          {detail && <div className="mt-1.5 text-[11px] text-[#98989D]">{detail}</div>}
+          {detail && <div className="mt-1.5 text-[11px] text-[var(--console-faint)]">{detail}</div>}
           {(onRetry || onDismiss) && (
             <div className="mt-2 flex gap-2">
               {onRetry && (
                 <button
                   type="button"
                   onClick={onRetry}
-                  className="rounded-lg bg-[#0A84FF] px-2.5 py-1 text-[11px] font-medium text-white"
+                  className="rounded-lg bg-[var(--console-accent)] px-2.5 py-1 text-[11px] font-medium text-white"
                 >
                   重試
                 </button>
@@ -61,7 +61,7 @@ export default function ErrorState({
                 <button
                   type="button"
                   onClick={onDismiss}
-                  className="rounded-lg px-2.5 py-1 text-[11px] text-[#98989D] hover:text-[var(--console-ink)]"
+                  className="rounded-lg px-2.5 py-1 text-[11px] text-[var(--console-faint)] hover:text-[var(--console-ink)]"
                 >
                   關閉
                 </button>

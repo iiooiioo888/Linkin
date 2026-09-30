@@ -114,7 +114,7 @@ function resolveProvider(route: ApiRoutePublic): ProviderValue {
 }
 
 const inputCls =
-  'w-full rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-sm text-[#F5F5F7] placeholder-[#636366] outline-none focus:border-[#007AFF]/60';
+  'w-full rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2 text-sm text-[var(--console-ink)] placeholder-[var(--console-sub)] outline-none focus:border-[color-mix(in_srgb,var(--console-accent)_60%,transparent)]';
 
 interface RouteDraft {
   id: string;
@@ -401,7 +401,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
     <div className={`space-y-4 ${className}`}>
       <div className={`grid grid-cols-1 gap-3 ${compact || hideList ? '' : 'md:grid-cols-2'}`}>
         <label className="block">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-[#636366]">
+          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-[var(--console-sub)]">
             全域分發策略
           </span>
           <select
@@ -422,7 +422,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
               type="button"
               onClick={() => void handleRefresh()}
               disabled={status.kind === 'busy'}
-              className="w-full rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[#F5F5F7] hover:bg-white/[0.04] disabled:opacity-50"
+              className="w-full rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[var(--console-ink)] hover:bg-white/[0.04] disabled:opacity-50"
             >
               刷新全部模型目錄
             </button>
@@ -430,17 +430,17 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
         )}
       </div>
 
-      {cfg?.lock_message && <p className="text-[11px] text-[#64D2FF]/90">{cfg.lock_message}</p>}
+      {cfg?.lock_message && <p className="text-[11px] text-[color-mix(in_srgb,var(--console-accent)_90%,transparent)]">{cfg.lock_message}</p>}
 
       {hideList ? (
-        <p className="text-[11px] text-[#8E8E93]">
+        <p className="text-[11px] text-[var(--console-sub)]">
           左側清單點選編輯；此處新增或修改金鑰與可用模型。
         </p>
       ) : (
       <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[#636366]">已配置的 API</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--console-sub)]">已配置的 API</p>
         {routes.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-white/[0.08] px-3 py-6 text-center text-sm text-[#636366]">
+          <p className="rounded-xl border border-dashed border-white/[0.08] px-3 py-6 text-center text-sm text-[var(--console-sub)]">
             尚未加入 API。請在下方選擇供應商並填入金鑰。
           </p>
         ) : (
@@ -449,19 +449,19 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
               key={route.id}
               className={`rounded-xl border px-3 py-2 ${
                 editingId === route.id
-                  ? 'border-[#007AFF]/40 bg-[#007AFF]/10'
+                  ? 'border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]'
                   : 'border-white/[0.08] bg-white/[0.02]'
               }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm text-[#F5F5F7]">
+                  <p className="text-sm text-[var(--console-ink)]">
                     {route.name}
-                    {route.is_default ? <span className="ml-2 text-[10px] text-[#64D2FF]">預設</span> : null}
-                    {!route.enabled ? <span className="ml-2 text-[10px] text-[#FF9F0A]">停用</span> : null}
-                    {route.fallback ? <span className="ml-2 text-[10px] text-[#636366]">備援</span> : null}
+                    {route.is_default ? <span className="ml-2 text-[10px] text-[var(--console-accent)]">預設</span> : null}
+                    {!route.enabled ? <span className="ml-2 text-[10px] text-[var(--console-amber)]">停用</span> : null}
+                    {route.fallback ? <span className="ml-2 text-[10px] text-[var(--console-sub)]">備援</span> : null}
                   </p>
-                  <p className="text-[11px] text-[#8E8E93]">
+                  <p className="text-[11px] text-[var(--console-sub)]">
                     {route.provider_label} · {route.model || '未指定預設模型'} · {route.allowed_models.length} 個模型
                     {route.configured ? ` · ${route.api_key}` : ' · 未設金鑰'}
                     {route.models_locked ? ' · 已鎖定模型清單' : ''}
@@ -471,13 +471,13 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
                       {route.allowed_models.slice(0, 8).map((mid) => (
                         <span
                           key={mid}
-                          className="rounded border border-white/[0.08] bg-[#1C1C1E] px-1.5 py-0.5 font-mono text-[10px] text-[#8E8E93]"
+                          className="rounded border border-white/[0.08] bg-[var(--console-card)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--console-sub)]"
                         >
                           {mid}
                         </span>
                       ))}
                       {route.allowed_models.length > 8 ? (
-                        <span className="text-[10px] text-[#636366]">+{route.allowed_models.length - 8}</span>
+                        <span className="text-[10px] text-[var(--console-sub)]">+{route.allowed_models.length - 8}</span>
                       ) : null}
                     </div>
                   )}
@@ -485,28 +485,28 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
                 <div className="flex flex-wrap gap-1">
                   <button
                     type="button"
-                    className="rounded-lg border border-white/[0.08] px-2 py-0.5 text-[11px] text-[#AEAEB2] hover:bg-white/[0.04]"
+                    className="rounded-lg border border-white/[0.08] px-2 py-0.5 text-[11px] text-[var(--console-sub)] hover:bg-white/[0.04]"
                     onClick={() => startEdit(route)}
                   >
                     編輯
                   </button>
                   <button
                     type="button"
-                    className="rounded-lg border border-white/[0.08] px-2 py-0.5 text-[11px] text-[#AEAEB2] hover:bg-white/[0.04]"
+                    className="rounded-lg border border-white/[0.08] px-2 py-0.5 text-[11px] text-[var(--console-sub)] hover:bg-white/[0.04]"
                     onClick={() => void handleRefresh(route.id)}
                   >
                     目錄
                   </button>
                   <button
                     type="button"
-                    className="rounded-lg border border-white/[0.08] px-2 py-0.5 text-[11px] text-[#AEAEB2] hover:bg-white/[0.04]"
+                    className="rounded-lg border border-white/[0.08] px-2 py-0.5 text-[11px] text-[var(--console-sub)] hover:bg-white/[0.04]"
                     onClick={() => void handleTest(route.id)}
                   >
                     測試
                   </button>
                   <button
                     type="button"
-                    className="rounded-lg border border-[#FF453A]/30 px-2 py-0.5 text-[11px] text-[#FF453A] hover:bg-[#FF453A]/10"
+                    className="rounded-lg border border-[color-mix(in_srgb,var(--console-danger)_30%,transparent)] px-2 py-0.5 text-[11px] text-[var(--console-danger)] hover:bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)]"
                     onClick={() => void handleDelete(route.id)}
                   >
                     刪除
@@ -520,10 +520,10 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
       )}
 
       <div className="rounded-xl border border-white/[0.08] p-3">
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-[#636366]">
+        <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--console-sub)]">
           {editingId ? `編輯 ${editingId}` : '新增 API'}
         </p>
-        <label className="mb-1 block text-[11px] text-[#8E8E93]">供應商</label>
+        <label className="mb-1 block text-[11px] text-[var(--console-sub)]">供應商</label>
         <select
           value={draft.provider}
           onChange={(e) => selectProvider(e.target.value as ProviderValue)}
@@ -535,9 +535,9 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
             </option>
           ))}
         </select>
-        {preset && <p className="mb-3 text-[11px] text-[#636366]">{preset.hint}</p>}
+        {preset && <p className="mb-3 text-[11px] text-[var(--console-sub)]">{preset.hint}</p>}
 
-        <label className="mb-1 block text-[11px] text-[#8E8E93]">顯示名稱</label>
+        <label className="mb-1 block text-[11px] text-[var(--console-sub)]">顯示名稱</label>
         <input
           className={`mb-3 ${inputCls}`}
           value={draft.name}
@@ -545,7 +545,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
           placeholder="例如：公司千問 / 備援 OpenRouter"
         />
 
-        <label className="mb-1 block text-[11px] text-[#8E8E93]">API Key</label>
+        <label className="mb-1 block text-[11px] text-[var(--console-sub)]">API Key</label>
         <div className="mb-3 flex gap-2">
           <input
             type={showKey ? 'text' : 'password'}
@@ -557,13 +557,13 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
           <button
             type="button"
             onClick={() => setShowKey((v) => !v)}
-            className="shrink-0 rounded-xl border border-white/[0.08] px-2.5 text-sm text-[#8E8E93] hover:bg-white/[0.04]"
+            className="shrink-0 rounded-xl border border-white/[0.08] px-2.5 text-sm text-[var(--console-sub)] hover:bg-white/[0.04]"
           >
             {showKey ? '隱藏' : '顯示'}
           </button>
         </div>
 
-        <label className="mb-1 block text-[11px] text-[#8E8E93]">API 端點</label>
+        <label className="mb-1 block text-[11px] text-[var(--console-sub)]">API 端點</label>
         <input
           className={`mb-3 ${inputCls}`}
           value={draft.apiBase}
@@ -582,7 +582,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
           placeholder="https://..."
         />
 
-        <label className="mb-1 block text-[11px] text-[#8E8E93]">此 API 預設模型</label>
+        <label className="mb-1 block text-[11px] text-[var(--console-sub)]">此 API 預設模型</label>
         <input
           list={modelListId}
           className={`mb-3 ${inputCls}`}
@@ -599,10 +599,10 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
         {editingModels.length > 0 && (
           <div className="mb-3">
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-[11px] text-[#8E8E93]">此 API 可用模型（勾選後角色下拉只會出現這些）</span>
+              <span className="text-[11px] text-[var(--console-sub)]">此 API 可用模型（勾選後角色下拉只會出現這些）</span>
               <button
                 type="button"
-                className="text-[11px] text-[#64D2FF] hover:underline"
+                className="text-[11px] text-[var(--console-accent)] hover:underline"
                 onClick={() =>
                   setDraft((prev) => ({
                     ...prev,
@@ -623,8 +623,8 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
                       key={id}
                       className={`cursor-pointer rounded-lg border px-1.5 py-0.5 font-mono text-[11px] ${
                         on
-                          ? 'border-[#007AFF]/40 bg-[#007AFF]/10 text-[#64D2FF]'
-                          : 'border-white/[0.06] text-[#636366]'
+                          ? 'border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] text-[var(--console-accent)]'
+                          : 'border-white/[0.06] text-[var(--console-sub)]'
                       }`}
                     >
                       <input
@@ -639,7 +639,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
                 })}
               </div>
               {editingModels.length > 80 ? (
-                <p className="mt-1 text-[10px] text-[#636366]">僅顯示前 80 個，儲存後可從目錄再勾選</p>
+                <p className="mt-1 text-[10px] text-[var(--console-sub)]">僅顯示前 80 個，儲存後可從目錄再勾選</p>
               ) : null}
             </div>
           </div>
@@ -648,7 +648,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
         {draft.provider === 'openrouter' && (
           <div className="mb-3 space-y-3">
             <label className="block">
-              <span className="mb-1 block text-[11px] text-[#8E8E93]">OpenRouter 排序（Provider Routing）</span>
+              <span className="mb-1 block text-[11px] text-[var(--console-sub)]">OpenRouter 排序（Provider Routing）</span>
               <select
                 className={inputCls}
                 value={draft.orSort}
@@ -660,7 +660,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
               </select>
             </label>
             <label className="block">
-              <span className="mb-1 block text-[11px] text-[#8E8E93]">
+              <span className="mb-1 block text-[11px] text-[var(--console-sub)]">
                 允許的底層供應商（only，逗號分隔；空白=不限制）
               </span>
               <input
@@ -674,7 +674,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
         )}
 
         <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-          <label className="text-[11px] text-[#8E8E93]">
+          <label className="text-[11px] text-[var(--console-sub)]">
             權重
             <input
               type="number"
@@ -685,7 +685,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
               onChange={(e) => setDraft({ ...draft, weight: Number(e.target.value) || 10 })}
             />
           </label>
-          <label className="flex items-end gap-2 text-[12px] text-[#AEAEB2]">
+          <label className="flex items-end gap-2 text-[12px] text-[var(--console-sub)]">
             <input
               type="checkbox"
               checked={draft.enabled}
@@ -693,7 +693,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
             />
             啟用
           </label>
-          <label className="flex items-end gap-2 text-[12px] text-[#AEAEB2]">
+          <label className="flex items-end gap-2 text-[12px] text-[var(--console-sub)]">
             <input
               type="checkbox"
               checked={draft.fallback}
@@ -701,7 +701,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
             />
             備援
           </label>
-          <label className="flex items-end gap-2 text-[12px] text-[#AEAEB2]">
+          <label className="flex items-end gap-2 text-[12px] text-[var(--console-sub)]">
             <input
               type="checkbox"
               checked={draft.isDefault}
@@ -719,7 +719,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
                 setEditingId(null);
                 setDraft(emptyDraft());
               }}
-              className="flex-1 rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[#F5F5F7] hover:bg-white/[0.04]"
+              className="flex-1 rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[var(--console-ink)] hover:bg-white/[0.04]"
             >
               取消編輯
             </button>
@@ -729,21 +729,21 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
               <button
                 type="button"
                 onClick={() => void handleRefresh(editingId)}
-                className="rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[#F5F5F7] hover:bg-white/[0.04]"
+                className="rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[var(--console-ink)] hover:bg-white/[0.04]"
               >
                 目錄
               </button>
               <button
                 type="button"
                 onClick={() => void handleTest(editingId)}
-                className="rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[#F5F5F7] hover:bg-white/[0.04]"
+                className="rounded-xl border border-white/[0.08] px-3 py-2 text-sm text-[var(--console-ink)] hover:bg-white/[0.04]"
               >
                 測試
               </button>
               <button
                 type="button"
                 onClick={() => void handleDelete(editingId)}
-                className="rounded-xl border border-[#FF453A]/30 px-3 py-2 text-sm text-[#FF453A] hover:bg-[#FF453A]/10"
+                className="rounded-xl border border-[color-mix(in_srgb,var(--console-danger)_30%,transparent)] px-3 py-2 text-sm text-[var(--console-danger)] hover:bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)]"
               >
                 刪除
               </button>
@@ -753,7 +753,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
             type="button"
             onClick={() => void handleSaveRoute()}
             disabled={status.kind === 'busy'}
-            className="flex-1 rounded-xl bg-[#007AFF] px-3 py-2 text-sm font-medium text-white hover:bg-[#0A84FF] disabled:opacity-50"
+            className="flex-1 rounded-xl bg-[var(--console-accent)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--console-accent)] disabled:opacity-50"
           >
             {editingId ? '更新此 API' : '加入 API'}
           </button>
@@ -763,7 +763,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
       {status.text && (
         <p
           className={`text-xs ${
-            status.kind === 'ok' ? 'text-[#30D158]' : status.kind === 'fail' ? 'text-[#FF453A]' : 'text-[#8E8E93]'
+            status.kind === 'ok' ? 'text-[var(--console-green)]' : status.kind === 'fail' ? 'text-[var(--console-danger)]' : 'text-[var(--console-sub)]'
           }`}
         >
           {status.text}

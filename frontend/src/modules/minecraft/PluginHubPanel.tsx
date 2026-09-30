@@ -12,6 +12,7 @@ import {
 } from '../../api/linkin';
 import { navPathForTab } from '../../lib/monitorTabs';
 import { CopyButton, MAP_NGINX_SNIPPET, rememberLastMapUrl } from './monitor/shared';
+import { McHeader, McPage } from './McChrome';
 
 const STATUS_LABEL: Record<string, string> = {
   disabled: '未啟用',
@@ -137,11 +138,11 @@ export default function PluginHubPanel() {
     return (
       <article
         key={item.id}
-        className="rounded-xl border border-[#c9a961]/20 bg-[#1C1C1E] p-4 shadow-[inset_0_1px_0_rgba(201,169,97,0.06)]"
+        className="rounded-xl border border-[#c9a961]/20 bg-[var(--console-card)] p-4 shadow-[inset_0_1px_0_rgba(201,169,97,0.06)]"
       >
         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-[#f7f8f8]">{item.name}</h3>
+            <h3 className="text-sm font-semibold text-[var(--console-ink)]">{item.name}</h3>
             <p className="mt-0.5 text-[11px] text-[#8a8f98]">{item.purpose}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -159,10 +160,10 @@ export default function PluginHubPanel() {
           </div>
         </div>
 
-        <p className="mb-2 text-[10px] text-[#636366]">
+        <p className="mb-2 text-[10px] text-[var(--console-sub)]">
           平台：{item.platforms.join(' · ')} · 類別：{item.category}
         </p>
-        <p className="mb-3 text-[11px] leading-relaxed text-[#AEAEB2]">{item.install_hint}</p>
+        <p className="mb-3 text-[11px] leading-relaxed text-[var(--console-sub)]">{item.install_hint}</p>
 
         {item.config_fields.length > 0 && (
           <div className="mb-3 grid gap-2 lg:grid-cols-2">
@@ -182,7 +183,7 @@ export default function PluginHubPanel() {
                     }))
                   }
                   placeholder={field.example ?? ''}
-                  className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[#f7f8f8]"
+                  className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[var(--console-ink)]"
                 />
               </label>
             ))}
@@ -204,7 +205,7 @@ export default function PluginHubPanel() {
         </label>
 
         {item.last_probe?.checked_at && (
-          <p className="mb-3 text-[10px] text-[#636366]">
+          <p className="mb-3 text-[10px] text-[var(--console-sub)]">
             上次探測：{item.last_probe.checked_at}
             {item.last_probe.status_code != null ? ` · HTTP ${item.last_probe.status_code}` : ''}
             {item.last_probe.embeddable_hint ? ` · ${item.last_probe.embeddable_hint}` : ''}
@@ -226,7 +227,7 @@ export default function PluginHubPanel() {
                 type="button"
                 disabled={busy !== null}
                 onClick={() => void onProbe(item.id)}
-                className="rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-3 py-1.5 text-[12px] text-[#8a8f98] hover:text-[#f7f8f8] disabled:opacity-40"
+                className="rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-3 py-1.5 text-[12px] text-[#8a8f98] hover:text-[var(--console-ink)] disabled:opacity-40"
               >
                 {busy === `probe-${item.id}` ? '探測中…' : '探測 URL'}
               </button>
@@ -234,7 +235,7 @@ export default function PluginHubPanel() {
                 type="button"
                 disabled={busy !== null}
                 onClick={() => void setActiveMap(item.id)}
-                className="rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-3 py-1.5 text-[12px] text-[#8a8f98] hover:text-[#f7f8f8] disabled:opacity-40"
+                className="rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-3 py-1.5 text-[12px] text-[#8a8f98] hover:text-[var(--console-ink)] disabled:opacity-40"
               >
                 設為預設地圖
               </button>
@@ -246,23 +247,13 @@ export default function PluginHubPanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-[#c9a961]">插件中心</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            設定 Dynmap／BlueMap／Squaremap 等地圖 URL，於「{navPathForTab('server-map')}」內嵌檢視。
-            設定保存在後端，不會寫入前端。
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]"
-        >
-          重新整理
-        </button>
-      </div>
+    <McPage>
+      <McHeader
+        title="插件中心"
+        lead={`填 Dynmap、BlueMap 或 Squaremap 的網址，再到「${navPathForTab('server-map')}」看地圖。設定存在後端。`}
+        aside={<button type="button" onClick={() => void load()} className="mc-btn">重新整理</button>}
+      />
+      <div className="mc-workspace">
 
       {error && (
         <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
@@ -293,10 +284,10 @@ export default function PluginHubPanel() {
         </div>
         <p>
           探測成功但「伺服器地圖」空白時，多半是地圖站點禁止跨域嵌入。將地圖反代到 Linkin 同源路徑（例如{' '}
-          <code className="text-[#AEAEB2]">/minecraft-map/</code>），再在插件中心填寫{' '}
-          <code className="text-[#AEAEB2]">https://linkin.example.com/minecraft-map/</code>。
+          <code className="text-[var(--console-sub)]">/minecraft-map/</code>），再在插件中心填寫{' '}
+          <code className="text-[var(--console-sub)]">https://linkin.example.com/minecraft-map/</code>。
         </p>
-        <pre className="mt-2 max-h-32 overflow-auto rounded bg-black/30 p-2 font-mono text-[9px] text-[#AEAEB2]">
+        <pre className="mt-2 max-h-32 overflow-auto rounded bg-black/30 p-2 font-mono text-[9px] text-[var(--console-sub)]">
           {MAP_NGINX_SNIPPET}
         </pre>
         <a
@@ -308,6 +299,7 @@ export default function PluginHubPanel() {
           完整文件 →
         </a>
       </section>
-    </div>
+      </div>
+    </McPage>
   );
 }

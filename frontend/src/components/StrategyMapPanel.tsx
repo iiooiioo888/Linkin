@@ -180,7 +180,7 @@ export default function StrategyMapPanel() {
   }
 
   if (loading) {
-    return <p className="py-8 text-center text-[12px] text-[#8E8E93]">載入策略圖…</p>;
+    return <p className="py-8 text-center text-[12px] text-[var(--console-sub)]">載入策略圖…</p>;
   }
   if (error) {
     return <ErrorState kind="partial" message={error} onRetry={() => setReloadTick((n) => n + 1)} />;
@@ -206,7 +206,7 @@ export default function StrategyMapPanel() {
             策略圖
             <span className="sq-tree-badge">{data?.catalog_count ?? 0}</span>
           </div>
-          <span className="text-[10px] text-[#636366]">
+          <span className="text-[10px] text-[var(--console-sub)]">
             {data?.wired_count ?? 0} 可回測 · Archify
           </span>
         </header>
@@ -329,7 +329,7 @@ export default function StrategyMapPanel() {
           })}
         </div>
         {detailLoading && activeId ? (
-          <p className="py-6 text-center text-[12px] text-[#8E8E93]">載入工作流…</p>
+          <p className="py-6 text-center text-[12px] text-[var(--console-sub)]">載入工作流…</p>
         ) : (
           <ArchifyFrame
             view={
@@ -357,8 +357,8 @@ export default function StrategyMapPanel() {
         {activeItem ? (
           <>
             <h3 className="sq-tree-side-title">{activeItem.name}</h3>
-            <p className="mt-1 font-mono text-[11px] text-[#8E8E93]">{activeItem.engine || activeItem.id}</p>
-            <p className="mt-2 text-[11px] text-[#636366]">
+            <p className="mt-1 font-mono text-[11px] text-[var(--console-sub)]">{activeItem.engine || activeItem.id}</p>
+            <p className="mt-2 text-[11px] text-[var(--console-sub)]">
               {detail?.hint ||
                 (activeItem.status === 'wired'
                   ? `可回測。量化分析師用 market_backtest.strategy = ${activeItem.engine || activeItem.id}`
@@ -381,14 +381,14 @@ export default function StrategyMapPanel() {
             >
               {copied ? '已複製' : '複製 tool_call'}
             </button>
-            <a href="#/monitor/lab/quant" className="mt-3 block text-[11px] text-[#0A84FF]">
+            <a href="#/monitor/lab/quant" className="mt-3 block text-[11px] text-[var(--console-accent)]">
               回策略庫分類樹
             </a>
           </>
         ) : (
           <>
             <h3 className="sq-tree-side-title">全部策略可視化</h3>
-            <p className="mt-2 text-[11px] text-[#636366]">
+            <p className="mt-2 text-[11px] text-[var(--console-sub)]">
               {data?.hint || '點分類看該類全部策略節點；點策略看工作流與生命週期。'}
             </p>
             <pre className="sq-tree-code">
@@ -410,7 +410,7 @@ export default function StrategyMapPanel() {
             >
               {copied ? '已複製' : '複製 archify_strategies'}
             </button>
-            <a href="#/monitor/lab/quant" className="mt-3 block text-[11px] text-[#0A84FF]">
+            <a href="#/monitor/lab/quant" className="mt-3 block text-[11px] text-[var(--console-accent)]">
               策略庫勾選回測
             </a>
           </>

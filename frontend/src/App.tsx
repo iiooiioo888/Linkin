@@ -44,6 +44,7 @@ import SettingsModal from './components/SettingsModal';
 import TraceView from './components/TraceView';
 import TaskDetailView from './components/taskdetail/TaskDetailView';
 import RahoOpsView from './components/rahoops/RahoOpsView';
+import CompanyView from './components/company/CompanyView';
 import OnboardingGuide from './components/onboarding/OnboardingGuide';
 
 function createSession(): ChatSession {
@@ -75,8 +76,6 @@ export default function App() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
-  /** 本輪 SSE 對話實際扣款（供 InputCreditBar liveSpent） */
-  const [turnSpent, setTurnSpent] = useState<number | null>(null);
 
   // ── IDE 布局状态（由 Hash 路由初始化） ──
   const initialRoute = applyAppRoute(parseAppRoute(window.location.hash));
@@ -431,7 +430,6 @@ export default function App() {
         (options.executionStrategy === 'auto' && looksLikeCompanyQuery(workQuery));
       if (!openTaskWorkspace) {
         setSending(false);
-        setTurnSpent(null);
 
         // 構建對話歷史（最近 6 輪，排除當前佔位訊息）
         const currentMessages = activeSession.messages.filter(
@@ -492,7 +490,6 @@ export default function App() {
           },
           onDone: (answer, score, iteration, thinking, billing) => {
             const footnote = billing ? formatChatBillingFootnote(billing) : undefined;
-            if (billing?.credits_deducted != null) setTurnSpent(billing.credits_deducted);
             requestWalletRefresh();
             updateSession(sessionId, (s) => ({
               ...s,
@@ -519,7 +516,6 @@ export default function App() {
           },
           onBilling: (billing: ChatBillingFootnote) => {
             const footnote = formatChatBillingFootnote(billing);
-            if (billing.credits_deducted != null) setTurnSpent(billing.credits_deducted);
             requestWalletRefresh();
             if (!footnote && !billing.credits_deducted) return;
             updateSession(sessionId, (s) => ({
@@ -1055,6 +1051,10 @@ export default function App() {
         navigateRoute({ view, traceTaskId });
         return;
       }
+      if (view === 'company') {
+        navigateRoute({ view: 'company', focusAgentId: null, focusTaskId: null, traceTaskId: null });
+        return;
+      }
       navigateRoute({ view: 'chat', focusAgentId: null, focusTaskId: null, traceTaskId: null });
     },
     [navigateRoute, activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId],
@@ -1250,10 +1250,6 @@ export default function App() {
               onDecisionPending={handleDecisionPending}
               onDecisionResolved={handleDecisionResolved}
               onTaskStatePatch={handleTaskStatePatch}
-              onOpenBilling={() => {
-                handleMonitorTabChange('models');
-              }}
-              liveSpent={turnSpent}
             />
           </>
         )}
@@ -1302,6 +1298,14 @@ export default function App() {
             onFocusChange={(focus) => navigateRoute({ view: 'raho', rahoFocus: focus })}
             onOpenTask={(taskId) => navigateRoute({ view: 'task', focusTaskId: taskId })}
             onBack={() => navigateRoute({ view: 'monitor', monitorTab: 'agents' })}
+          />
+        )}
+
+        {activeView === 'company' && (
+          <CompanyView
+            onOpenRole={(roleId) => handleFocusAgent(roleId)}
+            onOpenTask={(taskId) => navigateRoute({ view: 'task', focusTaskId: taskId })}
+            onOpenRaho={() => navigateRoute({ view: 'raho', rahoFocus: null })}
           />
         )}
       </AppShell>

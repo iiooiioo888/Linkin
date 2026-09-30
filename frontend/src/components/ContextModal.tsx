@@ -93,8 +93,8 @@ export default function ContextModal({
       <div className="ctx-modal">
         <header className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-[15px] font-semibold text-[#F5F5F7]">/context peek</h2>
-            <p className="mt-0.5 text-[11px] text-[#8E8E93]">
+            <h2 className="text-[15px] font-semibold text-[var(--console-ink)]">/context peek</h2>
+            <p className="mt-0.5 text-[11px] text-[var(--console-sub)]">
               當前對話預覽 · 完整面板在對話底部詳細區
               {boundId ? ` · ${boundId.slice(0, 10)}…` : ' · 未綁定任務'}
               {data?.stats?.context_pressure != null
@@ -102,7 +102,7 @@ export default function ContextModal({
                 : ''}
             </p>
             <span
-              className="mt-1 inline-block rounded-full border border-white/[0.08] px-2 py-0.5 font-mono text-[10px] text-[#AEAEB2]"
+              className="mt-1 inline-block rounded-full border border-white/[0.08] px-2 py-0.5 font-mono text-[10px] text-[var(--console-sub)]"
               data-testid="context-peek-locked"
             >
               {boundId ? `本對話 · ${boundId.slice(0, 12)}…` : '本對話 · 尚無任務'}
@@ -111,7 +111,7 @@ export default function ContextModal({
           <div className="flex gap-2">
             <button
               type="button"
-              className="rounded-xl border border-white/[0.08] px-2.5 py-1 text-[11px] text-[#64D2FF]"
+              className="rounded-xl border border-white/[0.08] px-2.5 py-1 text-[11px] text-[var(--console-accent)]"
               onClick={() => {
                 openChatContextDetail(boundId);
                 onClose();
@@ -121,7 +121,7 @@ export default function ContextModal({
             </button>
             <button
               type="button"
-              className="rounded-xl border border-white/[0.08] px-2.5 py-1 text-[11px] text-[#8E8E93]"
+              className="rounded-xl border border-white/[0.08] px-2.5 py-1 text-[11px] text-[var(--console-sub)]"
               onClick={onClose}
             >
               關閉
@@ -130,7 +130,7 @@ export default function ContextModal({
         </header>
 
         {error ? <p className="mt-3 text-[12px] text-red-300">{error}</p> : null}
-        {data?.empty ? <p className="mt-3 text-[12px] text-[#8E8E93]">{data.message}</p> : null}
+        {data?.empty ? <p className="mt-3 text-[12px] text-[var(--console-sub)]">{data.message}</p> : null}
 
         <div className="ctx-stack mt-4">
           {KEYS.map((k) => {
@@ -146,7 +146,7 @@ export default function ContextModal({
             );
           })}
         </div>
-        <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-[#AEAEB2]">
+        <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-[var(--console-sub)]">
           {KEYS.map((k) => {
             const slice = composition[k];
             if (!slice?.tokens) return null;
@@ -166,7 +166,7 @@ export default function ContextModal({
           })}
         </div>
         {data?.events?.length ? (
-          <p className="mt-2 text-[10px] text-[#636366]">
+          <p className="mt-2 text-[10px] text-[var(--console-sub)]">
             最近事件 {data.events.length} · Inject/Prune/Switch 詳見對話詳細區
           </p>
         ) : null}
@@ -177,19 +177,19 @@ export default function ContextModal({
             if (!items.length) return null;
             return (
               <div key={k} className="rounded-lg border border-white/[0.06] bg-black/30 p-2">
-                <p className="mb-1 text-[11px] font-medium text-[#F5F5F7]">{COMPOSITION_META[k].label}</p>
+                <p className="mb-1 text-[11px] font-medium text-[var(--console-ink)]">{COMPOSITION_META[k].label}</p>
                 {items.slice(0, 8).map((item) => (
                   <div key={item.id}>
                     <button
                       type="button"
-                      className="flex w-full justify-between gap-2 px-1 py-1 text-left text-[11px] text-[#AEAEB2] hover:text-[#F5F5F7]"
+                      className="flex w-full justify-between gap-2 px-1 py-1 text-left text-[11px] text-[var(--console-sub)] hover:text-[var(--console-ink)]"
                       onClick={() => setOpenItem((v) => (v === item.id ? null : item.id))}
                     >
                       <span className="truncate">{item.label}</span>
                       <span className="font-mono text-[10px]">{fmtTokens(item.tokens)}</span>
                     </button>
                     {openItem === item.id ? (
-                      <pre className="mb-2 max-h-28 overflow-auto rounded bg-black/50 p-2 text-[10px] text-[#8E8E93]">
+                      <pre className="mb-2 max-h-28 overflow-auto rounded bg-black/50 p-2 text-[10px] text-[var(--console-sub)]">
                         {item.content}
                       </pre>
                     ) : null}

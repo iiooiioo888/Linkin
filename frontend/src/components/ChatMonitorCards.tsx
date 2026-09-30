@@ -10,7 +10,7 @@ const ACCENT_CLS: Record<string, string> = {
   blue: 'console-status-blue',
   orange: 'text-[#FF9500]',
   violet: 'console-status-blue',
-  red: 'text-[#FF3B30]',
+  red: 'text-[var(--console-danger)]',
   cyan: 'console-status-blue',
 };
 
@@ -132,7 +132,7 @@ export function HealthPill({
 }) {
   const dotCls =
     ok === null ? 'apple-dot' : ok ? 'apple-dot apple-dot--ok' : 'apple-dot apple-dot--err';
-  const text = ok === null ? 'text-[var(--console-sub)]' : ok ? 'console-status-green' : 'text-[#FF3B30]';
+  const text = ok === null ? 'text-[var(--console-sub)]' : ok ? 'console-status-green' : 'text-[var(--console-danger)]';
   return (
     <div className="apple-inset flex items-center gap-2.5 px-3 py-2">
       <span className={dotCls} />
@@ -160,7 +160,7 @@ export function LiveTicker({
         <div className="min-w-0 flex-1 overflow-x-auto">
           <div className="flex gap-5 whitespace-nowrap">
             {items.map((it) => (
-              <span key={it.key} className={`text-[11px] font-normal ${it.accent || 'text-[#AEAEB2]'}`}>
+              <span key={it.key} className={`text-[11px] font-normal ${it.accent || 'text-[var(--console-sub)]'}`}>
                 {it.ts && <span className="mr-1 font-mono text-[var(--console-faint)]">{it.ts}</span>}
                 {it.text}
               </span>

@@ -41,14 +41,21 @@ export function playerActionLabel(action: string): string {
 export function statusLabel(status: string): string {
   const map: Record<string, string> = {
     ok: '正常',
+    critical: '嚴重',
+    warn: '注意',
+    warning: '注意',
+    confirmed: '已確認',
+    expired: '已過期',
     applied: '已落地',
     partial: '部分',
     failed: '失敗',
     skipped: '略過',
     dry_run: '乾跑',
     bridge_offline: '橋接離線',
+    pending: '等待',
     pending_world: '待落地',
     pending_builder: '待建築',
+    running: '進行中',
     cancelled: '已取消',
     error: '錯誤',
     reachable: '可連線',
@@ -58,7 +65,7 @@ export function statusLabel(status: string): string {
 }
 
 export function formatTs(ts?: number): string {
-  if (!ts) return '—';
+  if (!ts) return '';
   return new Date(ts * 1000).toLocaleString('zh-Hant', { hour12: false });
 }
 

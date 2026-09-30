@@ -69,7 +69,7 @@ export default function MemoryPanel({ onClose }: MemoryPanelProps) {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col apple-canvas text-[#f7f8f8]">
+    <div className="flex h-full min-h-0 flex-col apple-canvas text-[var(--console-ink)]">
       {/* 標題列 */}
       <div className="flex items-center justify-between border-b border-gray-800 p-3">
         <h3 className="text-sm font-medium text-gray-200">

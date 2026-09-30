@@ -51,7 +51,7 @@ interface MonitorViewProps {
 
 function PanelFallback() {
   return (
-    <div className="flex h-full min-h-0 flex-1 items-center justify-center text-[12px] text-[#8E8E93]">
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center text-[12px] text-[var(--console-sub)]">
       載入模組…
     </div>
   );
@@ -256,14 +256,14 @@ export default function MonitorView({
         {tab === 'context' && (
           <MobileLiteGate gated={isMobileDesktopOnlyPanel('context')}>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="shrink-0 border-b border-white/[0.06] bg-[#1C1C1E]/80 px-6 py-3">
-                <p className="text-[12px] text-[#AEAEB2]">
-                  Context 主表面在<strong className="mx-1 text-[#F5F5F7]">對話底部詳細區</strong>
-                  （輸入 <code className="text-[11px] text-[#64D2FF]">/context</code>）。此處為控制台完整鏡像。
+              <div className="shrink-0 border-b border-white/[0.06] bg-[color-mix(in_srgb,var(--console-card)_80%,transparent)] px-6 py-3">
+                <p className="text-[12px] text-[var(--console-sub)]">
+                  Context 主表面在<strong className="mx-1 text-[var(--console-ink)]">對話底部詳細區</strong>
+                  （輸入 <code className="text-[11px] text-[var(--console-accent)]">/context</code>）。此處為控制台完整鏡像。
                 </p>
                 <button
                   type="button"
-                  className="mt-1.5 rounded-lg border border-[#64D2FF]/35 bg-[#64D2FF]/10 px-2.5 py-1 text-[11px] font-medium text-[#64D2FF] hover:bg-[#64D2FF]/18"
+                  className="mt-1.5 rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-2.5 py-1 text-[11px] font-medium text-[var(--console-accent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_18%,transparent)]"
                   onClick={() => {
                     void import('../lib/contextUi').then(({ openChatContextDetail }) => {
                       openChatContextDetail(focusTaskId);

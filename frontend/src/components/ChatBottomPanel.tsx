@@ -114,18 +114,13 @@ export default function ChatBottomPanel({
             className={`ws-tab ws-tab--context touch-manipulation${tab === 'context' ? ' is-on' : ''}`}
             onClick={() => onTab('context')}
             data-testid="chat-bottom-tab-context"
-            title="Context 組成／趨勢／瀏覽器／事件（本對話詳細區 · 鎖定當前會話 · /context）"
+            title="本對話詳細區"
           >
             <Ico d="M4 6h16M4 12h10M4 18h14" />
-            <span className="ws-tab-label">Context</span>
-            <span className="ws-tab-badge" title="對話詳細區主表面 · 不可切換其他對話">
+            <span className="ws-tab-label">上下文</span>
+            <span className="ws-tab-badge" title="只顯示這段對話">
               本對話
             </span>
-            {taskId ? (
-              <span className="ws-tab-badge is-lock" title={`已鎖定 ${taskId}`} data-testid="chat-context-bound-id">
-                {taskId.slice(0, 8)}…
-              </span>
-            ) : null}
           </button>
           <button
             type="button"
@@ -135,8 +130,7 @@ export default function ChatBottomPanel({
             onClick={() => onTab('files')}
           >
             <Ico d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-            <span className="ws-tab-label ws-tab-label--wide">AI 輸出文件空間</span>
-            <span className="ws-tab-label ws-tab-label--narrow">AI 輸出文件</span>
+            <span className="ws-tab-label">產出</span>
             <span className="ws-count">{files.length}</span>
           </button>
           <button

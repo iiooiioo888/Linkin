@@ -9,6 +9,17 @@ import {
   type MinecraftStatus,
 } from '../../api/linkin';
 import { navPathForTab } from '../../lib/monitorTabs';
+import { McHeader, McMetrics, McPage, McPanel } from './McChrome';
+
+const TOOL_LABELS: Record<string, string> = {
+  place_block: '放置方塊',
+  pose_block: '遠端放置',
+  break_block: '破壞方塊',
+  fill_block: '填充區域',
+  execute_command: '執行指令',
+  get_player: '查詢玩家',
+  get_online_players: '在線玩家',
+};
 
 export default function MinecraftBridgePanel() {
   const [status, setStatus] = useState<MinecraftStatus | null>(null);
@@ -19,6 +30,9 @@ export default function MinecraftBridgePanel() {
   const [x, setX] = useState('100');
   const [y, setY] = useState('64');
   const [z, setZ] = useState('200');
+  const [x2, setX2] = useState('104');
+  const [y2, setY2] = useState('68');
+  const [z2, setZ2] = useState('204');
   const [material, setMaterial] = useState('DIAMOND_BLOCK');
   const [player, setPlayer] = useState('');
   const [command, setCommand] = useState('time set day');
@@ -67,9 +81,9 @@ export default function MinecraftBridgePanel() {
       args.x1 = Number(x);
       args.y1 = Number(y);
       args.z1 = Number(z);
-      args.x2 = Number(x);
-      args.y2 = Number(y);
-      args.z2 = Number(z);
+      args.x2 = Number(x2);
+      args.y2 = Number(y2);
+      args.z2 = Number(z2);
       args.material = material;
     } else if (tool === 'get_player') {
       args.player = player;
@@ -89,7 +103,7 @@ export default function MinecraftBridgePanel() {
     }
   };
 
-  const mode = status?.dry_run ? '乾跑（未連伺服器）' : status?.connected ? '已連線' : '未連線';
+  const mode = status?.dry_run ? '乾跑' : status?.connected ? '已連線' : '未連線';
 
   const executeBlock = useMemo(() => {
     if (!status?.token_configured) {
@@ -110,82 +124,78 @@ export default function MinecraftBridgePanel() {
     return { disabled: false, reason: '' };
   }, [status, dryRunAck, tool, confirmed]);
 
+  const metrics = [
+    { label: '模式', value: mode },
+    { label: '憑證', value: status?.token_configured ? '已設定' : '未設定' },
+    { label: '方塊上限', value: status?.max_blocks ?? 5000 },
+  ];
+  if (status?.world) metrics.splice(1, 0, { label: '世界', value: status.world });
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold">Minecraft MCP</h2>
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">
-            公司角色工具橋接 MineMCP（JSON-RPC）。遠端放置工具名為 pose_block。
-            建築 Schematic 在「{navPathForTab('building')}」。
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button type="button" onClick={() => void load()} className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8]">
-            重新整理
-          </button>
-          <button type="button" disabled={busy !== 'idle'} onClick={() => void onProbe()} className="rounded-xl border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-2 py-1 text-[11px] text-[#64D2FF] disabled:opacity-40">
-            {busy === 'probe' ? '探測中' : '探測連線'}
-          </button>
-        </div>
-      </div>
+    <McPage>
+      <McHeader
+        title="橋接"
+        lead={`寫入都經過護欄。乾跑只記審計，不會改世界。建築檔在「${navPathForTab('building')}」。`}
+        aside={
+          <>
+            <button type="button" onClick={() => void load()} className="mc-btn">重新整理</button>
+            <button type="button" disabled={busy !== 'idle'} onClick={() => void onProbe()} className="mc-btn is-primary">
+              {busy === 'probe' ? '探測中' : '探測連線'}
+            </button>
+          </>
+        }
+      />
+      <div className="mc-workspace">
+      {error && <p className="mc-error">{error}</p>}
+      {message && <p className="mc-note">{message}</p>}
+      {status ? <McMetrics items={metrics} /> : null}
+      {status?.url ? <p className="mc-note">端點 {status.url}</p> : null}
 
-      {error && <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
-      {message && <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">{message}</div>}
-
-      <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {[
-          { label: '模式', value: mode },
-          { label: '世界', value: status?.world || '—' },
-          { label: 'Token', value: status?.token_configured ? '已設定' : '未設定' },
-          { label: '方塊上限', value: String(status?.max_blocks ?? 5000) },
-        ].map((card) => (
-          <div key={card.label} className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-3 py-2">
-            <p className="text-[10px] text-[#8a8f98]">{card.label}</p>
-            <p className="text-sm font-medium">{card.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <p className="mb-3 text-[11px] text-[#8a8f98]">端點 {status?.url || '—'}</p>
-
-      <section className="mb-4 rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">手動呼叫（經護欄）</h3>
-        <div className="grid gap-2 lg:grid-cols-2">
-          <label className="text-[10px] text-[#8a8f98]">工具
-            <select value={tool} onChange={(e) => setTool(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-2 py-1.5 text-[12px]">
+      <McPanel title="寫入世界" hint="經護欄送出">
+        <div className="mc-form">
+          <label>工具
+            <select value={tool} onChange={(e) => setTool(e.target.value)}>
               {(status?.company_tools ?? ['place_block', 'break_block', 'fill_block', 'execute_command', 'get_player', 'get_online_players']).map((name) => (
-                <option key={name} value={name}>{name}</option>
+                <option key={name} value={name}>{TOOL_LABELS[name] ?? name}</option>
               ))}
             </select>
           </label>
           {(tool === 'place_block' || tool === 'pose_block' || tool === 'break_block' || tool === 'fill_block') && (
             <>
-              <label className="text-[10px] text-[#8a8f98]">座標 x,y,z
-                <div className="mt-1 grid grid-cols-3 gap-1">
-                  <input value={x} onChange={(e) => setX(e.target.value)} className="rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
-                  <input value={y} onChange={(e) => setY(e.target.value)} className="rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
-                  <input value={z} onChange={(e) => setZ(e.target.value)} className="rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
+              <label>{tool === 'fill_block' ? '起點 x, y, z' : '座標 x, y, z'}
+                <div className="mc-coords">
+                  <input aria-label="x" value={x} onChange={(e) => setX(e.target.value)} />
+                  <input aria-label="y" value={y} onChange={(e) => setY(e.target.value)} />
+                  <input aria-label="z" value={z} onChange={(e) => setZ(e.target.value)} />
                 </div>
               </label>
+              {tool === 'fill_block' && (
+                <label>終點 x, y, z
+                  <div className="mc-coords">
+                    <input aria-label="x2" value={x2} onChange={(e) => setX2(e.target.value)} />
+                    <input aria-label="y2" value={y2} onChange={(e) => setY2(e.target.value)} />
+                    <input aria-label="z2" value={z2} onChange={(e) => setZ2(e.target.value)} />
+                  </div>
+                </label>
+              )}
               {tool !== 'break_block' && (
-                <label className="text-[10px] text-[#8a8f98]">材料
-                  <input value={material} onChange={(e) => setMaterial(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
+                <label>材料
+                  <input value={material} onChange={(e) => setMaterial(e.target.value)} />
                 </label>
               )}
             </>
           )}
           {tool === 'get_player' && (
-            <label className="text-[10px] text-[#8a8f98]">玩家
-              <input value={player} onChange={(e) => setPlayer(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
+            <label>玩家
+              <input value={player} onChange={(e) => setPlayer(e.target.value)} />
             </label>
           )}
           {tool === 'execute_command' && (
             <>
-              <label className="text-[10px] text-[#8a8f98]">指令
-                <input value={command} onChange={(e) => setCommand(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
+              <label>指令
+                <input value={command} onChange={(e) => setCommand(e.target.value)} />
               </label>
-              <label className="flex items-center gap-2 text-[11px] text-[#8a8f98]">
+              <label className="mc-check">
                 <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
                 敏感操作已二次確認
               </label>
@@ -193,45 +203,47 @@ export default function MinecraftBridgePanel() {
           )}
         </div>
         {status?.dry_run ? (
-          <label className="mt-2 flex items-center gap-2 text-[11px] text-[#8a8f98]">
+          <label className="mc-check" style={{ marginTop: 12 }}>
             <input type="checkbox" checked={dryRunAck} onChange={(e) => setDryRunAck(e.target.checked)} />
-            我了解乾跑模式：僅記錄審計，不會寫入 Minecraft 世界
+            我了解這次只記審計，不會寫入世界
           </label>
         ) : null}
-        {executeBlock.reason ? (
-          <p className="mt-2 text-[11px] text-amber-300/90">{executeBlock.reason}</p>
-        ) : null}
-        <button
-          type="button"
-          disabled={busy !== 'idle' || executeBlock.disabled}
-          onClick={() => void onCall()}
-          className="mt-3 rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40"
-        >
-          執行
-        </button>
+        {executeBlock.reason ? <p className="mc-note" style={{ marginTop: 12 }}>{executeBlock.reason}</p> : null}
+        <div className="mc-actions">
+          <button
+            type="button"
+            disabled={busy !== 'idle' || executeBlock.disabled}
+            onClick={() => void onCall()}
+            className="mc-btn is-primary"
+          >
+            {busy === 'call' ? '送出中' : '送出'}
+          </button>
+        </div>
         {result && (
-          <pre className="mt-3 overflow-auto rounded-lg bg-black/30 p-3 text-[11px] leading-relaxed text-[#AEAEB2]">
-            {JSON.stringify(result, null, 2)}
-          </pre>
+          <pre>{JSON.stringify(result, null, 2)}</pre>
         )}
-      </section>
+      </McPanel>
 
-      <h3 className="mb-2 text-[11px] font-semibold text-[#8a8f98]">最近審計（{status?.recent?.length ?? 0}）</h3>
-      <div className="space-y-2">
-        {(status?.recent ?? []).length === 0 && <p className="py-6 text-center text-xs text-[#636366]">尚無 MCP 呼叫</p>}
-        {(status?.recent ?? []).slice().reverse().map((row, index) => (
-          <article key={`${row.ts}-${index}`} className="rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[12px] font-medium">{row.tool || row.remote}</span>
-              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{row.ok ? 'ok' : 'fail'}</span>
-              {row.dry_run && <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">乾跑</span>}
-              {row.duration_ms != null && <span className="text-[10px] text-[#8a8f98]">{row.duration_ms} ms</span>}
-            </div>
-            {row.error && <p className="mt-1 text-[11px] text-red-300">{row.error}</p>}
-            <p className="mt-1 text-[10px] text-[#636366]">{row.ts}</p>
-          </article>
-        ))}
+      <McPanel title="最近操作" hint={(status?.recent?.length ?? 0) > 0 ? `${status?.recent?.length} 筆` : undefined}>
+        {(status?.recent ?? []).length === 0 ? <p className="mc-empty">還沒有寫入紀錄。</p> : null}
+        <ul className="mc-list">
+          {(status?.recent ?? []).slice().reverse().map((row, index) => (
+            <li key={`${row.ts}-${index}`} className="mc-row">
+              <div className="mc-row__top">
+                <span className="mc-row__title">{TOOL_LABELS[row.tool || ''] || row.tool || row.remote}</span>
+                <span className="mc-row__status">{row.ok ? '成功' : '失敗'}</span>
+              </div>
+              <p className="mc-row__meta">
+                {row.dry_run ? '乾跑 · ' : ''}
+                {row.duration_ms != null ? `${row.duration_ms} ms · ` : ''}
+                {row.ts}
+              </p>
+              {row.error ? <p className="mc-error">{row.error}</p> : null}
+            </li>
+          ))}
+        </ul>
+      </McPanel>
       </div>
-    </div>
+    </McPage>
   );
 }

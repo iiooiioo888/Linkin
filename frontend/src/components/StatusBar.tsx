@@ -93,7 +93,7 @@ export default function StatusBar({ llmConfigured, taskCount, memoryCount, onOpe
       <div className="flex min-w-0 items-center gap-3 overflow-x-auto">
         <span className="apple-status-item">
           <Dot tone={llmTone} />
-          <a href="#/monitor/llm" className="hover:text-[#F5F5F7]">
+          <a href="#/monitor/llm" className="hover:text-[var(--console-ink)]">
             {llmConfigured === false
               ? 'LLM 未配置'
               : apiReady > 0
@@ -103,7 +103,7 @@ export default function StatusBar({ llmConfigured, taskCount, memoryCount, onOpe
         </span>
 
         <span className="apple-status-item hidden sm:inline-flex">
-          <a href="#/monitor/agents" className="hover:text-[#F5F5F7]">
+          <a href="#/monitor/agents" className="hover:text-[var(--console-ink)]">
             角色
           </a>
         </span>
@@ -112,12 +112,12 @@ export default function StatusBar({ llmConfigured, taskCount, memoryCount, onOpe
           <Dot tone={integTone} />
           <button
             type="button"
-            className="hover:text-[#F5F5F7]"
+            className="hover:text-[var(--console-ink)]"
             onClick={() => jumpToIntegration()}
-            title="MemOS／OpenViking／WeKnora／Yao／Ouroboros／OpenPencil"
+            title="外部工具連線狀態"
           >
-            整合 {integ.enabled}/{integ.total}
-            {integ.degraded ? ` ·降${integ.degraded}` : ''}
+            工具 {integ.enabled}/{integ.total}
+            {integ.degraded ? ` · 異常 ${integ.degraded}` : ''}
           </button>
         </span>
 

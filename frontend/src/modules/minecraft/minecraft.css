@@ -1,0 +1,780 @@
+/* Minecraft 模組整頁。鋪滿主內容區，字級對齊公司頁。 */
+.mc-page {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  background:
+    radial-gradient(760px 280px at 0% -8%, color-mix(in srgb, var(--console-green) 18%, transparent), transparent 70%),
+    radial-gradient(520px 240px at 100% 0%, color-mix(in srgb, var(--console-accent) 10%, transparent), transparent 68%),
+    var(--console-bg);
+}
+
+.mc-page__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px 48px;
+}
+
+.mc-page__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.mc-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mc-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--console-green);
+}
+
+.mc-title {
+  margin: 4px 0 0;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--console-ink);
+}
+
+.mc-lead {
+  margin: 8px 0 0;
+  max-width: 68ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--console-sub);
+}
+
+.mc-header__aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--console-faint);
+}
+
+.mc-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.mc-metric {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 16px 12px 18px;
+  border: 1px solid var(--console-line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--console-card) 92%, transparent);
+}
+
+.mc-metric::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--console-green);
+}
+
+.mc-metric__value {
+  font-size: 22px;
+  font-weight: 640;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--console-ink);
+}
+
+.mc-metric__label {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--console-faint);
+}
+
+.mc-panel {
+  padding: 16px;
+  border: 1px solid var(--console-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--console-card) 92%, transparent);
+}
+
+.mc-panel__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 640;
+  color: var(--console-ink);
+}
+
+.mc-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mc-panel > summary {
+  cursor: pointer;
+}
+
+.mc-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mc-panel__hint {
+  font-size: 12px;
+  color: var(--console-faint);
+}
+
+.mc-note,
+.mc-empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--console-sub);
+}
+
+.mc-error {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--console-red);
+}
+
+.mc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mc-panel__head .mc-actions {
+  margin-top: 0;
+}
+
+.mc-link {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--console-line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--console-ink);
+  text-decoration: none;
+}
+
+.mc-link:hover {
+  border-color: color-mix(in srgb, var(--console-accent) 45%, var(--console-line));
+  color: var(--console-accent);
+}
+
+.mc-link.is-primary {
+  border-color: color-mix(in srgb, var(--console-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--console-accent) 12%, transparent);
+  color: var(--console-accent);
+}
+
+.mc-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.mc-facts div {
+  min-width: 0;
+}
+
+.mc-facts dt {
+  font-size: 11px;
+  color: var(--console-faint);
+}
+
+.mc-facts dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--console-ink);
+}
+
+.mc-situation {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mc-dim {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--console-line);
+  border-radius: 12px;
+  background: var(--console-bg);
+}
+
+.mc-dim__label {
+  font-size: 12px;
+  font-weight: 640;
+  color: var(--console-ink);
+}
+
+.mc-dim__status {
+  font-size: 11px;
+  color: var(--console-faint);
+}
+
+.mc-dim__status.is-ok {
+  color: var(--console-green);
+}
+
+.mc-dim__status.is-partial {
+  color: var(--console-amber);
+}
+
+.mc-dim__summary {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--console-sub);
+}
+
+.mc-dim__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.mc-dim__bar > span {
+  display: block;
+  height: 3px;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--console-ink) 8%, transparent);
+}
+
+.mc-dim__bar > span > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--console-green);
+}
+
+.mc-dim__bar em {
+  font-style: normal;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--console-faint);
+}
+
+.mc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mc-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--console-line);
+  border-radius: 12px;
+  background: var(--console-bg);
+  font-size: 13px;
+  color: var(--console-ink);
+}
+
+.mc-row__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mc-row__title {
+  font-weight: 640;
+}
+
+.mc-row__meta {
+  font-size: 12px;
+  color: var(--console-faint);
+}
+
+.mc-row__status {
+  font-size: 12px;
+  font-weight: 640;
+  color: var(--console-accent);
+}
+
+button.mc-row {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.mc-row.is-on {
+  border-color: color-mix(in srgb, var(--console-accent) 45%, var(--console-line));
+}
+
+.mc-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mc-checks li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--console-line);
+  font-size: 13px;
+}
+
+.mc-checks li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.mc-page.is-fill {
+  min-height: 0;
+}
+
+.mc-page__fill {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 1180px;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 auto;
+  padding: 20px 24px 24px;
+}
+
+.mc-btn {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--console-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--console-card) 88%, transparent);
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--console-ink);
+  cursor: pointer;
+}
+
+.mc-btn:hover {
+  border-color: color-mix(in srgb, var(--console-green) 45%, var(--console-line));
+}
+
+.mc-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--console-green) 70%, white);
+  outline-offset: 2px;
+}
+
+.mc-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.mc-btn.is-primary {
+  border-color: color-mix(in srgb, var(--console-green) 42%, transparent);
+  background: color-mix(in srgb, var(--console-green) 14%, transparent);
+  color: var(--console-green);
+}
+
+.mc-workspace {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mc-workspace--fill {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mc-workspace h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 640;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--console-ink);
+}
+
+.mc-workspace p,
+.mc-workspace li,
+.mc-workspace label {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.mc-workspace label {
+  color: var(--console-sub);
+}
+
+.mc-workspace input,
+.mc-workspace select,
+.mc-workspace textarea {
+  border-color: var(--console-line);
+  background: var(--console-bg);
+  color: var(--console-ink);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.mc-workspace input:focus,
+.mc-workspace select:focus,
+.mc-workspace textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--console-green) 65%, white);
+  outline-offset: 1px;
+}
+
+.mc-workspace .rounded-xl {
+  border-color: var(--console-line);
+  border-radius: 16px;
+}
+
+.mc-split {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 1.05fr);
+  overflow: hidden;
+  border: 1px solid var(--console-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--console-card) 92%, transparent);
+}
+
+.mc-split__pane {
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.mc-split__pane + .mc-split__pane {
+  border-top: 1px solid var(--console-line);
+}
+
+@media (min-width: 901px) {
+  .mc-split__pane + .mc-split__pane {
+    border-top: 0;
+    border-left: 1px solid var(--console-line);
+  }
+}
+
+.mc-map-frame {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid var(--console-line);
+  border-radius: 16px;
+  background: #11140f;
+}
+
+.mc-map-frame iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: 0;
+  background: #11140f;
+}
+
+@media (max-width: 900px) {
+  .mc-page__scroll {
+    padding: 16px 14px 32px;
+  }
+
+  .mc-page__fill {
+    padding: 16px 14px 24px;
+  }
+
+  .mc-title {
+    font-size: 24px;
+  }
+
+  .mc-situation {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mc-split {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .mc-situation {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 舊面板仍帶著 10px／硬編碼灰階。在整頁裡抬回可讀字級，並吃控制台色票。 */
+.mc-page .mc-workspace {
+  color: var(--console-ink);
+  font-size: 13px;
+}
+
+.mc-page .mc-workspace :where(p, span, li, h3, h4, th, td, a, label) {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mc-page .mc-workspace :where(p, li, td, a) {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.mc-page .mc-workspace :where(h3, h4) {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 640;
+  color: var(--console-ink);
+}
+
+.mc-page .mc-workspace label:not(:has(input[type='checkbox'])) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--console-sub);
+}
+
+.mc-page .mc-workspace label:has(input[type='checkbox']) {
+  font-size: 13px;
+  color: var(--console-sub);
+}
+
+.mc-page .mc-workspace :where(input, select, textarea):not([type='checkbox']):not([type='file']):not(.hidden) {
+  width: 100%;
+  margin-top: 0;
+  border: 1px solid var(--console-line);
+  border-radius: 10px;
+  background: var(--console-bg);
+  padding: 8px 10px;
+  color: var(--console-ink);
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.45;
+}
+
+.mc-page .mc-workspace textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.mc-page .mc-workspace :where(section, article) {
+  border-color: var(--console-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--console-card) 94%, transparent);
+}
+
+.mc-page .mc-workspace thead {
+  background: transparent;
+  color: var(--console-faint);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mc-page .mc-workspace th {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mc-page .mc-workspace pre {
+  border: 1px solid var(--console-line);
+  border-radius: 12px;
+  background: var(--console-bg);
+  color: var(--console-sub);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mc-callout {
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--console-amber) 45%, var(--console-line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--console-amber) 10%, var(--console-card));
+}
+
+.mc-callout__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 640;
+  color: var(--console-ink);
+}
+
+.mc-callout__body {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--console-sub);
+}
+
+.mc-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.mc-coords {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mc-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--console-sub);
+}
+
+.mc-page .mc-workspace label.mc-check {
+  flex-direction: row;
+  align-items: center;
+  font-weight: 450;
+}
+
+.mc-check input {
+  width: auto;
+  margin: 0;
+}
+
+.mc-reply {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--console-line);
+  border-radius: 12px;
+  background: var(--console-bg);
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--console-ink);
+}
+
+.mc-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--console-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--console-card) 94%, transparent);
+}
+
+.mc-table-wrap table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.mc-table-wrap th,
+.mc-table-wrap td {
+  padding: 10px 14px;
+  vertical-align: middle;
+}
+
+.mc-table-wrap th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--console-faint);
+}
+
+.mc-table-wrap td {
+  border-top: 1px solid var(--console-line);
+  font-size: 13px;
+}
+
+.mc-danger {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  color: var(--console-danger);
+  cursor: pointer;
+}
+
+.mc-danger:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* 舊面板還留著 10px、硬編碼灰與黑底輸入。在整頁裡收成同一套控制台表面。 */
+.mc-page .mc-workspace :is(.text-\[10px\], .text-\[11px\], .text-xs) {
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mc-page .mc-workspace :is(.text-\[\#8a8f98\], .uppercase) {
+  color: var(--console-sub);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mc-page .mc-workspace :is(.bg-black\/30, .bg-black\/40) {
+  background: var(--console-bg);
+}
+
+.mc-page .mc-workspace :is(.border-white\/\[0\.08\], .border-white\/\[0\.06\]) {
+  border-color: var(--console-line);
+}
+
+.mc-page .mc-workspace :is(section, article, div).rounded-xl.border {
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--console-card) 94%, transparent);
+}
+
+.mc-page .mc-workspace button.rounded-lg {
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.mc-page .mc-workspace .text-red-400,
+.mc-page .mc-workspace .text-red-300 {
+  color: var(--console-danger);
+}
+
+.mc-page .mc-workspace .rounded-md.bg-white\/\[0\.06\] {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--console-ink) 7%, transparent);
+  color: var(--console-sub);
+  font-size: 12px;
+}

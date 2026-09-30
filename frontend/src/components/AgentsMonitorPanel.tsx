@@ -70,7 +70,7 @@ function RoleMonitorExtras({ agent, onOpenQuant, onOpenGrill }: { agent: RoleAge
             { label: '完成', value: String(agent.done) },
           ]}
         />
-        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={onOpenQuant}>
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[var(--console-accent)]" onClick={onOpenQuant}>
           開啟回測策略庫
         </button>
       </div>
@@ -99,7 +99,7 @@ function RoleMonitorExtras({ agent, onOpenQuant, onOpenGrill }: { agent: RoleAge
             { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
           ]}
         />
-        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={onOpenGrill}>
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[var(--console-accent)]" onClick={onOpenGrill}>
           查看質詢
         </button>
       </div>
@@ -116,7 +116,7 @@ function RoleMonitorExtras({ agent, onOpenQuant, onOpenGrill }: { agent: RoleAge
             { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
           ]}
         />
-        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={onOpenGrill}>
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[var(--console-accent)]" onClick={onOpenGrill}>
           查看質詢
         </button>
       </div>
@@ -133,7 +133,7 @@ function RoleMonitorExtras({ agent, onOpenQuant, onOpenGrill }: { agent: RoleAge
             { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
           ]}
         />
-        <button type="button" className="rd-btn inline-flex text-[11px] text-[#0A84FF]" onClick={onOpenGrill}>
+        <button type="button" className="rd-btn inline-flex text-[11px] text-[var(--console-accent)]" onClick={onOpenGrill}>
           查看質詢
         </button>
       </div>
@@ -169,10 +169,10 @@ function RoleMonitorExtras({ agent, onOpenQuant, onOpenGrill }: { agent: RoleAge
       <div className="rd-cell">
         <div className="rd-cell-l">最近整合產出</div>
         {outputs.length === 0 ? (
-          <p className="mt-1 text-[11px] text-[#636366]">尚無整合結果</p>
+          <p className="mt-1 text-[11px] text-[var(--console-sub)]">尚無整合結果</p>
         ) : (
           outputs.slice(0, 2).map((item) => (
-            <p key={`${item.task_id}-${item.id}`} className="mt-1 line-clamp-3 text-[11px] text-[#AEAEB2]">
+            <p key={`${item.task_id}-${item.id}`} className="mt-1 line-clamp-3 text-[11px] text-[var(--console-sub)]">
               {item.output_preview}
             </p>
           ))
@@ -234,7 +234,7 @@ function RoleDeepMonitor({ agent }: { agent: RoleAgent }) {
         <section className="rd-sec">
           <div className="rd-tt">角色告警</div>
           {agent.alerts!.map((al, i) => (
-            <p key={`${al.message}-${i}`} className="text-[11px] text-[#AEAEB2]">
+            <p key={`${al.message}-${i}`} className="text-[11px] text-[var(--console-sub)]">
               {al.level} · {al.message}
             </p>
           ))}
@@ -243,7 +243,7 @@ function RoleDeepMonitor({ agent }: { agent: RoleAgent }) {
       {agent.system_prompt ? (
         <section className="rd-sec">
           <div className="rd-tt">角色設定摘要</div>
-          <p className="line-clamp-6 whitespace-pre-wrap text-[11px] leading-relaxed text-[#AEAEB2]">{agent.system_prompt}</p>
+          <p className="line-clamp-6 whitespace-pre-wrap text-[11px] leading-relaxed text-[var(--console-sub)]">{agent.system_prompt}</p>
         </section>
       ) : null}
     </>
@@ -443,7 +443,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
 
       {!selected && (
         <ConsoleEmpty className="flex flex-1 items-center justify-center">
-          <p className="text-[13px] text-[#AEAEB2]">
+          <p className="text-[13px] text-[var(--console-sub)]">
             {deskScope === 'studio' ? '尚無工作室角色' : '尚無名冊'}
           </p>
         </ConsoleEmpty>
@@ -559,10 +559,10 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                 <>
                   <div className="rd-th">
                     <h2>回測策略庫</h2>
-                    <a href="#/monitor/lab/quant" className="rd-btn text-[11px] text-[#0A84FF]">
+                    <a href="#/monitor/lab/quant" className="rd-btn text-[11px] text-[var(--console-accent)]">
                       實驗室全屏
                     </a>
-                    <a href="#/monitor/lab/maps" className="rd-btn text-[11px] text-[#0A84FF]">
+                    <a href="#/monitor/lab/maps" className="rd-btn text-[11px] text-[var(--console-accent)]">
                       策略圖
                     </a>
                   </div>

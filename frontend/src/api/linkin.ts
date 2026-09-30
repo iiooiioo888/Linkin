@@ -448,14 +448,26 @@ export const refreshNarrativeL0 = (newSnapshotId: string) =>
     { new_snapshot_id: newSnapshotId },
   );
 
+export type NarrativeAppAgent = {
+  department: 'narrative' | 'npc' | 'item' | 'build' | string;
+  school: string;
+  executor_id: string;
+  reviewer_id: string;
+  keys: string[];
+  review: 'pass' | string;
+};
+
 export const seedNarrativeStarterPack = (
   workspaceId: string,
   body?: { region?: string; theme?: string },
 ) =>
-  mc.post<{ ok: boolean; source: 'fallback' | 'llm'; workspace: NarrativeWorkspace; draft_keys: string[] }>(
-    `/narrative/workspaces/${encodeURIComponent(workspaceId)}/starter-pack`,
-    body ?? {},
-  );
+  mc.post<{
+    ok: boolean;
+    source: 'fallback' | 'llm';
+    agents?: NarrativeAppAgent[];
+    workspace: NarrativeWorkspace;
+    draft_keys: string[];
+  }>(`/narrative/workspaces/${encodeURIComponent(workspaceId)}/starter-pack`, body ?? {});
 
 export type MapPlanPlot = {
   id: string;
@@ -539,6 +551,7 @@ export const applyMapPlan = (body: { plan?: MapPlan; plan_id?: string; confirm?:
 export type NarrativeGenerateResult = {
   ok: boolean;
   source: 'llm';
+  agents?: NarrativeAppAgent[];
   replaced_keys: string[];
   workspace: NarrativeWorkspace;
   draft_keys: string[];

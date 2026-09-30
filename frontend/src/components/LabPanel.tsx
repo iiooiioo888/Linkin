@@ -50,7 +50,7 @@ const AB_SERIES = [
 
 function tabBtn(active: boolean) {
   return `shrink-0 rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${
-    active ? 'bg-[#007AFF] text-white' : 'bg-white/[0.04] text-[#AEAEB2] hover:text-[#F5F5F7]'
+    active ? 'bg-[var(--console-accent)] text-white' : 'bg-white/[0.04] text-[var(--console-sub)] hover:text-[var(--console-ink)]'
   }`;
 }
 
@@ -60,7 +60,7 @@ function UpstreamLink({ name, url }: { name: string; url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="rounded-full border border-white/[0.08] px-2 py-0.5 text-[10px] text-[#8E8E93] transition-colors hover:border-[#007AFF]/40 hover:text-[#007AFF]"
+      className="rounded-full border border-white/[0.08] px-2 py-0.5 text-[10px] text-[var(--console-sub)] transition-colors hover:border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] hover:text-[var(--console-accent)]"
     >
       {name} ↗
     </a>
@@ -244,13 +244,13 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                 onClick={() => onTabChange(item.key)}
                 className={`rounded-xl border px-3 py-2 text-left transition-colors ${
                   tab === item.key
-                    ? 'border-[#007AFF]/50 bg-[#007AFF]/10'
+                    ? 'border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]'
                     : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
                 }`}
               >
-                <span className="block text-[12px] font-bold text-[#F5F5F7]">{item.label}</span>
+                <span className="block text-[12px] font-bold text-[var(--console-ink)]">{item.label}</span>
                 {item.upstream && (
-                  <span className="mt-0.5 block text-[10px] text-[#636366]">{item.upstream.name}</span>
+                  <span className="mt-0.5 block text-[10px] text-[var(--console-sub)]">{item.upstream.name}</span>
                 )}
               </button>
             ))}
@@ -272,7 +272,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
               <select
                 value={promptMode}
                 onChange={(e) => setPromptMode(e.target.value as 'user' | 'system')}
-                className="rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-2 py-1 text-[11px] text-[#F5F5F7]"
+                className="rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-2 py-1 text-[11px] text-[var(--console-ink)]"
               >
                 <option value="user">User 提示詞</option>
                 <option value="system">System 提示詞</option>
@@ -281,13 +281,13 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                 value={promptGoal}
                 onChange={(e) => setPromptGoal(e.target.value)}
                 placeholder="優化目標"
-                className="min-w-[180px] flex-1 rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-3 py-1.5 text-[12px] text-[#F5F5F7]"
+                className="min-w-[180px] flex-1 rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-3 py-1.5 text-[12px] text-[var(--console-ink)]"
               />
               <button
                 type="button"
                 disabled={promptLoading}
                 onClick={() => void runPromptOptimize()}
-                className="rounded-full bg-[#007AFF] px-4 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
+                className="rounded-full bg-[var(--console-accent)] px-4 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
               >
                 {promptLoading ? '優化中…' : '一鍵優化'}
               </button>
@@ -324,14 +324,14 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
           <div className="mx-auto max-w-3xl space-y-4">
             <section className="apple-card apple-card--pad space-y-3">
               <p className="apple-title">單頁抓取 · Scrape</p>
-              <p className="text-[11px] text-[#636366]">
+              <p className="text-[11px] text-[var(--console-sub)]">
                 有 FIRECRAWL_API_KEY 時走官方 API；否則輕量 httpx 抓取。
               </p>
               <div className="flex flex-wrap gap-2">
                 <input
                   value={fcUrl}
                   onChange={(e) => setFcUrl(e.target.value)}
-                  className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[12px] text-[#F5F5F7]"
+                  className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-3 py-2 text-[12px] text-[var(--console-ink)]"
                 />
                 <button
                   type="button"
@@ -344,12 +344,12 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
               </div>
               {fcScrape && (
                 <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
-                  <p className="text-[12px] font-semibold text-[#F5F5F7]">{fcScrape.title}</p>
-                  <p className="mt-1 text-[10px] text-[#636366]">
+                  <p className="text-[12px] font-semibold text-[var(--console-ink)]">{fcScrape.title}</p>
+                  <p className="mt-1 text-[10px] text-[var(--console-sub)]">
                     {fcScrape.url} · {fcScrape.source}
                   </p>
                   {fcScrape.hint && (
-                    <p className="mt-2 text-[10px] text-[#FF9F0A]">{fcScrape.hint}</p>
+                    <p className="mt-2 text-[10px] text-[var(--console-amber)]">{fcScrape.hint}</p>
                   )}
                   {scrapeImages.length > 0 && (
                     <div className="mt-3">
@@ -364,7 +364,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                       />
                     </div>
                   )}
-                  <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] text-[#AEAEB2]">
+                  <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] text-[var(--console-sub)]">
                     {fcScrape.markdown}
                   </pre>
                 </div>
@@ -376,19 +376,19 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                 <input
                   value={fcQuery}
                   onChange={(e) => setFcQuery(e.target.value)}
-                  className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[12px] text-[#F5F5F7]"
+                  className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-3 py-2 text-[12px] text-[var(--console-ink)]"
                 />
                 <button
                   type="button"
                   disabled={fcLoading}
                   onClick={() => void runFirecrawlSearch()}
-                  className="rounded-full border border-white/10 px-4 py-2 text-[12px] font-bold text-[#F5F5F7] disabled:opacity-50"
+                  className="rounded-full border border-white/10 px-4 py-2 text-[12px] font-bold text-[var(--console-ink)] disabled:opacity-50"
                 >
                   Search
                 </button>
               </div>
               {fcSearchMarkdown && (
-                <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-xl border border-white/[0.06] bg-black/20 p-3 text-[11px] text-[#AEAEB2]">
+                <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-xl border border-white/[0.06] bg-black/20 p-3 text-[11px] text-[var(--console-sub)]">
                   {fcSearchMarkdown}
                 </pre>
               )}
@@ -403,7 +403,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="apple-title">系統流程圖</p>
                 {archCatalogLoading && (
-                  <span className="text-[10px] text-[#8E8E93]">載入目錄…</span>
+                  <span className="text-[10px] text-[var(--console-sub)]">載入目錄…</span>
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -417,8 +417,8 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                     }}
                     className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${
                       archFlowView === flow.id && !archCustomIr
-                        ? 'border-[#c9a961]/60 bg-[#c9a961]/15 text-[#F5F5F7]'
-                        : 'border-white/10 text-[#AEAEB2] hover:border-white/20 hover:text-[#F5F5F7]'
+                        ? 'border-[#c9a961]/60 bg-[#c9a961]/15 text-[var(--console-ink)]'
+                        : 'border-white/10 text-[var(--console-sub)] hover:border-white/20 hover:text-[var(--console-ink)]'
                     }`}
                   >
                     {flow.title}
@@ -427,9 +427,9 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
               </div>
               {activeArchFlow && !archCustomIr ? (
                 <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
-                  <p className="text-[12px] font-semibold text-[#F5F5F7]">{activeArchFlow.title}</p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-[#8E8E93]">{activeArchFlow.blurb}</p>
-                  <p className="mt-1 text-[10px] text-[#636366]">
+                  <p className="text-[12px] font-semibold text-[var(--console-ink)]">{activeArchFlow.title}</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[var(--console-sub)]">{activeArchFlow.blurb}</p>
+                  <p className="mt-1 text-[10px] text-[var(--console-sub)]">
                     view={activeArchFlow.id} · {activeArchFlow.diagram_type}
                   </p>
                 </div>
@@ -444,7 +444,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                 value={archDesc}
                 onChange={(e) => setArchDesc(e.target.value)}
                 rows={2}
-                className="w-full rounded-lg border border-white/[0.08] bg-[#1C1C1E] px-3 py-2 text-[12px] text-[#F5F5F7]"
+                className="w-full rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-3 py-2 text-[12px] text-[var(--console-ink)]"
               />
               <div className="flex flex-wrap gap-2">
                 <button
@@ -459,7 +459,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                   <button
                     type="button"
                     onClick={() => setArchCustomIr(null)}
-                    className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-bold text-[#AEAEB2] hover:text-[#F5F5F7]"
+                    className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-bold text-[var(--console-sub)] hover:text-[var(--console-ink)]"
                   >
                     回到系統流程
                   </button>
@@ -473,7 +473,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
 
         {tab === 'ponytail' && (
           <div className="mx-auto max-w-3xl space-y-4">
-            <p className="text-[11px] text-[#636366]">
+            <p className="text-[11px] text-[var(--console-sub)]">
               懶惰資深工程師模式 — 審查過度工程化，停在第一個夠用的梯級。
             </p>
             <div className="flex flex-wrap items-center gap-2">
@@ -499,11 +499,11 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
             <PromptEditor value={reviewInput} onChange={setReviewInput} height={200} language="typescript" />
             {reviewResult && (
               <section className="apple-card apple-card--pad space-y-3">
-                <p className="text-[13px] font-bold text-[#F5F5F7]">{reviewResult.review.summary}</p>
+                <p className="text-[13px] font-bold text-[var(--console-ink)]">{reviewResult.review.summary}</p>
                 {reviewResult.review.delete_list && reviewResult.review.delete_list.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#FF3B30]">可刪除</p>
-                    <ul className="mt-1 list-inside list-disc text-[12px] text-[#AEAEB2]">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-danger)]">可刪除</p>
+                    <ul className="mt-1 list-inside list-disc text-[12px] text-[var(--console-sub)]">
                       {reviewResult.review.delete_list.map((item) => (
                         <li key={item}>{item}</li>
                       ))}
@@ -513,7 +513,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                 {reviewResult.review.keep_list && reviewResult.review.keep_list.length > 0 && (
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#34C759]">必須保留</p>
-                    <ul className="mt-1 list-inside list-disc text-[12px] text-[#AEAEB2]">
+                    <ul className="mt-1 list-inside list-disc text-[12px] text-[var(--console-sub)]">
                       {reviewResult.review.keep_list.map((item) => (
                         <li key={item}>{item}</li>
                       ))}
@@ -521,7 +521,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                   </div>
                 )}
                 {reviewResult.review.suggested_rewrite && (
-                  <pre className="overflow-x-auto rounded-lg bg-black/30 p-3 text-[11px] text-[#F5F5F7]">
+                  <pre className="overflow-x-auto rounded-lg bg-black/30 p-3 text-[11px] text-[var(--console-ink)]">
                     {reviewResult.review.suggested_rewrite}
                   </pre>
                 )}
@@ -533,7 +533,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
 
         {tab === 'mcp' && (
           <div className="mx-auto max-w-2xl space-y-3">
-            <p className="text-[11px] text-[#8E8E93]">
+            <p className="text-[11px] text-[var(--console-sub)]">
               執行期通用工具開關（OPC／記憶／爬蟲／Docker）。Minecraft 放置、填充與指令在
               「{activityNavPath('minecraft')}」，不與實驗室混用。
             </p>
@@ -550,11 +550,11 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                       prev.map((x) => (x.id === t.id ? { ...x, enabled: !x.enabled } : x)),
                     )
                   }
-                  className="h-4 w-4 accent-[#007AFF]"
+                  className="h-4 w-4 accent-[var(--console-accent)]"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-bold text-[#F5F5F7]">{t.name}</p>
-                  <p className="mt-0.5 text-[11px] text-[#8E8E93]">{t.desc}</p>
+                  <p className="text-[13px] font-bold text-[var(--console-ink)]">{t.name}</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--console-sub)]">{t.desc}</p>
                 </div>
                 <span
                   className="rounded-full px-2 py-0.5 text-[10px] font-bold"
@@ -602,14 +602,14 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
             <section className="apple-card apple-card--pad flex flex-col justify-center gap-4">
               <div>
                 <p className="apple-title">勝出</p>
-                <p className="mt-2 text-[28px] font-bold text-[#007AFF]">變體 {winner.better}</p>
+                <p className="mt-2 text-[28px] font-bold text-[var(--console-accent)]">變體 {winner.better}</p>
               </div>
               <div>
-                <p className="text-[11px] text-[#8E8E93]">A 均分</p>
+                <p className="text-[11px] text-[var(--console-sub)]">A 均分</p>
                 <p className="apple-data text-[18px]">{winner.scoreA.toFixed(2)}</p>
               </div>
               <div>
-                <p className="text-[11px] text-[#8E8E93]">B 均分</p>
+                <p className="text-[11px] text-[var(--console-sub)]">B 均分</p>
                 <p className="apple-data text-[18px] text-[#34C759]">{winner.scoreB.toFixed(2)}</p>
               </div>
             </section>

@@ -16,13 +16,13 @@ const ROLE_LAYER: Record<string, number> = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  hub: '#007AFF',
-  wired: '#34C759',
-  catalog: '#8E8E93',
+  hub: '#e4c27a',
+  wired: '#8fbf9a',
+  catalog: '#8a8174',
 };
 
 const ROLE_COLOR: Record<string, string> = {
-  frontend: '#007AFF',
+  frontend: '#e4c27a',
   api: '#5856D6',
   service: '#34C759',
   data: '#FF9500',
@@ -158,7 +158,7 @@ export default function ArchifyViewer({
         <div className="apple-card__head">
           <h2 className="apple-title">{title}</h2>
         </div>
-        <p className="px-4 py-8 text-center text-[11px] text-[#636366]">沒有節點</p>
+        <p className="px-4 py-8 text-center text-[11px] text-[var(--console-sub)]">沒有節點</p>
       </div>
     );
   }
@@ -167,7 +167,7 @@ export default function ArchifyViewer({
     <div className="apple-card apple-card--diagram">
       <div className="apple-card__head">
         <h2 className="apple-title">{title}</h2>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93]">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">
           Archify · {kind}
         </span>
       </div>
@@ -204,7 +204,7 @@ export default function ArchifyViewer({
                     x={pos.x + pos.w / 2}
                     y="22"
                     textAnchor="middle"
-                    fill="#636366"
+                    fill="#8a8174"
                     fontSize="10"
                     fontWeight="700"
                   >
@@ -265,10 +265,10 @@ export default function ArchifyViewer({
                   strokeWidth={on ? 1.8 : 1.2}
                 />
                 <circle cx="12" cy={pos.h / 2} r="4" fill={color} />
-                <text x="22" y={pos.h / 2 - 2} fill="#F5F5F7" fontSize="10" fontWeight="600">
+                <text x="22" y={pos.h / 2 - 2} fill="#f4efe6" fontSize="10" fontWeight="600">
                   {truncate(node.label, maxChars)}
                 </text>
-                <text x="22" y={pos.h / 2 + 12} fill="#636366" fontSize="8">
+                <text x="22" y={pos.h / 2 + 12} fill="#8a8174" fontSize="8">
                   {node.status || node.role || 'node'}
                 </text>
                 <title>{[node.label, node.detail, node.id].filter(Boolean).join(' · ')}</title>

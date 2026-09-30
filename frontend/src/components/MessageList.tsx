@@ -2,10 +2,9 @@
  * 訊息列表：居中窄欄，空態極簡。
  * 僅在新訊息／串流正文變化且貼近底部時自動捲動，避免決策列被進度輪詢搶點擊。
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ChatMessage, TaskProgress } from '../types';
-import { dismissChatEmptyHint, isChatEmptyHintDismissed } from '../lib/onboarding';
 import MessageBubble from './MessageBubble';
 
 interface MessageListProps {
@@ -27,8 +26,8 @@ interface MessageListProps {
 }
 
 const SUGGESTIONS: { text: string; company: boolean }[] = [
-  { text: '用三句話介紹 EvoLoop', company: false },
-  { text: '幫我寫本週工作報告大綱', company: true },
+  { text: '幫我整理今天要做的三件事', company: false },
+  { text: '把這段需求拆成可執行步驟', company: true },
 ];
 
 export default function MessageList({
@@ -46,7 +45,6 @@ export default function MessageList({
   hideTaskCard = false,
 }: MessageListProps) {
   const { t } = useTranslation();
-  const [hintVisible, setHintVisible] = useState(() => !isChatEmptyHintDismissed());
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -76,7 +74,7 @@ export default function MessageList({
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-[13px] text-[#98989D]">載入對話…</p>
+        <p className="text-[13px] text-[var(--console-faint)]">載入對話…</p>
       </div>
     );
   }
@@ -90,27 +88,12 @@ export default function MessageList({
         {messages.length === 0 && (
           <div className={`flex flex-col items-center gap-8 text-center ${variant === 'drawer' ? 'py-10' : 'py-20 sm:py-28'}`}>
             <div>
-              <h2 className="text-[20px] font-semibold tracking-tight text-[#F5F5F7] sm:text-[22px]">
+              <h2 className="text-[20px] font-semibold tracking-tight text-[var(--console-ink)] sm:text-[22px]">
                 {t('chat.emptyTitle')}
               </h2>
-              <p className="mt-2 text-[13px] text-[#98989D]">
+              <p className="mt-2 max-w-md text-[13px] leading-relaxed text-[var(--console-faint)]">
                 {t('chat.emptySubtitle')}
               </p>
-              {hintVisible && (
-                <div className="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_20%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_6%,transparent)] px-4 py-3 text-left">
-                  <p className="text-[12px] text-[var(--console-sub)]">{t('chat.emptyPipelineHint')}</p>
-                  <button
-                    type="button"
-                    className="mt-2 text-[11px] text-[var(--console-accent)] hover:underline"
-                    onClick={() => {
-                      dismissChatEmptyHint();
-                      setHintVisible(false);
-                    }}
-                  >
-                    {t('common.dismiss')}
-                  </button>
-                </div>
-              )}
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (
@@ -118,7 +101,7 @@ export default function MessageList({
                   key={s.text}
                   type="button"
                   onClick={() => onSuggest?.(s.text, s.company)}
-                  className="rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[12px] text-[#AEAEB2] transition-colors hover:border-white/[0.14] hover:text-[#F5F5F7]"
+                  className="rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[12px] text-[var(--console-sub)] transition-colors hover:border-white/[0.14] hover:text-[var(--console-ink)]"
                 >
                   {s.text}
                 </button>

@@ -31,7 +31,6 @@ export default function OnboardingGuide({ onStartChat }: OnboardingGuideProps) {
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-[var(--console-ink)]">{t('onboarding.title')}</p>
           <p className="mt-0.5 text-[11px] text-[var(--console-sub)]">{t('onboarding.body')}</p>
-          <p className="mt-1 text-[10px] text-[var(--console-faint)]">{t('onboarding.monitorNote')}</p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button

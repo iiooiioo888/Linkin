@@ -9,3 +9,22 @@ export const NARRATIVE_REGION_OPTIONS: Array<{ value: string; label: string }> =
 export function narrativeRegionLabel(value: string): string {
   return NARRATIVE_REGION_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
+
+const DISPLAY_LABELS: Record<string, string> = {
+  主线: '主線',
+  支线: '支線',
+  日常: '日常',
+  简单: '簡單',
+  普通: '普通',
+  困难: '困難',
+  common: '普通',
+  uncommon: '優良',
+  rare: '稀有',
+  epic: '史詩',
+  legendary: '傳說',
+};
+
+/** 資料值維持後端原文，畫面上改成繁中。 */
+export function mcLabel(value: string): string {
+  return DISPLAY_LABELS[value] ?? narrativeRegionLabel(value);
+}

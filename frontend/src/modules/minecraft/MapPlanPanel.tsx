@@ -9,14 +9,7 @@ import {
   type MapPlan,
   type MapPlanPreview,
 } from '../../api/linkin';
-import {
-  ConsoleCard,
-  ConsoleCardHeader,
-  ConsoleCenterColumn,
-  ConsoleColumnScroll,
-  PanelAlert,
-  PanelShell,
-} from '../../components/ui/ConsoleLayout';
+import { McHeader, McLinks, McPage, McPanel } from './McChrome';
 
 export default function MapPlanPanel() {
   const [region, setRegion] = useState('织庭都');
@@ -87,56 +80,81 @@ export default function MapPlanPanel() {
     }
   }, []);
 
+  const facts = plan
+    ? [
+        { label: '區域', value: plan.region },
+        { label: '狀態', value: plan.status || '已計畫' },
+        { label: '地塊', value: String(plan.plots.length) },
+        ...(plan.estimated_blocks ? [{ label: '方塊', value: String(plan.estimated_blocks) }] : []),
+        ...(preview ? [{ label: '預覽地塊', value: String(preview.plot_count) }] : []),
+      ]
+    : [];
+
   return (
-    <PanelShell>
-      <ConsoleCenterColumn>
-        <ConsoleColumnScroll>
-          {error ? <PanelAlert tone="error">{error}</PanelAlert> : null}
-          {message ? <p className="mb-2 text-xs text-[var(--console-green)]">{message}</p> : null}
-          <ConsoleCard>
-            <ConsoleCardHeader>地圖計畫 · Phase 4 區域地圖</ConsoleCardHeader>
-            <div className="grid gap-2 px-3 pb-3 text-xs">
-              <label className="grid gap-1">
-                <span className="text-[var(--console-faint)]">區域</span>
-                <input className="console-input" value={region} onChange={(e) => setRegion(e.target.value)} />
-              </label>
-              <label className="grid gap-1">
-                <span className="text-[var(--console-faint)]">Seed（可選）</span>
-                <input className="console-input" value={seed} onChange={(e) => setSeed(e.target.value)} />
-              </label>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <button type="button" className="console-btn" disabled={!!busy} onClick={() => void onGenerate()}>
-                  {busy === 'generate' ? '生成中…' : '生成'}
-                </button>
-                <button type="button" className="console-btn-ghost" disabled={!plan || !!busy} onClick={() => void onPreview()}>
-                  預覽
-                </button>
-                <button type="button" className="console-btn-ghost" disabled={!plan || !!busy} onClick={() => void onApply()}>
-                  落地（confirm）
-                </button>
-                <button type="button" className="console-btn-ghost" onClick={() => void loadLatest()}>
-                  載入最新
-                </button>
-                <a href="#/modules/minecraft/layout-preview" className="console-btn-ghost">
-                  本地布局預覽
-                </a>
-              </div>
-            </div>
-          </ConsoleCard>
-          {plan ? (
-            <ConsoleCard className="mt-3">
-              <ConsoleCardHeader>
-                {plan.title || plan.id} · {plan.region} · {plan.status ?? 'planned'}
-              </ConsoleCardHeader>
-              <pre className="max-h-64 overflow-auto px-3 pb-3 text-[10px] text-[var(--console-muted)]">
-                {JSON.stringify({ plan, preview }, null, 2)}
-              </pre>
-            </ConsoleCard>
-          ) : (
-            <p className="mt-3 text-xs text-[var(--console-faint)]">尚無計畫 — 可從敘事工作區帶入上下文後生成。</p>
-          )}
-        </ConsoleColumnScroll>
-      </ConsoleCenterColumn>
-    </PanelShell>
+    <McPage>
+      <McHeader
+        title="地圖計畫"
+        lead="依區域生成地圖，先預覽再落地。也可以到布局預覽看俯視圖。"
+      />
+      <div className="mc-workspace">
+        {error ? <p className="mc-error">{error}</p> : null}
+        {message ? <p className="mc-note">{message}</p> : null}
+        <McPanel title="生成">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label>
+              區域
+              <input className="mt-1 w-full rounded-xl border px-3 py-2" value={region} onChange={(e) => setRegion(e.target.value)} />
+            </label>
+            <label>
+              種子（可留空）
+              <input className="mt-1 w-full rounded-xl border px-3 py-2" value={seed} onChange={(e) => setSeed(e.target.value)} />
+            </label>
+          </div>
+          <div className="mc-actions">
+            <button type="button" className="mc-btn is-primary" disabled={!!busy} onClick={() => void onGenerate()}>
+              {busy === 'generate' ? '生成中' : '生成'}
+            </button>
+            <button type="button" className="mc-btn" disabled={!plan || !!busy} onClick={() => void onPreview()}>
+              預覽
+            </button>
+            <button type="button" className="mc-btn" disabled={!plan || !!busy} onClick={() => void onApply()}>
+              落地
+            </button>
+            <button type="button" className="mc-btn" onClick={() => void loadLatest()}>
+              載入最新
+            </button>
+          </div>
+          <McLinks links={[{ href: '#/modules/minecraft/layout-preview', label: '布局預覽' }]} />
+        </McPanel>
+        {plan ? (
+          <McPanel title={plan.title || plan.region} hint={plan.id}>
+            {plan.summary ? <p className="mc-note">{plan.summary}</p> : null}
+            <dl className="mc-facts">
+              {facts.map((fact) => (
+                <div key={fact.label}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+            {preview?.pois?.length ? (
+              <ul className="mc-list" style={{ marginTop: 12 }}>
+                {preview.pois.slice(0, 8).map((poi) => (
+                  <li key={poi.id} className="mc-row">
+                    <div className="mc-row__top">
+                      <span className="mc-row__title">{poi.title}</span>
+                      <span className="mc-row__meta">{poi.kind}</span>
+                    </div>
+                    <span className="mc-row__meta">{poi.location}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </McPanel>
+        ) : (
+          <p className="mc-empty">還沒有地圖計畫。填區域後生成，或從敘事工作區帶入。</p>
+        )}
+      </div>
+    </McPage>
   );
 }

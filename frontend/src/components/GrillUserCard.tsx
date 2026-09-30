@@ -81,7 +81,7 @@ export default function GrillUserCard({ grill, disabled, onAnswer }: GrillUserCa
           {grill.role_label || 'L4 需求審計官'}
           <em className="raho-grill-gate">強制前置閘門</em>
         </span>
-        <span className={pct > 90 ? 'text-[#30D158]' : terminated ? 'text-[#FF453A]' : 'text-[#FF9F0A]'}>
+        <span className={pct > 90 ? 'text-[var(--console-green)]' : terminated ? 'text-[var(--console-danger)]' : 'text-[var(--console-amber)]'}>
           {terminated ? '審計失敗' : locked ? '已核發門票' : `綜合 ${pct}%`}
         </span>
       </div>
@@ -171,7 +171,7 @@ export default function GrillUserCard({ grill, disabled, onAnswer }: GrillUserCa
               ))}
             </div>
           ) : (
-            <p className="text-[12px] text-[#8E8E93]">載入選項中…</p>
+            <p className="text-[12px] text-[var(--console-sub)]">載入選項中…</p>
           )}
           <div className="raho-grill-actions">
             <button

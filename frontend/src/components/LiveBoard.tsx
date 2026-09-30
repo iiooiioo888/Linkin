@@ -536,7 +536,7 @@ function ApiPoolCard({ feed, onOpen }: { feed: AnimLiveFeed; onOpen?: () => void
         <p className="py-4 text-center text-[12px] text-[var(--console-faint)]">同步中…</p>
       ) : routes.length === 0 && !ops.configured ? (
         <div className="py-4 text-center">
-          <p className="text-[12px] text-[#AEAEB2]">尚未配置 API</p>
+          <p className="text-[12px] text-[var(--console-sub)]">尚未配置 API</p>
           {onOpen ? (
             <button
               type="button"

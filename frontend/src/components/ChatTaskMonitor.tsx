@@ -179,9 +179,9 @@ export default function ChatTaskMonitor({
           </div>
         </div>
         <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-white/10" title="任務預算進度">
-          <i className="block h-full rounded-full bg-[#0A84FF]" style={{ width: `${spentPct}%` }} />
+          <i className="block h-full rounded-full bg-[var(--console-accent)]" style={{ width: `${spentPct}%` }} />
         </div>
-        <p className="mb-2 text-[10px] text-[#636366]">
+        <p className="mb-2 text-[10px] text-[var(--console-sub)]">
           狀態 {runtimeState} · 耗時 {eta ? formatDurationCompact(eta.elapsedSec) : '—'}
         </p>
 
@@ -196,7 +196,7 @@ export default function ChatTaskMonitor({
                   <li key={row.id} className={`ws-role${row.enabled ? '' : ' is-off'}`}>
                     <span className={`rd-od ${row.status === 'busy' ? 'run' : row.enabled ? 'on' : 'off'}`} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12px] font-medium text-[#F5F5F7]">{row.name}</p>
+                      <p className="truncate text-[12px] font-medium text-[var(--console-ink)]">{row.name}</p>
                       <p className={`truncate text-[10px] ${meta.text}`}>
                         {row.enabled ? meta.label : '停用'}
                         {row.items ? ` · ${row.items} 項` : ''}
@@ -212,7 +212,7 @@ export default function ChatTaskMonitor({
 
         <MonitorSection title="外部整合" hint="召回／Agent／設計" defaultCollapsed>
           <IntegrationsStrip density="compact" showSummary={false} pollMs={15000} />
-          <p className="mt-2 text-[10px] leading-relaxed text-[#636366]">
+          <p className="mt-2 text-[10px] leading-relaxed text-[var(--console-sub)]">
             MemOS／Viking／WeKnora 服務 L0 注入；Yao／Ouroboros／OpenPencil 為顯式動作。點晶片開啟面板。
           </p>
         </MonitorSection>
@@ -220,14 +220,14 @@ export default function ChatTaskMonitor({
         <MonitorSection title="需求審計門票" hint={ticket ? ticketStatusLabel(ticket.status) : '尚無門票'} defaultCollapsed>
           <L0BiasHint snapshot={task.raho?.l0} compact />
           {blockers[0] && (
-            <p className="mb-2 rounded-lg border border-[#FF9F0A]/30 bg-[#FF9F0A]/10 px-2.5 py-2 text-[11px] leading-relaxed text-[#FF9F0A]">
+            <p className="mb-2 rounded-lg border border-[color-mix(in_srgb,var(--console-amber)_30%,transparent)] bg-[color-mix(in_srgb,var(--console-amber)_10%,transparent)] px-2.5 py-2 text-[11px] leading-relaxed text-[var(--console-amber)]">
               待裁決：{blockers[0].question}
             </p>
           )}
           {ticket ? (
             <>
               {ticket.clarified_goal && typeof ticket.clarified_goal === 'object' && (
-                <p className="mb-2 text-[11px] leading-relaxed text-[#AEAEB2]">
+                <p className="mb-2 text-[11px] leading-relaxed text-[var(--console-sub)]">
                   {String(
                     (ticket.clarified_goal as { core_action?: string }).core_action ||
                       (ticket.clarified_goal as { quantified_success?: string }).quantified_success ||
@@ -241,13 +241,13 @@ export default function ChatTaskMonitor({
                   if (n == null) return null;
                   return (
                     <div key={dim.key}>
-                      <div className="mb-0.5 flex justify-between text-[10px] text-[#8E8E93]">
+                      <div className="mb-0.5 flex justify-between text-[10px] text-[var(--console-sub)]">
                         <span>{dim.label}</span>
                         <span>{Math.round(n)}</span>
                       </div>
                       <div className="h-1 overflow-hidden rounded-full bg-white/10">
                         <i
-                          className="block h-full rounded-full bg-[#0A84FF]"
+                          className="block h-full rounded-full bg-[var(--console-accent)]"
                           style={{ width: `${Math.min(100, n)}%` }}
                         />
                       </div>
@@ -258,7 +258,7 @@ export default function ChatTaskMonitor({
               {trail.length > 0 && (
                 <ol className="mt-2 space-y-1 border-t border-white/[0.06] pt-2">
                   {trail.slice(-3).map((row, i) => (
-                    <li key={`${i}-${row.slice(0, 12)}`} className="text-[10px] leading-relaxed text-[#8E8E93]">
+                    <li key={`${i}-${row.slice(0, 12)}`} className="text-[10px] leading-relaxed text-[var(--console-sub)]">
                       {row}
                     </li>
                   ))}
@@ -290,7 +290,7 @@ export default function ChatTaskMonitor({
             </div>
           </div>
           {agentsSnap?.summary?.total_api_cost_usd != null && (
-            <p className="mt-2 text-[10px] text-[#636366]">
+            <p className="mt-2 text-[10px] text-[var(--console-sub)]">
               全員 API 累計 {fmtUsd(agentsSnap.summary.total_api_cost_usd)}
             </p>
           )}
@@ -315,8 +315,8 @@ export default function ChatTaskMonitor({
             <ul className="mt-2 space-y-1">
               {dockerServices.map((s) => (
                 <li key={`${s.source || 'docker'}-${s.service}`} className="flex justify-between gap-2 text-[11px]">
-                  <span className="truncate text-[#AEAEB2]">{s.product_name || s.service}</span>
-                  <span className="shrink-0 text-[#F5F5F7]">{fmtUsd(s.cost)}</span>
+                  <span className="truncate text-[var(--console-sub)]">{s.product_name || s.service}</span>
+                  <span className="shrink-0 text-[var(--console-ink)]">{fmtUsd(s.cost)}</span>
                 </li>
               ))}
             </ul>

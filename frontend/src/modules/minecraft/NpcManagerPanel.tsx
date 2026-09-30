@@ -6,6 +6,7 @@ import { createNpc, deleteNpc, fetchNpcs, npcDialogue, updateNpc, type NpcCard }
 import { npcPortraitUri } from '../../lib/visualCards';
 import MediaGallery, { VisualThumb } from '../../components/media/MediaGallery';
 import PendingWorldIntentsBanner from './PendingWorldIntentsBanner';
+import { McHeader, McPage } from './McChrome';
 
 const EMPTY: NpcCard = {
   name: '',
@@ -105,7 +106,7 @@ export default function NpcManagerPanel() {
       const data = await npcDialogue(selected, message);
       setReply(data.reply);
       const backend = (data.rag?.backend as { chroma?: boolean; fallback?: string } | undefined) ?? {};
-      setRagNote(backend.chroma ? 'Chroma 檢索' : `RAG 降級：${backend.fallback ?? 'json'}`);
+      setRagNote(backend.chroma ? '已用世界記憶檢索' : '世界記憶暫時改走本地備援');
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -114,18 +115,18 @@ export default function NpcManagerPanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas text-[#f7f8f8]">
-      <div className="flex items-center justify-between border-b border-white/[0.06] p-3">
-        <h2 className="text-sm font-semibold">NPC 角色卡 <span className="text-xs text-[#8a8f98]">（{npcs.length}）</span></h2>
-        <button type="button" onClick={() => void load()} className="rounded-md border border-white/[0.08] px-2 py-1 text-[11px] text-[#8a8f98]">重新整理</button>
-      </div>
-      {error && <p className="border-b border-red-800 bg-red-900/30 px-3 py-2 text-xs text-red-300">{error}</p>}
-      <div className="px-3 pt-3">
-        <PendingWorldIntentsBanner kind="npc" compact />
-      </div>
-      <div className="grid min-h-0 flex-1 gap-0 overflow-hidden lg:grid-cols-[1fr_1.1fr]">
-        <div className="overflow-y-auto border-b border-white/[0.06] p-3 lg:border-b-0 lg:border-r">
-          {npcs.length === 0 && <p className="py-8 text-center text-xs text-[#636366]">尚無 NPC，請先建立角色卡</p>}
+    <McPage fill>
+      <McHeader
+        title="NPC"
+        lead={npcs.length ? `目前 ${npcs.length} 張角色卡。選一張可改設定，或直接試對話。` : '還沒有角色卡。右側可新增，對話會對照世界觀。'}
+        aside={<button type="button" onClick={() => void load()} className="mc-btn">重新整理</button>}
+      />
+      <div className="mc-workspace mc-workspace--fill">
+      {error && <p className="mc-error">{error}</p>}
+      <PendingWorldIntentsBanner kind="npc" compact />
+      <div className="mc-split">
+        <div className="mc-split__pane">
+          {npcs.length === 0 && <p className="mc-empty">還沒有角色卡。右側可新增。</p>}
           {npcs.length > 0 && (
             <div className="mb-3">
               <MediaGallery
@@ -151,43 +152,25 @@ export default function NpcManagerPanel() {
                 key={npc.id}
                 type="button"
                 onClick={() => selectNpc(npc)}
-                className={`w-full rounded-lg border px-3 py-2 text-left ${selected === npc.id ? 'border-[#64D2FF]/40 bg-[#64D2FF]/10' : 'border-white/[0.08] bg-[#1C1C1E]'}`}
+                className={`mc-row${selected === npc.id ? ' is-on' : ''}`}
               >
-                <div className="flex items-center gap-3">
-                  <VisualThumb src={npcPortraitUri(npc.name, npc.faction, npc.occupation)} alt={npc.name} className="h-12 w-9" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[13px] font-medium">{npc.name}</p>
-                      <span className="text-[10px] text-[#8a8f98]">{npc.faction}</span>
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-[11px] text-[#AEAEB2]">{npc.backstory}</p>
-                  </div>
+                <div className="mc-row__top">
+                  <span className="mc-row__title">{npc.name}</span>
+                  <span className="mc-row__meta">{npc.faction}</span>
                 </div>
-                {npc.id && (
-                  <span
-                    className="mt-2 inline-block text-[10px] text-red-400"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void onDelete(npc.id as string);
-                    }}
-                  >
-                    刪除
-                  </span>
-                )}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <VisualThumb src={npcPortraitUri(npc.name, npc.faction, npc.occupation)} alt={npc.name} className="h-12 w-9" />
+                  <p className="mc-note" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{npc.backstory}</p>
+                </div>
               </button>
             ))}
           </div>
         </div>
-        <div className="overflow-y-auto p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-[11px] font-semibold text-[#8a8f98]">{selected ? '編輯角色卡' : '新增角色卡'}</h3>
-            {selected && (
-              <button type="button" onClick={onNew} className="text-[10px] text-[#8a8f98] hover:text-[#f7f8f8]">
-                改為新增
-              </button>
-            )}
+        <div className="mc-split__pane">
+          <div className="mc-row__top">
+            <h3>{selected ? '編輯角色卡' : '新增角色卡'}</h3>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="mc-form">
             {([
               ['name', '名稱'],
               ['faction', '陣營'],
@@ -196,30 +179,46 @@ export default function NpcManagerPanel() {
               ['personality', '性格'],
               ['speech_style', '語言風格'],
             ] as Array<[keyof NpcCard, string]>).map(([key, label]) => (
-              <label key={key} className="text-[10px] text-[#8a8f98]">
+              <label key={key}>
                 {label}
-                <input value={String(form[key] ?? '')} onChange={(e) => setField(key, e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[#f7f8f8]" />
+                <input value={String(form[key] ?? '')} onChange={(e) => setField(key, e.target.value)} />
               </label>
             ))}
           </div>
-          <label className="mt-2 block text-[10px] text-[#8a8f98]">
-            背景故事（必填）
-            <textarea value={form.backstory} onChange={(e) => setField('backstory', e.target.value)} className="mt-1 min-h-[72px] w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
+          <label>
+            背景故事
+            <textarea value={form.backstory} onChange={(e) => setField('backstory', e.target.value)} />
           </label>
-          <button type="button" disabled={busy} onClick={() => void onSave()} className="mt-2 rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40">
-            {selected ? '更新 NPC' : '建立 NPC'}
-          </button>
+          <div className="mc-actions">
+            <button type="button" disabled={busy} onClick={() => void onSave()} className="mc-btn is-primary">
+              {selected ? '儲存角色卡' : '建立角色卡'}
+            </button>
+            {selected ? (
+              <button type="button" className="mc-btn" onClick={onNew}>改為新增</button>
+            ) : null}
+            {selected ? (
+              <button type="button" className="mc-danger" disabled={busy} onClick={() => void onDelete(selected)}>
+                刪除這張角色卡
+              </button>
+            ) : null}
+          </div>
 
-          <h3 className="mb-2 mt-5 text-[11px] font-semibold text-[#8a8f98]">對話測試</h3>
-          <p className="mb-1 text-[10px] text-[#636366]">{selected ? `對象：${npcs.find((n) => n.id === selected)?.name}` : '請先在左側選取 NPC'}</p>
-          <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="玩家對白" className="min-h-[64px] w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]" />
-          <button type="button" disabled={busy || !selected} onClick={() => void onTalk()} className="mt-2 rounded-lg border border-white/[0.08] px-3 py-1.5 text-[12px] disabled:opacity-40">
-            送出對話
-          </button>
-          {ragNote && <p className="mt-2 text-[10px] text-[#64D2FF]">{ragNote}</p>}
-          {reply && <p className="mt-2 whitespace-pre-wrap rounded-lg border border-white/[0.06] bg-[#1C1C1E] px-3 py-2 text-[12px] leading-relaxed">{reply}</p>}
+          <h3 style={{ marginTop: 20 }}>試對話</h3>
+          <p className="mc-note">{selected ? `對象：${npcs.find((n) => n.id === selected)?.name}` : '先在左側選一張角色卡。'}</p>
+          <label>
+            玩家對白
+            <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="想跟這個角色說的話" />
+          </label>
+          <div className="mc-actions">
+            <button type="button" disabled={busy || !selected} onClick={() => void onTalk()} className="mc-btn">
+              送出
+            </button>
+          </div>
+          {ragNote ? <p className="mc-note">{ragNote}</p> : null}
+          {reply ? <p className="mc-reply">{reply}</p> : null}
         </div>
       </div>
-    </div>
+      </div>
+    </McPage>
   );
 }

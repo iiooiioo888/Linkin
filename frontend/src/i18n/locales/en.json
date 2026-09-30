@@ -1,6 +1,7 @@
 {
   "nav": {
     "chat": "Chat",
+    "company": "Company",
     "console": "Console",
     "linkin": "Minecraft",
     "minecraft": "Minecraft",
@@ -33,18 +34,11 @@
   },
   "chat": {
     "emptyTitle": "Start a conversation",
-    "emptySubtitle": "Simple tasks stream instantly · complex tasks use multi-role orchestration",
-    "emptyPipelineHint": "After you send a message, the task advances through pipeline stages (sense → generate → evaluate → reflect → output). Dense monitors are for ops; daily chat uses a compact pipeline strip.",
-    "pipelineRunning": "Pipeline running",
-    "pinMonitor": "Expand monitor",
-    "monitorPinned": "Monitor expanded",
-    "balance": "Balance",
-    "estCost": "Est.",
-    "liveCost": "Spent",
+    "emptySubtitle": "Describe what you need. Short questions get a direct answer; larger jobs are split up.",
+    "pipelineRunning": "In progress",
+    "pinMonitor": "Show details",
+    "monitorPinned": "Details open",
     "insufficientBalance": "Insufficient credits — top up first",
-    "lowBalanceWarn": "Balance may be too low for this task",
-    "openWallet": "Open wallet",
-    "estHint": "est.",
     "send": "Send"
   },
   "billing": {
@@ -59,9 +53,9 @@
     "cacheSavings": "Cache savings"
   },
   "onboarding": {
-    "title": "Get started",
-    "body": "Type your request below to start chatting. Complex tasks automatically use the multi-role pipeline. Try Auto execution mode first.",
-    "monitorNote": "The dense right monitor is for ops; daily chat uses a compact pipeline strip.",
+    "title": "Start a conversation",
+    "body": "Type what you need below. Execution mode starts on Auto.",
+    "monitorNote": "",
     "startCta": "Start chatting"
   },
   "monitorAlert": {
@@ -106,7 +100,7 @@
     "accountHubHint": "Per-user Hub call limit — separate from per-role USD caps",
     "accountLinkinCredits": "Usage allowance",
     "accountCreditsHint": "Platform task usage balance — separate from per-role USD caps",
-    "creditsUnit": "units",
+    "creditsUnit": "credits",
     "creditsMonthlyUsed": "Monthly used {{used}} / {{quota}}"
   },
   "mobileShell": {
@@ -149,8 +143,8 @@
     "dismiss": "Dismiss"
   },
   "gate": {
-    "titlePrefix": "Refactor ",
-    "subtitle": "Multi-role orchestration console",
+    "titlePrefix": "",
+    "subtitle": "Sign in to start a conversation.",
     "account": "Account",
     "secret": "Password",
     "enter": "Sign in",

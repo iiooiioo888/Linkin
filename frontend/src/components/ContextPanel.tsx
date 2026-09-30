@@ -68,8 +68,8 @@ const KIND_FILTERS: ContextEventKind[] = ['inject', 'compact', 'prune', 'switch'
 const FILE_FILTERS: Array<FilePurpose | 'all'> = ['all', 'read', 'written', 'searched', 'images'];
 
 const btnCls =
-  'rounded-xl border border-white/[0.08] bg-[#1C1C1E] px-2.5 py-1 text-[11px] text-[#8a8f98] hover:text-[#f7f8f8] disabled:opacity-40';
-const cardCls = 'rounded-xl border border-white/[0.08] bg-[#1C1C1E] p-3';
+  'rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2.5 py-1 text-[11px] text-[#8a8f98] hover:text-[var(--console-ink)] disabled:opacity-40';
+const cardCls = 'rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3';
 
 function CompositionBar({
   composition,
@@ -115,10 +115,10 @@ function CompositionBar({
           if (!slice?.tokens) return null;
           const delta = vsPrevious?.deltas?.[k]?.tokens ?? 0;
           return (
-            <span key={k} className="inline-flex items-center gap-1.5 text-[10px] text-[#AEAEB2]">
+            <span key={k} className="inline-flex items-center gap-1.5 text-[10px] text-[var(--console-sub)]">
               <i className="inline-block h-2 w-2 rounded-sm" style={{ background: COMPOSITION_META[k].color }} />
               {COMPOSITION_META[k].short} {fmtTokens(slice.tokens)}
-              <span className="text-[#636366]">({Math.round((slice.share || 0) * 100)}%)</span>
+              <span className="text-[var(--console-sub)]">({Math.round((slice.share || 0) * 100)}%)</span>
               {delta !== 0 ? (
                 <span className={`ctx-delta ${delta > 0 ? 'is-up' : 'is-down'}`}>
                   {delta > 0 ? '+' : ''}
@@ -130,7 +130,7 @@ function CompositionBar({
         })}
       </div>
       {vsPrevious ? (
-        <p className="mt-2 text-[10px] text-[#636366]">相對 Step {vsPrevious.prev_step} 的組成差</p>
+        <p className="mt-2 text-[10px] text-[var(--console-sub)]">相對 Step {vsPrevious.prev_step} 的組成差</p>
       ) : null}
     </div>
   );
@@ -150,7 +150,7 @@ function TrendChart({
   granularity: TrendGranularity;
 }) {
   if (!trend.length) {
-    return <p className="text-[11px] text-[#636366]">尚無 LLM 步驟趨勢。</p>;
+    return <p className="text-[11px] text-[var(--console-sub)]">尚無 LLM 步驟趨勢。</p>;
   }
   const maxAbs =
     mode === 'delta'
@@ -217,7 +217,7 @@ function FileActivityPane({ rows }: { rows: ContextFileActivity[] }) {
           <button
             key={f}
             type="button"
-            className={`${btnCls}${filter === f ? ' !text-[#64D2FF]' : ''}`}
+            className={`${btnCls}${filter === f ? ' !text-[var(--console-accent)]' : ''}`}
             onClick={() => setFilter(f)}
           >
             {f === 'all' ? '全部' : FILE_PURPOSE_META[f].label}
@@ -225,7 +225,7 @@ function FileActivityPane({ rows }: { rows: ContextFileActivity[] }) {
         ))}
       </div>
       {!filtered.length ? (
-        <p className="text-[11px] text-[#636366]">尚無檔案讀寫／搜尋活動。</p>
+        <p className="text-[11px] text-[var(--console-sub)]">尚無檔案讀寫／搜尋活動。</p>
       ) : (
         <ul className="max-h-72 space-y-1 overflow-auto">
           {filtered.map((row) => (
@@ -236,17 +236,17 @@ function FileActivityPane({ rows }: { rows: ContextFileActivity[] }) {
                 onClick={() => setOpenPath((v) => (v === row.path ? null : row.path))}
               >
                 <div className="min-w-0">
-                  <p className="truncate font-mono text-[11px] text-[#F5F5F7]">{row.path}</p>
+                  <p className="truncate font-mono text-[11px] text-[var(--console-ink)]">{row.path}</p>
                   <div className="mt-0.5 flex flex-wrap gap-1.5 text-[10px]">
                     {row.purposes.map((p) => (
-                      <span key={p} className={FILE_PURPOSE_META[p as FilePurpose]?.tone || 'text-[#8E8E93]'}>
+                      <span key={p} className={FILE_PURPOSE_META[p as FilePurpose]?.tone || 'text-[var(--console-sub)]'}>
                         {FILE_PURPOSE_META[p as FilePurpose]?.label || p}
                       </span>
                     ))}
-                    <span className="text-[#636366]">{row.ops_count} ops</span>
+                    <span className="text-[var(--console-sub)]">{row.ops_count} ops</span>
                   </div>
                 </div>
-                <div className="shrink-0 text-right font-mono text-[10px] text-[#AEAEB2]">
+                <div className="shrink-0 text-right font-mono text-[10px] text-[var(--console-sub)]">
                   {(row.added || row.removed) ? (
                     <span>
                       +{row.added}/−{row.removed}
@@ -259,13 +259,13 @@ function FileActivityPane({ rows }: { rows: ContextFileActivity[] }) {
                 </div>
               </button>
               {openPath === row.path && row.ops?.length ? (
-                <ul className="border-t border-white/[0.04] px-2 py-1.5 text-[10px] text-[#8E8E93]">
+                <ul className="border-t border-white/[0.04] px-2 py-1.5 text-[10px] text-[var(--console-sub)]">
                   {row.ops.map((op, i) => (
                     <li key={`${op.seq}-${i}`} className="flex justify-between gap-2 py-0.5">
                       <span>
                         {op.tool} · {op.purpose}
                       </span>
-                      <span className="font-mono text-[#636366]">{op.ts ? String(op.ts).slice(11, 19) : ''}</span>
+                      <span className="font-mono text-[var(--console-sub)]">{op.ts ? String(op.ts).slice(11, 19) : ''}</span>
                     </li>
                   ))}
                 </ul>
@@ -280,7 +280,7 @@ function FileActivityPane({ rows }: { rows: ContextFileActivity[] }) {
 
 function AgentNetworkPane({ nodes }: { nodes: ContextAgentNode[] }) {
   if (!nodes.length) {
-    return <p className="text-[11px] text-[#636366]">尚無席位／角色呼叫紀錄。</p>;
+    return <p className="text-[11px] text-[var(--console-sub)]">尚無席位／角色呼叫紀錄。</p>;
   }
   const maxTok = Math.max(1, ...nodes.map((n) => (n.tokens_in || 0) + (n.tokens_out || 0)));
   return (
@@ -292,11 +292,11 @@ function AgentNetworkPane({ nodes }: { nodes: ContextAgentNode[] }) {
           <div key={n.role} className="ctx-agent-node" title={`${n.role} · ${fmtTokens(tok)}`}>
             <div className="ctx-agent-ring" style={{ ['--p' as string]: occ }} />
             <div className="min-w-0">
-              <p className="truncate text-[12px] font-medium text-[#F5F5F7]">{n.role}</p>
-              <p className="text-[10px] text-[#8E8E93]">
+              <p className="truncate text-[12px] font-medium text-[var(--console-ink)]">{n.role}</p>
+              <p className="text-[10px] text-[var(--console-sub)]">
                 {n.llm_calls} 次 · {fmtTokens(tok)} · ${(n.cost || 0).toFixed(4)}
               </p>
-              {n.parent ? <p className="text-[10px] text-[#636366]">← {n.parent}</p> : null}
+              {n.parent ? <p className="text-[10px] text-[var(--console-sub)]">← {n.parent}</p> : null}
             </div>
           </div>
         );
@@ -347,7 +347,7 @@ function BrowserPane({
       <div className="flex flex-wrap items-center gap-1.5">
         <button
           type="button"
-          className={`${btnCls}${isLive ? ' !text-[#30D158]' : ''}`}
+          className={`${btnCls}${isLive ? ' !text-[var(--console-green)]' : ''}`}
           onClick={() => onJumpLive?.()}
           title="Live＝最新一步（下一請求組成）"
         >
@@ -355,7 +355,7 @@ function BrowserPane({
         </button>
         <button
           type="button"
-          className={`${btnCls}${catFilter === 'all' ? ' !text-[#64D2FF]' : ''}`}
+          className={`${btnCls}${catFilter === 'all' ? ' !text-[var(--console-accent)]' : ''}`}
           onClick={() => setCatFilter('all')}
         >
           全部
@@ -364,7 +364,7 @@ function BrowserPane({
           <button
             key={k}
             type="button"
-            className={`${btnCls}${catFilter === k ? ' !text-[#64D2FF]' : ''}`}
+            className={`${btnCls}${catFilter === k ? ' !text-[var(--console-accent)]' : ''}`}
             onClick={() => setCatFilter(k)}
           >
             {COMPOSITION_META[k].short}
@@ -373,21 +373,21 @@ function BrowserPane({
         <span className="mx-1 h-4 w-px bg-white/10" />
         <button
           type="button"
-          className={`${btnCls}${sort === 'size' ? ' !text-[#64D2FF]' : ''}`}
+          className={`${btnCls}${sort === 'size' ? ' !text-[var(--console-accent)]' : ''}`}
           onClick={() => setSort('size')}
         >
           依大小
         </button>
         <button
           type="button"
-          className={`${btnCls}${sort === 'name' ? ' !text-[#64D2FF]' : ''}`}
+          className={`${btnCls}${sort === 'name' ? ' !text-[var(--console-accent)]' : ''}`}
           onClick={() => setSort('name')}
         >
           依名稱
         </button>
       </div>
       <input
-        className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[11px] text-[#F5F5F7] outline-none focus:border-[#64D2FF]/50"
+        className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[11px] text-[var(--console-ink)] outline-none focus:border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)]"
         placeholder="篩選標籤／來源／內容…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -397,27 +397,27 @@ function BrowserPane({
         if (!items.length) return null;
         return (
           <div key={k} id={`ctx-browser-${k}`} className="rounded-lg border border-white/[0.06] bg-black/20 p-2">
-            <div className="mb-1 flex items-center gap-2 text-[11px] font-medium text-[#F5F5F7]">
+            <div className="mb-1 flex items-center gap-2 text-[11px] font-medium text-[var(--console-ink)]">
               <i className="inline-block h-2 w-2 rounded-sm" style={{ background: COMPOSITION_META[k].color }} />
               {COMPOSITION_META[k].label}
-              <span className="text-[#636366]">{items.length}</span>
+              <span className="text-[var(--console-sub)]">{items.length}</span>
             </div>
             <ul className="space-y-1">
               {items.map((item) => (
                 <li key={item.id}>
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-[11px] text-[#AEAEB2] hover:bg-white/[0.04]"
+                    className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-[11px] text-[var(--console-sub)] hover:bg-white/[0.04]"
                     onClick={() => setOpenId((v) => (v === item.id ? null : item.id))}
                   >
                     <span className="min-w-0 truncate">
-                      <span className="text-[#F5F5F7]">{item.label}</span>
+                      <span className="text-[var(--console-ink)]">{item.label}</span>
                       <span className={`ml-2 ${sourceChipTone(item.source)}`}>{item.source}</span>
                     </span>
                     <span className="shrink-0 font-mono text-[10px]">{fmtTokens(item.tokens)}</span>
                   </button>
                   {openId === item.id ? (
-                    <pre className="mt-1 max-h-40 overflow-auto rounded-md border border-white/[0.06] bg-black/40 p-2 text-[10px] leading-relaxed text-[#AEAEB2]">
+                    <pre className="mt-1 max-h-40 overflow-auto rounded-md border border-white/[0.06] bg-black/40 p-2 text-[10px] leading-relaxed text-[var(--console-sub)]">
                       {item.content || '（空）'}
                     </pre>
                   ) : null}
@@ -607,7 +607,7 @@ export default function ContextPanel({
             <h2>{embed ? 'Context' : 'Context · 控制台鏡像'}</h2>
             <p>
               {embed
-                ? '本對話專屬 · 組成／趨勢／瀏覽器／Inject·Compact·Prune。直接顯示當前對話軌跡，無任務選擇器、不可切換其他會話。輸入 /context 可重新展開。'
+                ? '本對話專屬。這裡只顯示這次用到的資料，無任務選擇器。'
                 : (
                   <>
                     控制台完整鏡像（主表面在對話底部詳細區）。靈感來自{' '}
@@ -615,12 +615,12 @@ export default function ContextPanel({
                       href="https://github.com/bowenliang123/dsh-context"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#64D2FF] hover:underline"
+                      className="text-[var(--console-accent)] hover:underline"
                     >
                       dsh-context
                     </a>
-                    。對話輸入 <code className="text-[10px] text-[#AEAEB2]">/context</code> 優先開詳細區；
-                    <code className="ml-1 text-[10px] text-[#AEAEB2]">/context peek</code> 開浮動預覽。
+                    。對話輸入 <code className="text-[10px] text-[var(--console-sub)]">/context</code> 優先開詳細區；
+                    <code className="ml-1 text-[10px] text-[var(--console-sub)]">/context peek</code> 開浮動預覽。
                   </>
                 )}
             </p>
@@ -695,12 +695,12 @@ export default function ContextPanel({
         </div>
         {showPrefs ? (
           <div className="mt-3 rounded-xl border border-white/[0.08] bg-black/25 p-3">
-            <p className="mb-2 text-[11px] font-medium text-[#F5F5F7]">Context 偏好（本機）</p>
-            <div className="flex flex-wrap gap-3 text-[11px] text-[#AEAEB2]">
+            <p className="mb-2 text-[11px] font-medium text-[var(--console-ink)]">Context 偏好（本機）</p>
+            <div className="flex flex-wrap gap-3 text-[11px] text-[var(--console-sub)]">
               <label className="flex items-center gap-2">
                 趨勢粒度
                 <select
-                  className="rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 text-[12px] text-[#F5F5F7]"
+                  className="rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 text-[12px] text-[var(--console-ink)]"
                   value={trendGran}
                   onChange={(e) => {
                     const g = e.target.value === 'turn' ? 'turn' : 'step';
@@ -715,7 +715,7 @@ export default function ContextPanel({
               <label className="flex items-center gap-2">
                 趨勢模式
                 <select
-                  className="rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 text-[12px] text-[#F5F5F7]"
+                  className="rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 text-[12px] text-[var(--console-ink)]"
                   value={trendMode}
                   onChange={(e) => {
                     const m = e.target.value === 'delta' ? 'delta' : 'total';
@@ -733,17 +733,17 @@ export default function ContextPanel({
         <div className={`mt-3 flex flex-wrap items-end gap-2${embed ? ' ctx-embed-meta' : ''}`}>
           {locked ? (
             <span
-              className="rounded-full border border-[#30D158]/25 bg-[#30D158]/10 px-2.5 py-1 font-mono text-[10px] text-[#30D158]"
+              className="rounded-full border border-[color-mix(in_srgb,var(--console-green)_25%,transparent)] bg-[color-mix(in_srgb,var(--console-green)_10%,transparent)] px-2.5 py-1 font-mono text-[10px] text-[var(--console-green)]"
               data-testid="context-locked-task"
               title="已鎖定本對話任務，無選擇器、不可切換其他會話"
             >
               {taskId ? `🔒 本對話 · ${taskId.slice(0, 12)}…` : '🔒 本對話 · 尚無任務'}
             </span>
           ) : (
-            <label className="block text-[10px] text-[#8E8E93]">
+            <label className="block text-[10px] text-[var(--console-sub)]">
               任務
               <select
-                className="mt-1 block min-w-[220px] rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[#F5F5F7]"
+                className="mt-1 block min-w-[220px] rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px] text-[var(--console-ink)]"
                 value={taskId || ''}
                 onChange={(e) => {
                   const id = e.target.value || null;
@@ -763,11 +763,11 @@ export default function ContextPanel({
             </label>
           )}
           {data?.task_id && !locked ? (
-            <span className="rounded-full border border-white/[0.08] px-2.5 py-1 font-mono text-[10px] text-[#AEAEB2]">
+            <span className="rounded-full border border-white/[0.08] px-2.5 py-1 font-mono text-[10px] text-[var(--console-sub)]">
               {data.task_id}
             </span>
           ) : null}
-          <span className="rounded-full border border-white/[0.08] px-2.5 py-1 text-[10px] text-[#AEAEB2]">
+          <span className="rounded-full border border-white/[0.08] px-2.5 py-1 text-[10px] text-[var(--console-sub)]">
             壓力 {fmtPressure(stats.context_pressure)} · 窗 {fmtTokens(stats.est_window_tokens)} /{' '}
             {fmtTokens(windowSize)}
           </span>
@@ -778,7 +778,7 @@ export default function ContextPanel({
         <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
       ) : null}
       {data?.empty ? (
-        <div className={`${cardCls} mb-3 text-[12px] text-[#8E8E93]`}>{data.message || '尚無 Context 資料'}</div>
+        <div className={`${cardCls} mb-3 text-[12px] text-[var(--console-sub)]`}>{data.message || '尚無 Context 資料'}</div>
       ) : null}
 
       <div
@@ -795,8 +795,8 @@ export default function ContextPanel({
           { label: '估算成本', value: `$${(stats.est_cost_usd ?? 0).toFixed(4)}` },
         ].map((kpi) => (
           <div key={kpi.label} className={cardCls}>
-            <p className="text-[10px] text-[#8E8E93]">{kpi.label}</p>
-            <p className={`mt-1 font-semibold text-[#F5F5F7] ${embed ? 'text-[15px]' : 'text-[18px]'}`}>
+            <p className="text-[10px] text-[var(--console-sub)]">{kpi.label}</p>
+            <p className={`mt-1 font-semibold text-[var(--console-ink)] ${embed ? 'text-[15px]' : 'text-[18px]'}`}>
               {kpi.value}
             </p>
           </div>
@@ -805,11 +805,11 @@ export default function ContextPanel({
 
       <div className={`mb-4 grid gap-4 ${embed ? 'lg:grid-cols-2' : 'xl:grid-cols-2'}`}>
         <section className={cardCls}>
-          <h3 className="mb-2 text-[13px] font-semibold text-[#F5F5F7]">Token / Timing</h3>
+          <h3 className="mb-2 text-[13px] font-semibold text-[var(--console-ink)]">Token / Timing</h3>
           <TokenTimingRings stats={stats} />
         </section>
         <section className={cardCls}>
-          <h3 className="mb-2 text-[13px] font-semibold text-[#F5F5F7]">Current Context · 當前組成</h3>
+          <h3 className="mb-2 text-[13px] font-semibold text-[var(--console-ink)]">Current Context · 當前組成</h3>
           <CompositionBar
             composition={data?.composition || {}}
             maxWindow={windowSize}
@@ -821,13 +821,13 @@ export default function ContextPanel({
       <div className={`grid gap-4 ${embed ? 'lg:grid-cols-2' : 'xl:grid-cols-2'}`}>
         <section className={cardCls}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-[13px] font-semibold text-[#F5F5F7]">Context Trend · 步驟趨勢</h3>
+            <h3 className="text-[13px] font-semibold text-[var(--console-ink)]">Context Trend · 步驟趨勢</h3>
             <div className="flex flex-wrap gap-1">
               {(['step', 'turn'] as TrendGranularity[]).map((g) => (
                 <button
                   key={g}
                   type="button"
-                  className={`${btnCls}${trendGran === g ? ' !text-[#64D2FF]' : ''}`}
+                  className={`${btnCls}${trendGran === g ? ' !text-[var(--console-accent)]' : ''}`}
                   onClick={() => {
                     setTrendGran(g);
                     saveTrendGranularity(g);
@@ -840,7 +840,7 @@ export default function ContextPanel({
                 <button
                   key={m}
                   type="button"
-                  className={`${btnCls}${trendMode === m ? ' !text-[#64D2FF]' : ''}`}
+                  className={`${btnCls}${trendMode === m ? ' !text-[var(--console-accent)]' : ''}`}
                   onClick={() => {
                     setTrendMode(m);
                     saveTrendMode(m);
@@ -894,7 +894,7 @@ export default function ContextPanel({
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-[10px] text-[#636366]">
+            <p className="mt-2 text-[10px] text-[var(--console-sub)]">
               標記：I=Inject · C=Compact · P=Prune · S=Switch。點柱切換 Browser。
               {trendGran === 'turn' ? ' Turn＝同 phase 連續步驟合併。' : ''}
             </p>
@@ -903,8 +903,8 @@ export default function ContextPanel({
 
         <section className={cardCls}>
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h3 className="text-[13px] font-semibold text-[#F5F5F7]">Context Browser</h3>
-            <span className="text-[10px] text-[#636366]">
+            <h3 className="text-[13px] font-semibold text-[var(--console-ink)]">Context Browser</h3>
+            <span className="text-[10px] text-[var(--console-sub)]">
               {step == null ? 'Live' : `Step ${step}`}
             </span>
           </div>
@@ -920,11 +920,11 @@ export default function ContextPanel({
 
         <section className={`${cardCls} ${embed ? 'lg:col-span-2' : 'xl:col-span-2'}`}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-[13px] font-semibold text-[#F5F5F7]">Context Events</h3>
+            <h3 className="text-[13px] font-semibold text-[var(--console-ink)]">Context Events</h3>
             <div className="flex flex-wrap gap-1">
               <button
                 type="button"
-                className={`${btnCls}${kindFilter === 'all' ? ' !text-[#64D2FF]' : ''}`}
+                className={`${btnCls}${kindFilter === 'all' ? ' !text-[var(--console-accent)]' : ''}`}
                 onClick={() => setKindFilter('all')}
               >
                 全部
@@ -933,7 +933,7 @@ export default function ContextPanel({
                 <button
                   key={k}
                   type="button"
-                  className={`${btnCls}${kindFilter === k ? ' !text-[#64D2FF]' : ''}`}
+                  className={`${btnCls}${kindFilter === k ? ' !text-[var(--console-accent)]' : ''}`}
                   onClick={() => setKindFilter(k)}
                 >
                   {EVENT_KIND_META[k].label}
@@ -943,7 +943,7 @@ export default function ContextPanel({
           </div>
           <ul className={`space-y-1.5 overflow-auto ${embed ? 'max-h-48' : 'max-h-80'}`}>
             {events.length === 0 ? (
-              <li className="text-[11px] text-[#636366]">尚無事件</li>
+              <li className="text-[11px] text-[var(--console-sub)]">尚無事件</li>
             ) : (
               events
                 .slice()
@@ -958,19 +958,19 @@ export default function ContextPanel({
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2 text-[11px]">
                           <span className={meta.tone}>{meta.label}</span>
-                          <span className="text-[#F5F5F7]">{ev.producer || ev.event}</span>
-                          {ev.phase ? <span className="text-[#636366]">{ev.phase}</span> : null}
+                          <span className="text-[var(--console-ink)]">{ev.producer || ev.event}</span>
+                          {ev.phase ? <span className="text-[var(--console-sub)]">{ev.phase}</span> : null}
                         </div>
                         {ev.summary ? (
-                          <p className="mt-0.5 truncate text-[10px] text-[#8E8E93]">{ev.summary}</p>
+                          <p className="mt-0.5 truncate text-[10px] text-[var(--console-sub)]">{ev.summary}</p>
                         ) : null}
                       </div>
-                      <div className="shrink-0 text-right font-mono text-[10px] text-[#AEAEB2]">
+                      <div className="shrink-0 text-right font-mono text-[10px] text-[var(--console-sub)]">
                         <div>
                           {(ev.delta_tokens || 0) > 0 ? '+' : ''}
                           {fmtTokens(ev.delta_tokens)}
                         </div>
-                        <div className="text-[#636366]">{ev.ts ? String(ev.ts).slice(11, 19) : ''}</div>
+                        <div className="text-[var(--console-sub)]">{ev.ts ? String(ev.ts).slice(11, 19) : ''}</div>
                       </div>
                     </li>
                   );
@@ -980,12 +980,12 @@ export default function ContextPanel({
         </section>
 
         <section className={cardCls}>
-          <h3 className="mb-2 text-[13px] font-semibold text-[#F5F5F7]">File Activity · 檔案活動</h3>
+          <h3 className="mb-2 text-[13px] font-semibold text-[var(--console-ink)]">File Activity · 檔案活動</h3>
           <FileActivityPane rows={data?.file_activity || []} />
         </section>
 
         <section className={cardCls}>
-          <h3 className="mb-2 text-[13px] font-semibold text-[#F5F5F7]">Agent Network · 席位網</h3>
+          <h3 className="mb-2 text-[13px] font-semibold text-[var(--console-ink)]">Agent Network · 席位網</h3>
           <AgentNetworkPane nodes={data?.agent_network || []} />
         </section>
       </div>

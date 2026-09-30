@@ -40,6 +40,7 @@ import {
 } from '../../api/linkin';
 import { consoleLayout } from '../../lib/consoleLayout';
 import { NARRATIVE_REGION_OPTIONS } from './localeRegions';
+import { McHeader, McPage } from './McChrome';
 
 const DRAFT_LABELS: Record<string, string> = {
   story_arc: '故事主線',
@@ -105,7 +106,7 @@ const DRAFT_TEMPLATES: Record<string, string> = {
       style: '织庭盟',
       prompt: '帶金線紋樣的開場廣場，中央有契約碑。',
       block_count: 800,
-      notes: 'Phase 0 僅落庫意圖；提交後由 Builder／MineMCP 管線消費（Phase 2）。',
+      notes: '先記入草稿。提交後不會自動放進遊戲，需再手動落地。',
     },
     null,
     2,
@@ -118,10 +119,10 @@ const PHASE4_STEPS = ['brief', 'generate', 'preview', 'apply'] as const;
 type Phase4Step = (typeof PHASE4_STEPS)[number];
 
 const PHASE4_LABELS: Record<Phase4Step, string> = {
-  brief: 'brief/seed',
-  generate: '生成地圖',
-  preview: 'preview',
-  apply: '落地地圖',
+  brief: '草稿',
+  generate: '生成',
+  preview: '預覽',
+  apply: '落地',
 };
 
 const PIPELINE_STEP_LABELS: Record<string, string> = {
@@ -138,12 +139,21 @@ const PIPELINE_STEP_LABELS: Record<string, string> = {
 };
 
 const PIPELINE_STATUS_STYLES: Record<PipelineStepStatus, string> = {
-  pending: 'text-[#636366]',
-  running: 'text-[#64D2FF]',
+  pending: 'text-[var(--console-sub)]',
+  running: 'text-[var(--console-accent)]',
   ok: 'text-emerald-400',
   error: 'text-red-400',
-  partial: 'text-[#FF9F0A]',
-  skipped: 'text-[#636366]',
+  partial: 'text-[var(--console-amber)]',
+  skipped: 'text-[var(--console-sub)]',
+};
+
+const PIPELINE_STATUS_LABEL: Record<PipelineStepStatus, string> = {
+  pending: '等待',
+  running: '進行中',
+  ok: '完成',
+  error: '失敗',
+  partial: '部分完成',
+  skipped: '略過',
 };
 
 function defaultTaskId() {
@@ -314,7 +324,7 @@ export default function NarrativeWorkspacePanel() {
       const data = await beginNarrativeWorkspace({ task_id: taskId, snapshot_id: snapshotId });
       setWorkspace(data.workspace);
       syncEditors(data.workspace);
-      setSuccess('Phase 0 工作區已建立。可手動編輯或使用「一鍵草案」。');
+      setSuccess('工作區已建立。可以手動編輯，或直接產生草案。');
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -342,8 +352,11 @@ export default function NarrativeWorkspacePanel() {
       setWorkspace(data.workspace);
       syncEditors(data.workspace);
       const labels = data.replaced_keys.map((k) => DRAFT_LABELS[k] ?? k).join('、');
+      const schools = [...new Set((data.agents ?? []).map((agent) => agent.school))].join('、');
       setSuccess(
-        `AI 已覆寫 ${labels || '草案'}。請審閱各鍵內容後再按「提交至 Linkin」。`,
+        schools
+          ? `應用席（${schools}）已覆寫 ${labels || '草案'}。請審閱各鍵內容後再按「提交至 Linkin」。`
+          : `AI 已覆寫 ${labels || '草案'}。請審閱各鍵內容後再按「提交至 Linkin」。`,
       );
     } catch (err) {
       setError((err as Error).message);
@@ -361,10 +374,11 @@ export default function NarrativeWorkspacePanel() {
       const data = await seedNarrativeStarterPack(workspace.workspace_id, { region, theme });
       setWorkspace(data.workspace);
       syncEditors(data.workspace);
+      const schools = [...new Set((data.agents ?? []).map((agent) => agent.school))].join('、');
       setSuccess(
         data.source === 'llm'
-          ? 'AI 已填入一組 RPG 草案（故事／任務／NPC／道具／建築意圖）。請審閱後按「提交」。'
-          : '已填入本地模板草案。請審閱後按「提交至 Linkin」。',
+          ? `應用席${schools ? `（${schools}）` : ''}已填入一組 RPG 草案（故事／任務／NPC／道具／建築意圖）。請審閱後按「提交」。`
+          : '已填入本地模板草案（風格與屬性已對齊區域憲法）。請審閱後按「提交至 Linkin」。',
       );
     } catch (err) {
       setError((err as Error).message);
@@ -416,7 +430,7 @@ export default function NarrativeWorkspacePanel() {
         .join(' · ');
       setSuccess(
         ids
-          ? `已寫入 Linkin 實體庫：${ids}。建築／NPC／任務／道具需手動 Phase 2／3 落地，commit 不會自動寫入遊戲世界。`
+          ? `已記入：${ids}。建築、NPC、任務與道具還要手動落地，這次提交不會寫進遊戲。`
           : '提交成功',
       );
     } catch (err) {
@@ -672,35 +686,20 @@ export default function NarrativeWorkspacePanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto apple-canvas p-4 text-[#f7f8f8]">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-        <div className="max-w-2xl">
-          <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">Phase 5 · 一鍵完整圈</p>
-          <h2 className="text-sm font-semibold text-[#c9a961]">RPG 草案桌</h2>
-          <p className="mt-1 text-[11px] leading-relaxed text-[#8a8f98]">
-            北極星：AI 生成完整 Minecraft RPG（故事、NPC、地圖、建築、道具）。
-            「一鍵完整圈」先跑生成→提交→預覽；確認後才寫入世界。手動 Phase 0–4 控制仍保留於下方。
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void loadSnapshot()}
-            className="rounded-xl border border-[#c9a961]/30 px-2 py-1 text-[11px] text-[#c9a961]"
-          >
-            重新讀取 L0 快照
-          </button>
-          <button
-            type="button"
-            onClick={() => void refreshBridgeStatus()}
-            className="rounded-xl border border-[#64D2FF]/30 px-2 py-1 text-[11px] text-[#64D2FF]"
-          >
-            刷新橋接
-          </button>
-        </div>
-      </div>
+    <McPage>
+      <McHeader
+        title="敘事工作區"
+        lead="從故事草稿走到 NPC、地圖、建築與道具。一鍵完整圈會先生成並預覽，確認後才寫進世界。下方仍可逐步操作。"
+        aside={
+          <>
+            <button type="button" onClick={() => void loadSnapshot()} className="mc-btn">重新讀取態勢</button>
+            <button type="button" onClick={() => void refreshBridgeStatus()} className="mc-btn">刷新橋接</button>
+          </>
+        }
+      />
+      <div className="mc-workspace">
 
-      <section className="mb-4 rounded-xl border border-[#c9a961]/40 bg-[#1C1C1E] p-4">
+      <section className="mb-4 rounded-xl border border-[#c9a961]/40 bg-[var(--console-card)] p-4">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">一鍵完整圈</p>
@@ -721,7 +720,7 @@ export default function NarrativeWorkspacePanel() {
         </div>
 
         {bridgeStatus && (!bridgeStatus.enabled || !bridgeStatus.connected) && (
-          <div className="mb-3 rounded-md border border-[#FF9F0A]/30 bg-[#FF9F0A]/10 px-3 py-2 text-[11px] text-[#FF9F0A]">
+          <div className="mb-3 rounded-md border border-[color-mix(in_srgb,var(--console-amber)_30%,transparent)] bg-[color-mix(in_srgb,var(--console-amber)_10%,transparent)] px-3 py-2 text-[11px] text-[var(--console-amber)]">
             橋接關閉或未連線：管線仍會完成 Linkin 寫入與 dry-run 預覽；世界落地標記為 partial／乾跑。
           </div>
         )}
@@ -735,7 +734,7 @@ export default function NarrativeWorkspacePanel() {
           >
             {pipelineBusy ? '管線執行中…' : pipelineConfirmWorld ? '一鍵完整圈（確認寫入世界）' : '一鍵完整圈'}
           </button>
-          <label className="flex items-center gap-2 text-[11px] text-[#AEAEB2]">
+          <label className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
             <input
               type="checkbox"
               checked={pipelineConfirmWorld}
@@ -743,7 +742,7 @@ export default function NarrativeWorkspacePanel() {
               disabled={pipelineBusy}
               className="rounded border-white/20"
             />
-            確認寫入世界（confirm_world）
+            確認寫入世界
           </label>
           {pipelineResult?.needs_confirm && !pipelineConfirmWorld && (
             <span className="text-[10px] text-emerald-400">預覽已完成，可勾選確認後再執行</span>
@@ -755,20 +754,21 @@ export default function NarrativeWorkspacePanel() {
             {pipelineSteps.map((step) => (
               <li key={step.id} className="flex flex-wrap items-baseline gap-2 text-[11px]">
                 <span className={`font-medium ${PIPELINE_STATUS_STYLES[step.status]}`}>
-                  {step.status === 'running' ? '…' : step.status}
+                  {PIPELINE_STATUS_LABEL[step.status]}
                 </span>
-                <span className="text-[#f7f8f8]">{step.label ?? PIPELINE_STEP_LABELS[step.id] ?? step.id}</span>
-                {step.message && <span className="text-[#636366]">— {step.message}</span>}
+                <span className="text-[var(--console-ink)]">{step.label ?? PIPELINE_STEP_LABELS[step.id] ?? step.id}</span>
+                {step.message && <span className="text-[var(--console-sub)]">— {step.message}</span>}
               </li>
             ))}
           </ul>
         )}
 
         {pipelineResult && (
-          <p className="mt-2 text-[10px] text-[#636366]">
-            管線狀態 {pipelineResult.status} · {pipelineResult.elapsed_ms ?? 0}ms
-            {pipelineResult.build_brief_id ? ` · build_brief ${pipelineResult.build_brief_id}` : ''}
-            {pipelineResult.map_plan?.id ? ` · map ${pipelineResult.map_plan.id}` : ''}
+          <p className="mt-2 text-[10px] text-[var(--console-sub)]">
+            管線{PIPELINE_STATUS_LABEL[pipelineResult.status]}
+            {pipelineResult.elapsed_ms ? ` · ${Math.round(pipelineResult.elapsed_ms / 1000)} 秒` : ''}
+            {pipelineResult.build_brief_id ? ' · 已產生建築草稿' : ''}
+            {pipelineResult.map_plan?.id ? ' · 已產生區域地圖' : ''}
           </p>
         )}
       </section>
@@ -782,7 +782,7 @@ export default function NarrativeWorkspacePanel() {
         </div>
       )}
 
-      <div className="mb-4 grid gap-2 rounded-xl border border-[#c9a961]/20 bg-[#1C1C1E] p-3 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="mb-4 grid gap-2 rounded-xl border border-[#c9a961]/20 bg-[var(--console-card)] p-3 sm:grid-cols-2 lg:grid-cols-6">
         <label className="text-[10px] text-[#8a8f98]">
           任務 ID
           <input
@@ -826,7 +826,7 @@ export default function NarrativeWorkspacePanel() {
             狀態：<span className="text-[#c9a961]">{stateLabel}</span>
           </span>
           {workspace && (
-            <span className="truncate text-[10px] text-[#636366]">{workspace.workspace_id}</span>
+            <span className="truncate text-[10px] text-[var(--console-sub)]">{workspace.workspace_id}</span>
           )}
         </div>
         <div className="flex flex-col justify-end gap-1">
@@ -842,8 +842,8 @@ export default function NarrativeWorkspacePanel() {
       </div>
 
       {awaitingConfirmation && workspace && (
-        <div className="mb-4 rounded-xl border border-[#FF9F0A]/40 bg-[#FF9F0A]/10 p-3">
-          <p className="text-[12px] text-[#FF9F0A]">L0 快照已更新，請選擇保留草稿並重綁，或丟棄草稿。</p>
+        <div className="mb-4 rounded-xl border border-[color-mix(in_srgb,var(--console-amber)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-amber)_10%,transparent)] p-3">
+          <p className="text-[12px] text-[var(--console-amber)]">L0 快照已更新，請選擇保留草稿並重綁，或丟棄草稿。</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
@@ -876,7 +876,7 @@ export default function NarrativeWorkspacePanel() {
                 disabled={busy || awaitingConfirmation}
                 placeholder="例：旅人在織庭都發現失落的靈丝契約，需與典章抄錄者合作揭開三大陣營的秘密…"
                 rows={3}
-                className="mt-1 w-full resize-y rounded-lg border border-white/[0.08] bg-[#08080a] px-3 py-2 text-[12px] leading-relaxed text-[#f7f8f8] placeholder:text-[#636366] disabled:opacity-50"
+                className="mt-1 w-full resize-y rounded-lg border border-white/[0.08] bg-[#08080a] px-3 py-2 text-[12px] leading-relaxed text-[var(--console-ink)] placeholder:text-[var(--console-sub)] disabled:opacity-50"
               />
             </label>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -888,7 +888,7 @@ export default function NarrativeWorkspacePanel() {
               >
                 {busy ? '生成中…' : 'AI 生成'}
               </button>
-              <span className="text-[10px] text-[#636366]">
+              <span className="text-[10px] text-[var(--console-sub)]">
                 覆寫五個草案鍵；不會自動提交。區域／主題欄位會作為生成上下文。
               </span>
             </div>
@@ -908,7 +908,7 @@ export default function NarrativeWorkspacePanel() {
                     className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[12px] ${
                       selectedKey === key
                         ? 'border border-[#c9a961]/40 bg-[#c9a961]/10 text-[#c9a961]'
-                        : 'border border-transparent text-[#AEAEB2] hover:bg-white/[0.04]'
+                        : 'border border-transparent text-[var(--console-sub)] hover:bg-white/[0.04]'
                     }`}
                   >
                     <span>{DRAFT_LABELS[key] ?? key}</span>
@@ -921,7 +921,7 @@ export default function NarrativeWorkspacePanel() {
               type="button"
               disabled={busy || awaitingConfirmation}
               onClick={() => void onStarterPack()}
-              className="mt-3 w-full rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-2 py-1.5 text-[11px] text-[#64D2FF] disabled:opacity-40"
+              className="mt-3 w-full rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-2 py-1.5 text-[11px] text-[var(--console-accent)] disabled:opacity-40"
             >
               一鍵草案（AI／模板）
             </button>
@@ -931,14 +931,14 @@ export default function NarrativeWorkspacePanel() {
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-[13px] font-medium">
                 編輯 · {DRAFT_LABELS[selectedKey] ?? selectedKey}
-                <span className="ml-2 text-[10px] font-normal text-[#636366]">{selectedKey}</span>
+                <span className="ml-2 text-[10px] font-normal text-[var(--console-sub)]">{selectedKey}</span>
               </h3>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={busy || awaitingConfirmation}
                   onClick={() => void onSaveDraft()}
-                  className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[#AEAEB2] disabled:opacity-40"
+                  className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[var(--console-sub)] disabled:opacity-40"
                 >
                   儲存草稿
                 </button>
@@ -956,10 +956,10 @@ export default function NarrativeWorkspacePanel() {
               value={draftEditors[selectedKey] ?? '{}'}
               onChange={(e) => setDraftEditors((prev) => ({ ...prev, [selectedKey]: e.target.value }))}
               spellCheck={false}
-              className="min-h-[220px] flex-1 resize-y rounded-lg border border-white/[0.08] bg-black/30 p-3 font-mono text-[11px] leading-relaxed text-[#f7f8f8]"
+              className="min-h-[220px] flex-1 resize-y rounded-lg border border-white/[0.08] bg-black/30 p-3 font-mono text-[11px] leading-relaxed text-[var(--console-ink)]"
             />
-            <p className="mt-2 text-[10px] leading-relaxed text-[#636366]">
-              提交後：story_arc → 主線實體；quest／npc／item → 既有 store；build_brief → 建築意圖實體（Phase 2 Builder／MineMCP 消費）。
+            <p className="mt-2 text-[10px] leading-relaxed text-[var(--console-sub)]">
+              提交後會記入故事、任務、NPC、道具與建築草稿。遊戲裡還看不到，需再手動落地。
             </p>
           </section>
         </div>
@@ -969,14 +969,14 @@ export default function NarrativeWorkspacePanel() {
       {workspace?.state === 'committed' && (
         <div className="space-y-3">
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[12px] leading-relaxed text-emerald-200">
-            草案已寫入 Linkin 實體庫。NPC／任務／道具標記為 pending_world，需 Phase 3 手動落地；建築意圖需 Phase 2 手動建造；可在下方 Phase 4 從故事／build_brief 生成區域地圖（落地需明確確認，commit 不會自動寫入世界）。
+            草案已記入。NPC、任務與道具還在等待落地；建築要另外放下；區域地圖可在下方生成。這次提交不會自動寫進遊戲。
           </div>
 
           {pendingWorld && pendingWorld.count > 0 && (
             <section className={`${consoleLayout.card} border-[var(--console-accent)]/30 p-4`}>
               <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide text-[var(--console-accent)]">Phase 3 · 落地 NPC／任務／道具</p>
+                  <p className="mc-kicker">落地 NPC、任務與道具</p>
                   <h3 className={consoleLayout.title}>
                     {pendingWorld.count} 筆待落地意圖
                   </h3>
@@ -1046,10 +1046,10 @@ export default function NarrativeWorkspacePanel() {
           )}
 
           {committedBriefId && buildBrief && (
-            <section className="rounded-xl border border-[#c9a961]/30 bg-[#1C1C1E] p-4">
+            <section className="rounded-xl border border-[#c9a961]/30 bg-[var(--console-card)] p-4">
               <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">Phase 2 · 落地建築</p>
+                  <p className="mc-kicker">落地建築</p>
                   <h3 className="text-[13px] font-medium text-[#c9a961]">{buildBrief.title}</h3>
                   <p className="mt-1 text-[11px] text-[#8a8f98]">
                     {buildBrief.id} · {buildBrief.region} · {buildBrief.location} · 狀態 {buildBrief.status ?? 'pending_builder'}
@@ -1064,7 +1064,7 @@ export default function NarrativeWorkspacePanel() {
                 </button>
               </div>
 
-              <p className="mb-3 text-[11px] leading-relaxed text-[#AEAEB2]">{buildBrief.prompt}</p>
+              <p className="mb-3 text-[11px] leading-relaxed text-[var(--console-sub)]">{buildBrief.prompt}</p>
 
               <div className="mb-3 flex flex-wrap gap-3 text-[10px] text-[#8a8f98]">
                 <span>
@@ -1091,7 +1091,7 @@ export default function NarrativeWorkspacePanel() {
                   type="button"
                   disabled={buildBusy !== 'idle'}
                   onClick={() => void onPreviewBuild()}
-                  className="rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40"
+                  className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)] disabled:opacity-40"
                 >
                   {buildBusy === 'preview' ? '預覽中…' : '預覽／估算'}
                 </button>
@@ -1106,7 +1106,7 @@ export default function NarrativeWorkspacePanel() {
               </div>
 
               {briefPreview?.bounds.world_max && (
-                <p className="mt-3 text-[10px] text-[#636366]">
+                <p className="mt-3 text-[10px] text-[var(--console-sub)]">
                   世界邊界：({briefPreview.bounds.world_min?.x}, {briefPreview.bounds.world_min?.y},{' '}
                   {briefPreview.bounds.world_min?.z}) → ({briefPreview.bounds.world_max.x},{' '}
                   {briefPreview.bounds.world_max.y}, {briefPreview.bounds.world_max.z})
@@ -1114,7 +1114,7 @@ export default function NarrativeWorkspacePanel() {
               )}
 
               {bridgeStatus?.enabled && !bridgeStatus.connected && (
-                <p className="mt-2 text-[11px] text-[#FF9F0A]">
+                <p className="mt-2 text-[11px] text-[var(--console-amber)]">
                   橋接未連線：落地建築將被拒絕。請在 Minecraft 橋接面板確認 Token 與伺服器後再試。
                 </p>
               )}
@@ -1123,13 +1123,13 @@ export default function NarrativeWorkspacePanel() {
         </div>
       )}
 
-      <section className="mt-4 rounded-xl border border-[#64D2FF]/20 bg-[#1C1C1E] p-3">
+      <section className="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_20%,transparent)] bg-[var(--console-card)] p-3">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-[#64D2FF]/80">Phase 4 · 區域地圖</p>
-            <h3 className="text-[13px] font-medium text-[#64D2FF]">brief/seed → 生成地圖 → preview → 落地地圖</h3>
-            <p className="mt-1 text-[10px] leading-relaxed text-[#636366]">
-              從工作區草稿或已提交實體生成 map_plan；preview 不寫世界；落地需 confirm=true。
+            <p className="mc-kicker">區域地圖</p>
+            <h3>先生成，預覽後再落地</h3>
+            <p className="mc-note">
+              用地圖草稿或已提交的內容產生區域地圖。預覽不會寫進世界，落地前會再確認一次。
             </p>
           </div>
         </div>
@@ -1142,10 +1142,10 @@ export default function NarrativeWorkspacePanel() {
               <div key={step} className="flex-1">
                 <div
                   className={`h-1.5 w-full rounded-full ${
-                    done ? 'bg-[#c9a961]' : active ? 'progress-shimmer bg-[#64D2FF]/60' : 'bg-gray-700/70'
+                    done ? 'bg-[#c9a961]' : active ? 'progress-shimmer bg-[color-mix(in_srgb,var(--console-accent)_60%,transparent)]' : 'bg-gray-700/70'
                   }`}
                 />
-                <p className={`mt-1 text-center text-[10px] ${active ? 'text-[#64D2FF]' : 'text-[#636366]'}`}>
+                <p className={`mt-1 text-center text-[10px] ${active ? 'text-[var(--console-accent)]' : 'text-[var(--console-sub)]'}`}>
                   {PHASE4_LABELS[step]}
                 </p>
               </div>
@@ -1173,7 +1173,7 @@ export default function NarrativeWorkspacePanel() {
                 className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]"
               />
             </label>
-            <p className="text-[10px] text-[#636366]">
+            <p className="text-[10px] text-[var(--console-sub)]">
               來源：{workspace ? `工作區 ${workspace.workspace_id}` : '僅 region／已提交實體'} · 區域 {region}
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
@@ -1184,7 +1184,7 @@ export default function NarrativeWorkspacePanel() {
                   setMapStep('generate');
                   void onGenerateMap();
                 }}
-                className="rounded-lg border border-[#64D2FF]/40 bg-[#64D2FF]/10 px-3 py-1.5 text-[12px] text-[#64D2FF] disabled:opacity-40"
+                className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)] disabled:opacity-40"
               >
                 生成地圖
               </button>
@@ -1192,7 +1192,7 @@ export default function NarrativeWorkspacePanel() {
                 type="button"
                 disabled={busy || !mapPlan}
                 onClick={() => void onRefreshMapPreview()}
-                className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[#AEAEB2] disabled:opacity-40"
+                className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-[12px] text-[var(--console-sub)] disabled:opacity-40"
               >
                 重新預覽
               </button>
@@ -1210,21 +1210,21 @@ export default function NarrativeWorkspacePanel() {
             </div>
           </div>
 
-          <div className="min-h-[180px] rounded-lg border border-white/[0.06] bg-[#111113] p-3">
+          <div className="min-h-[180px] rounded-lg border border-white/[0.06] bg-[var(--console-bg)] p-3">
             {mapPreview ? (
               <div className="space-y-2 text-[11px]">
-                <p className="font-medium text-[#f7f8f8]">{mapPreview.title}</p>
+                <p className="font-medium text-[var(--console-ink)]">{mapPreview.title}</p>
                 <p className="text-[#8a8f98]">
                   plots {mapPreview.plot_count} · 預估 {mapPreview.estimated_blocks} 方塊 · 跨度 x
                   {mapPreview.axis_span.x}/y{mapPreview.axis_span.y}/z{mapPreview.axis_span.z}
                 </p>
-                <p className="text-[10px] text-[#636366]">
+                <p className="text-[10px] text-[var(--console-sub)]">
                   bounds ({mapPreview.bounds.x1},{mapPreview.bounds.y1},{mapPreview.bounds.z1}) → (
                   {mapPreview.bounds.x2},{mapPreview.bounds.y2},{mapPreview.bounds.z2})
                 </p>
                 <div>
-                  <p className="mb-1 text-[10px] uppercase text-[#64D2FF]/70">POI</p>
-                  <ul className="max-h-[120px] space-y-1 overflow-y-auto font-mono text-[10px] text-[#AEAEB2]">
+                  <p className="mb-1 text-[10px] uppercase text-[color-mix(in_srgb,var(--console-accent)_70%,transparent)]">POI</p>
+                  <ul className="max-h-[120px] space-y-1 overflow-y-auto font-mono text-[10px] text-[var(--console-sub)]">
                     {mapPreview.pois.map((poi) => (
                       <li key={poi.id}>
                         {poi.title} · {poi.location} · {poi.kind}
@@ -1234,11 +1234,12 @@ export default function NarrativeWorkspacePanel() {
                 </div>
               </div>
             ) : (
-              <p className="text-[11px] text-[#636366]">尚未生成地圖。請設定 seed 後按「生成地圖」。</p>
+              <p className="text-[11px] text-[var(--console-sub)]">尚未生成地圖。請設定 seed 後按「生成地圖」。</p>
             )}
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </McPage>
   );
 }

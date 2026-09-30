@@ -46,14 +46,14 @@ export default function TraceRoster({ selectedTaskId, onPick }: TraceRosterProps
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 space-y-2 border-b border-white/[0.06] px-3 pb-3 pt-2">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#636366]">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">
             {traces.length} 筆軌跡
           </p>
           <button
             type="button"
             onClick={() => void loadTraces()}
             disabled={loading}
-            className="rounded-lg px-1.5 py-0.5 text-[10px] text-[#636366] hover:bg-white/[0.04] hover:text-[#AEAEB2] disabled:opacity-40"
+            className="rounded-lg px-1.5 py-0.5 text-[10px] text-[var(--console-sub)] hover:bg-white/[0.04] hover:text-[var(--console-sub)] disabled:opacity-40"
             title="重新整理"
           >
             {loading ? '…' : '↻'}
@@ -63,16 +63,16 @@ export default function TraceRoster({ selectedTaskId, onPick }: TraceRosterProps
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="搜尋任務 ID"
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] text-[#F5F5F7] placeholder:text-[#636366] outline-none focus:border-[#007AFF]/50"
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] text-[var(--console-ink)] placeholder:text-[var(--console-sub)] outline-none focus:border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)]"
         />
       </div>
 
       {error && (
-        <p className="shrink-0 px-3 py-2 text-[10px] text-[#FF3B30]">{error}</p>
+        <p className="shrink-0 px-3 py-2 text-[10px] text-[var(--console-danger)]">{error}</p>
       )}
 
       {!loading && filtered.length === 0 && (
-        <p className="px-3 py-8 text-center text-[11px] text-[#636366]">
+        <p className="px-3 py-8 text-center text-[11px] text-[var(--console-sub)]">
           {traces.length === 0 ? '尚無軌跡記錄' : '無符合結果'}
         </p>
       )}
@@ -89,12 +89,12 @@ export default function TraceRoster({ selectedTaskId, onPick }: TraceRosterProps
                 onClick={() => onPick(trace.task_id)}
                 className={`mx-2 mb-0.5 flex w-[calc(100%-16px)] flex-col gap-0.5 rounded-lg px-2.5 py-2 text-left transition-colors ${
                   active
-                    ? 'bg-white/[0.06] text-[#F5F5F7]'
-                    : 'text-[#AEAEB2] hover:bg-white/[0.03] hover:text-[#F5F5F7]'
+                    ? 'bg-white/[0.06] text-[var(--console-ink)]'
+                    : 'text-[var(--console-sub)] hover:bg-white/[0.03] hover:text-[var(--console-ink)]'
                 }`}
               >
-                <span className="truncate font-mono text-[11px] text-[#007AFF]">{trace.task_id}</span>
-                <span className="text-[10px] text-[#636366]">
+                <span className="truncate font-mono text-[11px] text-[var(--console-accent)]">{trace.task_id}</span>
+                <span className="text-[10px] text-[var(--console-sub)]">
                   {trace.event_count} 事件 · {trace.file_size_kb} KB
                 </span>
               </button>

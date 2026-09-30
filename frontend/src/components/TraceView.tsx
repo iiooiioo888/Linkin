@@ -87,38 +87,38 @@ function TraceEventCard({ entry, expanded, onToggle }: { entry: TraceEntry; expa
       {expanded ? (
         <div className="mt-2 space-y-1.5 border-t border-white/[0.08] pt-2 text-left">
           {entry.system ? (
-            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[var(--console-card)] px-2 py-1 font-mono text-[10px] text-[var(--console-sub)]">
               {entry.system}
             </pre>
           ) : null}
           {entry.prompt ? (
-            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[var(--console-card)] px-2 py-1 font-mono text-[10px] text-[var(--console-sub)]">
               {entry.prompt}
             </pre>
           ) : null}
           {entry.response ? (
-            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[var(--console-card)] px-2 py-1 font-mono text-[10px] text-[var(--console-sub)]">
               {entry.response}
             </pre>
           ) : null}
           {entry.result ? (
-            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+            <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded bg-[var(--console-card)] px-2 py-1 font-mono text-[10px] text-[var(--console-sub)]">
               {entry.result}
             </pre>
           ) : null}
           {entry.raw_response ? (
-            <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+            <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-[var(--console-card)] px-2 py-1 font-mono text-[10px] text-[var(--console-sub)]">
               {entry.raw_response}
             </pre>
           ) : null}
           {entry.items?.length ? (
-            <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-[#141416] px-2 py-1 font-mono text-[10px] text-[#AEAEB2]">
+            <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-[var(--console-card)] px-2 py-1 font-mono text-[10px] text-[var(--console-sub)]">
               {entry.items.join('\n')}
             </pre>
           ) : null}
-          {entry.error ? <p className="text-[11px] text-[#FF453A]">{entry.error}</p> : null}
+          {entry.error ? <p className="text-[11px] text-[var(--console-danger)]">{entry.error}</p> : null}
           {entry.event === 'pipeline_node' ? (
-            <p className="font-mono text-[10px] text-[#AEAEB2]">
+            <p className="font-mono text-[10px] text-[var(--console-sub)]">
               {[
                 `node=${String(entry.node ?? '')}`,
                 entry.model ? `model=${entry.model}` : '',
@@ -294,11 +294,11 @@ export default function TraceView({ taskId = null, onTaskIdChange }: TraceViewPr
                 ))}
               </div>
             ) : (
-              <p className="text-[11px] text-[#636366]">從左側選擇軌跡檔案</p>
+              <p className="text-[11px] text-[var(--console-sub)]">從左側選擇軌跡檔案</p>
             )}
           </div>
           {eventsLoading ? (
-            <p className="py-12 text-center text-[11px] text-[#636366]">載入中...</p>
+            <p className="py-12 text-center text-[11px] text-[var(--console-sub)]">載入中...</p>
           ) : (
             <StatusColumnBoard
               columns={WORK_ITEM_COLUMNS.map((col) => {
@@ -325,7 +325,7 @@ export default function TraceView({ taskId = null, onTaskIdChange }: TraceViewPr
           <div className="rd-sec">
             <div className="rd-tt">事件時間線</div>
             {recent.length === 0 ? (
-              <p className="py-1 text-[11px] text-[#636366]">
+              <p className="py-1 text-[11px] text-[var(--console-sub)]">
                 {selectedTaskId ? '尚無事件' : '執行任務後，思考過程會自動記錄在此'}
               </p>
             ) : (
@@ -337,11 +337,11 @@ export default function TraceView({ taskId = null, onTaskIdChange }: TraceViewPr
                     <div key={`tl-${ev.seq}`} className="rd-ev-row">
                       <span className={`rd-ev-dot ${bad ? 'er' : 'go'}`} />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[10.5px] text-[#AEAEB2]">
+                        <div className="truncate text-[10.5px] text-[var(--console-sub)]">
                           {meta.label}
                           {eventSummary(ev) ? ` — ${eventSummary(ev)}` : ''}
                         </div>
-                        <div className="apple-data text-[8.5px] text-[#636366]">{fmtWhen(ev.ts)}</div>
+                        <div className="apple-data text-[8.5px] text-[var(--console-sub)]">{fmtWhen(ev.ts)}</div>
                       </div>
                     </div>
                   );

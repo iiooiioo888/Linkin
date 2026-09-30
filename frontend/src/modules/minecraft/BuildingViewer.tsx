@@ -133,8 +133,8 @@ export default function BuildingViewer({ preview, loading = false }: Props) {
   if (!preview || preview.voxels.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
-        <p className="text-[12px] text-[#AEAEB2]">生成或選取建築方案後，以 Three.js 預覽方塊模型</p>
-        <p className="text-[10px] text-[#636366]">Sponge Schematic v3 · .schem</p>
+        <p className="text-[12px] text-[var(--console-sub)]">生成或選取建築方案後，以 Three.js 預覽方塊模型</p>
+        <p className="text-[10px] text-[var(--console-sub)]">Sponge Schematic v3 · .schem</p>
       </div>
     );
   }
@@ -142,7 +142,7 @@ export default function BuildingViewer({ preview, loading = false }: Props) {
   return (
     <div className="relative h-full min-h-[280px] w-full">
       <div ref={hostRef} className="h-full w-full overflow-hidden rounded-xl" />
-      <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-black/45 px-2 py-1 text-[10px] text-[#AEAEB2]">
+      <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-black/45 px-2 py-1 text-[10px] text-[var(--console-sub)]">
         {preview.width}×{preview.height}×{preview.length} · {preview.voxel_count} 方塊 · v{preview.version}
         {preview.biome ? ` · ${preview.biome.replace('minecraft:', '')}` : ''}
       </div>
