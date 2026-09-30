@@ -181,6 +181,8 @@ backend/data/mcp_servers.json
 *.schem
 backend/data/linkin/schematics/*.schem
 backend/data/linkin/mcp_audit.jsonl
+# 伺服器運維寫操作稽核（server_admin.py 預設路徑；執行期產物，非正式種子）
+backend/data/linkin/server_audit.jsonl
 
 # Local Chroma persist dirs (JSON 種子仍提交)
 backend/data/linkin/chroma/
