@@ -84,8 +84,11 @@ def test_graph_modules_import_safety_before_langgraph() -> None:
 
 
 def test_containers_set_strict_msgpack_at_process_start() -> None:
-    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
-    assert compose.count("LANGGRAPH_STRICT_MSGPACK=true") >= 2
+    """ENV 行是 ASCII。先對 bytes 斷言，註解編碼壞掉時仍能指出缺的是哪一行。"""
+    compose = (ROOT / "docker-compose.yml").read_bytes()
+    assert compose.count(b"LANGGRAPH_STRICT_MSGPACK=true") >= 2
+    compose.decode("utf-8")
     for relative in ("backend/Dockerfile", "opc_service/Dockerfile"):
-        text = (ROOT / relative).read_text(encoding="utf-8")
-        assert "ENV LANGGRAPH_STRICT_MSGPACK=true" in text
+        data = (ROOT / relative).read_bytes()
+        assert b"ENV LANGGRAPH_STRICT_MSGPACK=true" in data, relative
+        data.decode("utf-8")
