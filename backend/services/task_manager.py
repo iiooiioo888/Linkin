@@ -700,7 +700,7 @@ class TaskManager:
 
             # OPC 上下文增強（統一管線標準步驟）
             self._set_phase(record, "enhance_opc_context")
-            state.update(await asyncio.to_thread(enhance_with_opc_context, state))
+            state.update(await enhance_with_opc_context(state))
             opc_ctx = state.get("opc_context", {})
             if opc_ctx.get("summary"):
                 tracer.log_context_injection(

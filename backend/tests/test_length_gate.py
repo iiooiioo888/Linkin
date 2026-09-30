@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from unittest.mock import MagicMock, patch
 
@@ -62,7 +63,7 @@ def _run_graph(fake: FakeLLM, query: str, state: dict | None = None) -> dict:
     ):
         payload = {"query": query}
         payload.update(state or {})
-        return build_graph().invoke(payload)
+        return asyncio.run(build_graph().ainvoke(payload))
 
 
 class TestLengthGatePassThrough:

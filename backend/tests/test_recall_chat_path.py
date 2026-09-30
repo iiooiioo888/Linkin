@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from unittest.mock import MagicMock, patch
 
@@ -91,7 +92,7 @@ def test_recall_disabled_does_not_break_graph_invoke(monkeypatch):
         patch("backend.core.nodes._memory_store") as mock_store,
     ):
         mock_store.search_similar.return_value = []
-        result = build_graph().invoke({"query": "簡單問題", "execution_strategy": "simple"})
+        result = asyncio.run(build_graph().ainvoke({"query": "簡單問題", "execution_strategy": "simple"}))
 
     assert result["final_answer"]
     recall = result.get("recall_context") or {}

@@ -19,6 +19,10 @@ from opc_service.prompts import DEFAULT_SENSE_TAGS
 
 logger = logging.getLogger(__name__)
 
+
+class OPCUnavailableError(RuntimeError):
+    """OPC 讀取失敗。空讀數不再用來表示服務不可用。"""
+
 OPC_SERVICE_URL = os.getenv("OPC_SERVICE_URL", "http://localhost:8001")
 OPC_TIER = os.getenv("EVOL_OPC_TIER", "auto").lower()  # auto | edge | cloud
 OPC_EDGE_TTL = float(os.getenv("EVOL_OPC_EDGE_TTL", "5"))  # 边缘缓存秒数
@@ -77,7 +81,7 @@ async def _read_opc_tags(tag_names: list[str]) -> dict[str, dict]:
             }
     except Exception as exc:
         logger.warning("OPC 读取失败：%s", exc)
-        return {}
+        raise OPCUnavailableError(str(exc)) from exc
 
 
 async def sense_opc(state: dict) -> dict[str, Any]:
@@ -102,9 +106,21 @@ async def sense_opc(state: dict) -> dict[str, Any]:
                 "opc_anomaly_detected": False,
                 "opc_actions": [],
                 "opc_source": "edge_miss",
+                "opc_status": "unavailable",
+                "opc_reason": "邊緣快取未命中且 EVOL_OPC_TIER=edge",
             }
 
-    readings = await _read_opc_tags(DEFAULT_SENSE_TAGS)
+    try:
+        readings = await _read_opc_tags(DEFAULT_SENSE_TAGS)
+    except OPCUnavailableError as exc:
+        return {
+            "opc_readings": {},
+            "opc_anomaly_detected": False,
+            "opc_actions": [],
+            "opc_source": "unavailable",
+            "opc_status": "unavailable",
+            "opc_reason": str(exc),
+        }
     if readings:
         _save_edge_cache(readings)
 
@@ -113,4 +129,6 @@ async def sense_opc(state: dict) -> dict[str, Any]:
         "opc_anomaly_detected": False,
         "opc_actions": [],
         "opc_source": source,
+        "opc_status": "available",
+        "opc_reason": "",
     }

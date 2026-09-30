@@ -102,9 +102,9 @@ def test_full_graph_archives_session(tmp_path, monkeypatch):
         patch("backend.core.evaluation.call_llm", side_effect=fake_call_llm),
         patch("backend.core.nodes._memory_store", MagicMock()),
     ):
-        result = build_graph().invoke(
+        result = asyncio.run(build_graph().ainvoke(
             {"query": "測試問題", "session_id": "sess-graph-1"}
-        )
+        ))
 
     assert result["archived"] is True
     files = list(tmp_path.glob("evo_*.jsonl"))

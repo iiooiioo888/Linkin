@@ -38,44 +38,62 @@ _needs_opc_context = _execution_path.needs_opc_context
 # ─── OPC 上下文增強節點 ──────────────────────────────────────
 
 
-def enhance_with_opc_context(state: StateInput) -> dict[str, Any]:
-    """OPC 上下文增強：query 涉及工業關鍵詞時自動注入感測數據。
+def _opc_context(
+    status: str,
+    *,
+    reason: str = "",
+    readings: dict[str, Any] | None = None,
+    summary: str = "",
+) -> dict[str, Any]:
+    return {
+        "opc_context": {
+            "opc_status": status,
+            "reason": reason,
+            "readings": readings or {},
+            "summary": summary,
+        }
+    }
 
-    統一模式下 OPC 整合不再是獨立模式，而是管線中的
-    上下文增強步驟。OPC 服務不可用時靜默降級（不中斷主流程）。
+
+async def enhance_with_opc_context(state: StateInput) -> dict[str, Any]:
+    """OPC 上下文增強：query 涉及工業關鍵詞時直接 await sense_opc。
+
+    服務不可用時寫入 opc_status=unavailable，並讓 /health 的 degraded 為真。
+    此節點是 async，圖必須用 ainvoke；同步 invoke 會被 LangGraph 拒絕。
     """
+    from backend.core.opc_degrade import note_opc_available, note_opc_unavailable
+
     query = state.get("query", "")
     if not _needs_opc_context(query):
-        return {"opc_context": {}}
+        return _opc_context("not_required")
 
     try:
         from opc_service.sense import sense_opc
 
-        try:
-            result = asyncio.run(sense_opc(dict(state)))
-        except RuntimeError:
-            # 已有事件迴圈（LangGraph ainvoke 場景）→ 同步降級
-            logger.debug("事件迴圈存在，跳過 OPC 非同步感知")
-            return {"opc_context": {}}
-
-        readings = result.get("opc_readings", {})
-        if not readings:
-            return {"opc_context": {}}
-
-        # 將讀數摘要注入上下文
-        summary_lines = ["【工業數據上下文（OPC 即時讀數）】"]
-        for tag, info in readings.items():
-            summary_lines.append(f"- {tag}: {info.get('value')} (品質: {info.get('quality', 'Good')})")
-
-        return {
-            "opc_context": {
-                "readings": readings,
-                "summary": "\n".join(summary_lines),
-            }
-        }
+        result = await sense_opc(dict(state))
     except Exception as exc:
-        logger.warning("OPC 上下文增強失敗（降級跳過）：%s", exc)
-        return {"opc_context": {}}
+        reason = str(exc)
+        logger.warning("OPC 上下文增強失敗：%s", exc)
+        note_opc_unavailable(reason)
+        return _opc_context("unavailable", reason=reason)
+
+    if str(result.get("opc_status") or "") == "unavailable":
+        reason = str(result.get("opc_reason") or "OPC 不可用")
+        note_opc_unavailable(reason)
+        return _opc_context("unavailable", reason=reason)
+
+    readings = result.get("opc_readings") or {}
+    if not readings:
+        note_opc_available()
+        return _opc_context("available", reason="無讀數")
+
+    summary_lines = ["【工業數據上下文（OPC 即時讀數）】"]
+    for tag, info in readings.items():
+        summary_lines.append(
+            f"- {tag}: {info.get('value')} (品質: {info.get('quality', 'Good')})"
+        )
+    note_opc_available()
+    return _opc_context("available", readings=readings, summary="\n".join(summary_lines))
 
 
 # ─── 複雜度路由節點 ──────────────────────────────────────────

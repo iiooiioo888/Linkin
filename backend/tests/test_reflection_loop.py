@@ -6,6 +6,7 @@
 3. 持續低分時，達到最大迭代次數即停止（不無限迴圈）
 """
 
+import asyncio
 import json
 from unittest.mock import MagicMock, patch
 
@@ -48,7 +49,7 @@ def test_high_score_finalizes_without_reflection():
         patch("backend.core.nodes._memory_store") as mock_store,
     ):
         mock_store.search_similar.return_value = []
-        result = build_graph().invoke({"query": "測試問題"})
+        result = asyncio.run(build_graph().ainvoke({"query": "測試問題"}))
 
     assert result["final_answer"] == "這是初始回答。"
     assert result["score"] == 9.0
@@ -78,7 +79,7 @@ def test_low_score_triggers_reflection_loop():
         patch("backend.core.evaluation.call_llm", side_effect=fake),
         patch("backend.core.nodes._memory_store", store),
     ):
-        result = build_graph().invoke({"query": "測試問題"})
+        result = asyncio.run(build_graph().ainvoke({"query": "測試問題"}))
 
     assert result["final_answer"] == "改進後的回答"
     assert result["iteration"] == 1
@@ -108,7 +109,7 @@ def test_loop_stops_at_max_iterations():
         patch("backend.core.evaluation.call_llm", side_effect=fake),
         patch("backend.core.nodes._memory_store", store),
     ):
-        result = build_graph().invoke({"query": loop_query})
+        result = asyncio.run(build_graph().ainvoke({"query": loop_query}))
 
     # 達最大迭代後強制收尾，最終回答為最後一次改進版本
     assert result["final_answer"] == "這是第 3 輪改進後的完整回答"
@@ -129,7 +130,7 @@ def test_memory_retrieval_injects_similar_experiences():
             {"text": "過往成功經驗：問題X → 答案Y", "metadata": {}, "distance": 0.1},
             {"text": "過往成功經驗：問題Z → 答案W", "metadata": {}, "distance": 0.2},
         ]
-        result = build_graph().invoke({"query": "測試問題"})
+        result = asyncio.run(build_graph().ainvoke({"query": "測試問題"}))
 
     assert result["final_answer"] == "基於經驗的回答。"
     assert result["retrieved_memories"] == [

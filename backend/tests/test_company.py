@@ -9,6 +9,7 @@
 6. EvoLoop 圖整合（公司模式路由）
 """
 
+import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -1557,11 +1558,11 @@ class TestCompanyGraphIntegration:
             patch("backend.core.evaluation.call_llm", side_effect=[eval_high]),
             patch("backend.core.nodes._memory_store", store),
         ):
-            result = build_graph().invoke({
+            result = asyncio.run(build_graph().ainvoke({
                 "query": "建立一個用戶管理系統",
                 "execution_strategy": "company",
                 "company_template": "quick_task",
-            })
+            }))
 
         assert result["final_answer"] == "整合完成"
         assert result["score"] == 9.0
@@ -1604,11 +1605,11 @@ class TestCompanyGraphIntegration:
             patch("backend.core.evaluation.call_llm", side_effect=[eval_low, eval_high]),
             patch("backend.core.nodes._memory_store", store),
         ):
-            result = build_graph().invoke({
+            result = asyncio.run(build_graph().ainvoke({
                 "query": "建立一個用戶管理系統",
                 "execution_strategy": "company",
                 "company_template": "quick_task",
-            })
+            }))
 
         assert result["final_answer"] == "改進後的公司產出"
         assert result["iteration"] == 1
@@ -1629,11 +1630,11 @@ class TestCompanyGraphIntegration:
             patch("backend.core.nodes.call_llm") as mock_nodes_llm,
             patch("backend.core.nodes._memory_store", store),
         ):
-            result = build_graph().invoke({
+            result = asyncio.run(build_graph().ainvoke({
                 "query": "測試",
                 "execution_strategy": "company",
                 "company_template": "quick_task",
-            })
+            }))
 
         assert "公司運行時執行失敗" in result["final_answer"]
         assert result["company_result"]["success"] is False

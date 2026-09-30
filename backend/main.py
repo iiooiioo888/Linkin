@@ -414,7 +414,14 @@ class FeedbackRequest(BaseModel):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    from backend.core.opc_degrade import opc_health_view
+
+    opc = opc_health_view()
+    return {
+        "status": "ok",
+        "degraded": opc["opc_status"] == "unavailable",
+        "opc": opc,
+    }
 
 
 class GateLoginBody(BaseModel):
