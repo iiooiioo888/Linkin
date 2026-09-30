@@ -52,6 +52,13 @@ MAX_ITERATIONS = int(os.getenv("EVOL_MAX_ITERATIONS", "3"))
 MIN_SCORE_IMPROVEMENT = float(os.getenv("EVOL_MIN_SCORE_IMPROVEMENT", "0.5"))
 
 
+def _require_score(state: StateInput) -> float:
+    """終止判斷用的分數。缺失或 None 時拋錯，禁止默認成 0.0。"""
+    if "score" not in state or state.get("score") is None:
+        raise ValueError("EvoLoopState.score 缺失，拒絕以預設 0.0 做終止判斷")
+    return float(state["score"])
+
+
 def should_improve(state: StateInput) -> str:
     """條件路由（優化 #4：動態迭代策略）。
 
@@ -62,7 +69,7 @@ def should_improve(state: StateInput) -> str:
     """
     from backend.core.dynamic_threshold import resolve_pass_threshold
 
-    score = state.get("score", 0.0)
+    score = _require_score(state)
     iteration = state.get("iteration", 0)
     pass_threshold = resolve_pass_threshold(state.get("query", ""))
 

@@ -44,6 +44,12 @@ class EvoLoopState(OPCStateFields, total=False):
     繼承 OPCStateFields 以包含 OPC 相關狀態欄位。
     total=False 使所有欄位皆為選填，LangGraph 節點只需
     回傳自己更新的欄位，框架會自動合併進狀態。
+
+    score 不在此設為必填：節點回傳的是部分更新。終止判斷見
+    ``should_improve``，score 缺失時拋錯，不以 0.0 充當真實分數。
+    task_id 未宣告；pipeline trace 缺失時改用 session_id，只影響日誌。
+    路由與長度上限讀的是 task_complexity，缺失時依 query 重分類，
+    計費主鍵不依賴這個欄位。
     """
 
     # ---- 輸入 ----
