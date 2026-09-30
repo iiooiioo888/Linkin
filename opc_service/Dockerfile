@@ -1,25 +1,25 @@
-# EvoLoop OPC Service ??Dockerfile
-# ?��? Python 3.12，�?�?OPC UA 工�??�据微�???
-# ?�建上�??��?项目?�目录�?docker-compose 中�?�?context: .�?
+# EvoLoop OPC Service Dockerfile
+# 基底為 Python 3.12，執行 OPC UA 工業數據微服務
+# 建置上下文為專案根目錄（docker-compose 中的 context: .）
 FROM python:3.12-slim
 
 ENV LANGGRAPH_STRICT_MSGPACK=true
 
 WORKDIR /app
 
-# 安�? Python 依�?（�?复制 requirements 以利??Docker 层�?存�?
+# 安裝 Python 依賴（先複製 requirements 以利用 Docker 層快取）
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制 OPC ?�务�??
+# 複製 OPC 服務程式
 COPY opc_service/ ./opc_service/
 
-# ?�务端口
+# 服務埠
 EXPOSE 8001
 
-# ?�康检??
+# 健康檢查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/opc/health')" || exit 1
 
-# ?�动 FastAPI
+# 啟動 FastAPI
 CMD ["uvicorn", "opc_service.main:app", "--host", "0.0.0.0", "--port", "8001"]
