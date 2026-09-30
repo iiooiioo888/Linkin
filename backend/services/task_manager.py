@@ -1181,7 +1181,11 @@ class TaskManager:
             # ── 第 1 級：感知 (Sense) ──
             self._set_phase(record, "sense_opc")
             tracer.log_phase_change("sense_opc")
-            state.update(await sense_opc(state))
+            sense_result = await sense_opc(state)
+            state.update(sense_result)
+            from backend.core.opc_degrade import note_opc_from_sense_result
+
+            note_opc_from_sense_result(sense_result)
             record.opc_state["sense"] = {
                 "readings": state.get("opc_readings", {}),
                 "tag_count": len(state.get("opc_readings", {})),
