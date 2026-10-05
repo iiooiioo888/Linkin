@@ -103,6 +103,13 @@
     "creditsUnit": "積分",
     "creditsMonthlyUsed": "本月已用 {{used}} / {{quota}}"
   },
+  "monitor": {
+    "offlineData": "離線資料",
+    "l0Situation": "L0 態勢",
+    "l0EnergySave": "節能模式",
+    "l0PressureNormal": "壓力正常",
+    "l0PressurePct": "壓力 {{pct}}%"
+  },
   "mobileShell": {
     "desktopHint": "完整控制與密集監控台建議在桌面（≥768px）使用；此處仍可查看摘要或展開簡化面板。",
     "showFullPanel": "在此裝置顯示完整面板",

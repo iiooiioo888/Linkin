@@ -434,10 +434,57 @@
   overflow: hidden;
 }
 
+.mon-live-status__leading > * {
+  min-width: 0;
+}
+
 .mon-live-status__offline {
   color: var(--console-faint);
   font-size: 10px;
   white-space: nowrap;
+}
+
+.mon-l0-chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--console-accent) 35%, var(--console-line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--console-accent) 8%, var(--console-card));
+  padding: 4px 8px;
+  color: var(--console-ink);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: left;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.mon-l0-chip:hover {
+  border-color: color-mix(in srgb, var(--console-accent) 50%, var(--console-line));
+  background: color-mix(in srgb, var(--console-accent) 12%, var(--console-card));
+}
+
+.mon-l0-chip__title {
+  color: var(--console-accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mon-l0-chip__mode {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--console-sub);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mon-l0-chip__pct {
+  flex-shrink: 0;
+  color: var(--console-faint);
+  font-size: 9px;
 }
 
 .mon-live-status__tail {

@@ -2,15 +2,16 @@
  * MonitorView — 統一監控視圖（懶加載重模組 + Hub 推送）。
  * 分頁切換由左側 SidePanel 負責；此處僅渲染當前分頁。
  */
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { fetchL0Kernel } from '../api/client';
 import { useMonitorHub } from '../hooks/useMonitorHub';
 import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import { isMobileDesktopOnlyPanel } from '../lib/mobileShell';
 import { buildAnimLiveFeed } from '../lib/animLive';
 import { isLinkinStudioAgent } from '../lib/agentUi';
 import { useMonitorStore } from '../stores/monitorStore';
-import type { ChatMessage, TaskProgress } from '../types';
+import type { ChatMessage, L0Snapshot, TaskProgress } from '../types';
 import type { MonitorTab } from './AppShell';
 import type { LabSubTab } from '../lib/labTabs';
 import { moduleIdForTab } from '../lib/worldModules';
@@ -90,6 +91,26 @@ function LiveTab({
     messages,
     updatedAt: generatedAt,
   });
+
+  const [l0Snapshot, setL0Snapshot] = useState<L0Snapshot | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const next = await fetchL0Kernel();
+        if (alive) setL0Snapshot(next);
+      } catch {
+        if (alive) setL0Snapshot(null);
+      }
+    };
+    void load();
+    const timer = setInterval(() => void load(), 8000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, []);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {error && (
@@ -100,6 +121,7 @@ function LiveTab({
       <LiveBoard
         feed={liveFeed}
         backgroundPhase={backgroundPhase}
+        l0Snapshot={l0Snapshot}
         liteShell={liteShell}
         onOpenLab={onOpenLab}
         onOpenTab={onOpenTab}

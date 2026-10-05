@@ -23,6 +23,7 @@ import {
   taskPriority,
 } from '../lib/monitorData';
 import { navPathForTab } from '../lib/monitorTabs';
+import { jumpToL0Kernel } from '../lib/rahoUi';
 import type { MonitorTab } from './AppShell';
 import IntegrationsStrip from './IntegrationsStrip';
 import {
@@ -33,6 +34,7 @@ import {
   MonitorLinkButton,
   MonitorPanel,
   MonitorStatusDot,
+  MonitorL0StatusChip,
   MonitorStatusStrip,
   MonitorWarnBar,
   PipelineTimeline,
@@ -52,7 +54,7 @@ import {
 } from './ui/ConsoleLayout';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useMonitorStore } from '../stores/monitorStore';
-import type { TaskSummary } from '../types';
+import type { L0Snapshot, TaskSummary } from '../types';
 
 export type LiveBoardDensity = 'page' | 'dock';
 
@@ -795,6 +797,7 @@ function RightRailContent({
 export default function LiveBoard({
   feed,
   backgroundPhase,
+  l0Snapshot = null,
   density = 'page',
   liteShell = false,
   onOpenLab,
@@ -804,6 +807,7 @@ export default function LiveBoard({
 }: {
   feed: AnimLiveFeed;
   backgroundPhase?: string | null;
+  l0Snapshot?: L0Snapshot | null;
   density?: LiveBoardDensity;
   liteShell?: boolean;
 } & LiveBoardNav) {
@@ -871,9 +875,16 @@ export default function LiveBoard({
     </>
   );
 
+  const statusStripLeading = (
+    <>
+      <MonitorL0StatusChip snapshot={l0Snapshot} onClick={jumpToL0Kernel} />
+      {!connected ? <span className="mon-live-status__offline">{t('monitor.offlineData')}</span> : null}
+    </>
+  );
+
   const statusStrip = !dock ? (
     <MonitorStatusStrip
-      leading={!connected ? <span className="mon-live-status__offline">離線資料</span> : null}
+      leading={statusStripLeading}
       actions={statusStripActions}
       meta={updated ? <span className="font-mono tabular-nums">{updated}</span> : null}
     />

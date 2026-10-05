@@ -102,7 +102,7 @@ export default function TopBar({
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5">
-        <span className={activity === 'console' ? 'hidden min-[480px]:inline' : 'md:hidden'}>
+        <span className="md:hidden">
           <WalletBadge minimal onOpenBilling={() => onMonitorTabChange?.('models')} />
         </span>
         <span className="hidden md:inline-flex">
@@ -161,7 +161,7 @@ export default function TopBar({
 
         <button
           onClick={onOpenSettings}
-          className={`apple-icon-btn shrink-0 ${activity === 'console' ? 'hidden min-[480px]:inline-flex' : ''}`}
+          className="apple-icon-btn shrink-0"
           title="設定"
           aria-label="設定"
         >
