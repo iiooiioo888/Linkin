@@ -73,6 +73,7 @@ def _builtin_defaults() -> dict[str, Any]:
         "post_company_reflect": "off",
         "routing_feedback": {
             "feedback_enabled": True,
+            "timezone": "Asia/Taipei",
             "max_company_ratio": 0.35,
             "consecutive_low_scores_for_company": 3,
             "low_score_threshold": 6.0,
@@ -117,6 +118,7 @@ def reload_cost_speed() -> dict[str, Any]:
 
 _ROUTING_FEEDBACK_DEFAULTS: dict[str, Any] = {
     "feedback_enabled": True,
+    "timezone": "Asia/Taipei",
     "max_company_ratio": 0.35,
     "consecutive_low_scores_for_company": 3,
     "low_score_threshold": 6.0,

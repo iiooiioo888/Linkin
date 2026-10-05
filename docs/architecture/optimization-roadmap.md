@@ -143,8 +143,11 @@ EVOL_DECOMPOSE_CACHE_SIZE=64
 
 ```env
 EVOL_ROUTING_FEEDBACK_PATH=backend/data/routing_feedback.json
+EVOL_ROUTING_FEEDBACK_TIMEZONE=Asia/Taipei
 EVOL_ROUTING_LENGTH_BIAS=0
 ```
+
+`routing_feedback.timezone`（`cost_speed.json`）亦可用；環境變數優先。無效 IANA 名稱時回退 `Asia/Taipei`。
 
 ---
 

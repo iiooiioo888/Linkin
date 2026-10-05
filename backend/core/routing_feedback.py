@@ -10,9 +10,10 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import UTC, datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +47,11 @@ _last_threshold_log: tuple[str, int, int] | None = None  # 節流：僅在門檻
 _WEIGHT_MIN_SAMPLES = int(os.getenv("EVOL_ROUTING_WEIGHT_MIN", "5"))
 _WEIGHT_MARGIN = float(os.getenv("EVOL_ROUTING_WEIGHT_MARGIN", "0.15"))
 
+_DEFAULT_FEEDBACK_TIMEZONE = "Asia/Taipei"
+
 _DEFAULT_FEEDBACK_CFG: dict[str, Any] = {
     "feedback_enabled": True,
+    "timezone": _DEFAULT_FEEDBACK_TIMEZONE,
     "max_company_ratio": 0.35,
     "consecutive_low_scores_for_company": 3,
     "low_score_threshold": 6.0,
@@ -67,6 +71,30 @@ def _feedback_config() -> dict[str, Any]:
         return routing_feedback_settings()
     except Exception:
         return dict(_DEFAULT_FEEDBACK_CFG)
+
+
+def _feedback_timezone() -> ZoneInfo:
+    """今日 company 占比護欄的日界（IANA）。環境變數優先於 cost_speed.json。"""
+    cfg = _feedback_config()
+    tz_name = os.getenv("EVOL_ROUTING_FEEDBACK_TIMEZONE", "").strip()
+    if not tz_name:
+        tz_name = str(cfg.get("timezone") or _DEFAULT_FEEDBACK_TIMEZONE).strip()
+    if not tz_name:
+        tz_name = _DEFAULT_FEEDBACK_TIMEZONE
+    try:
+        return ZoneInfo(tz_name)
+    except ZoneInfoNotFoundError:
+        logger.warning(
+            "無效的 routing_feedback timezone：%s，改用 %s",
+            tz_name,
+            _DEFAULT_FEEDBACK_TIMEZONE,
+        )
+        return ZoneInfo(_DEFAULT_FEEDBACK_TIMEZONE)
+
+
+def feedback_today() -> date:
+    """routing_feedback 統計用的「今日」日期（依配置時區，預設 Asia/Taipei）。"""
+    return datetime.now(_feedback_timezone()).date()
 
 
 def query_bucket(query_length: int) -> QueryBucket:
@@ -107,7 +135,7 @@ def _meta(store: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(meta, dict):
         meta = {}
         store["meta"] = meta
-    today = datetime.now(UTC).date().isoformat()
+    today = feedback_today().isoformat()
     if meta.get("today_date") != today:
         meta["today_date"] = today
         meta["today_simple"] = 0
