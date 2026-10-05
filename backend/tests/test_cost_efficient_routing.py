@@ -12,18 +12,8 @@ from backend.services.task_manager import TaskManager, TaskRecord, _post_company
 
 
 @pytest.fixture(autouse=True)
-def _enable_cost_speed(monkeypatch, tmp_path):
+def _enable_cost_speed(monkeypatch):
     monkeypatch.delenv("EVOL_COST_SPEED_ENABLED", raising=False)
-    fb = tmp_path / "routing_feedback.json"
-    fb.write_text(
-        json.dumps({
-            "records": [],
-            "stats": {"simple": 0, "company": 0},
-            "meta": {"consecutive_simple_low": 0},
-        }),
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("EVOL_ROUTING_FEEDBACK_PATH", str(fb))
 
 
 class TestReflectionLimits:
