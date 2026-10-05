@@ -1,9 +1,7 @@
 /**
- * LiveBoard — 控制台總覽（Apple 控制中心風格）。
- * 卡片可跳到對應分頁：API 路由／角色／任務／計費，避免功能孤立。
+ * LiveBoard — EvoLoop 主監控總覽（monitor dashboard v3）。
  */
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchBillingOverview } from '../api/client';
 import MonitorAlertMode from './monitor/MonitorAlertMode';
@@ -17,19 +15,44 @@ import {
 } from '../lib/animLive';
 import { LAB_INTEGRATION_TABS, type LabSubTab } from '../lib/labTabs';
 import { filterAgentsByDesk, PIPELINE_STAGES, requestRoleSettingsDesk } from '../lib/agentUi';
-import { buildStatusStack, buildTaskDistributionMatrix } from '../lib/monitorData';
+import {
+  buildActivityHeatmap,
+  buildSparkSeries24,
+  buildStatusStack,
+  buildTaskDistributionMatrix,
+  taskPriority,
+} from '../lib/monitorData';
 import { navPathForTab } from '../lib/monitorTabs';
 import type { MonitorTab } from './AppShell';
 import IntegrationsStrip from './IntegrationsStrip';
-import { consoleLayout } from './ui/ConsoleLayout';
-import { KpiSparkCard, PipelineTimeline, StackBar, TaskDistributionMatrix } from './ui/monitor';
+import {
+  ActivityHeatmap,
+  KpiSparkCard,
+  MiniProgressBar,
+  MonitorKpiGrid,
+  MonitorLinkButton,
+  MonitorPanel,
+  MonitorStatusDot,
+  MonitorTopbar,
+  MonitorWarnBar,
+  PipelineTimeline,
+  ResourceGauges,
+  StackBar,
+  TaskDistributionMatrix,
+  TaskPriorityCard,
+} from './ui/monitor';
+import type { MonitorStatusTone } from './ui/monitor';
+import {
+  ConsoleCenterColumn,
+  ConsoleColumnScroll,
+  ConsoleLeftRail,
+  ConsoleRightRail,
+  ConsoleThreeColumn,
+  PanelShell,
+} from './ui/ConsoleLayout';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useMonitorStore } from '../stores/monitorStore';
-
-const BLUE = 'var(--console-accent)';
-const GREEN = 'var(--console-green)';
-const ORANGE = 'var(--console-amber)';
-const RED = 'var(--console-danger)';
-const GRAY = 'var(--console-sub)';
+import type { TaskSummary } from '../types';
 
 export type LiveBoardDensity = 'page' | 'dock';
 
@@ -40,47 +63,11 @@ export interface LiveBoardNav {
   onOpenAgent?: (id: string) => void;
 }
 
-function GoBtn({ onClick, label = '前往' }: { onClick: () => void; label?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="text-[10px] font-bold console-status-accent hover:underline"
-    >
-      {label}
-    </button>
-  );
+function liveTone(feed: AnimLiveFeed): MonitorStatusTone {
+  return feed.live ? 'ok' : 'idle';
 }
 
-function FrostCard({
-  title,
-  accessory,
-  className = '',
-  bodyClassName = '',
-  scroll = false,
-  children,
-}: {
-  title: string;
-  accessory?: ReactNode;
-  className?: string;
-  bodyClassName?: string;
-  scroll?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <section className={`lb-frost-card ${className}`}>
-      <header className="lb-card-head">
-        <h2 className="lb-card-title">{title}</h2>
-        {accessory}
-      </header>
-      <div className={`lb-card-body ${scroll ? '' : 'lb-card-body--static'} ${bodyClassName}`}>
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function WorkflowStrip({
+function WorkflowRail({
   feed,
   onOpenTab,
 }: {
@@ -137,102 +124,31 @@ function WorkflowStrip({
     },
   ];
   const nextIdx = steps.findIndex((s) => !s.done);
+
   return (
-    <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+    <div className="mon-workflow">
+      <p className="mon-stack-section__label">工作流</p>
       {steps.map((s, i) => {
         const next = i === nextIdx;
-        const header =
-          s.done ? '完成' : s.active ? '進行中' : next ? '下一步' : s.n;
+        const tag = s.done ? '完成' : s.active ? '進行中' : next ? '下一步' : s.n;
+        const tagClass = s.done
+          ? 'mon-workflow__step-tag--done'
+          : s.active || next
+            ? 'mon-workflow__step-tag--active'
+            : '';
         return (
           <button
             key={s.tab}
             type="button"
             onClick={() => (s.onClick ? s.onClick() : onOpenTab?.(s.tab))}
-            className={`rounded-2xl border px-3 py-2.5 text-left transition-colors ${
-              next
-                ? 'border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]'
-                : s.done
-                  ? 'border-white/[0.08] bg-[var(--console-card)]'
-                  : 'border-[var(--console-line)] bg-[var(--console-card)] hover:border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)]'
-            }`}
+            className={`mon-workflow__step${next ? ' on' : ''}${s.done ? ' done' : ''}`}
           >
-            <p
-              className={`text-[10px] font-bold uppercase tracking-wider ${
-                next ? 'console-status-blue' : s.done ? 'console-status-green' : s.active ? 'console-status-blue' : 'text-[var(--console-faint)]'
-              }`}
-            >
-              {header}
-            </p>
-            <p className="mt-0.5 text-[13px] font-semibold text-[var(--console-ink)]">{s.label}</p>
-            <p className="text-[10px] text-[var(--console-sub)]">{s.hint}</p>
+            <span className={`mon-workflow__step-tag ${tagClass}`}>{tag}</span>
+            <span className="mon-workflow__step-label">{s.label}</span>
+            <span className="mon-workflow__step-hint">{s.hint}</span>
           </button>
         );
       })}
-    </div>
-  );
-}
-
-function StatusDot({ color, label }: { color: string; label: string }) {
-  const tone =
-    color === GREEN
-      ? 'apple-dot apple-dot--ok'
-      : color === ORANGE
-        ? 'apple-dot apple-dot--warn'
-        : color === RED
-          ? 'apple-dot apple-dot--err'
-          : color === BLUE
-            ? 'apple-dot apple-dot--info'
-            : 'apple-dot';
-  return (
-    <span className="inline-flex items-center gap-1.5 text-[10px] text-[var(--console-sub)]">
-      <span className={tone} style={tone === 'apple-dot' ? { background: color } : undefined} />
-      {label}
-    </span>
-  );
-}
-
-function RingMetric({
-  value,
-  max = 100,
-  label,
-  color,
-  sub,
-  size = 80,
-}: {
-  value: number;
-  max?: number;
-  label: string;
-  color: string;
-  sub?: string;
-  size?: number;
-}) {
-  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
-  const r = 34;
-  const c = 2 * Math.PI * r;
-  const dash = (pct / 100) * c;
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative" style={{ height: size, width: size }}>
-        <svg viewBox="0 0 80 80" className="h-full w-full -rotate-90">
-          <circle cx="40" cy="40" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
-          <circle
-            cx="40"
-            cy="40"
-            r={r}
-            fill="none"
-            stroke={color}
-            strokeWidth="6"
-            strokeLinecap="round"
-            strokeDasharray={`${dash} ${c - dash}`}
-            className="transition-[stroke-dasharray] duration-500 ease-out"
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="apple-data text-[16px] text-white">{pct}%</span>
-        </div>
-      </div>
-      <p className="text-[12px] font-bold text-[var(--console-ink)]">{label}</p>
-      {sub && <p className="apple-data text-[10px] text-[var(--console-sub)]">{sub}</p>}
     </div>
   );
 }
@@ -253,24 +169,30 @@ function PipelineCard({
   const nodes = PIPELINE_STAGES.map((n, i) => ({
     id: n.id,
     label: n.label,
-    state: liveIdx == null ? 'pending' as const : i < liveIdx ? 'done' as const : i === liveIdx ? 'active' as const : 'pending' as const,
+    state: liveIdx == null
+      ? ('pending' as const)
+      : i < liveIdx
+        ? ('done' as const)
+        : i === liveIdx
+          ? ('active' as const)
+          : ('pending' as const),
     timingMs: liveIdx != null && i === liveIdx && feed.live ? 120 : liveIdx != null && i < liveIdx ? 80 + i * 40 : null,
   }));
 
   return (
-    <FrostCard
+    <MonitorPanel
       title="管線"
       accessory={
-        <span className="flex items-center gap-2">
-          <StatusDot color={liveIdx != null ? BLUE : GRAY} label={phase ? String(phase) : '待命'} />
-          {onOpen ? <GoBtn onClick={onOpen} /> : null}
-        </span>
+        <>
+          <MonitorStatusDot tone={liveIdx != null ? 'info' : 'idle'} label={phase ? String(phase) : '待命'} />
+          {onOpen ? <MonitorLinkButton onClick={onOpen} /> : null}
+        </>
       }
     >
-      <div className={dock ? 'py-1' : 'py-3'}>
+      <div className={dock ? 'py-1' : 'py-2'}>
         <PipelineTimeline nodes={nodes} />
       </div>
-    </FrostCard>
+    </MonitorPanel>
   );
 }
 
@@ -289,23 +211,24 @@ function CompanyCard({
 }) {
   const busy = useMemo(() => pickBusyAgents(feed.agents, dock ? 4 : 5), [feed.agents, dock]);
   const active = useMemo(() => pickActiveAgents(feed.agents, 6), [feed.agents]);
+  const tone: MonitorStatusTone = active.length ? 'ok' : busy.length ? 'warn' : 'idle';
 
   return (
-    <FrostCard
+    <MonitorPanel
       title="協作"
       accessory={
-        <span className="flex items-center gap-2">
-          <StatusDot
-            color={active.length ? GREEN : busy.length ? ORANGE : GRAY}
+        <>
+          <MonitorStatusDot
+            tone={tone}
             label={active.length ? `${active.length} 執行` : busy.length ? `${busy.length} 佇列` : '空閒'}
           />
-          {onOpen ? <GoBtn onClick={onOpen} label="角色／質詢" /> : null}
-          {onOpenTab ? <GoBtn onClick={() => onOpenTab('memory')} label="L0" /> : null}
-          {onOpenTab ? <GoBtn onClick={() => onOpenTab('integrations')} label="整合" /> : null}
-        </span>
+          {onOpen ? <MonitorLinkButton onClick={onOpen} label="角色／質詢" /> : null}
+          {onOpenTab ? <MonitorLinkButton onClick={() => onOpenTab('memory')} label="L0" /> : null}
+          {onOpenTab ? <MonitorLinkButton onClick={() => onOpenTab('integrations')} label="整合" /> : null}
+        </>
       }
-      className={dock ? 'max-h-[180px]' : 'max-h-[240px]'}
       scroll={busy.length > (dock ? 3 : 4)}
+      className={dock ? 'max-h-[180px]' : 'max-h-[240px]'}
     >
       {busy.length === 0 ? (
         <div className="py-4 text-center">
@@ -321,14 +244,14 @@ function CompanyCard({
                 requestRoleSettingsDesk();
                 onOpen();
               }}
-              className="mt-2 text-[11px] font-medium console-status-accent hover:underline"
+              className="mon-link-btn mt-2 text-[11px] font-medium"
             >
               指定模型與 Token
             </button>
           ) : null}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {busy.map((a) => {
             const hot = active.some((x) => x.id === a.id);
             const pct = Math.min(
@@ -338,7 +261,7 @@ function CompanyCard({
             return (
               <div
                 key={a.id}
-                className={`flex items-center gap-3 ${onOpenAgent ? 'cursor-pointer rounded-lg hover:bg-white/[0.04]' : ''}`}
+                className={onOpenAgent ? 'cursor-pointer rounded-lg hover:bg-[var(--console-card-elevated)]' : ''}
                 onClick={() => onOpenAgent?.(a.id)}
                 onKeyDown={(e) => {
                   if (onOpenAgent && (e.key === 'Enter' || e.key === ' ')) {
@@ -349,34 +272,17 @@ function CompanyCard({
                 role={onOpenAgent ? 'button' : undefined}
                 tabIndex={onOpenAgent ? 0 : undefined}
               >
-                <span
-                  className="apple-dot shrink-0"
-                  style={{
-                    background: hot ? GREEN : a.status === 'error' ? RED : ORANGE,
-                    boxShadow: hot ? `0 0 0 2px ${GREEN}33, 0 0 12px ${GREEN}66` : undefined,
-                  }}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <p className="truncate text-[12px] font-bold text-[var(--console-ink)]">{a.name}</p>
-                    <span className="apple-data shrink-0 text-[10px] text-[var(--console-sub)]">{pct}%</span>
-                  </div>
-                  <div className="h-1 overflow-hidden rounded-full bg-white/[0.08]">
-                    <div
-                      className="h-full rounded-full transition-[width] duration-500"
-                      style={{
-                        width: `${pct}%`,
-                        background: hot ? GREEN : a.status === 'error' ? RED : BLUE,
-                      }}
-                    />
-                  </div>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <p className="truncate text-[12px] font-semibold text-[var(--console-ink)]">{a.name}</p>
+                  <MonitorStatusDot tone={hot ? 'ok' : a.status === 'error' ? 'err' : 'warn'} label={`${pct}%`} />
                 </div>
+                <MiniProgressBar value={pct} hot={hot} good={a.status !== 'error'} />
               </div>
             );
           })}
         </div>
       )}
-    </FrostCard>
+    </MonitorPanel>
   );
 }
 
@@ -392,35 +298,30 @@ function BudgetCard({
   const b = budgetPct(feed.summary);
 
   return (
-    <FrostCard
+    <MonitorPanel
       title="預算"
       accessory={
-        <span className="flex items-center gap-2">
-          <StatusDot
-            color={b.totalUsd > 0 ? BLUE : GRAY}
+        <>
+          <MonitorStatusDot
+            tone={b.totalUsd > 0 ? 'info' : 'idle'}
             label={b.totalUsd > 0 ? `$${b.totalUsd.toFixed(3)}` : '無用量'}
           />
-          {onOpen ? <GoBtn onClick={onOpen} label="用量" /> : null}
-        </span>
+          {onOpen ? <MonitorLinkButton onClick={onOpen} label="用量" /> : null}
+        </>
       }
     >
-      <div className={`flex items-center justify-around ${dock ? 'py-1' : 'py-2'}`}>
-        <RingMetric
-          value={b.apiPct}
-          label="API"
-          color={BLUE}
-          size={dock ? 60 : 80}
-          sub={b.totalUsd > 0 ? `$${b.apiUsd.toFixed(3)}` : '—'}
-        />
-        <RingMetric
-          value={b.cloudPct}
-          label="雲資源"
-          color={ORANGE}
-          size={dock ? 60 : 80}
-          sub={b.totalUsd > 0 ? `$${b.cloudUsd.toFixed(3)}` : '—'}
-        />
-      </div>
-    </FrostCard>
+      <ResourceGauges
+        gauges={[
+          { label: 'API', pct: b.apiPct, color: 'var(--console-blue)' },
+          { label: '雲資源', pct: b.cloudPct, color: 'var(--console-amber)' },
+        ]}
+      />
+      {b.totalUsd > 0 && !dock ? (
+        <p className="mt-3 text-center text-[10px] text-[var(--console-faint)]">
+          API ${b.apiUsd.toFixed(3)} · 雲 ${b.cloudUsd.toFixed(3)}
+        </p>
+      ) : null}
+    </MonitorPanel>
   );
 }
 
@@ -436,36 +337,27 @@ function SystemMetricsCard({
   const traceCount = opt?.trace.trace_count ?? 0;
   const successRate = opt?.system_stats?.success_rate ?? 0;
   const satisfaction = Math.round((opt?.user_feedback?.satisfaction_rate ?? 0) * 100);
-  const tone = hitPct >= 30 || traceCount > 0 ? GREEN : GRAY;
+  const tone: MonitorStatusTone = hitPct >= 30 || traceCount > 0 ? 'ok' : 'idle';
 
   return (
-    <FrostCard
+    <MonitorPanel
       title="運行指標"
       accessory={
-        <span className="flex items-center gap-2">
-          <StatusDot color={tone} label={hitPct >= 30 ? '快取活躍' : '累積中'} />
-          {onOpen ? <GoBtn onClick={onOpen} /> : null}
-        </span>
+        <>
+          <MonitorStatusDot tone={tone} label={hitPct >= 30 ? '快取活躍' : '累積中'} />
+          {onOpen ? <MonitorLinkButton onClick={onOpen} /> : null}
+        </>
       }
     >
-      <div className="grid grid-cols-1 gap-4 py-2 sm:grid-cols-3">
-        {[
-          { label: '快取', value: `${hitPct}%`, c: hitPct >= 30 ? GREEN : GRAY },
-          { label: '成功率', value: `${successRate}%`, c: successRate >= 80 ? GREEN : ORANGE },
-          { label: 'Trace', value: String(traceCount), c: traceCount > 0 ? BLUE : GRAY },
-        ].map((cell) => (
-          <div key={cell.label} className="text-center">
-            <p className="apple-title !normal-case !tracking-normal">{cell.label}</p>
-            <p className="apple-data mt-2 text-[20px]" style={{ color: cell.c }}>
-              {cell.value}
-            </p>
-          </div>
-        ))}
-      </div>
+      <MonitorKpiGrid className="!mb-0 !grid-cols-3">
+        <KpiSparkCard label="快取" value={`${hitPct}%`} size="lg" accent={hitPct >= 30} />
+        <KpiSparkCard label="成功率" value={`${successRate}%`} size="lg" />
+        <KpiSparkCard label="Trace" value={String(traceCount)} size="lg" />
+      </MonitorKpiGrid>
       {satisfaction > 0 && (
-        <p className="mt-1 text-center text-[10px] text-[var(--console-sub)]">滿意度 {satisfaction}%</p>
+        <p className="text-center text-[10px] text-[var(--console-sub)]">滿意度 {satisfaction}%</p>
       )}
-    </FrostCard>
+    </MonitorPanel>
   );
 }
 
@@ -481,13 +373,13 @@ function EventsCard({
   const lines = useMemo(() => buildReportLines(feed.agents, dock ? 4 : 6), [feed.agents, dock]);
 
   return (
-    <FrostCard
+    <MonitorPanel
       title="事件"
       accessory={
-        <span className="flex items-center gap-2">
-          <StatusDot color={lines.length ? GREEN : GRAY} label={lines.length ? `${lines.length}` : '無'} />
-          {onOpen ? <GoBtn onClick={onOpen} label="軌跡" /> : null}
-        </span>
+        <>
+          <MonitorStatusDot tone={lines.length ? 'ok' : 'idle'} label={lines.length ? `${lines.length}` : '無'} />
+          {onOpen ? <MonitorLinkButton onClick={onOpen} label="軌跡" /> : null}
+        </>
       }
       className={dock ? 'max-h-[200px]' : 'max-h-[260px]'}
       scroll={lines.length > (dock ? 3 : 4)}
@@ -495,27 +387,19 @@ function EventsCard({
       {lines.length === 0 ? (
         <p className="py-8 text-center text-[12px] text-[var(--console-faint)]">等待事件</p>
       ) : (
-        <ul className="divide-y divide-white/[0.06]">
+        <ul className="divide-y divide-[var(--console-line)]">
           {lines.map((s) => (
             <li key={s.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-              <span
-                className="apple-dot mt-1.5 shrink-0"
-                style={{
-                  background: s.accent ?? BLUE,
-                  boxShadow: `0 0 0 2px ${(s.accent ?? BLUE)}33, 0 0 10px ${(s.accent ?? BLUE)}55`,
-                }}
-              />
+              <span className="mon-status-dot__mark mon-status-dot__mark--info mt-1.5 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[11px] font-bold" style={{ color: s.accent ?? BLUE }}>
-                  {s.role}
-                </p>
-                <p className="mt-0.5 text-[12px] font-normal leading-snug text-[var(--console-ink)]">{s.line}</p>
+                <p className="truncate text-[11px] font-semibold text-[var(--console-blue)]">{s.role}</p>
+                <p className="mt-0.5 text-[12px] leading-snug text-[var(--console-ink)]">{s.line}</p>
               </div>
             </li>
           ))}
         </ul>
       )}
-    </FrostCard>
+    </MonitorPanel>
   );
 }
 
@@ -525,33 +409,24 @@ function ApiPoolCard({ feed, onOpen }: { feed: AnimLiveFeed; onOpen?: () => void
   const configured = routes.filter((r) => r.configured && r.enabled);
   const strategy = ops?.route_strategy || 'role_preferred';
   const modelCount = ops?.allowed_models.length ?? 0;
-  const tone = !ops ? GRAY : configured.length ? GREEN : ORANGE;
+  const tone: MonitorStatusTone = !ops ? 'idle' : configured.length ? 'ok' : 'warn';
 
   return (
-    <FrostCard
-      title="API 池"
-      accessory={onOpen ? <GoBtn onClick={onOpen} label="管理" /> : undefined}
-    >
+    <MonitorPanel title="API 池" accessory={onOpen ? <MonitorLinkButton onClick={onOpen} label="管理" /> : undefined}>
       {!ops ? (
         <p className="py-4 text-center text-[12px] text-[var(--console-faint)]">同步中…</p>
       ) : routes.length === 0 && !ops.configured ? (
         <div className="py-4 text-center">
           <p className="text-[12px] text-[var(--console-sub)]">尚未配置 API</p>
           {onOpen ? (
-            <button
-              type="button"
-              onClick={onOpen}
-              className="mt-2 inline-block text-[11px] font-medium console-status-accent hover:underline"
-            >
-              前往 {navPathForTab('llm')}
-            </button>
+            <MonitorLinkButton onClick={onOpen} label={`前往 ${navPathForTab('llm')}`} />
           ) : null}
         </div>
       ) : (
         <div className="space-y-2 py-1">
           <div className="flex items-center justify-between text-[11px] text-[var(--console-sub)]">
-            <StatusDot
-              color={tone}
+            <MonitorStatusDot
+              tone={tone}
               label={
                 routes.length
                   ? `${configured.length}/${routes.length} 啟用`
@@ -564,32 +439,39 @@ function ApiPoolCard({ feed, onOpen }: { feed: AnimLiveFeed; onOpen?: () => void
               {modelCount} 模型 · {strategy}
             </span>
           </div>
-          <ul className="divide-y divide-white/[0.06]">
-            {(routes.length ? routes : [{
-              id: 'primary',
-              name: ops.provider_label || '預設 API',
-              model: ops.model,
-              allowed_models: ops.allowed_models,
-              configured: ops.configured,
-              enabled: true,
-            }]).slice(0, 4).map((route) => (
-              <li key={route.id} className="flex items-center justify-between gap-2 py-1.5 first:pt-0">
-                <button
-                  type="button"
-                  className="min-w-0 truncate text-left text-[12px] font-medium text-[var(--console-ink)] hover:console-status-blue"
-                  onClick={onOpen}
-                >
-                  {route.name}
-                </button>
-                <span className="shrink-0 font-mono text-[10px] text-[var(--console-sub)]">
-                  {route.model || `${route.allowed_models.length} 模`}
-                </span>
-              </li>
-            ))}
+          <ul className="divide-y divide-[var(--console-line)]">
+            {(routes.length
+              ? routes
+              : [
+                  {
+                    id: 'primary',
+                    name: ops.provider_label || '預設 API',
+                    model: ops.model,
+                    allowed_models: ops.allowed_models,
+                    configured: ops.configured,
+                    enabled: true,
+                  },
+                ]
+            )
+              .slice(0, 4)
+              .map((route) => (
+                <li key={route.id} className="flex items-center justify-between gap-2 py-1.5 first:pt-0">
+                  <button
+                    type="button"
+                    className="min-w-0 truncate text-left text-[12px] font-medium text-[var(--console-ink)] hover:text-[var(--console-blue)]"
+                    onClick={onOpen}
+                  >
+                    {route.name}
+                  </button>
+                  <span className="shrink-0 font-mono text-[10px] tabular-nums text-[var(--console-sub)]">
+                    {route.model || `${route.allowed_models.length} 模`}
+                  </span>
+                </li>
+              ))}
           </ul>
         </div>
       )}
-    </FrostCard>
+    </MonitorPanel>
   );
 }
 
@@ -601,24 +483,22 @@ function ExternalIntegrationsCard({
   onOpenTab?: (tab: MonitorTab) => void;
 }) {
   return (
-    <FrostCard
+    <MonitorPanel
       title="外部整合"
       accessory={
         onOpenTab ? (
-          <GoBtn onClick={() => onOpenTab('integrations')} label="面板" />
+          <MonitorLinkButton onClick={() => onOpenTab('integrations')} label="面板" />
         ) : (
-          <a href="#/monitor/integrations" className="text-[10px] font-bold console-status-accent hover:underline">
-            面板
-          </a>
+          <MonitorLinkButton href="#/monitor/integrations" label="面板" />
         )
       }
-      className={dock ? '' : 'lb-span-2'}
+      className={dock ? '' : 'mon-span-2'}
     >
       <IntegrationsStrip density={dock ? 'compact' : 'comfortable'} showSummary={false} showGroups={!dock} />
       <p className="mt-2 text-[10px] leading-relaxed text-[var(--console-faint)]">
         MemOS 記憶 · OpenViking 分層上下文 · WeKnora 知識 · Yao 任務板 · Ouroboros 閘門 · OpenPencil 設計。預設關閉，顯式啟用。
       </p>
-    </FrostCard>
+    </MonitorPanel>
   );
 }
 
@@ -630,27 +510,19 @@ function LabToolsCard({
   onOpenLab?: (sub: LabSubTab) => void;
 }) {
   const chipClass =
-    'rounded-full border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-1.5 text-[11px] font-medium text-[var(--console-ink)] transition-colors hover:border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]';
+    'rounded-full border border-[var(--console-line)] bg-[var(--console-card-elevated)] px-3 py-1.5 text-[11px] font-medium text-[var(--console-ink)] transition-colors hover:border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]';
 
   return (
-    <FrostCard
+    <MonitorPanel
       title="實驗室工具"
       accessory={
         onOpenLab ? (
-          <button
-            type="button"
-            onClick={() => onOpenLab('prompt')}
-            className="text-[10px] font-bold console-status-accent hover:underline"
-          >
-            實驗室
-          </button>
+          <MonitorLinkButton onClick={() => onOpenLab('prompt')} label="實驗室" />
         ) : (
-          <a href="#/monitor/lab" className="text-[10px] font-bold console-status-accent hover:underline">
-            實驗室
-          </a>
+          <MonitorLinkButton href="#/monitor/lab" label="實驗室" />
         )
       }
-      className={dock ? '' : 'lb-span-2'}
+      className={dock ? '' : 'mon-span-2'}
     >
       <div className="flex flex-wrap gap-2">
         {LAB_INTEGRATION_TABS.map((item) =>
@@ -679,7 +551,7 @@ function LabToolsCard({
       <p className="mt-2 text-[10px] leading-relaxed text-[var(--console-faint)]">
         Firecrawl 爬蟲 · Prompt Optimizer · Archify 架構 · Ponytail 精簡 · stock-quant 策略庫
       </p>
-    </FrostCard>
+    </MonitorPanel>
   );
 }
 
@@ -689,12 +561,10 @@ function OverviewKpiRow({ feed }: { feed: AnimLiveFeed }) {
   const opt = feed.optimization;
   const hitPct = Math.round((opt?.llm_cache.hit_rate ?? 0) * 100);
   const successRate = opt?.system_stats?.success_rate ?? 0;
-  const spark = Array.from({ length: 24 }, (_, h) =>
-    tasks.filter((t) => new Date(t.created_at * 1000).getHours() === h).length,
-  );
+  const spark = buildSparkSeries24(opt ?? null, tasks);
 
   return (
-    <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+    <MonitorKpiGrid>
       {[
         { label: '快取命中', value: `${hitPct}%`, accent: true },
         { label: '成功率', value: `${successRate}%` },
@@ -703,8 +573,221 @@ function OverviewKpiRow({ feed }: { feed: AnimLiveFeed }) {
         { label: 'Trace', value: String(opt?.trace.trace_count ?? 0) },
         { label: 'API', value: String(feed.llmOps?.api_routes?.length ?? 0) },
       ].map((kpi) => (
-        <KpiSparkCard key={kpi.label} label={kpi.label} value={kpi.value} spark={spark} accent={kpi.accent} />
+        <KpiSparkCard
+          key={kpi.label}
+          label={kpi.label}
+          value={kpi.value}
+          spark={spark}
+          accent={kpi.accent}
+          size="lg"
+        />
       ))}
+    </MonitorKpiGrid>
+  );
+}
+
+function TaskStackPanel({
+  tasks,
+  statusStack,
+  onOpenTab,
+}: {
+  tasks: TaskSummary[];
+  statusStack: ReturnType<typeof buildStatusStack>;
+  onOpenTab?: (tab: MonitorTab) => void;
+}) {
+  const sorted = useMemo(() => {
+    const order = { p1: 0, p2: 1, p3: 2 };
+    return [...tasks]
+      .sort((a, b) => order[taskPriority(a)] - order[taskPriority(b)])
+      .slice(0, 8);
+  }, [tasks]);
+
+  return (
+    <div className="mon-stack-section">
+      <p className="mon-stack-section__label">任務狀態堆疊</p>
+      {statusStack.length > 0 ? <StackBar segments={statusStack} /> : null}
+      <div className="mon-task-stack mt-3">
+        {sorted.length === 0 ? (
+          <p className="py-4 text-center text-[11px] text-[var(--console-faint)]">尚無任務</p>
+        ) : (
+          sorted.map((task) => {
+            const shortId = task.task_id.replace(/^.*[#-]/, '').slice(-4) || task.task_id.slice(0, 4);
+            return (
+              <TaskPriorityCard
+                key={task.task_id}
+                priority={taskPriority(task)}
+                title={task.query || '（無標題）'}
+                onClick={() => onOpenTab?.('tasks')}
+                meta={
+                  <>
+                    <span>{task.status}</span>
+                    <span>#{shortId}</span>
+                  </>
+                }
+              />
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CenterMain({
+  feed,
+  consoleFeed,
+  backgroundPhase,
+  taskMatrix,
+  statusStack,
+  capacityFull,
+  cacheWarnText,
+  dock,
+  liteShell,
+  onOpenTab,
+  onOpenTraces,
+  onOpenAgent,
+  onOpenLab,
+  showTaskStack,
+}: {
+  feed: AnimLiveFeed;
+  consoleFeed: AnimLiveFeed;
+  backgroundPhase?: string | null;
+  taskMatrix: ReturnType<typeof buildTaskDistributionMatrix>;
+  statusStack: ReturnType<typeof buildStatusStack>;
+  capacityFull: boolean;
+  cacheWarnText?: string;
+  dock?: boolean;
+  liteShell?: boolean;
+  onOpenTab?: (tab: MonitorTab) => void;
+  onOpenTraces?: () => void;
+  onOpenAgent?: (id: string) => void;
+  onOpenLab?: (sub: LabSubTab) => void;
+  showTaskStack?: boolean;
+}) {
+  const dashboard = useMonitorStore((s) => s.dashboard);
+  const tasks = dashboard?.tasks ?? [];
+  const heatmap = useMemo(() => buildActivityHeatmap(tasks), [tasks]);
+  const heatmapEmpty = heatmap.every((r) => r.every((c) => c.level === 0 && !c.error));
+
+  return (
+    <div className="mon-live-stack">
+      {capacityFull && cacheWarnText ? <MonitorWarnBar>{cacheWarnText}</MonitorWarnBar> : null}
+      {!dock && !liteShell && <OverviewKpiRow feed={consoleFeed} />}
+      {!dock && !liteShell && statusStack.length > 0 ? (
+        <div className="mon-stack-section">
+          <p className="mon-stack-section__label">任務狀態比例</p>
+          <StackBar segments={statusStack} />
+        </div>
+      ) : null}
+      {showTaskStack ? (
+        <TaskStackPanel tasks={tasks} statusStack={statusStack} onOpenTab={onOpenTab} />
+      ) : null}
+      {!dock && !liteShell ? (
+        <MonitorPanel title="活動熱力圖 · 7×24">
+          <ActivityHeatmap rows={heatmap} demo={heatmapEmpty} />
+        </MonitorPanel>
+      ) : null}
+      {dock ? (
+        <div className="mon-dock-grid">
+          <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
+          <CompanyCard
+            feed={consoleFeed}
+            dock
+            onOpen={() => onOpenTab?.('agents')}
+            onOpenAgent={onOpenAgent}
+            onOpenTab={onOpenTab}
+          />
+          <div className="mon-span-2">
+            <PipelineCard feed={feed} backgroundPhase={backgroundPhase} dock onOpen={() => onOpenTab?.('pipeline')} />
+          </div>
+          <BudgetCard feed={feed} dock onOpen={() => onOpenTab?.('models')} />
+          <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
+          <div className="mon-span-2">
+            <EventsCard feed={consoleFeed} dock onOpen={onOpenTraces} />
+          </div>
+          <div className="mon-span-2">
+            <ExternalIntegrationsCard dock onOpenTab={onOpenTab} />
+          </div>
+          <div className="mon-span-2">
+            <LabToolsCard dock onOpenLab={onOpenLab} />
+          </div>
+        </div>
+      ) : (
+        <>
+          <PipelineCard feed={feed} backgroundPhase={backgroundPhase} onOpen={() => onOpenTab?.('pipeline')} />
+          {!liteShell ? (
+            <MonitorPanel title="任務分佈矩陣">
+              <TaskDistributionMatrix matrix={taskMatrix} demo={taskMatrix.every((r) => r.every((c) => c.count === 0))} />
+            </MonitorPanel>
+          ) : null}
+          <div className="grid gap-2 lg:grid-cols-2">
+            <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
+            <CompanyCard
+              feed={consoleFeed}
+              onOpen={() => onOpenTab?.('agents')}
+              onOpenAgent={onOpenAgent}
+              onOpenTab={onOpenTab}
+            />
+          </div>
+          <div className="grid gap-2 lg:grid-cols-2">
+            <BudgetCard feed={feed} onOpen={() => onOpenTab?.('models')} />
+            <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
+          </div>
+          <EventsCard feed={consoleFeed} onOpen={onOpenTraces} />
+          <ExternalIntegrationsCard onOpenTab={onOpenTab} />
+          <LabToolsCard onOpenLab={onOpenLab} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function RightRailContent({
+  feed,
+  consoleFeed,
+  statusStack,
+  onOpenTab,
+  onOpenAgent,
+}: {
+  feed: AnimLiveFeed;
+  consoleFeed: AnimLiveFeed;
+  statusStack: ReturnType<typeof buildStatusStack>;
+  onOpenTab?: (tab: MonitorTab) => void;
+  onOpenAgent?: (id: string) => void;
+}) {
+  const dashboard = useMonitorStore((s) => s.dashboard);
+  const tasks = dashboard?.tasks ?? [];
+  const opt = feed.optimization;
+  const edge = opt?.edge_cache ?? opt?.opc_edge;
+  const cacheCapPct = edge?.max_size ? ((edge?.entry_count ?? 0) / edge.max_size) * 100 : 0;
+
+  return (
+    <div className="mon-live-stack">
+      <MonitorPanel title="資源">
+        <ResourceGauges
+          gauges={[
+            { label: 'MEM', pct: Math.min(100, Math.round(cacheCapPct)), color: 'var(--console-green)' },
+            {
+              label: 'CPU',
+              pct: Math.min(100, (opt?.system_stats?.tasks_running ?? 0) * 12 + 8),
+              color: 'var(--console-blue)',
+            },
+            {
+              label: 'NET',
+              pct: Math.min(100, Math.round((opt?.trace.trace_count ?? 0) / 2)),
+              color: 'var(--console-cyan)',
+            },
+          ]}
+        />
+      </MonitorPanel>
+      <TaskStackPanel tasks={tasks} statusStack={statusStack} onOpenTab={onOpenTab} />
+      <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
+      <CompanyCard
+        feed={consoleFeed}
+        onOpen={() => onOpenTab?.('agents')}
+        onOpenAgent={onOpenAgent}
+        onOpenTab={onOpenTab}
+      />
     </div>
   );
 }
@@ -722,13 +805,13 @@ export default function LiveBoard({
   feed: AnimLiveFeed;
   backgroundPhase?: string | null;
   density?: LiveBoardDensity;
-  /** 行動 Lite：精簡卡片、隱藏密集 KPI／矩陣／全螢幕告警 */
   liteShell?: boolean;
 } & LiveBoardNav) {
   const { t } = useTranslation();
   const [alertMode, setAlertMode] = useState(false);
   const [unhealthyKeys, setUnhealthyKeys] = useState(0);
-  const dock = density === 'dock' || liteShell;
+  const dock = density === 'dock';
+  const isMobile = useMediaQuery('(max-width: 767px)', false);
 
   useEffect(() => {
     if (dock) return;
@@ -736,6 +819,7 @@ export default function LiveBoard({
       .then((o) => setUnhealthyKeys(o.unhealthy_keys_count))
       .catch(() => setUnhealthyKeys(0));
   }, [dock]);
+
   const dashboard = useMonitorStore((s) => s.dashboard);
   const consoleFeed = useMemo(
     () => ({ ...feed, agents: filterAgentsByDesk(feed.agents, 'console') }),
@@ -757,131 +841,165 @@ export default function LiveBoard({
       })
     : null;
 
+  const opt = feed.optimization;
+  const edge = opt?.edge_cache ?? opt?.opc_edge;
+  const cacheCapPct = edge?.max_size ? ((edge?.entry_count ?? 0) / edge.max_size) * 100 : 0;
+  const capacityFull = cacheCapPct >= 100;
+  const cacheWarnText = capacityFull
+    ? `⚠ 快取容量 ${Math.round(cacheCapPct)}% — 建議清理（${edge?.entry_count ?? 0}/${edge?.max_size ?? 512}）`
+    : undefined;
+
   const handleAlertJump = (tab: MonitorTab, detail?: string) => {
     onOpenTab?.(tab);
     if (detail && tab === 'agents') onOpenAgent?.(detail);
   };
 
-  return (
-    <div
-      className={`lb-board flex min-h-0 flex-col overflow-hidden ${
-        dock ? 'rounded-2xl border border-white/[0.08]' : 'flex-1'
-      }`}
-    >
-      <MonitorAlertMode
-        open={alertMode && !liteShell}
-        onClose={() => setAlertMode(false)}
-        onJump={handleAlertJump}
-        unhealthyKeysCount={unhealthyKeys}
-      />
-      <div
-        className={`lb-board-scroll min-h-0 flex-1 overflow-y-auto ${
-          dock ? consoleLayout.pagePaddingDense : consoleLayout.pagePadding
-        }`}
-      >
-        {!dock && (
-          <header className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-[11px] text-[var(--console-sub)]">
-              控制台總覽 · API → 角色 → 執行 → 外部整合（MemOS／Viking…）→ 審計／計費
-            </p>
-            <span className="flex items-center gap-2">
-              {!liteShell ? (
-                <button
-                  type="button"
-                  onClick={() => setAlertMode(true)}
-                  className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-2.5 py-1 text-[10px] font-medium text-[var(--console-accent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_16%,transparent)]"
-                  data-testid="monitor-alert-mode-toggle"
-                >
-                  {t('monitorAlert.toggle')}
-                </button>
-              ) : (
-                <span className="text-[10px] text-[var(--console-faint)]" title={t('mobileShell.alertModeDesktop')}>
-                  {t('mobileShell.alertModeDesktop')}
-                </span>
-              )}
-              <StatusDot color={feed.live ? GREEN : GRAY} label={feed.live ? 'LIVE' : 'IDLE'} />
-              {updated && <span className="apple-data text-[10px] text-[var(--console-faint)]">{updated}</span>}
-            </span>
-          </header>
-        )}
+  const topNav = [
+    { key: 'live', label: '總覽', tab: 'live' as MonitorTab },
+    { key: 'tasks', label: '執行', tab: 'tasks' as MonitorTab },
+    { key: 'agents', label: '角色', tab: 'agents' as MonitorTab },
+    { key: 'feedback', label: '審計', tab: 'feedback' as MonitorTab },
+    { key: 'models', label: '計費', tab: 'models' as MonitorTab },
+    { key: 'metrics', label: '系統', tab: 'metrics' as MonitorTab },
+  ];
 
-        {dock && (
-          <div className="mb-3 flex items-center gap-2">
-            <StatusDot color={feed.live ? GREEN : GRAY} label={feed.live ? 'LIVE' : 'IDLE'} />
-            {updated && <span className="font-mono text-[10px] text-[var(--console-faint)]">{updated}</span>}
-          </div>
-        )}
+  const topbarActions = (
+    <>
+      {!liteShell ? (
+        <button
+          type="button"
+          onClick={() => setAlertMode(true)}
+          className="mon-alert-btn"
+          data-testid="monitor-alert-mode-toggle"
+        >
+          {t('monitorAlert.toggle')}
+        </button>
+      ) : (
+        <span className="text-[10px] text-[var(--console-faint)]" title={t('mobileShell.alertModeDesktop')}>
+          {t('mobileShell.alertModeDesktop')}
+        </span>
+      )}
+      <MonitorStatusDot tone={liveTone(feed)} label={feed.live ? 'LIVE' : 'IDLE'} />
+    </>
+  );
 
-        {!dock && <WorkflowStrip feed={consoleFeed} onOpenTab={onOpenTab} />}
-        {!dock && <OverviewKpiRow feed={consoleFeed} />}
-        {!dock && statusStack.length > 0 ? (
-          <div className="mb-3 rounded-xl border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-2">
-            <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">任務狀態比例</p>
-            <StackBar segments={statusStack} />
-          </div>
-        ) : null}
+  const topbar = !dock ? (
+    <MonitorTopbar
+      brand={
+        <>
+          <span className="accent">靈境</span>
+          <span>·Linkin</span>
+        </>
+      }
+      nav={topNav.map((item) => ({
+        key: item.key,
+        label: item.label,
+        active: item.tab === 'live',
+        onClick: () => onOpenTab?.(item.tab),
+      }))}
+      meta={updated ? <span className="font-mono tabular-nums">{updated}</span> : '監控級儀表板 v3'}
+      actions={topbarActions}
+    />
+  ) : null;
 
-        {dock ? (
-          <div className="lb-dock-grid">
-            <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
-            <CompanyCard
-              feed={consoleFeed}
-              dock
-              onOpen={() => onOpenTab?.('agents')}
-              onOpenAgent={onOpenAgent}
-              onOpenTab={onOpenTab}
-            />
-            <div className="lb-span-2">
-              <PipelineCard
-                feed={feed}
-                backgroundPhase={backgroundPhase}
-                dock
-                onOpen={() => onOpenTab?.('pipeline')}
-              />
-            </div>
-            <BudgetCard feed={feed} dock onOpen={() => onOpenTab?.('models')} />
-            <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
-            <div className="lb-span-2">
-              <EventsCard feed={consoleFeed} dock onOpen={onOpenTraces} />
-            </div>
-            <div className="lb-span-2">
-              <ExternalIntegrationsCard dock onOpenTab={onOpenTab} />
-            </div>
-            <div className="lb-span-2">
-              <LabToolsCard dock onOpenLab={onOpenLab} />
-            </div>
+  const center = (
+    <CenterMain
+      feed={feed}
+      consoleFeed={consoleFeed}
+      backgroundPhase={backgroundPhase}
+      taskMatrix={taskMatrix}
+      statusStack={statusStack}
+      capacityFull={capacityFull}
+      cacheWarnText={cacheWarnText}
+      dock={dock}
+      liteShell={liteShell}
+      onOpenTab={onOpenTab}
+      onOpenTraces={onOpenTraces}
+      onOpenAgent={onOpenAgent}
+      onOpenLab={onOpenLab}
+      showTaskStack={false}
+    />
+  );
+
+  const right = (
+    <RightRailContent
+      feed={feed}
+      consoleFeed={consoleFeed}
+      statusStack={statusStack}
+      onOpenTab={onOpenTab}
+      onOpenAgent={onOpenAgent}
+    />
+  );
+
+  const left = <WorkflowRail feed={consoleFeed} onOpenTab={onOpenTab} />;
+
+  if (dock) {
+    return (
+      <div className="mon-live-shell flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--console-line)]">
+        <MonitorAlertMode
+          open={alertMode && !liteShell}
+          onClose={() => setAlertMode(false)}
+          onJump={handleAlertJump}
+          unhealthyKeysCount={unhealthyKeys}
+        />
+        <div className="mon-live-mobile-scroll">
+          <div className="mb-2 flex items-center gap-2">
+            <MonitorStatusDot tone={liveTone(feed)} label={feed.live ? 'LIVE' : 'IDLE'} />
+            {updated ? <span className="font-mono text-[10px] tabular-nums text-[var(--console-faint)]">{updated}</span> : null}
           </div>
-        ) : (
-          <div className="lb-board-grid">
-            <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
-            <CompanyCard
-              feed={consoleFeed}
-              onOpen={() => onOpenTab?.('agents')}
-              onOpenAgent={onOpenAgent}
-              onOpenTab={onOpenTab}
-            />
-            <div className="lb-span-2">
-              <PipelineCard
-                feed={feed}
-                backgroundPhase={backgroundPhase}
-                onOpen={() => onOpenTab?.('pipeline')}
-              />
-            </div>
-            <BudgetCard feed={feed} onOpen={() => onOpenTab?.('models')} />
-            <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
-            <div className="lb-span-2">
-              <FrostCard title="任務分佈矩陣">
-                <TaskDistributionMatrix matrix={taskMatrix} demo={taskMatrix.every((r) => r.every((c) => c.count === 0))} />
-              </FrostCard>
-            </div>
-            <div className="lb-span-2">
-              <EventsCard feed={consoleFeed} onOpen={onOpenTraces} />
-            </div>
-            <ExternalIntegrationsCard onOpenTab={onOpenTab} />
-            <LabToolsCard onOpenLab={onOpenLab} />
-          </div>
-        )}
+          {center}
+        </div>
       </div>
-    </div>
+    );
+  }
+
+  if (isMobile && !dock) {
+    return (
+      <PanelShell scroll={false}>
+        <div className="mon-live-shell">
+          <MonitorAlertMode
+            open={alertMode && !liteShell}
+            onClose={() => setAlertMode(false)}
+            onJump={handleAlertJump}
+            unhealthyKeysCount={unhealthyKeys}
+          />
+          {topbar}
+          <div className="mon-live-mobile-scroll">
+            {left}
+            {center}
+            {right}
+          </div>
+        </div>
+      </PanelShell>
+    );
+  }
+
+  return (
+    <PanelShell scroll={false}>
+      <div className="mon-live-shell">
+        <MonitorAlertMode
+          open={alertMode && !liteShell}
+          onClose={() => setAlertMode(false)}
+          onJump={handleAlertJump}
+          unhealthyKeysCount={unhealthyKeys}
+        />
+        {topbar}
+        <ConsoleThreeColumn
+          className="mon-live-board"
+          liteShell={liteShell}
+          mobileLabels={{ left: '工作流', center: '總覽', right: '任務堆疊' }}
+        >
+          <ConsoleLeftRail>
+            <ConsoleColumnScroll className="!py-4">{left}</ConsoleColumnScroll>
+          </ConsoleLeftRail>
+          <ConsoleCenterColumn>
+            <ConsoleColumnScroll>{center}</ConsoleColumnScroll>
+          </ConsoleCenterColumn>
+          <ConsoleRightRail>
+            <ConsoleColumnScroll className="!py-4">{right}</ConsoleColumnScroll>
+          </ConsoleRightRail>
+        </ConsoleThreeColumn>
+      </div>
+    </PanelShell>
   );
 }
