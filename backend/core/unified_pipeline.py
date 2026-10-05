@@ -107,10 +107,9 @@ def build_semantic_lock_from_task_options(options: dict[str, Any] | None) -> dic
 
 
 def resolve_task_effective_query(raw_query: str, options: dict[str, Any] | None) -> str:
-    """與 ``TaskManager.create_task`` 相同的 query 解析（含 ticket／brief）。"""
+    """與 ``TaskManager.create_task`` 相同的 query 解析（brief／ticket 優先序一致）。"""
     opts = options or {}
-    lock = build_semantic_lock_from_task_options(opts)
-    brief = lock.get("locked_brief")
+    brief = opts.get("semantic_brief") or opts.get("locked_brief")
     if isinstance(brief, str) and brief.strip():
         return brief.strip()
     ticket = opts.get("auditor_ticket")

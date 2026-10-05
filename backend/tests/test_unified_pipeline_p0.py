@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from backend.core.reflection_limits import resolve_task_complexity
+from backend.core.company_nodes import route_by_complexity
+from backend.core.execution_path import chat_stream_uses_company_sse, resolve_execution_path
+from backend.core.reflection_limits import reflection_max_iterations, resolve_task_complexity
 from backend.core.routing_preview import build_routing_preview
 from backend.core.unified_pipeline import (
     PipelineMode,
@@ -15,11 +18,13 @@ from backend.core.unified_pipeline import (
     build_pipeline_request_from_chat,
     build_pipeline_request_from_task,
     build_semantic_lock_from_task_options,
+    effective_query_from_lock,
     pipeline_at_least,
     pipeline_level,
     resolve_task_effective_query,
     run_unified_pipeline,
 )
+from backend.services.task_manager import TaskManager
 
 
 @pytest.fixture(autouse=True)
@@ -45,6 +50,124 @@ def _reset_unknown_pipeline_log():
     up._unknown_env_logged = False
     yield
     up._unknown_env_logged = False
+
+
+@pytest.fixture
+def task_manager_no_redis():
+    mgr = TaskManager()
+    with patch.object(mgr, "_persist", MagicMock()), patch.object(mgr, "_get_redis", return_value=None):
+        yield mgr
+
+
+def _graph_target_to_exec_path(target: str) -> str:
+    return {
+        "run_company": "company",
+        "run_minecraft_ops": "minecraft_ops",
+        "generate_initial_answer": "simple",
+    }[target]
+
+
+def routing_snapshot_chat_sync(
+    query: str,
+    strategy: str = "auto",
+    *,
+    semantic_lock: dict[str, Any] | None = None,
+    company_template: str = "quick_task",
+) -> dict[str, Any]:
+    """``POST /chat``：圖上 ``route_by_complexity`` + 與 preview 同源的 path／輪次解析。"""
+    effective = effective_query_from_lock(query, semantic_lock)
+    state: dict[str, Any] = {
+        "query": effective,
+        "execution_strategy": strategy,
+    }
+    target = route_by_complexity(state)
+    resolve_path = resolve_execution_path(
+        effective,
+        strategy,
+        task_complexity=state.get("task_complexity"),
+    )
+    complexity = resolve_task_complexity(effective, strategy)
+    max_rounds = reflection_max_iterations(
+        {
+            "query": effective,
+            "execution_strategy": strategy,
+            "task_complexity": complexity,
+            "resolved_execution_path": resolve_path,
+        },
+        routing_preview=True,
+    )
+    _ = company_template
+    return {
+        "target": target,
+        "exec_path": _graph_target_to_exec_path(target),
+        "resolve_path": resolve_path,
+        "complexity": complexity,
+        "max_reflection_rounds": max_rounds,
+    }
+
+
+def routing_snapshot_task(
+    mgr: TaskManager,
+    query: str,
+    strategy: str = "auto",
+    *,
+    template: str = "quick_task",
+    options: dict[str, Any] | None = None,
+) -> tuple[str, str, int]:
+    """``TaskManager._run_unified_task`` 開頭相同的三元組。"""
+    record = mgr.create_task(query, strategy, template, options=options or {})
+    record.task_complexity = resolve_task_complexity(record.query, record.strategy)
+    preview = build_routing_preview(
+        record.query,
+        mode=record.strategy,
+        company_template=record.template,
+        task_complexity=record.task_complexity,
+    )
+    return (
+        str(preview["path"]),
+        str(preview["complexity"]),
+        int(preview["max_reflection_rounds"]),
+    )
+
+
+def routing_snapshot_sse(
+    query: str,
+    strategy: str = "auto",
+    *,
+    semantic_lock: dict[str, Any] | None = None,
+    company_template: str = "quick_task",
+) -> dict[str, Any]:
+    """``chat_stream`` 分支 + 各分支內 ``build_routing_preview`` 呼叫方式。"""
+    effective = effective_query_from_lock(query, semantic_lock)
+
+    if chat_stream_uses_company_sse(query, strategy):
+        branch = "company"
+        preview = build_routing_preview(
+            effective,
+            mode=strategy,
+            company_template=company_template,
+        )
+    elif resolve_execution_path(query, strategy) == "minecraft_ops":
+        branch = "minecraft_ops"
+        preview = build_routing_preview(
+            effective,
+            mode=strategy,
+            company_template=company_template,
+        )
+    else:
+        branch = "simple"
+        preview = build_routing_preview(
+            effective,
+            mode=strategy,
+            company_template=company_template,
+        )
+
+    return {
+        "branch": branch,
+        "path": str(preview["path"]),
+        "complexity": str(preview["complexity"]),
+        "max_reflection_rounds": int(preview["max_reflection_rounds"]),
+    }
 
 
 class TestPipelineLevel:
@@ -113,7 +236,7 @@ class TestPipelineBuilders:
             task_id="t1",
         )
         assert req.semantic_lock["auditor_ticket"] == ticket
-        assert req.effective_query == "戰役簡報本體"
+        assert req.effective_query == json.dumps(ticket, ensure_ascii=False)
 
     def test_task_approved_ticket_without_brief_uses_json_query(self):
         ticket = {"status": "APPROVED_FOR_PLANNING", "objective": "only-ticket"}
@@ -127,28 +250,59 @@ class TestPipelineBuilders:
             await run_unified_pipeline(req, PipelineMode.BATCH)
 
 
-def _routing_triple(query: str, strategy: str = "auto", *, company_template: str = "quick_task"):
-    complexity = resolve_task_complexity(query, strategy)
-    preview = build_routing_preview(
-        query,
-        mode=strategy,
-        company_template=company_template,
-        task_complexity=complexity,
+class TestTaskCreateQueryAlignment:
+    @pytest.mark.parametrize(
+        "raw,options",
+        [
+            ("raw-q", {}),
+            ("raw-q", {"locked_brief": "  brief-only  "}),
+            ("raw-q", {"semantic_brief": "semantic-wins"}),
+            (
+                "raw-q",
+                {
+                    "locked_brief": "brief-first",
+                    "auditor_ticket": {"status": "APPROVED_FOR_PLANNING", "objective": "x"},
+                },
+            ),
+            (
+                "raw-q",
+                {"auditor_ticket": {"status": "APPROVED_FOR_PLANNING", "objective": "only-ticket"}},
+            ),
+            (
+                "raw-q",
+                {
+                    "auditor_ticket": {
+                        "status": "APPROVED_FOR_PLANNING",
+                        "locked_brief": "in-ticket-not-used-for-query",
+                    },
+                },
+            ),
+            (
+                "raw-q",
+                {
+                    "semantic_brief": "combo-brief",
+                    "auditor_ticket": {"status": "APPROVED_FOR_PLANNING", "objective": "y"},
+                },
+            ),
+        ],
+        ids=[
+            "plain",
+            "locked_brief",
+            "semantic_brief",
+            "brief_before_ticket",
+            "approved_ticket_json",
+            "ticket_locked_brief_still_json",
+            "semantic_brief_and_ticket",
+        ],
     )
-    return preview["path"], preview["complexity"], preview["max_reflection_rounds"]
-
-
-def _chat_batch_triple(
-    query: str,
-    strategy: str = "auto",
-    *,
-    company_template: str = "quick_task",
-    semantic_lock: dict | None = None,
-):
-    from backend.core.unified_pipeline import effective_query_from_lock
-
-    effective = effective_query_from_lock(query, semantic_lock)
-    return _routing_triple(effective, strategy, company_template=company_template)
+    def test_create_task_query_matches_resolve_helper(
+        self, task_manager_no_redis, raw, options
+    ):
+        expected = resolve_task_effective_query(raw, options)
+        record = task_manager_no_redis.create_task(
+            raw, "auto", "quick_task", options=dict(options)
+        )
+        assert record.query == expected
 
 
 class TestThreeEntryRoutingContract:
@@ -159,48 +313,143 @@ class TestThreeEntryRoutingContract:
 
     @pytest.mark.parametrize(
         "query",
-        [SIMPLE_Q, OPC_Q, LINKIN_Q, COMPANY_Q],
-        ids=["simple", "opc", "linkin", "company"],
+        [SIMPLE_Q, LINKIN_Q, COMPANY_Q],
+        ids=["simple", "linkin", "company"],
     )
-    def test_task_sse_and_chat_batch_agree_on_routing(self, query):
-        task_path, task_complexity, task_max = _routing_triple(query)
-        sse_path, sse_complexity, sse_max = _routing_triple(query)
-        batch_path, batch_complexity, batch_max = _chat_batch_triple(query)
+    def test_task_sse_and_chat_resolve_agree(self, task_manager_no_redis, query):
+        task = routing_snapshot_task(task_manager_no_redis, query)
+        sse = routing_snapshot_sse(query)
+        chat = routing_snapshot_chat_sync(query)
 
-        assert (task_path, task_complexity, task_max) == (sse_path, sse_complexity, sse_max)
-        assert (batch_path, batch_complexity, batch_max) == (task_path, task_complexity, task_max)
+        assert task == (sse["path"], sse["complexity"], sse["max_reflection_rounds"])
+        assert chat["resolve_path"] == task[0]
+        assert chat["complexity"] == task[1]
+        assert chat["max_reflection_rounds"] == task[2]
+        assert chat["exec_path"] == task[0]
 
-    def test_semantic_lock_aligns_chat_and_task_builders(self):
+    def test_opc_q1_task_label_vs_chat_graph_execution(self, task_manager_no_redis):
+        task = routing_snapshot_task(task_manager_no_redis, self.OPC_Q)
+        sse = routing_snapshot_sse(self.OPC_Q)
+        chat = routing_snapshot_chat_sync(self.OPC_Q)
+
+        assert task[0] == "opc"
+        assert sse["path"] == "opc"
+        assert chat["resolve_path"] == "opc"
+        assert chat["target"] == "generate_initial_answer"
+        assert chat["exec_path"] == "simple"
+        assert task[1:] == (sse["complexity"], sse["max_reflection_rounds"])
+        assert chat["complexity"] == task[1]
+        assert chat["max_reflection_rounds"] == task[2]
+
+    def test_semantic_lock_aligns_chat_sse_and_task(self, task_manager_no_redis):
         brief = "鎖定：靈境聚落第二階段"
         chat_req = build_pipeline_request_from_chat(
             query="未鎖定文字",
             semantic_lock={"locked_brief": brief},
         )
-        task_req = build_pipeline_request_from_task(
-            query="未鎖定文字",
+        task = routing_snapshot_task(
+            task_manager_no_redis,
+            "未鎖定文字",
             options={"locked_brief": brief},
         )
-        chat_t = _chat_batch_triple(chat_req.query, semantic_lock=chat_req.semantic_lock)
-        task_t = _routing_triple(task_req.effective_query)
-        assert chat_t == task_t
+        sse = routing_snapshot_sse(
+            chat_req.query,
+            semantic_lock=chat_req.semantic_lock,
+        )
+        chat = routing_snapshot_chat_sync(
+            chat_req.query,
+            semantic_lock=chat_req.semantic_lock,
+        )
+        assert task == (sse["path"], sse["complexity"], sse["max_reflection_rounds"])
+        assert chat["resolve_path"] == task[0]
+
+
+def _collect_sse_phases(resp) -> list[str]:
+    phases: list[str] = []
+    for line in resp.iter_lines():
+        if not line or not line.startswith("data:"):
+            continue
+        try:
+            payload = json.loads(line.split("data:", 1)[1].strip())
+        except json.JSONDecodeError:
+            continue
+        phase = payload.get("phase")
+        if phase:
+            phases.append(str(phase))
+    return phases
+
+
+class TestEnhancementProbePositiveControls:
+    @pytest.mark.asyncio
+    async def test_opc_patch_intercepts_task_manager_lookup(self):
+        calls: list[str] = []
+
+        async def track(_state):
+            calls.append("opc")
+            return {"opc_context": {"status": "not_required"}}
+
+        import backend.services.task_manager as tm
+
+        with patch.object(tm, "enhance_with_opc_context", side_effect=track):
+            await tm.enhance_with_opc_context({})
+        assert calls == ["opc"]
+
+    def test_linkin_patch_intercepts_task_manager_lookup(self):
+        calls: list[str] = []
+
+        def track(_state):
+            calls.append("linkin")
+            return {"linkin_context": {}}
+
+        import backend.services.task_manager as tm
+
+        with patch.object(tm, "enhance_with_linkin_context", side_effect=track):
+            tm.enhance_with_linkin_context({})
+        assert calls == ["linkin"]
+
+    def test_record_outcome_patch_intercepts_decide_final_answer(self):
+        recorded: list[dict] = []
+
+        def capture(**kwargs):
+            recorded.append(kwargs)
+
+        from backend.core import nodes
+
+        state = {
+            "query": "q",
+            "current_answer": "answer",
+            "final_answer": "answer",
+            "score": 8.0,
+            "iteration": 0,
+            "resolved_execution_path": "simple",
+            "execution_strategy": "auto",
+        }
+        with patch("backend.core.routing_feedback.record_outcome", side_effect=capture):
+            nodes.decide_final_answer(state)
+        assert recorded
 
 
 class TestKnownDivergencesXfail:
-    """設計 §2.2：P1/P2 才收斂的分歧（strict xfail 鎖現況）。"""
+    """設計 §2.2：P1/P2 才收斂的分歧（strict xfail + raises=AssertionError）。"""
 
     OPC_Q = TestThreeEntryRoutingContract.OPC_Q
     LINKIN_Q = TestThreeEntryRoutingContract.LINKIN_Q
+    SIMPLE_Q = TestThreeEntryRoutingContract.SIMPLE_Q
 
-    @pytest.mark.xfail(strict=True, reason="P1：SSE simple 尚未執行 enhance_with_opc_context")
-    def test_sse_simple_runs_opc_enhancement(self, monkeypatch):
+    @pytest.mark.xfail(
+        strict=True,
+        raises=AssertionError,
+        reason="P1：SSE simple 尚未執行 enhance_with_opc_context（應 patch backend.main 匯入點）",
+    )
+    def test_sse_simple_runs_opc_enhancement(self):
         from fastapi.testclient import TestClient
 
         from backend.main import app
 
-        opc_calls: list[dict] = []
+        opc_calls: list[str] = []
 
-        async def _track_opc(state):
-            opc_calls.append(dict(state))
+        async def track_opc(_state):
+            opc_calls.append("opc")
             return {"opc_context": {"status": "not_required"}}
 
         def fake_stream(prompt, system=None, model=None, **kwargs):
@@ -212,8 +461,10 @@ class TestKnownDivergencesXfail:
         store = MagicMock()
         store.search_similar.return_value = []
 
+        import backend.main as main_mod
+
         with (
-            patch("backend.core.company_nodes.enhance_with_opc_context", side_effect=_track_opc),
+            patch.object(main_mod, "enhance_with_opc_context", new=track_opc, create=True),
             patch("backend.main.call_llm_stream", side_effect=fake_stream),
             patch("backend.core.nodes.call_llm", side_effect=fake_eval),
             patch("backend.core.evaluation.call_llm", side_effect=fake_eval),
@@ -229,18 +480,22 @@ class TestKnownDivergencesXfail:
             for _ in resp.iter_lines():
                 pass
 
-        assert opc_calls, "預期 SSE simple 路徑呼叫 OPC 增強（P1 前應失敗）"
+        assert opc_calls, "P1 後應在 SSE simple 路徑呼叫 OPC 增強"
 
-    @pytest.mark.xfail(strict=True, reason="P1：SSE simple 尚未執行 enhance_with_linkin_context")
-    def test_sse_simple_runs_linkin_enhancement(self, monkeypatch):
+    @pytest.mark.xfail(
+        strict=True,
+        raises=AssertionError,
+        reason="P1：SSE simple 尚未執行 enhance_with_linkin_context（應 patch backend.main 匯入點）",
+    )
+    def test_sse_simple_runs_linkin_enhancement(self):
         from fastapi.testclient import TestClient
 
         from backend.main import app
 
-        linkin_calls: list[dict] = []
+        linkin_calls: list[str] = []
 
-        def _track_linkin(state):
-            linkin_calls.append(dict(state))
+        def track_linkin(_state):
+            linkin_calls.append("linkin")
             return {"linkin_context": {}}
 
         def fake_stream(prompt, system=None, model=None, **kwargs):
@@ -252,8 +507,10 @@ class TestKnownDivergencesXfail:
         store = MagicMock()
         store.search_similar.return_value = []
 
+        import backend.main as main_mod
+
         with (
-            patch("backend.linkin.pipeline.enhance_with_linkin_context", side_effect=_track_linkin),
+            patch.object(main_mod, "enhance_with_linkin_context", side_effect=track_linkin, create=True),
             patch("backend.main.call_llm_stream", side_effect=fake_stream),
             patch("backend.core.nodes.call_llm", side_effect=fake_eval),
             patch("backend.core.evaluation.call_llm", side_effect=fake_eval),
@@ -269,9 +526,13 @@ class TestKnownDivergencesXfail:
             for _ in resp.iter_lines():
                 pass
 
-        assert linkin_calls, "預期 SSE simple 路徑呼叫靈境增強（P1 前應失敗）"
+        assert linkin_calls, "P1 後應在 SSE simple 路徑呼叫靈境增強"
 
-    @pytest.mark.xfail(strict=True, reason="P2：SSE simple 完成後未經 decide_final_answer 呼叫 record_outcome")
+    @pytest.mark.xfail(
+        strict=True,
+        raises=AssertionError,
+        reason="P2：SSE simple 完成後未經 decide_final_answer 呼叫 record_outcome",
+    )
     def test_sse_simple_records_routing_outcome(self):
         from fastapi.testclient import TestClient
 
@@ -298,23 +559,58 @@ class TestKnownDivergencesXfail:
             client.stream(
                 "POST",
                 "/chat/stream",
-                json={"query": TestThreeEntryRoutingContract.SIMPLE_Q, "execution_strategy": "simple"},
+                json={"query": self.SIMPLE_Q, "execution_strategy": "simple"},
             ) as resp,
         ):
             assert resp.status_code == 200
             for _ in resp.iter_lines():
                 pass
 
-        assert recorded, "P2 前 SSE 不應寫入 record_outcome"
+        assert recorded, "P2 後 SSE 應經 finalize/decide 寫入 record_outcome"
 
     @pytest.mark.xfail(
         strict=True,
-        reason="P2：公司 SSE 反思仍用 PASS_THRESHOLD/MAX_ITERATIONS，非 graph should_improve",
+        raises=AssertionError,
+        reason="P2：公司 SSE 反思未尊重 should_improve（低分仍進 reflect）",
     )
-    def test_company_sse_uses_graph_should_improve_cap(self):
-        import inspect
+    def test_company_sse_respects_should_improve(self, monkeypatch):
+        from fastapi.testclient import TestClient
 
-        from backend import main
+        from backend.company.orchestrator import CompanyOrchestrator
+        from backend.main import app
 
-        src = inspect.getsource(main._company_stream)
-        assert "reflection_should_continue" in src or "should_improve" in src
+        monkeypatch.setenv("EVOL_POST_COMPANY_REFLECT", "full")
+        monkeypatch.setattr(
+            "backend.core.graph.should_improve",
+            lambda _state: "finalize",
+        )
+
+        async def _fake_execute(self, query):
+            return {"final_output": "公司產出", "success": True, "stats": {}}
+
+        def fake_eval(state):
+            return {**state, "score": 5.0, "multi_dim_evaluation": {}}
+
+        def fake_reflect(state):
+            return {**state, "iteration": int(state.get("iteration") or 0) + 1}
+
+        monkeypatch.setattr(CompanyOrchestrator, "execute", _fake_execute)
+        monkeypatch.setattr("backend.main.nodes.evaluate_answer", fake_eval)
+        monkeypatch.setattr("backend.main.nodes.reflect", fake_reflect)
+        monkeypatch.setattr("backend.main.nodes.improve_answer", lambda s: s)
+        monkeypatch.setattr("backend.main.nodes.enforce_output_length", lambda s: s)
+        monkeypatch.setattr("backend.main.nodes.save_memory", lambda s: s)
+
+        phases: list[str] = []
+        with TestClient(app) as client, client.stream(
+            "POST",
+            "/chat/stream",
+            json={
+                "query": TestThreeEntryRoutingContract.COMPANY_Q,
+                "execution_strategy": "company",
+            },
+        ) as resp:
+            assert resp.status_code == 200
+            phases = _collect_sse_phases(resp)
+
+        assert "reflect" not in phases, "should_improve=finalize 時不應進入 reflect 階段"
