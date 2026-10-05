@@ -81,9 +81,13 @@ def _complex_query_length() -> int:
         return _COMPLEX_QUERY_LENGTH
 
 
-def is_complex_task(query: str) -> bool:
+def is_complex_task(query: str, *, use_routing_feedback: bool = True) -> bool:
     """規則判斷任務是否複雜（需要公司運行時）。"""
-    threshold = _complex_query_length()
+    threshold = (
+        _complex_query_length()
+        if use_routing_feedback
+        else _COMPLEX_QUERY_LENGTH
+    )
     if len(query) >= threshold:
         return True
     return bool(_COMPANY_KEYWORDS.search(query))
@@ -115,7 +119,8 @@ def is_minecraft_heavy_task(query: str) -> bool:
         return False
     if _MC_HEAVY_RE.search(text):
         return True
-    return is_complex_task(text)
+    # 輕量 ops 分類不受 routing_feedback 字數門檻上調影響
+    return is_complex_task(text, use_routing_feedback=False)
 
 
 def is_minecraft_ops_query(query: str) -> bool:

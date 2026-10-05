@@ -41,7 +41,7 @@ from backend.core import nodes
 from backend.core.company_nodes import enhance_with_opc_context
 from backend.core.execution_path import resolve_execution_path
 from backend.core.graph import reflection_should_continue
-from backend.core.post_company_reflect import post_company_reflect_mode
+from backend.core.post_company_reflect import post_company_reflect_mode, task_finish_reflect_mode
 from backend.core.reflection_limits import reflection_max_iterations
 from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.linkin.pipeline import (
@@ -110,6 +110,8 @@ class TaskRecord:
         self.opc_state: dict[str, Any] = {}
         # 實際採用的執行路徑（simple / company / opc，供前端展示）
         self.resolved_path: str = ""
+        # 公司路徑：實際執行的公司後反思模式（off / evaluate / full）
+        self.post_company_reflect_applied: str | None = None
         # 斷點續跑：是否有可用的檢查點
         self.resumable = False
         # 控制細項（進階參數）
@@ -629,13 +631,18 @@ class TaskManager:
         self._persist_event_counters.pop(record.task_id, None)
         self._persist(record)
         # WebSocket 推送任务完成/失败事件
-        self._broadcast_event(record.task_id, "task_finished", {
+        finish_data: dict[str, Any] = {
             "status": record.status,
             "score": record.score,
             "iteration": record.iteration,
             "error": record.error,
             **self._length_gate_finish_payload(record),
-        })
+        }
+        finish_data["reflect_mode"] = task_finish_reflect_mode(
+            record.resolved_path,
+            applied_mode=record.post_company_reflect_applied,
+        )
+        self._broadcast_event(record.task_id, "task_finished", finish_data)
         if record.status == "completed":
             self._archive_task(record)
 
@@ -975,10 +982,12 @@ class TaskManager:
         """公司路徑專用：預設跳過完整反思閉環（可經環境變數恢復）。"""
         mode = _post_company_reflect_mode()
         if mode == "off":
+            record.post_company_reflect_applied = "off"
             self._add_event(record, "post_company_reflect_skipped", {"mode": "off"})
             tracer.log_phase_change("post_company_reflect_skipped", data={"mode": "off"})
             return
         if mode == "evaluate":
+            record.post_company_reflect_applied = "evaluate"
             self._set_phase(record, "evaluate")
             tracer.log_phase_change("evaluate")
             state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
@@ -997,6 +1006,7 @@ class TaskManager:
             state.update(await asyncio.to_thread(nodes.finalize_task_answer, state))
             self._sync_length_gate_from_state(record, state)
             return
+        record.post_company_reflect_applied = "full"
         await self._run_reflection_loop(record, state, tracer)
 
     # ── 公司運行時執行 ──

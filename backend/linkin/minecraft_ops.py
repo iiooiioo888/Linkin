@@ -42,6 +42,7 @@ def run_minecraft_ops(state: StateInput) -> dict[str, Any]:
         "generate",
         query=query,
         complexity="simple",
+        execution_path="minecraft_ops",
     )
     log_node(
         state,
