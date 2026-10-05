@@ -17,3 +17,4 @@ export { MonitorStatusDot } from './MonitorStatusDot';
 export type { MonitorStatusTone } from './MonitorStatusDot';
 export { MonitorLinkButton } from './MonitorLinkButton';
 export { MonitorKpiGrid } from './MonitorKpiGrid';
+export { RoutingPreviewChips } from './RoutingPreviewChips';

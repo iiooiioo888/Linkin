@@ -1025,3 +1025,40 @@
     gap: 6px;
   }
 }
+
+/* 路由預覽：輸入列旁路徑／成本（8pt 格線、金色 #c9a961） */
+.mon-routing-chips {
+  max-width: 100%;
+  flex-shrink: 1;
+}
+
+.mon-routing-chips--compact .mon-routing-chip {
+  font-size: 9px;
+  padding: 1px 6px;
+}
+
+.mon-routing-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 9.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 16px;
+  border: 1px solid color-mix(in srgb, #c9a961 35%, transparent);
+  background: color-mix(in srgb, #c9a961 8%, var(--console-card, #12141a));
+  color: #c9a961;
+}
+
+.mon-routing-chip--cost {
+  border-color: color-mix(in srgb, var(--console-sub) 40%, transparent);
+  background: color-mix(in srgb, var(--console-sub) 10%, transparent);
+  color: var(--console-ink, #e8eaed);
+  max-width: 3.5rem;
+  justify-content: center;
+}

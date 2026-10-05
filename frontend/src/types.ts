@@ -717,6 +717,33 @@ export interface CheckpointSummary {
   work_item_count: number;
 }
 
+/** POST /routing/preview 與 SSE path_resolved 共用契約 */
+export type RoutingPath = 'simple' | 'company' | 'opc' | 'minecraft_ops';
+export type RoutingPreviewMode = 'auto' | 'simple' | 'company';
+export type EstimatedCostLevel = 'low' | 'medium' | 'high';
+
+export interface RoutingPreviewEstimatedCost {
+  level: EstimatedCostLevel;
+  est_tokens: number;
+}
+
+export interface RoutingPreview {
+  path: RoutingPath;
+  template: string | null;
+  complexity: string;
+  tier: string;
+  model_hint: string;
+  max_reflection_rounds: number;
+  reason_codes: string[];
+  estimated_cost: RoutingPreviewEstimatedCost;
+}
+
+export interface RoutingPreviewRequest {
+  query: string;
+  mode: RoutingPreviewMode;
+  company_template?: string;
+}
+
 /** 聊天訊息模型 */
 export interface ChatMessage {
   id: string;
@@ -753,6 +780,8 @@ export interface ChatMessage {
     billingFootnote?: string;
     /** 本輪 Token／模型收據 */
     billing?: ChatBillingMeta;
+    /** 路由預覽／path_resolved 實際路徑（不含金額與 Token 數） */
+    routingPreview?: RoutingPreview;
   };
 }
 

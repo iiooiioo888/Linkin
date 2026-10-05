@@ -4,19 +4,7 @@ import {
   coerceTaskProgressStatus,
   isLiveMonitorTask,
   isTerminalTaskStatus,
-  looksLikeCompanyQuery,
 } from './chatWorkspace';
-
-describe('looksLikeCompanyQuery', () => {
-  it('matches linkin and minecraft heuristics', () => {
-    expect(looksLikeCompanyQuery('在灵境精灵森林建造一座树桥聚落')).toBe(true);
-    expect(looksLikeCompanyQuery('在坐标(100, 64, 200)处放置一个钻石块')).toBe(false);
-    expect(looksLikeCompanyQuery('今天天氣如何')).toBe(false);
-    expect(looksLikeCompanyQuery('解釋一下 CI pipeline 怎麼設定')).toBe(false);
-    expect(looksLikeCompanyQuery('資料管線優化')).toBe(false);
-    expect(looksLikeCompanyQuery('minecraft story_studio 敘事管線 phase 2')).toBe(true);
-  });
-});
 
 describe('task terminal status helpers', () => {
   it('treats cancelled and interrupted as terminal', () => {

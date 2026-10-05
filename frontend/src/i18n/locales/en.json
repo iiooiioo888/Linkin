@@ -38,6 +38,12 @@
     "l0PressurePct": "Pressure {{pct}}%",
     "l0Unknown": "L0 status —"
   },
+  "routing": {
+    "costLabel": "Estimated cost",
+    "costLow": "Low",
+    "costMedium": "Medium",
+    "costHigh": "High"
+  },
   "chat": {
     "emptyTitle": "Start a conversation",
     "emptySubtitle": "Describe what you need. Short questions get a direct answer; larger jobs are split up.",
