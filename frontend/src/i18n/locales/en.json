@@ -97,11 +97,7 @@
     "budgetAlertShort": "{{count}} budget alert(s)",
     "budgetAlertCount": "{{count}} budget alert(s) active",
     "accountHubBudget": "Hub daily API budget (USD)",
-    "accountHubHint": "Per-user Hub call limit — separate from per-role USD caps",
-    "accountLinkinCredits": "Usage allowance",
-    "accountCreditsHint": "Platform task usage balance — separate from per-role USD caps",
-    "creditsUnit": "usage",
-    "creditsMonthlyUsed": "Monthly used {{used}} / {{quota}}"
+    "accountHubHint": "Per-user Hub call limit — separate from per-role USD caps"
   },
   "mobileShell": {
     "desktopHint": "Full controls and dense monitors work best on desktop (≥768px). You can still open a simplified view here.",
