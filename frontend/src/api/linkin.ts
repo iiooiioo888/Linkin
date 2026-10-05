@@ -1047,11 +1047,20 @@ export const fetchMinecraftSituationDimension = (dimension: string) =>
 
 export const fetchMinecraftAiSnapshot = () => mc.get<MinecraftAiSnapshot>('/minecraft/ai/snapshot');
 
-export const fetchMinecraftAiEvents = (params?: { since?: number; cursor?: string; limit?: number }) => {
+export const fetchMinecraftAiEvents = (params?: {
+  since?: number;
+  cursor?: string;
+  limit?: number;
+  domain?: string;
+  /** 逗號分隔，或 `ops_timeline`（player／gm／管線相關 domain） */
+  domains?: string;
+}) => {
   const qs = new URLSearchParams();
   if (params?.since != null) qs.set('since', String(params.since));
   if (params?.cursor) qs.set('cursor', params.cursor);
   if (params?.limit != null) qs.set('limit', String(params.limit));
+  if (params?.domain) qs.set('domain', params.domain);
+  if (params?.domains) qs.set('domains', params.domains);
   const suffix = qs.toString() ? `?${qs}` : '';
   return mc.get<{
     events: MinecraftObservabilityEvent[];
@@ -1061,6 +1070,44 @@ export const fetchMinecraftAiEvents = (params?: { since?: number; cursor?: strin
     has_more: boolean;
   }>(`/minecraft/ai/events${suffix}`);
 };
+
+export type MinecraftSituationRuleRun = {
+  id: string;
+  ts: number;
+  recommendation_count?: number;
+  recommendations?: MinecraftSituationRuleRecommendation[];
+  dry_run?: boolean;
+  auto_applied?: boolean;
+  apply_results?: Array<Record<string, unknown>>;
+};
+
+export type MinecraftSituationRulesBundle = {
+  snapshot: {
+    generated_at: number;
+    rule_recommendations: MinecraftSituationRuleRecommendation[];
+    region_focus: Record<string, unknown>;
+  };
+  recent_runs: MinecraftSituationRuleRun[];
+};
+
+export type MinecraftSituationRulesRunResult = {
+  ok: boolean;
+  error?: string;
+  run_id?: string;
+  recommendations?: MinecraftSituationRuleRecommendation[];
+  auto_applied?: boolean;
+  apply_results?: Array<Record<string, unknown>>;
+  region_focus?: Record<string, unknown>;
+};
+
+export const fetchMinecraftSituationRules = (limit = 10) =>
+  mc.get<MinecraftSituationRulesBundle>(`/minecraft/situation/rules?limit=${limit}`);
+
+export const runMinecraftSituationRules = (dryRun = true) =>
+  mc.post<MinecraftSituationRulesRunResult>(
+    `/minecraft/situation/rules/run?dry_run=${dryRun ? 'true' : 'false'}`,
+    {},
+  );
 
 export const fetchMinecraftAiContext = (maxChars = 8000, format: 'markdown' | 'json' = 'markdown') =>
   mc.get<MinecraftAiContext>(`/minecraft/ai/context?max_chars=${maxChars}&format=${format}`);

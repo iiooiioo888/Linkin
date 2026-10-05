@@ -90,12 +90,18 @@ def _read_all_events() -> list[dict[str, Any]]:
     return rows
 
 
+OPS_TIMELINE_DOMAINS = frozenset(
+    {"player", "gm", "pipeline", "narrative", "map", "build", "world", "bridge"}
+)
+
+
 def list_minecraft_events(
     *,
     since: float | None = None,
     cursor: str | None = None,
     limit: int = 50,
     domain: str | None = None,
+    domains: frozenset[str] | set[str] | None = None,
 ) -> dict[str, Any]:
     """分頁列出事件（時間正序）。cursor 為上一頁最後一筆 id。"""
     limit = max(1, min(int(limit or 50), 200))
@@ -104,6 +110,9 @@ def list_minecraft_events(
         rows = [r for r in rows if float(r.get("ts") or 0) >= float(since)]
     if domain:
         rows = [r for r in rows if str(r.get("domain")) == domain]
+    elif domains:
+        allowed = {str(d) for d in domains}
+        rows = [r for r in rows if str(r.get("domain")) in allowed]
     rows.sort(key=lambda r: float(r.get("ts") or 0))
 
     start_idx = 0
@@ -616,6 +625,7 @@ def safe_append_minecraft_event(**kwargs: Any) -> None:
 
 
 __all__ = [
+    "OPS_TIMELINE_DOMAINS",
     "aggregate_ai_monitor_kpis",
     "append_minecraft_event",
     "build_ai_context",
