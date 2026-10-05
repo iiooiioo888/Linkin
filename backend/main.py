@@ -49,7 +49,12 @@ from backend.core.api_router import (
     set_route_strategy,
     upsert_route,
 )
-from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD, evoloop_graph
+from backend.core.graph import (
+    MAX_ITERATIONS,
+    PASS_THRESHOLD,
+    evoloop_graph,
+    reflection_should_continue,
+)
 from backend.core.llm import call_llm, call_llm_stream, split_thinking
 from backend.core.llm_config import get_runtime_config, masked_key, save_runtime_config
 from backend.core.provider_pool import (
@@ -1039,6 +1044,15 @@ async def _company_stream(req: ChatRequest):
 
     task = asyncio.create_task(_run_company())
 
+    from backend.core.routing_preview import build_routing_preview
+
+    preview = build_routing_preview(
+        query,
+        mode=req.execution_strategy,
+        company_template=template_name,
+    )
+    yield _sse_path_resolved(preview)
+
     # 階段：啟動
     yield f"event: phase\ndata: {json_mod.dumps({'phase': 'company_start', 'template': template_name}, ensure_ascii=False)}\n\n"
 
@@ -1138,6 +1152,9 @@ async def _company_stream(req: ChatRequest):
                     'score': eval_state.get('score'),
                     'iteration': eval_state.get('iteration', 0),
                     'company': company_result.get('stats', {}),
+                    'complexity': preview.get('complexity'),
+                    'reflection_rounds_used': eval_state.get('iteration', 0),
+                    'reflection_rounds_max': preview.get('max_reflection_rounds'),
                 }
                 billing_snap = chat_billing_snapshot()
                 if billing_snap:
@@ -1158,6 +1175,33 @@ async def _company_stream(req: ChatRequest):
         end_chat_billing(billing_token)
 
 
+# ==================== 路由預覽（發送前，純規則） ====================
+
+
+class RoutingPreviewRequest(BaseModel):
+    query: str
+    mode: str = "auto"
+    context: dict[str, Any] | None = None
+    company_template: str | None = None
+
+
+@app.post("/routing/preview")
+async def routing_preview(body: RoutingPreviewRequest) -> dict[str, Any]:
+    """發送前路由＋成本預覽（不呼叫 LLM）。"""
+    from backend.core.routing_preview import build_routing_preview
+
+    return build_routing_preview(
+        body.query,
+        mode=body.mode,
+        context=body.context,
+        company_template=body.company_template,
+    )
+
+
+def _sse_path_resolved(preview: dict[str, Any]) -> str:
+    return f"event: path_resolved\ndata: {json_mod.dumps(preview, ensure_ascii=False)}\n\n"
+
+
 # ==================== 串流聊天 API（SSE 打字機效果） ====================
 
 
@@ -1169,6 +1213,16 @@ async def _minecraft_ops_stream(req: ChatRequest):
     if isinstance(lock, dict) and lock.get("locked_brief"):
         query = str(lock["locked_brief"])
     from backend.core.locale_prompt import normalize_ui_language
+
+    from backend.core.routing_preview import build_routing_preview
+    from backend.core.reflection_limits import resolve_task_complexity
+
+    preview = build_routing_preview(
+        query,
+        mode=req.execution_strategy,
+        company_template=req.company_template,
+    )
+    yield _sse_path_resolved(preview)
 
     initial_state: dict[str, Any] = {
         "query": query,
@@ -1184,11 +1238,9 @@ async def _minecraft_ops_stream(req: ChatRequest):
         "company_template": req.company_template,
         "semantic_lock": lock if isinstance(lock, dict) else {},
         "ui_language": normalize_ui_language(req.ui_language),
-        "task_complexity": "simple",
+        "task_complexity": resolve_task_complexity(query, req.execution_strategy),
+        "resolved_execution_path": "minecraft_ops",
     }
-    yield (
-        f"event: phase\ndata: {json_mod.dumps({'phase': 'path_resolved', 'path': 'minecraft_ops'}, ensure_ascii=False)}\n\n"
-    )
     try:
         result = await evoloop_graph.ainvoke(initial_state)
         answer = result.get("current_answer", "") or result.get("final_answer", "")
@@ -1197,6 +1249,9 @@ async def _minecraft_ops_stream(req: ChatRequest):
             "score": result.get("score"),
             "iteration": result.get("iteration", 0),
             "resolved_path": result.get("resolved_execution_path") or "minecraft_ops",
+            "complexity": preview.get("complexity"),
+            "reflection_rounds_used": result.get("iteration", 0),
+            "reflection_rounds_max": preview.get("max_reflection_rounds"),
         }
         yield f"event: done\ndata: {json_mod.dumps(done, ensure_ascii=False)}\n\n"
     except Exception as exc:
@@ -1259,24 +1314,37 @@ async def chat_stream(req: ChatRequest):
         from backend.core.locale_prompt import normalize_ui_language
 
         billing_token = begin_chat_billing(session_id)
-        from backend.core.cost_speed_router import classify_task_complexity
-        from backend.core.reflection_limits import reflection_max_iterations
+        from backend.core.reflection_limits import (
+            reflection_max_iterations,
+            resolve_task_complexity,
+        )
+        from backend.core.routing_preview import build_routing_preview
 
         strategy = (req.execution_strategy or "auto").strip().lower()
+        lock = req.semantic_lock or {}
+        query_for_route = req.query
+        if isinstance(lock, dict) and lock.get("locked_brief"):
+            query_for_route = str(lock["locked_brief"])
+        preview = build_routing_preview(
+            query_for_route,
+            mode=req.execution_strategy,
+            company_template=req.company_template,
+        )
+        yield _sse_path_resolved(preview)
+
         state: dict[str, Any] = {
-            "query": req.query,
+            "query": query_for_route,
             "session_id": session_id,
             "task_id": session_id,
             "history": req.history or [],
             "semantic_lock": req.semantic_lock or {},
             "ui_language": normalize_ui_language(req.ui_language),
             "execution_strategy": req.execution_strategy,
+            "task_complexity": preview.get("complexity")
+            or resolve_task_complexity(query_for_route, req.execution_strategy),
+            "resolved_execution_path": preview.get("path") or "simple",
         }
-        if strategy == "simple":
-            state["task_complexity"] = "simple"
-        else:
-            state["task_complexity"] = classify_task_complexity(state["query"])
-        simple_max_iter = reflection_max_iterations(state)
+        reflection_rounds_max = int(preview.get("max_reflection_rounds") or 0)
         lock = req.semantic_lock or {}
         if isinstance(lock, dict) and lock.get("locked_brief"):
             state["query"] = str(lock["locked_brief"])
@@ -1377,10 +1445,7 @@ async def chat_stream(req: ChatRequest):
 
             # 反思/改進迴圈（動態迭代：帶分數變化率檢測；長度指令未消化時強制多跑一輪）
             prev_score = state.get('score', 0.0)
-            while (
-                state.get("score", 0.0) < PASS_THRESHOLD
-                and state.get("iteration", 0) < simple_max_iter
-            ) or state.get("length_directive"):
+            while reflection_should_continue(state):
                 current_score = state.get('score', 0.0)
                 # 動態迭代檢查：分數變化率過低時提前終止（優化 #4）
                 if state.get('iteration', 0) >= 1:
@@ -1460,6 +1525,9 @@ async def chat_stream(req: ChatRequest):
                 "thinking": state.get("thinking", ""),
                 "score": state.get("score"),
                 "iteration": state.get("iteration", 0),
+                "complexity": state.get("task_complexity"),
+                "reflection_rounds_used": state.get("iteration", 0),
+                "reflection_rounds_max": reflection_rounds_max,
             }
             billing_snap = chat_billing_snapshot()
             if billing_snap:
