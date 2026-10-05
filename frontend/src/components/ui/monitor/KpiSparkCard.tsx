@@ -6,12 +6,15 @@ export function KpiSparkCard({
   unit,
   spark,
   accent,
+  size = 'md',
 }: {
   label: string;
   value: string | number;
   unit?: string;
   spark?: number[];
   accent?: boolean;
+  /** md = 20px（預設）；lg = 總覽大 KPI（36px） */
+  size?: 'md' | 'lg';
 }) {
   const bars = spark ?? [];
   const max = bars.length ? Math.max(...bars, 1) : 1;
@@ -20,7 +23,9 @@ export function KpiSparkCard({
     <div className="mon-kpi-spark">
       <div>
         <p className="mon-kpi-spark__label">{label}</p>
-        <p className={`mon-kpi-spark__value${accent ? ' mon-kpi-spark__value--accent' : ''}`}>
+        <p
+          className={`mon-kpi-spark__value${accent ? ' mon-kpi-spark__value--accent' : ''}${size === 'lg' ? ' mon-kpi-spark__value--lg' : ''}`}
+        >
           {value}
           {unit ? <span className="ml-0.5 text-[0.5em] text-[var(--console-sub)]">{unit}</span> : null}
         </p>

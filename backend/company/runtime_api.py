@@ -81,3 +81,6 @@ def post_perf_check(req: PerfCheckRequest) -> dict[str, Any]:
 
 def register_runtime_api(app: Any) -> None:
     app.include_router(router)
+    from backend.services.cost_speed_settings_api import register_cost_speed_settings
+
+    register_cost_speed_settings(app)

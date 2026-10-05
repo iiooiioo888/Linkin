@@ -47,9 +47,16 @@ type SituationStripProps = {
   compact?: boolean;
   pollMs?: number;
   embedded?: boolean;
+  /** 內嵌於總覽且另有規則面板時，隱藏簡短建議列表 */
+  hideRecommendations?: boolean;
 };
 
-export default function SituationStrip({ compact = false, pollMs = 15000, embedded = false }: SituationStripProps) {
+export default function SituationStrip({
+  compact = false,
+  pollMs = 15000,
+  embedded = false,
+  hideRecommendations = false,
+}: SituationStripProps) {
   const [data, setData] = useState<MinecraftSituationSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,7 +118,7 @@ export default function SituationStrip({ compact = false, pollMs = 15000, embedd
           <DimCell key={key} keyName={key} block={data[key]} />
         ))}
       </div>
-      {!compact && recs.length ? (
+      {!compact && !hideRecommendations && recs.length ? (
         <ul className="mc-list">
           {recs.map((rec) => (
             <li key={rec.id} className="mc-row">

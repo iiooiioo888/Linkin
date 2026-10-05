@@ -30,7 +30,13 @@
     "liveIdle": "Idle",
     "liveActive": "Live",
     "roster": "Roster",
-    "searchRoles": "Search roles"
+    "searchRoles": "Search roles",
+    "offlineData": "Offline data",
+    "l0Situation": "L0 status",
+    "l0EnergySave": "Energy save",
+    "l0PressureNormal": "Pressure normal",
+    "l0PressurePct": "Pressure {{pct}}%",
+    "l0Unknown": "L0 status —"
   },
   "chat": {
     "emptyTitle": "Start a conversation",

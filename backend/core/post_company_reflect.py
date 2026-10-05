@@ -5,14 +5,64 @@ from __future__ import annotations
 import os
 
 
+def _normalize_mode(raw: str) -> str:
+    value = raw.strip().lower()
+    if value in ("0", "off", "skip", "false", "no", ""):
+        return "off"
+    if value in ("evaluate", "eval", "once"):
+        return "evaluate"
+    return "full"
+
+
 def post_company_reflect_mode() -> str:
-    """公司任務完成後反思閉環：off（預設）| evaluate | full。"""
+    """公司任務完成後反思閉環：off（預設）| evaluate | full。
+
+    優先序：EVOL_SKIP_POST_COMPANY_REFLECT → EVOL_POST_COMPANY_REFLECT →
+    cost_speed.json ``post_company_reflect``。
+    """
     legacy_skip = os.getenv("EVOL_SKIP_POST_COMPANY_REFLECT", "").strip().lower()
     if legacy_skip in ("1", "true", "yes", "on"):
         return "off"
-    raw = os.getenv("EVOL_POST_COMPANY_REFLECT", "off").strip().lower()
-    if raw in ("0", "off", "skip", "false", "no", ""):
+    env_raw = os.getenv("EVOL_POST_COMPANY_REFLECT")
+    if env_raw is not None and env_raw.strip() != "":
+        return _normalize_mode(env_raw)
+    try:
+        from backend.core.cost_speed_router import post_company_reflect_config_value
+
+        return post_company_reflect_config_value()
+    except Exception:
         return "off"
-    if raw in ("evaluate", "eval", "once"):
-        return "evaluate"
-    return "full"
+
+
+def task_finish_reflect_mode(
+    resolved_path: str | None,
+    *,
+    applied_mode: str | None = None,
+) -> str:
+    """任務完成事件用：僅 company 路徑可能有公司後反思；其餘為 ``not_applicable``。
+
+    ``applied_mode`` 由 TaskManager 在公司任務執行後反思階段寫入（off / evaluate / full）。
+    """
+    path = str(resolved_path or "").strip().lower()
+    if path != "company":
+        return "not_applicable"
+    if applied_mode in ("off", "evaluate", "full"):
+        return applied_mode
+    return "off"
+
+
+def post_company_reflect_resolution() -> dict[str, str]:
+    """解析來源（供設定 API 與測試）。"""
+    legacy_skip = os.getenv("EVOL_SKIP_POST_COMPANY_REFLECT", "").strip().lower()
+    if legacy_skip in ("1", "true", "yes", "on"):
+        return {"effective": "off", "source": "env_skip"}
+    env_raw = os.getenv("EVOL_POST_COMPANY_REFLECT")
+    if env_raw is not None and env_raw.strip() != "":
+        return {"effective": _normalize_mode(env_raw), "source": "env"}
+    try:
+        from backend.core.cost_speed_router import post_company_reflect_config_value
+
+        cfg = post_company_reflect_config_value()
+        return {"effective": cfg, "source": "config"}
+    except Exception:
+        return {"effective": "off", "source": "default"}

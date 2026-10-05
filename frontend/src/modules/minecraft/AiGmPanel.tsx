@@ -1,7 +1,7 @@
 /**
  * AI 主持人 — 玩家事件驅動任務進度與 NPC 回應。
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchMinecraftGmConfig,
   fetchMinecraftGmRuns,
@@ -27,6 +27,7 @@ import {
   EmptyStateCta,
   formatTs,
   minecraftHref,
+  parseMinecraftModuleHashQuery,
   playerActionLabel,
   statusLabel,
   statusStripe,
@@ -96,11 +97,15 @@ function ConfigToggles({
   );
 }
 
-function RunRow({ run }: { run: MinecraftGmRun }) {
+function RunRow({ run, highlighted }: { run: MinecraftGmRun; highlighted?: boolean }) {
   const types = (run.actions || []).map((a) => actionTypeLabel(String(a.type || ''))).filter(Boolean).join('、') || '沒有動作';
   const applied = run.applied ? '已套用' : run.dry_run ? '乾跑' : '僅記錄';
   return (
-    <div className="mon-task-card px-3 py-2" data-priority={statusStripe(run.status || 'idle')}>
+    <div
+      className={`mon-task-card px-3 py-2${highlighted ? ' on' : ''}`}
+      data-priority={statusStripe(run.status || 'idle')}
+      data-run-id={run.id}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-1">
         <span className="text-[11px] font-medium text-[var(--console-ink)]">
           {run.player_name || run.player_id || '未知玩家'} · {run.trigger_action ? playerActionLabel(run.trigger_action) : '未記錄動作'}
@@ -126,6 +131,26 @@ export default function AiGmPanel() {
   const [saving, setSaving] = useState(false);
   const [acting, setActing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(0);
+  const [focusRunId, setFocusRunId] = useState<string | null>(null);
+  const [focusEventId, setFocusEventId] = useState<string | null>(null);
+  const runsAnchorRef = useRef<HTMLDivElement | null>(null);
+
+  const syncHashFocus = useCallback(() => {
+    const q = parseMinecraftModuleHashQuery();
+    setFocusRunId(q.run || null);
+    setFocusEventId(q.event || null);
+  }, []);
+
+  useEffect(() => {
+    syncHashFocus();
+    window.addEventListener('hashchange', syncHashFocus);
+    return () => window.removeEventListener('hashchange', syncHashFocus);
+  }, [syncHashFocus]);
+
+  useEffect(() => {
+    if (!focusRunId && !focusEventId) return;
+    runsAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [focusRunId, focusEventId, runs.length]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -198,6 +223,15 @@ export default function AiGmPanel() {
   }, [latestEvent, load]);
 
   const appliedCount = useMemo(() => runs.filter((r) => r.applied).length, [runs]);
+
+  const highlightedRunId = useMemo(() => {
+    if (focusRunId && runs.some((r) => r.id === focusRunId)) return focusRunId;
+    if (focusEventId) {
+      const match = runs.find((r) => r.trigger_event_id === focusEventId);
+      if (match) return match.id;
+    }
+    return null;
+  }, [focusRunId, focusEventId, runs]);
 
   return (
     <McPage>
@@ -295,9 +329,13 @@ export default function AiGmPanel() {
             <QuestRuntimeStrip compact />
           </ConsoleCard>
 
+          <div ref={runsAnchorRef}>
           <ConsoleCard className="mt-3">
             <ConsoleCardHeader title="GM 決策時間軸" />
             <div className="space-y-1 px-3 pb-3">
+              {highlightedRunId ? (
+                <p className="text-[10px] text-[var(--console-accent)]">已從監控總覽帶入決策紀錄，請在下方查看。</p>
+              ) : null}
               {!runs.length ? (
                 <EmptyStateCta
                   title="尚無 GM 決策"
@@ -308,10 +346,13 @@ export default function AiGmPanel() {
                   ]}
                 />
               ) : (
-                runs.map((run) => <RunRow key={run.id} run={run} />)
+                runs.map((run) => (
+                  <RunRow key={run.id} run={run} highlighted={run.id === highlightedRunId} />
+                ))
               )}
             </div>
           </ConsoleCard>
+          </div>
         </ConsoleColumnScroll>
         </ConsoleCenterColumn>
       </div>

@@ -123,6 +123,21 @@ def test_ai_events_append_and_list(client: TestClient):
     assert body["events"][-1]["dry_run"] is True
 
 
+def test_ai_events_ops_timeline_domains_filter(client: TestClient):
+    append_minecraft_event(domain="player", action="join", status="ok", summary="玩家 A")
+    append_minecraft_event(domain="gm", action="react", status="ok", summary="GM 決策")
+    append_minecraft_event(domain="pipeline", action="run", status="ok", summary="管線跑完")
+    append_minecraft_event(domain="other", action="noop", status="ok", summary="應被濾掉")
+    res = client.get("/linkin/minecraft/ai/events?domains=ops_timeline&limit=50")
+    assert res.status_code == 200
+    body = res.json()
+    summaries = {e.get("summary") for e in body.get("events") or []}
+    assert "玩家 A" in summaries
+    assert "GM 決策" in summaries
+    assert "管線跑完" in summaries
+    assert "應被濾掉" not in summaries
+
+
 def test_ai_snapshot_and_context(client: TestClient):
     append_minecraft_event(
         domain="bridge",

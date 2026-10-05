@@ -469,7 +469,7 @@ def _with_phase_tag(question: str, phase: int) -> str:
 
 
 def should_grill_user(query: str, execution_strategy: str = "auto") -> bool:
-    """是否應先經審計官閘門。簡單模式與寒暄一律跳過。"""
+    """是否應先經審計官閘門。僅解析為 company 路徑時觸發（與 routing preview 同源）。"""
     if not user_grill_enabled():
         return False
     strategy = (execution_strategy or "auto").strip().lower()
@@ -477,8 +477,13 @@ def should_grill_user(query: str, execution_strategy: str = "auto") -> bool:
         return False
     if strategy == "company":
         return True
-    text = query or ""
-    return len(text) >= 200 or bool(_COMPLEX.search(text))
+    from backend.core.execution_path import resolve_execution_path
+    from backend.core.reflection_limits import resolve_task_complexity
+
+    complexity = resolve_task_complexity(query, strategy)
+    return (
+        resolve_execution_path(query, strategy, task_complexity=complexity) == "company"
+    )
 
 
 def _joined(query: str, answers: list[str] | None) -> str:

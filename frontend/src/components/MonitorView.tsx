@@ -10,7 +10,6 @@ import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import { isMobileDesktopOnlyPanel } from '../lib/mobileShell';
 import { buildAnimLiveFeed } from '../lib/animLive';
 import { isLinkinStudioAgent } from '../lib/agentUi';
-import { jumpToL0Kernel } from '../lib/rahoUi';
 import { useMonitorStore } from '../stores/monitorStore';
 import type { ChatMessage, L0Snapshot, TaskProgress } from '../types';
 import type { MonitorTab } from './AppShell';
@@ -77,7 +76,6 @@ function LiveTab({
   const billing = useMonitorStore((s) => s.billing);
   const llmOps = useMonitorStore((s) => s.llmOps);
   const generatedAt = useMonitorStore((s) => s.generated_at);
-  const connected = useMonitorStore((s) => s.connected);
   const error = useMonitorStore((s) => s.error);
 
   const dashboard = useMonitorStore((s) => s.dashboard);
@@ -93,22 +91,23 @@ function LiveTab({
     messages,
     updatedAt: generatedAt,
   });
-  const [l0, setL0] = useState<L0Snapshot | null>(null);
+
+  const [l0Snapshot, setL0Snapshot] = useState<L0Snapshot | null>(null);
   useEffect(() => {
     let alive = true;
     const load = async () => {
       try {
         const next = await fetchL0Kernel();
-        if (alive) setL0(next);
+        if (alive) setL0Snapshot(next);
       } catch {
-        if (alive) setL0(null);
+        if (alive) setL0Snapshot(null);
       }
     };
     void load();
-    const t = setInterval(() => void load(), 8000);
+    const timer = setInterval(() => void load(), 8000);
     return () => {
       alive = false;
-      clearInterval(t);
+      clearInterval(timer);
     };
   }, []);
 
@@ -119,21 +118,10 @@ function LiveTab({
           <ErrorState kind="partial" message={error} compact />
         </div>
       )}
-      {!connected && !error && (
-        <div className="shrink-0 px-6 py-2 text-[10px] text-[#48484A]">離線資料</div>
-      )}
-      {l0 ? (
-        <button type="button" className="l0-live mx-6 mt-4" onClick={jumpToL0Kernel}>
-          <div>
-            <p>L0 態勢 · {l0.radar?.energy_save ? '節能模式' : '壓力正常'}</p>
-            <span>{l0.radar?.bias_instructions || '三核待命：記憶／知識／雷達'}</span>
-          </div>
-          <span>壓力 {Math.round((l0.radar?.pressure ?? 0) * 100)}%</span>
-        </button>
-      ) : null}
       <LiveBoard
         feed={liveFeed}
         backgroundPhase={backgroundPhase}
+        l0Snapshot={l0Snapshot}
         liteShell={liteShell}
         onOpenLab={onOpenLab}
         onOpenTab={onOpenTab}

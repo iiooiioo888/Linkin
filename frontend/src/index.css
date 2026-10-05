@@ -674,15 +674,30 @@ textarea:focus-visible {
   -webkit-backdrop-filter: blur(12px) saturate(1.05);
 }
 
-.console-hdr-tabs {
+.console-hdr-tabs-wrap {
   min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.console-hdr-tabs-wrap::-webkit-scrollbar {
+  display: none;
+}
+
+.console-hdr-tabs {
+  display: flex;
+  width: max-content;
+  min-width: min(100%, max-content);
   align-items: center;
   gap: 2px;
 }
 
-@media (min-width: 768px) {
-  .console-hdr-tabs {
-    display: flex;
+@media (max-width: 767px) {
+  .console-hdr-tab {
+    padding: 6px 8px;
+    font-size: 10px;
   }
 }
 

@@ -75,6 +75,7 @@ def resolve_stage_model(
     *,
     query: str | None = None,
     complexity: str | None = None,
+    execution_path: str | None = None,
 ) -> str:
     """依管線環節選擇模型（含預算壓力降級與 cost_speed 成本感知）。"""
     tier = stage_tier(stage)
@@ -88,6 +89,15 @@ def resolve_stage_model(
 
         if cost_speed_enabled():
             comp = complexity or (classify_task_complexity(query) if query else None)
+            try:
+                from backend.core.routing_feedback import cost_speed_complexity_boost
+
+                comp = cost_speed_complexity_boost(
+                    comp,
+                    execution_path=execution_path,
+                ) or comp
+            except Exception:
+                pass
             if comp in {"simple", "medium", "complex"}:
                 model = resolve_cost_speed_model(comp, stage, fallback)  # type: ignore[arg-type]
                 logger.debug(

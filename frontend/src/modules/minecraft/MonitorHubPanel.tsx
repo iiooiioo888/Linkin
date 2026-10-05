@@ -1,18 +1,17 @@
 /**
  * Minecraft 監控總覽 — 整頁。只展示已有的世界內容與連線事實。
  */
-import AiEventsPanel from './monitor/AiEventsPanel';
+import OpsTimelinePanel from './monitor/OpsTimelinePanel';
+import SituationRulesPanel from './monitor/SituationRulesPanel';
 import SituationStrip from './SituationStrip';
 import { McHeader, McLinks, McMetrics, McPage, McPanel } from './McChrome';
 import {
-  PipelineTimeline,
   aiGmStatusLabel,
   bridgeLiveReady,
   bridgeNeedsSetup,
   formatAiGmLastAction,
   formatTs,
   minecraftHref,
-  statusLabel,
   useMonitorSummary,
 } from './monitor/shared';
 
@@ -142,8 +141,10 @@ export default function MonitorHubPanel() {
       ) : null}
 
       <McPanel title="四維情境" hint="市況、經濟、地土、玩家">
-        <SituationStrip embedded />
+        <SituationStrip embedded hideRecommendations />
       </McPanel>
+
+      <SituationRulesPanel />
 
       {aiFacts.length ? (
         <McPanel
@@ -197,35 +198,7 @@ export default function MonitorHubPanel() {
       </McPanel>
       ) : null}
 
-      {data ? (
-        <McPanel
-          title="最近管線"
-          action={
-            <McLinks
-              links={[
-                { href: minecraftHref('narrative'), label: '敘事工作區' },
-                { href: minecraftHref('layout-preview'), label: '布局預覽' },
-              ]}
-            />
-          }
-        >
-        {timeline.length > 0 ? (
-          <PipelineTimeline events={timeline} />
-        ) : lastPipe ? (
-          <div>
-            <p className="mc-row__meta">{formatTs(lastPipe.ts)}</p>
-            <p className="mc-note" style={{ marginTop: 6 }}>
-              {lastPipe.domain}/{lastPipe.action} · {statusLabel(lastPipe.status)}
-            </p>
-            <p className="mc-note">{lastPipe.summary}</p>
-          </div>
-        ) : (
-          <p className="mc-empty">還沒有管線紀錄。</p>
-        )}
-      </McPanel>
-      ) : null}
-
-      <AiEventsPanel />
+      <OpsTimelinePanel />
     </McPage>
   );
 }

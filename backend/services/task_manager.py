@@ -41,8 +41,12 @@ from backend.core import nodes
 from backend.core.company_nodes import enhance_with_opc_context
 from backend.core.execution_path import resolve_execution_path
 from backend.core.graph import reflection_should_continue
-from backend.core.post_company_reflect import post_company_reflect_mode
-from backend.core.reflection_limits import reflection_max_iterations
+from backend.core.post_company_reflect import post_company_reflect_mode, task_finish_reflect_mode
+from backend.core.reflection_limits import (
+    reflection_max_iterations,
+    resolve_task_complexity,
+)
+from backend.core.routing_preview import build_routing_preview
 from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.linkin.pipeline import (
     enhance_with_linkin_context,
@@ -110,6 +114,10 @@ class TaskRecord:
         self.opc_state: dict[str, Any] = {}
         # 實際採用的執行路徑（simple / company / opc，供前端展示）
         self.resolved_path: str = ""
+        self.task_complexity: str = ""
+        self.reflection_rounds_max: int = 0
+        # 公司路徑：實際執行的公司後反思模式（off / evaluate / full）
+        self.post_company_reflect_applied: str | None = None
         # 斷點續跑：是否有可用的檢查點
         self.resumable = False
         # 控制細項（進階參數）
@@ -629,13 +637,21 @@ class TaskManager:
         self._persist_event_counters.pop(record.task_id, None)
         self._persist(record)
         # WebSocket 推送任务完成/失败事件
-        self._broadcast_event(record.task_id, "task_finished", {
+        finish_data: dict[str, Any] = {
             "status": record.status,
             "score": record.score,
             "iteration": record.iteration,
             "error": record.error,
+            "complexity": record.task_complexity,
+            "reflection_rounds_used": record.iteration,
+            "reflection_rounds_max": record.reflection_rounds_max,
             **self._length_gate_finish_payload(record),
-        })
+        }
+        finish_data["reflect_mode"] = task_finish_reflect_mode(
+            record.resolved_path,
+            applied_mode=record.post_company_reflect_applied,
+        )
+        self._broadcast_event(record.task_id, "task_finished", finish_data)
         if record.status == "completed":
             self._archive_task(record)
 
@@ -666,7 +682,12 @@ class TaskManager:
 
     def _resolve_path(self, record: TaskRecord) -> str:
         """依執行策略與任務內容解析實際執行路徑（與 route_by_complexity / SSE 共用）。"""
-        return resolve_execution_path(record.query, record.strategy)
+        tc = (record.task_complexity or "").strip() or None
+        return resolve_execution_path(
+            record.query,
+            record.strategy,
+            task_complexity=tc,
+        )
 
     # ── 統一管線執行 ──
 
@@ -675,9 +696,17 @@ class TaskManager:
         record.status = "running"
         self._persist(record)
 
-        path = self._resolve_path(record)
+        record.task_complexity = resolve_task_complexity(record.query, record.strategy)
+        preview = build_routing_preview(
+            record.query,
+            mode=record.strategy,
+            company_template=record.template,
+            task_complexity=record.task_complexity,
+        )
+        path = str(preview.get("path") or "simple")
         record.resolved_path = path
-        self._add_event(record, "path_resolved", {"path": path, "strategy": record.strategy})
+        record.reflection_rounds_max = int(preview.get("max_reflection_rounds") or 0)
+        self._add_event(record, "path_resolved", preview)
         logger.info("任務 %s 解析執行路徑：%s（策略：%s）", record.task_id, path, record.strategy)
 
         try:
@@ -685,6 +714,8 @@ class TaskManager:
                 await self._run_opc_task(record)
             elif path == "company":
                 await self._run_company_task(record)
+            elif path == "minecraft_ops":
+                await self._run_minecraft_ops_task(record)
             else:
                 await self._run_simple_task(record)
         except asyncio.CancelledError:
@@ -701,6 +732,80 @@ class TaskManager:
 
     # ── 簡單任務執行（單次生成 + 反思迴圈） ──
 
+    async def _run_minecraft_ops_task(self, record: TaskRecord) -> None:
+        """Minecraft 輕量路徑：記憶／上下文增強 → ReAct+MCP → 精簡反思迴圈。"""
+        tracer = TraceLogger(record.task_id)
+        opts = record.options or {}
+        from backend.core.locale_prompt import normalize_ui_language
+        from backend.core.company_nodes import run_minecraft_ops
+
+        state: dict[str, Any] = {
+            "query": record.query,
+            "session_id": record.task_id,
+            "task_id": record.task_id,
+            "history": [],
+            "ui_language": normalize_ui_language(opts.get("ui_language")),
+            "execution_strategy": record.strategy if record.strategy == "simple" else "auto",
+            "task_complexity": "simple",
+            "resolved_execution_path": "minecraft_ops",
+        }
+        try:
+            self._set_phase(record, "retrieve_memories")
+            tracer.log_phase_change("retrieve_memories")
+            state.update(await asyncio.to_thread(nodes.retrieve_memories, state))
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            self._set_phase(record, "enhance_opc_context")
+            state.update(await enhance_with_opc_context(state))
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            self._set_phase(record, "enhance_linkin_context")
+            state.update(await asyncio.to_thread(enhance_with_linkin_context, state))
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            self._set_phase(record, "enhance_recall_context")
+            state.update(await asyncio.to_thread(enhance_with_recall_context, state))
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            self._set_phase(record, "minecraft_ops")
+            tracer.log_phase_change("minecraft_ops", data={"execution_path": "minecraft_ops"})
+            self._add_event(record, "minecraft_ops_start", {"path": "minecraft_ops"})
+            state.update(await asyncio.to_thread(run_minecraft_ops, state))
+            self._add_event(
+                record,
+                "minecraft_ops_done",
+                state.get("minecraft_ops_result") or {},
+            )
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            await self._run_reflection_loop(record, state, tracer)
+
+            record.answer = str(
+                state.get("final_answer") or state.get("current_answer") or ""
+            )
+            record.score = state.get("score")
+            record.iteration = state.get("iteration", 0)
+            if record.status != "cancelled" and not record.cancel_requested:
+                record.status = "completed"
+                tracer.log_phase_change("done")
+                self._set_phase(record, "done")
+        except Exception as exc:
+            logger.error("Minecraft 輕量任務 %s 執行失敗：%s", record.task_id, exc)
+            record.status = "failed"
+            record.error = str(exc)
+            tracer.log_error(str(exc), phase=record.phase, recoverable=False)
+        self._finish(record)
+
     async def _run_simple_task(self, record: TaskRecord) -> None:
         """簡單任務：記憶檢索 → OPC 上下文增強 → 生成 → 反思迴圈。"""
         tracer = TraceLogger(record.task_id)
@@ -713,7 +818,8 @@ class TaskManager:
             "history": [],
             "ui_language": normalize_ui_language(opts.get("ui_language")),
             "execution_strategy": record.strategy if record.strategy == "simple" else "auto",
-            "task_complexity": "simple",
+            "task_complexity": record.task_complexity,
+            "resolved_execution_path": record.resolved_path,
         }
         try:
             self._set_phase(record, "retrieve_memories")
@@ -817,8 +923,13 @@ class TaskManager:
     ) -> dict[str, Any]:
         """與 LangGraph ``should_improve`` 共用：合併 execution_strategy 等路由欄位。"""
         merged = {**state, "execution_strategy": record.strategy}
-        if record.resolved_path == "simple":
+        merged["task_complexity"] = record.task_complexity or state.get("task_complexity")
+        merged["resolved_execution_path"] = record.resolved_path
+        if record.resolved_path == "minecraft_ops":
             merged["execution_strategy"] = "simple"
+            merged["task_complexity"] = "simple"
+        elif record.resolved_path == "simple" and record.strategy == "simple":
+            merged["task_complexity"] = "simple"
         return merged
 
     def _reflection_max_iterations(self, record: TaskRecord, state: dict[str, Any]) -> int:
@@ -897,10 +1008,12 @@ class TaskManager:
         """公司路徑專用：預設跳過完整反思閉環（可經環境變數恢復）。"""
         mode = _post_company_reflect_mode()
         if mode == "off":
+            record.post_company_reflect_applied = "off"
             self._add_event(record, "post_company_reflect_skipped", {"mode": "off"})
             tracer.log_phase_change("post_company_reflect_skipped", data={"mode": "off"})
             return
         if mode == "evaluate":
+            record.post_company_reflect_applied = "evaluate"
             self._set_phase(record, "evaluate")
             tracer.log_phase_change("evaluate")
             state.update(await asyncio.to_thread(nodes.enforce_output_length, state))
@@ -919,6 +1032,9 @@ class TaskManager:
             state.update(await asyncio.to_thread(nodes.finalize_task_answer, state))
             self._sync_length_gate_from_state(record, state)
             return
+        record.post_company_reflect_applied = "full"
+        state["post_company_reflect_mode"] = "full"
+        state["resolved_execution_path"] = "company"
         await self._run_reflection_loop(record, state, tracer)
 
     # ── 公司運行時執行 ──

@@ -1,5 +1,18 @@
 {
   "enabled": true,
+  "post_company_reflect": "off",
+  "routing_feedback": {
+    "feedback_enabled": true,
+    "max_company_ratio": 0.35,
+    "consecutive_low_scores_for_company": 3,
+    "low_score_threshold": 6.0,
+    "simple_miss_window": 50,
+    "simple_miss_count_for_escalate": 3,
+    "length_threshold_step": 30,
+    "length_threshold_relax_step": 20,
+    "min_length_threshold": 80,
+    "company_ratio_min_samples": 10
+  },
   "complexity": {
     "simple": {
       "max_query_length": 80,

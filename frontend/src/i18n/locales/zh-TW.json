@@ -30,7 +30,13 @@
     "liveIdle": "待命",
     "liveActive": "即時",
     "roster": "名冊",
-    "searchRoles": "搜尋角色／職責"
+    "searchRoles": "搜尋角色／職責",
+    "offlineData": "離線資料",
+    "l0Situation": "L0 態勢",
+    "l0EnergySave": "節能模式",
+    "l0PressureNormal": "壓力正常",
+    "l0PressurePct": "壓力 {{pct}}%",
+    "l0Unknown": "L0 態勢 —"
   },
   "chat": {
     "emptyTitle": "開始對話",
