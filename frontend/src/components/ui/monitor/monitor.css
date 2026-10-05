@@ -1033,8 +1033,9 @@
 }
 
 .mon-routing-chips--compact .mon-routing-chip {
-  font-size: 9px;
-  padding: 1px 6px;
+  font-size: 10px;
+  line-height: 16px;
+  padding: 0 6px;
 }
 
 .mon-routing-chip {

@@ -1,25 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { fetchRoutingPreview } from '../api/client';
-import type { CompanyTemplate, RoutingPreview, RoutingPreviewMode } from '../types';
+import type { RoutingPreviewSnapshot } from '../lib/routingPreview';
+import type { CompanyTemplate, RoutingPreviewMode } from '../types';
 
 const DEBOUNCE_MS = 320;
 
 /**
  * 輸入 debounce 後呼叫 POST /routing/preview；空字串與失敗不展示、不阻擋發送。
+ * snapshot 含 query／mode／template，供發送時比對是否仍有效。
  */
 export function useRoutingPreview(
   query: string,
   mode: RoutingPreviewMode,
   companyTemplate: CompanyTemplate,
-): { preview: RoutingPreview | null; loading: boolean } {
-  const [preview, setPreview] = useState<RoutingPreview | null>(null);
+): { snapshot: RoutingPreviewSnapshot | null; loading: boolean } {
+  const [snapshot, setSnapshot] = useState<RoutingPreviewSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const seqRef = useRef(0);
 
   useEffect(() => {
     const trimmed = query.trim();
     if (!trimmed) {
-      setPreview(null);
+      setSnapshot(null);
       setLoading(false);
       return;
     }
@@ -36,13 +38,18 @@ export function useRoutingPreview(
         },
         controller.signal,
       )
-        .then((result) => {
+        .then((preview) => {
           if (seq !== seqRef.current) return;
-          setPreview(result);
+          setSnapshot({
+            query: trimmed,
+            mode,
+            companyTemplate,
+            preview,
+          });
         })
         .catch(() => {
           if (seq !== seqRef.current) return;
-          setPreview(null);
+          setSnapshot(null);
         })
         .finally(() => {
           if (seq !== seqRef.current) return;
@@ -56,5 +63,5 @@ export function useRoutingPreview(
     };
   }, [query, mode, companyTemplate]);
 
-  return { preview, loading };
+  return { snapshot, loading };
 }

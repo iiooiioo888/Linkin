@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ChatMessage, ChatSession, RoutingPreview, TaskOptions, TaskProgress } from './types';
-import { cancelTask, createTask, fetchConfig, fetchMemories, fetchRoutingPreview, fetchTask, planBattle, resumeTask, sendChatStream, streamAuditor, TaskWebSocket } from './api/client';
+import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, streamAuditor, TaskWebSocket } from './api/client';
 import type { ChatBillingFootnote } from './api/client';
 import { formatChatBillingFootnote, requestBillingRefresh } from './lib/billingUi';
 import type { TaskWsMessage } from './api/client';
@@ -29,7 +29,12 @@ import {
   saveSessions,
 } from './lib/storage';
 import { coerceTaskProgressStatus, isTerminalTaskStatus } from './lib/chatWorkspace';
-import { parseRoutingPreview, shouldRunGrill, usesTaskWorkspace } from './lib/routingPreview';
+import {
+  parseRoutingPreview,
+  resolveRoutingPreviewForSend,
+  shouldRunGrill,
+  usesTaskWorkspace,
+} from './lib/routingPreview';
 import { hydrateWorldModules } from './lib/worldModules';
 import { normalizeMonitorTab } from './lib/monitorTabs';
 import { splitThink } from './lib/splitThink';
@@ -307,19 +312,6 @@ export default function App() {
       let precomputedPlanner: Record<string, unknown> | undefined =
         options.taskOptions?.precomputed_planner as Record<string, unknown> | undefined;
 
-      let routingPreview: RoutingPreview | null = options.routingPreview ?? null;
-      if (options.executionStrategy === 'auto' && !routingPreview) {
-        try {
-          routingPreview = await fetchRoutingPreview({
-            query,
-            mode: options.executionStrategy,
-            company_template: options.companyTemplate,
-          });
-        } catch {
-          routingPreview = null;
-        }
-      }
-
       const patchAssistantRouting = (preview: RoutingPreview) => {
         updateSession(sessionId, (s) => ({
           ...s,
@@ -332,6 +324,12 @@ export default function App() {
         }));
       };
 
+      let routingPreview = await resolveRoutingPreviewForSend({
+        query,
+        mode: options.executionStrategy,
+        companyTemplate: options.companyTemplate,
+        snapshot: options.routingPreviewSnapshot,
+      });
       if (routingPreview) {
         patchAssistantRouting(routingPreview);
       }
@@ -359,7 +357,7 @@ export default function App() {
                           executionStrategy: options.executionStrategy,
                           companyTemplate: options.companyTemplate,
                           taskOptions: options.taskOptions,
-                          routingPreview,
+                          routingPreviewSnapshot: options.routingPreviewSnapshot,
                         },
                       },
                     }
@@ -454,17 +452,14 @@ export default function App() {
       }
 
       // ── 統一模式：簡單／minecraft_ops 走 SSE；公司／OPC 建任務 ──
-      if (options.executionStrategy === 'auto' && !routingPreview) {
-        try {
-          routingPreview = await fetchRoutingPreview({
-            query: workQuery,
-            mode: options.executionStrategy,
-            company_template: options.companyTemplate,
-          });
-          if (routingPreview) patchAssistantRouting(routingPreview);
-        } catch {
-          routingPreview = null;
-        }
+      if (workQuery.trim() !== query.trim()) {
+        routingPreview = await resolveRoutingPreviewForSend({
+          query: workQuery,
+          mode: options.executionStrategy,
+          companyTemplate: options.companyTemplate,
+          snapshot: null,
+        });
+        if (routingPreview) patchAssistantRouting(routingPreview);
       }
       const openTaskWorkspace = usesTaskWorkspace(options.executionStrategy, routingPreview);
       if (!openTaskWorkspace) {

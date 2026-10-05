@@ -3,7 +3,8 @@ import { useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { COMPANY_TEMPLATES } from '../types';
-import type { CompanyTemplate, RoutingPreview, TaskOptions } from '../types';
+import type { RoutingPreviewSnapshot } from '../lib/routingPreview';
+import type { CompanyTemplate, TaskOptions } from '../types';
 import { openChatContextDetail, openContextModal } from '../lib/contextUi';
 import { useRoutingPreview } from '../hooks/useRoutingPreview';
 import { RoutingPreviewChips } from './ui/monitor';
@@ -14,8 +15,8 @@ export interface SendOptions {
   taskOptions?: TaskOptions;
   /** 已通過需求審計官，跳過前置閘門 */
   skipGrill?: boolean;
-  /** 發送當下最新的路由預覽（可為空：不阻擋發送） */
-  routingPreview?: RoutingPreview | null;
+  /** 發送當下路由預覽快照（含 query／mode／template；不一致時 App 會重取） */
+  routingPreviewSnapshot?: RoutingPreviewSnapshot | null;
 }
 
 interface InputBarProps {
@@ -71,7 +72,12 @@ export default function InputBar({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const strategyLabel = STRATEGIES.find((s) => s.key === executionStrategy)?.label ?? '自動';
-  const { preview: routingPreview } = useRoutingPreview(text, executionStrategy, companyTemplate);
+  const { snapshot: routingPreviewSnapshot } = useRoutingPreview(
+    text,
+    executionStrategy,
+    companyTemplate,
+  );
+  const routingPreview = routingPreviewSnapshot?.preview ?? null;
 
   const slashMatches = useMemo(() => {
     const trimmed = text.trim();
@@ -132,7 +138,7 @@ export default function InputBar({
       executionStrategy,
       companyTemplate,
       taskOptions,
-      routingPreview,
+      routingPreviewSnapshot,
     });
     setText('');
     setShowMenu(false);

@@ -1,4 +1,67 @@
-import type { RoutingPreview, RoutingPreviewMode } from '../types';
+import { fetchRoutingPreview } from '../api/client';
+import type { CompanyTemplate, RoutingPreview, RoutingPreviewMode } from '../types';
+
+/** 與 debounce 預覽請求對齊的上下文；發送時須完全一致才沿用 preview。 */
+export interface RoutingPreviewSnapshot {
+  query: string;
+  mode: RoutingPreviewMode;
+  companyTemplate: CompanyTemplate;
+  preview: RoutingPreview;
+}
+
+export const ROUTING_PREVIEW_SEND_TIMEOUT_MS = 1500;
+
+export function routingPreviewSnapshotMatches(
+  snapshot: RoutingPreviewSnapshot | null | undefined,
+  query: string,
+  mode: RoutingPreviewMode,
+  companyTemplate: CompanyTemplate,
+): boolean {
+  if (!snapshot?.preview) return false;
+  const trimmed = query.trim();
+  if (!trimmed || snapshot.query !== trimmed) return false;
+  if (snapshot.mode !== mode) return false;
+  if (mode === 'company' && snapshot.companyTemplate !== companyTemplate) return false;
+  return true;
+}
+
+/** 發送前解析預覽：快照一致則沿用，否則重取（逾時不阻擋發送）。 */
+export async function resolveRoutingPreviewForSend(params: {
+  query: string;
+  mode: RoutingPreviewMode;
+  companyTemplate: CompanyTemplate;
+  snapshot?: RoutingPreviewSnapshot | null;
+}): Promise<RoutingPreview | null> {
+  const trimmed = params.query.trim();
+  if (!trimmed) return null;
+  if (
+    routingPreviewSnapshotMatches(
+      params.snapshot,
+      trimmed,
+      params.mode,
+      params.companyTemplate,
+    )
+  ) {
+    return params.snapshot!.preview;
+  }
+
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), ROUTING_PREVIEW_SEND_TIMEOUT_MS);
+  try {
+    return await fetchRoutingPreview(
+      {
+        query: trimmed,
+        mode: params.mode,
+        company_template: params.mode === 'company' ? params.companyTemplate : undefined,
+      },
+      controller.signal,
+    );
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
 
 /** 任務 API 路徑（非 SSE 簡單／minecraft_ops 串流）。 */
 export function usesTaskWorkspace(
