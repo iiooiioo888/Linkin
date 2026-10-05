@@ -8,15 +8,16 @@
   - 關鍵決策級（act）→ 可選人工確認
 """
 
+# ruff: noqa: I001 — msgpack_safety 須在 langgraph 之前（test_langgraph_security_floor）
 import asyncio
 import logging
 import os
 from collections.abc import Callable
 from typing import Any
 
+import opc_service.msgpack_safety  # noqa: F401  # 必須先於 langgraph，見該模組說明
 from langgraph.graph import END, StateGraph
 
-import opc_service.msgpack_safety  # noqa: F401  # 必須先於 langgraph，見該模組說明
 from opc_service.act import act_opc
 from opc_service.analyze import analyze_opc
 from opc_service.decide import decide_opc
