@@ -47,6 +47,7 @@ from backend.core.reflection_limits import (
     resolve_task_complexity,
 )
 from backend.core.routing_preview import build_routing_preview
+from backend.core.unified_pipeline import resolve_task_effective_query
 from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.linkin.pipeline import (
     enhance_with_linkin_context,
@@ -435,12 +436,7 @@ class TaskManager:
         task_id = uuid.uuid4().hex[:12]
         record = TaskRecord(task_id, query, strategy, template)
         record.options = options or {}
-        brief = record.options.get("semantic_brief") or record.options.get("locked_brief")
-        ticket = record.options.get("auditor_ticket")
-        if isinstance(brief, str) and brief.strip():
-            record.query = brief.strip()
-        elif isinstance(ticket, dict) and ticket.get("status") == "APPROVED_FOR_PLANNING":
-            record.query = json.dumps(ticket, ensure_ascii=False)
+        record.query = resolve_task_effective_query(query, record.options)
         self.tasks[task_id] = record
         self._persist(record)
         # 簡單淘汰：超出上限時刪除最舊的已完成任務
