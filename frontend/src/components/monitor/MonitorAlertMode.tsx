@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { MonitorTab } from '../AppShell';
 import { useMonitorStore } from '../../stores/monitorStore';
 import { fmtCredits } from '../../lib/billingUi';
+import '../ui/monitor/monitor.css';
 
 export interface MonitorAlertModeProps {
   open: boolean;
@@ -94,13 +95,13 @@ export default function MonitorAlertMode({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex flex-col bg-[var(--console-bg)]/95 backdrop-blur-md"
+      className="mon-alert-overlay"
       data-testid="monitor-alert-mode"
       role="dialog"
       aria-modal="true"
       aria-label={t('monitorAlert.title')}
     >
-      <header className="flex shrink-0 items-center justify-between border-b border-[var(--console-line)] px-4 py-3 sm:px-6">
+      <header className="mon-alert-overlay__head">
         <div>
           <h2 className="text-[15px] font-semibold text-[var(--console-ink)]">{t('monitorAlert.title')}</h2>
           <p className="text-[11px] text-[var(--console-sub)]">{t('monitorAlert.subtitle')}</p>
@@ -108,12 +109,12 @@ export default function MonitorAlertMode({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-[11px] text-[var(--console-sub)] hover:bg-white/[0.04]"
+          className="mon-alert-btn"
         >
           {t('monitorAlert.exit')}
         </button>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="mon-alert-overlay__body">
         {alerts.length === 0 ? (
           <p className="text-center text-[13px] text-[var(--console-sub)]">{t('monitorAlert.allClear')}</p>
         ) : (
@@ -126,17 +127,11 @@ export default function MonitorAlertMode({
                     onJump(a.tab, a.detailId);
                     onClose();
                   }}
-                  className={`flex w-full flex-col gap-1 rounded-xl border px-4 py-3 text-left transition-colors hover:bg-white/[0.03] ${
-                    a.tone === 'danger'
-                      ? 'border-[color-mix(in_srgb,var(--console-danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-danger)_8%,transparent)]'
-                      : a.tone === 'warn'
-                        ? 'border-[color-mix(in_srgb,var(--console-amber)_35%,transparent)] bg-[color-mix(in_srgb,var(--console-amber)_8%,transparent)]'
-                        : 'border-[var(--console-line)] bg-[var(--console-card)]'
-                  }`}
+                  className={`mon-alert-card${a.tone === 'danger' ? ' mon-alert-card--danger' : a.tone === 'warn' ? ' mon-alert-card--warn' : ''}`}
                 >
                   <span className="text-[13px] font-semibold text-[var(--console-ink)]">{a.title}</span>
                   <span className="text-[11px] text-[var(--console-sub)]">{a.detail}</span>
-                  <span className="text-[10px] console-status-accent">{t('monitorAlert.jump')} →</span>
+                  <span className="text-[10px] text-[var(--console-accent)]">{t('monitorAlert.jump')} →</span>
                 </button>
               </li>
             ))}

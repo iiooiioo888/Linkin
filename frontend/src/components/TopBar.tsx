@@ -50,13 +50,9 @@ export default function TopBar({
           ? `${activityTitle(activity)} · ${path}`
           : t('nav.console');
 
-  const chromeTabLabel = chromeKey
-    ? CONSOLE_CHROME_TABS.find((tab) => tab.key === chromeKey)?.label
-    : null;
-
   return (
     <header className="app-topbar flex shrink-0 items-center gap-2 border-b apple-chrome px-4">
-      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+      <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
         {activeView !== 'company' ? (
         <button
           onClick={onToggleSidebar}
@@ -69,28 +65,31 @@ export default function TopBar({
         </button>
         ) : null}
 
-        <span className="brand-mark shrink-0 text-[15px] text-[var(--console-ink)]">
+        <span
+          className={`brand-mark shrink-0 text-[13px] text-[var(--console-ink)] sm:text-[15px] ${
+            activity === 'console' ? 'hidden min-[420px]:inline-flex' : ''
+          }`}
+        >
           <span className="console-status-accent">靈境</span>
           <span className="brand-mark__dot">·</span>
-          Linkin
+          <span className="hidden min-[400px]:inline">Linkin</span>
         </span>
         {activity === 'console' && onMonitorTabChange ? (
           <>
-            <nav className="console-hdr-tabs ml-2 hidden min-w-0 md:flex" aria-label="控制台主入口">
-              {CONSOLE_CHROME_TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => onMonitorTabChange(tab.key)}
-                  className={`console-hdr-tab ${chromeKey === tab.key ? 'on' : ''}`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-            {chromeTabLabel ? (
-              <span className="min-w-0 truncate text-[11px] text-[var(--console-faint)] md:hidden">· {chromeTabLabel}</span>
-            ) : null}
+            <div className="console-hdr-tabs-wrap min-w-0 flex-1">
+              <nav className="console-hdr-tabs" aria-label="控制台主入口">
+                {CONSOLE_CHROME_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => onMonitorTabChange(tab.key)}
+                    className={`console-hdr-tab shrink-0 ${chromeKey === tab.key ? 'on' : ''}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
             {path && chromeKey && chromeKey !== monitorTab ? (
               <span className="hidden min-w-0 truncate text-[11px] text-[var(--console-faint)] lg:inline">· {path}</span>
             ) : null}
