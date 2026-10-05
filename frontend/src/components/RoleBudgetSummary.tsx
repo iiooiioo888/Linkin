@@ -188,11 +188,7 @@ export function AccountBudgetBanner({ summary }: { summary?: AccountBudgetSummar
   const { t } = useTranslation();
   if (!summary) return null;
   const hub = summary.hub_daily;
-  const credits = summary.linkin_credits;
-  const showCredits =
-    credits &&
-    (credits.balance_credits > 0 || credits.monthly_quota_credits > 0 || credits.monthly_used_credits > 0);
-  if (!hub && !showCredits) return null;
+  if (!hub) return null;
 
   const hubPct =
     hub && hub.daily_limit_usd > 0
@@ -224,26 +220,6 @@ export function AccountBudgetBanner({ summary }: { summary?: AccountBudgetSummar
             </div>
           ) : null}
           <p className="mt-1 text-[9px] text-[var(--console-faint)]">{t('roles.accountHubHint')}</p>
-        </div>
-      ) : null}
-      {showCredits ? (
-        <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-2">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
-            {t('roles.accountLinkinCredits')}
-          </p>
-          <p className="mt-1 font-mono text-[12px] text-[var(--console-ink)]">
-            {credits.balance_credits.toLocaleString()}
-            <span className="text-[10px] text-[var(--console-faint)]"> {t('roles.creditsUnit')}</span>
-          </p>
-          {credits.monthly_quota_credits > 0 ? (
-            <p className="mt-1 text-[9px] text-[var(--console-faint)]">
-              {t('roles.creditsMonthlyUsed', {
-                used: credits.monthly_used_credits.toLocaleString(),
-                quota: credits.monthly_quota_credits.toLocaleString(),
-              })}
-            </p>
-          ) : null}
-          <p className="mt-1 text-[9px] text-[var(--console-faint)]">{t('roles.accountCreditsHint')}</p>
         </div>
       ) : null}
     </div>

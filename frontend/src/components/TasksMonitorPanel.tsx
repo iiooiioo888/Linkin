@@ -45,6 +45,7 @@ const PATH_META: Record<string, { icon: string; label: string }> = {
   simple: { icon: '⚙', label: '反思' },
   company: { icon: '🏢', label: '公司' },
   opc: { icon: '🏭', label: 'OPC' },
+  minecraft_ops: { icon: '⛏', label: 'Minecraft 輕量操作' },
 };
 
 

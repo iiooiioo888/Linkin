@@ -1,11 +1,16 @@
 /**
- * 靈境積分帳務輪詢（/billing + /wallet 相容）。
+ * 調用用量帳務輪詢（/billing API）。
  */
 import { useCallback, useEffect, useState } from 'react';
 import { fetchBilling, fetchBillingLedger, fetchBillingUsage } from '../api/client';
-import type { BillingAccount, BillingDockerSummary, BillingLedgerEntry, BillingUsageEvent } from '../types';
+import type {
+  BillingAccount,
+  BillingDockerSummary,
+  BillingLedgerEntry,
+  BillingUsageEvent,
+} from '../types';
 
-export function useWallet(pollMs = 8000) {
+export function useBillingAccount(pollMs = 8000) {
   const [account, setAccount] = useState<BillingAccount | null>(null);
   const [ledger, setLedger] = useState<BillingLedgerEntry[]>([]);
   const [usage, setUsage] = useState<BillingUsageEvent[]>([]);
@@ -28,7 +33,7 @@ export function useWallet(pollMs = 8000) {
       setUsage(usageResp.events);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '讀取帳務失敗');
+      setError(err instanceof Error ? err.message : '讀取帳務資料失敗');
     } finally {
       setLoading(false);
     }
@@ -41,14 +46,14 @@ export function useWallet(pollMs = 8000) {
     };
     void run();
     const timer = setInterval(() => void run(), pollMs);
-    const onWalletRefresh = () => {
+    const onBillingRefresh = () => {
       void run();
     };
-    window.addEventListener('linkin:wallet-refresh', onWalletRefresh);
+    window.addEventListener('linkin:billing-refresh', onBillingRefresh);
     return () => {
       cancelled = true;
       clearInterval(timer);
-      window.removeEventListener('linkin:wallet-refresh', onWalletRefresh);
+      window.removeEventListener('linkin:billing-refresh', onBillingRefresh);
     };
   }, [pollMs, refresh]);
 

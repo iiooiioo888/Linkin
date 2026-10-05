@@ -145,7 +145,7 @@ export default function CapitalFlowPanel({
                 <tr>
                   <th>時間點</th>
                   <th>事件</th>
-                  <th>現金餘額</th>
+                  <th>現金結存</th>
                   <th>持倉市值</th>
                   <th>保證金占用</th>
                   <th>總權益</th>

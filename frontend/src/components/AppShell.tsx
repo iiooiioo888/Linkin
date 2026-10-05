@@ -278,7 +278,7 @@ export default function AppShell({
             onViewChange('monitor');
             onMonitorTabChange('tasks');
           }}
-          onMobileWallet={() => {
+          onMobileUsage={() => {
             onViewChange('monitor');
             onMonitorTabChange('models');
           }}
@@ -290,9 +290,6 @@ export default function AppShell({
         llmConfigured={llmConfigured}
         taskCount={statusInfo.taskCount}
         memoryCount={statusInfo.memoryCount}
-        onOpenCredits={() => {
-          onMonitorTabChange('models');
-        }}
       />
     </div>
   );

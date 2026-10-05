@@ -1,6 +1,6 @@
 import type { ChatBillingMeta } from './lib/billingUi';
 
-/** 靈境積分帳戶 */
+/** 帳務帳戶（/billing API；前端不展示金額） */
 export interface BillingAccount {
   user_id: string;
   balance_credits: number;
@@ -255,7 +255,7 @@ export interface TaskProgress {
   /** 統一模式：執行策略（auto / simple / company） */
   strategy: 'auto' | 'simple' | 'company';
   /** 統一模式：實際解析的執行路徑（simple / company / opc） */
-  resolved_path: 'simple' | 'company' | 'opc' | '';
+  resolved_path: 'simple' | 'company' | 'opc' | 'minecraft_ops' | '';
   query: string;
   template: string;
   phase: string;
@@ -749,9 +749,9 @@ export interface ChatMessage {
     iteration?: number;
     /** 多維度評估結果（優化 #1） */
     multiDim?: MultiDimEvaluation;
-    /** 靈境積分扣款摘要（v6.0，精簡 footnote） */
+    /** 本輪調用資訊 footnote（Token 等，無金額） */
     billingFootnote?: string;
-    /** 本輪完整扣款／Token 收據 */
+    /** 本輪 Token／模型收據 */
     billing?: ChatBillingMeta;
   };
 }

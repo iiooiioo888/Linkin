@@ -14,6 +14,7 @@ import PipelineDag from './PipelineDag';
 import { IterationTrend, ReflectionRadar } from './ReflectionCharts';
 import { StatusColumnBoard } from './StatusColumnBoard';
 import { PipelineTimeline } from './ui/monitor';
+import { resolvedPathLabel } from './taskdetail/labels';
 import {
   ConsoleCard,
   ConsoleCardBody,
@@ -106,7 +107,11 @@ export default function PipelineView({ onGoTasks, messages = [] }: PipelineViewP
     { label: '執行中', value: stageByCol.executing.length },
     { label: '已完成', value: stageByCol.done.length, valueClassName: stageByCol.done.length ? 'console-status-green' : undefined },
     { label: '門檻', value: optimization?.reflection?.pass_threshold ?? '—' },
-    { label: '路徑', value: feed.resolvedPath || '—', valueClassName: 'truncate text-sm' },
+    {
+      label: '路徑',
+      value: feed.resolvedPath ? resolvedPathLabel(feed.resolvedPath) : '—',
+      valueClassName: 'truncate text-sm',
+    },
   ];
 
   return (

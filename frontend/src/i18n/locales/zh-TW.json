@@ -13,7 +13,7 @@
     "monitor": "控制台",
     "traces": "軌跡",
     "tasks": "任務",
-    "wallet": "錢包"
+    "usage": "用量"
   },
   "monitor": {
     "live": "即時",
@@ -44,12 +44,12 @@
     "pipelineRunning": "進行中",
     "pinMonitor": "查看細節",
     "monitorPinned": "已展開細節",
-    "insufficientBalance": "積分不足，請先充值",
+    "insufficientBalance": "已達調用上限，請稍後再試或聯絡管理員",
     "send": "發送"
   },
   "billing": {
-    "turnReceipt": "本輪扣款摘要",
-    "creditsCharged": "扣款",
+    "turnReceipt": "本輪調用資訊",
+    "creditsCharged": "用量",
     "tokensInOut": "Token 入 / 出",
     "cacheTokens": "快取 Token",
     "cacheReadWrite": "讀 {{read}} · 寫 {{write}}",
@@ -103,18 +103,14 @@
     "budgetAlertShort": "預算告警 {{count}}",
     "budgetAlertCount": "預算告警 {{count}} 則",
     "accountHubBudget": "Hub 日 API 預算（USD）",
-    "accountHubHint": "Hub 用戶呼叫日限額，與角色 USD 預算分開",
-    "accountLinkinCredits": "用量額度",
-    "accountCreditsHint": "平台任務用量餘額，不與角色 USD 預算混算",
-    "creditsUnit": "積分",
-    "creditsMonthlyUsed": "本月已用 {{used}} / {{quota}}"
+    "accountHubHint": "Hub 用戶呼叫日限額，與角色 USD 預算分開"
   },
   "mobileShell": {
     "desktopHint": "完整控制與密集監控台建議在桌面（≥768px）使用；此處仍可查看摘要或展開簡化面板。",
     "showFullPanel": "在此裝置顯示完整面板",
     "advancedNav": "進階",
     "moreNote": "控制台、模組與實驗室 — 密集管理介面建議用桌面開啟。",
-    "walletSummary": "積分餘額與近期用量",
+    "usageSummary": "AI 用量與近期紀錄",
     "tasksSummary": "任務佇列與進度",
     "skillsSummary": "技能與 MCP 管理編輯建議在桌面操作。",
     "billingAdminSummary": "定價、政策與 Fault Pool 管理需桌面控制台。",
