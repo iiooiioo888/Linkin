@@ -50,11 +50,12 @@ def _routing_state(**overrides):
         ),
         (
             {
-                "score": 7.4,
+                "score": 7.35,
                 "iteration": 1,
                 "query": "測試",
                 "execution_strategy": "auto",
                 "task_complexity": "medium",
+                "resolved_execution_path": "simple",
                 "reflections": [{"score": 7.2}],
                 "multi_dim_evaluation": {
                     "fallback_used": True,
@@ -173,9 +174,10 @@ class TestTaskManagerReflectionLoop:
 
     def test_task_manager_continue_delegates_to_graph_helper(self):
         record = TaskRecord("align-fallback", "測試", "auto", "quick_task")
-        record.resolved_path = "company"
+        record.resolved_path = "simple"
+        record.task_complexity = "medium"
         state = _routing_state(
-            score=7.45,
+            score=7.35,
             iteration=1,
             reflections=[{"score": 7.4}],
             multi_dim_evaluation={
@@ -183,6 +185,7 @@ class TestTaskManagerReflectionLoop:
                 "score_source": "fallback",
             },
             task_complexity="medium",
+            resolved_execution_path="simple",
         )
         mgr = TaskManager()
         routed = mgr._reflection_routing_state(record, state)

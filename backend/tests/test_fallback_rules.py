@@ -41,7 +41,7 @@ def test_llm_dict_is_not_fallback() -> None:
 
 def test_fallback_low_improvement_does_not_finalize() -> None:
     state = {
-        "score": 7.4,
+        "score": 7.35,
         "iteration": 1,
         "query": "測試",
         "reflections": [{"score": 7.2}],

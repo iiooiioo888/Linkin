@@ -12,7 +12,11 @@ from backend.core.execution_path import (
     resolve_execution_path,
     route_by_complexity_target,
 )
-from backend.core.reflection_limits import reflection_max_iterations
+from backend.core.reflection_limits import (
+    reflection_max_iterations,
+    resolve_task_complexity,
+)
+from backend.core.routing_preview import build_routing_preview
 from backend.services.task_manager import TaskManager, TaskRecord
 
 
@@ -101,6 +105,31 @@ class TestMinecraftOpsReflectionCap:
             "query": "在坐标(100, 64, 200)处放置一个钻石块",
         }
         assert should_improve(state) == "finalize"
+
+
+class TestPreviewMatchesExecution:
+    QUERIES = TestExecutionPathMatrix.SIMPLE_Q, TestExecutionPathMatrix.MC_Q
+
+    def test_preview_and_task_share_path_and_reflection_cap(self):
+        query = "請解釋 Python 裝飾器的工作原理並舉例"
+        mode = "auto"
+        complexity = resolve_task_complexity(query, mode)
+        path = resolve_execution_path(query, mode, task_complexity=complexity)
+        preview = build_routing_preview(query, mode=mode)
+        assert preview["path"] == path
+        assert preview["complexity"] == complexity
+        routing_state = {
+            "query": query,
+            "execution_strategy": mode,
+            "task_complexity": complexity,
+            "resolved_execution_path": path,
+        }
+        assert preview["max_reflection_rounds"] == reflection_max_iterations(routing_state)
+        record = TaskRecord("t-prev", query, mode, "quick_task")
+        record.task_complexity = complexity
+        record.resolved_path = path
+        mgr = TaskManager()
+        assert mgr._reflection_max_iterations(record, routing_state) == preview["max_reflection_rounds"]
 
 
 class TestGraphPostCompanyReflectOff:

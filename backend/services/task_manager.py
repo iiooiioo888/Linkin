@@ -42,7 +42,11 @@ from backend.core.company_nodes import enhance_with_opc_context
 from backend.core.execution_path import resolve_execution_path
 from backend.core.graph import reflection_should_continue
 from backend.core.post_company_reflect import post_company_reflect_mode, task_finish_reflect_mode
-from backend.core.reflection_limits import reflection_max_iterations
+from backend.core.reflection_limits import (
+    reflection_max_iterations,
+    resolve_task_complexity,
+)
+from backend.core.routing_preview import build_routing_preview
 from backend.integrations.recall_bridge import enhance_with_recall_context
 from backend.linkin.pipeline import (
     enhance_with_linkin_context,
@@ -110,6 +114,8 @@ class TaskRecord:
         self.opc_state: dict[str, Any] = {}
         # 實際採用的執行路徑（simple / company / opc，供前端展示）
         self.resolved_path: str = ""
+        self.task_complexity: str = ""
+        self.reflection_rounds_max: int = 0
         # 公司路徑：實際執行的公司後反思模式（off / evaluate / full）
         self.post_company_reflect_applied: str | None = None
         # 斷點續跑：是否有可用的檢查點
@@ -636,6 +642,9 @@ class TaskManager:
             "score": record.score,
             "iteration": record.iteration,
             "error": record.error,
+            "complexity": record.task_complexity,
+            "reflection_rounds_used": record.iteration,
+            "reflection_rounds_max": record.reflection_rounds_max,
             **self._length_gate_finish_payload(record),
         }
         finish_data["reflect_mode"] = task_finish_reflect_mode(
@@ -673,7 +682,12 @@ class TaskManager:
 
     def _resolve_path(self, record: TaskRecord) -> str:
         """依執行策略與任務內容解析實際執行路徑（與 route_by_complexity / SSE 共用）。"""
-        return resolve_execution_path(record.query, record.strategy)
+        tc = (record.task_complexity or "").strip() or None
+        return resolve_execution_path(
+            record.query,
+            record.strategy,
+            task_complexity=tc,
+        )
 
     # ── 統一管線執行 ──
 
@@ -682,9 +696,16 @@ class TaskManager:
         record.status = "running"
         self._persist(record)
 
+        record.task_complexity = resolve_task_complexity(record.query, record.strategy)
         path = self._resolve_path(record)
         record.resolved_path = path
-        self._add_event(record, "path_resolved", {"path": path, "strategy": record.strategy})
+        preview = build_routing_preview(
+            record.query,
+            mode=record.strategy,
+            company_template=record.template,
+        )
+        record.reflection_rounds_max = int(preview.get("max_reflection_rounds") or 0)
+        self._add_event(record, "path_resolved", preview)
         logger.info("任務 %s 解析執行路徑：%s（策略：%s）", record.task_id, path, record.strategy)
 
         try:
@@ -725,6 +746,7 @@ class TaskManager:
             "ui_language": normalize_ui_language(opts.get("ui_language")),
             "execution_strategy": record.strategy if record.strategy == "simple" else "auto",
             "task_complexity": "simple",
+            "resolved_execution_path": "minecraft_ops",
         }
         try:
             self._set_phase(record, "retrieve_memories")
@@ -795,7 +817,8 @@ class TaskManager:
             "history": [],
             "ui_language": normalize_ui_language(opts.get("ui_language")),
             "execution_strategy": record.strategy if record.strategy == "simple" else "auto",
-            "task_complexity": "simple",
+            "task_complexity": record.task_complexity,
+            "resolved_execution_path": record.resolved_path,
         }
         try:
             self._set_phase(record, "retrieve_memories")
@@ -899,11 +922,13 @@ class TaskManager:
     ) -> dict[str, Any]:
         """與 LangGraph ``should_improve`` 共用：合併 execution_strategy 等路由欄位。"""
         merged = {**state, "execution_strategy": record.strategy}
-        if record.resolved_path in ("simple", "minecraft_ops"):
+        merged["task_complexity"] = record.task_complexity or state.get("task_complexity")
+        merged["resolved_execution_path"] = record.resolved_path
+        if record.resolved_path == "minecraft_ops":
             merged["execution_strategy"] = "simple"
             merged["task_complexity"] = "simple"
-        if record.resolved_path == "minecraft_ops":
-            merged["resolved_execution_path"] = "minecraft_ops"
+        elif record.resolved_path == "simple" and record.strategy == "simple":
+            merged["task_complexity"] = "simple"
         return merged
 
     def _reflection_max_iterations(self, record: TaskRecord, state: dict[str, Any]) -> int:
@@ -1007,6 +1032,8 @@ class TaskManager:
             self._sync_length_gate_from_state(record, state)
             return
         record.post_company_reflect_applied = "full"
+        state["post_company_reflect_mode"] = "full"
+        state["resolved_execution_path"] = "company"
         await self._run_reflection_loop(record, state, tracer)
 
     # ── 公司運行時執行 ──
