@@ -2,7 +2,8 @@
 
 | 項目 | 內容 |
 | --- | --- |
-| 狀態 | 設計提案（未實作） |
+| 狀態 | **已核准**（P0 可開工；實作依分階段 PR 交付） |
+| 核准日期 | 2026-10-05（PM） |
 | 基線 commit | `fdeb619`（`master`，已含 #6 `POST /routing/preview`、#7 輪次對齊相關合併） |
 | 範圍 | `POST /chat`、`POST /chat/stream`（含公司／minecraft_ops 分支）、`POST /tasks` + Task WebSocket |
 | 非目標 | AI Hub `/api/v1/*`、OPC 微服務內部六級圖、前端 Grill 產品邏輯重寫 |
@@ -15,7 +16,7 @@
 
 - 同一 query（含 `semantic_lock.locked_brief`）在三入口的 `path`、注入上下文、反思輪數上限與實際 `iteration` 一致（允許串流在 token 切分上與 batch 字串相同）。
 - 既有測試全過；新增契約測試鎖死上述一致性。
-- **TTFT** 驗收分兩類（詳 §7）：未命中 OPC／靈境增強的 query **零回歸**；命中者允許明確上限或並行／超時降級。
+- **TTFT** 驗收分兩類（詳 §7）：未命中 OPC／靈境增強的 query **零回歸**；命中者採 **並行＋超時降級**（§7.4(b)，已決）。
 
 ---
 
@@ -92,7 +93,7 @@ flowchart LR
 | `off`（或空） | 全關 | **是** | — |
 | `pre` | P1：SSE simple 跑共用 `run_pre_route_enhancements`（OPC+Linkin+順序與 Task 一致） | 否 | **是**（改回答、改 TTFT） |
 | `reflect` | P2：`reflect` 含 P1；共用 `run_reflection_phases` + finalize + 公司 SSE 對齊 | 否 | **是**（改 iteration／長度交付） |
-| `batch` | P3：`batch` 含 P2；`POST /chat` 走 `run_unified_pipeline(BATCH)` | 否 | **是**（可能啟用 chat 計費行為，見 Q7） |
+| `batch` | P3：`batch` 含 P2；`POST /chat` 走 `run_unified_pipeline(BATCH)` | 否 | **是**（計費行為待 Q7 用戶確認後實作，見 §6） |
 | `full` | P4：清理死碼、可選前置並行、bench 進 CI | 否 | 工程內部 |
 
 實作細節：`unified_pipeline.py` 內 `pipeline_level() -> Literal["off","pre","reflect","batch","full"]`，各入口只讀一次。
@@ -126,12 +127,18 @@ P0 僅引入旗標解析與契約測試，**行為等同 `off`**。
 | 階段 | 範圍 | 旗標 | 測試 | 工作量 |
 | --- | --- | --- | --- | --- |
 | **P0** | 骨架 + `pipeline_level()` + 契約測試 | `off` | path/complexity/max rounds | **S（~2–3 人日）** |
-| **P1** | 共用前置增強；SSE 接入；TTFT bench 雙路徑 | `pre` | 注入探針 + §7.4 同程 A/B | **M（~4–5 人日）** |
-| **P2** | 反思／finalize 單源；`record_outcome` 單次；串流 cancel | `reflect` | `test_task_reflection_alignment`、record_outcome 單次、disconnect | **M（~5–6 人日）** |
-| **P3** | `/chat` batch 包裝 + 響應元資料 + 計費決策落地 | `batch` | 同步響應契約、billing 用例 | **S（~2–3 人日）** |
+| **P1** | 共用前置增強；SSE 接入；**B2 並行+超時**（cost_speed 300ms）；`degraded` 事件／trace | `pre` | 注入探針 + §7.4(a)(b) | **M（~4–5 人日）** |
+| **P2** | 反思／finalize 單源；串流 **單次** `record_outcome`；串流 cancel；**PR 附 company 佔比影響** | `reflect` | 見 §9 + 全量 `pytest backend/tests/` | **M（~5–6 人日）** |
+| **P3** | `/chat` batch 包裝 + 響應元資料；（計費僅在 Q7 用戶確認後） | `batch` | 同步響應契約；billing 用例 **條件執行** | **S（~2–3 人日）** |
 | **P4** | 死碼清理、前置可選 gather、CI bench | `full` | 同程 TTFT 回歸 | **S（~2 人日）** |
 
-**總工作量估算**：約 **15–19 人日**（含測試與文檔；不含 Q1 OPC 六級大行為變更）。
+**總工作量估算**：約 **15–19 人日**（含測試與文檔；不含 Q1 長期 OPC 語意統一）。
+
+**合併與送審約定（PM）**
+
+- **每個階段（P0–P4）各開一個 PR**，獨立送審；不得把多階段混在同一 PR（除非明確標為 follow-up 且前一階段已合併）。
+- **合併前必須在本機跑完全量測試**：`pytest backend/tests/`（與 CI 同等範圍）；PR 描述需註明已執行。
+- P2 PR **必須**附一段說明：啟用串流 `record_outcome` 後，對 `routing_feedback` 樣本量與 `max_company_ratio`（`cost_speed.json` → `routing_feedback.max_company_ratio`，預設 0.35）護欄的**預期影響**（見 §5.1、§5.3）。
 
 ---
 
@@ -144,7 +151,7 @@ P0 僅引入旗標解析與契約測試，**行為等同 `off`**。
 | 新增 OPC／Linkin 前置 phase（P1） | 非 breaking（事件） |
 | 命中 OPC／靈境時 **答案變化** | 語意 breaking |
 | P2：`finalize_task_answer` 鏈 | 可能改交付長度 |
-| P2：每請求 **一次** `record_outcome`（經 `decide_final_answer`） | **行為／數據 breaking（內部）**：#9 `routing_feedback` 樣本量上升、simple 路由統計更完整，可能更快觸發 `company_ratio_capped` / 長度自適應（`routing_feedback.py`） |
+| P2：每請求 **一次** `record_outcome`（經 `decide_final_answer`）；**含串流 simple**（PM 已准） | **行為／數據（內部）**：#9 樣本量上升；P2 PR 須書面說明對 **company 佔比上限** 的預期（非對外 API breaking） |
 | P2：客戶端斷開不再保證 `done`／`save_memory` | 非 breaking（客戶端已離線） |
 
 ### 5.2 `POST /chat`（同步）— Billing（**Q7**）
@@ -154,7 +161,7 @@ P0 僅引入旗標解析與契約測試，**行為等同 `off`**。
 | **今日未計量展示**：無 `begin_chat_billing`、響應無 `billing` 欄位；與 `/chat/stream` 不一致 | **A. 維持不計量**：batch 仍直接 `ainvoke`，僅代碼路徑統一，**無** 402／無 `billing` 欄位 |
 | | **B. 與 SSE 對齊計量**：batch 包裝內 `begin_chat_billing`；超限 402 或響應帶 `billing` — **API breaking** |
 
-**必須在 P3 前由 PM 定案（Q7）**；文件預設建議 **A**，避免未告知的 402。
+**已決（Q7）**：P0–P2 **不變更**同步 `/chat` 計量行為。P3 **開工前** PM 須向**終端用戶**確認是否採用計量；在此之前實作一律按 **方案 A**（不 `begin_chat_billing`、無 402、響應無 `billing`）。用戶確認後若選 B，另開產品／API 變更說明。
 
 ### 5.3 `record_outcome`（P2，§5.1 已述）
 
@@ -166,39 +173,61 @@ P0 僅引入旗標解析與契約測試，**行為等同 `off`**。
 
 （Company SSE 反思、Task 事件名、OPC 六級 Q1、前端適配 — 同 v1 §5.2–5.5。）
 
-### 5.5 Breaking 清單（供 PM）
+### 5.5 Breaking 清單（已核准範圍）
 
-1. P1：Simple 串流 OPC／靈境 query 答案與現網不同。  
-2. P2：極長答案交付與 `record_outcome` 副作用。  
-3. P3（若 Q7=B）：同步 `/chat` 可能 402 或出現 `billing`。  
-4. Q1：OPC 六級廢止 — 重大 breaking。
+1. P1：Simple 串流 OPC／靈境 query 答案與現網不同（超時降級時可能與 `/chat` 短暫不一致，見 §7.4(b) `degraded`）。  
+2. P2：極長答案交付行為可能變化（與 `/chat` 對齊）。  
+3. P3（**僅當** Q7 用戶確認後採方案 B）：同步 `/chat` 可能 402 或出現 `billing` — **目前不適用**。  
+4. ~~OPC 六級廢止~~ → **暫不適用**（Q1：Task 六級保留，見 §6）。
 
 ---
 
-## 6. 風險與待決問題
+## 6. 決策紀錄（PM 核准）
 
-| # | 問題 | 阻塞階段 | 建議 |
-| --- | --- | --- | --- |
-| **Q1** | path=opc 三入口語意 | P1 文檔、長期實作 | 先 C；不阻塞 P1 |
-| **Q2** | 全圖 ainvoke vs 混合 B | — | 已選 B |
-| **Q3** | semantic_lock vs auditor_ticket | P1 | Task 映射到 `PipelineRequest` |
-| **Q4** | 公司 SSE vs 圖 `run_company` | P2 | 保留 Orchestrator |
-| **Q5** | Billing 事件時機 | P2 串流 | 與現 SSE 一致 |
-| **Q6** | 手抄 while 禁令 | P2 合併後 | CONTRIBUTING |
-| **Q7** | **同步 `/chat` 是否計量／402** | **P3** | 預設 A（維持今日未計量） |
-| **Q8** | P1 OPC 命中時 TTFT：硬等待 vs **並行+超時**（`EVOL_PRE_ENHANCE_TIMEOUT_MS`） | **P1 上線** | 預設：miss 零成本；hit 允許 ≤`max(opc_p95, linkin_p95)+20ms` 或超時 skip 注入（與 `/chat` 不一致需打標 `opc_degraded`） |
+### 6.1 已決策
 
-### 6.1 PM 決策順序（建議）
+| # | 決策 |
+| --- | --- |
+| **Q1** | **短期維持現狀並寫入運維／產品說明**：`path=opc` 時 Task 仍走 **OPC 六級**，不廢止；`/chat` 圖與 SSE 仍為「注入 + simple 生成」。**長期**是否與 graph 完全一致 → **P3 開工前再議**，不阻塞 P0–P2。 |
+| **Q2** | 串流採混合 **B**（非全圖 `astream_events`）。 |
+| **Q3** | **同意**：Task `options.auditor_ticket`（及既有 `semantic_brief`）映射進 `PipelineRequest.semantic_lock`（與 Chat `semantic_lock` 同形）。 |
+| **Q7** | P0–P2 **不碰**同步 `/chat` 計量。P3 實作前 PM **向用戶確認**；確認前一律 **方案 A**（不計量、無 402）。 |
+| **Q8** | 採 **B2：並行＋超時**（見 §7.4(b)）。超時則**跳過**該次 OPC／Linkin（及可並行的 recall 子步）注入，**不硬等**；須標記 **`degraded`**。 |
 
-```text
-Q7（P3 前必須） ← 僅影響 batch 計費
-Q8（P1 上 prod 前必須） ← TTFT／降級策略
-Q1（OPC 六級） ← 獨立於 P0–P2，可並行討論
-Q3 ← P1 合併前
-Q4、Q5 ← P2 設計評審
+**Q8 配置**：前置增強總等待上限寫入 `backend/config/cost_speed.json`（支援熱重載，與其他路由參數一致），建議鍵：
+
+```json
+"unified_pipeline": {
+  "pre_enhance_timeout_ms": 300
+}
 ```
 
-**可立即開工**：P0（無 PM 決策）。**P1 合併到 prod** 需 Q8 + P1 簽核。**P3** 需 Q7。
+預設 **300 ms**。實作時由 `cost_speed_router` 或同檔讀取；環境變數僅作覆寫（可選，如 `EVOL_PRE_ENHANCE_TIMEOUT_MS`）。
+
+**`degraded` 可見性（必做）**
+
+| 出口 | 欄位 |
+| --- | --- |
+| `event: path_resolved` | `context_degraded: true`，`degraded_sources: ["opc"\|"linkin"\|"recall", …]`（命中逾時的源） |
+| `event: done`（及 Task `task_finished`） | 同上，便於前端／任務列表展示 |
+| Trace | `TraceLogger.log_custom("pre_enhance_degraded", {sources, timeout_ms, elapsed_ms})`；`pipeline_trace.log_node` 附 `degraded` |
+
+### 6.2 實作期仍須工程對齊（非 PM 待決）
+
+| # | 說明 | 階段 |
+| --- | --- | --- |
+| **Q4** | 公司 SSE 保留 `CompanyOrchestrator`，反思收尾走共用 helper | P2 |
+| **Q5** | 串流 billing 事件時機與現 `begin_chat_billing` 一致 | P2 |
+| **Q6** | P2 合併後禁止新增圖外反思 while | P2+ |
+
+### 6.3 開工與上線節點
+
+| 里程碑 | 條件 |
+| --- | --- |
+| **P0 開工** | 本文件已核准（已滿足） |
+| **P1 prod（`pre`）** | Q8 實作 + §7 驗收 + PM 運維知悉 `degraded` 文案 |
+| **P2 prod（`reflect`）** | P2 PR 含 company 佔比影響說明 + 全量測試 |
+| **P3 開工** | Q1 長期 OPC 再議結論（可與 P3 範圍分離）+ **Q7 用戶確認**完成 |
 
 ---
 
@@ -239,12 +268,14 @@ OPC 服務可用時，命中延遲可能升至 **數十–數百 ms**（受 `EVO
 - 通過：`median(TTFT_pre) <= median(TTFT_off) * 1.05 + 5ms` 且 `p95_pre <= p95_off * 1.10 + 10ms`。
 - **不得**回歸（相對 off 為準）。
 
-**(b) 命中 OPC 或 Linkin 注入**
+**(b) 命中 OPC 或 Linkin 注入 — 已採用方案 B2（Q8）**
 
-- 產品選項（需 Q8）：  
-  - **B1**：允許 TTFT 增加 ≤ `measured_enhancer_p95 + 15ms`（相對 off，同 query 類型）。  
-  - **B2**：`asyncio.gather(recall, opc)` + Linkin 與 generate 無依賴時並行；OPC `wait_for(timeout=EVOL_PRE_ENHANCE_TIMEOUT_MS)` 失敗則 skip 注入並在 `path_resolved` 或 phase payload 帶 `degraded: true`。  
-- 命中類 query **不**與 (a) 混跑同一閾值。
+- **並行**：在依賴允許下，將 `enhance_with_opc_context`、`enhance_with_linkin_context`、`enhance_with_recall_context`（及已完成的 `retrieve_memories`）以 `asyncio.gather` 與彼此並行；**不得**為等待慢源而阻塞已完成的快源。
+- **超時**：整段前置增強（或分源 `wait_for`）受 `cost_speed.json` → `unified_pipeline.pre_enhance_timeout_ms` 約束，**預設 300 ms**。
+- **逾時行為**：取消尚未完成的增強任務；**跳過**對應注入（不硬等 OPC／RAG）；在 state 記錄 `context_degraded` / `degraded_sources`；**首 token 照常開跑**（TTFT 不因慢 OPC 無限延長）。
+- **與 `/chat` 差異**：全圖 `ainvoke` 在 P1 仍可能硬等增強；僅 **SSE simple（flag≥`pre`）** 採超時降級 — 逾時時 SSE 答案可能暫時少上下文，以 `degraded` 標記明示（PM 已接受）。
+- ~~**B1**（允許固定增量 TTFT）~~：**未採用**。
+- 命中類 query **不**與 (a) 混跑同一閾值；bench 另列「命中 + 降級」用例（mock 慢 OPC assert `degraded` 且 TTFT < timeout + 裕量）。
 
 ### 7.5 CI 腳本（`scripts/bench_stream_ttft.py`）
 
@@ -254,7 +285,8 @@ OPC 服務可用時，命中延遲可能升至 **數十–數百 ms**（受 `EVO
 
 ### 7.6 生產可觀測
 
-- `TraceLogger.log_custom("stream_ttft", {ms, preview_path, opc_status, linkin_active})`（flag≥`pre`）。
+- `TraceLogger.log_custom("stream_ttft", {ms, preview_path, opc_status, linkin_active, context_degraded, degraded_sources})`（flag≥`pre`）。
+- 監控／Optimization 面板可聚合 `pre_enhance_degraded` 率（實作 P1 起可選）。
 
 ---
 
@@ -284,4 +316,4 @@ OPC 服務可用時，命中延遲可能升至 **數十–數百 ms**（受 `EVO
 
 ## 10. 摘要
 
-三軌收斂 = **單一階段編排 + 分級旗標（pre/reflect/batch）+ 分類 TTFT 驗收**。P1 的 OPC／Linkin 在 miss 時近乎零成本，真實風險在 **命中時 I/O**；驗收以 **同進程 off vs on 相對比** 為準。P2 起 SSE 將進入 `record_outcome` 閉環，須防雙重計數並預期路由反饋動態變化。同步 `/chat` 今日 **未計量**，P3 前必須由 **Q7** 定案是否改為與 SSE 一致。
+**狀態：已核准，P0 可開工。** 三軌收斂 = 單一編排 + 分級旗標 + TTFT 雙軌驗收。P1 採 **並行＋300ms 超時降級**（`cost_speed.json`），`degraded` 須在 path_resolved／done／trace 可見。Q1 短期 **保留 Task OPC 六級**；Q3 **auditor_ticket→semantic_lock**；Q7 **P0–P2 不計量**，P3 前 PM 問用戶。P2 串流寫入 `routing_feedback` **每請求一次**，PR 須說明 company 佔比護欄影響。各階段 **獨立 PR**，合併前 **本機全量測試**。
