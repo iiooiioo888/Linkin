@@ -39,7 +39,6 @@ from backend.core.company_nodes import (
     enhance_with_opc_context,
     route_by_complexity,
     run_company,
-    run_minecraft_ops,
     should_evaluate_company,
 )
 from backend.core.state import EvoLoopState, StateInput
@@ -94,11 +93,6 @@ def should_improve(state: StateInput) -> str:
     score = _require_score(state)
     iteration = state.get("iteration", 0)
     pass_threshold = resolve_pass_threshold(state.get("query", ""))
-
-    from backend.core.reflection_limits import is_minecraft_ops_execution_state
-
-    if is_minecraft_ops_execution_state(state) and not state.get("length_directive"):
-        return "finalize"
 
     # 條件 1：已達門檻
     if score >= pass_threshold:
@@ -164,7 +158,6 @@ def build_graph():
 
     # ── 公司運行時節點 ──
     graph.add_node("run_company", run_company)
-    graph.add_node("run_minecraft_ops", run_minecraft_ops)
 
     # ── 生成/評估/反思節點 ──
     graph.add_node("generate_initial_answer", nodes.generate_initial_answer)
@@ -188,7 +181,6 @@ def build_graph():
         route_by_complexity,
         {
             "run_company": "run_company",
-            "run_minecraft_ops": "run_minecraft_ops",
             "generate_initial_answer": "generate_initial_answer",
         },
     )
@@ -209,7 +201,6 @@ def build_graph():
 
     # ── 簡單任務路徑 ──
     graph.add_edge("generate_initial_answer", "enforce_output_length")
-    graph.add_edge("run_minecraft_ops", "enforce_output_length")
 
     # ── 輸出長度守門（所有生成出口共用地點） ──
     # 超標 → 回到 reflect，由閉環把精簡當成一項改進目標；合規 → 進入評估

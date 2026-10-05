@@ -1,6 +1,6 @@
 import type { ChatBillingMeta } from './lib/billingUi';
 
-/** 靈境積分帳戶 */
+/** 調用用量帳戶（/billing） */
 export interface BillingAccount {
   user_id: string;
   balance_credits: number;
@@ -749,7 +749,7 @@ export interface ChatMessage {
     iteration?: number;
     /** 多維度評估結果（優化 #1） */
     multiDim?: MultiDimEvaluation;
-    /** 靈境積分扣款摘要（v6.0，精簡 footnote） */
+    /** 調用用量扣款摘要（v6.0，精簡 footnote） */
     billingFootnote?: string;
     /** 本輪完整扣款／Token 收據 */
     billing?: ChatBillingMeta;

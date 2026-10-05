@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import type { ChatMessage, ChatSession, TaskOptions, TaskProgress } from './types';
 import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, startUserGrill, streamAuditor, TaskWebSocket } from './api/client';
 import type { ChatBillingFootnote } from './api/client';
-import { formatChatBillingFootnote, requestWalletRefresh } from './lib/billingUi';
+import { formatChatBillingFootnote, requestBillingRefresh } from './lib/billingUi';
 import type { TaskWsMessage } from './api/client';
 import {
   appRouteFromState,
@@ -490,7 +490,7 @@ export default function App() {
           },
           onDone: (answer, score, iteration, thinking, billing) => {
             const footnote = billing ? formatChatBillingFootnote(billing) : undefined;
-            requestWalletRefresh();
+            requestBillingRefresh();
             updateSession(sessionId, (s) => ({
               ...s,
               updatedAt: Date.now(),
@@ -516,7 +516,7 @@ export default function App() {
           },
           onBilling: (billing: ChatBillingFootnote) => {
             const footnote = formatChatBillingFootnote(billing);
-            requestWalletRefresh();
+            requestBillingRefresh();
             if (!footnote && !billing.credits_deducted) return;
             updateSession(sessionId, (s) => ({
               ...s,

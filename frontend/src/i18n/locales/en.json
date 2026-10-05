@@ -13,7 +13,7 @@
     "monitor": "Console",
     "traces": "Traces",
     "tasks": "Tasks",
-    "wallet": "Wallet"
+    "usage": "Usage"
   },
   "monitor": {
     "live": "Live",
@@ -38,7 +38,7 @@
     "pipelineRunning": "In progress",
     "pinMonitor": "Show details",
     "monitorPinned": "Details open",
-    "insufficientBalance": "Insufficient credits — top up first",
+    "insufficientBalance": "Insufficient usage balance — try again later",
     "send": "Send"
   },
   "billing": {
@@ -100,7 +100,7 @@
     "accountHubHint": "Per-user Hub call limit — separate from per-role USD caps",
     "accountLinkinCredits": "Usage allowance",
     "accountCreditsHint": "Platform task usage balance — separate from per-role USD caps",
-    "creditsUnit": "credits",
+    "creditsUnit": "usage",
     "creditsMonthlyUsed": "Monthly used {{used}} / {{quota}}"
   },
   "mobileShell": {
@@ -108,7 +108,7 @@
     "showFullPanel": "Show full panel on this device",
     "advancedNav": "Advanced",
     "moreNote": "Console, modules, and lab — dense admin panels open best on desktop.",
-    "walletSummary": "Credits balance and recent usage",
+    "usageSummary": "Usage balance and recent activity",
     "tasksSummary": "Task queue and progress",
     "skillsSummary": "Skills & MCP admin editing is easier on desktop.",
     "billingAdminSummary": "Pricing, policies, and fault pool admin require desktop.",

@@ -29,9 +29,16 @@ export const PATH_META: Record<string, { label: string; icon: string; tone: stri
   simple: { label: '反思閉環', icon: '⚙', tone: 'var(--apple-blue-soft)' },
   company: { label: '公司運行時', icon: '🏢', tone: 'var(--apple-green)' },
   opc: { label: 'OPC 工業閉環', icon: '🏭', tone: 'var(--apple-orange)' },
-  minecraft_ops: { label: 'MC 輕量運維', icon: '⛏', tone: 'var(--console-accent)' },
+  minecraft_ops: { label: 'Minecraft 輕量操作', icon: '⛏', tone: 'var(--console-accent)' },
   '': { label: '尚未路由', icon: '·', tone: 'var(--apple-tertiary)' },
 };
+
+/** 將後端 resolved_path／SSE path 轉為使用者可見標籤（不含 chatWorkspace 路由邏輯）。 */
+export function resolvedPathLabel(path: string | null | undefined): string {
+  const key = (path ?? '').trim();
+  if (!key) return PATH_META[''].label;
+  return PATH_META[key]?.label ?? key;
+}
 
 /** 需求審計官門票狀態（backend/services/auditor.py）。 */
 export const TICKET_STATUS_LABEL: Record<string, string> = {

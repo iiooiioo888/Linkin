@@ -1,7 +1,7 @@
 """靈境上下文增強：掛在統一管線上，對齊 OPC 的「感知後注入」模式。
 
 非靈境且非 Minecraft 控制的查詢一律空物件返回，不碰 RAG、不改路由。
-Minecraft 控制查詢只注入 MCP 摘要（不碰 RAG）；僅重型 MC／靈境任務標為 complex 以走 story_studio。
+Minecraft 控制查詢只注入 MCP 摘要（不碰 RAG），並標為複雜任務以便走 story_studio。
 """
 
 from __future__ import annotations
@@ -140,7 +140,7 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
     """靈境 RAG 增強：命中世界觀關鍵詞時注入憲法摘要與知識庫檢索。
 
     Minecraft 控制查詢即使未提靈境也注入 MCP 摘要（不碰 RAG），
-    重型任務才升級 story_studio；單步控制走 minecraft_ops 輕量路徑。
+    以便公司運行時改走 story_studio、角色能呼叫放置工具。
     知識庫／憲法不可用時靜默降級（不中斷主流程）。
     """
     query = state.get("query", "")
@@ -217,15 +217,12 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
     if mc_hit:
         overlays.append(_MC_SYSTEM_OVERLAY)
     summary = f"{brief}{rag_block}{mcp_block}{observability_block}{players_presence_block}".strip()
-    from backend.core.execution_path import is_minecraft_heavy_task
-
-    mc_complex = bool(mc_hit and is_minecraft_heavy_task(query))
     return {
         "linkin_context": {
             "active": True,
             "summary": summary,
             "system_overlay": "\n".join(overlays),
-            "complex": is_linkin_complex_task(query) or mc_complex,
+            "complex": is_linkin_complex_task(query) or mc_hit,
             "minecraft": mc_hit,
             "minecraft_observability": bool(observability_block or players_presence_block),
             "rag_hits": len(hits),
@@ -235,19 +232,13 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
 
 
 def resolve_linkin_company_template(state: StateInput) -> str | None:
-    """靈境複雜任務或 Minecraft 重型任務且呼叫端仍用預設 quick_task 時，改走故事工作室。
+    """靈境複雜任務或 Minecraft 控制任務且呼叫端仍用預設 quick_task 時，改走故事工作室。
 
     quick_task 只有 manager＋developer；developer 不能放方塊。
     story_studio 含 creative_lead／story_writer，才能實際呼叫 MCP 寫入工具。
-    單步 Minecraft 控制由 minecraft_ops 路徑處理，不在此升級。
     """
-    from backend.core.execution_path import is_minecraft_heavy_task, resolve_execution_path
-
     ctx = state.get("linkin_context") or {}
     query = state.get("query", "")
-    strategy = str(state.get("execution_strategy") or "auto")
-    if resolve_execution_path(query, strategy) == "minecraft_ops":
-        return None
     mc_hit = False
     if isinstance(ctx, dict) and ctx.get("minecraft"):
         mc_hit = True
@@ -258,16 +249,11 @@ def resolve_linkin_company_template(state: StateInput) -> str | None:
             mc_hit = is_minecraft_control_query(query)
         except Exception:
             mc_hit = False
-    mc_heavy = bool(mc_hit and is_minecraft_heavy_task(query))
     active = isinstance(ctx, dict) and bool(ctx.get("active"))
-    complex_hit = (
-        bool(isinstance(ctx, dict) and ctx.get("complex"))
-        or is_linkin_complex_task(query)
-        or mc_heavy
-    )
-    if not active and not mc_heavy:
+    complex_hit = bool(isinstance(ctx, dict) and ctx.get("complex")) or is_linkin_complex_task(query)
+    if not active and not mc_hit:
         return None
-    if not complex_hit:
+    if not complex_hit and not mc_hit:
         return None
     current = str(state.get("company_template") or "quick_task").strip() or "quick_task"
     if current == "quick_task":

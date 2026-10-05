@@ -1,4 +1,4 @@
-/** 對話與任務計費 UI 輔助（精簡；積分中心模組已移除）。 */
+/** 對話與任務調用用量 UI 輔助。 */
 
 export function fmtCredits(n: number): string {
   if (!Number.isFinite(n)) return '—';
@@ -9,10 +9,10 @@ export function fmtCredits(n: number): string {
 
 export function parseBillingHttpError(status: number, body: { detail?: string; code?: string }): string {
   if (status === 402) {
-    return body.detail || '靈境積分不足，請充值或升級方案後再試';
+    return body.detail || '調用用量不足，請稍後再試或調整方案';
   }
   if (status === 403 && body.detail?.includes('轉贈')) {
-    return '積分不可轉贈、轉移或提現';
+    return '調用用量不可轉贈、轉移或提現';
   }
   return body.detail || `帳務錯誤（HTTP ${status}）`;
 }
@@ -35,7 +35,7 @@ export interface ChatBillingMeta {
 
 export function formatChatBillingFootnote(meta: ChatBillingMeta): string {
   const parts: string[] = [];
-  if (meta.credits_deducted != null) parts.push(`扣款 ${fmtCredits(meta.credits_deducted)} 積分`);
+  if (meta.credits_deducted != null) parts.push(`扣款 ${fmtCredits(meta.credits_deducted)}`);
   const inp = meta.input_tokens ?? 0;
   const out = meta.output_tokens ?? 0;
   if (inp > 0 || out > 0) parts.push(`Token ${inp}/${out}`);
@@ -49,7 +49,7 @@ export function formatChatBillingFootnote(meta: ChatBillingMeta): string {
   return parts.join(' · ');
 }
 
-/** 觸發全域錢包刷新（對話扣款後立即更新餘額） */
-export function requestWalletRefresh(): void {
-  window.dispatchEvent(new CustomEvent('linkin:wallet-refresh'));
+/** 觸發全域調用用量刷新（對話扣款後更新餘額） */
+export function requestBillingRefresh(): void {
+  window.dispatchEvent(new CustomEvent('linkin:billing-refresh'));
 }

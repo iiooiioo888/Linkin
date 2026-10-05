@@ -18,11 +18,6 @@ def simple_path_max_iterations() -> int:
         return 1
 
 
-def is_minecraft_ops_execution_state(state: Mapping[str, Any]) -> bool:
-    """minecraft_ops 路徑：僅允許單次評估，不進入分數驅動的反思／改進。"""
-    return str(state.get("resolved_execution_path") or "").strip().lower() == "minecraft_ops"
-
-
 def is_simple_execution_state(state: Mapping[str, Any]) -> bool:
     """是否套用 EVOL_SIMPLE_MAX_ITERATIONS（強制 simple 或已標記 simple 複雜度）。"""
     strategy = (state.get("execution_strategy") or "auto").strip().lower()
@@ -36,8 +31,6 @@ def is_simple_execution_state(state: Mapping[str, Any]) -> bool:
 
 def reflection_max_iterations(state: Mapping[str, Any]) -> int:
     """依執行策略解析有效 MAX_ITERATIONS（LangGraph 與 SSE 手抄迴圈共用）。"""
-    if is_minecraft_ops_execution_state(state):
-        return 0
     if is_simple_execution_state(state):
         return simple_path_max_iterations()
     return MAX_ITERATIONS

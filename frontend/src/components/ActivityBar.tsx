@@ -1,6 +1,6 @@
 /**
  * ActivityBar — 對話 / 控制台 / 已註冊世界模組 / 實驗室。
- * 桌面：左側垂直欄；行動端：底部 Tab 列（Chat / Tasks / Wallet + 更多）。
+ * 桌面：左側垂直欄；行動端：底部 Tab 列（Chat / Tasks / 用量 + 更多）。
  */
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +16,7 @@ interface ActivityBarProps {
   /** 桌面左欄 vs 行動底欄 */
   placement?: 'sidebar' | 'bottom';
   onMobileTasks?: () => void;
-  onMobileWallet?: () => void;
+  onMobileUsage?: () => void;
 }
 
 function ChatIcon({ active }: { active: boolean }) {
@@ -44,16 +44,10 @@ function TasksIcon() {
   );
 }
 
-function WalletIcon() {
+function UsageIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
-      <path
-        d="M3 5.5h12a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1v-6a1 1 0 011-1z"
-        stroke="currentColor"
-        strokeWidth="1.3"
-      />
-      <circle cx="13" cy="9" r="1.2" fill="currentColor" />
-      <path d="M3 7.5V4.5a1 1 0 011-1h9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M3 14V8M7.5 14V5M12 14V10M16.5 14V3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   );
 }
@@ -184,7 +178,7 @@ function MobileBottomBar({
   monitorTab = 'live',
   onActivityChange,
   onMobileTasks,
-  onMobileWallet,
+  onMobileUsage,
   overflowItems,
 }: {
   activity: ActivityKey;
@@ -192,7 +186,7 @@ function MobileBottomBar({
   monitorTab?: MonitorTab;
   onActivityChange: (activity: ActivityKey) => void;
   onMobileTasks?: () => void;
-  onMobileWallet?: () => void;
+  onMobileUsage?: () => void;
   overflowItems: BarItem[];
 }) {
   const { t } = useTranslation();
@@ -201,7 +195,7 @@ function MobileBottomBar({
   const companyActive = activity === 'company';
   const tasksActive =
     onMonitor && (monitorTab === 'tasks' || monitorTab === 'pipeline' || activeView === 'traces');
-  const walletActive = onMonitor && monitorTab === 'models';
+  const usageActive = onMonitor && monitorTab === 'models';
 
   return (
     <>
@@ -234,11 +228,11 @@ function MobileBottomBar({
         </button>
         <button
           type="button"
-          onClick={() => onMobileWallet?.()}
-          className={`activity-tab-bottom touch-manipulation ${walletActive ? 'is-active' : ''}`}
+          onClick={() => onMobileUsage?.()}
+          className={`activity-tab-bottom touch-manipulation ${usageActive ? 'is-active' : ''}`}
         >
-          <span className="activity-tab-bottom__icon"><WalletIcon /></span>
-          <span className="activity-tab-bottom__label">{t('nav.wallet')}</span>
+          <span className="activity-tab-bottom__icon"><UsageIcon /></span>
+          <span className="activity-tab-bottom__label">{t('nav.usage')}</span>
         </button>
         <button
           type="button"
@@ -295,7 +289,7 @@ export default function ActivityBar({
   onActivityChange,
   placement = 'sidebar',
   onMobileTasks,
-  onMobileWallet,
+  onMobileUsage,
 }: ActivityBarProps) {
   const { t } = useTranslation();
   const modules = useWorldModules();
@@ -320,7 +314,7 @@ export default function ActivityBar({
         monitorTab={monitorTab}
         onActivityChange={onActivityChange}
         onMobileTasks={onMobileTasks}
-        onMobileWallet={onMobileWallet}
+        onMobileUsage={onMobileUsage}
         overflowItems={overflowItems}
       />
     );

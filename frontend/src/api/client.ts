@@ -10,6 +10,7 @@
 
 import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, BillingLedgerEntry, BillingSnapshot, BillingUsageEvent, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, SeatFeedQuery, SeatIOFeed, SeatIORecord, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
 import { appendGateQuery, attachGateHeaders } from '../lib/auth';
+import { parseBillingHttpError } from '../lib/billingUi';
 
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -65,13 +66,7 @@ export interface StreamCallbacks {
 
 async function parseBillingError(resp: Response): Promise<string> {
   const body = await resp.json().catch(() => ({})) as { detail?: string; code?: string };
-  if (resp.status === 402) {
-    return body.detail || '靈境積分不足，請充值或升級方案後再試';
-  }
-  if (resp.status === 403 && body.detail?.includes('轉贈')) {
-    return '積分不可轉贈、轉移或提現';
-  }
-  return body.detail || `請求失敗（HTTP ${resp.status}）`;
+  return parseBillingHttpError(resp.status, body);
 }
 
 /**
@@ -1141,7 +1136,7 @@ export async function startDockerService(service: string): Promise<DockerActionR
 // ═══════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════
-// 靈境積分帳務 API
+// 調用用量帳務 API（/billing）
 // ═══════════════════════════════════════════════════════════
 
 export async function fetchBilling(): Promise<BillingSnapshot> {
@@ -1295,7 +1290,7 @@ export async function topupBillingCredits(credits: number, note = ''): Promise<u
   });
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}));
-    throw new Error((body as { detail?: string }).detail || `充值失敗（HTTP ${resp.status}）`);
+    throw new Error((body as { detail?: string }).detail || `調用用量調整失敗（HTTP ${resp.status}）`);
   }
   return resp.json();
 }
@@ -1565,7 +1560,7 @@ export async function adminSeedContribution(accountId: string, amount: number, n
     },
     h,
   );
-  if (!resp.ok) throw new Error('注入貢獻積分失敗');
+  if (!resp.ok) throw new Error('注入貢獻用量失敗');
   return resp.json();
 }
 

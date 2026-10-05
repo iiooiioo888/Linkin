@@ -108,10 +108,9 @@ def route_by_complexity(state: StateInput) -> str:
 
     回傳值：
     - "run_company": 走公司運行時
-    - "run_minecraft_ops": 走輕量 Minecraft ReAct + MCP
     - "generate_initial_answer": 走單次生成
     """
-    from backend.core.execution_path import resolve_execution_path, route_by_complexity_target
+    from backend.core.execution_path import route_by_complexity_target
 
     query = state.get("query", "")
     target = route_by_complexity_target(
@@ -119,26 +118,9 @@ def route_by_complexity(state: StateInput) -> str:
         str(state.get("execution_strategy", "auto")),
         task_complexity=state.get("task_complexity"),
     )
-    path = resolve_execution_path(
-        query,
-        str(state.get("execution_strategy", "auto")),
-        task_complexity=state.get("task_complexity"),
-    )
-    from backend.core.pipeline_trace import log_node
-
-    log_node(state, "route_by_complexity", execution_path=path, target=target)
     if target == "run_company":
         logger.info("任務解析為公司運行時（query 前 80 字）：%s", query[:80])
-    elif target == "run_minecraft_ops":
-        logger.info("任務解析為 Minecraft 輕量路徑（query 前 80 字）：%s", query[:80])
     return target
-
-
-def run_minecraft_ops(state: StateInput) -> dict[str, Any]:
-    """輕量 Minecraft 操作節點（同步包裝）。"""
-    from backend.linkin.minecraft_ops import run_minecraft_ops as _run
-
-    return _run(state)
 
 
 # ─── 公司運行時節點 ──────────────────────────────────────────

@@ -7,13 +7,10 @@ import type { DockerBudget, DockerStatus } from '../types';
 import { useIntegrationsStatus } from '../hooks/useIntegrationsStatus';
 import { jumpToIntegration, summarizeIntegrations } from '../lib/integrationsUi';
 import { useMonitorStore } from '../stores/monitorStore';
-import WalletBadge from './WalletBadge';
-
 interface StatusBarProps {
   llmConfigured: boolean | null;
   taskCount: number;
   memoryCount: number;
-  onOpenCredits?: () => void;
 }
 
 function formatCost(amount: number): string {
@@ -34,7 +31,7 @@ function Dot({ tone }: { tone: 'ok' | 'warn' | 'err' | 'idle' }) {
   return <span className={cls} />;
 }
 
-export default function StatusBar({ llmConfigured, taskCount, memoryCount, onOpenCredits }: StatusBarProps) {
+export default function StatusBar({ llmConfigured, taskCount, memoryCount }: StatusBarProps) {
   const [dockerStatus, setDockerStatus] = useState<DockerStatus | null>(null);
   const [dockerBudget, setDockerBudget] = useState<DockerBudget | null>(null);
   const llmOps = useMonitorStore((s) => s.llmOps);
@@ -133,10 +130,6 @@ export default function StatusBar({ llmConfigured, taskCount, memoryCount, onOpe
             {formatCost(totalCost)}
           </span>
         )}
-
-        <span className="apple-status-item hidden sm:inline-flex">
-          <WalletBadge compact onOpenBilling={onOpenCredits} />
-        </span>
 
         <span className="apple-status-item apple-data ml-auto">
           {taskCount} 任務 · {memoryCount} 記憶

@@ -350,7 +350,7 @@ def test_seed_assigns_minecraft_tools(linkin_env):
     assert "execute_command" not in executor["tools_allowed"]
 
 
-def test_route_minecraft_query_to_ops():
+def test_route_minecraft_query_to_company():
     from backend.core.company_nodes import route_by_complexity
 
-    assert route_by_complexity({"query": "在坐标(100, 64, 200)处放置一个钻石块"}) == "run_minecraft_ops"
+    assert route_by_complexity({"query": "在坐标(100, 64, 200)处放置一个钻石块"}) == "run_company"

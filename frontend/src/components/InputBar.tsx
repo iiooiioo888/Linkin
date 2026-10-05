@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { COMPANY_TEMPLATES } from '../types';
 import type { CompanyTemplate, TaskOptions } from '../types';
 import { openChatContextDetail, openContextModal } from '../lib/contextUi';
-import { useWallet } from '../hooks/useWallet';
+import { useBillingAccount } from '../hooks/useBillingAccount';
 
 export interface SendOptions {
   executionStrategy: 'auto' | 'simple' | 'company';
@@ -55,7 +55,7 @@ export default function InputBar({
   onContextCommand,
 }: InputBarProps) {
   const { t } = useTranslation();
-  const { account } = useWallet(12000);
+  const { account } = useBillingAccount(12000);
   const [text, setText] = useState('');
   const [executionStrategy, setExecutionStrategy] = useState<'auto' | 'simple' | 'company'>('auto');
   const [companyTemplate, setCompanyTemplate] = useState<CompanyTemplate>('quick_task');
