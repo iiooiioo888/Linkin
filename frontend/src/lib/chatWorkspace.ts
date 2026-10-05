@@ -439,6 +439,18 @@ const MC_HEAVY_RE =
 const NARRATIVE_PIPELINE_RE =
   /narrative|敘事|管線|pipeline|phase\s*[0-5]|map\s*plan|地圖計畫|build\s*brief|建築落地|世界意圖|待落地|story_studio/i;
 
+const MC_LINKIN_SCOPE_RE =
+  /minecraft|minemcp|mine\s*mcp|灵境|靈境|linkin|story_studio/i;
+
+function isMcOrLinkinScoped(query: string): boolean {
+  const q = (query || '').trim();
+  return (
+    MC_LINKIN_SCOPE_RE.test(q) ||
+    LINKIN_WORLD_RE.test(q) ||
+    isMinecraftControlQuery(q)
+  );
+}
+
 function isLinkinComplexTask(query: string): boolean {
   return LINKIN_WORLD_RE.test(query) && LINKIN_WORK_RE.test(query);
 }
@@ -451,7 +463,7 @@ function isMinecraftControlQuery(query: string): boolean {
 function isMinecraftHeavyTask(query: string): boolean {
   const q = (query || '').trim();
   if (isLinkinComplexTask(q)) return true;
-  if (NARRATIVE_PIPELINE_RE.test(q)) return true;
+  if (isMcOrLinkinScoped(q) && NARRATIVE_PIPELINE_RE.test(q)) return true;
   if (!isMinecraftControlQuery(q)) return false;
   if (MC_HEAVY_RE.test(q)) return true;
   if (q.length >= COMPANY_QUERY_LENGTH) return true;

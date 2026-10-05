@@ -895,6 +895,8 @@ class TaskManager:
         if record.resolved_path in ("simple", "minecraft_ops"):
             merged["execution_strategy"] = "simple"
             merged["task_complexity"] = "simple"
+        if record.resolved_path == "minecraft_ops":
+            merged["resolved_execution_path"] = "minecraft_ops"
         return merged
 
     def _reflection_max_iterations(self, record: TaskRecord, state: dict[str, Any]) -> int:

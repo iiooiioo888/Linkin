@@ -52,6 +52,25 @@ _NARRATIVE_PIPELINE_RE = re.compile(
     re.IGNORECASE,
 )
 
+_MC_LINKIN_SCOPE_RE = re.compile(
+    r"(minecraft|minemcp|mine\s*mcp|灵境|靈境|linkin|story_studio)",
+    re.IGNORECASE,
+)
+
+
+def _is_mc_or_linkin_scoped(query: str) -> bool:
+    """敘事／管線關鍵詞僅在 MC 或靈境語境下才視為重型。"""
+    text = query or ""
+    if _MC_LINKIN_SCOPE_RE.search(text):
+        return True
+    try:
+        from backend.linkin.pipeline import needs_linkin_context
+        from backend.tools.minecraft_mcp import is_minecraft_control_query
+
+        return needs_linkin_context(text) or is_minecraft_control_query(text)
+    except Exception:
+        return False
+
 
 def _complex_query_length() -> int:
     try:
@@ -85,7 +104,7 @@ def is_minecraft_heavy_task(query: str) -> bool:
             return True
     except Exception:
         pass
-    if _NARRATIVE_PIPELINE_RE.search(text):
+    if _is_mc_or_linkin_scoped(text) and _NARRATIVE_PIPELINE_RE.search(text):
         return True
     try:
         from backend.tools.minecraft_mcp import is_minecraft_control_query

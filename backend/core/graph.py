@@ -95,6 +95,11 @@ def should_improve(state: StateInput) -> str:
     iteration = state.get("iteration", 0)
     pass_threshold = resolve_pass_threshold(state.get("query", ""))
 
+    from backend.core.reflection_limits import is_minecraft_ops_execution_state
+
+    if is_minecraft_ops_execution_state(state) and not state.get("length_directive"):
+        return "finalize"
+
     # 條件 1：已達門檻
     if score >= pass_threshold:
         return "finalize"
