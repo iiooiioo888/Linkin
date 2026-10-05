@@ -233,6 +233,7 @@ def collect_optimization_monitor() -> dict[str, Any]:
             "status": "learning" if routing.get("total", 0) < 10 else "active",
             "metric": (
                 f"門檻 {routing.get('adaptive_length_threshold', '—')} · "
+                f"company {routing.get('feedback', {}).get('today_company_ratio', 0) * 100:.0f}% · "
                 f"n={routing.get('total', 0)}"
             ),
         },

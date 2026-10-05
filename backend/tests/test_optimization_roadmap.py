@@ -43,7 +43,28 @@ class TestStageRouter:
 class TestRoutingFeedback:
     def test_adaptive_threshold_increases_on_simple_miss(self, tmp_path, monkeypatch):
         fb_path = tmp_path / "routing_feedback.json"
+        cfg_path = tmp_path / "cost_speed.json"
         monkeypatch.setenv("EVOL_ROUTING_FEEDBACK_PATH", str(fb_path))
+        monkeypatch.setenv("EVOL_COST_SPEED_PATH", str(cfg_path))
+        cfg_path.write_text(
+            json.dumps({
+                "enabled": True,
+                "routing_feedback": {
+                    "feedback_enabled": True,
+                    "max_company_ratio": 1.0,
+                    "consecutive_low_scores_for_company": 3,
+                    "low_score_threshold": 6.0,
+                    "simple_miss_count_for_escalate": 3,
+                },
+                "complexity": {},
+                "stage_models": {},
+                "models": {},
+            }),
+            encoding="utf-8",
+        )
+        from backend.core.cost_speed_router import reload_cost_speed
+
+        reload_cost_speed()
         base = 200
         for _ in range(12):
             record_outcome("simple", 50, 4.0, False)

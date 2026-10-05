@@ -39,5 +39,12 @@ def reflection_max_iterations(state: Mapping[str, Any]) -> int:
     if is_minecraft_ops_execution_state(state):
         return 0
     if is_simple_execution_state(state):
-        return simple_path_max_iterations()
+        bonus = 0
+        try:
+            from backend.core.routing_feedback import extra_reflection_rounds
+
+            bonus = extra_reflection_rounds()
+        except Exception:
+            bonus = 0
+        return simple_path_max_iterations() + bonus
     return MAX_ITERATIONS

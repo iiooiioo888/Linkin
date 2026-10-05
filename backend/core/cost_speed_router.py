@@ -70,6 +70,18 @@ def _load_raw_config() -> dict[str, Any]:
 def _builtin_defaults() -> dict[str, Any]:
     return {
         "enabled": True,
+        "post_company_reflect": "off",
+        "routing_feedback": {
+            "feedback_enabled": True,
+            "max_company_ratio": 0.35,
+            "consecutive_low_scores_for_company": 3,
+            "low_score_threshold": 6.0,
+            "simple_miss_window": 50,
+            "simple_miss_count_for_escalate": 3,
+            "length_threshold_step": 30,
+            "length_threshold_relax_step": 20,
+            "min_length_threshold": 80,
+        },
         "complexity": {
             "simple": {"max_query_length": 80, "path": "simple", "max_output_chars": 800},
             "medium": {"max_query_length": 200, "path": "simple", "max_output_chars": 2000},
@@ -100,6 +112,77 @@ def reload_cost_speed() -> dict[str, Any]:
     _config_mtime = 0.0
     _reset_keyword_pattern()
     return cost_speed_status()
+
+
+_ROUTING_FEEDBACK_DEFAULTS: dict[str, Any] = {
+    "feedback_enabled": True,
+    "max_company_ratio": 0.35,
+    "consecutive_low_scores_for_company": 3,
+    "low_score_threshold": 6.0,
+    "simple_miss_window": 50,
+    "simple_miss_count_for_escalate": 3,
+    "length_threshold_step": 30,
+    "length_threshold_relax_step": 20,
+    "min_length_threshold": 80,
+}
+
+_POST_COMPANY_REFLECT_ALLOWED = frozenset({"off", "evaluate", "full"})
+
+
+def routing_feedback_settings() -> dict[str, Any]:
+    """routing_feedback 區塊（合併預設值）。"""
+    raw = _load_raw_config().get("routing_feedback", {})
+    merged = dict(_ROUTING_FEEDBACK_DEFAULTS)
+    if isinstance(raw, dict):
+        merged.update(raw)
+    return merged
+
+
+def post_company_reflect_config_value() -> str:
+    """cost_speed.json 中的 post_company_reflect 預設（不含環境變數）。"""
+    raw = str(_load_raw_config().get("post_company_reflect") or "off").strip().lower()
+    if raw in ("evaluate", "eval", "once"):
+        return "evaluate"
+    if raw == "full":
+        return "full"
+    return "off"
+
+
+def update_cost_speed_config(
+    *,
+    post_company_reflect: str | None = None,
+    routing_feedback: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """更新 cost_speed.json 可寫欄位並熱重載。"""
+    path = _config_path()
+    if path.exists():
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            raise ValueError("配置根節點必須為物件")
+    else:
+        data = _builtin_defaults()
+
+    if post_company_reflect is not None:
+        mode = post_company_reflect.strip().lower()
+        if mode in ("eval", "once"):
+            mode = "evaluate"
+        if mode not in _POST_COMPANY_REFLECT_ALLOWED:
+            raise ValueError(f"post_company_reflect 必須為 {_POST_COMPANY_REFLECT_ALLOWED}")
+        data["post_company_reflect"] = mode
+
+    if routing_feedback is not None:
+        current = data.get("routing_feedback")
+        if not isinstance(current, dict):
+            current = {}
+        current.update(routing_feedback)
+        data["routing_feedback"] = current
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    return reload_cost_speed()
 
 
 def _reset_keyword_pattern() -> None:

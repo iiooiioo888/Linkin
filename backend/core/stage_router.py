@@ -88,6 +88,12 @@ def resolve_stage_model(
 
         if cost_speed_enabled():
             comp = complexity or (classify_task_complexity(query) if query else None)
+            try:
+                from backend.core.routing_feedback import cost_speed_complexity_boost
+
+                comp = cost_speed_complexity_boost(comp) or comp
+            except Exception:
+                pass
             if comp in {"simple", "medium", "complex"}:
                 model = resolve_cost_speed_model(comp, stage, fallback)  # type: ignore[arg-type]
                 logger.debug(
