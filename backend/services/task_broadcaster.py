@@ -49,18 +49,6 @@ class TaskBroadcaster:
 
         自动清理已断开的连接。
         """
-        if event == "task_finished":
-            payload = dict(data)
-            try:
-                from backend.core.post_company_reflect import post_company_reflect_mode
-
-                payload.setdefault("reflect_mode", post_company_reflect_mode())
-            except Exception:
-                payload.setdefault("reflect_mode", "off")
-            if payload.get("score") is None and "score" in data:
-                payload["score"] = data["score"]
-            data = payload
-
         async with self._lock:
             subscribers = self._subscribers.get(task_id, set()).copy()
 

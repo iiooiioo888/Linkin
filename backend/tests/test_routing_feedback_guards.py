@@ -117,3 +117,34 @@ def test_routing_stats_includes_feedback(feedback_env):
     record_outcome("simple", 40, 5.0, False)
     stats = routing_stats()
     assert stats["feedback"]["tier_bump_active"] is True
+
+
+def test_minecraft_ops_excluded_from_feedback(feedback_env):
+    _, _ = feedback_env
+    for _ in range(5):
+        record_outcome(
+            "simple",
+            50,
+            3.0,
+            False,
+            execution_path="minecraft_ops",
+        )
+    stats = routing_stats()
+    assert stats["total"] == 0
+    assert feedback_upgrade_state()["consecutive_simple_low"] == 0
+
+
+def test_adaptive_threshold_does_not_steal_minecraft_ops_path(feedback_env, monkeypatch):
+    from backend.core.execution_path import is_minecraft_ops_query, resolve_execution_path
+
+    _, cfg_path = feedback_env
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    cfg["routing_feedback"]["max_company_ratio"] = 1.0
+    cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
+    from backend.core.cost_speed_router import reload_cost_speed
+
+    reload_cost_speed()
+    _seed_low_simple(15)
+    mc_q = "在坐标(100, 64, 200)处放置一个钻石块" + ("，請確認" * 40)
+    assert is_minecraft_ops_query(mc_q)
+    assert resolve_execution_path(mc_q, "auto") == "minecraft_ops"

@@ -43,7 +43,9 @@ def reflection_max_iterations(state: Mapping[str, Any]) -> int:
         try:
             from backend.core.routing_feedback import extra_reflection_rounds
 
-            bonus = extra_reflection_rounds()
+            bonus = extra_reflection_rounds(
+                execution_path=str(state.get("resolved_execution_path") or ""),
+            )
         except Exception:
             bonus = 0
         return simple_path_max_iterations() + bonus

@@ -566,10 +566,11 @@ def decide_final_answer(state: StateInput) -> dict:
     if warnings:
         logger.warning("質量門警告：%s", "；".join(warnings))
 
-    # P2：路由自適應反饋 — 記錄最終品質供後續調整
+    # P2：路由自適應反饋 — 記錄最終品質供後續調整（不含 minecraft_ops）
     try:
         from backend.core.routing_feedback import record_outcome
 
+        exec_path = str(state.get("resolved_execution_path") or "").strip().lower()
         route = cast(
             Literal["simple", "company"],
             "company" if state.get("company_result") else "simple",
@@ -579,6 +580,7 @@ def decide_final_answer(state: StateInput) -> dict:
             query_length=len(state.get("query", "")),
             score=float(state.get("score", 0.0)),
             success=not warnings and float(state.get("score", 0.0)) >= 8.0,
+            execution_path=exec_path or None,
         )
         log_node(state, "decide_final_answer", route=route, score=state.get("score", 0.0))
     except Exception as exc:

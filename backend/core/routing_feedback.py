@@ -19,6 +19,22 @@ logger = logging.getLogger(__name__)
 RouteChoice = Literal["simple", "company"]
 QueryBucket = Literal["short", "medium", "long"]
 
+_EXCLUDED_EXECUTION_PATHS = frozenset({"minecraft_ops", "opc"})
+
+
+def routing_feedback_applies(
+    *,
+    execution_path: str | None = None,
+    route: RouteChoice | None = None,
+) -> bool:
+    """routing_feedback 僅作用於 simple／company 閉環，不影響輕量 minecraft_ops 等路徑。"""
+    path = str(execution_path or "").strip().lower()
+    if path in _EXCLUDED_EXECUTION_PATHS:
+        return False
+    if route is not None and route not in ("simple", "company"):
+        return False
+    return True
+
 _DEFAULT_PATH = (
     Path(__file__).resolve().parent.parent / "data" / "routing_feedback.json"
 )
@@ -150,8 +166,14 @@ def feedback_upgrade_state(store: dict[str, Any] | None = None) -> dict[str, Any
     }
 
 
-def cost_speed_complexity_boost(complexity: str | None) -> str | None:
+def cost_speed_complexity_boost(
+    complexity: str | None,
+    *,
+    execution_path: str | None = None,
+) -> str | None:
     """simple 路徑低分時先升 cost_speed 複雜度桶（對應更高 tier 模型）。"""
+    if not routing_feedback_applies(execution_path=execution_path):
+        return complexity
     if complexity != "simple":
         return complexity
     state = feedback_upgrade_state()
@@ -160,8 +182,10 @@ def cost_speed_complexity_boost(complexity: str | None) -> str | None:
     return "medium"
 
 
-def extra_reflection_rounds() -> int:
+def extra_reflection_rounds(*, execution_path: str | None = None) -> int:
     """低分回饋時為簡單路徑多加一輪反思（在 EVOL_SIMPLE_MAX_ITERATIONS 之上）。"""
+    if not routing_feedback_applies(execution_path=execution_path):
+        return 0
     state = feedback_upgrade_state()
     return 1 if state.get("extra_reflection_active") else 0
 
@@ -174,8 +198,11 @@ def record_outcome(
     *,
     bucket: QueryBucket | str | None = None,
     complexity: str | None = None,
+    execution_path: str | None = None,
 ) -> None:
     """記錄一次路由結果（供後續自適應調整）。"""
+    if not routing_feedback_applies(execution_path=execution_path, route=route):
+        return
     cfg = _feedback_config()
     store = _ensure_store()
     meta = _meta(store)

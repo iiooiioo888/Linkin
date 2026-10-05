@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from backend.core.post_company_reflect import post_company_reflect_mode, post_company_reflect_resolution
 from backend.main import app
-from backend.services.task_broadcaster import task_broadcaster
+from backend.services.task_manager import TaskManager, TaskRecord
 
 
 @pytest.fixture
@@ -55,24 +55,22 @@ def test_put_get_post_company_reflect_api(cost_speed_file):
     assert post_company_reflect_mode() == "full"
 
 
-@pytest.mark.asyncio
-async def test_task_finished_includes_reflect_mode_and_score(monkeypatch):
+def test_task_finished_includes_reflect_mode_and_score(monkeypatch):
     monkeypatch.delenv("EVOL_POST_COMPANY_REFLECT", raising=False)
     monkeypatch.setenv("EVOL_POST_COMPANY_REFLECT", "evaluate")
-    received: list[dict] = []
+    payloads: list[dict] = []
+    mgr = TaskManager()
+    record = TaskRecord("t1", "q", "simple", "quick_task")
+    record.status = "completed"
+    record.score = 8.5
+    record.iteration = 1
 
-    class _Ws:
-        async def send_json(self, message):
-            received.append(message)
+    def _capture(_task_id: str, event: str, data: dict):
+        if event == "task_finished":
+            payloads.append(data)
 
-    ws = _Ws()
-    await task_broadcaster.subscribe("t1", ws)
-    await task_broadcaster.broadcast(
-        "t1",
-        "task_finished",
-        {"status": "completed", "score": 8.5, "iteration": 1},
-    )
-    assert received
-    data = received[0]["data"]
-    assert data["reflect_mode"] == "evaluate"
-    assert data["score"] == 8.5
+    monkeypatch.setattr(mgr, "_broadcast_event", _capture)
+    mgr._finish(record)
+    assert payloads
+    assert payloads[0]["reflect_mode"] == "evaluate"
+    assert payloads[0]["score"] == 8.5

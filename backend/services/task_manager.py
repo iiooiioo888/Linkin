@@ -629,13 +629,18 @@ class TaskManager:
         self._persist_event_counters.pop(record.task_id, None)
         self._persist(record)
         # WebSocket 推送任务完成/失败事件
-        self._broadcast_event(record.task_id, "task_finished", {
+        finish_data: dict[str, Any] = {
             "status": record.status,
             "score": record.score,
             "iteration": record.iteration,
             "error": record.error,
             **self._length_gate_finish_payload(record),
-        })
+        }
+        try:
+            finish_data["reflect_mode"] = _post_company_reflect_mode()
+        except Exception:
+            finish_data["reflect_mode"] = "off"
+        self._broadcast_event(record.task_id, "task_finished", finish_data)
         if record.status == "completed":
             self._archive_task(record)
 
