@@ -33,7 +33,7 @@ import {
   MonitorLinkButton,
   MonitorPanel,
   MonitorStatusDot,
-  MonitorTopbar,
+  MonitorStatusStrip,
   MonitorWarnBar,
   PipelineTimeline,
   ResourceGauges,
@@ -821,6 +821,7 @@ export default function LiveBoard({
   }, [dock]);
 
   const dashboard = useMonitorStore((s) => s.dashboard);
+  const connected = useMonitorStore((s) => s.connected);
   const consoleFeed = useMemo(
     () => ({ ...feed, agents: filterAgentsByDesk(feed.agents, 'console') }),
     [feed],
@@ -854,16 +855,7 @@ export default function LiveBoard({
     if (detail && tab === 'agents') onOpenAgent?.(detail);
   };
 
-  const topNav = [
-    { key: 'live', label: '總覽', tab: 'live' as MonitorTab },
-    { key: 'tasks', label: '執行', tab: 'tasks' as MonitorTab },
-    { key: 'agents', label: '角色', tab: 'agents' as MonitorTab },
-    { key: 'feedback', label: '審計', tab: 'feedback' as MonitorTab },
-    { key: 'models', label: '計費', tab: 'models' as MonitorTab },
-    { key: 'metrics', label: '系統', tab: 'metrics' as MonitorTab },
-  ];
-
-  const topbarActions = (
+  const statusStripActions = (
     <>
       {!liteShell ? (
         <button
@@ -874,32 +866,23 @@ export default function LiveBoard({
         >
           {t('monitorAlert.toggle')}
         </button>
-      ) : (
-        <span className="text-[10px] text-[var(--console-faint)]" title={t('mobileShell.alertModeDesktop')}>
-          {t('mobileShell.alertModeDesktop')}
-        </span>
-      )}
+      ) : null}
       <MonitorStatusDot tone={liveTone(feed)} label={feed.live ? 'LIVE' : 'IDLE'} />
     </>
   );
 
-  const topbar = !dock ? (
-    <MonitorTopbar
-      brand={
-        <>
-          <span className="accent">靈境</span>
-          <span>·Linkin</span>
-        </>
-      }
-      nav={topNav.map((item) => ({
-        key: item.key,
-        label: item.label,
-        active: item.tab === 'live',
-        onClick: () => onOpenTab?.(item.tab),
-      }))}
-      meta={updated ? <span className="font-mono tabular-nums">{updated}</span> : '監控級儀表板 v3'}
-      actions={topbarActions}
+  const statusStrip = !dock ? (
+    <MonitorStatusStrip
+      leading={!connected ? <span className="mon-live-status__offline">離線資料</span> : null}
+      actions={statusStripActions}
+      meta={updated ? <span className="font-mono tabular-nums">{updated}</span> : null}
     />
+  ) : null;
+
+  const liteHint = liteShell ? (
+    <p className="mon-live-hint" title={t('mobileShell.alertModeDesktop')}>
+      {t('mobileShell.alertModeDesktop')}
+    </p>
   ) : null;
 
   const center = (
@@ -963,7 +946,8 @@ export default function LiveBoard({
             onJump={handleAlertJump}
             unhealthyKeysCount={unhealthyKeys}
           />
-          {topbar}
+          {statusStrip}
+          {liteHint}
           <div className="mon-live-mobile-scroll">
             {left}
             {center}
@@ -983,7 +967,7 @@ export default function LiveBoard({
           onJump={handleAlertJump}
           unhealthyKeysCount={unhealthyKeys}
         />
-        {topbar}
+        {statusStrip}
         <ConsoleThreeColumn
           className="mon-live-board"
           liteShell={liteShell}

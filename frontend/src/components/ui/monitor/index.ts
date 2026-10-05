@@ -12,6 +12,7 @@ export { TaskPriorityCard } from './TaskPriorityCard';
 export { MonitorPanel } from './MonitorPanel';
 export { MonitorTopbar } from './MonitorTopbar';
 export type { MonitorTopbarNavItem } from './MonitorTopbar';
+export { MonitorStatusStrip } from './MonitorStatusStrip';
 export { MonitorWarnBar } from './MonitorWarnBar';
 export { MonitorStatusDot } from './MonitorStatusDot';
 export type { MonitorStatusTone } from './MonitorStatusDot';
