@@ -7,8 +7,6 @@ import { getGateUser, logoutGate } from '../lib/auth';
 import { activityTitle, consoleChromeLabel, consoleChromeTabKey, CONSOLE_CHROME_TABS, isCoreActivity, resolveActivity } from '../lib/monitorTabs';
 import { labSubTabLabel, type LabSubTab } from '../lib/labTabs';
 import type { MonitorTab, ViewKey } from './AppShell';
-import WalletBadge from './WalletBadge';
-
 interface TopBarProps {
   activeView: ViewKey;
   monitorTab: MonitorTab;
@@ -103,13 +101,6 @@ export default function TopBar({
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5">
-        <span className="md:hidden">
-          <WalletBadge minimal onOpenBilling={() => onMonitorTabChange?.('models')} />
-        </span>
-        <span className="hidden md:inline-flex">
-          <WalletBadge onOpenBilling={() => onMonitorTabChange?.('models')} />
-        </span>
-
         {llmConfigured === false && (
           <button
             type="button"

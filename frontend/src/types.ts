@@ -255,7 +255,7 @@ export interface TaskProgress {
   /** 統一模式：執行策略（auto / simple / company） */
   strategy: 'auto' | 'simple' | 'company';
   /** 統一模式：實際解析的執行路徑（simple / company / opc） */
-  resolved_path: 'simple' | 'company' | 'opc' | '';
+  resolved_path: 'simple' | 'company' | 'opc' | 'minecraft_ops' | '';
   query: string;
   template: string;
   phase: string;

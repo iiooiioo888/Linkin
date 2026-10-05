@@ -7,7 +7,7 @@
  *   #/monitor/agents/{agentId}
  *   #/monitor/lab | #/monitor/lab/{prompt|firecrawl|archify|ponytail|quant|maps|mcp|ab}
  *   #/monitor/integrations | #/monitor/integrations/{memos|openviking|weknora|yao|ouroboros|openpencil}
- *   #/monitor/credits* | #/monitor/billing | #/monitor/wallet — 已移除積分模組，正規化至 #/monitor（即時）
+ *   #/monitor/credits | #/monitor/billing | #/monitor/wallet — 已移除積分中心，正規化至 models（AI 用量）
  *   #/monitor/context | #/monitor/context/{taskId}
  *   #/monitor/world | #/monitor/npcs | #/monitor/quests | #/monitor/items | #/monitor/studio
  *   #/monitor/building | #/monitor/minecraft | #/monitor/admin
@@ -83,7 +83,7 @@ export function parseAppRoute(hash: string): AppRoute {
       return {
         ...getDefaultRoute(),
         view: 'monitor',
-        monitorTab: 'live',
+        monitorTab: 'models',
       };
     }
     if (rawTab === 'grill') {

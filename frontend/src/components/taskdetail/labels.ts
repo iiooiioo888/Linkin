@@ -29,6 +29,7 @@ export const PATH_META: Record<string, { label: string; icon: string; tone: stri
   simple: { label: '反思閉環', icon: '⚙', tone: 'var(--apple-blue-soft)' },
   company: { label: '公司運行時', icon: '🏢', tone: 'var(--apple-green)' },
   opc: { label: 'OPC 工業閉環', icon: '🏭', tone: 'var(--apple-orange)' },
+  minecraft_ops: { label: 'MC 輕量運維', icon: '⛏', tone: 'var(--console-accent)' },
   '': { label: '尚未路由', icon: '·', tone: 'var(--apple-tertiary)' },
 };
 

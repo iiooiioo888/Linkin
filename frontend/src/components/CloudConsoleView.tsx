@@ -88,7 +88,7 @@ export default function CloudConsoleView({ embedded = false }: { embedded?: bool
           <ConsoleColumnScroll>
             <ConsoleSnippetList title="提示">
               <p className="text-[11px] text-[var(--console-sub)]">
-                Docker 與雲資源費用仍由後端計量；任務扣款請看頂欄積分。
+                雲資源與實例在此管理；AI 用量見控制台「AI 用量」。
               </p>
             </ConsoleSnippetList>
           </ConsoleColumnScroll>

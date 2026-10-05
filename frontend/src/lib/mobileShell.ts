@@ -26,8 +26,6 @@ export const MOBILE_LITE_ADVANCED_TABS: ReadonlySet<MonitorTab> = new Set([
   'pipeline',
   'feedback',
   'metrics',
-  'billing',
-  'credits',
   'llm',
   'memory',
   'context',

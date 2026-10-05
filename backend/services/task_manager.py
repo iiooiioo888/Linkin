@@ -685,6 +685,8 @@ class TaskManager:
                 await self._run_opc_task(record)
             elif path == "company":
                 await self._run_company_task(record)
+            elif path == "minecraft_ops":
+                await self._run_minecraft_ops_task(record)
             else:
                 await self._run_simple_task(record)
         except asyncio.CancelledError:
@@ -700,6 +702,79 @@ class TaskManager:
             self._running_tasks.pop(record.task_id, None)
 
     # ── 簡單任務執行（單次生成 + 反思迴圈） ──
+
+    async def _run_minecraft_ops_task(self, record: TaskRecord) -> None:
+        """Minecraft 輕量路徑：記憶／上下文增強 → ReAct+MCP → 精簡反思迴圈。"""
+        tracer = TraceLogger(record.task_id)
+        opts = record.options or {}
+        from backend.core.locale_prompt import normalize_ui_language
+        from backend.core.company_nodes import run_minecraft_ops
+
+        state: dict[str, Any] = {
+            "query": record.query,
+            "session_id": record.task_id,
+            "task_id": record.task_id,
+            "history": [],
+            "ui_language": normalize_ui_language(opts.get("ui_language")),
+            "execution_strategy": record.strategy if record.strategy == "simple" else "auto",
+            "task_complexity": "simple",
+        }
+        try:
+            self._set_phase(record, "retrieve_memories")
+            tracer.log_phase_change("retrieve_memories")
+            state.update(await asyncio.to_thread(nodes.retrieve_memories, state))
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            self._set_phase(record, "enhance_opc_context")
+            state.update(await enhance_with_opc_context(state))
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            self._set_phase(record, "enhance_linkin_context")
+            state.update(await asyncio.to_thread(enhance_with_linkin_context, state))
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            self._set_phase(record, "enhance_recall_context")
+            state.update(await asyncio.to_thread(enhance_with_recall_context, state))
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            self._set_phase(record, "minecraft_ops")
+            tracer.log_phase_change("minecraft_ops", data={"execution_path": "minecraft_ops"})
+            self._add_event(record, "minecraft_ops_start", {"path": "minecraft_ops"})
+            state.update(await asyncio.to_thread(run_minecraft_ops, state))
+            self._add_event(
+                record,
+                "minecraft_ops_done",
+                state.get("minecraft_ops_result") or {},
+            )
+            if self._check_cancelled(record):
+                self._finish(record)
+                return
+
+            await self._run_reflection_loop(record, state, tracer)
+
+            record.answer = str(
+                state.get("final_answer") or state.get("current_answer") or ""
+            )
+            record.score = state.get("score")
+            record.iteration = state.get("iteration", 0)
+            if record.status != "cancelled" and not record.cancel_requested:
+                record.status = "completed"
+                tracer.log_phase_change("done")
+                self._set_phase(record, "done")
+        except Exception as exc:
+            logger.error("Minecraft 輕量任務 %s 執行失敗：%s", record.task_id, exc)
+            record.status = "failed"
+            record.error = str(exc)
+            tracer.log_error(str(exc), phase=record.phase, recoverable=False)
+        self._finish(record)
 
     async def _run_simple_task(self, record: TaskRecord) -> None:
         """簡單任務：記憶檢索 → OPC 上下文增強 → 生成 → 反思迴圈。"""
@@ -817,8 +892,11 @@ class TaskManager:
     ) -> dict[str, Any]:
         """與 LangGraph ``should_improve`` 共用：合併 execution_strategy 等路由欄位。"""
         merged = {**state, "execution_strategy": record.strategy}
-        if record.resolved_path == "simple":
+        if record.resolved_path in ("simple", "minecraft_ops"):
             merged["execution_strategy"] = "simple"
+            merged["task_complexity"] = "simple"
+        if record.resolved_path == "minecraft_ops":
+            merged["resolved_execution_path"] = "minecraft_ops"
         return merged
 
     def _reflection_max_iterations(self, record: TaskRecord, state: dict[str, Any]) -> int:
