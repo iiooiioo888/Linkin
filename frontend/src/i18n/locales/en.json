@@ -30,7 +30,12 @@
     "liveIdle": "Idle",
     "liveActive": "Live",
     "roster": "Roster",
-    "searchRoles": "Search roles"
+    "searchRoles": "Search roles",
+    "offlineData": "Offline data",
+    "l0Situation": "L0 status",
+    "l0EnergySave": "Energy save",
+    "l0PressureNormal": "Pressure normal",
+    "l0PressurePct": "Pressure {{pct}}%"
   },
   "chat": {
     "emptyTitle": "Start a conversation",
@@ -102,13 +107,6 @@
     "accountCreditsHint": "Platform task usage balance — separate from per-role USD caps",
     "creditsUnit": "credits",
     "creditsMonthlyUsed": "Monthly used {{used}} / {{quota}}"
-  },
-  "monitor": {
-    "offlineData": "Offline data",
-    "l0Situation": "L0 status",
-    "l0EnergySave": "Energy save",
-    "l0PressureNormal": "Pressure normal",
-    "l0PressurePct": "Pressure {{pct}}%"
   },
   "mobileShell": {
     "desktopHint": "Full controls and dense monitors work best on desktop (≥768px). You can still open a simplified view here.",
