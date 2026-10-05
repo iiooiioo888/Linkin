@@ -8,7 +8,8 @@
  * 生產環境可設定 VITE_API_URL 環境變數指向後端位址。
  */
 
-import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, BillingLedgerEntry, BillingSnapshot, BillingUsageEvent, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, SeatFeedQuery, SeatIOFeed, SeatIORecord, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
+import type { AgentMonitorData, AgentMonitorPrefs, AliyunBilling, ApiRoutePublic, BattlePlanState, BillingLedgerEntry, BillingSnapshot, BillingUsageEvent, CheckpointSummary, CloudAlertsData, CloudBilling, CloudEventsData, CloudMonitoring, DashboardData, DockerActionResult, DockerBudget, DockerStatus, GrillUserState, HubMonitorData, LlmOpsData, L0Snapshot, OpcMonitorData, OptimizationMonitorData, RahoSnapshot, RoleAgent, RoutingPreview, RoutingPreviewRequest, SeatFeedQuery, SeatIOFeed, SeatIORecord, TaskOptions, TaskProgress, TraceEntry, TraceSummary } from '../types';
+import { parseRoutingPreview } from '../lib/routingPreview';
 import { appendGateQuery, attachGateHeaders } from '../lib/auth';
 import { parseBillingHttpError } from '../lib/billingUi';
 
@@ -56,6 +57,7 @@ export interface ChatResult {
 /** SSE 串流事件回調 */
 export interface StreamCallbacks {
   onPhase?: (phase: string) => void;
+  onPathResolved?: (preview: RoutingPreview) => void;
   onToken?: (token: string) => void;
   onAnswer?: (answer: string) => void;
   onEvaluation?: (score: number | null, iteration: number, multiDim?: import('../types').MultiDimEvaluation) => void;
@@ -143,7 +145,13 @@ export function sendChatStream(
           }
 
           switch (eventType) {
+            case 'path_resolved': {
+              const preview = parseRoutingPreview(data);
+              if (preview) callbacks.onPathResolved?.(preview);
+              break;
+            }
             case 'phase':
+              if (String(data.phase ?? '') === 'path_resolved') break;
               callbacks.onPhase?.(String(data.phase ?? ''));
               break;
             case 'token':
@@ -185,6 +193,31 @@ export function sendChatStream(
   })();
 
   return controller;
+}
+
+/** 發送前路由與成本預覽（純規則，與執行路徑同源）。 */
+export async function fetchRoutingPreview(
+  body: RoutingPreviewRequest,
+  signal?: AbortSignal,
+): Promise<RoutingPreview> {
+  const resp = await fetch(
+    apiUrl('/routing/preview'),
+    attachGateHeaders({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    }),
+  );
+  if (!resp.ok) {
+    throw new Error(`routing preview failed (${resp.status})`);
+  }
+  const data = (await resp.json()) as Record<string, unknown>;
+  const preview = parseRoutingPreview(data);
+  if (!preview) {
+    throw new Error('routing preview invalid');
+  }
+  return preview;
 }
 
 /** 送出聊天並取得完整回答（統一模式）。 */

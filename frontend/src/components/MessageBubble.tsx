@@ -12,6 +12,7 @@ import GrillUserCard from './GrillUserCard';
 import BattlePlanCard from './BattlePlanCard';
 import ErrorState from './ui/ErrorState';
 import TurnBillingReceipt from './chat/TurnBillingReceipt';
+import { RoutingPreviewChips } from './ui/monitor';
 
 
 interface MessageBubbleProps {
@@ -106,6 +107,9 @@ export default function MessageBubble({
 
   return (
     <div className={`group flex flex-col gap-2 ${workspace ? '' : isUser ? 'items-end' : 'items-start'}`}>
+      {!isUser && message.meta?.routingPreview && (
+        <RoutingPreviewChips preview={message.meta.routingPreview} compact className="max-w-[min(100%,720px)]" />
+      )}
       {message.taskState && !workspace && (
         <div className="w-full max-w-[min(100%,720px)]">
           <TaskPanel

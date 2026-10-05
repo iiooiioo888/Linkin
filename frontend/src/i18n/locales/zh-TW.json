@@ -38,6 +38,12 @@
     "l0PressurePct": "壓力 {{pct}}%",
     "l0Unknown": "L0 態勢 —"
   },
+  "routing": {
+    "costLabel": "預估成本等級",
+    "costLow": "低",
+    "costMedium": "中",
+    "costHigh": "高"
+  },
   "chat": {
     "emptyTitle": "開始對話",
     "emptySubtitle": "寫下要完成的事。短問題直接回答，較大的任務會自動分工。",

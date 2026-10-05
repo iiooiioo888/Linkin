@@ -6,8 +6,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ChatMessage, ChatSession, TaskOptions, TaskProgress } from './types';
-import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, startUserGrill, streamAuditor, TaskWebSocket } from './api/client';
+import type { ChatMessage, ChatSession, RoutingPreview, TaskOptions, TaskProgress } from './types';
+import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, streamAuditor, TaskWebSocket } from './api/client';
 import type { ChatBillingFootnote } from './api/client';
 import { formatChatBillingFootnote, requestBillingRefresh } from './lib/billingUi';
 import type { TaskWsMessage } from './api/client';
@@ -28,7 +28,13 @@ import {
   saveActiveSessionId,
   saveSessions,
 } from './lib/storage';
-import { coerceTaskProgressStatus, isTerminalTaskStatus, looksLikeCompanyQuery } from './lib/chatWorkspace';
+import { coerceTaskProgressStatus, isTerminalTaskStatus } from './lib/chatWorkspace';
+import {
+  parseRoutingPreview,
+  resolveRoutingPreviewForSend,
+  shouldRunGrill,
+  usesTaskWorkspace,
+} from './lib/routingPreview';
 import { hydrateWorldModules } from './lib/worldModules';
 import { normalizeMonitorTab } from './lib/monitorTabs';
 import { splitThink } from './lib/splitThink';
@@ -305,12 +311,32 @@ export default function App() {
       let semanticLock: Record<string, unknown> = {};
       let precomputedPlanner: Record<string, unknown> | undefined =
         options.taskOptions?.precomputed_planner as Record<string, unknown> | undefined;
-      if (!options.skipGrill && options.executionStrategy !== 'simple') {
+
+      const patchAssistantRouting = (preview: RoutingPreview) => {
+        updateSession(sessionId, (s) => ({
+          ...s,
+          updatedAt: Date.now(),
+          messages: s.messages.map((m) =>
+            m.id === assistantId
+              ? { ...m, meta: { ...m.meta, routingPreview: preview } }
+              : m,
+          ),
+        }));
+      };
+
+      let routingPreview = await resolveRoutingPreviewForSend({
+        query,
+        mode: options.executionStrategy,
+        companyTemplate: options.companyTemplate,
+        snapshot: options.routingPreviewSnapshot,
+      });
+      if (routingPreview) {
+        patchAssistantRouting(routingPreview);
+      }
+
+      if (shouldRunGrill(options.executionStrategy, routingPreview, options.skipGrill)) {
         try {
-          const grill =
-            options.executionStrategy === 'company'
-              ? await streamAuditor({ query })
-              : await startUserGrill(query, options.executionStrategy);
+          const grill = await streamAuditor({ query });
           if (grill.should_grill && !grill.locked && !grill.terminated) {
             updateSession(sessionId, (s) => ({
               ...s,
@@ -331,6 +357,7 @@ export default function App() {
                           executionStrategy: options.executionStrategy,
                           companyTemplate: options.companyTemplate,
                           taskOptions: options.taskOptions,
+                          routingPreviewSnapshot: options.routingPreviewSnapshot,
                         },
                       },
                     }
@@ -424,10 +451,17 @@ export default function App() {
         };
       }
 
-      // ── 統一模式：寒暄／簡單走 SSE；公司或長文交付建任務，主頁才分裂監控欄 ──
-      const openTaskWorkspace =
-        options.executionStrategy === 'company' ||
-        (options.executionStrategy === 'auto' && looksLikeCompanyQuery(workQuery));
+      // ── 統一模式：簡單／minecraft_ops 走 SSE；公司／OPC 建任務 ──
+      if (workQuery.trim() !== query.trim()) {
+        routingPreview = await resolveRoutingPreviewForSend({
+          query: workQuery,
+          mode: options.executionStrategy,
+          companyTemplate: options.companyTemplate,
+          snapshot: null,
+        });
+        if (routingPreview) patchAssistantRouting(routingPreview);
+      }
+      const openTaskWorkspace = usesTaskWorkspace(options.executionStrategy, routingPreview);
       if (!openTaskWorkspace) {
         setSending(false);
 
@@ -441,6 +475,9 @@ export default function App() {
         }));
 
         sendChatStream(workQuery, sessionId, {
+          onPathResolved: (preview) => {
+            patchAssistantRouting(preview);
+          },
           onPhase: (phase) => {
             updateSession(sessionId, (s) => ({
               ...s,
@@ -695,6 +732,19 @@ export default function App() {
           if (msg.event === 'snapshot') {
             // 初始快照
             applyProgress(msg.data as unknown as TaskProgress);
+          } else if (msg.event === 'path_resolved') {
+            const preview = parseRoutingPreview(msg.data);
+            if (preview) {
+              patchAssistantRouting(preview);
+              if (lastProgress) {
+                applyProgress({
+                  ...lastProgress,
+                  resolved_path: preview.path,
+                });
+              } else {
+                fetchTask(task_id).then(applyProgress).catch(() => {});
+              }
+            }
           } else if (msg.event === 'task_finished') {
             // 任务结束：获取最终状态
             fetchTask(task_id).then(applyProgress).catch(() => {

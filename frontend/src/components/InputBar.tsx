@@ -3,8 +3,11 @@ import { useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { COMPANY_TEMPLATES } from '../types';
+import type { RoutingPreviewSnapshot } from '../lib/routingPreview';
 import type { CompanyTemplate, TaskOptions } from '../types';
 import { openChatContextDetail, openContextModal } from '../lib/contextUi';
+import { useRoutingPreview } from '../hooks/useRoutingPreview';
+import { RoutingPreviewChips } from './ui/monitor';
 
 export interface SendOptions {
   executionStrategy: 'auto' | 'simple' | 'company';
@@ -12,6 +15,8 @@ export interface SendOptions {
   taskOptions?: TaskOptions;
   /** 已通過需求審計官，跳過前置閘門 */
   skipGrill?: boolean;
+  /** 發送當下路由預覽快照（含 query／mode／template；不一致時 App 會重取） */
+  routingPreviewSnapshot?: RoutingPreviewSnapshot | null;
 }
 
 interface InputBarProps {
@@ -67,6 +72,12 @@ export default function InputBar({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const strategyLabel = STRATEGIES.find((s) => s.key === executionStrategy)?.label ?? '自動';
+  const { snapshot: routingPreviewSnapshot } = useRoutingPreview(
+    text,
+    executionStrategy,
+    companyTemplate,
+  );
+  const routingPreview = routingPreviewSnapshot?.preview ?? null;
 
   const slashMatches = useMemo(() => {
     const trimmed = text.trim();
@@ -123,7 +134,12 @@ export default function InputBar({
     if (maxIterations) taskOptions.max_iterations = parseInt(maxIterations, 10);
     if (maxReviewRounds) taskOptions.max_review_rounds = parseInt(maxReviewRounds, 10);
     if (passThreshold) taskOptions.pass_threshold = parseFloat(passThreshold);
-    onSend(trimmed, { executionStrategy, companyTemplate, taskOptions });
+    onSend(trimmed, {
+      executionStrategy,
+      companyTemplate,
+      taskOptions,
+      routingPreviewSnapshot,
+    });
     setText('');
     setShowMenu(false);
     requestAnimationFrame(() => {
@@ -303,12 +319,16 @@ export default function InputBar({
               type="button"
               onClick={() => setShowMenu((v) => !v)}
               disabled={disabled}
-              className={`rounded-lg px-2 py-1 text-[11px] text-[var(--console-faint)] hover:bg-white/[0.04] hover:text-[var(--console-ink)] ${
+              className={`shrink-0 rounded-lg px-2 py-1 text-[11px] text-[var(--console-faint)] hover:bg-white/[0.04] hover:text-[var(--console-ink)] ${
                 showMenu ? 'bg-white/[0.06] text-[var(--console-ink)]' : ''
               }`}
             >
               {strategyLabel}
             </button>
+
+            {routingPreview && (
+              <RoutingPreviewChips preview={routingPreview} compact className="min-w-0 flex-1 sm:flex-none" />
+            )}
 
             <button
               type="submit"
