@@ -24,14 +24,14 @@ def is_minecraft_ops_execution_state(state: Mapping[str, Any]) -> bool:
 
 
 def is_simple_execution_state(state: Mapping[str, Any]) -> bool:
-    """是否套用簡單路徑反思上限（強制 simple 策略或已解析為 simple／opc 生成閉環）。"""
+    """是否套用簡單路徑反思上限（強制 simple 策略或 auto 下 task_complexity=simple）。"""
     strategy = (state.get("execution_strategy") or "auto").strip().lower()
     if strategy == "simple":
         return True
     if strategy == "company":
         return False
     path = str(state.get("resolved_execution_path") or "").strip().lower()
-    if path in ("simple", "opc"):
+    if path == "simple":
         return True
     complexity = (state.get("task_complexity") or "").strip().lower()
     return complexity == "simple"
@@ -61,8 +61,16 @@ def _simple_path_base_cap(complexity: str, *, strategy: str) -> int:
     return simple_path_max_iterations()
 
 
-def reflection_max_iterations(state: Mapping[str, Any]) -> int:
-    """依執行策略與路徑解析有效反思迭代上限（LangGraph、SSE、Task、preview 共用）。"""
+def reflection_max_iterations(
+    state: Mapping[str, Any],
+    *,
+    routing_preview: bool = False,
+) -> int:
+    """依執行策略與路徑解析有效反思迭代上限（LangGraph、SSE、Task、preview 共用）。
+
+    ``routing_preview=True`` 時公司路徑回傳 post_company_reflect 上限（#6 預覽）；
+    執行期反思狀態（含 score/iteration）維持與 #80 相同的公司路徑 MAX_ITERATIONS。
+    """
     if is_minecraft_ops_execution_state(state):
         return 0
 
@@ -81,7 +89,9 @@ def reflection_max_iterations(state: Mapping[str, Any]) -> int:
         return MAX_ITERATIONS if mode == "full" else 0
 
     if path == "company" or strategy == "company":
-        return _company_reflect_max_iterations()
+        if routing_preview:
+            return _company_reflect_max_iterations()
+        return MAX_ITERATIONS
 
     if path == "opc":
         return MAX_ITERATIONS

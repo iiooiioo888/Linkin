@@ -7,6 +7,20 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _isolated_routing_feedback(monkeypatch, tmp_path):
+    fb = tmp_path / "routing_feedback.json"
+    fb.write_text(
+        json.dumps({
+            "records": [],
+            "stats": {"simple": 0, "company": 0},
+            "meta": {"consecutive_simple_low": 0},
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("EVOL_ROUTING_FEEDBACK_PATH", str(fb))
+
 from backend.core.graph import reflection_should_continue, should_improve
 from backend.services.task_manager import TaskManager, TaskRecord
 
@@ -50,12 +64,11 @@ def _routing_state(**overrides):
         ),
         (
             {
-                "score": 7.35,
+                "score": 7.4,
                 "iteration": 1,
                 "query": "測試",
                 "execution_strategy": "auto",
                 "task_complexity": "medium",
-                "resolved_execution_path": "simple",
                 "reflections": [{"score": 7.2}],
                 "multi_dim_evaluation": {
                     "fallback_used": True,
@@ -174,10 +187,9 @@ class TestTaskManagerReflectionLoop:
 
     def test_task_manager_continue_delegates_to_graph_helper(self):
         record = TaskRecord("align-fallback", "測試", "auto", "quick_task")
-        record.resolved_path = "simple"
-        record.task_complexity = "medium"
+        record.resolved_path = "company"
         state = _routing_state(
-            score=7.35,
+            score=7.45,
             iteration=1,
             reflections=[{"score": 7.4}],
             multi_dim_evaluation={
@@ -185,7 +197,6 @@ class TestTaskManagerReflectionLoop:
                 "score_source": "fallback",
             },
             task_complexity="medium",
-            resolved_execution_path="simple",
         )
         mgr = TaskManager()
         routed = mgr._reflection_routing_state(record, state)

@@ -74,6 +74,53 @@ class TestRoutingPreviewContract:
         assert should_grill_user("開發一個完整登入系統", "auto") is True
 
 
+class TestCompanyPreviewReflectionCap:
+    def test_preview_company_cap_differs_from_runtime_reflection_state(self):
+        query = "請設計並實現一個完整的微服務系統架構"
+        preview = build_routing_preview(query, mode="auto")
+        assert preview["path"] == "company"
+        runtime_state = {
+            "query": query,
+            "execution_strategy": "auto",
+            "task_complexity": preview["complexity"],
+            "resolved_execution_path": "company",
+            "score": 7.0,
+            "iteration": 1,
+        }
+        assert preview["max_reflection_rounds"] == reflection_max_iterations(
+            runtime_state,
+            routing_preview=True,
+        )
+        assert reflection_max_iterations(runtime_state) > preview["max_reflection_rounds"]
+
+
+class TestTaskPathResolvedSingleSource:
+    @pytest.mark.asyncio
+    async def test_path_resolved_event_matches_record_resolved_path(self, monkeypatch):
+        cases = [
+            ("今天天氣如何", "auto", "simple"),
+            ("在坐标(100, 64, 200)处放置一个钻石块", "auto", "minecraft_ops"),
+            ("請設計並實現一個完整的微服務系統架構", "auto", "company"),
+        ]
+        mgr = TaskManager()
+
+        async def _noop(*_args, **_kwargs):
+            return None
+
+        monkeypatch.setattr(mgr, "_run_simple_task", _noop)
+        monkeypatch.setattr(mgr, "_run_company_task", _noop)
+        monkeypatch.setattr(mgr, "_run_minecraft_ops_task", _noop)
+        monkeypatch.setattr(mgr, "_run_opc_task", _noop)
+
+        for query, strategy, expected in cases:
+            record = TaskRecord(f"path-{expected}", query, strategy, "quick_task")
+            await mgr._run_unified_task(record)
+            evt = next(e for e in record.events if e.get("event") == "path_resolved")
+            assert evt["data"]["path"] == expected
+            assert record.resolved_path == expected
+            assert evt["data"]["path"] == record.resolved_path
+
+
 class TestTaskChatReflectionAlignment:
     def test_same_query_same_complexity_and_cap(self):
         query = "請解釋 Python 裝飾器的工作原理並舉例"

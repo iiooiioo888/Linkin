@@ -102,6 +102,9 @@ def _estimated_cost(path: ExecutionPath, complexity: str) -> dict[str, Any]:
     return {"level": level, "est_tokens": est_tokens}
 
 
+_PREVIEW_CONTEXT_ALLOWLIST: frozenset[str] = frozenset()
+
+
 def _collect_reason_codes(
     query: str,
     strategy: str,
@@ -148,13 +151,13 @@ def _collect_reason_codes(
             pass
         if is_minecraft_heavy_task(text):
             codes.append("minecraft_heavy")
-        if is_complex_task(text, use_routing_feedback=False) and _COMPANY_KEYWORDS_hit(text):
+        if _COMPANY_KEYWORDS_hit(text):
             codes.append("company_keyword")
         threshold = _complex_query_length()
         if len(text) >= threshold:
             codes.append("length_over_threshold")
         if not codes:
-            codes.append("company_keyword")
+            codes.append("rule_company")
     elif is_complex_task(text, use_routing_feedback=True) and path == "simple":
         # cost_speed 或規則將複雜查詢留在 simple
         if len(text) >= _complex_query_length():
@@ -175,10 +178,11 @@ def build_routing_preview(
     mode: str = "auto",
     context: dict[str, Any] | None = None,
     company_template: str | None = None,
+    task_complexity: str | None = None,
 ) -> dict[str, Any]:
     """組裝與執行路徑一致的預覽 payload（供 ``POST /routing/preview`` 與 SSE）。"""
     strategy = (mode or "auto").strip().lower()
-    complexity = _classify_complexity(query, strategy)
+    complexity = (task_complexity or "").strip() or _classify_complexity(query, strategy)
     path = resolve_execution_path(
         query,
         strategy,
@@ -196,7 +200,9 @@ def build_routing_preview(
         "resolved_execution_path": path,
     }
     if context:
-        routing_state.update({k: v for k, v in context.items() if k not in routing_state})
+        for key in _PREVIEW_CONTEXT_ALLOWLIST:
+            if key in context and key not in routing_state:
+                routing_state[key] = context[key]
 
     return {
         "path": path,
@@ -204,7 +210,10 @@ def build_routing_preview(
         "complexity": complexity,
         "tier": tier,
         "model_hint": model_hint,
-        "max_reflection_rounds": reflection_max_iterations(routing_state),
+        "max_reflection_rounds": reflection_max_iterations(
+            routing_state,
+            routing_preview=True,
+        ),
         "reason_codes": _collect_reason_codes(query, strategy, path),
         "estimated_cost": _estimated_cost(path, complexity),
     }

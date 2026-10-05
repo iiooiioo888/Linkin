@@ -2,9 +2,28 @@
 
 from __future__ import annotations
 
+import json
+
+import pytest
+
 from backend.core.evaluation import EvaluationResult
 from backend.core.fallback_rules import RuleBasedFallback
 from backend.core.graph import should_improve
+
+
+@pytest.fixture(autouse=True)
+def _isolated_routing_feedback(monkeypatch, tmp_path):
+    """避免本機 routing_feedback.json 污染 resolve_pass_threshold（動態門檻）。"""
+    fb = tmp_path / "routing_feedback.json"
+    fb.write_text(
+        json.dumps({
+            "records": [],
+            "stats": {"simple": 0, "company": 0},
+            "meta": {"consecutive_simple_low": 0},
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("EVOL_ROUTING_FEEDBACK_PATH", str(fb))
 
 
 def test_short_answer_lowers_accuracy() -> None:
@@ -41,7 +60,7 @@ def test_llm_dict_is_not_fallback() -> None:
 
 def test_fallback_low_improvement_does_not_finalize() -> None:
     state = {
-        "score": 7.35,
+        "score": 7.4,
         "iteration": 1,
         "query": "測試",
         "reflections": [{"score": 7.2}],

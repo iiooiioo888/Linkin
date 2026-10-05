@@ -697,13 +697,14 @@ class TaskManager:
         self._persist(record)
 
         record.task_complexity = resolve_task_complexity(record.query, record.strategy)
-        path = self._resolve_path(record)
-        record.resolved_path = path
         preview = build_routing_preview(
             record.query,
             mode=record.strategy,
             company_template=record.template,
+            task_complexity=record.task_complexity,
         )
+        path = str(preview.get("path") or "simple")
+        record.resolved_path = path
         record.reflection_rounds_max = int(preview.get("max_reflection_rounds") or 0)
         self._add_event(record, "path_resolved", preview)
         logger.info("任務 %s 解析執行路徑：%s（策略：%s）", record.task_id, path, record.strategy)
