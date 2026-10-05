@@ -15,13 +15,11 @@
 
 - 同一 query（含 `semantic_lock.locked_brief`）在三入口的 `path`、注入上下文、反思輪數上限與實際 `iteration` 一致（允許串流在 token 切分上與 batch 字串相同）。
 - 既有測試全過；新增契約測試鎖死上述一致性。
-- `/chat/stream` simple 路徑 **TTFT**（首個 `event: token`）相對基線不退化（建議閾值：p50 ≤ 基線 × 1.10 + 15ms）。
+- **TTFT** 驗收分兩類（詳 §7）：未命中 OPC／靈境增強的 query **零回歸**；命中者允許明確上限或並行／超時降級。
 
 ---
 
 ## 2. 現況盤點（三入口對照）
-
-圖 1 為 LangGraph 單一真相（`backend/core/graph.py:build_graph`）；圖 2–4 為三入口實際執行路徑。
 
 ```mermaid
 flowchart LR
@@ -49,135 +47,91 @@ flowchart LR
 
 | 能力 | `POST /chat` | `POST /chat/stream` | `POST /tasks` + WS |
 | --- | --- | --- | --- |
-| **路由解析** | `route_by_complexity` → `resolve_execution_path`（`backend/core/company_nodes.py:route_by_complexity` L101–134） | 入口：`chat_stream_uses_company_sse` / `resolve_execution_path`（`backend/main.py:chat_stream` L1275–1289）；simple 分支用 `build_routing_preview`（L1327–1333） | `build_routing_preview` + `resolve_task_complexity`（`backend/services/task_manager.py:_run_unified_task` L694–709） |
-| **`build_routing_preview`** | 間接（圖內路由同源函式） | simple／company／minecraft_ops 開頭 `event: path_resolved`（`main.py:_sse_path_resolved` L1201–1202） | `path_resolved` 事件 payload = 完整 preview（L708–709） |
-| **OPC 關鍵詞** | 圖節點 `enhance_with_opc_context`（async） | **simple 分支：未呼叫** ⚠️ | `_run_simple_task` / `_run_minecraft_ops_task` 有呼叫（L807–809 等） |
-| **靈境 RAG** | `enhance_with_linkin_context` | **simple 分支：未呼叫** ⚠️ | `enhance_with_linkin_context`（L820–822 等） |
-| **整合 recall** | `enhance_with_recall_context` | 有（`main.py:event_stream` L1362–1374） | 有 + `recall_assembled` 事件（task_manager L833–851） |
-| **記憶** | `retrieve_memories` | 有（L1351–1358） | 有 | 
-| **semantic_lock / locked_brief** | 改寫 `query`（`main.py:chat` L946–948） | 路由用 `query_for_route`，state 再改寫（L1324–1349） | `create_task` 用 options `semantic_brief` / `auditor_ticket`（task_manager L430–435），**非** Chat 的 `semantic_lock` 欄位 ⚠️ |
-| **節點序列（simple）** | RM→OPC→LK→RC→`generate_initial_answer`→長度守門→評估→反思迴圈→`decide_final_answer`→`enforce_final_length`→`save_memory`→`archive_state` | RM→RC→**`call_llm_stream`**→`enforce_output_length`→手抄 evaluate/reflect/improve→**僅** `save_memory` | RM→OPC→LK→RC→`generate_initial_answer`→`_run_reflection_loop`→`finalize_task_answer` |
-| **反思上限** | `reflection_max_iterations` + `should_improve`（`graph.py` L84–136） | `reflection_should_continue(state)`（`main.py` L1447） | `_reflection_should_continue` → `reflection_should_continue`（task_manager L938–941） |
-| **反思上限（公司 SSE）** | 圖內 `run_company` + `should_evaluate_company` | `_company_stream` 手抄：`PASS_THRESHOLD` / `MAX_ITERATIONS`（`main.py` L1114–1117）⚠️ 未用 `resolve_pass_threshold` / `reflection_max_iterations` | `_run_post_company_reflection` + 手抄 full 模式（task_manager L1005+） |
-| **minecraft_ops** | 圖 `run_minecraft_ops`（`graph.py` L212） | 子流程 `_minecraft_ops_stream` → **完整** `ainvoke`（`main.py` L1208–1257） | 手抄前置 + `run_minecraft_ops` + `_run_reflection_loop`（task_manager L735–761） |
-| **OPC 六級（path=opc）** | 圖仍走 `generate_initial_answer`（`execution_path.py:route_by_complexity_target` L201–206 將 opc 映射為 generate）⚠️ | 落入 simple SSE，**無**六級、**無** OPC 注入 ⚠️ | `_run_opc_task` 獨立六級（task_manager 分派 L713–714） |
-| **post_company_reflect** | `should_evaluate_company` + 圖邊 | `_company_stream` 讀 `post_company_reflect_mode()`（L1074+） | `_run_post_company_reflection` |
-| **Grill／審計 gate** | 無後端 gate；前端 `streamAuditor` / Grill（`frontend/src/api/client.ts`） | 同左；#6 要求僅 `preview.path=company` 觸發（前端） | Task options `auditor_ticket` 改寫 query（task_manager L431–435） |
-| **Billing** | 同步 chat 無 `begin_chat_billing` | `begin_chat_billing` + 可選 `event: billing`（`main.py` L1315、L1422+） | `create_task` → `begin_billed_task`（`main.py:create_task` L1514–1525） |
-| **routing_feedback `record_outcome`** | `nodes.decide_final_answer`（`nodes.py` L569–583） | **無**（未走 decide_final_answer）⚠️ | `finalize_task_answer` 內含 decide（`nodes.py:finalize_task_answer` L83–88） |
-| **pipeline_trace `log_node`** | 各 graph 節點（如 `nodes.py` L227、L583；`company_nodes.py` L127–129） | simple：**無** `log_node`（僅 TraceLogger phase）⚠️ | TraceLogger；**無** `pipeline_trace.log_node` ⚠️ |
-| **對外事件** | JSON `ChatResponse` | SSE：`path_resolved`、`phase`、`token`、`evaluation`、`answer`、`done`、`billing`、`error`、`company`（公司） | REST `events[]`；WS 廣播同名 `event`（`task_manager._add_event` L594–601） |
-| **錯誤／中斷** | 例外 → HTTP 500 | SSE `error` + credits `INSUFFICIENT_CREDITS`（L1534–1547） | `cancel_requested`、強制 cancel 寬限期（task_manager L551+）、`task_finished` |
+| **路由** | `route_by_complexity`（`company_nodes.py` L101–134） | `build_routing_preview` + 分支（`main.py:chat_stream` L1275+） | `build_routing_preview`（`task_manager.py:_run_unified_task` L694–709） |
+| **OPC 注入** | 圖節點 async | simple：**缺** ⚠️ | 有 |
+| **靈境 RAG** | 圖節點 | simple：**缺** ⚠️ | 有 |
+| **recall** | 圖節點 | 有 | 有 + `recall_assembled` |
+| **反思迴圈** | `should_improve` | `reflection_should_continue`（simple）；公司 SSE 仍用 `PASS_THRESHOLD` ⚠️ | `_run_reflection_loop` |
+| **收尾** | decide → enforce_final → save → archive | simple：僅 `save_memory` ⚠️ | `finalize_task_answer` |
+| **`record_outcome`** | `decide_final_answer`（`nodes.py` L569–583） | **無** ⚠️ | 經 finalize |
+| **Billing** | **無** `begin_chat_billing`（`main.py:chat` L941–966）— **今日同步 chat 未走 chat 計費上下文**（見 §5.2） | `begin_chat_billing` + `event: billing` | `begin_billed_task`、402 |
+| **客戶端中斷** | N/A | **無**協作式 cancel ⚠️（§3.5） | `cancel_task` + grace |
 
-### 2.2 已對齊項（#6/#7 後）
+### 2.2 關鍵分歧
 
-- Task 與 Chat SSE simple 均使用 `build_routing_preview`、`reflection_should_continue`、`resolve_task_complexity`（見 `test_execution_path_unified.py`、`test_task_reflection_alignment.py`）。
-- SSE `done` 與 Task `task_finished` 已帶 `complexity`、`reflection_rounds_used`、`reflection_rounds_max`（`main.py` L1524–1530；task_manager L646–647）。
-
-### 2.3 關鍵分歧（實作必消除）
-
-1. **Simple SSE 缺 OPC／靈境增強** — 與 `/chat`、Task 不一致（工業／靈境 query 答案會偏）。
-2. **OPC path** — Task 走六級；`/chat` 圖與 SSE 走「注入 + simple 生成」；**三軌語意未定義為一致**（需 PM 決策，見 §6）。
-3. **公司 SSE 反思終止** — 仍用固定 `PASS_THRESHOLD`/`MAX_ITERATIONS`，與 `should_improve` + `reflection_max_iterations` 分叉。
-4. **收尾鏈** — SSE simple 缺 `decide_final_answer`、`enforce_final_length`、`archive_state`、`record_outcome`。
-5. **生成實作** — SSE 用 `call_llm_stream` + `build_generate_prompt`；圖用 `generate_initial_answer`（同一 prompt 建構器，但串流切 token 與 thinking 拆分時序不同）。
-6. **Chat 同步響應** — 無 `path`/`complexity`/`reflection_rounds_*` 欄位，與 SSE/Task 不對稱。
+1. Simple SSE 缺 OPC／靈境（P1）。
+2. OPC 六級僅 Task（Q1）。
+3. 公司 SSE 反思常數與 graph 分叉（P2）。
+4. SSE 無 finalize／`record_outcome`（P2）。
+5. 串流 disconnect 未停 LLM／未 skip save（§3.5）。
 
 ---
 
 ## 3. 目標架構：`run_unified_pipeline`
 
-### 3.1 設計原則
+### 3.1 原則
 
-1. **單一編排核心**：要麼編譯圖 `ainvoke` / `astream_events`，要麼抽出與圖拓撲一致的 `async def run_pipeline_stages(...)`（禁止第三套 while）。
-2. **傳輸層薄**：HTTP SSE、Task 事件、同步 JSON 只訂閱同一 `PipelineEvent` 流。
-3. **串流特殊情況**：僅在「simple 路徑首次生成」允許 token 級 callback；反思／評估仍走同步節點（與現網一致，利於 TTFT）。
+單一編排核心（圖或同拓撲 `run_pipeline_stages`）；HTTP／Task 只訂閱 `PipelineEvent`；simple 路徑允許 `token_sink`，反思仍用 `nodes.*` 同步節點。
 
-### 3.2 介面草案
+### 3.2 介面（摘要）
 
-新增模組建議：`backend/core/unified_pipeline.py`（名稱可調）。
+`run_unified_pipeline(req: PipelineRequest, mode=BATCH|STREAM|TASK, emit=…, token_sink=…)` → `EvoLoopState`。`mode=stream`：company 保留 EventBus；minecraft_ops 用 `ainvoke`；simple 用共用前置 + stream 生成 + 共用反思。
 
-```python
-@dataclass
-class PipelineRequest:
-    query: str
-    session_id: str
-    task_id: str | None
-    history: list[dict]
-    execution_strategy: str
-    company_template: str | None
-    semantic_lock: dict
-    ui_language: str | None
-    options: dict  # Task 專用（auditor_ticket、model…）
+### 3.3 串流選型
 
-class PipelineMode(Enum):
-    BATCH = "batch"      # POST /chat
-    STREAM = "stream"    # POST /chat/stream
-    TASK = "task"        # POST /tasks 背景
+採 **混合 B**（非全圖 `astream_events`），避免評估節點阻塞首 token。P1 後 TTFT 瓶頸在 **前置增強 I/O**（§7），不在 LangGraph 編譯。
 
-async def run_unified_pipeline(
-    req: PipelineRequest,
-    *,
-    mode: PipelineMode,
-    emit: Callable[[PipelineEvent], Awaitable[None]] | None = None,
-    token_sink: Callable[[str], Awaitable[None]] | None = None,
-) -> EvoLoopState:
-    ...
-```
+### 3.4 分階段 Feature Flag（取代單一總開關）
 
-**`mode` 語意**
+**問題**：單一 `EVOL_UNIFIED_PIPELINE=1` 會把「改答案的 P1」與「改反思／收尾的 P2」「改同步入口的 P3」捆在一起，無法在 prod 獨立試水溫。
 
-| mode | 行為 |
-| --- | --- |
-| `batch` | `await evoloop_graph.ainvoke(initial_state)`；可選將 LangGraph `astream_events` 轉為 `emit`（供日後統一 trace） |
-| `stream` | company → 保留 EventBus→SSE 适配，但 post_company_reflect 改調共用 `run_reflection_phases`；minecraft_ops → `ainvoke`；simple → **共享前置節點** + `token_sink` 生成 + 共用反思階段 |
-| `task` | 與 stream 共用階段函式；`emit` 映射到 `_add_event` / `_broadcast_event`；支援 cancel checkpoint |
+**提案**：環境變數 `EVOL_UNIFIED_PIPELINE`，取值：
 
-**事件契約（內部）**
-
-```python
-@dataclass
-class PipelineEvent:
-    kind: Literal[
-        "path_resolved", "phase", "token", "evaluation",
-        "answer", "company", "billing", "error", "done",
-    ]
-    payload: dict[str, Any]
-```
-
-HTTP 層維持現有 SSE 名稱；adapter 負責 `kind` → `event: …`。
-
-### 3.3 串流技術選型
-
-| 方案 | 說明 | TTFT | 建議 |
+| 值 | 啟用階段 | 預設 | Prod 開啟需 PM 簽核 |
 | --- | --- | --- | --- |
-| **A. 全圖 `astream_events`** | 所有路徑含公司 | 公司路徑首 token 極晚；需大量改造節點為 async stream | 否 |
-| **B. 混合：圖 batch + simple 生成 hook** | simple：前置節點順序執行（與圖相同）→ `generate_with_stream_hook` → 反思呼叫現有 `nodes.*`；company/mc_ops 維持現分支但反思共用 | 與現網相同：TTFT ≈ preview + RM + OPC + LK + RC + 首 token | **是** |
-| **C. 僅共享 while 迴圈** | 抽函式但仍三處呼叫 | 易再次分叉 | 否（過渡可接受） |
+| `off`（或空） | 全關 | **是** | — |
+| `pre` | P1：SSE simple 跑共用 `run_pre_route_enhancements`（OPC+Linkin+順序與 Task 一致） | 否 | **是**（改回答、改 TTFT） |
+| `reflect` | P2：`reflect` 含 P1；共用 `run_reflection_phases` + finalize + 公司 SSE 對齊 | 否 | **是**（改 iteration／長度交付） |
+| `batch` | P3：`batch` 含 P2；`POST /chat` 走 `run_unified_pipeline(BATCH)` | 否 | **是**（可能啟用 chat 計費行為，見 Q7） |
+| `full` | P4：清理死碼、可選前置並行、bench 進 CI | 否 | 工程內部 |
 
-**選 B 的理由**：現網 TTFT 瓶頸在「`path_resolved` 之前後的同步前置」與首次 `call_llm_stream`（`main.py:event_stream` L1347–1376），不在 LangGraph 編譯 overhead。統一前置節點後，不強制 simple 路徑 `ainvoke` 全圖，可避免在評估節點阻塞首 token。
+實作細節：`unified_pipeline.py` 內 `pipeline_level() -> Literal["off","pre","reflect","batch","full"]`，各入口只讀一次。
 
-**TTFT 保護措施**
+P0 僅引入旗標解析與契約測試，**行為等同 `off`**。
 
-- 前置節點並行化（僅當依賴允許）：例如 recall 與 OPC sense 可 `asyncio.gather`（需實作階段量測）。
-- Feature flag 關閉時回退現 `event_stream`（`EVOL_UNIFIED_PIPELINE=0`）。
-- 契約測試記錄「前置 phase 列表 + 順序」與基線一致。
+### 3.5 串流模式：客戶端斷開與中止（與 Task cancel 對齊）
 
-### 3.4 與 `pipeline_trace` 整合
+**現況**：`event_stream` 在 `finally` 呼叫 `end_chat_billing`（`main.py` L1551–1552），但生成執行緒 `run_in_executor(_produce_tokens)` **不會**因客戶端斷開而停止；`save_memory` 在完整迴圈結束後仍可能執行；無 `record_outcome` 中斷語意。
 
-在共享階段 wrapper 內對每個節點呼叫 `pipeline_trace.log_node`（`backend/core/pipeline_trace.py:log_node` L32–40），使三入口寫入同一 `TraceLogger` 檔案規則（`task_id` 或 `session_id`）。
+**目標行為**（`run_unified_pipeline(STREAM)` 實作要求）：
+
+```text
+客戶端關閉 SSE / ASGI disconnect
+  → 設 pipeline_cancelled（asyncio.Event）
+  → 取消 token 生產 Future / 向 call_llm_stream 注入可中止 hook（與 Task 強制 cancel 同級意圖）
+  → 反思迴圈每輪開頭檢查 cancelled：跳過 reflect/improve/evaluate
+  → 不呼叫 save_memory、不呼叫 decide_final_answer/record_outcome（或 record 標記 aborted，見下）
+  → billing：end_chat_billing 前將 snapshot 標 interrupted=True、reason=client_disconnect；已 meter 的 LLM 調用保留（與 Task 取消一致）
+  → 可選 emit event: error code=CLIENT_DISCONNECT（非必須，客戶端已離線）
+```
+
+與 Task 對照：`cancel_requested` + `CANCEL_GRACE_SECONDS`（`task_manager.py` L524–557）→ 串流用 **即時** disconnect 偵測（Starlette `request.is_disconnected()` 或 `asyncio.CancelledError` on send）。
+
+**測試**：mock disconnect 在首 token 後／反思中 assert `save_memory` 未呼叫、`record_outcome` 未呼叫、`chat_billing_snapshot()["interrupted"]` 為真。
 
 ---
 
 ## 4. 分階段實施計畫
 
-| 階段 | 範圍 | 主要檔案 | 測試 | 回滾 | 工作量 |
-| --- | --- | --- | --- | --- | --- |
-| **P0 契約與旗標** | 新增 `run_unified_pipeline` 骨架 + `EVOL_UNIFIED_PIPELINE`；無行為變更 | `core/unified_pipeline.py`、`tests/test_unified_pipeline_contract.py` |  golden：preview.path、complexity、max rounds 三入口一致 | 預設 `0` | S |
-| **P1 Simple 前置對齊** | SSE simple 補 `enhance_with_opc_context` / `enhance_with_linkin_context`；抽 `run_pre_route_enhancements(state)` 與 Task 共用 | `main.py`、`task_manager.py`、`unified_pipeline.py` | 擴充 `test_recall_chat_path` / 新測 OPC 注入出現在 `build_generate_prompt` | flag off | M |
-| **P2 反思／收尾單源** | 刪除三處手抄 while；共用 `run_reflection_phases`（內部 `reflection_should_continue` + `finalize_task_answer`）；公司 SSE 改用同一 helper | `main.py`、`task_manager.py`、`graph.py`（可 export helper） | 既有 `test_task_reflection_alignment.py`、`test_length_gate.py` SSE 用例 | flag off | M |
-| **P3 `/chat` batch 與 trace** | `chat()` 改薄包裝 `run_unified_pipeline(BATCH)`；補 optional 響應欄位（見 §5） | `main.py` | `test_execution_path_unified` + 新同步響應契約 | flag 雙路徑 | S |
-| **P4 清理與 TTFT** | 移除死碼；可選前置 gather；新增 `scripts/bench_stream_ttft.py` 進 CI（mock LLM） | `scripts/`、CI 配置 | TTFT p50 回歸 | flag 移除（另 PR） | S–M |
+| 階段 | 範圍 | 旗標 | 測試 | 工作量 |
+| --- | --- | --- | --- | --- |
+| **P0** | 骨架 + `pipeline_level()` + 契約測試 | `off` | path/complexity/max rounds | **S（~2–3 人日）** |
+| **P1** | 共用前置增強；SSE 接入；TTFT bench 雙路徑 | `pre` | 注入探針 + §7.4 同程 A/B | **M（~4–5 人日）** |
+| **P2** | 反思／finalize 單源；`record_outcome` 單次；串流 cancel | `reflect` | `test_task_reflection_alignment`、record_outcome 單次、disconnect | **M（~5–6 人日）** |
+| **P3** | `/chat` batch 包裝 + 響應元資料 + 計費決策落地 | `batch` | 同步響應契約、billing 用例 | **S（~2–3 人日）** |
+| **P4** | 死碼清理、前置可選 gather、CI bench | `full` | 同程 TTFT 回歸 | **S（~2 人日）** |
+
+**總工作量估算**：約 **15–19 人日**（含測試與文檔；不含 Q1 OPC 六級大行為變更）。
 
 ---
 
@@ -185,117 +139,149 @@ HTTP 層維持現有 SSE 名稱；adapter 負責 `kind` → `event: …`。
 
 ### 5.1 `POST /chat/stream`（simple）
 
-| 變更 | 分類 | 說明 |
-| --- | --- | --- |
-| 新增 `phase: enhance_opc_context` / `enhance_linkin_context`（或合併為 `phase: enhance_context`） | **非 breaking**（新增） | 與 Task 對齊；前端若只認 `retrieve_memories`/`generate` 可忽略 |
-| OPC／靈境命中時 **答案內容變化** | **行為 breaking（語意）** | 與 `/chat` 一致化；需產品說明 |
-| 反思後答案經 `decide_final_answer`/`enforce_final_length` | **可能 breaking** | 極長答案可能被截斷／改選最短版（與 `/chat` 一致） |
-| `event: path_resolved` 維持獨立事件（#6） | 不變 | 已與 preview API 同 schema |
-
-### 5.2 `POST /chat/stream`（company）
-
 | 變更 | 分類 |
 | --- | --- |
-| 反思終止改用 `resolve_pass_threshold` + `reflection_max_iterations` | **可能改變** `iteration`／提前停止時機 |
-| `done.reflection_rounds_*` 與實際一致化 | 非 breaking |
+| 新增 OPC／Linkin 前置 phase（P1） | 非 breaking（事件） |
+| 命中 OPC／靈境時 **答案變化** | 語意 breaking |
+| P2：`finalize_task_answer` 鏈 | 可能改交付長度 |
+| P2：每請求 **一次** `record_outcome`（經 `decide_final_answer`） | **行為／數據 breaking（內部）**：#9 `routing_feedback` 樣本量上升、simple 路由統計更完整，可能更快觸發 `company_ratio_capped` / 長度自適應（`routing_feedback.py`） |
+| P2：客戶端斷開不再保證 `done`／`save_memory` | 非 breaking（客戶端已離線） |
 
-### 5.3 `POST /chat`（同步）
+### 5.2 `POST /chat`（同步）— Billing（**Q7**）
 
-| 變更 | 分類 |
+| 現況 | P3 若走 unified batch 的兩種產品選項 |
 | --- | --- |
-| 建議新增可選欄位：`resolved_path`、`complexity`、`reflection_rounds_used/max` | **非 breaking**（擴充 `ChatResponse`） |
+| **今日未計量展示**：無 `begin_chat_billing`、響應無 `billing` 欄位；與 `/chat/stream` 不一致 | **A. 維持不計量**：batch 仍直接 `ainvoke`，僅代碼路徑統一，**無** 402／無 `billing` 欄位 |
+| | **B. 與 SSE 對齊計量**：batch 包裝內 `begin_chat_billing`；超限 402 或響應帶 `billing` — **API breaking** |
 
-### 5.4 `POST /tasks` / WS
+**必須在 P3 前由 PM 定案（Q7）**；文件預設建議 **A**，避免未告知的 402。
 
-| 變更 | 分類 |
-| --- | --- |
-| 事件順序與 SSE 對齊（前置 phase 名稱一致） | 非 breaking |
-| 若 OPC 與 `/chat` 對齊為「僅注入」而廢棄 Task 六級 | **重大 breaking** — 需 PM 決策（§6） |
+### 5.3 `record_outcome`（P2，§5.1 已述）
 
-### 5.5 前端適配（建議）
+- 僅在成功走完 `decide_final_answer` 且未 `pipeline_cancelled` 時呼叫 **一次**。
+- `finalize_task_answer` 與 graph `decide_final_answer` 共用實作；Task 路徑不得再額外 `record_outcome`。
+- **測試**：`test_record_outcome_once_per_request` — mock `record_outcome`，SSE／Task／batch 各一請求，assert `call_count == 1`；disconnect 案例 assert `call_count == 0`。
 
-1. **InputBar / chatWorkspace**：已依 `POST /routing/preview` 顯示路徑；確認 Grill 僅 `path === 'company'`（#6）。
-2. **SSE 解析**：容忍新 `phase`；`path_resolved` 已是獨立 event（勿再當 `phase`）。
-3. **Task 監控**：`path_resolved` payload 已是完整 preview，與聊天一致。
-4. **答案差異**：工業／靈境 simple 聊天串流答案可能變長／含上下文 — UI 無需改，但需發布說明。
+### 5.4 其他入口
 
-### 5.6 Breaking 清單（供 PM 簽核）
+（Company SSE 反思、Task 事件名、OPC 六級 Q1、前端適配 — 同 v1 §5.2–5.5。）
 
-1. Simple 串流在 OPC／靈境 query 上 **回答內容** 與現網不同（與 `/chat` 對齊）。
-2. Simple 串流 **極長回答** 交付行為與 `/chat` 一致（可能更短或帶 `length_warning`）。
-3. （可選）若統一 OPC 為「僅注入」：**Task OPC 六級行為廢止** — 重大 breaking。
-4. Company SSE **反思輪數** 可能隨動態門檻變化 — 中等風險。
+### 5.5 Breaking 清單（供 PM）
+
+1. P1：Simple 串流 OPC／靈境 query 答案與現網不同。  
+2. P2：極長答案交付與 `record_outcome` 副作用。  
+3. P3（若 Q7=B）：同步 `/chat` 可能 402 或出現 `billing`。  
+4. Q1：OPC 六級廢止 — 重大 breaking。
 
 ---
 
 ## 6. 風險與待決問題
 
-| # | 問題 | 選項 | 建議 |
+| # | 問題 | 阻塞階段 | 建議 |
 | --- | --- | --- | --- |
-| Q1 | **path=opc** 三入口語意 | A) Task 六級為準，Chat/SSE 改分派六級；B) 全改「注入 + simple/company」；C) 維持分裂、契約測試分開 | 先 **C + 文檔化**；長期 **B** 與圖一致 |
-| Q2 | Simple 串流是否必須 **全圖 ainvoke** | 是 = TTFT 風險高；否 = 混合 B | **混合 B** |
-| Q3 | `semantic_lock` vs Task `auditor_ticket` | 統一為 `PipelineRequest.semantic_lock` | 是，Task 建立時映射 |
-| Q4 | 公司路徑是否統一走圖 `run_company` | SSE 現用 Orchestrator 直連 | 短期保留 Orchestrator，反思單源 |
-| Q5 | Billing 事件時機 | 統一在每次 LLM 後 emit | 與現 SSE 一致 |
-| Q6 | 刪除手抄迴圈的時間點 | P2 後禁止新增圖外 while | 寫入 `CONTRIBUTING.md` |
+| **Q1** | path=opc 三入口語意 | P1 文檔、長期實作 | 先 C；不阻塞 P1 |
+| **Q2** | 全圖 ainvoke vs 混合 B | — | 已選 B |
+| **Q3** | semantic_lock vs auditor_ticket | P1 | Task 映射到 `PipelineRequest` |
+| **Q4** | 公司 SSE vs 圖 `run_company` | P2 | 保留 Orchestrator |
+| **Q5** | Billing 事件時機 | P2 串流 | 與現 SSE 一致 |
+| **Q6** | 手抄 while 禁令 | P2 合併後 | CONTRIBUTING |
+| **Q7** | **同步 `/chat` 是否計量／402** | **P3** | 預設 A（維持今日未計量） |
+| **Q8** | P1 OPC 命中時 TTFT：硬等待 vs **並行+超時**（`EVOL_PRE_ENHANCE_TIMEOUT_MS`） | **P1 上線** | 預設：miss 零成本；hit 允許 ≤`max(opc_p95, linkin_p95)+20ms` 或超時 skip 注入（與 `/chat` 不一致需打標 `opc_degraded`） |
+
+### 6.1 PM 決策順序（建議）
+
+```text
+Q7（P3 前必須） ← 僅影響 batch 計費
+Q8（P1 上 prod 前必須） ← TTFT／降級策略
+Q1（OPC 六級） ← 獨立於 P0–P2，可並行討論
+Q3 ← P1 合併前
+Q4、Q5 ← P2 設計評審
+```
+
+**可立即開工**：P0（無 PM 決策）。**P1 合併到 prod** 需 Q8 + P1 簽核。**P3** 需 Q7。
 
 ---
 
-## 7. TTFT 量測計畫
+## 7. TTFT 量測與驗收（修訂）
 
 ### 7.1 定義
 
-- **TTFT**：`POST /chat/stream`（`execution_strategy=simple`）從 HTTP 請求發出到**第一個** `event: token` 的時間（ms）。
-- **不包含**：公司／minecraft_ops 分支（首 token 定義不同）。
+- **TTFT**：`POST /chat/stream`（`execution_strategy=simple`，`path` 為 simple）從請求發出到第一個 `event: token`（ms）。
+- **前置窗**：`path_resolved` 之後至首 token 之前所有同步／await 階段（含 P1 新增的 OPC／Linkin）。
 
-### 7.2 基線方法（本 VM，`master` @ fdeb619）
+### 7.2 增強器成本分析（讀碼結論）
 
-腳本（實作階段落地 `scripts/bench_stream_ttft.py`）：
+| 節點 | 關鍵字／條件門控 | I/O | Embedding / RAG | LLM |
+| --- | --- | --- | --- | --- |
+| **`enhance_with_opc_context`**（`company_nodes.py` L58–68） | `needs_opc_context(query)`（`execution_path._OPC_KEYWORDS`）；**未命中**立即 `_opc_context("not_required")` | **命中**：`await sense_opc` → HTTP `opc_service` 或 edge JSON 快取（`opc_service/sense.py` L64–71，timeout 10s） | 無 | 無 |
+| **`enhance_with_linkin_context`**（`linkin/pipeline.py` L139–192） | 未同時滿足 `world_hit`／`mc_hit`／`obs_hit`／`players_presence_block` 則 **`return {"linkin_context": {}}`**（L191–192） | `world_hit`：`get_store().search` Chroma／JSON（L198–204）；`mc_hit`：`connector_status_brief()`；可觀測性：`build_ai_context` | **RAG 檢索含 embedding 查詢**（Chroma 路徑） | 無 |
+| **`retrieve_memories`** | 無關鍵字門控（總執行） | Chroma `search_similar` | 是（向量檢索） | 无 |
+| **`enhance_with_recall_context`** | 內部依整合源 fail-open | 可能 HTTP 多源 | 可能有 | 無 |
 
-- `TestClient` + `LINKIN_AUTH_DISABLED=1`
-- `monkeypatch`：`call_llm_stream` 每 chunk `sleep(5ms)`；評估 LLM 固定 9 分；`enhance_with_recall_context` no-op
-- 預熱 1 次 + 5 次取 p50
+**P1 真實風險**：基線 bench 若 stub 掉 enhancer（v1），會**低估** P1；必須分 query 類型量測。
 
-**實測（stub LLM，2026-10-05）**：p50 ≈ **23.6 ms**（樣本 `[210.5, 23.9, 22.7, 23.6, 23.0]`，首筆為冷啟動）。
+### 7.3 VM 實測（`master` @ fdeb619，本機 OPC 未啟動）
 
-### 7.3 回歸閾值
+| Query 類型 | `enhance_with_opc_context` p50 | `enhance_with_linkin_context` p50（warm） |
+| --- | --- | --- |
+| 未命中（例：「今天天氣如何」） | **~0 ms** | **~0.25 ms**（僅 regex） |
+| OPC 命中（「產線馬達溫度…」） | **~14 ms**（HTTP 快速失敗） | ~0.25 ms（未走靈境 RAG） |
+| 靈境世界觀（「靈境精靈森林…」） | ~0 ms | **~7.3 ms**（p95 ~10 ms；Chroma 降級 JSON） |
+| MC 單步控制 | ~0 ms | **~6.8 ms**（MCP 摘要 + 可觀測性，無 world RAG） |
 
-- CI：`TTFT_p50 <= baseline_p50 * 1.10 + 15ms`（當前 ≈ **41ms** 上限）。
-- 若 P1 並行化前置，需重採 baseline。
+OPC 服務可用時，命中延遲可能升至 **數十–數百 ms**（受 `EVOL_OPC_TIER`／edge TTL 影響）；**不可**用單一絕對毫秒閘門跨 CI runner。
 
-### 7.4 實圖 vs stub
+### 7.4 驗收標準（兩段式）
 
-- 生產監控：在 `event_stream` 記錄 `metrics.stream_ttft_ms`（feature flag on 時）寫入 TraceLogger custom event — 不阻塞本設計。
+**(a) 未命中 OPC 且未命中 Linkin 注入**（與 `build_routing_preview.reason_codes` 無 `opc_keyword`／靈境注入等價判斷）
+
+- 同一進程內 **A/B**：`EVOL_UNIFIED_PIPELINE=off` vs `pre`，各 ≥30 次 TTFT。
+- 通過：`median(TTFT_pre) <= median(TTFT_off) * 1.05 + 5ms` 且 `p95_pre <= p95_off * 1.10 + 10ms`。
+- **不得**回歸（相對 off 為準）。
+
+**(b) 命中 OPC 或 Linkin 注入**
+
+- 產品選項（需 Q8）：  
+  - **B1**：允許 TTFT 增加 ≤ `measured_enhancer_p95 + 15ms`（相對 off，同 query 類型）。  
+  - **B2**：`asyncio.gather(recall, opc)` + Linkin 與 generate 無依賴時並行；OPC `wait_for(timeout=EVOL_PRE_ENHANCE_TIMEOUT_MS)` 失敗則 skip 注入並在 `path_resolved` 或 phase payload 帶 `degraded: true`。  
+- 命中類 query **不**與 (a) 混跑同一閾值。
+
+### 7.5 CI 腳本（`scripts/bench_stream_ttft.py`）
+
+- **同程相對比較**：單一 pytest 進程內先跑 `off` 再跑 `pre`（或 parametrize 順序固定），mock `call_llm_stream` sleep 5ms；enhancer **不** mock（或 OPC mock 固定 1ms 僅用於單元測試分支）。
+- 輸出：`ttft_off_p50`、`ttft_pre_p50`、`ratio`；失敗時打印 phase 時間分解（optional spans）。
+- **禁止**跨 job 絕對閾值（如 v1 的 41ms）。
+
+### 7.6 生產可觀測
+
+- `TraceLogger.log_custom("stream_ttft", {ms, preview_path, opc_status, linkin_active})`（flag≥`pre`）。
 
 ---
 
-## 8. 程式锚點（實作參考）
+## 8. 程式锚點
 
 | 符號 | 位置 |
 | --- | --- |
-| 圖編譯 | `backend/core/graph.py:build_graph` L155–239 |
-| 反思路由 | `backend/core/graph.py:should_improve` L84–136；`reflection_should_continue` L139–147 |
-| 路由預覽 | `backend/core/routing_preview.py:build_routing_preview` L173–216 |
-| 同步聊天 | `backend/main.py:chat` L941–966 |
-| SSE simple | `backend/main.py:chat_stream` → `event_stream` L1307–1554 |
-| 公司 SSE | `backend/main.py:_company_stream` L977–1174 |
-| Task 入口 | `backend/services/task_manager.py:_run_unified_task` L694–730 |
-| Task 反思 | `backend/services/task_manager.py:_run_reflection_loop` L943–1003 |
-| Prompt 注入 | `backend/core/nodes.py:build_generate_prompt` L206–215；`_format_injected_context` L172–188 |
-| Trace | `backend/core/pipeline_trace.py:log_node` L32–40 |
+| OPC 增強 | `backend/core/company_nodes.py:enhance_with_opc_context` L58–95 |
+| 靈境增強 | `backend/linkin/pipeline.py:enhance_with_linkin_context` L139–234 |
+| `record_outcome` | `backend/core/nodes.py:decide_final_answer` L569–583 |
+| Task finalize | `backend/core/nodes.py:finalize_task_answer` L83–88 |
+| SSE 計費 | `backend/main.py:event_stream` L1315–1316、L1551–1552 |
+| 同步 chat（無計費上下文） | `backend/main.py:chat` L941–966 |
 
 ---
 
-## 9. 驗收測試清單（實作 PR）
+## 9. 驗收測試清單
 
-1. `test_unified_pipeline_contract.py`：矩陣 query × strategy → 三入口 `path`、`task_complexity`、`max_reflection_rounds` 相同。
-2. 注入探針：mock `enhance_with_opc_context` / `enhance_with_linkin_context`，斷言 SSE simple 與 `/chat` 均呼叫。
-3. 反思：同一 mocked 分數序列 → `iteration` 與 `reflection_rounds_used` 一致。
-4. `test_length_gate` SSE 用例仍通過。
-5. `scripts/bench_stream_ttft.py` CI 閾值（§7.3）。
+1. 契約：三入口 path／complexity／max rounds。  
+2. P1：注入探針（SSE = batch）。  
+3. P2：反思 iteration 一致；**`record_outcome` 恰一次**；disconnect 零次。  
+4. `test_length_gate` SSE 用例。  
+5. §7.5 同程 TTFT A/B（miss 類 query）。  
+6. P2：串流 cancel 與 billing `interrupted`。
 
 ---
 
 ## 10. 摘要
 
-三軌收斂的核心不是「全部 ainvoke」，而是 **單一階段編排 + 單一反思終止邏輯 + 完整上下文注入**。建議以 `run_unified_pipeline` 為中心、混合串流生成 hook，分五個可獨立合併階段交付；OPC 六級與 Chat 圖分裂需 PM 在 Q1 明確決策後再動行為 breaking 變更。
+三軌收斂 = **單一階段編排 + 分級旗標（pre/reflect/batch）+ 分類 TTFT 驗收**。P1 的 OPC／Linkin 在 miss 時近乎零成本，真實風險在 **命中時 I/O**；驗收以 **同進程 off vs on 相對比** 為準。P2 起 SSE 將進入 `record_outcome` 閉環，須防雙重計數並預期路由反饋動態變化。同步 `/chat` 今日 **未計量**，P3 前必須由 **Q7** 定案是否改為與 SSE 一致。
