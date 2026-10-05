@@ -58,6 +58,7 @@ _DEFAULT_FEEDBACK_CFG: dict[str, Any] = {
     "length_threshold_step": 30,
     "length_threshold_relax_step": 20,
     "min_length_threshold": 80,
+    "company_ratio_min_samples": 10,
 }
 
 
@@ -130,7 +131,14 @@ def _today_company_ratio(meta: dict[str, Any]) -> float:
     return round(company / total, 4)
 
 
+def _today_route_sample_count(meta: dict[str, Any]) -> int:
+    return int(meta.get("today_simple") or 0) + int(meta.get("today_company") or 0)
+
+
 def _company_ratio_cap_reached(meta: dict[str, Any], cfg: dict[str, Any]) -> bool:
+    min_samples = int(cfg.get("company_ratio_min_samples") or 10)
+    if _today_route_sample_count(meta) < min_samples:
+        return False
     max_ratio = float(cfg.get("max_company_ratio") or 1.0)
     return _today_company_ratio(meta) >= max_ratio
 
@@ -143,7 +151,10 @@ def feedback_upgrade_state(store: dict[str, Any] | None = None) -> dict[str, Any
     consecutive = int(meta.get("consecutive_simple_low") or 0)
     need_for_company = int(cfg.get("consecutive_low_scores_for_company") or 3)
     ratio = _today_company_ratio(meta)
+    sample_count = _today_route_sample_count(meta)
+    min_samples = int(cfg.get("company_ratio_min_samples") or 10)
     max_ratio = float(cfg.get("max_company_ratio") or 1.0)
+    samples_sufficient = sample_count >= min_samples
     cap_hit = _company_ratio_cap_reached(meta, cfg)
     tier_bump = bool(cfg.get("feedback_enabled")) and consecutive >= 1
     extra_reflection = bool(cfg.get("feedback_enabled")) and consecutive >= 2
@@ -160,6 +171,9 @@ def feedback_upgrade_state(store: dict[str, Any] | None = None) -> dict[str, Any
         "extra_reflection_active": extra_reflection,
         "company_escalation_allowed": company_escalation_allowed,
         "today_company_ratio": ratio,
+        "today_route_sample_count": sample_count,
+        "company_ratio_min_samples": min_samples,
+        "company_ratio_samples_sufficient": samples_sufficient,
         "max_company_ratio": max_ratio,
         "company_ratio_cap_hit": cap_hit,
         "low_score_threshold": float(cfg.get("low_score_threshold") or 6.0),

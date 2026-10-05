@@ -34,6 +34,23 @@ def post_company_reflect_mode() -> str:
         return "off"
 
 
+def task_finish_reflect_mode(
+    resolved_path: str | None,
+    *,
+    applied_mode: str | None = None,
+) -> str:
+    """任務完成事件用：僅 company 路徑可能有公司後反思；其餘為 ``not_applicable``。
+
+    ``applied_mode`` 由 TaskManager 在公司任務執行後反思階段寫入（off / evaluate / full）。
+    """
+    path = str(resolved_path or "").strip().lower()
+    if path != "company":
+        return "not_applicable"
+    if applied_mode in ("off", "evaluate", "full"):
+        return applied_mode
+    return "off"
+
+
 def post_company_reflect_resolution() -> dict[str, str]:
     """解析來源（供設定 API 與測試）。"""
     legacy_skip = os.getenv("EVOL_SKIP_POST_COMPANY_REFLECT", "").strip().lower()

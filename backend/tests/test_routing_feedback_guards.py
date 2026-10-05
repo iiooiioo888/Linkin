@@ -67,9 +67,21 @@ def test_max_company_ratio_blocks_company_escalation(feedback_env):
     for _ in range(2):
         record_outcome("simple", 50, 4.0, False)
     state = feedback_upgrade_state()
+    assert state["today_route_sample_count"] == 10
+    assert state["company_ratio_samples_sufficient"] is True
     assert state["company_ratio_cap_hit"] is True
     assert state["company_escalation_allowed"] is False
     assert adaptive_length_threshold(200) == 200
+
+
+def test_company_ratio_min_samples_defers_cap(feedback_env):
+    _, _ = feedback_env
+    record_outcome("company", 300, 9.0, True)
+    state = feedback_upgrade_state()
+    assert state["today_route_sample_count"] == 1
+    assert state["today_company_ratio"] == 1.0
+    assert state["company_ratio_samples_sufficient"] is False
+    assert state["company_ratio_cap_hit"] is False
 
 
 def test_consecutive_low_required_before_company_threshold(feedback_env):

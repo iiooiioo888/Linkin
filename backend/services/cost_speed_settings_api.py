@@ -1,4 +1,8 @@
-"""cost_speed 可寫設定 HTTP 面（post_company_reflect 等，供未來 UI 接入）。"""
+"""cost_speed 可寫設定 HTTP 面（post_company_reflect 等，供未來 UI 接入）。
+
+寫入端點與 ``PUT /config/routes`` 等相同：受 ``AuthGateMiddleware`` 保護
+（``LINKIN_AUTH_FORCE`` / 部署閘門開啟時須有效會話；無 per-route admin token）。
+"""
 
 from __future__ import annotations
 

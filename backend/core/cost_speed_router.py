@@ -81,6 +81,7 @@ def _builtin_defaults() -> dict[str, Any]:
             "length_threshold_step": 30,
             "length_threshold_relax_step": 20,
             "min_length_threshold": 80,
+            "company_ratio_min_samples": 10,
         },
         "complexity": {
             "simple": {"max_query_length": 80, "path": "simple", "max_output_chars": 800},
@@ -124,6 +125,7 @@ _ROUTING_FEEDBACK_DEFAULTS: dict[str, Any] = {
     "length_threshold_step": 30,
     "length_threshold_relax_step": 20,
     "min_length_threshold": 80,
+    "company_ratio_min_samples": 10,
 }
 
 _POST_COMPANY_REFLECT_ALLOWED = frozenset({"off", "evaluate", "full"})
