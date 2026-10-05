@@ -517,7 +517,7 @@ export default function App() {
           onBilling: (billing: ChatBillingFootnote) => {
             const footnote = formatChatBillingFootnote(billing);
             requestBillingRefresh();
-            if (!footnote && !billing.credits_deducted) return;
+            if (!footnote) return;
             updateSession(sessionId, (s) => ({
               ...s,
               messages: s.messages.map((m) =>

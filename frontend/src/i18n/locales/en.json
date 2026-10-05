@@ -38,12 +38,12 @@
     "pipelineRunning": "In progress",
     "pinMonitor": "Show details",
     "monitorPinned": "Details open",
-    "insufficientBalance": "Insufficient usage balance — try again later",
+    "insufficientBalance": "Usage limit reached — try again later or contact an admin",
     "send": "Send"
   },
   "billing": {
-    "turnReceipt": "Turn billing",
-    "creditsCharged": "Charged",
+    "turnReceipt": "Turn usage",
+    "creditsCharged": "Usage",
     "tokensInOut": "Tokens in / out",
     "cacheTokens": "Cache tokens",
     "cacheReadWrite": "read {{read}} · write {{write}}",

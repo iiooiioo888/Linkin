@@ -33,7 +33,7 @@ export function useBillingAccount(pollMs = 8000) {
       setUsage(usageResp.events);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '讀取調用用量失敗');
+      setError(err instanceof Error ? err.message : '讀取帳務資料失敗');
     } finally {
       setLoading(false);
     }

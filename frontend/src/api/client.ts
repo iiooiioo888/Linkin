@@ -1290,7 +1290,7 @@ export async function topupBillingCredits(credits: number, note = ''): Promise<u
   });
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}));
-    throw new Error((body as { detail?: string }).detail || `調用用量調整失敗（HTTP ${resp.status}）`);
+    throw new Error((body as { detail?: string }).detail || `操作失敗（HTTP ${resp.status}）`);
   }
   return resp.json();
 }
@@ -1560,7 +1560,7 @@ export async function adminSeedContribution(accountId: string, amount: number, n
     },
     h,
   );
-  if (!resp.ok) throw new Error('注入貢獻用量失敗');
+  if (!resp.ok) throw new Error('注入貢獻資料失敗');
   return resp.json();
 }
 

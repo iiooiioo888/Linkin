@@ -1,6 +1,6 @@
 import type { ChatBillingMeta } from './lib/billingUi';
 
-/** 調用用量帳戶（/billing） */
+/** 帳務帳戶（/billing API；前端不展示金額） */
 export interface BillingAccount {
   user_id: string;
   balance_credits: number;
@@ -749,9 +749,9 @@ export interface ChatMessage {
     iteration?: number;
     /** 多維度評估結果（優化 #1） */
     multiDim?: MultiDimEvaluation;
-    /** 調用用量扣款摘要（v6.0，精簡 footnote） */
+    /** 本輪調用資訊 footnote（Token 等，無金額） */
     billingFootnote?: string;
-    /** 本輪完整扣款／Token 收據 */
+    /** 本輪 Token／模型收據 */
     billing?: ChatBillingMeta;
   };
 }

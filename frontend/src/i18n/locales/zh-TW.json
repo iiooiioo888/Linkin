@@ -38,12 +38,12 @@
     "pipelineRunning": "進行中",
     "pinMonitor": "查看細節",
     "monitorPinned": "已展開細節",
-    "insufficientBalance": "調用用量不足，請稍後再試",
+    "insufficientBalance": "已達調用上限，請稍後再試或聯絡管理員",
     "send": "發送"
   },
   "billing": {
-    "turnReceipt": "本輪扣款摘要",
-    "creditsCharged": "扣款",
+    "turnReceipt": "本輪調用資訊",
+    "creditsCharged": "用量",
     "tokensInOut": "Token 入 / 出",
     "cacheTokens": "快取 Token",
     "cacheReadWrite": "讀 {{read}} · 寫 {{write}}",
@@ -98,9 +98,9 @@
     "budgetAlertCount": "預算告警 {{count}} 則",
     "accountHubBudget": "Hub 日 API 預算（USD）",
     "accountHubHint": "Hub 用戶呼叫日限額，與角色 USD 預算分開",
-    "accountLinkinCredits": "用量額度",
-    "accountCreditsHint": "平台任務用量餘額，不與角色 USD 預算混算",
-    "creditsUnit": "用量",
+    "accountLinkinCredits": "平台用量",
+    "accountCreditsHint": "本月任務調用統計，不與角色 USD 預算混算",
+    "creditsUnit": "單位",
     "creditsMonthlyUsed": "本月已用 {{used}} / {{quota}}"
   },
   "mobileShell": {
@@ -108,7 +108,7 @@
     "showFullPanel": "在此裝置顯示完整面板",
     "advancedNav": "進階",
     "moreNote": "控制台、模組與實驗室 — 密集管理介面建議用桌面開啟。",
-    "usageSummary": "調用用量與近期紀錄",
+    "usageSummary": "AI 用量與近期紀錄",
     "tasksSummary": "任務佇列與進度",
     "skillsSummary": "技能與 MCP 管理編輯建議在桌面操作。",
     "billingAdminSummary": "定價、政策與 Fault Pool 管理需桌面控制台。",

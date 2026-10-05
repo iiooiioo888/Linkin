@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { COMPANY_TEMPLATES } from '../types';
 import type { CompanyTemplate, TaskOptions } from '../types';
 import { openChatContextDetail, openContextModal } from '../lib/contextUi';
-import { useBillingAccount } from '../hooks/useBillingAccount';
 
 export interface SendOptions {
   executionStrategy: 'auto' | 'simple' | 'company';
@@ -26,8 +25,7 @@ interface InputBarProps {
   onContextCommand?: (mode: 'detail' | 'peek') => void;
 }
 
-/** 餘額低於此值才擋發送；實際扣款由後端結算，輸入列不再顯示預估 */
-const MIN_SEND_CREDITS = 0.5;
+/** 發送由後端護欄結算；輸入列不顯示預估用量。 */
 
 const STRATEGIES: { key: 'auto' | 'simple' | 'company'; label: string }[] = [
   { key: 'auto', label: '自動' },
@@ -55,7 +53,6 @@ export default function InputBar({
   onContextCommand,
 }: InputBarProps) {
   const { t } = useTranslation();
-  const { account } = useBillingAccount(12000);
   const [text, setText] = useState('');
   const [executionStrategy, setExecutionStrategy] = useState<'auto' | 'simple' | 'company'>('auto');
   const [companyTemplate, setCompanyTemplate] = useState<CompanyTemplate>('quick_task');
@@ -111,13 +108,10 @@ export default function InputBar({
     clearComposer();
   };
 
-  const balance = account?.balance_credits ?? null;
-  const insufficient = balance !== null && balance < MIN_SEND_CREDITS;
-
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed || disabled || insufficient) return;
+    if (!trimmed || disabled) return;
     // /context [peek]：開啟可視化，不送入對話（對齊 dsh-context）
     if (/^\/context(?:\s+peek)?$/i.test(trimmed)) {
       runContextCommand(/\bpeek\b/i.test(trimmed) ? 'peek' : 'detail');
@@ -318,10 +312,9 @@ export default function InputBar({
 
             <button
               type="submit"
-              disabled={disabled || !text.trim() || insufficient}
+              disabled={disabled || !text.trim()}
               className="apple-send-btn ml-auto"
               aria-label={t('chat.send')}
-              title={insufficient ? t('chat.insufficientBalance') : undefined}
             >
               {disabled ? (
                 <span className="apple-send-btn__spinner" />
