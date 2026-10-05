@@ -228,7 +228,7 @@ class TestPipelineBuilders:
         }
         lock = build_semantic_lock_from_task_options({"auditor_ticket": ticket})
         assert lock["auditor_ticket"] == ticket
-        assert lock["locked_brief"] == "戰役簡報本體"
+        assert "locked_brief" not in lock
 
         req = build_pipeline_request_from_task(
             query="fallback",
@@ -255,6 +255,7 @@ class TestTaskCreateQueryAlignment:
         "raw,options",
         [
             ("raw-q", {}),
+            ("  padded raw  ", {}),
             ("raw-q", {"locked_brief": "  brief-only  "}),
             ("raw-q", {"semantic_brief": "semantic-wins"}),
             (
@@ -287,6 +288,7 @@ class TestTaskCreateQueryAlignment:
         ],
         ids=[
             "plain",
+            "raw_query_whitespace_preserved",
             "locked_brief",
             "semantic_brief",
             "brief_before_ticket",
@@ -303,6 +305,11 @@ class TestTaskCreateQueryAlignment:
             raw, "auto", "quick_task", options=dict(options)
         )
         assert record.query == expected
+        req = build_pipeline_request_from_task(query=raw, options=dict(options))
+        assert req.effective_query == expected
+        lock_brief = req.semantic_lock.get("locked_brief")
+        if lock_brief is not None:
+            assert lock_brief == req.effective_query
 
 
 class TestThreeEntryRoutingContract:
@@ -380,32 +387,72 @@ def _collect_sse_phases(resp) -> list[str]:
 
 
 class TestEnhancementProbePositiveControls:
-    @pytest.mark.asyncio
-    async def test_opc_patch_intercepts_task_manager_lookup(self):
-        calls: list[str] = []
+    @staticmethod
+    def _simple_record(task_manager_no_redis: TaskManager, query: str) -> Any:
+        record = task_manager_no_redis.create_task(query, "auto", "quick_task")
+        record.resolved_path = "simple"
+        record.task_complexity = "simple"
+        return record
 
-        async def track(_state):
-            calls.append("opc")
+    @pytest.mark.asyncio
+    async def test_simple_task_path_calls_opc_enhancement(self, task_manager_no_redis):
+        import backend.services.task_manager as tm
+
+        opc_calls: list[str] = []
+        cancel_checks = iter([False, True])
+
+        async def track_opc(state):
+            opc_calls.append(str(state.get("query")))
             return {"opc_context": {"status": "not_required"}}
 
+        record = self._simple_record(task_manager_no_redis, "今天天氣如何")
+        store = MagicMock()
+        store.search_similar.return_value = []
+
+        mock_tracer = MagicMock()
+        with (
+            patch.object(tm, "enhance_with_opc_context", side_effect=track_opc),
+            patch("backend.core.nodes.retrieve_memories", return_value={}),
+            patch("backend.core.nodes._memory_store", store),
+            patch.object(task_manager_no_redis, "_check_cancelled", side_effect=lambda _r: next(cancel_checks, True)),
+            patch.object(task_manager_no_redis, "_finish", MagicMock()),
+            patch("backend.services.task_manager.TraceLogger", MagicMock(return_value=mock_tracer)),
+        ):
+            await task_manager_no_redis._run_simple_task(record)
+
+        assert opc_calls == [record.query]
+
+    @pytest.mark.asyncio
+    async def test_simple_task_path_calls_linkin_enhancement(self, task_manager_no_redis):
         import backend.services.task_manager as tm
 
-        with patch.object(tm, "enhance_with_opc_context", side_effect=track):
-            await tm.enhance_with_opc_context({})
-        assert calls == ["opc"]
+        linkin_calls: list[str] = []
+        cancel_checks = iter([False, False, True])
 
-    def test_linkin_patch_intercepts_task_manager_lookup(self):
-        calls: list[str] = []
-
-        def track(_state):
-            calls.append("linkin")
+        def track_linkin(state):
+            linkin_calls.append(str(state.get("query")))
             return {"linkin_context": {}}
 
-        import backend.services.task_manager as tm
+        async def passthrough_opc(_state):
+            return {"opc_context": {"status": "not_required"}}
 
-        with patch.object(tm, "enhance_with_linkin_context", side_effect=track):
-            tm.enhance_with_linkin_context({})
-        assert calls == ["linkin"]
+        record = self._simple_record(task_manager_no_redis, TestThreeEntryRoutingContract.LINKIN_Q)
+        store = MagicMock()
+        store.search_similar.return_value = []
+
+        mock_tracer = MagicMock()
+        with (
+            patch.object(tm, "enhance_with_opc_context", side_effect=passthrough_opc),
+            patch.object(tm, "enhance_with_linkin_context", side_effect=track_linkin),
+            patch("backend.core.nodes.retrieve_memories", return_value={}),
+            patch("backend.core.nodes._memory_store", store),
+            patch.object(task_manager_no_redis, "_check_cancelled", side_effect=lambda _r: next(cancel_checks, True)),
+            patch.object(task_manager_no_redis, "_finish", MagicMock()),
+            patch("backend.services.task_manager.TraceLogger", MagicMock(return_value=mock_tracer)),
+        ):
+            await task_manager_no_redis._run_simple_task(record)
+
+        assert linkin_calls == [record.query]
 
     def test_record_outcome_patch_intercepts_decide_final_answer(self):
         recorded: list[dict] = []

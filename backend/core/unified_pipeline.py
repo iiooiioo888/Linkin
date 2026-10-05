@@ -59,7 +59,11 @@ TokenSink = Callable[[str], Awaitable[None]]
 
 @dataclass
 class PipelineRequest:
-    """三入口共用的管線請求（對齊 ``EvoLoopState`` 初始欄位子集）。"""
+    """三入口共用的管線請求（對齊 ``EvoLoopState`` 初始欄位子集）。
+
+    路由與 preview 一律以 ``effective_query`` 為準；勿僅依 ``semantic_lock``
+    推導 query（Task ticket JSON 等 case 與 lock 內 brief 可能不一致）。
+    """
 
     query: str
     effective_query: str
@@ -95,9 +99,6 @@ def build_semantic_lock_from_task_options(options: dict[str, Any] | None) -> dic
     ticket = opts.get("auditor_ticket")
     if isinstance(ticket, dict):
         lock["auditor_ticket"] = ticket
-        ticket_brief = ticket.get("locked_brief")
-        if isinstance(ticket_brief, str) and ticket_brief.strip():
-            lock.setdefault("locked_brief", ticket_brief.strip())
 
     brief = opts.get("semantic_brief") or opts.get("locked_brief")
     if isinstance(brief, str) and brief.strip():
@@ -115,7 +116,7 @@ def resolve_task_effective_query(raw_query: str, options: dict[str, Any] | None)
     ticket = opts.get("auditor_ticket")
     if isinstance(ticket, dict) and ticket.get("status") == "APPROVED_FOR_PLANNING":
         return json.dumps(ticket, ensure_ascii=False)
-    return (raw_query or "").strip()
+    return raw_query
 
 
 def build_pipeline_request_from_chat(
