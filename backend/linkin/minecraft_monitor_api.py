@@ -8,6 +8,7 @@ from fastapi import APIRouter, Body, Query
 
 from backend.linkin.layout_preview import build_layout_preview
 from backend.linkin.minecraft_observability import (
+    OPS_TIMELINE_DOMAINS,
     build_ai_context,
     build_ai_snapshot,
     build_monitor_summary,
@@ -40,13 +41,27 @@ def api_ai_events(
     since: float | None = Query(None, description="Unix timestamp 下限"),
     cursor: str | None = Query(None, description="上一頁最後一筆事件 id"),
     limit: int = Query(50, ge=1, le=200),
-    domain: str | None = Query(None, description="依 domain 篩選，例如 player"),
+    domain: str | None = Query(None, description="依單一 domain 篩選，例如 player"),
+    domains: str | None = Query(
+        None,
+        description="逗號分隔 domain 篩選；ops_timeline 為監控總覽用的 player/gm/管線集合",
+    ),
 ) -> dict[str, Any]:
-    page = list_minecraft_events(since=since, cursor=cursor, limit=limit)
-    if domain:
-        events = [e for e in page.get("events") or [] if str(e.get("domain")) == domain]
-        page = {**page, "events": events, "count": len(events)}
-    return page
+    domain_set: set[str] | None = None
+    if domains:
+        raw = domains.strip().lower()
+        if raw == "ops_timeline":
+            domain_set = set(OPS_TIMELINE_DOMAINS)
+        else:
+            domain_set = {d.strip() for d in domains.split(",") if d.strip()}
+    elif domain:
+        domain_set = {domain.strip()}
+    return list_minecraft_events(
+        since=since,
+        cursor=cursor,
+        limit=limit,
+        domains=domain_set,
+    )
 
 
 @monitor_router.get("/players")

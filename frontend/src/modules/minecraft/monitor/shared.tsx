@@ -183,6 +183,81 @@ export function useAiEvents(limit = 20, pollMs = 10000) {
   return { events, error, reload: load };
 }
 
+export type OpsTimelineKind = 'player' | 'gm' | 'pipeline';
+
+export function opsTimelineKind(domain: string | undefined): OpsTimelineKind {
+  const d = String(domain || '');
+  if (d === 'player') return 'player';
+  if (d === 'gm') return 'gm';
+  return 'pipeline';
+}
+
+export function opsTimelineKindLabel(kind: OpsTimelineKind): string {
+  const map: Record<OpsTimelineKind, string> = {
+    player: '玩家',
+    gm: '主持人',
+    pipeline: '管線',
+  };
+  return map[kind];
+}
+
+export function opsTimelineActionLabel(evt: MinecraftObservabilityEvent): string {
+  const kind = opsTimelineKind(evt.domain);
+  if (kind === 'player') return playerActionLabel(evt.action);
+  if (kind === 'gm') return evt.action === 'react' ? '決策' : evt.action;
+  return `${evt.domain}/${evt.action}`;
+}
+
+export function gmEventDetailHref(evt: MinecraftObservabilityEvent): string {
+  const runId = evt.details?.run_id;
+  if (runId) {
+    return `${minecraftHref('ai_gm')}?run=${encodeURIComponent(String(runId))}`;
+  }
+  const triggerId = evt.details?.trigger_event_id;
+  if (triggerId) {
+    return `${minecraftHref('ai_gm')}?event=${encodeURIComponent(String(triggerId))}`;
+  }
+  return minecraftHref('ai_gm');
+}
+
+export function playerEventDetailHref(_evt: MinecraftObservabilityEvent): string {
+  return minecraftHref('player_presence');
+}
+
+export function useOpsTimeline(limit = 48, pollMs = 10000) {
+  const [events, setEvents] = useState<MinecraftObservabilityEvent[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const res = await fetchMinecraftAiEvents({ limit, domains: 'ops_timeline' });
+      const rows = Array.isArray(res?.events) ? res.events : [];
+      const sorted = rows.slice().sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0));
+      setEvents(sorted);
+    } catch (err) {
+      setEvents([]);
+      setError((err as Error).message);
+    }
+  }, [limit]);
+
+  useVisibilityPoll(load, pollMs);
+
+  return { events, error, reload: load };
+}
+
+export function parseMinecraftModuleHashQuery(): Record<string, string> {
+  const hash = typeof window !== 'undefined' ? window.location.hash : '';
+  const qIdx = hash.indexOf('?');
+  if (qIdx < 0) return {};
+  const params = new URLSearchParams(hash.slice(qIdx + 1));
+  const out: Record<string, string> = {};
+  params.forEach((value, key) => {
+    out[key] = value;
+  });
+  return out;
+}
+
 export type BridgeLike = {
   enabled?: boolean;
   connected?: boolean;

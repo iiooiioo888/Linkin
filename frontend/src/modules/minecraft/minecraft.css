@@ -778,3 +778,246 @@ button.mc-row.is-on {
   color: var(--console-sub);
   font-size: 12px;
 }
+
+/* 監控總覽 — 運維時間軸與規則建議（v3 金褐強調） */
+.mc-ops {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mc-ops__item {
+  padding: 10px 12px;
+}
+
+.mc-ops__link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.mc-ops__link:hover .mc-ops__chevron {
+  color: var(--console-accent);
+}
+
+.mc-ops__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.mc-ops__time {
+  color: var(--console-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-ops__kind {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--console-line);
+  background: var(--console-card);
+}
+
+.mc-ops__kind--player {
+  border-color: color-mix(in srgb, #7aa8b8 45%, var(--console-line));
+  color: #7aa8b8;
+}
+
+.mc-ops__kind--gm {
+  border-color: color-mix(in srgb, #c9a961 50%, var(--console-line));
+  color: #c9a961;
+}
+
+.mc-ops__kind--pipeline {
+  border-color: color-mix(in srgb, #6fa87f 45%, var(--console-line));
+  color: #6fa87f;
+}
+
+.mc-ops__action {
+  color: var(--console-sub);
+}
+
+.mc-ops__status {
+  color: var(--console-accent);
+}
+
+.mc-ops__tag {
+  font-size: 11px;
+  color: var(--console-amber);
+}
+
+.mc-ops__tag--warn {
+  color: var(--console-red);
+}
+
+.mc-ops__summary {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--console-ink);
+}
+
+.mc-ops__player {
+  color: var(--console-accent);
+}
+
+.mc-ops__rationale {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--console-faint);
+  line-height: 1.4;
+}
+
+.mc-ops__chevron {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--console-faint);
+}
+
+.mc-rules__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mc-rules__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mc-rules__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mc-rules__list--compact {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mc-rules__rec {
+  padding: 12px 14px;
+  border: 1px solid var(--console-line);
+  border-radius: 12px;
+  background: var(--console-bg);
+}
+
+.mc-rules__rec-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.mc-rules__rec-type {
+  font-weight: 640;
+  color: #c9a961;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mc-rules__safe {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #6fa87f 18%, transparent);
+  color: #6fa87f;
+}
+
+.mc-rules__priority {
+  color: var(--console-faint);
+}
+
+.mc-rules__rec-msg {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--console-ink);
+}
+
+.mc-rules__rec-rationale {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--console-sub);
+}
+
+.mc-rules__outcome {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, #c9a961 35%, var(--console-line));
+  background: color-mix(in srgb, #c9a961 8%, var(--console-card));
+}
+
+.mc-rules__outcome-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 640;
+  color: #c9a961;
+}
+
+.mc-rules__diff {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--console-sub);
+}
+
+.mc-rules__results {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.mc-rules__result-type {
+  font-weight: 600;
+  margin-right: 8px;
+  color: var(--console-ink);
+}
+
+.mc-rules__result-status {
+  margin-right: 8px;
+  color: var(--console-accent);
+}
+
+.mc-rules__result-msg {
+  color: var(--console-sub);
+}
+
+@media (max-width: 767px) {
+  .mc-ops {
+    gap: 12px;
+  }
+
+  .mc-ops__item {
+    padding: 14px 14px;
+  }
+
+  .mc-rules__rec {
+    padding: 14px 16px;
+  }
+
+  .mc-rules__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
