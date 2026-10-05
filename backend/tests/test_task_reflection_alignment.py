@@ -7,20 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
-@pytest.fixture(autouse=True)
-def _isolated_routing_feedback(monkeypatch, tmp_path):
-    fb = tmp_path / "routing_feedback.json"
-    fb.write_text(
-        json.dumps({
-            "records": [],
-            "stats": {"simple": 0, "company": 0},
-            "meta": {"consecutive_simple_low": 0},
-        }),
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("EVOL_ROUTING_FEEDBACK_PATH", str(fb))
-
 from backend.core.graph import reflection_should_continue, should_improve
 from backend.services.task_manager import TaskManager, TaskRecord
 
