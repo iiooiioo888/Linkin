@@ -35,7 +35,8 @@
     "l0Situation": "L0 態勢",
     "l0EnergySave": "節能模式",
     "l0PressureNormal": "壓力正常",
-    "l0PressurePct": "壓力 {{pct}}%"
+    "l0PressurePct": "壓力 {{pct}}%",
+    "l0Unknown": "L0 態勢 —"
   },
   "chat": {
     "emptyTitle": "開始對話",

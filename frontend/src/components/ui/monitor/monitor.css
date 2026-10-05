@@ -467,6 +467,22 @@
   background: color-mix(in srgb, var(--console-accent) 12%, var(--console-card));
 }
 
+.mon-l0-chip--unknown {
+  border-color: var(--console-line);
+  background: var(--console-card);
+}
+
+.mon-l0-chip--unknown:hover {
+  border-color: color-mix(in srgb, var(--console-sub) 35%, var(--console-line));
+  background: color-mix(in srgb, var(--console-sub) 6%, var(--console-card));
+}
+
+.mon-l0-chip__label {
+  color: var(--console-faint);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .mon-l0-chip__title {
   color: var(--console-accent);
   font-weight: 600;
