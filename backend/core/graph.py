@@ -31,9 +31,9 @@
 import logging
 import os
 
-import opc_service.msgpack_safety  # noqa: F401  # 必須先於 langgraph，見該模組說明
 from langgraph.graph import END, START, StateGraph
 
+import opc_service.msgpack_safety  # noqa: F401  # 必須先於 langgraph，見該模組說明
 from backend.core import nodes
 from backend.core.company_nodes import (
     enhance_with_opc_context,

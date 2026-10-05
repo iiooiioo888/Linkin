@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -31,9 +31,7 @@ def routing_feedback_applies(
     path = str(execution_path or "").strip().lower()
     if path in _EXCLUDED_EXECUTION_PATHS:
         return False
-    if route is not None and route not in ("simple", "company"):
-        return False
-    return True
+    return route is None or route in ("simple", "company")
 
 _DEFAULT_PATH = (
     Path(__file__).resolve().parent.parent / "data" / "routing_feedback.json"
@@ -109,7 +107,7 @@ def _meta(store: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(meta, dict):
         meta = {}
         store["meta"] = meta
-    today = date.today().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     if meta.get("today_date") != today:
         meta["today_date"] = today
         meta["today_simple"] = 0

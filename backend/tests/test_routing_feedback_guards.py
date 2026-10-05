@@ -1,7 +1,6 @@
 """routing_feedback 成本護欄與監控欄位測試。"""
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -86,10 +85,10 @@ def test_company_ratio_min_samples_defers_cap(feedback_env):
 
 def test_consecutive_low_required_before_company_threshold(feedback_env):
     fb_path, _ = feedback_env
-    from datetime import date
+    from datetime import UTC, datetime
 
     base = 200
-    today = date.today().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     records = [
         {"route": "simple", "score": 4.0, "query_length": 50, "bucket": "short"}
         for _ in range(12)

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """以反向檔案順序執行 backend/tests（無 pytest-randomly 時的順序穩定性檢查）。"""
 
 from __future__ import annotations

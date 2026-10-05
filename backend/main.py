@@ -1213,9 +1213,8 @@ async def _minecraft_ops_stream(req: ChatRequest):
     if isinstance(lock, dict) and lock.get("locked_brief"):
         query = str(lock["locked_brief"])
     from backend.core.locale_prompt import normalize_ui_language
-
-    from backend.core.routing_preview import build_routing_preview
     from backend.core.reflection_limits import resolve_task_complexity
+    from backend.core.routing_preview import build_routing_preview
 
     preview = build_routing_preview(
         query,
@@ -1315,7 +1314,6 @@ async def chat_stream(req: ChatRequest):
 
         billing_token = begin_chat_billing(session_id)
         from backend.core.reflection_limits import (
-            reflection_max_iterations,
             resolve_task_complexity,
         )
         from backend.core.routing_preview import build_routing_preview

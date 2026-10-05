@@ -111,7 +111,7 @@ def match_multiplier_table(model: str, mults: dict[str, Any]) -> float:
     for key in sorted(mults, key=len, reverse=True):
         if key in _TIER_ALIAS_KEYS:
             continue
-        if m == key or m.startswith(f"{key}-") or m.startswith(f"{key}."):
+        if m == key or m.startswith((f"{key}-", f"{key}.")):
             return float(mults[key])
     return float(mults.get("baseline", _BASELINE_MULT))
 

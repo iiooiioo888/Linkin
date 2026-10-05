@@ -732,8 +732,8 @@ class TaskManager:
         """Minecraft 輕量路徑：記憶／上下文增強 → ReAct+MCP → 精簡反思迴圈。"""
         tracer = TraceLogger(record.task_id)
         opts = record.options or {}
-        from backend.core.locale_prompt import normalize_ui_language
         from backend.core.company_nodes import run_minecraft_ops
+        from backend.core.locale_prompt import normalize_ui_language
 
         state: dict[str, Any] = {
             "query": record.query,

@@ -17,7 +17,6 @@
 
 from __future__ import annotations
 
-import io
 import sys
 from pathlib import Path
 
@@ -101,12 +100,14 @@ def main() -> int:
     if not TARGET.exists():
         print(f"目標檔不存在：{TARGET}", file=sys.stderr)
         return 1
-    src = io.open(TARGET, encoding="utf-8").read()
+    with open(TARGET, encoding="utf-8") as f:
+        src = f.read()
     new = render(src)
     if new == src:
         print(f"已是最新：{TARGET}")
         return 0
-    io.open(TARGET, "w", encoding="utf-8").write(new)
+    with open(TARGET, "w", encoding="utf-8") as f:
+        f.write(new)
     n = len(export_matrix()["cells"])
     print(f"已更新：{TARGET}（{n} 格）")
     return 0
