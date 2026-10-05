@@ -10,9 +10,7 @@ export function MonitorL0StatusChip({
   onClick: () => void;
 }) {
   const { t } = useTranslation();
-  if (!snapshot) return null;
-
-  const radar = snapshot.radar;
+  const radar = snapshot?.radar;
   const pressure = Math.round((radar?.pressure ?? 0) * 100);
   const modeLabel = radar?.energy_save ? t('monitor.l0EnergySave') : t('monitor.l0PressureNormal');
 
