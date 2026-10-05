@@ -1161,6 +1161,49 @@ async def _company_stream(req: ChatRequest):
 # ==================== 串流聊天 API（SSE 打字機效果） ====================
 
 
+async def _minecraft_ops_stream(req: ChatRequest):
+    """Minecraft 輕量路徑：走完整 LangGraph（含 MCP ReAct），SSE 僅推送階段與結果。"""
+    session_id = req.session_id or uuid.uuid4().hex[:12]
+    query = req.query
+    lock = req.semantic_lock or {}
+    if isinstance(lock, dict) and lock.get("locked_brief"):
+        query = str(lock["locked_brief"])
+    from backend.core.locale_prompt import normalize_ui_language
+
+    initial_state: dict[str, Any] = {
+        "query": query,
+        "session_id": session_id,
+        "task_id": session_id,
+        "iteration": 0,
+        "score": 0.0,
+        "current_answer": "",
+        "reflection": "",
+        "memories": [],
+        "history": req.history or [],
+        "execution_strategy": req.execution_strategy,
+        "company_template": req.company_template,
+        "semantic_lock": lock if isinstance(lock, dict) else {},
+        "ui_language": normalize_ui_language(req.ui_language),
+        "task_complexity": "simple",
+    }
+    yield (
+        f"event: phase\ndata: {json_mod.dumps({'phase': 'path_resolved', 'path': 'minecraft_ops'}, ensure_ascii=False)}\n\n"
+    )
+    try:
+        result = await evoloop_graph.ainvoke(initial_state)
+        answer = result.get("current_answer", "") or result.get("final_answer", "")
+        done = {
+            "answer": answer,
+            "score": result.get("score"),
+            "iteration": result.get("iteration", 0),
+            "resolved_path": result.get("resolved_execution_path") or "minecraft_ops",
+        }
+        yield f"event: done\ndata: {json_mod.dumps(done, ensure_ascii=False)}\n\n"
+    except Exception as exc:
+        logger.exception("minecraft_ops SSE 失敗")
+        yield f"event: error\ndata: {json_mod.dumps({'error': str(exc)[:500]}, ensure_ascii=False)}\n\n"
+
+
 @app.post("/chat/stream")
 async def chat_stream(req: ChatRequest):
     """SSE 串流聊天：即時推送階段進度與生成 token。
@@ -1174,12 +1217,19 @@ async def chat_stream(req: ChatRequest):
 
     統一模式：複雜任務（公司運行時路徑）自動降級為同步 /chat。
     """
-    from backend.core.execution_path import chat_stream_uses_company_sse
+    from backend.core.execution_path import chat_stream_uses_company_sse, resolve_execution_path
 
     if chat_stream_uses_company_sse(req.query, req.execution_strategy):
         # 公司運行時：SSE 串流進度（優化 #11）
         return StreamingResponse(
             _company_stream(req),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    if resolve_execution_path(req.query, req.execution_strategy) == "minecraft_ops":
+        return StreamingResponse(
+            _minecraft_ops_stream(req),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
