@@ -16,7 +16,10 @@ from backend.core.cost_speed_router import (
     routing_feedback_settings,
     update_cost_speed_config,
 )
-from backend.core.post_company_reflect import post_company_reflect_mode, post_company_reflect_resolution
+from backend.core.post_company_reflect import (
+    post_company_reflect_mode,
+    post_company_reflect_resolution,
+)
 
 router = APIRouter(prefix="/config/cost-speed", tags=["cost-speed-config"])
 

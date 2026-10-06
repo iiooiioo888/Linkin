@@ -140,7 +140,7 @@ def _isolate_routing_feedback(tmp_path, monkeypatch):
     fb = tmp_path / "routing_feedback.json"
     fb.write_text(json.dumps(_EMPTY_ROUTING_FEEDBACK), encoding="utf-8")
     monkeypatch.setenv("EVOL_ROUTING_FEEDBACK_PATH", str(fb))
-    import backend.core.routing_feedback as routing_feedback
+    from backend.core import routing_feedback
 
     routing_feedback._last_threshold_log = None
     yield

@@ -3,6 +3,7 @@
   "post_company_reflect": "off",
   "routing_feedback": {
     "feedback_enabled": true,
+    "timezone": "Asia/Taipei",
     "max_company_ratio": 0.35,
     "consecutive_low_scores_for_company": 3,
     "low_score_threshold": 6.0,

@@ -5,12 +5,11 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from backend.core.execution_path import (
-    ExecutionPath,
     _COMPLEX_QUERY_LENGTH,
+    ExecutionPath,
     _complex_query_length,
     is_complex_task,
     is_minecraft_heavy_task,
-    is_minecraft_ops_query,
     needs_opc_context,
     resolve_execution_path,
 )

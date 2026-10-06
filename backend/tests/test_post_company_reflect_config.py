@@ -5,7 +5,10 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.core.post_company_reflect import post_company_reflect_mode, post_company_reflect_resolution
+from backend.core.post_company_reflect import (
+    post_company_reflect_mode,
+    post_company_reflect_resolution,
+)
 from backend.main import app
 from backend.services.task_manager import TaskManager, TaskRecord
 

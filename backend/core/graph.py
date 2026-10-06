@@ -28,6 +28,7 @@
   - "company": 強制多代理人公司運行時
 """
 
+# ruff: noqa: I001 — msgpack_safety 須在 langgraph 之前（test_langgraph_security_floor）
 import logging
 import os
 

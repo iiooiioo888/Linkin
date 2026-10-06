@@ -774,7 +774,6 @@ def test_contract_c_ui_003_frontend_matrix_matches_backend() -> None:
     本測試以生成器對 `frontend/src/lib/taskStateMatrix.ts` 做等值比對，
     防止再次漂移。
     """
-    import io
     import re
     from pathlib import Path
 
@@ -785,7 +784,8 @@ def test_contract_c_ui_003_frontend_matrix_matches_backend() -> None:
     target = root / "frontend" / "src" / "lib" / "taskStateMatrix.ts"
     assert target.exists(), f"前端矩陣檔不存在：{target}"
 
-    source = io.open(target, encoding="utf-8").read()
+    with open(target, encoding="utf-8") as f:
+        source = f.read()
     # 1) 檔案內容必須等於生成器輸出（代表未被手改）
     assert render(source) == source, (
         "前端 taskStateMatrix.ts 與後端矩陣不同步；"
@@ -801,8 +801,8 @@ def test_contract_c_ui_003_frontend_matrix_matches_backend() -> None:
             continue
         state, action, rest = m.groups()
 
-        def _g(pat: str, default: str | None = "") -> str | None:
-            hit = re.search(pat, rest)
+        def _g(pat: str, default: str | None = "", _rest: str = rest) -> str | None:
+            hit = re.search(pat, _rest)
             return hit.group(1) if hit else default
 
         frontend[f"{state}|{action}"] = {

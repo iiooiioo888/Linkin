@@ -1,12 +1,12 @@
 """routing_feedback 成本護欄與監控欄位測試。"""
 
 import json
-from pathlib import Path
 
 import pytest
 
 from backend.core.routing_feedback import (
     adaptive_length_threshold,
+    feedback_today,
     feedback_upgrade_state,
     record_outcome,
     routing_stats,
@@ -48,6 +48,27 @@ def _seed_low_simple(n: int) -> None:
         record_outcome("simple", 50, 4.0, False)
 
 
+def test_feedback_today_taipei_next_day_at_utc_2330(monkeypatch):
+    """UTC 23:30 在 Asia/Taipei 已是翌日（UTC 日期 +1）。"""
+    from datetime import UTC, date, datetime
+    from unittest.mock import patch
+
+    from backend.core import routing_feedback as rf
+
+    instant_utc = datetime(2025, 10, 5, 23, 30, tzinfo=UTC)
+    expected = date(2025, 10, 6)
+
+    def fake_now(tz=None):
+        if tz is not None:
+            return instant_utc.astimezone(tz)
+        return instant_utc.replace(tzinfo=None)
+
+    monkeypatch.delenv("EVOL_ROUTING_FEEDBACK_TIMEZONE", raising=False)
+    with patch.object(rf, "datetime") as mock_dt:
+        mock_dt.now = fake_now
+        assert feedback_today() == expected
+
+
 def test_feedback_disabled_does_not_raise_threshold(feedback_env, monkeypatch):
     _, cfg_path = feedback_env
     cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
@@ -86,10 +107,9 @@ def test_company_ratio_min_samples_defers_cap(feedback_env):
 
 def test_consecutive_low_required_before_company_threshold(feedback_env):
     fb_path, _ = feedback_env
-    from datetime import date
 
     base = 200
-    today = date.today().isoformat()
+    today = feedback_today().isoformat()
     records = [
         {"route": "simple", "score": 4.0, "query_length": 50, "bucket": "short"}
         for _ in range(12)

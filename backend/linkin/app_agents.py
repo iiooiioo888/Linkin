@@ -309,9 +309,9 @@ def dispatch_application_drafts(
 
 __all__ = [
     "APPLICATION_SEATS",
+    "SCHEMA_HINTS",
     "AppAgentError",
     "AppSeat",
-    "SCHEMA_HINTS",
     "default_build_style",
     "dispatch_application_drafts",
     "review_draft",

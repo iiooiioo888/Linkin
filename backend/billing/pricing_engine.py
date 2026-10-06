@@ -43,7 +43,8 @@ def _normalize_model(model: str) -> str:
 
 def model_multiplier(config: dict[str, Any], model: str) -> float:
     """預設走價目分檔。設定裡釘了與預設別名表不同的機型鍵時，該鍵優先。"""
-    from backend.billing.credits import match_multiplier_table, model_multiplier as price_multiplier
+    from backend.billing.credits import match_multiplier_table
+    from backend.billing.credits import model_multiplier as price_multiplier
 
     mults = config.get("model_multipliers") or {}
     m = _normalize_model(model)
