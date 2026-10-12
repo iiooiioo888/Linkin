@@ -18,6 +18,7 @@ const MODES: { id: string; key: HubMode; label: string }[] = [
 export default function HubPanel({ embedded = false }: { embedded?: boolean }) {
   const [mode, setMode] = useState<HubMode>('console');
   const activeId = MODES.find((m) => m.key === mode)?.id ?? MODES[0].id;
+  const { page, pages, setPage } = useFixedPages(1);
 
   if (embedded) {
     return (
@@ -37,8 +38,6 @@ export default function HubPanel({ embedded = false }: { embedded?: boolean }) {
       </div>
     );
   }
-
-  const { page, pages, setPage } = useFixedPages(1);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden apple-canvas">

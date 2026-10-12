@@ -177,7 +177,7 @@ export default function AiGmPanel() {
     async (patch: Partial<MinecraftGmConfig>) => {
       if (!config) return;
       const next = { ...config, ...patch };
-      if (patch.dry_run && patch.dry_run) {
+      if (patch.dry_run) {
         next.auto_apply = false;
       }
       setSaving(true);
