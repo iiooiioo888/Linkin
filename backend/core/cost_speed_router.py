@@ -103,6 +103,7 @@ def _builtin_defaults() -> dict[str, Any]:
                 "reflect": "qwen3.8-max",
             },
         },
+        "unified_pipeline": {"pre_enhance_timeout_ms": 300},
         "models": {},
     }
 
@@ -137,6 +138,18 @@ def routing_feedback_settings() -> dict[str, Any]:
     """routing_feedback 區塊（合併預設值）。"""
     raw = _load_raw_config().get("routing_feedback", {})
     merged = dict(_ROUTING_FEEDBACK_DEFAULTS)
+    if isinstance(raw, dict):
+        merged.update(raw)
+    return merged
+
+
+_UNIFIED_PIPELINE_DEFAULTS: dict[str, Any] = {"pre_enhance_timeout_ms": 300}
+
+
+def unified_pipeline_settings() -> dict[str, Any]:
+    """統一路線圖 #1 前置增強設定（``unified_pipeline`` 區塊，合併預設值）。"""
+    raw = _load_raw_config().get("unified_pipeline", {})
+    merged = dict(_UNIFIED_PIPELINE_DEFAULTS)
     if isinstance(raw, dict):
         merged.update(raw)
     return merged

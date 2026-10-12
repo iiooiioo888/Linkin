@@ -1357,20 +1357,62 @@ async def chat_stream(req: ChatRequest):
                     source="memory", items=_mems, phase="retrieve_memories", query=state["query"],
                 )
 
-            # 整合召回（MemOS / OpenViking / WeKnora，fail-open）
-            yield f"event: phase\ndata: {json_mod.dumps({'phase': 'enhance_recall_context'})}\n\n"
-            chat_tracer.log_phase_change("enhance_recall_context")
-            from backend.integrations.recall_bridge import enhance_with_recall_context
+            # 前置增強：OPC／靈境／整合召回（P1 統一管線：並行 + 逾時降級，設計 §7.4(b)）
+            from backend.core.unified_pipeline import (
+                pipeline_at_least,
+                run_pre_route_enhancements,
+            )
 
-            state.update(await asyncio.to_thread(enhance_with_recall_context, state))
-            _recall = state.get("recall_context") or {}
-            if isinstance(_recall, dict) and _recall.get("injection"):
-                chat_tracer.log_context_injection(
-                    source="recall",
-                    items=[_recall["injection"]],
-                    phase="enhance_recall_context",
-                    query=state["query"],
-                )
+            pre_enhance_degraded: dict[str, Any] | None = None
+            if pipeline_at_least("pre"):
+                for _phase in (
+                    "enhance_opc_context",
+                    "enhance_linkin_context",
+                    "enhance_recall_context",
+                ):
+                    yield f"event: phase\ndata: {json_mod.dumps({'phase': _phase})}\n\n"
+                    chat_tracer.log_phase_change(_phase)
+
+                _pre_update, pre_enhance_degraded = await run_pre_route_enhancements(state)
+                state.update(_pre_update)
+
+                _opc_ctx = state.get("opc_context") or {}
+                if isinstance(_opc_ctx, dict) and _opc_ctx.get("summary"):
+                    chat_tracer.log_context_injection(
+                        source="opc", items=[_opc_ctx["summary"]],
+                        phase="enhance_opc_context", query=state["query"],
+                    )
+                _linkin_ctx = state.get("linkin_context") or {}
+                if isinstance(_linkin_ctx, dict) and _linkin_ctx.get("summary"):
+                    chat_tracer.log_context_injection(
+                        source="linkin", items=[_linkin_ctx["summary"]],
+                        phase="enhance_linkin_context", query=state["query"],
+                    )
+                _recall = state.get("recall_context") or {}
+                if isinstance(_recall, dict) and _recall.get("injection"):
+                    chat_tracer.log_context_injection(
+                        source="recall", items=[_recall["injection"]],
+                        phase="enhance_recall_context", query=state["query"],
+                    )
+                if pre_enhance_degraded.get("context_degraded"):
+                    # 逾時降級資訊在增強完成後才可知，故於此補發 path_resolved
+                    yield _sse_path_resolved({**preview, **pre_enhance_degraded})
+                    chat_tracer.log_custom("pre_enhance_degraded", dict(pre_enhance_degraded))
+            else:
+                # 整合召回（MemOS / OpenViking / WeKnora，fail-open）
+                yield f"event: phase\ndata: {json_mod.dumps({'phase': 'enhance_recall_context'})}\n\n"
+                chat_tracer.log_phase_change("enhance_recall_context")
+                from backend.integrations.recall_bridge import enhance_with_recall_context
+
+                state.update(await asyncio.to_thread(enhance_with_recall_context, state))
+                _recall = state.get("recall_context") or {}
+                if isinstance(_recall, dict) and _recall.get("injection"):
+                    chat_tracer.log_context_injection(
+                        source="recall",
+                        items=[_recall["injection"]],
+                        phase="enhance_recall_context",
+                        query=state["query"],
+                    )
 
             # 階段 2：生成回答（串流 token，Queue 橋接同步生成器與非同步迴圈）
             yield f"event: phase\ndata: {json_mod.dumps({'phase': 'generate'})}\n\n"
@@ -1527,6 +1569,8 @@ async def chat_stream(req: ChatRequest):
                 "reflection_rounds_used": state.get("iteration", 0),
                 "reflection_rounds_max": reflection_rounds_max,
             }
+            if pre_enhance_degraded is not None:
+                done_payload.update(pre_enhance_degraded)
             billing_snap = chat_billing_snapshot()
             if billing_snap:
                 done_payload["billing"] = billing_snap

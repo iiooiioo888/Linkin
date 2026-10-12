@@ -1,7 +1,9 @@
-"""三軌收斂統一管線（P0：旗標、型別、請求建構；尚未接入入口）。"""
+"""三軌收斂統一管線（P0：旗標、型別、請求建構；P1：路由前共用前置增強）。"""
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -184,7 +186,98 @@ async def run_unified_pipeline(
     )
 
 
+DEFAULT_PRE_ENHANCE_TIMEOUT_MS = 300
+
+
+def pre_enhance_timeout_ms() -> int:
+    """前置增強總等待上限（ms）：環境變數 > ``cost_speed.json`` > 預設 300。
+
+    非正值或無法解析時回退預設；配置沿用 ``cost_speed_router`` 的快取與熱重載。
+    """
+    raw = os.environ.get("EVOL_PRE_ENHANCE_TIMEOUT_MS", "").strip()
+    if raw:
+        try:
+            value = int(float(raw))
+        except (TypeError, ValueError):
+            logger.warning("無效的 EVOL_PRE_ENHANCE_TIMEOUT_MS=%r，改用配置值", raw)
+        else:
+            if value > 0:
+                return value
+            logger.warning("EVOL_PRE_ENHANCE_TIMEOUT_MS=%r 非正值，改用配置值", raw)
+
+    try:
+        from backend.core.cost_speed_router import unified_pipeline_settings
+
+        value = int(
+            unified_pipeline_settings().get("pre_enhance_timeout_ms")
+            or DEFAULT_PRE_ENHANCE_TIMEOUT_MS
+        )
+    except Exception as exc:  # pragma: no cover - 設定讀取失敗不應中斷管線
+        logger.debug("讀取 unified_pipeline 設定失敗（用預設）：%s", exc)
+        return DEFAULT_PRE_ENHANCE_TIMEOUT_MS
+    return value if value > 0 else DEFAULT_PRE_ENHANCE_TIMEOUT_MS
+
+
+async def run_pre_route_enhancements(
+    state: dict[str, Any],
+    *,
+    timeout_ms: int | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """路由前的共用前置增強（設計 §7.4(b)）：OPC／靈境／整合召回並行 + 逾時降級。
+
+    回傳 ``(state_update, degraded)``：
+
+    - ``state_update``：已完成來源的欄位合併結果（逾時／例外者不併入）
+    - ``degraded``：``{"context_degraded": bool, "degraded_sources": [...]}``
+
+    逾時不硬等慢源：較快的來源結果照常併入，逾時／失敗的來源取消並記入
+    ``degraded_sources``，首 token 不因慢源（OPC／RAG）無限延長。
+    """
+    from backend.core.company_nodes import enhance_with_opc_context
+    from backend.integrations.recall_bridge import enhance_with_recall_context
+    from backend.linkin.pipeline import enhance_with_linkin_context
+
+    budget_ms = pre_enhance_timeout_ms() if timeout_ms is None else int(timeout_ms)
+    tasks: dict[str, asyncio.Task[Any]] = {
+        "opc": asyncio.ensure_future(enhance_with_opc_context(state)),
+        "linkin": asyncio.ensure_future(asyncio.to_thread(enhance_with_linkin_context, state)),
+        "recall": asyncio.ensure_future(asyncio.to_thread(enhance_with_recall_context, state)),
+    }
+
+    if budget_ms > 0:
+        _done, pending = await asyncio.wait(set(tasks.values()), timeout=budget_ms / 1000)
+    else:
+        await asyncio.wait(set(tasks.values()))
+        pending = set()
+
+    update: dict[str, Any] = {}
+    degraded_sources: list[str] = []
+    for name, task in tasks.items():
+        if task in pending:
+            task.cancel()
+            degraded_sources.append(name)
+            continue
+        exc = task.exception()
+        if exc is not None:
+            logger.warning("前置增強 %s 失敗：%s", name, exc)
+            degraded_sources.append(name)
+            continue
+        partial = task.result()
+        if isinstance(partial, dict):
+            update.update(partial)
+
+    for task in pending:
+        with contextlib.suppress(BaseException):
+            await task
+
+    return update, {
+        "context_degraded": bool(degraded_sources),
+        "degraded_sources": sorted(degraded_sources),
+    }
+
+
 __all__ = [
+    "DEFAULT_PRE_ENHANCE_TIMEOUT_MS",
     "PipelineEvent",
     "PipelineLevel",
     "PipelineMode",
@@ -195,6 +288,8 @@ __all__ = [
     "effective_query_from_lock",
     "pipeline_at_least",
     "pipeline_level",
+    "pre_enhance_timeout_ms",
     "resolve_task_effective_query",
+    "run_pre_route_enhancements",
     "run_unified_pipeline",
 ]

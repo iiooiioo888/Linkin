@@ -1,6 +1,9 @@
 {
   "enabled": true,
   "post_company_reflect": "off",
+  "unified_pipeline": {
+    "pre_enhance_timeout_ms": 300
+  },
   "routing_feedback": {
     "feedback_enabled": true,
     "timezone": "Asia/Taipei",
