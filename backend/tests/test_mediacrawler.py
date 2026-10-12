@@ -23,7 +23,9 @@ from backend.mediacrawler.service import start_job, validate_job
 @pytest.fixture()
 def mediacrawler_env(tmp_path, monkeypatch):
     home = tmp_path / "MediaCrawler"
-    home.mkdir()
+    # Windows/macOS 檔案系統大小寫不敏感，conftest 的 autouse fixture 已建立
+    # tmp_path/"mediacrawler"（同一目錄），故不可要求不存在。
+    home.mkdir(exist_ok=True)
     (home / "main.py").write_text("print('ok')\n", encoding="utf-8")
     (home / "pyproject.toml").write_text("[project]\nname='mc'\n", encoding="utf-8")
     results = tmp_path / "results"
