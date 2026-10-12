@@ -68,6 +68,15 @@ def chat_billing_snapshot() -> dict | None:
     return snap
 
 
+def mark_chat_billing_interrupted(reason: str) -> None:
+    """標記當前聊天計費快照為中斷（例如客戶端斷線）。冪等，無 acc 時為 no-op。"""
+    acc = chat_billing_acc.get()
+    if acc is None:
+        return
+    acc["interrupted"] = True
+    acc["interrupt_reason"] = (reason or "").strip()
+
+
 def chat_session_id() -> str:
     acc = chat_billing_acc.get()
     if not acc:

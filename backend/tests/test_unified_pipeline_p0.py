@@ -483,12 +483,8 @@ class TestKnownDivergencesXfail:
     LINKIN_Q = TestThreeEntryRoutingContract.LINKIN_Q
     SIMPLE_Q = TestThreeEntryRoutingContract.SIMPLE_Q
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="P2：SSE simple 完成後未經 decide_final_answer 呼叫 record_outcome",
-    )
-    def test_sse_simple_records_routing_outcome(self):
+    def test_sse_simple_records_routing_outcome(self, monkeypatch):
+        monkeypatch.setenv("EVOL_UNIFIED_PIPELINE", "reflect")
         from fastapi.testclient import TestClient
 
         from backend.main import app
@@ -523,11 +519,6 @@ class TestKnownDivergencesXfail:
 
         assert recorded, "P2 後 SSE 應經 finalize/decide 寫入 record_outcome"
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="P2：公司 SSE 反思未尊重 should_improve（低分仍進 reflect）",
-    )
     def test_company_sse_respects_should_improve(self, monkeypatch):
         from fastapi.testclient import TestClient
 
@@ -535,6 +526,7 @@ class TestKnownDivergencesXfail:
         from backend.main import app
 
         monkeypatch.setenv("EVOL_POST_COMPANY_REFLECT", "full")
+        monkeypatch.setenv("EVOL_UNIFIED_PIPELINE", "reflect")
         monkeypatch.setattr(
             "backend.core.graph.should_improve",
             lambda _state: "finalize",

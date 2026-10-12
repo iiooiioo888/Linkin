@@ -1086,6 +1086,13 @@ async def _company_stream(req: ChatRequest):
                     "session_id": session_id,
                     "company_result": company_result,
                 }
+                from backend.core.unified_pipeline import pipeline_at_least
+
+                unified_reflect = pipeline_at_least("reflect")
+                if unified_reflect:
+                    # P2：公司 SSE 反思與圖／Task 同源（should_improve）
+                    eval_state["resolved_execution_path"] = "company"
+                    eval_state["post_company_reflect_mode"] = reflect_mode
                 final_answer = final_output
 
                 if reflect_mode == "off":
@@ -1113,10 +1120,16 @@ async def _company_stream(req: ChatRequest):
                     yield f"event: evaluation\ndata: {json_mod.dumps(eval_data, ensure_ascii=False)}\n\n"
 
                     prev_score = eval_state.get('score', 0.0)
-                    while (
-                        eval_state.get('score', 0.0) < PASS_THRESHOLD
-                        and eval_state.get('iteration', 0) < MAX_ITERATIONS
-                    ) or eval_state.get("length_directive"):
+
+                    def _company_should_continue(st: dict[str, Any]) -> bool:
+                        if unified_reflect:
+                            return reflection_should_continue(st)
+                        return (
+                            st.get('score', 0.0) < PASS_THRESHOLD
+                            and st.get('iteration', 0) < MAX_ITERATIONS
+                        ) or bool(st.get("length_directive"))
+
+                    while _company_should_continue(eval_state):
                         cur = eval_state.get('score', 0.0)
                         if eval_state.get('iteration', 0) >= 1:
                             if cur - prev_score < 0.5 and not eval_state.get("length_directive"):
@@ -1202,6 +1215,14 @@ def _sse_path_resolved(preview: dict[str, Any]) -> str:
     return f"event: path_resolved\ndata: {json_mod.dumps(preview, ensure_ascii=False)}\n\n"
 
 
+async def _client_disconnected(request: Request) -> bool:
+    """客戶端是否已中止連線（SSE 協作式取消；偵測失敗視為未斷線）。"""
+    try:
+        return await request.is_disconnected()
+    except Exception:
+        return False
+
+
 # ==================== 串流聊天 API（SSE 打字機效果） ====================
 
 
@@ -1259,7 +1280,7 @@ async def _minecraft_ops_stream(req: ChatRequest):
 
 
 @app.post("/chat/stream")
-async def chat_stream(req: ChatRequest):
+async def chat_stream(req: ChatRequest, request: Request):
     """SSE 串流聊天：即時推送階段進度與生成 token。
 
     事件格式（Server-Sent Events）：
@@ -1309,6 +1330,7 @@ async def chat_stream(req: ChatRequest):
             begin_chat_billing,
             chat_billing_snapshot,
             end_chat_billing,
+            mark_chat_billing_interrupted,
         )
         from backend.core.locale_prompt import normalize_ui_language
 
@@ -1440,13 +1462,22 @@ async def chat_stream(req: ChatRequest):
             asyncio.get_running_loop().run_in_executor(None, _produce_tokens)
 
             answer_parts: list[str] = []
+            chunk_count = 0
             while True:
                 token = await token_queue.get()
                 if token is None:
                     break
                 answer_parts.append(token)
                 yield f"event: token\ndata: {json_mod.dumps({'token': token}, ensure_ascii=False)}\n\n"
+                chunk_count += 1
+                if chunk_count % 16 == 0 and await _client_disconnected(request):
+                    break
             answer = "".join(answer_parts)
+            if await _client_disconnected(request):
+                # 客戶端已離線：不評估／不改進／不存記憶，計費標記中斷
+                mark_chat_billing_interrupted("client_disconnect")
+                chat_tracer.log_phase_change("client_disconnect")
+                return
             gen_thinking, visible = split_thinking(answer)
             state.update({
                 "initial_answer": visible or answer,
@@ -1486,6 +1517,10 @@ async def chat_stream(req: ChatRequest):
             # 反思/改進迴圈（動態迭代：帶分數變化率檢測；長度指令未消化時強制多跑一輪）
             prev_score = state.get('score', 0.0)
             while reflection_should_continue(state):
+                if await _client_disconnected(request):
+                    mark_chat_billing_interrupted("client_disconnect")
+                    chat_tracer.log_phase_change("client_disconnect")
+                    return
                 current_score = state.get('score', 0.0)
                 # 動態迭代檢查：分數變化率過低時提前終止（優化 #4）
                 if state.get('iteration', 0) >= 1:
@@ -1554,7 +1589,18 @@ async def chat_stream(req: ChatRequest):
                 if billing_evt:
                     yield billing_evt
 
+            if await _client_disconnected(request):
+                mark_chat_billing_interrupted("client_disconnect")
+                chat_tracer.log_phase_change("client_disconnect")
+                return
+
             final_answer = state.get("current_answer", "")
+            if pipeline_at_least("reflect"):
+                # P2：與 Task 同源收尾（decide_final_answer → record_outcome 恰一次 + 長度守門）
+                state.update(await asyncio.to_thread(nodes.finalize_task_answer, state))
+                final_answer = (
+                    state.get("final_answer") or state.get("current_answer") or final_answer
+                )
             chat_tracer.log_phase_change("done", data={"score": state.get("score"), "iteration": state.get("iteration", 0)})
             # 儲存記憶（盡力而為）
             state["final_answer"] = final_answer
