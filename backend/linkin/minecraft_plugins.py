@@ -53,7 +53,7 @@ PLUGIN_CATALOG: tuple[dict[str, Any], ...] = (
         "name": "Squaremap",
         "category": "map",
         "purpose": "Dynmap 的現代替代品，輕量 Paper 網頁地圖。",
-        "platforms": ("Paper"),
+        "platforms": ("Paper",),
         "install_hint": "安裝 squaremap.jar，於 plugins/squaremap/config.yml 設定 web-address 與 web-port。",
         "config_fields": (
             {"key": "map_url", "label": "公開地圖 URL", "required": True, "example": "https://map.example.com/"},
@@ -80,7 +80,7 @@ PLUGIN_CATALOG: tuple[dict[str, Any], ...] = (
         "name": "FancyNpcs",
         "category": "npc",
         "purpose": "現代 Paper NPC 插件，支援外觀與互動指令。",
-        "platforms": ("Paper"),
+        "platforms": ("Paper",),
         "install_hint": "安裝 FancyNpcs.jar 至 plugins/。",
         "config_fields": (),
         "embeddable": False,
@@ -170,10 +170,32 @@ def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
     return settings
 
 
+def _normalize_platforms(value: Any) -> list[str]:
+    """API 一律回傳字串陣列；目錄中誤用 (\"Paper\") 等單元素括號時會是 str。"""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        stripped = value.strip()
+        return [stripped] if stripped else []
+    if isinstance(value, (list, tuple)):
+        out: list[str] = []
+        for item in value:
+            if item is None:
+                continue
+            text = str(item).strip()
+            if text:
+                out.append(text)
+        return out
+    text = str(value).strip()
+    return [text] if text else []
+
+
 def catalog_entry(plugin_id: str) -> dict[str, Any] | None:
     for item in PLUGIN_CATALOG:
         if item["id"] == plugin_id:
-            return dict(item)
+            entry = dict(item)
+            entry["platforms"] = _normalize_platforms(entry.get("platforms"))
+            return entry
     return None
 
 
@@ -190,6 +212,7 @@ def list_catalog() -> list[dict[str, Any]]:
         out.append(
             {
                 **item,
+                "platforms": _normalize_platforms(item.get("platforms")),
                 "enabled": enabled,
                 "map_url": map_url or None,
                 "api_port": stored.get("api_port"),

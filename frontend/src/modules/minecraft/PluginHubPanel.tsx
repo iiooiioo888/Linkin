@@ -13,6 +13,8 @@ import {
 import { navPathForTab } from '../../lib/monitorTabs';
 import { CopyButton, MAP_NGINX_SNIPPET, rememberLastMapUrl } from './monitor/shared';
 import { McHeader, McPage } from './McChrome';
+import { PanelErrorBoundary } from './PanelErrorBoundary';
+import { formatPlatformsLabel } from './pluginCatalogUtils';
 
 const STATUS_LABEL: Record<string, string> = {
   disabled: '未啟用',
@@ -30,7 +32,7 @@ const STATUS_COLOR: Record<string, string> = {
   unreachable: 'text-red-300',
 };
 
-export default function PluginHubPanel() {
+function PluginHubPanelContent() {
   const [catalog, setCatalog] = useState<MinecraftPluginCatalogEntry[]>([]);
   const [settings, setSettings] = useState<MinecraftPluginSettings | null>(null);
   const [drafts, setDrafts] = useState<Record<string, { map_url: string; api_port: string; enabled: boolean }>>({});
@@ -135,6 +137,7 @@ export default function PluginHubPanel() {
     const draft = drafts[item.id] ?? { map_url: '', api_port: '', enabled: false };
     const status = item.status ?? 'unconfigured';
     const isMap = item.category === 'map';
+    const configFields = Array.isArray(item.config_fields) ? item.config_fields : [];
     return (
       <article
         key={item.id}
@@ -161,13 +164,13 @@ export default function PluginHubPanel() {
         </div>
 
         <p className="mb-2 text-[10px] text-[var(--console-sub)]">
-          平台：{item.platforms.join(' · ')} · 類別：{item.category}
+          平台：{formatPlatformsLabel(item.platforms)} · 類別：{item.category || '—'}
         </p>
         <p className="mb-3 text-[11px] leading-relaxed text-[var(--console-sub)]">{item.install_hint}</p>
 
-        {item.config_fields.length > 0 && (
+        {configFields.length > 0 && (
           <div className="mb-3 grid gap-2 lg:grid-cols-2">
-            {item.config_fields.map((field) => (
+            {configFields.map((field) => (
               <label key={field.key} className="text-[10px] text-[#8a8f98]">
                 {field.label}
                 {field.required ? ' *' : ''}
@@ -301,5 +304,13 @@ export default function PluginHubPanel() {
       </section>
       </div>
     </McPage>
+  );
+}
+
+export default function PluginHubPanel() {
+  return (
+    <PanelErrorBoundary title="插件中心載入失敗">
+      <PluginHubPanelContent />
+    </PanelErrorBoundary>
   );
 }

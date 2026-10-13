@@ -57,6 +57,24 @@ def test_catalog_shape():
         assert "config_fields" in item
 
 
+def test_list_catalog_platforms_are_string_lists():
+    items = list_catalog()
+    for item in items:
+        platforms = item["platforms"]
+        assert isinstance(platforms, list)
+        assert all(isinstance(p, str) for p in platforms)
+
+    squaremap = next(p for p in items if p["id"] == "squaremap")
+    assert squaremap["platforms"] == ["Paper"]
+
+    fancynpcs = next(p for p in items if p["id"] == "fancynpcs")
+    assert fancynpcs["platforms"] == ["Paper"]
+
+    raw_squaremap = next(p for p in PLUGIN_CATALOG if p["id"] == "squaremap")
+    assert isinstance(raw_squaremap["platforms"], tuple)
+    assert raw_squaremap["platforms"] == ("Paper",)
+
+
 def test_settings_crud_roundtrip(client: TestClient):
     empty = client.get("/linkin/minecraft/plugins/settings")
     assert empty.status_code == 200
