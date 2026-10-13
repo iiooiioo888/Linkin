@@ -1121,7 +1121,11 @@ async def _company_stream(req: ChatRequest):
 
                     prev_score = eval_state.get('score', 0.0)
 
-                    def _company_should_continue(st: dict[str, Any]) -> bool:
+                    def _company_should_continue(
+                        st: dict[str, Any],
+                        *,
+                        unified_reflect: bool = unified_reflect,
+                    ) -> bool:
                         if unified_reflect:
                             return reflection_should_continue(st)
                         return (
