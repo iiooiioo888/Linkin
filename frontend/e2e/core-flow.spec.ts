@@ -31,6 +31,7 @@ test.describe('EvoLoop 核心 UI', () => {
 
   test('即時看板整合工具可跳轉至實驗室 firecrawl', async ({ page }) => {
     await page.goto('/#/monitor');
+    await page.getByTestId('monitor-live-details-toggle').click();
     await page.getByRole('button', { name: '爬蟲' }).first().click();
     await expect(page.getByText(/實驗室 · 爬蟲|Lab ·/)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/單頁抓取|Scrape/)).toBeVisible({ timeout: 10_000 });

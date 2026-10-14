@@ -404,6 +404,290 @@
   font-size: 9px;
 }
 
+/* ---- LiveBoard v3 首屏收斂（態勢／下一步／異常） ---- */
+.mon-live-focus {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+@media (min-width: 768px) {
+  .mon-live-focus {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+.mon-focus-card {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  border: 1px solid var(--console-line);
+  border-radius: 8px;
+  background: var(--console-card);
+  padding: 16px;
+  gap: 12px;
+}
+
+.mon-focus-card--hero {
+  border-color: color-mix(in srgb, var(--console-accent) 45%, var(--console-line));
+  background: color-mix(in srgb, var(--console-accent) 6%, var(--console-card));
+}
+
+.mon-focus-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mon-focus-card__title {
+  margin: 0;
+  color: var(--console-ink);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.mon-focus-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mon-focus-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mon-focus-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--console-line);
+  border-radius: 6px;
+  background: var(--console-bg);
+  padding: 8px;
+}
+
+.mon-focus-metric__label {
+  color: var(--console-sub);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.mon-focus-metric__value {
+  color: var(--console-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mon-focus-step-tag {
+  color: var(--console-accent);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mon-focus-cta {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--console-accent) 55%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--console-accent) 14%, var(--console-card));
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.mon-focus-cta:hover {
+  border-color: color-mix(in srgb, var(--console-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--console-accent) 20%, var(--console-card));
+}
+
+.mon-focus-cta__label {
+  color: var(--console-accent);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mon-focus-cta__hint {
+  color: var(--console-sub);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.mon-focus-step-btn {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  border: 1px solid var(--console-line);
+  border-radius: 8px;
+  background: var(--console-bg);
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.mon-focus-step-btn:hover {
+  border-color: color-mix(in srgb, var(--console-accent) 40%, transparent);
+}
+
+.mon-focus-step-btn__label {
+  color: var(--console-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mon-focus-step-btn__hint {
+  color: var(--console-sub);
+  font-size: 11px;
+}
+
+.mon-focus-empty-copy {
+  margin: 0;
+  color: var(--console-sub);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mon-focus-anomaly-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mon-focus-anomaly-item {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  border: 1px solid var(--console-line);
+  border-radius: 6px;
+  background: var(--console-bg);
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.mon-focus-anomaly-item--warn {
+  border-color: color-mix(in srgb, var(--console-amber) 35%, var(--console-line));
+}
+
+.mon-focus-anomaly-item--err {
+  border-color: color-mix(in srgb, var(--console-danger) 35%, var(--console-line));
+}
+
+.mon-focus-anomaly-item__title {
+  color: var(--console-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mon-focus-anomaly-item__hint {
+  color: var(--console-sub);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.mon-focus-link {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--console-accent);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.mon-live-details {
+  margin-top: 8px;
+}
+
+.mon-live-details__toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--console-line);
+  border-radius: 8px;
+  background: var(--console-card);
+  padding: 12px 16px;
+  color: var(--console-sub);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.mon-live-details__toggle:hover {
+  border-color: color-mix(in srgb, var(--console-accent) 35%, var(--console-line));
+  color: var(--console-ink);
+}
+
+.mon-live-details__chevron {
+  color: var(--console-accent);
+  font-size: 10px;
+}
+
+.mon-live-details__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--console-line);
+}
+
+.mon-live-status__eyebrow {
+  color: var(--console-sub);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.mon-live-mobile-scroll--desktop {
+  padding-top: 16px;
+}
+
+@media (max-width: 767px) {
+  .mon-focus-card {
+    padding: 16px;
+  }
+
+  .mon-focus-card__title {
+    font-size: 14px;
+  }
+
+  .mon-focus-cta__label {
+    font-size: 18px;
+  }
+
+  .mon-focus-metric__value {
+    font-size: 13px;
+  }
+}
+
 /* ---- LiveBoard v3 版面 ---- */
 .mon-live-shell {
   display: flex;
