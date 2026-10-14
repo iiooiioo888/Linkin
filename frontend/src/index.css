@@ -1204,21 +1204,139 @@ textarea:focus-visible {
   }
 }
 
-.apple-status-bar {
+@media (max-width: 767px) {
+  :root {
+    --app-statusbar-height: 0px;
+  }
+}
+
+.status-shell {
+  position: relative;
+  z-index: 35;
+  flex-shrink: 0;
   display: flex;
-  height: var(--app-statusbar-height);
-  shrink: 0;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: space-between;
+  min-height: var(--app-statusbar-height);
+  padding: 4px calc(12px + var(--safe-area-right)) 4px calc(12px + var(--safe-area-left));
   border-top: 1px solid var(--console-line);
-  background: var(--console-sidebar);
-  padding: 0 calc(12px + var(--safe-area-right)) 0 calc(12px + var(--safe-area-left));
+  background: color-mix(in srgb, var(--console-sidebar) 92%, transparent);
+}
+
+.status-shell--mobile {
+  position: fixed;
+  right: 0;
+  bottom: calc(var(--mobile-tab-bar-height) + var(--safe-area-bottom) + 8px);
+  left: auto;
+  min-height: 0;
+  border: none;
+  background: transparent;
+  padding: 0 calc(8px + var(--safe-area-right)) 0 8px;
+  pointer-events: none;
+}
+
+.status-shell--mobile .status-capsule,
+.status-shell--mobile .status-capsule-panel {
+  pointer-events: auto;
+}
+
+.status-capsule {
+  display: inline-flex;
+  max-width: min(100%, 280px);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--console-line);
+  border-radius: 999px;
+  background: var(--console-card);
+  padding: 6px 12px;
+  color: var(--console-sub);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.status-capsule:hover,
+.status-capsule.is-open {
+  border-color: color-mix(in srgb, var(--console-accent) 55%, var(--console-line));
+  color: var(--console-ink);
+}
+
+.status-capsule.has-alert {
+  border-color: color-mix(in srgb, var(--console-amber) 45%, var(--console-line));
+}
+
+.status-capsule__label {
+  font-weight: 500;
+  color: var(--console-ink);
+}
+
+.status-capsule__meta {
   font-size: 11px;
   color: var(--console-faint);
 }
 
-.apple-status-bar a:hover,
-.apple-status-bar button:hover {
+.status-capsule__chev {
+  margin-left: 2px;
+  font-size: 10px;
+  color: var(--console-faint);
+}
+
+.status-capsule-panel {
+  position: absolute;
+  right: calc(12px + var(--safe-area-right));
+  bottom: calc(100% + 8px);
+  z-index: 50;
+  width: min(320px, calc(100vw - 24px));
+  overflow: hidden;
+  border: 1px solid var(--console-line);
+  border-radius: 12px;
+  background: var(--console-card);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  padding: 12px;
+}
+
+.status-shell--mobile .status-capsule-panel {
+  right: calc(8px + var(--safe-area-right));
+  bottom: calc(100% + 8px);
+}
+
+.status-capsule-panel__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--console-sub);
+}
+
+.status-capsule-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-capsule-row--emph {
+  padding-top: 4px;
+  border-top: 1px solid var(--console-line);
+  font-weight: 500;
+  color: var(--console-ink);
+}
+
+.status-capsule-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.status-capsule-link:hover {
   color: var(--console-ink);
 }
 
@@ -1695,7 +1813,7 @@ textarea:focus-visible {
   .activity-bar-bottom {
     position: fixed;
     right: 0;
-    bottom: calc(var(--app-statusbar-height) + var(--safe-area-bottom));
+    bottom: var(--safe-area-bottom);
     left: 0;
     z-index: 40;
     display: flex;

@@ -1,7 +1,7 @@
 /**
  * AppShell — IDE 风格布局容器。
  *
- * 布局：TopBar → [ActivityBar | SidePanel | MainContent | RightPanel] → StatusBar
+ * 布局：TopBar → [ActivityBar | SidePanel | MainContent | RightPanel] → 狀態膠囊
  * 活動：對話 / 控制台（EvoLoop）/ 世界模組（Minecraft…）/ 實驗室
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -281,6 +281,10 @@ export default function AppShell({
           onMobileUsage={() => {
             onViewChange('monitor');
             onMonitorTabChange('models');
+          }}
+          onMobileConsoleTab={(tab) => {
+            onViewChange('monitor');
+            onMonitorTabChange(tab);
           }}
         />
       )}
