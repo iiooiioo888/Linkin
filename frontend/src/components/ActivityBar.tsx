@@ -4,7 +4,7 @@
  */
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ActivityKey } from '../lib/monitorTabs';
+import { CONSOLE_CHROME_TABS, type ActivityKey } from '../lib/monitorTabs';
 import type { MonitorTab, ViewKey } from './AppShell';
 import { useWorldModules, type ModuleIconKey } from '../lib/worldModules';
 
@@ -17,6 +17,7 @@ interface ActivityBarProps {
   placement?: 'sidebar' | 'bottom';
   onMobileTasks?: () => void;
   onMobileUsage?: () => void;
+  onMobileConsoleTab?: (tab: MonitorTab) => void;
 }
 
 function ChatIcon({ active }: { active: boolean }) {
@@ -179,6 +180,7 @@ function MobileBottomBar({
   onActivityChange,
   onMobileTasks,
   onMobileUsage,
+  onMobileConsoleTab,
   overflowItems,
 }: {
   activity: ActivityKey;
@@ -187,6 +189,7 @@ function MobileBottomBar({
   onActivityChange: (activity: ActivityKey) => void;
   onMobileTasks?: () => void;
   onMobileUsage?: () => void;
+  onMobileConsoleTab?: (tab: MonitorTab) => void;
   overflowItems: BarItem[];
 }) {
   const { t } = useTranslation();
@@ -259,6 +262,26 @@ function MobileBottomBar({
             <p className="border-b border-white/[0.06] px-4 py-2 text-[10px] leading-relaxed text-[var(--console-sub)]">
               {t('mobileShell.moreNote')}
             </p>
+            <div className="mobile-more-console-nav border-b border-white/[0.06] px-3 py-2">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+                控制台
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {CONSOLE_CHROME_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => {
+                      onMobileConsoleTab?.(tab.key);
+                      setMoreOpen(false);
+                    }}
+                    className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-[11px] text-[var(--console-sub)] hover:border-[var(--console-accent)] hover:text-[var(--console-ink)]"
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-1 p-2">
               {overflowItems.map((item) => (
                 <button
@@ -290,6 +313,7 @@ export default function ActivityBar({
   placement = 'sidebar',
   onMobileTasks,
   onMobileUsage,
+  onMobileConsoleTab,
 }: ActivityBarProps) {
   const { t } = useTranslation();
   const modules = useWorldModules();
@@ -315,6 +339,7 @@ export default function ActivityBar({
         onActivityChange={onActivityChange}
         onMobileTasks={onMobileTasks}
         onMobileUsage={onMobileUsage}
+        onMobileConsoleTab={onMobileConsoleTab}
         overflowItems={overflowItems}
       />
     );
