@@ -1,7 +1,7 @@
 /**
  * LiveBoard — EvoLoop 主監控總覽（monitor dashboard v3）。
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchBillingOverview } from '../api/client';
 import MonitorAlertMode from './monitor/MonitorAlertMode';
@@ -23,6 +23,14 @@ import {
   taskPriority,
 } from '../lib/monitorData';
 import { navPathForTab } from '../lib/monitorTabs';
+import {
+  buildWorkflowSteps,
+  collectLiveAnomalies,
+  isLiveBoardTaskEmpty,
+  pickNextWorkflowStep,
+  type LiveAnomaly,
+  type WorkflowStep,
+} from '../lib/liveBoardFocus';
 import { jumpToL0Kernel } from '../lib/rahoUi';
 import type { MonitorTab } from './AppShell';
 import IntegrationsStrip from './IntegrationsStrip';
@@ -44,14 +52,7 @@ import {
   TaskPriorityCard,
 } from './ui/monitor';
 import type { MonitorStatusTone } from './ui/monitor';
-import {
-  ConsoleCenterColumn,
-  ConsoleColumnScroll,
-  ConsoleLeftRail,
-  ConsoleRightRail,
-  ConsoleThreeColumn,
-  PanelShell,
-} from './ui/ConsoleLayout';
+import { PanelShell } from './ui/ConsoleLayout';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useMonitorStore } from '../stores/monitorStore';
 import type { L0Snapshot, TaskSummary } from '../types';
@@ -70,61 +71,12 @@ function liveTone(feed: AnimLiveFeed): MonitorStatusTone {
 }
 
 function WorkflowRail({
-  feed,
+  steps,
   onOpenTab,
 }: {
-  feed: AnimLiveFeed;
+  steps: WorkflowStep[];
   onOpenTab?: (tab: MonitorTab) => void;
 }) {
-  const routes = feed.llmOps?.api_routes ?? [];
-  const apiReady =
-    routes.some((r) => r.configured && r.enabled) || Boolean(feed.llmOps?.configured);
-  const pinned = feed.agents.filter((a) => Boolean(a.preferred_model || a.preferred_provider)).length;
-  const taskRunning =
-    feed.runningTasks > 0 || (feed.summary?.running_company_tasks ?? 0) > 0;
-  const steps: Array<{
-    n: string;
-    label: string;
-    hint: string;
-    tab: MonitorTab;
-    done: boolean;
-    active?: boolean;
-    onClick?: () => void;
-  }> = [
-    {
-      n: '1',
-      label: '配置 API',
-      hint: apiReady ? `${routes.length || 1} 組可用` : '金鑰與模型目錄',
-      tab: 'llm',
-      done: apiReady,
-    },
-    {
-      n: '2',
-      label: '指定角色',
-      hint: pinned ? `${pinned} 席已指定` : '模型與 Token',
-      tab: 'agents',
-      done: pinned > 0,
-      onClick: () => {
-        requestRoleSettingsDesk();
-        onOpenTab?.('agents');
-      },
-    },
-    {
-      n: '3',
-      label: '執行任務',
-      hint: taskRunning ? '進行中' : '佇列與進度',
-      tab: 'tasks',
-      done: !taskRunning && (feed.summary?.work_items_done ?? 0) > 0,
-      active: taskRunning,
-    },
-    {
-      n: '4',
-      label: '計費用量',
-      hint: 'AI 與 Docker 成本',
-      tab: 'billing',
-      done: false,
-    },
-  ];
   const nextIdx = steps.findIndex((s) => !s.done);
 
   return (
@@ -151,6 +103,257 @@ function WorkflowRail({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function resolveResourceGauges(feed: AnimLiveFeed) {
+  const opt = feed.optimization;
+  const edge = opt?.edge_cache ?? opt?.opc_edge;
+  const cacheCapPct = edge?.max_size ? ((edge?.entry_count ?? 0) / edge.max_size) * 100 : 0;
+  return {
+    cacheCapPct,
+    gauges: [
+      { label: 'MEM', pct: Math.min(100, Math.round(cacheCapPct)), color: 'var(--console-green)' },
+      {
+        label: 'CPU',
+        pct: Math.min(100, (opt?.system_stats?.tasks_running ?? 0) * 12 + 8),
+        color: 'var(--console-blue)',
+      },
+      {
+        label: 'NET',
+        pct: Math.min(100, Math.round((opt?.trace.trace_count ?? 0) / 2)),
+        color: 'var(--console-cyan)',
+      },
+    ],
+  };
+}
+
+function SituationFocusCard({
+  feed,
+  l0Snapshot,
+  connected,
+}: {
+  feed: AnimLiveFeed;
+  l0Snapshot: L0Snapshot | null;
+  connected: boolean;
+}) {
+  const { gauges } = resolveResourceGauges(feed);
+  const running = feed.runningTasks + (feed.summary?.running_company_tasks ?? 0);
+
+  return (
+    <section className="mon-focus-card" data-testid="monitor-focus-situation" aria-labelledby="mon-focus-situation-title">
+      <header className="mon-focus-card__head">
+        <h2 id="mon-focus-situation-title" className="mon-focus-card__title">態勢</h2>
+        <MonitorStatusDot tone={feed.live ? 'ok' : 'idle'} label={feed.live ? 'LIVE' : '待命'} />
+      </header>
+      <div className="mon-focus-card__body">
+        <MonitorL0StatusChip snapshot={l0Snapshot} onClick={jumpToL0Kernel} />
+        <div className="mon-focus-metrics">
+          <div className="mon-focus-metric">
+            <span className="mon-focus-metric__label">執行中任務</span>
+            <span className="mon-focus-metric__value font-mono tabular-nums">{running}</span>
+          </div>
+          <div className="mon-focus-metric">
+            <span className="mon-focus-metric__label">角色</span>
+            <span className="mon-focus-metric__value font-mono tabular-nums">{feed.agents.length}</span>
+          </div>
+          <div className="mon-focus-metric">
+            <span className="mon-focus-metric__label">連線</span>
+            <span className="mon-focus-metric__value">{connected ? 'Hub 已連線' : '快照'}</span>
+          </div>
+        </div>
+        <ResourceGauges gauges={gauges} />
+      </div>
+    </section>
+  );
+}
+
+function NextStepFocusCard({
+  step,
+  taskEmpty,
+  onActivate,
+}: {
+  step: WorkflowStep | null;
+  taskEmpty: boolean;
+  onActivate: (step: WorkflowStep) => void;
+}) {
+  if (!step) {
+    return (
+      <section className="mon-focus-card mon-focus-card--next" data-testid="monitor-focus-next">
+        <header className="mon-focus-card__head">
+          <h2 className="mon-focus-card__title">下一步</h2>
+          <MonitorStatusDot tone="ok" label="就緒" />
+        </header>
+        <div className="mon-focus-card__body">
+          <p className="mon-focus-empty-copy">工作流步驟皆已完成，可隨時執行新任務。</p>
+        </div>
+      </section>
+    );
+  }
+
+  const tag = step.done ? '完成' : step.active ? '進行中' : '下一步';
+  const hero = taskEmpty && !step.active;
+
+  return (
+    <section
+      className={`mon-focus-card mon-focus-card--next${hero ? ' mon-focus-card--hero' : ''}`}
+      data-testid="monitor-focus-next"
+      aria-labelledby="mon-focus-next-title"
+    >
+      <header className="mon-focus-card__head">
+        <h2 id="mon-focus-next-title" className="mon-focus-card__title">下一步</h2>
+        <span className="mon-focus-step-tag">{tag}</span>
+      </header>
+      <div className="mon-focus-card__body">
+        {hero ? (
+          <button type="button" className="mon-focus-cta" onClick={() => onActivate(step)}>
+            <span className="mon-focus-cta__label">{step.label}</span>
+            <span className="mon-focus-cta__hint">{step.hint}</span>
+          </button>
+        ) : (
+          <button type="button" className="mon-focus-step-btn" onClick={() => onActivate(step)}>
+            <span className="mon-focus-step-btn__label">{step.label}</span>
+            <span className="mon-focus-step-btn__hint">{step.hint}</span>
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AnomaliesFocusCard({
+  anomalies,
+  onJump,
+  onOpenAlerts,
+}: {
+  anomalies: LiveAnomaly[];
+  onJump: (a: LiveAnomaly) => void;
+  onOpenAlerts?: () => void;
+}) {
+  return (
+    <section className="mon-focus-card mon-focus-card--anomaly" data-testid="monitor-focus-anomaly" aria-labelledby="mon-focus-anomaly-title">
+      <header className="mon-focus-card__head">
+        <h2 id="mon-focus-anomaly-title" className="mon-focus-card__title">異常</h2>
+        <MonitorStatusDot
+          tone={anomalies.length ? 'warn' : 'ok'}
+          label={anomalies.length ? `${anomalies.length} 項` : '無異常'}
+        />
+      </header>
+      <div className="mon-focus-card__body">
+        {anomalies.length === 0 ? (
+          <p className="mon-focus-empty-copy">目前無需處理的異常。</p>
+        ) : (
+          <ul className="mon-focus-anomaly-list">
+            {anomalies.slice(0, 5).map((a) => (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  className={`mon-focus-anomaly-item mon-focus-anomaly-item--${a.tone}`}
+                  onClick={() => onJump(a)}
+                >
+                  <span className="mon-focus-anomaly-item__title">{a.title}</span>
+                  {a.hint ? <span className="mon-focus-anomaly-item__hint">{a.hint}</span> : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {onOpenAlerts ? (
+          <button type="button" className="mon-focus-link" onClick={onOpenAlerts}>
+            開啟監控模式
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function LiveBoardFocusGrid({
+  feed,
+  l0Snapshot,
+  connected,
+  unhealthyKeys,
+  capacityFull,
+  cacheWarnText,
+  taskCount,
+  onOpenTab,
+  onOpenAgent,
+  onOpenAlerts,
+}: {
+  feed: AnimLiveFeed;
+  l0Snapshot: L0Snapshot | null;
+  connected: boolean;
+  unhealthyKeys: number;
+  capacityFull: boolean;
+  cacheWarnText?: string;
+  taskCount: number;
+  onOpenTab?: (tab: MonitorTab) => void;
+  onOpenAgent?: (id: string) => void;
+  onOpenAlerts?: () => void;
+}) {
+  const steps = useMemo(
+    () =>
+      buildWorkflowSteps(feed, onOpenTab, () => {
+        requestRoleSettingsDesk();
+      }),
+    [feed, onOpenTab],
+  );
+  const nextStep = pickNextWorkflowStep(steps);
+  const taskEmpty = isLiveBoardTaskEmpty(feed, taskCount);
+  const anomalies = useMemo(
+    () =>
+      collectLiveAnomalies({
+        feed,
+        connected,
+        unhealthyKeys,
+        capacityFull,
+        cacheWarnText,
+      }),
+    [feed, connected, unhealthyKeys, capacityFull, cacheWarnText],
+  );
+
+  const activateStep = (step: WorkflowStep) => {
+    if (step.onClick) step.onClick();
+    else onOpenTab?.(step.tab);
+  };
+
+  const jumpAnomaly = (a: LiveAnomaly) => {
+    if (a.tab && a.tab !== 'live') onOpenTab?.(a.tab);
+    if (a.agentId) onOpenAgent?.(a.agentId);
+  };
+
+  return (
+    <div className="mon-live-focus" data-testid="monitor-live-focus">
+      <SituationFocusCard feed={feed} l0Snapshot={l0Snapshot} connected={connected} />
+      <NextStepFocusCard step={nextStep} taskEmpty={taskEmpty} onActivate={activateStep} />
+      <AnomaliesFocusCard anomalies={anomalies} onJump={jumpAnomaly} onOpenAlerts={onOpenAlerts} />
+    </div>
+  );
+}
+
+function LiveBoardDetailsToggle({
+  open,
+  onToggle,
+  children,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mon-live-details">
+      <button
+        type="button"
+        className="mon-live-details__toggle"
+        onClick={onToggle}
+        aria-expanded={open}
+        data-testid="monitor-live-details-toggle"
+      >
+        <span>{open ? '收起監控細節' : '展開監控細節'}</span>
+        <span className="mon-live-details__chevron" aria-hidden>{open ? '▴' : '▾'}</span>
+      </button>
+      {open ? <div className="mon-live-details__body">{children}</div> : null}
     </div>
   );
 }
@@ -759,28 +962,12 @@ function RightRailContent({
 }) {
   const dashboard = useMonitorStore((s) => s.dashboard);
   const tasks = dashboard?.tasks ?? [];
-  const opt = feed.optimization;
-  const edge = opt?.edge_cache ?? opt?.opc_edge;
-  const cacheCapPct = edge?.max_size ? ((edge?.entry_count ?? 0) / edge.max_size) * 100 : 0;
+  const { gauges } = resolveResourceGauges(feed);
 
   return (
     <div className="mon-live-stack">
       <MonitorPanel title="資源">
-        <ResourceGauges
-          gauges={[
-            { label: 'MEM', pct: Math.min(100, Math.round(cacheCapPct)), color: 'var(--console-green)' },
-            {
-              label: 'CPU',
-              pct: Math.min(100, (opt?.system_stats?.tasks_running ?? 0) * 12 + 8),
-              color: 'var(--console-blue)',
-            },
-            {
-              label: 'NET',
-              pct: Math.min(100, Math.round((opt?.trace.trace_count ?? 0) / 2)),
-              color: 'var(--console-cyan)',
-            },
-          ]}
-        />
+        <ResourceGauges gauges={gauges} />
       </MonitorPanel>
       <TaskStackPanel tasks={tasks} statusStack={statusStack} onOpenTab={onOpenTab} />
       <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
@@ -813,6 +1000,7 @@ export default function LiveBoard({
 } & LiveBoardNav) {
   const { t } = useTranslation();
   const [alertMode, setAlertMode] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [unhealthyKeys, setUnhealthyKeys] = useState(0);
   const dock = density === 'dock';
   const isMobile = useMediaQuery('(max-width: 767px)', false);
@@ -875,11 +1063,31 @@ export default function LiveBoard({
     </>
   );
 
-  const statusStripLeading = (
-    <>
-      <MonitorL0StatusChip snapshot={l0Snapshot} onClick={jumpToL0Kernel} />
-      {!connected ? <span className="mon-live-status__offline">{t('monitor.offlineData')}</span> : null}
-    </>
+  const statusStripLeading = <span className="mon-live-status__eyebrow">即時總覽</span>;
+
+  const workflowSteps = useMemo(
+    () =>
+      buildWorkflowSteps(consoleFeed, onOpenTab, () => {
+        requestRoleSettingsDesk();
+      }),
+    [consoleFeed, onOpenTab],
+  );
+
+  const taskCount = dashboard?.tasks?.length ?? 0;
+
+  const focusGrid = (
+    <LiveBoardFocusGrid
+      feed={feed}
+      l0Snapshot={l0Snapshot}
+      connected={connected}
+      unhealthyKeys={unhealthyKeys}
+      capacityFull={capacityFull}
+      cacheWarnText={cacheWarnText}
+      taskCount={taskCount}
+      onOpenTab={onOpenTab}
+      onOpenAgent={onOpenAgent}
+      onOpenAlerts={liteShell ? undefined : () => setAlertMode(true)}
+    />
   );
 
   const statusStrip = !dock ? (
@@ -925,7 +1133,21 @@ export default function LiveBoard({
     />
   );
 
-  const left = <WorkflowRail feed={consoleFeed} onOpenTab={onOpenTab} />;
+  const detailsBody = (
+    <>
+      <WorkflowRail steps={workflowSteps} onOpenTab={onOpenTab} />
+      {center}
+      {right}
+    </>
+  );
+
+  const detailsPanel = !dock && !liteShell ? (
+    <LiveBoardDetailsToggle open={detailsOpen} onToggle={() => setDetailsOpen((v) => !v)}>
+      {detailsBody}
+    </LiveBoardDetailsToggle>
+  ) : (
+    detailsBody
+  );
 
   if (dock) {
     return (
@@ -941,6 +1163,7 @@ export default function LiveBoard({
             <MonitorStatusDot tone={liveTone(feed)} label={feed.live ? 'LIVE' : 'IDLE'} />
             {updated ? <span className="font-mono text-[10px] tabular-nums text-[var(--console-faint)]">{updated}</span> : null}
           </div>
+          {focusGrid}
           {center}
         </div>
       </div>
@@ -960,9 +1183,8 @@ export default function LiveBoard({
           {statusStrip}
           {liteHint}
           <div className="mon-live-mobile-scroll">
-            {left}
-            {center}
-            {right}
+            {focusGrid}
+            {detailsPanel}
           </div>
         </div>
       </PanelShell>
@@ -979,21 +1201,11 @@ export default function LiveBoard({
           unhealthyKeysCount={unhealthyKeys}
         />
         {statusStrip}
-        <ConsoleThreeColumn
-          className="mon-live-board"
-          liteShell={liteShell}
-          mobileLabels={{ left: '工作流', center: '總覽', right: '任務堆疊' }}
-        >
-          <ConsoleLeftRail>
-            <ConsoleColumnScroll className="!py-4">{left}</ConsoleColumnScroll>
-          </ConsoleLeftRail>
-          <ConsoleCenterColumn>
-            <ConsoleColumnScroll>{center}</ConsoleColumnScroll>
-          </ConsoleCenterColumn>
-          <ConsoleRightRail>
-            <ConsoleColumnScroll className="!py-4">{right}</ConsoleColumnScroll>
-          </ConsoleRightRail>
-        </ConsoleThreeColumn>
+        {liteHint}
+        <div className="mon-live-mobile-scroll mon-live-mobile-scroll--desktop">
+          {focusGrid}
+          {detailsPanel}
+        </div>
       </div>
     </PanelShell>
   );
