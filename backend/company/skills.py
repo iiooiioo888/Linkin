@@ -281,7 +281,15 @@ class SkillsStore:
     def enabled_for(self, role: str | None) -> builtins.list[Skill]:
         with self._lock:
             self._load_locked()
-            rows = [s for s in self._skills.values() if s.enabled]
+            from backend.company.skill_overrides import skill_enabled_override
+
+            rows: list[Skill] = []
+            for s in self._skills.values():
+                override = skill_enabled_override(s.id)
+                enabled = s.enabled if override is None else override
+                if not enabled:
+                    continue
+                rows.append(s)
             if role:
                 rows = [s for s in rows if not s.roles or _role_matches(role, s.roles)]
             return rows

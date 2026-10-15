@@ -2853,12 +2853,18 @@ async def save_skill(body: SkillBody):
 
 @app.post("/skills/{skill_id}/toggle")
 async def toggle_skill(skill_id: str):
-    """啟用／停用技能。"""
+    """啟用／停用技能（當前租戶覆寫，不改全域技能庫定義）。"""
+    from backend.company.skill_overrides import set_skill_enabled_override, skill_enabled_override
+
     skill = skills_store.get(skill_id)
     if not skill:
         raise HTTPException(status_code=404, detail="技能不存在")
-    updated = skills_store.set_enabled(skill_id, not skill.enabled)
-    return {"ok": True, "skill": updated.to_dict()}
+    override = skill_enabled_override(skill_id)
+    effective = override if override is not None else skill.enabled
+    set_skill_enabled_override(skill_id, not effective)
+    out = skill.to_dict()
+    out["enabled"] = not effective
+    return {"ok": True, "skill": out}
 
 
 @app.delete("/skills/{skill_id}")

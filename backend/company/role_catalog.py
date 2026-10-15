@@ -1,7 +1,8 @@
-"""角色目錄：內建角色覆蓋設定 + 自定義角色持久化。
+"""角色目錄：內建角色覆蓋設定 + 自定義角色持久化（多租戶）。
 
-資料檔 `backend/data/role_catalog.json`（可用 EVOL_ROLE_CATALOG_PATH 覆蓋）。
-監控中心與公司運行時共用此目錄，編輯角色設定後會套用到後續執行。
+每帳戶一檔 `backend/data/role_catalog/<user_id>.json`（`EVOL_ROLE_CATALOG_DIR`）。
+測試可用 `EVOL_ROLE_CATALOG_PATH` 指向單一 JSON（共用檔，非生產路徑）。
+監控中心與公司運行時共用當前租戶目錄，編輯後僅影響該帳戶。
 """
 
 from __future__ import annotations
@@ -27,6 +28,9 @@ from backend.company.state import (
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_CATALOG_DIR = (
+    Path(__file__).resolve().parent.parent / "data" / "role_catalog"
+)
 DEFAULT_CATALOG_PATH = (
     Path(__file__).resolve().parent.parent / "data" / "role_catalog.json"
 )
@@ -148,19 +152,56 @@ DEFAULT_MONITOR_PREFS: dict[str, Any] = {
 }
 
 _lock = threading.RLock()
-_cache: dict[str, Any] | None = None
-_cache_mtime: float | None = None
+_cache_by_path: dict[str, tuple[dict[str, Any], float | None]] = {}
+_legacy_catalog_migrated = False
 
 
-def catalog_path() -> Path:
-    return Path(os.getenv("EVOL_ROLE_CATALOG_PATH", str(DEFAULT_CATALOG_PATH)))
+def catalog_dir() -> Path:
+    return Path(os.getenv("EVOL_ROLE_CATALOG_DIR", str(DEFAULT_CATALOG_DIR)))
+
+
+def _catalog_user_key(user_id: str | None = None) -> str:
+    from backend.tenant.context import current_tenant_user
+
+    raw = user_id if user_id is not None else current_tenant_user()
+    text = re.sub(r"[^a-zA-Z0-9._@-]+", "_", (raw or "").strip())[:96]
+    return text or "anonymous"
+
+
+def catalog_path(user_id: str | None = None) -> Path:
+    legacy_single = os.getenv("EVOL_ROLE_CATALOG_PATH", "").strip()
+    if legacy_single:
+        return Path(legacy_single)
+    return catalog_dir() / f"{_catalog_user_key(user_id)}.json"
 
 
 def reset_catalog_cache() -> None:
-    global _cache, _cache_mtime
+    global _cache_by_path
     with _lock:
-        _cache = None
-        _cache_mtime = None
+        _cache_by_path = {}
+
+
+def _maybe_migrate_legacy_shared_catalog() -> None:
+    global _legacy_catalog_migrated
+    if _legacy_catalog_migrated or os.getenv("EVOL_ROLE_CATALOG_PATH", "").strip():
+        _legacy_catalog_migrated = True
+        return
+    with _lock:
+        if _legacy_catalog_migrated:
+            return
+        from backend.tenant.ids import LEGACY_CATALOG_OWNER
+
+        legacy = DEFAULT_CATALOG_PATH
+        target_dir = catalog_dir()
+        target = target_dir / f"{LEGACY_CATALOG_OWNER}.json"
+        if legacy.is_file() and not target.is_file():
+            target_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                target.write_bytes(legacy.read_bytes())
+                logger.info("已將共用 role_catalog.json 遷移至 %s", target)
+            except OSError as exc:
+                logger.warning("角色目錄遷移失敗：%s", exc)
+        _legacy_catalog_migrated = True
 
 
 def _empty_store() -> dict[str, Any]:
@@ -172,16 +213,18 @@ def _empty_store() -> dict[str, Any]:
     }
 
 
-def _load_store() -> dict[str, Any]:
-    global _cache, _cache_mtime
-    path = catalog_path()
+def _load_store(user_id: str | None = None) -> dict[str, Any]:
+    _maybe_migrate_legacy_shared_catalog()
+    path = catalog_path(user_id)
+    path_key = str(path.resolve())
     try:
         mtime = path.stat().st_mtime
     except OSError:
         mtime = None
 
-    if _cache is not None and _cache_mtime == mtime:
-        return _cache
+    cached = _cache_by_path.get(path_key)
+    if cached is not None and cached[1] == mtime:
+        return cached[0]
 
     store = _empty_store()
     if path.exists():
@@ -200,17 +243,16 @@ def _load_store() -> dict[str, Any]:
                     store["custom"] = [c for c in custom if isinstance(c, dict)]
         except (OSError, json.JSONDecodeError):
             logger.warning("讀取角色目錄失敗，改用空白目錄：%s", path, extra={})
-    _cache = store
-    _cache_mtime = mtime
+    _cache_by_path[path_key] = (store, mtime)
     return store
 
 
-def _save_store(store: dict[str, Any]) -> dict[str, Any]:
-    global _cache, _cache_mtime
-    path = catalog_path()
+def _save_store(store: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
+    path = catalog_path(user_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "version": 1,
+        "owner_user_id": _catalog_user_key(user_id),
         "monitor": {**DEFAULT_MONITOR_PREFS, **(store.get("monitor") or {})},
         "settings": store.get("settings") or {},
         "custom": store.get("custom") or [],
@@ -218,11 +260,12 @@ def _save_store(store: dict[str, Any]) -> dict[str, Any]:
     tmp = path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
-    _cache = payload
+    path_key = str(path.resolve())
     try:
-        _cache_mtime = path.stat().st_mtime
+        mtime = path.stat().st_mtime
     except OSError:
-        _cache_mtime = None
+        mtime = None
+    _cache_by_path[path_key] = (payload, mtime)
     return payload
 
 

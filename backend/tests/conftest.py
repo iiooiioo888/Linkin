@@ -96,6 +96,7 @@ def _isolate_trace_and_checkpoint_dirs(tmp_path, monkeypatch):
 def _isolate_role_catalog(tmp_path, monkeypatch):
     """所有測試共用：角色目錄寫入暫存，避免污染真實 data/。"""
     monkeypatch.setenv("EVOL_ROLE_CATALOG_PATH", str(tmp_path / "role_catalog.json"))
+    monkeypatch.setenv("EVOL_SKILLS_OVERRIDE_DIR", str(tmp_path / "skills_overrides"))
     from backend.company.role_catalog import reset_catalog_cache
 
     reset_catalog_cache()

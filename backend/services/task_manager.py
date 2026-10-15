@@ -129,6 +129,7 @@ class TaskRecord:
         self.length_compliance: dict[str, Any] | None = None
         self.length_warning: bool = False
         self.length_refused: bool = False
+        self.user_id: str = ""
 
     def to_dict(self, events_limit: int | None = 50) -> dict[str, Any]:
         """任務快照。events_limit=None 或 0 表示回傳全部事件。"""
@@ -167,6 +168,7 @@ class TaskRecord:
             "length_compliance": self.length_compliance,
             "length_warning": self.length_warning,
             "length_refused": self.length_refused,
+            "user_id": self.user_id,
         }
 
     def to_snapshot(self) -> dict[str, Any]:
@@ -210,6 +212,7 @@ class TaskRecord:
         record.length_compliance = data.get("length_compliance")
         record.length_warning = bool(data.get("length_warning"))
         record.length_refused = bool(data.get("length_refused"))
+        record.user_id = str(data.get("user_id") or "").strip()
         return record
 
 
@@ -433,8 +436,11 @@ class TaskManager:
     def create_task(
         self, query: str, strategy: str, template: str, options: dict[str, Any] | None = None
     ) -> TaskRecord:
+        from backend.tenant.context import current_tenant_user
+
         task_id = uuid.uuid4().hex[:12]
         record = TaskRecord(task_id, query, strategy, template)
+        record.user_id = current_tenant_user()
         record.options = options or {}
         record.query = resolve_task_effective_query(query, record.options)
         self.tasks[task_id] = record
@@ -487,14 +493,20 @@ class TaskManager:
         logger.info("任務 %s 已啟動斷點續跑", task_id)
         return True, "已啟動斷點續跑"
 
-    def get_task(self, task_id: str) -> TaskRecord | None:
+    def get_task(self, task_id: str, *, skip_tenant_check: bool = False) -> TaskRecord | None:
         record = self.tasks.get(task_id)
-        if record is not None:
+        if record is None:
+            record = self._load_from_redis(task_id)
+            if record is not None:
+                self.tasks[task_id] = record
+        if record is None:
+            return None
+        if skip_tenant_check:
             return record
-        # 記憶體沒有（可能是重啟後）→ 從 Redis 恢復
-        record = self._load_from_redis(task_id)
-        if record is not None:
-            self.tasks[task_id] = record
+        from backend.tenant.tasks import task_visible_for_tenant
+
+        if not task_visible_for_tenant(record):
+            return None
         return record
 
     def start_task(self, record: TaskRecord) -> None:
@@ -689,6 +701,18 @@ class TaskManager:
 
     async def _run_unified_task(self, record: TaskRecord) -> None:
         """統一模式任務執行入口：解析路徑後分派到對應子流程。"""
+        from backend.billing.context import billing_user_id
+        from backend.tenant.context import tenant_user_id
+
+        tenant_token = tenant_user_id.set(record.user_id or "")
+        billing_token = billing_user_id.set(record.user_id or billing_user_id.get())
+        try:
+            await self._run_unified_task_inner(record)
+        finally:
+            tenant_user_id.reset(tenant_token)
+            billing_user_id.reset(billing_token)
+
+    async def _run_unified_task_inner(self, record: TaskRecord) -> None:
         record.status = "running"
         self._persist(record)
 
