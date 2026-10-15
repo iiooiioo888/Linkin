@@ -16,7 +16,7 @@ from backend.company.role_catalog import (
 )
 from backend.tenant.context import tenant_user_id
 from backend.tenant.ids import LEGACY_CATALOG_OWNER
-from backend.tenant.tasks import task_id_visible_for_tenant, task_visible_for_tenant
+from backend.tenant.tasks import task_visible_for_tenant
 
 
 @pytest.fixture

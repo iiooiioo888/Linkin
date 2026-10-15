@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any
 
 from backend.auth.gate import extract_token, gate_enabled, session_user
 from backend.billing.context import billing_user_id, default_anonymous_user

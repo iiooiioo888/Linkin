@@ -1820,7 +1820,6 @@ async def get_task_context_insight(task_id: str, step: int | None = None):
 async def get_context_insight(task_id: str | None = None, step: int | None = None):
     """Context 洞察快捷入口：可省略 task_id（取最新軌跡）。"""
     from backend.services.context_insight import build_context_insight, resolve_default_task_id
-
     from backend.tenant.tasks import task_id_visible_for_tenant
 
     resolved = await asyncio.to_thread(resolve_default_task_id, task_id)
