@@ -5,6 +5,8 @@
 - task_manager：即時公司任務看板與事件
 - company_runs JSONL：歷史工作項與角色事件
 
+TODO(多租戶)：seat_io／run log 歷史 ingest 尚未按 task.user_id 過濾，僅 live 任務已隔離。
+
 每位角色視為一個 Agent：inbox 計數、指派任務列表、審查隊列、
 事件時間軸。Manager / Reviewer / Synthesizer 除看板指派外，
 另納入分解 / 審查 / 整合等協調型工作。
