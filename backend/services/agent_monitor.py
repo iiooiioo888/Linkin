@@ -5,6 +5,8 @@
 - task_manager：即時公司任務看板與事件
 - company_runs JSONL：歷史工作項與角色事件
 
+TODO(多租戶)：seat_io／run log 歷史 ingest 尚未按 task.user_id 過濾，僅 live 任務已隔離。
+
 每位角色視為一個 Agent：inbox 計數、指派任務列表、審查隊列、
 事件時間軸。Manager / Reviewer / Synthesizer 除看板指派外，
 另納入分解 / 審查 / 整合等協調型工作。
@@ -1166,30 +1168,35 @@ def _ingest_auditor_sessions(agents: dict[str, dict[str, Any]]) -> None:
         )
 
 
-def _collect_account_budget_summary() -> dict[str, Any]:
+def _collect_account_budget_summary(tenant_id: str | None = None) -> dict[str, Any]:
     """帳戶級預算摘要：Hub 日限額（USD）與靈境積分（credits）分開標示，不混算。"""
-    summary: dict[str, Any] = {}
+    from backend.tenant.context import current_tenant_user
+
+    uid = (tenant_id or current_tenant_user()).strip()
+    summary: dict[str, Any] = {"tenant_user_id": uid}
     try:
         from backend.hub.runtime import runtime
 
-        user = runtime.store.seed_dev_user()
-        spent = float(runtime.budget.spent_today(str(user.id)))
-        limit = float(user.daily_budget_limit_usd or 0)
-        summary["hub_daily"] = {
-            "label": "Hub API 日預算",
-            "unit": "usd",
-            "spent_today_usd": round(spent, 4),
-            "daily_limit_usd": limit,
-            "remaining_today_usd": round(max(0.0, limit - spent), 4) if limit > 0 else None,
-        }
+        hub_user = runtime.store.seed_dev_user()
+        hub_uid = str(hub_user.id)
+        if uid and uid not in {hub_uid, "dev", "seed_dev_user"}:
+            summary["hub_daily"] = None
+        else:
+            spent = float(runtime.budget.spent_today(hub_uid))
+            limit = float(hub_user.daily_budget_limit_usd or 0)
+            summary["hub_daily"] = {
+                "label": "Hub API 日預算",
+                "unit": "usd",
+                "spent_today_usd": round(spent, 4),
+                "daily_limit_usd": limit,
+                "remaining_today_usd": round(max(0.0, limit - spent), 4) if limit > 0 else None,
+            }
     except Exception:
         logger.debug("Hub 帳戶預算摘要讀取失敗（已忽略）", exc_info=True)
         summary["hub_daily"] = None
     try:
-        from backend.billing.context import default_anonymous_user
         from backend.billing.quota import get_billing_service
 
-        uid = default_anonymous_user()
         acct = get_billing_service().get_account(uid)
         summary["linkin_credits"] = {
             "label": "用量額度",
@@ -1204,13 +1211,21 @@ def _collect_account_budget_summary() -> dict[str, Any]:
     return summary
 
 
-def collect_agent_monitor() -> dict[str, Any]:
+def collect_agent_monitor(tenant_id: str | None = None) -> dict[str, Any]:
     """聚合每位角色的 Agent 工作台；目錄永遠完整，缺資料時全部待命。"""
+    from backend.tenant.context import current_tenant_user
+    from backend.tenant.tasks import task_visible_for_tenant
+
+    uid = (tenant_id or current_tenant_user()).strip()
     snapshots = list_role_snapshots()
     agents = {snap["id"]: _blank_agent(snap) for snap in snapshots}
 
     try:
-        records = list(task_manager.tasks.values())
+        records = [
+            rec
+            for rec in task_manager.tasks.values()
+            if task_visible_for_tenant(rec, uid)
+        ]
     except Exception:
         logger.warning("讀取任務列表失敗，角色監控降級為目錄", exc_info=True)
         records = []
@@ -1281,6 +1296,7 @@ def collect_agent_monitor() -> dict[str, Any]:
         "grill_chain": grill_edges(),
         "catalog_meta": catalog_meta(),
         "monitor_prefs": get_monitor_prefs(),
-        "account_budget": _collect_account_budget_summary(),
+        "account_budget": _collect_account_budget_summary(uid),
+        "tenant_user_id": uid,
         "agents": finalized,
     }

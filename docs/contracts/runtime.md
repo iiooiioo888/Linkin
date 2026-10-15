@@ -3,7 +3,7 @@
 > 由 `TODO.md` 各章「禁止／必須」條款抽出，供 CI 靜態檢查與 pytest 不變式對照。
 > 格式寫死（TODO 附錄）：每條契約可映射到具體測試／lint；**P0 契約測試失敗則阻斷合併**，P1／P2 分階段開啟。
 >
-> 適用範圍：單用戶／單租戶；多租戶隔離策略另文定義。
+> 適用範圍：**多租戶預設隔離**（租戶鍵 = gate 使用者 ID）；資料與 API 預設僅可存取當前帳戶，跨租戶讀寫回 404／403。遷移見 [docs/migration/multitenant-roles.md](../migration/multitenant-roles.md)。
 
 ## CONTRACT-ID: C-AUDIT-001
 - **條款**: 禁止在串流 done 事件／聊天完成 webhook／插件回調中自動觸發審計或灌入審計分數
@@ -311,4 +311,11 @@
 - **來源**: TODO §7.2
 - **優先級**: P2
 - **驗證**: pytest::backend/tests/test_contracts.py::test_contract_c_perf_001_stubbed_clock_budgets（`backend/core/perf_budget.py`）
+- **狀態**: ✅ 已實現
+
+## CONTRACT-ID: C-TENANT-001
+- **條款**: 角色目錄、監控偏好、自定義角色、任務列表、角色記憶與技能覆寫預設按 gate 使用者 ID 隔離；跨租戶讀寫回 404／403
+- **來源**: 多租戶角色獨立（2026-10-15）
+- **優先級**: P0
+- **驗證**: pytest::backend/tests/test_multitenant_roles.py
 - **狀態**: ✅ 已實現

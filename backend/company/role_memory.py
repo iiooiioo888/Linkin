@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from backend.memory.vector_store import VectorMemoryStore
@@ -38,15 +39,20 @@ class RoleMemory:
     避免不同角色的經驗互相干擾。
     """
 
-    def __init__(self, role: str, store: VectorMemoryStore | None = None):
+    def __init__(self, role: str, store: VectorMemoryStore | None = None, user_id: str = ""):
         """初始化角色記憶。
 
         Args:
             role: 角色名稱（如 "developer"、"reviewer"）
             store: 向量記憶庫實例（可注入，方便測試）
+            user_id: 租戶鍵（與 gate 使用者對齊）
         """
         self.role = role.lower()
-        self.collection_name = f"{ROLE_MEMORY_PREFIX}{self.role}"
+        from backend.tenant.context import current_tenant_user
+
+        self.user_id = (user_id or current_tenant_user()).strip()
+        safe_user = re.sub(r"[^a-zA-Z0-9._@-]+", "_", self.user_id)[:64] or "anonymous"
+        self.collection_name = f"{ROLE_MEMORY_PREFIX}{safe_user}_{self.role}"
         self._store = store or VectorMemoryStore(collection_name=self.collection_name)
 
     def retrieve(self, query: str, k: int = 3) -> list[dict[str, Any]]:
@@ -195,16 +201,21 @@ class RoleMemory:
 _role_memories: dict[str, RoleMemory] = {}
 
 
-def get_role_memory(role: str) -> RoleMemory:
-    """獲取角色的記憶管理器（快取單例）。
+def get_role_memory(role: str, user_id: str | None = None) -> RoleMemory:
+    """獲取角色的記憶管理器（按租戶 + 角色快取）。
 
     Args:
         role: 角色名稱
+        user_id: 租戶鍵（預設當前租戶）
 
     Returns:
         RoleMemory 實例
     """
+    from backend.tenant.context import current_tenant_user
+
+    uid = (user_id or current_tenant_user()).strip()
     role_key = role.lower()
-    if role_key not in _role_memories:
-        _role_memories[role_key] = RoleMemory(role_key)
-    return _role_memories[role_key]
+    cache_key = f"{uid}:{role_key}"
+    if cache_key not in _role_memories:
+        _role_memories[cache_key] = RoleMemory(role_key, user_id=uid)
+    return _role_memories[cache_key]

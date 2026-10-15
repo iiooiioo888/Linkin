@@ -343,6 +343,11 @@ async def billing_feature_handler(_request: Request, exc: FeatureNotEntitledErro
     )
 
 
+@app.exception_handler(PermissionError)
+async def tenant_permission_handler(_request: Request, exc: PermissionError):
+    return JSONResponse(status_code=401, content={"detail": str(exc) or "未登入或租戶無效"})
+
+
 class ChatRequest(BaseModel):
     query: str
     session_id: str | None = None
@@ -1661,6 +1666,9 @@ async def create_task(req: TaskRequest):
     - "simple": 強制單次 LLM 生成
     - "company": 強制公司運行時
     """
+    from backend.tenant.http import require_tenant_http
+
+    require_tenant_http()
     if not req.query.strip():
         raise HTTPException(status_code=422, detail="query 不可為空")
     from backend.billing.context import billing_enabled, billing_task_id, current_billing_user
@@ -1782,6 +1790,9 @@ async def get_task_trace(
     以及公司模式鏡像的全部角色事件（work_item_*/tool_*/review_*/grill_* 等）。
     event/role 支援逗號分隔多值；with_counts=true 附帶各事件型條數統計。
     """
+    from backend.tenant.http import task_record_or_404
+
+    task_record_or_404(task_id)
     events = await asyncio.to_thread(
         read_trace, task_id, limit, offset,
         event=event, role=role, item_id=item_id,
@@ -1799,7 +1810,9 @@ async def get_task_context_insight(task_id: str, step: int | None = None):
     從軌跡聚合，不觸發 LLM、不自動審計；``step`` 為 0-based llm_call 序號。
     """
     from backend.services.context_insight import build_context_insight
+    from backend.tenant.http import task_record_or_404
 
+    task_record_or_404(task_id)
     return await asyncio.to_thread(build_context_insight, task_id, step=step)
 
 
@@ -1807,8 +1820,11 @@ async def get_task_context_insight(task_id: str, step: int | None = None):
 async def get_context_insight(task_id: str | None = None, step: int | None = None):
     """Context 洞察快捷入口：可省略 task_id（取最新軌跡）。"""
     from backend.services.context_insight import build_context_insight, resolve_default_task_id
+    from backend.tenant.tasks import task_id_visible_for_tenant
 
     resolved = await asyncio.to_thread(resolve_default_task_id, task_id)
+    if resolved and not task_id_visible_for_tenant(resolved):
+        raise HTTPException(status_code=404, detail="任務不存在")
     if not resolved:
         return {
             "task_id": None,
@@ -1830,6 +1846,9 @@ async def get_context_insight(task_id: str | None = None, step: int | None = Non
 @app.get("/tasks/{task_id}/checkpoint")
 async def get_task_checkpoint(task_id: str):
     """獲取任務的檢查點信息。"""
+    from backend.tenant.http import task_record_or_404
+
+    task_record_or_404(task_id)
     checkpoint = await asyncio.to_thread(load_checkpoint, task_id)
     if checkpoint is None:
         return {"task_id": task_id, "exists": False}
@@ -1839,15 +1858,21 @@ async def get_task_checkpoint(task_id: str):
 @app.get("/traces")
 async def get_traces(limit: int = 80):
     """列出所有思考過程軌跡檔案摘要。"""
+    from backend.tenant.tasks import task_id_visible_for_tenant
+
     traces = await asyncio.to_thread(list_traces, limit)
-    return {"traces": traces}
+    visible = [t for t in traces if task_id_visible_for_tenant(str(t.get("task_id") or ""))]
+    return {"traces": visible}
 
 
 @app.get("/checkpoints")
 async def get_checkpoints():
     """列出所有可恢復的檢查點。"""
+    from backend.tenant.tasks import task_id_visible_for_tenant
+
     checkpoints = await asyncio.to_thread(list_checkpoints)
-    return {"checkpoints": checkpoints}
+    visible = [c for c in checkpoints if task_id_visible_for_tenant(str(c.get("task_id") or ""))]
+    return {"checkpoints": visible}
 
 
 @app.websocket("/tasks/{task_id}/ws")
@@ -1859,40 +1884,39 @@ async def task_websocket(websocket: WebSocket, task_id: str):
 
     任务完成/失败后发送 task_finished 事件，客户端可主动关闭连接。
     """
+    from backend.tenant.ws import websocket_tenant_scope
+
     if not ws_authorized(websocket):
         await websocket.close(code=4401, reason="unauthorized")
         return
 
-    # 检查任务是否存在
-    record = task_manager.get_task(task_id)
-    if record is None:
-        await websocket.close(code=4004, reason="任务不存在")
-        return
+    async with websocket_tenant_scope(websocket):
+        record = task_manager.get_task(task_id)
+        if record is None:
+            await websocket.close(code=4004, reason="任务不存在")
+            return
 
-    await websocket.accept()
-    await task_broadcaster.subscribe(task_id, websocket)
+        await websocket.accept()
+        await task_broadcaster.subscribe(task_id, websocket)
 
-    try:
-        # 发送当前状态作为初始快照
-        await websocket.send_json({
-            "task_id": task_id,
-            "event": "snapshot",
-            "data": record.to_dict(),
-        })
+        try:
+            await websocket.send_json({
+                "task_id": task_id,
+                "event": "snapshot",
+                "data": record.to_dict(),
+            })
 
-        # 保持连接，等待客户端关闭或任务完成
-        while True:
-            try:
-                # 接收客户端消息（心跳或关闭请求）
-                data = await websocket.receive_text()
-                if data == "ping":
-                    await websocket.send_json({"task_id": task_id, "event": "pong", "data": {}})
-                elif data == "close":
+            while True:
+                try:
+                    data = await websocket.receive_text()
+                    if data == "ping":
+                        await websocket.send_json({"task_id": task_id, "event": "pong", "data": {}})
+                    elif data == "close":
+                        break
+                except WebSocketDisconnect:
                     break
-            except WebSocketDisconnect:
-                break
-    finally:
-        await task_broadcaster.unsubscribe(task_id, websocket)
+        finally:
+            await task_broadcaster.unsubscribe(task_id, websocket)
 
 
 @app.websocket("/monitor/ws")
@@ -1902,30 +1926,31 @@ async def monitor_hub_websocket(websocket: WebSocket):
     訊息格式：{"event": "snapshot"|"pong", "data": {...}}
     """
     from backend.services.monitor_hub import collect_monitor_hub
+    from backend.tenant.ws import websocket_tenant_scope
 
     if not ws_authorized(websocket):
         await websocket.close(code=4401, reason="unauthorized")
         return
 
-    await websocket.accept()
-    try:
-        while True:
-            snap = await asyncio.to_thread(collect_monitor_hub)
-            await websocket.send_json({"event": "snapshot", "data": snap})
+    async with websocket_tenant_scope(websocket):
+        await websocket.accept()
+        try:
+            while True:
+                snap = await asyncio.to_thread(collect_monitor_hub)
+                await websocket.send_json({"event": "snapshot", "data": snap})
 
-            # 同時接受心跳；最多等待 3 秒再推下一幀
-            try:
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=3.0)
-                if data == "close":
+                try:
+                    data = await asyncio.wait_for(websocket.receive_text(), timeout=3.0)
+                    if data == "close":
+                        break
+                    if data == "ping":
+                        await websocket.send_json({"event": "pong", "data": {}})
+                except asyncio.TimeoutError:
+                    continue
+                except WebSocketDisconnect:
                     break
-                if data == "ping":
-                    await websocket.send_json({"event": "pong", "data": {}})
-            except asyncio.TimeoutError:
-                continue
-            except WebSocketDisconnect:
-                break
-    except WebSocketDisconnect:
-        pass
+        except WebSocketDisconnect:
+            pass
 
 
 # ==================== 記憶庫管理 API ====================
@@ -2156,6 +2181,9 @@ async def monitor_agents():
 @app.put("/monitor/agents/prefs")
 async def monitor_agents_prefs(body: MonitorPrefsBody):
     """更新角色監控顯示偏好（輪詢間隔、是否顯示停用／待命）。"""
+    from backend.tenant.http import require_tenant_http
+
+    require_tenant_http()
     try:
         return update_monitor_prefs(body.model_dump(exclude_none=True))
     except ValueError as exc:
@@ -2165,6 +2193,9 @@ async def monitor_agents_prefs(body: MonitorPrefsBody):
 @app.put("/monitor/agents/{role_id}/settings")
 async def monitor_agent_settings(role_id: str, body: RoleSettingsBody):
     """更新指定角色的設定（提示詞、模型、預算、啟用狀態）。"""
+    from backend.tenant.http import require_tenant_http
+
+    require_tenant_http()
     try:
         return update_role_settings(role_id, body.model_dump(exclude_none=True))
     except KeyError as exc:
@@ -2176,6 +2207,9 @@ async def monitor_agent_settings(role_id: str, body: RoleSettingsBody):
 @app.post("/monitor/agents/{role_id}/reset")
 async def monitor_agent_reset(role_id: str):
     """還原內建角色設定為系統預設。"""
+    from backend.tenant.http import require_tenant_http
+
+    require_tenant_http()
     try:
         return reset_role_settings(role_id)
     except KeyError as exc:
@@ -2187,6 +2221,9 @@ async def monitor_agent_reset(role_id: str):
 @app.post("/monitor/agents")
 async def monitor_agents_create(body: CustomRoleBody):
     """新增自定義角色（出現在監控中心，可編輯完整角色設定）。"""
+    from backend.tenant.http import require_tenant_http
+
+    require_tenant_http()
     try:
         return create_custom_role(body.model_dump())
     except ValueError as exc:
@@ -2196,6 +2233,9 @@ async def monitor_agents_create(body: CustomRoleBody):
 @app.delete("/monitor/agents/{role_id}")
 async def monitor_agents_delete(role_id: str):
     """刪除自定義角色。內建角色不可刪，請改為停用。"""
+    from backend.tenant.http import require_tenant_http
+
+    require_tenant_http()
     try:
         delete_custom_role(role_id)
     except KeyError as exc:
@@ -2828,13 +2868,25 @@ class SkillBody(BaseModel):
 
 @app.get("/skills")
 async def list_skills():
-    """列出全部技能。"""
-    return {"skills": [s.to_dict() for s in skills_store.list()]}
+    """列出全部技能（enabled 含當前租戶覆寫）。"""
+    from backend.company.skill_overrides import skill_enabled_override
+
+    skills_out: list[dict] = []
+    for skill in skills_store.list():
+        row = skill.to_dict()
+        override = skill_enabled_override(skill.id)
+        if override is not None:
+            row["enabled"] = override
+        skills_out.append(row)
+    return {"skills": skills_out}
 
 
 @app.post("/skills")
 async def save_skill(body: SkillBody):
     """新增／更新技能（upsert）。"""
+    from backend.tenant.http import require_tenant_http
+
+    require_tenant_http()
     try:
         skill = skills_store.upsert(
             body.name,
@@ -2853,17 +2905,28 @@ async def save_skill(body: SkillBody):
 
 @app.post("/skills/{skill_id}/toggle")
 async def toggle_skill(skill_id: str):
-    """啟用／停用技能。"""
+    """啟用／停用技能（當前租戶覆寫，不改全域技能庫定義）。"""
+    from backend.company.skill_overrides import set_skill_enabled_override, skill_enabled_override
+    from backend.tenant.http import require_tenant_http
+
+    require_tenant_http()
     skill = skills_store.get(skill_id)
     if not skill:
         raise HTTPException(status_code=404, detail="技能不存在")
-    updated = skills_store.set_enabled(skill_id, not skill.enabled)
-    return {"ok": True, "skill": updated.to_dict()}
+    override = skill_enabled_override(skill_id)
+    effective = override if override is not None else skill.enabled
+    set_skill_enabled_override(skill_id, not effective)
+    out = skill.to_dict()
+    out["enabled"] = not effective
+    return {"ok": True, "skill": out}
 
 
 @app.delete("/skills/{skill_id}")
 async def delete_skill(skill_id: str):
     """刪除技能。"""
+    from backend.tenant.http import require_tenant_http
+
+    require_tenant_http()
     if not skills_store.delete(skill_id):
         raise HTTPException(status_code=404, detail="技能不存在")
     return {"ok": True, "deleted": skill_id}
