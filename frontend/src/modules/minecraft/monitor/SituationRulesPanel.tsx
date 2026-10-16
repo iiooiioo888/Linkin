@@ -1,7 +1,7 @@
 /**
  * 情境規則建議 — 乾跑／套用閉環。
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   fetchMinecraftSituationRules,
   runMinecraftSituationRules,
@@ -56,7 +56,15 @@ function RecRow({ rec }: { rec: MinecraftSituationRuleRecommendation }) {
   );
 }
 
-export default function SituationRulesPanel({ pollMs = 15000 }: { pollMs?: number }) {
+export default function SituationRulesPanel({
+  pollMs = 15000,
+  hideDataRefresh = false,
+  refreshNonce = 0,
+}: {
+  pollMs?: number;
+  hideDataRefresh?: boolean;
+  refreshNonce?: number;
+}) {
   const [recommendations, setRecommendations] = useState<MinecraftSituationRuleRecommendation[]>([]);
   const [generatedAt, setGeneratedAt] = useState<number | null>(null);
   const [recentRunTs, setRecentRunTs] = useState<number | null>(null);
@@ -83,6 +91,10 @@ export default function SituationRulesPanel({ pollMs = 15000 }: { pollMs?: numbe
   }, []);
 
   useVisibilityPoll(load, pollMs);
+
+  useEffect(() => {
+    if (refreshNonce > 0) void load();
+  }, [refreshNonce, load]);
 
   const handleRun = useCallback(
     async (dryRun: boolean) => {
@@ -138,9 +150,11 @@ export default function SituationRulesPanel({ pollMs = 15000 }: { pollMs?: numbe
           {loading ? '讀取中' : generatedAt ? `快照 ${formatTs(generatedAt)}` : '—'}
           {recentRunTs ? ` · 最近執行 ${formatTs(recentRunTs)}` : ''}
         </span>
-        <button type="button" className="mc-btn" onClick={() => void load()} disabled={loading}>
-          重新整理
-        </button>
+        {!hideDataRefresh ? (
+          <button type="button" className="mc-btn" onClick={() => void load()} disabled={loading}>
+            重新整理
+          </button>
+        ) : null}
       </div>
 
       {error ? <p className="mc-error">{error}</p> : null}

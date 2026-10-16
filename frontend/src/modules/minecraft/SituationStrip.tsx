@@ -1,7 +1,7 @@
 /**
  * 四維情境快照 — 市況／經濟／地土／玩家。
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchMinecraftSituation, type MinecraftSituationSnapshot } from '../../api/linkin';
 import { formatTs, statusLabel, useVisibilityPoll } from './monitor/shared';
 import './minecraft.css';
@@ -49,6 +49,10 @@ type SituationStripProps = {
   embedded?: boolean;
   /** 內嵌於總覽且另有規則面板時，隱藏簡短建議列表 */
   hideRecommendations?: boolean;
+  /** 與 MonitorHub 頁首共用單一重新整理時隱藏本區按鈕 */
+  hideRefresh?: boolean;
+  /** 父層觸發重新讀取（遞增即可） */
+  refreshNonce?: number;
 };
 
 export default function SituationStrip({
@@ -56,6 +60,8 @@ export default function SituationStrip({
   pollMs = 15000,
   embedded = false,
   hideRecommendations = false,
+  hideRefresh = false,
+  refreshNonce = 0,
 }: SituationStripProps) {
   const [data, setData] = useState<MinecraftSituationSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +85,10 @@ export default function SituationStrip({
 
   useVisibilityPoll(load, pollMs);
 
+  useEffect(() => {
+    if (refreshNonce > 0) void load();
+  }, [refreshNonce, load]);
+
   if (error) {
     return <p className="mc-error">情境讀取失敗：{error}</p>;
   }
@@ -101,10 +111,16 @@ export default function SituationStrip({
         <div className="mc-row__top">
           <span className="mc-panel__title">四維情境</span>
           <span className="mc-panel__hint">{loading ? '讀取中' : formatTs(data.generated_at)}</span>
-          <button type="button" className="mc-btn" onClick={() => void load()} disabled={loading}>
-            重新整理
-          </button>
+          {!hideRefresh ? (
+            <button type="button" className="mc-btn" onClick={() => void load()} disabled={loading}>
+              重新整理
+            </button>
+          ) : null}
         </div>
+      ) : hideRefresh ? (
+        <span className="mc-panel__hint mc-situation__stamp">
+          {loading ? '讀取中' : formatTs(data.generated_at)}
+        </span>
       ) : (
         <div className="mc-row__top">
           <span className="mc-panel__hint">{loading ? '讀取中' : formatTs(data.generated_at)}</span>

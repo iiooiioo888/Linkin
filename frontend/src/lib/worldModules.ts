@@ -59,10 +59,11 @@ export type WorldModuleSpec = {
   pageAliases?: Record<string, string>;
 };
 
+/** 側欄分組刻意收斂（<7 組）；橋接僅保留 bridge_monitor 單一入口（minecraft 頁仍可由別名深鏈）。 */
 const MINECRAFT_NAV: ModuleNavGroup[] = [
   {
-    id: 'players_group',
-    label: '玩家／現場',
+    id: 'field_overview',
+    label: '現場與總覽',
     items: [
       {
         key: 'player_presence',
@@ -78,30 +79,32 @@ const MINECRAFT_NAV: ModuleNavGroup[] = [
         hint: '玩家事件驅動任務進度與 NPC 回應',
         capability: 'monitor',
       },
+      { key: 'monitor', icon: '◉', label: '監控總覽', hint: 'KPI、管線與 AI 可見事件', capability: 'monitor' },
     ],
   },
   {
-    id: 'monitor',
-    label: '總覽／監控',
+    id: 'landing_monitor',
+    label: '落地監控',
     items: [
-      { key: 'monitor', icon: '◎', label: '監控總覽', hint: 'KPI、管線、橋接與 AI 可見事件', capability: 'monitor' },
-      { key: 'map_monitor', icon: '◇', label: '地圖監控', hint: '地圖計畫與落地狀態', capability: 'monitor' },
-      { key: 'npc_monitor', icon: '☺', label: 'NPC 監控', hint: '待落地／已落地／失敗', capability: 'monitor' },
-      { key: 'quest_item_monitor', icon: '◆', label: '任務／道具監控', hint: '世界意圖狀態帶', capability: 'monitor' },
-      { key: 'build_monitor', icon: '⌂', label: '建築落地監控', hint: 'build-brief 任務與方塊', capability: 'monitor' },
-      { key: 'bridge_monitor', icon: '⇄', label: '橋接健康', hint: 'MineMCP 連線與錯誤', capability: 'bridge' },
+      { key: 'map_monitor', icon: '◇', label: '地圖落地', hint: '地圖計畫與落地狀態', capability: 'monitor' },
+      { key: 'npc_monitor', icon: '☺', label: 'NPC 落地', hint: '待落地／已落地／失敗', capability: 'monitor' },
+      { key: 'quest_item_monitor', icon: '◆', label: '任務／道具', hint: '世界意圖狀態帶', capability: 'monitor' },
+      { key: 'build_monitor', icon: '⌂', label: '建築落地', hint: 'build-brief 任務與方塊', capability: 'monitor' },
     ],
   },
   {
-    id: 'narrative_group',
-    label: '敘事／RPG',
+    id: 'content_narrative',
+    label: '內容與敘事',
     items: [
       { key: 'narrative', icon: '✎', label: '敘事工作區', hint: 'Phase 0–5 一鍵管線', capability: 'content' },
+      { key: 'npcs', icon: '☺', label: 'NPC', hint: '角色卡與對話', capability: 'content' },
+      { key: 'quests', icon: '⚑', label: '任務', hint: '主線／支線／日常', capability: 'content' },
+      { key: 'items', icon: '◆', label: '道具', hint: '稀有度平衡', capability: 'content' },
     ],
   },
   {
-    id: 'world_build',
-    label: '世界與建築',
+    id: 'world_maps',
+    label: '世界、地圖與插件',
     items: [
       { key: 'building', icon: '⌂', label: '建築', hint: 'Schematic 生成與派發', capability: 'building' },
       { key: 'map_plan', icon: '◫', label: '地圖計畫', hint: '區域地圖生成／預覽／落地', capability: 'content' },
@@ -112,22 +115,6 @@ const MINECRAFT_NAV: ModuleNavGroup[] = [
         hint: '原生 2D 俯視（map_plan／建築意圖／POI，無需 Dynmap）',
         capability: 'content',
       },
-      { key: 'minecraft', icon: '⇄', label: '橋接', hint: 'MineMCP 探測與審計', capability: 'bridge' },
-    ],
-  },
-  {
-    id: 'entities',
-    label: '實體',
-    items: [
-      { key: 'npcs', icon: '☺', label: 'NPC', hint: '角色卡與對話', capability: 'content' },
-      { key: 'quests', icon: '⚑', label: '任務', hint: '主線／支線／日常', capability: 'content' },
-      { key: 'items', icon: '◆', label: '道具', hint: '稀有度平衡', capability: 'content' },
-    ],
-  },
-  {
-    id: 'plugins',
-    label: '插件／地圖',
-    items: [
       {
         key: 'plugin-hub',
         icon: '⚡',
@@ -145,9 +132,10 @@ const MINECRAFT_NAV: ModuleNavGroup[] = [
     ],
   },
   {
-    id: 'admin_group',
-    label: '憲章／工作室／管理',
+    id: 'ops_admin',
+    label: '橋接與管理',
     items: [
+      { key: 'bridge_monitor', icon: '⇄', label: '橋接健康', hint: 'MineMCP 連線、探測與錯誤', capability: 'bridge' },
       { key: 'world', icon: '✧', label: '世界觀', hint: '憲法與陣營', capability: 'worldview' },
       { key: 'studio', icon: '◈', label: '工作室角色', hint: '建築／敘事班底', roster: 'agents' },
       { key: 'admin', icon: '⌘', label: 'Admin', hint: '健康、批准、巡檢、指令', capability: 'admin' },
@@ -242,9 +230,18 @@ export const BUILTIN_WORLD_MODULES: WorldModuleSpec[] = [
       server_map: 'server-map',
       dynmap: 'server-map',
       layout_preview: 'layout-preview',
+      bridge_health: 'bridge_monitor',
     },
   },
 ];
+
+/** Minecraft 側欄 accordion 預設展開的分組（現場與總覽）。 */
+export const MINECRAFT_NAV_DEFAULT_OPEN_GROUP_IDS: ReadonlySet<string> = new Set(['field_overview']);
+
+/** Minecraft 側欄分組數（驗收：明顯少於 7）。 */
+export function minecraftNavGroupCount(): number {
+  return MINECRAFT_NAV.length;
+}
 
 /** 舊 hash／書籤別名 → 模組頁鍵。控制台別名不放這裡。 */
 export const MODULE_PAGE_ALIASES: Record<string, string> = {
@@ -263,6 +260,7 @@ export const MODULE_PAGE_ALIASES: Record<string, string> = {
   server_map: 'server-map',
   dynmap: 'server-map',
   layout_preview: 'layout-preview',
+  bridge_health: 'bridge_monitor',
 };
 
 const EXTRA_MODULES: WorldModuleSpec[] = [];
@@ -360,8 +358,16 @@ export function getWorldModule(id: string | null | undefined): WorldModuleSpec |
 export function pagesOfModule(id: string): string[] {
   const spec = getWorldModule(id);
   if (!spec) return [];
-  if (spec.pages?.length) return spec.pages.map((page) => page.key);
-  return spec.navGroups.flatMap((group: ModuleNavGroup) => group.items.map((item: ModuleNavItem) => item.key));
+  const keys = new Set<string>();
+  if (spec.pages?.length) {
+    spec.pages.forEach((page) => keys.add(page.key));
+  } else {
+    spec.navGroups.forEach((group: ModuleNavGroup) => {
+      group.items.forEach((item: ModuleNavItem) => keys.add(item.key));
+    });
+  }
+  Object.values(spec.pageAliases ?? {}).forEach((target) => keys.add(target));
+  return [...keys];
 }
 
 export function moduleIdForTab(tab: string | null | undefined): string | null {
