@@ -1,6 +1,7 @@
 /**
- * Minecraft 監控總覽 — 整頁。只展示已有的世界內容與連線事實。
+ * Minecraft 監控總覽 — 首屏 ≤3 焦點塊，細節收在「展開世界細節」；全頁僅一處重新整理。
  */
+import { useCallback, useState } from 'react';
 import OpsTimelinePanel from './monitor/OpsTimelinePanel';
 import SituationRulesPanel from './monitor/SituationRulesPanel';
 import SituationStrip from './SituationStrip';
@@ -17,6 +18,13 @@ import {
 
 export default function MonitorHubPanel() {
   const { data, error, loading, reload } = useMonitorSummary(12000);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+
+  const refreshAll = useCallback(() => {
+    void reload();
+    setRefreshNonce((n) => n + 1);
+  }, [reload]);
+
   const ws = data?.world_status ?? {};
   const npcPending = ws.npcs?.pending_world ?? 0;
   const questPending = ws.quests?.pending_world ?? 0;
@@ -63,13 +71,15 @@ export default function MonitorHubPanel() {
     itemPending > 0 ? `道具 ${itemPending}` : '',
   ].filter(Boolean);
 
-  const next = !summaryReady
+  type NextBlock = { title: string; hint?: string; links: Array<{ href: string; label: string; primary?: boolean }> };
+
+  const next: NextBlock | null = !summaryReady
     ? null
     : bridgeSetupPending
       ? {
           title: '橋接還沒接上',
           hint: '世界內容可以先編，玩家與落地要等 MineMCP 連線。設定完成後，在線人數才會出現。',
-          links: [{ href: minecraftHref('bridge_monitor'), label: '橋接健康', primary: true }],
+          links: [],
         }
       : pendingBuild > 0
         ? {
@@ -103,7 +113,23 @@ export default function MonitorHubPanel() {
                 }
               : null;
 
+  const bridgeStateLabel = !data
+    ? '—'
+    : bridgeLive
+      ? '已連線'
+      : bridgeSetupPending
+        ? '尚未連線'
+        : data.bridge?.dry_run
+          ? '乾跑'
+          : '未連線';
+
   const updated = loading ? '讀取中' : data?.generated_at ? formatTs(data.generated_at) : '';
+
+  const hasDetails =
+    Boolean(data?.recent_errors?.length) ||
+    aiFacts.length > 0 ||
+    Boolean(data) ||
+    Boolean(lastPipe || timeline.length);
 
   return (
     <McPage>
@@ -113,7 +139,7 @@ export default function MonitorHubPanel() {
         aside={
           <>
             {updated ? <span>{updated}</span> : null}
-            <button type="button" className="rd-btn" onClick={() => void reload()}>
+            <button type="button" className="rd-btn mc-hub-refresh" onClick={refreshAll} disabled={loading && !data}>
               重新整理
             </button>
           </>
@@ -124,81 +150,108 @@ export default function MonitorHubPanel() {
       {error && data ? <p className="mc-error">總覽更新失敗：{error}</p> : null}
       {loading && !data ? <p className="mc-empty">正在讀取世界現況…</p> : null}
 
-      {data ? <McMetrics items={metrics} /> : null}
+      <section className="mc-hub-block" aria-label="橋接與下一步">
+        <div className="mc-hub-bridge">
+          <div className="mc-hub-bridge__main">
+            <span className="mc-hub-bridge__kicker">橋接</span>
+            <span className={`mc-hub-bridge__state${bridgeLive ? ' is-live' : bridgeSetupPending ? ' is-warn' : ''}`}>
+              {bridgeStateLabel}
+            </span>
+          </div>
+          <McLinks links={[{ href: minecraftHref('bridge_monitor'), label: '橋接健康', primary: !bridgeLive }]} />
+        </div>
+        {next ? (
+          <div className="mc-callout mc-callout--compact">
+            <h2 className="mc-callout__title">{next.title}</h2>
+            {next.hint ? <p className="mc-callout__body">{next.hint}</p> : null}
+            {next.links.length ? <McLinks links={next.links} /> : null}
+          </div>
+        ) : null}
+      </section>
 
-      {data?.recent_errors?.length ? (
-        <McPanel title="近期異常" hint={`${data.recent_errors.length} 筆`}>
-          <p className="mc-note">{data.recent_errors[0]?.summary}</p>
-        </McPanel>
-      ) : null}
-
-      {next ? (
-        <section className="mc-callout">
-          <h2 className="mc-callout__title">{next.title}</h2>
-          {next.hint ? <p className="mc-callout__body">{next.hint}</p> : null}
-          <McLinks links={next.links} />
+      {data ? (
+        <section className="mc-hub-block" aria-label="世界 KPI">
+          <McMetrics items={metrics} />
         </section>
       ) : null}
 
-      <McPanel title="四維情境" hint="市況、經濟、地土、玩家">
-        <SituationStrip embedded hideRecommendations />
-      </McPanel>
+      <section className="mc-hub-block mc-hub-block--situation" aria-label="四維情境">
+        <div className="mc-hub-block__head">
+          <h2 className="mc-hub-block__title">四維情境</h2>
+          <span className="mc-hub-block__hint">市況、經濟、地土、玩家</span>
+        </div>
+        <SituationStrip embedded hideRecommendations hideRefresh refreshNonce={refreshNonce} />
+      </section>
 
-      <SituationRulesPanel />
+      {hasDetails ? (
+        <details className="mc-hub-details">
+          <summary className="mc-hub-details__summary">展開世界細節</summary>
+          <div className="mc-hub-details__body">
+            {data?.recent_errors?.length ? (
+              <McPanel title="近期異常" hint={`${data.recent_errors.length} 筆`}>
+                <p className="mc-note">{data.recent_errors[0]?.summary}</p>
+              </McPanel>
+            ) : null}
 
-      {aiFacts.length ? (
-        <McPanel
-          title="AI 主持人"
-          action={<McLinks links={[{ href: minecraftHref('ai_gm'), label: '打開主持人' }]} />}
-        >
-          <dl className="mc-facts">
-            {aiFacts.map((fact) => (
-              <div key={fact.label}>
-                <dt>{fact.label}</dt>
-                <dd>{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
-          {aiKpi?.situation_hint ? <p className="mc-note" style={{ marginTop: 12 }}>{aiKpi.situation_hint}</p> : null}
-        </McPanel>
-      ) : null}
+            <SituationRulesPanel hideDataRefresh refreshNonce={refreshNonce} />
 
-      {data ? (
-      <McPanel
-        title="橋接"
-        hint={bridgeLive ? '已連線' : data.bridge?.dry_run ? '乾跑' : '未連線'}
-        action={<McLinks links={[{ href: minecraftHref('bridge_monitor'), label: '橋接健康' }]} />}
-      >
-        <dl className="mc-facts">
-          {data.bridge?.world ? (
-            <div>
-              <dt>世界</dt>
-              <dd>{data.bridge.world}</dd>
-            </div>
-          ) : null}
-          <div>
-            <dt>憑證</dt>
-            <dd>{data.bridge?.token_configured ? '已設定' : '未設定'}</dd>
+            {aiFacts.length ? (
+              <McPanel
+                title="AI 主持人"
+                action={<McLinks links={[{ href: minecraftHref('ai_gm'), label: '打開主持人' }]} />}
+              >
+                <dl className="mc-facts">
+                  {aiFacts.map((fact) => (
+                    <div key={fact.label}>
+                      <dt>{fact.label}</dt>
+                      <dd>{fact.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {aiKpi?.situation_hint ? (
+                  <p className="mc-note" style={{ marginTop: 12 }}>{aiKpi.situation_hint}</p>
+                ) : null}
+              </McPanel>
+            ) : null}
+
+            {data ? (
+              <McPanel
+                title="橋接詳情"
+                hint={bridgeLive ? '已連線' : data.bridge?.dry_run ? '乾跑' : '未連線'}
+              >
+                <dl className="mc-facts">
+                  {data.bridge?.world ? (
+                    <div>
+                      <dt>世界</dt>
+                      <dd>{data.bridge.world}</dd>
+                    </div>
+                  ) : null}
+                  <div>
+                    <dt>憑證</dt>
+                    <dd>{data.bridge?.token_configured ? '已設定' : '未設定'}</dd>
+                  </div>
+                  {mapUrl ? (
+                    <div>
+                      <dt>地圖</dt>
+                      <dd>{plugins?.active_map_plugin || '已設定網址'}</dd>
+                    </div>
+                  ) : null}
+                  {(plugins?.configured_count ?? 0) > 0 ? (
+                    <div>
+                      <dt>插件</dt>
+                      <dd>
+                        {plugins?.reachable_count ?? 0} 可連 / {plugins?.configured_count} 已設定
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
+              </McPanel>
+            ) : null}
+
+            <OpsTimelinePanel />
           </div>
-          {mapUrl ? (
-            <div>
-              <dt>地圖</dt>
-              <dd>{plugins?.active_map_plugin || '已設定網址'}</dd>
-            </div>
-          ) : null}
-          {(plugins?.configured_count ?? 0) > 0 ? (
-            <div>
-              <dt>插件</dt>
-              <dd>
-                {plugins?.reachable_count ?? 0} 可連 / {plugins?.configured_count} 已設定
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-      </McPanel>
+        </details>
       ) : null}
-
-      <OpsTimelinePanel />
     </McPage>
   );
 }

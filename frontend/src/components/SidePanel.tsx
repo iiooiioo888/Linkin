@@ -23,7 +23,7 @@ import {
   type ConsoleNavItem,
   type ConsoleNavKey,
 } from '../lib/monitorTabs';
-import { rosterKindForTab } from '../lib/worldModules';
+import { MINECRAFT_NAV_DEFAULT_OPEN_GROUP_IDS, rosterKindForTab } from '../lib/worldModules';
 import { partitionNavGroupsForMobileLite } from '../lib/mobileShell';
 import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import { useMonitorStore } from '../stores/monitorStore';
@@ -676,10 +676,21 @@ function MonitorSidebar({
   const onLab = activity === 'lab';
   const allNavGroups = navGroupsForActivity(activity);
   const { primary: primaryNavGroups, advanced: advancedNavGroups } = useMemo(
-    () => (isMobileLite ? partitionNavGroupsForMobileLite(allNavGroups) : { primary: allNavGroups, advanced: [] }),
-    [allNavGroups, isMobileLite],
+    () =>
+      isMobileLite
+        ? partitionNavGroupsForMobileLite(allNavGroups, activity)
+        : { primary: allNavGroups, advanced: [] },
+    [allNavGroups, isMobileLite, activity],
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const isMinecraftNav = activity === 'minecraft';
+  const [mcNavOpen, setMcNavOpen] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const group of allNavGroups) {
+      init[group.id] = MINECRAFT_NAV_DEFAULT_OPEN_GROUP_IDS.has(group.id);
+    }
+    return init;
+  });
   const onAgentsTab = activeView === 'monitor' && monitorTab === 'agents';
   const onStudioTab = activeView === 'monitor' && rosterKindForTab(monitorTab) === 'agents';
   const onMemoryTab = activeView === 'monitor' && monitorTab === 'memory';
@@ -688,6 +699,15 @@ function MonitorSidebar({
   const onLlmTab = activeView === 'monitor' && monitorTab === 'llm';
   const onTraces = activeView === 'traces';
   const currentKey: ConsoleNavKey = onTraces ? 'traces' : monitorTab;
+
+  useEffect(() => {
+    if (!isMinecraftNav) return;
+    for (const group of allNavGroups) {
+      if (group.items.some((item) => item.key === currentKey)) {
+        setMcNavOpen((prev) => (prev[group.id] ? prev : { ...prev, [group.id]: true }));
+      }
+    }
+  }, [allNavGroups, currentKey, isMinecraftNav]);
 
   const pick = (key: ConsoleNavKey) => {
     if (key === 'traces') {
@@ -707,9 +727,9 @@ function MonitorSidebar({
 
   const showRoster = onRoleDesk || onTasksTab || onTraces || onLlmTab;
 
-  const renderNavGroup = (group: (typeof allNavGroups)[number]) => (
-    <div key={group.id}>
-      <div className="sp-group">{group.id === 'mobile-advanced' ? t('mobileShell.advancedNav') : group.label}</div>
+  const renderNavGroup = (group: (typeof allNavGroups)[number]) => {
+    const groupLabel = group.id === 'mobile-advanced' ? t('mobileShell.advancedNav') : group.label;
+    const list = (
       <div className="sp-list">
         {group.items.map((item) => (
           <TabBtn
@@ -720,8 +740,33 @@ function MonitorSidebar({
           />
         ))}
       </div>
-    </div>
-  );
+    );
+
+    if (isMinecraftNav && group.id !== 'mobile-advanced') {
+      const open = mcNavOpen[group.id] ?? false;
+      return (
+        <details
+          key={group.id}
+          className="sp-nav-fold"
+          open={open}
+          onToggle={(e) => {
+            const el = e.currentTarget;
+            setMcNavOpen((prev) => ({ ...prev, [group.id]: el.open }));
+          }}
+        >
+          <summary className="sp-group sp-nav-fold__summary">{groupLabel}</summary>
+          {list}
+        </details>
+      );
+    }
+
+    return (
+      <div key={group.id}>
+        <div className="sp-group">{groupLabel}</div>
+        {list}
+      </div>
+    );
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

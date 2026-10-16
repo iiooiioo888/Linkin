@@ -764,6 +764,30 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
+.sp-nav-fold {
+  border-bottom: 1px solid color-mix(in srgb, var(--console-line) 65%, transparent);
+}
+
+.sp-nav-fold__summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.sp-nav-fold__summary::-webkit-details-marker {
+  display: none;
+}
+
+.sp-nav-fold__summary::after {
+  margin-left: auto;
+  font-size: 9px;
+  opacity: 0.65;
+  content: '▸';
+}
+
+.sp-nav-fold[open] > .sp-nav-fold__summary::after {
+  content: '▾';
+}
+
 .sp-list {
   display: flex;
   flex-direction: column;

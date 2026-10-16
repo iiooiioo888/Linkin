@@ -1,13 +1,17 @@
-/* Minecraft 模組整頁。鋪滿主內容區，字級對齊公司頁。 */
+/* Minecraft 模組整頁。v3 token：金 #c9a961、底 #08080a、panel #0c0c0f、card #121216 */
 .mc-page {
+  --mc-gold: #c9a961;
+  --mc-bg: #08080a;
+  --mc-panel: #0c0c0f;
+  --mc-card: #121216;
   display: flex;
   height: 100%;
   min-height: 0;
   flex-direction: column;
   background:
-    radial-gradient(760px 280px at 0% -8%, color-mix(in srgb, var(--console-green) 18%, transparent), transparent 70%),
-    radial-gradient(520px 240px at 100% 0%, color-mix(in srgb, var(--console-accent) 10%, transparent), transparent 68%),
-    var(--console-bg);
+    radial-gradient(760px 280px at 0% -8%, color-mix(in srgb, var(--mc-gold) 12%, transparent), transparent 70%),
+    radial-gradient(520px 240px at 100% 0%, color-mix(in srgb, var(--mc-gold) 6%, transparent), transparent 68%),
+    var(--mc-bg);
 }
 
 .mc-page__scroll {
@@ -78,9 +82,9 @@
   position: relative;
   overflow: hidden;
   padding: 14px 16px 12px 18px;
-  border: 1px solid var(--console-line);
+  border: 1px solid color-mix(in srgb, var(--mc-gold) 18%, var(--console-line));
   border-radius: 14px;
-  background: color-mix(in srgb, var(--console-card) 92%, transparent);
+  background: var(--mc-card);
 }
 
 .mc-metric::before {
@@ -91,7 +95,7 @@
   left: 0;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--console-green);
+  background: var(--mc-gold);
 }
 
 .mc-metric__value {
@@ -110,9 +114,9 @@
 
 .mc-panel {
   padding: 16px;
-  border: 1px solid var(--console-line);
+  border: 1px solid color-mix(in srgb, var(--mc-gold) 14%, var(--console-line));
   border-radius: 16px;
-  background: color-mix(in srgb, var(--console-card) 92%, transparent);
+  background: var(--mc-panel);
 }
 
 .mc-panel__title {
@@ -1003,7 +1007,139 @@ button.mc-row.is-on {
   color: var(--console-sub);
 }
 
+.mc-hub-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--mc-gold) 16%, var(--console-line));
+  border-radius: 16px;
+  background: var(--mc-panel);
+}
+
+.mc-hub-block--situation {
+  gap: 10px;
+}
+
+.mc-hub-block__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.mc-hub-block__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 640;
+  color: var(--console-ink);
+}
+
+.mc-hub-block__hint {
+  font-size: 12px;
+  color: var(--console-faint);
+}
+
+.mc-hub-bridge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mc-hub-bridge__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.mc-hub-bridge__kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mc-gold);
+}
+
+.mc-hub-bridge__state {
+  font-size: 15px;
+  font-weight: 640;
+  color: var(--console-ink);
+}
+
+.mc-hub-bridge__state.is-live {
+  color: #6fa87f;
+}
+
+.mc-hub-bridge__state.is-warn {
+  color: var(--mc-gold);
+}
+
+.mc-callout--compact {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--mc-gold) 22%, var(--console-line));
+  background: color-mix(in srgb, var(--mc-gold) 6%, var(--mc-card));
+}
+
+.mc-hub-details {
+  border: 1px solid color-mix(in srgb, var(--mc-gold) 14%, var(--console-line));
+  border-radius: 16px;
+  background: var(--mc-card);
+}
+
+.mc-hub-details__summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mc-gold);
+}
+
+.mc-hub-details__summary::-webkit-details-marker {
+  display: none;
+}
+
+.mc-hub-details__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 16px 16px;
+}
+
+.mc-situation__stamp {
+  display: block;
+  margin-bottom: 4px;
+}
+
 @media (max-width: 767px) {
+  .mc-page__scroll {
+    padding: 16px 14px 40px;
+  }
+
+  .mc-page__inner {
+    gap: 20px;
+  }
+
+  .mc-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .mc-hub-block {
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .mc-situation {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
   .mc-ops {
     gap: 12px;
   }

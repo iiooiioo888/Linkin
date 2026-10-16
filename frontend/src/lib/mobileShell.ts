@@ -5,6 +5,7 @@
  * ≥768px：完整控制台密度與三欄布局。
  */
 import type { MonitorTab } from '../components/AppShell';
+import type { ActivityKey } from './monitorTabs';
 import type { MonitorNavGroup } from './monitorTabs';
 
 export const MOBILE_SHELL_MAX_WIDTH_PX = 767;
@@ -55,6 +56,25 @@ export const MOBILE_LITE_NAV_PRIMARY_KEYS: ReadonlySet<string> = new Set([
   'models',
 ]);
 
+/** Minecraft 模組手機側欄預設可見頁（其餘收進「進階」）。 */
+export const MOBILE_MINECRAFT_PRIMARY_KEYS: ReadonlySet<string> = new Set([
+  'monitor',
+  'narrative',
+  'player_presence',
+  'bridge_monitor',
+]);
+
+const MOBILE_MODULE_PRIMARY_KEYS: Partial<Record<string, ReadonlySet<string>>> = {
+  minecraft: MOBILE_MINECRAFT_PRIMARY_KEYS,
+};
+
+function primaryKeysForActivity(activity: ActivityKey | undefined): ReadonlySet<string> {
+  if (activity && MOBILE_MODULE_PRIMARY_KEYS[activity]) {
+    return MOBILE_MODULE_PRIMARY_KEYS[activity]!;
+  }
+  return MOBILE_LITE_NAV_PRIMARY_KEYS;
+}
+
 export function shellModeFromWidth(width: number): ShellMode {
   return width <= MOBILE_SHELL_MAX_WIDTH_PX ? 'lite' : 'full';
 }
@@ -67,16 +87,20 @@ export function isMobileDesktopOnlyPanel(tab: MonitorTab | string): boolean {
   return MOBILE_DESKTOP_ONLY_PANELS.has(tab as MonitorTab);
 }
 
-export function partitionNavGroupsForMobileLite(groups: MonitorNavGroup[]): {
+export function partitionNavGroupsForMobileLite(
+  groups: MonitorNavGroup[],
+  activity?: ActivityKey,
+): {
   primary: MonitorNavGroup[];
   advanced: MonitorNavGroup[];
 } {
+  const primaryKeys = primaryKeysForActivity(activity);
   const primary: MonitorNavGroup[] = [];
   const advancedItems: MonitorNavGroup['items'] = [];
 
   for (const group of groups) {
-    const primaryItems = group.items.filter((item) => MOBILE_LITE_NAV_PRIMARY_KEYS.has(String(item.key)));
-    const restItems = group.items.filter((item) => !MOBILE_LITE_NAV_PRIMARY_KEYS.has(String(item.key)));
+    const primaryItems = group.items.filter((item) => primaryKeys.has(String(item.key)));
+    const restItems = group.items.filter((item) => !primaryKeys.has(String(item.key)));
 
     if (primaryItems.length > 0) {
       primary.push({ ...group, items: primaryItems });

@@ -2,31 +2,39 @@
 
 Minecraft 已提升為 Linkin 左側 ActivityBar 的一級世界模組（與控制台、實驗室並列），不再僅藏在通用 Modules 下。
 
-## 選單結構
+## 選單結構（P3 收斂）
+
+側欄 **5 組**（少於 7），預設 accordion 只展開 **「現場與總覽」**；橋接僅 **橋接健康** 單一入口（`#/modules/minecraft/bridge` 等別名仍指向橋接操作頁，但不在側欄重複列出）。
 
 | 分組 | 頁面 | 說明 |
 | --- | --- | --- |
-| **總覽／監控** | 監控總覽 | KPI、管線、橋接、AI 可見事件 |
-| | 地圖監控 | map plan 列表與落地狀態 |
-| | NPC 監控 | pending_world / applied / partial |
-| | 任務／道具監控 | 世界意圖狀態帶 |
-| | 建築落地監控 | build-brief jobs 與方塊進度 |
-| | 橋接健康 | EVOL_MC_MCP_* 配置、ping、錯誤（無密鑰） |
-| **敘事／RPG** | 敘事工作區 | Phase 0–5 一鍵管線 |
-| **世界與建築** | 建築、地圖計畫、橋接 | 操作工具 |
-| **實體** | NPC、任務、道具 | 內容 CRUD |
-| **憲章／工作室／管理** | 世界觀、工作室、Admin | 憲法與運維 |
+| **現場與總覽** | 玩家現場、AI 主持人、監控總覽 | 預設展開 |
+| **落地監控** | 地圖／NPC／任務道具／建築落地 | 摺疊 |
+| **內容與敘事** | 敘事工作區、NPC、任務、道具 | 摺疊 |
+| **世界、地圖與插件** | 建築、地圖計畫、布局預覽、插件中心、伺服器地圖 | 地圖相關收在同一組 |
+| **橋接與管理** | 橋接健康、世界觀、工作室、Admin | 橋接僅此一項 |
+
+手機（&lt;768px）側欄 primary：**監控總覽、敘事工作區、玩家現場、橋接健康**；其餘在「進階」。
 
 預設進入：`#/modules/minecraft` → 監控總覽。
+
+### 監控總覽首屏
+
+- **≤3 焦點塊**：橋接狀態＋下一步、世界 KPI、四維情境。
+- **展開世界細節**：規則建議、AI 主持人、橋接詳情、管線時間軸等。
+- 全頁 **僅一處「重新整理」**（頁首），會連動情境與規則快照。
+
+視覺 token（v3）：金 `#c9a961`、底 `#08080a`、panel `#0c0c0f`、card `#121216`。
 
 ## 舊書籤相容
 
 以下 hash 仍可用（別名自動解析）：
 
 - `#/modules/minecraft/world`、`#/monitor/world` → 世界觀
-- `#/modules/minecraft/bridge`、`#/monitor/minecraft` → 橋接
+- `#/modules/minecraft/bridge`、`#/monitor/minecraft` → 橋接（操作頁，非側欄第二入口）
 - `#/modules/minecraft/building` → 建築
 - `overview` / `monitor_hub` → 監控總覽
+- `bridge_health` → 橋接健康監控
 
 ## AI 可觀測性 API
 
@@ -43,17 +51,17 @@ Minecraft 已提升為 Linkin 左側 ActivityBar 的一級世界模組（與控�
 
 1. **LangGraph**：`enhance_with_linkin_context` 在靈境/Minecraft 查詢時注入可觀測性摘要。
 2. **公司工具**：`minecraft_server_state`（唯讀）供 story_studio 角色拉取完整上下文。
-3. **前端**：監控總覽底部「AI 可見事件」面板讀取同一 `/ai/events`。
+3. **前端**：監控總覽「展開世界細節」內讀取 AI 事件與管線時間軸。
 
 事件在 generate / commit / apply（build、world、map）、bridge probe 等路徑自動追加；狀態誠實標記 dry-run、partial、bridge_offline。
 
 ## 監控 cockpit（自動刷新）
 
-監控總覽在頁面可見時每 **12 秒**自動刷新 summary 與 AI 事件（標籤隱藏時暫停）。空狀態會提供可點擊的下一步：
+監控總覽在頁面可見時每 **12 秒**自動刷新 summary（標籤隱藏時暫停）。空狀態會提供可點擊的下一步：
 
 - 無管線紀錄 → 敘事工作區
 - 無地圖 URL → 插件中心
-- 橋接離線 → 橋接健康監控
+- 橋接離線 → 橋接健康（首屏橋接列）
 - 待建築／待世界意圖 → 對應監控分頁
 
 橋接設定 checklist、可複製的 `EVOL_MC_MCP_*` 範例與 systemd drop-in 見 **橋接健康** 分頁。
@@ -68,5 +76,5 @@ python -m backend.main
 cd frontend && npm run dev
 ```
 
-- **桌面**：左側 ActivityBar 點 Minecraft 圖示 → SidePanel 分組導覽。
-- **手機**：底部 Chat / Tasks / Wallet / More（⋯）→ More 中選 Minecraft（底部僅 4 格，模組在溢出選單）。
+- **桌面**：左側 ActivityBar 點 Minecraft 圖示 → SidePanel 分組 accordion 導覽。
+- **手機**：底部主路徑＋側欄 primary；進階收在「進階」摺疊。
