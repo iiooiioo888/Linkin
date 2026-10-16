@@ -26,7 +26,7 @@ type Busy = 'idle' | 'load' | 'ask' | 'patrol' | 'cmd' | string;
 function toneOf(status: string | undefined): string {
   if (status === 'critical' || status === 'failed' || status === 'expired') return 'text-[var(--console-danger)]';
   if (status === 'warn' || status === 'warning' || status === 'pending') return 'text-[var(--console-amber)]';
-  if (status === 'ok' || status === 'confirmed') return 'text-[var(--console-green)]';
+  if (status === 'ok' || status === 'confirmed') return 'text-[#c9a961]';
   return 'text-[var(--console-sub)]';
 }
 
@@ -199,7 +199,7 @@ export default function AdminPanel() {
                       await load();
                     })
                   }
-                  className="rounded-lg bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] px-2 py-1 text-[11px] text-[var(--console-green)] disabled:opacity-40"
+                  className="rounded-lg bg-[color-mix(in_srgb,#c9a961_15%,transparent)] px-2 py-1 text-[11px] text-[#c9a961] disabled:opacity-40"
                 >
                   批准
                 </button>

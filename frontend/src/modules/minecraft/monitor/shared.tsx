@@ -306,7 +306,7 @@ export function formatAiGmLastAction(kpis: MinecraftAiMonitorKpis | undefined): 
 export function bridgeKpi(bridge: MinecraftMonitorSummary['bridge'] | undefined) {
   if (!bridge?.enabled) return { label: '待設定', pct: 0, color: 'var(--console-faint)' };
   if (!bridge.token_configured) return { label: '待 Token', pct: 8, color: 'var(--console-amber)' };
-  if (bridge.connected) return { label: '線上', pct: 100, color: 'var(--console-green)' };
+  if (bridge.connected) return { label: '線上', pct: 100, color: '#c9a961' };
   if (bridge.dry_run) return { label: '乾跑', pct: 55, color: 'var(--console-amber)' };
   return { label: '離線', pct: 12, color: 'var(--console-red)' };
 }
@@ -458,7 +458,7 @@ export function BridgeSetupCard({
         {rows.map((row) => (
           <li key={row.key} className="flex items-center justify-between gap-2 border-b border-[var(--console-border)] py-1">
             <span className="font-mono text-[10px] text-[var(--console-muted)]">{row.key}</span>
-            <span className={row.ok ? 'text-[var(--console-green)]' : 'text-[var(--console-faint)]'}>
+            <span className={row.ok ? 'text-[#c9a961]' : 'text-[var(--console-faint)]'}>
               {row.ok ? '已設定' : '未設定'}
             </span>
           </li>

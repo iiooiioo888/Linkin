@@ -17,7 +17,7 @@ function ObjectiveChecks({ row }: { row: QuestProgressRow }) {
     <ul className="mt-1 space-y-0.5">
       {objs.map((o) => (
         <li key={o.id} className="flex items-start gap-1.5">
-          <span className={o.done ? 'text-[var(--console-green)]' : 'text-[var(--console-faint)]'}>
+          <span className={o.done ? 'text-[#c9a961]' : 'text-[var(--console-faint)]'}>
             {o.done ? '✓' : '○'}
           </span>
           <span className={o.done ? 'line-through opacity-70' : ''}>{o.title || o.id}</span>

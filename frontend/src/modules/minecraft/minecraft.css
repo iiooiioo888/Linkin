@@ -1,6 +1,7 @@
 /* Minecraft 模組整頁。v3 token：金 #c9a961、底 #08080a、panel #0c0c0f、card #121216 */
 .mc-page {
   --mc-gold: #c9a961;
+  --mc-gold-dim: #6e5a32;
   --mc-bg: #08080a;
   --mc-panel: #0c0c0f;
   --mc-card: #121216;
@@ -43,7 +44,7 @@
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: var(--console-green);
+  color: var(--mc-gold);
 }
 
 .mc-title {
@@ -244,7 +245,7 @@
 }
 
 .mc-dim__status.is-ok {
-  color: var(--console-green);
+  color: var(--mc-gold);
 }
 
 .mc-dim__status.is-partial {
@@ -278,7 +279,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--console-green);
+  background: var(--mc-gold);
 }
 
 .mc-dim__bar em {
@@ -396,11 +397,11 @@ button.mc-row.is-on {
 }
 
 .mc-btn:hover {
-  border-color: color-mix(in srgb, var(--console-green) 45%, var(--console-line));
+  border-color: color-mix(in srgb, var(--mc-gold) 45%, var(--console-line));
 }
 
 .mc-btn:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--console-green) 70%, white);
+  outline: 2px solid color-mix(in srgb, var(--mc-gold) 70%, white);
   outline-offset: 2px;
 }
 
@@ -410,9 +411,9 @@ button.mc-row.is-on {
 }
 
 .mc-btn.is-primary {
-  border-color: color-mix(in srgb, var(--console-green) 42%, transparent);
-  background: color-mix(in srgb, var(--console-green) 14%, transparent);
-  color: var(--console-green);
+  border-color: color-mix(in srgb, var(--mc-gold) 42%, transparent);
+  background: color-mix(in srgb, var(--mc-gold) 14%, transparent);
+  color: var(--mc-gold);
 }
 
 .mc-workspace {
@@ -461,7 +462,7 @@ button.mc-row.is-on {
 .mc-workspace input:focus,
 .mc-workspace select:focus,
 .mc-workspace textarea:focus {
-  outline: 2px solid color-mix(in srgb, var(--console-green) 65%, white);
+  outline: 2px solid color-mix(in srgb, var(--mc-gold) 65%, white);
   outline-offset: 1px;
 }
 
@@ -840,8 +841,8 @@ button.mc-row.is-on {
 }
 
 .mc-ops__kind--pipeline {
-  border-color: color-mix(in srgb, #6fa87f 45%, var(--console-line));
-  color: #6fa87f;
+  border-color: color-mix(in srgb, var(--mc-gold) 45%, var(--console-line));
+  color: var(--mc-gold);
 }
 
 .mc-ops__action {
@@ -940,8 +941,8 @@ button.mc-row.is-on {
 .mc-rules__safe {
   padding: 2px 8px;
   border-radius: 999px;
-  background: color-mix(in srgb, #6fa87f 18%, transparent);
-  color: #6fa87f;
+  background: color-mix(in srgb, var(--mc-gold) 18%, transparent);
+  color: var(--mc-gold);
 }
 
 .mc-rules__priority {
@@ -1070,7 +1071,7 @@ button.mc-row.is-on {
 }
 
 .mc-hub-bridge__state.is-live {
-  color: #6fa87f;
+  color: var(--mc-gold);
 }
 
 .mc-hub-bridge__state.is-warn {
