@@ -1460,6 +1460,7 @@ class TestCompanyGraphIntegration:
         state = {
             "query": "建立一個 API 文件",
             "company_template": "quick_task",
+            "budget_locked": True,
         }
 
         exec_responses = [
@@ -1497,6 +1498,7 @@ class TestCompanyGraphIntegration:
         state = {
             "query": "測試",
             "company_template": "quick_task",
+            "budget_locked": True,
         }
 
         with patch.object(
@@ -1562,6 +1564,7 @@ class TestCompanyGraphIntegration:
                 "query": "建立一個用戶管理系統",
                 "execution_strategy": "company",
                 "company_template": "quick_task",
+                "budget_locked": True,
             }))
 
         assert result["final_answer"] == "整合完成"
@@ -1609,6 +1612,7 @@ class TestCompanyGraphIntegration:
                 "query": "建立一個用戶管理系統",
                 "execution_strategy": "company",
                 "company_template": "quick_task",
+                "budget_locked": True,
             }))
 
         assert result["final_answer"] == "改進後的公司產出"
@@ -1634,6 +1638,7 @@ class TestCompanyGraphIntegration:
                 "query": "測試",
                 "execution_strategy": "company",
                 "company_template": "quick_task",
+                "budget_locked": True,
             }))
 
         assert "公司運行時執行失敗" in result["final_answer"]

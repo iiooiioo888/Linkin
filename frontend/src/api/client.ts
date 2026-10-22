@@ -585,6 +585,30 @@ export async function decideRaho(decisionId: string, choice: string, note = ''):
 
 // ==================== 任務介面 ====================
 
+/** 批准或拒絕開工預算。拒絕不會開始執行。 */
+export async function decideBudget(
+  taskId: string,
+  action: 'approve' | 'reject',
+  note = '',
+): Promise<{ success: boolean; message: string; task?: TaskProgress }> {
+  const resp = await fetch(apiUrl(`/tasks/${encodeURIComponent(taskId)}/budget/decision`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, note }),
+  });
+  if (!resp.ok) {
+    let detail = `預算確認失敗（HTTP ${resp.status}）`;
+    try {
+      const body = await resp.json();
+      if (body?.detail) detail = String(body.detail);
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  return resp.json();
+}
+
 /** 建立後台任務（統一模式），回傳 task_id。 */
 export async function createTask(
   query: string,

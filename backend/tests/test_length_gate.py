@@ -258,43 +258,42 @@ class TestDeliveryGateForLoopsOutsideTheGraph:
 
 
 class TestCompanyStreamLengthGate:
-    def test_over_long_company_output_is_rewritten(self, monkeypatch):
-        """公司產出同樣要過守門：它經 _company_stream 的手抄迴圈，而非 LangGraph。"""
+    def test_company_stream_stops_for_budget_confirmation(self, monkeypatch):
+        """公司 SSE 在確認前不下達。長度守門留在批准後的任務迴圈。"""
         from fastapi.testclient import TestClient
 
         from backend.company.orchestrator import CompanyOrchestrator
         from backend.main import app
 
-        monkeypatch.setenv("EVOL_POST_COMPANY_REFLECT", "full")
-
-        concise = "精簡後的架構方案：三層服務。"
-        long_output = "說" * 4500  # complex 任務上限 4000
+        called = {"execute": False}
 
         async def _fake_execute(self, query):
-            return {"final_output": long_output, "success": True, "stats": {}}
+            called["execute"] = True
+            return {"final_output": "不該執行", "success": True, "stats": {}}
+
+        async def _fake_draft(record):
+            return {
+                "status": "pending_user",
+                "version": 1,
+                "feasibility": "go",
+                "execution_plan": "草案",
+                "lines": [],
+                "risks": [],
+                "assumptions": [],
+                "confirmation": None,
+                "ledger": {"reserved_credits": 0, "frozen": False},
+            }
 
         monkeypatch.setattr(CompanyOrchestrator, "execute", _fake_execute)
-        fake = FakeLLM([
-            _evaluation(9),   # evaluate_answer
-            _reflection(),    # reflect（長度指令驅動的額外一輪）
-            concise,          # improve_answer
-            _evaluation(9),   # evaluate_answer
-        ])
-        store = MagicMock()
-        store.search_similar.return_value = []
+        monkeypatch.setattr("backend.company.execution_gate.compose_budget_draft", _fake_draft)
         lines: list[str] = []
-        with (
-            patch("backend.core.nodes.call_llm", side_effect=fake),
-            patch("backend.core.evaluation.call_llm", side_effect=fake),
-            patch("backend.core.nodes._memory_store", store),
-            TestClient(app) as client,client.stream(
+        with TestClient(app) as client, client.stream(
             "POST", "/chat/stream",
             json={
                 "query": "請設計並實現一個完整的微服務系統架構",
                 "execution_strategy": "company",
             },
-        ) as resp
-        ):
+        ) as resp:
             for line in resp.iter_lines():
                 if line:
                     lines.append(line)
@@ -302,11 +301,11 @@ class TestCompanyStreamLengthGate:
         payloads = [
             json.loads(ln.split("data:", 1)[1].strip())
             for ln in lines
-            if ln.startswith("data:") and '"answer"' in ln
+            if ln.startswith("data:")
         ]
-        assert payloads, f"SSE 未送出 done 事件：{lines}"
-        assert payloads[-1]["answer"] == concise
-        assert payloads[-1]["iteration"] == 1
+        assert payloads, f"SSE 沒有資料：{lines}"
+        assert payloads[-1].get("awaiting_confirmation") is True
+        assert called["execute"] is False
 
 
 class TestBackgroundTaskLengthGate:

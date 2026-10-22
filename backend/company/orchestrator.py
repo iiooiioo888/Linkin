@@ -209,6 +209,10 @@ class CompanyOrchestrator:
         包含 Docker 容器預算管控：任務開始時記錄快照、
         預算緊張時自動建議優化。
         """
+        if self.task_id:
+            from backend.company.execution_gate import require_user_approved
+
+            require_user_approved(self.task_id)
         self._run_log = []
         self._run_id = uuid.uuid4().hex
         # 綁定 run 上下文：decomposer／inspector 等 orchestrator 之外的席位

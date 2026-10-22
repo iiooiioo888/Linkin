@@ -418,6 +418,15 @@ class TaskRequest(BaseModel):
     options: dict[str, Any] = {}
 
 
+class BudgetDecisionRequest(BaseModel):
+    action: str
+    note: str = ""
+
+
+class BudgetLinesRequest(BaseModel):
+    lines: list[dict[str, Any]] = []
+
+
 class FeedbackRequest(BaseModel):
     session_id: str
     signal: str  # thumbs_up | thumbs_down | copy | edit
@@ -979,12 +988,35 @@ async def chat(req: ChatRequest):
 # ==================== 公司模式 SSE 串流（優化 #11） ====================
 
 
+async def _company_confirmation_stream(req: ChatRequest):
+    """公司 SSE 不直接執行。建立待確認任務後結束。"""
+    record = task_manager.create_task(
+        req.query, req.execution_strategy or "company", req.company_template or "quick_task", options={}
+    )
+    record.resolved_path = "company"
+    task_manager.start_budget_draft(record)
+    payload = {
+        "task_id": record.task_id,
+        "status": "awaiting_confirmation",
+        "awaiting_confirmation": True,
+        "answer": "請先確認預算方案，確認後才會開始執行。",
+    }
+    yield f"event: phase\ndata: {json_mod.dumps({'phase': 'pending_user', 'task_id': record.task_id}, ensure_ascii=False)}\n\n"
+    yield f"event: done\ndata: {json_mod.dumps(payload, ensure_ascii=False)}\n\n"
+
+
 async def _company_stream(req: ChatRequest):
     """公司運行時 SSE 串流：異步執行 + EventBus 事件推送。
 
-    將公司運行時的生命週期事件轉換為 SSE 事件，
-    前端可即時看到分解/執行/審查/整合各階段進度。
+    預設先停在預算確認。只有 EVOL_BUDGET_AUTO_APPROVE 才沿用直接執行。
     """
+    from backend.company.execution_gate import auto_approve_enabled
+
+    if not auto_approve_enabled():
+        async for chunk in _company_confirmation_stream(req):
+            yield chunk
+        return
+
     from backend.company.events import CompanyEvent
     from backend.company.orchestrator import CompanyOrchestrator
     from backend.company.roles import BUILTIN_TEMPLATES
@@ -1682,25 +1714,38 @@ async def create_task(req: TaskRequest):
     if not req.query.strip():
         raise HTTPException(status_code=422, detail="query 不可為空")
     from backend.billing.context import billing_enabled, billing_task_id, current_billing_user
-    from backend.billing.task_lifecycle import begin_billed_task
+    from backend.billing.task_lifecycle import begin_billed_task, precheck_billed_task
+    from backend.core.execution_path import resolve_execution_path
 
     record = task_manager.create_task(
         req.query, req.execution_strategy, req.company_template, options=req.options
     )
+    path = resolve_execution_path(record.query, req.execution_strategy)
+    record.resolved_path = "company" if path == "opc" else path
     billing_meta: dict = {}
     uid = current_billing_user()
+    company_gate = record.resolved_path == "company"
     if billing_enabled() and uid:
         try:
-            billing_meta = begin_billed_task(
-                uid,
-                task_id=record.task_id,
-                baseline_tokens=max(500, len(req.query) // 2),
-                model=str((req.options or {}).get("model") or "default"),
-            )
-            token = billing_task_id.set(record.task_id)
-            record.options = {**(record.options or {}), "billing": billing_meta}
-            task_manager._persist(record)
-            billing_task_id.reset(token)
+            baseline = max(500, len(req.query) // 2)
+            model = str((req.options or {}).get("model") or "default")
+            if company_gate:
+                billing_meta = precheck_billed_task(
+                    uid,
+                    baseline_tokens=baseline,
+                    model=model,
+                )
+            else:
+                billing_meta = begin_billed_task(
+                    uid,
+                    task_id=record.task_id,
+                    baseline_tokens=baseline,
+                    model=model,
+                )
+                token = billing_task_id.set(record.task_id)
+                record.options = {**(record.options or {}), "billing": billing_meta}
+                task_manager._persist(record)
+                billing_task_id.reset(token)
         except Exception as exc:
             from backend.billing.errors import InsufficientCreditsError
 
@@ -1709,12 +1754,17 @@ async def create_task(req: TaskRequest):
             exc_cls = getattr(exc, "__class__", None)
             if exc_cls is not None and exc_cls.__name__ == "InsufficientCreditsError":
                 raise HTTPException(status_code=402, detail=str(exc)) from exc
-    task_manager.start_task(record)
+    if company_gate:
+        task_manager.start_budget_draft(record)
+    else:
+        task_manager.start_task(record)
     return {
         "task_id": record.task_id,
         "strategy": req.execution_strategy,
+        "status": record.status,
+        "awaiting_confirmation": company_gate,
         "pricing_version": billing_meta.get("pricing_config_version"),
-        "reserved_credits": billing_meta.get("reserved_credits"),
+        "reserved_credits": billing_meta.get("reserved_credits", 0),
     }
 
 
@@ -1729,6 +1779,26 @@ async def get_task(task_id: str, events_limit: int = 50):
     if record is None:
         raise HTTPException(status_code=404, detail="任務不存在")
     return record.to_dict(events_limit=events_limit)
+
+
+@app.post("/tasks/{task_id}/budget/decision")
+async def budget_decision(task_id: str, body: BudgetDecisionRequest):
+    """批准或拒絕開工預算。拒絕與逾時都不進入席位執行。"""
+    ok, message = task_manager.decide_budget(task_id, body.action, body.note)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    record = task_manager.get_task(task_id)
+    return {"success": True, "message": message, "task": record.to_dict() if record else None}
+
+
+@app.post("/tasks/{task_id}/budget/lines")
+async def budget_lines(task_id: str, body: BudgetLinesRequest):
+    """能力負責人回填分項。確認前可改，確認後鎖定。"""
+    ok, message = task_manager.update_budget_lines(task_id, body.lines)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    record = task_manager.get_task(task_id)
+    return {"success": True, "message": message, "budget_plan": record.budget_plan if record else None}
 
 
 @app.post("/tasks/{task_id}/cancel")

@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, TaskProgress } from '../types';
-import { fetchTask, resumeTask } from '../api/client';
+import { decideBudget, fetchTask, resumeTask } from '../api/client';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import InputBar from './InputBar';
@@ -254,6 +254,24 @@ export default function ChatView({
     setMonitorPinned(false);
   };
 
+  const confirmTask = [...messages].reverse().find((m) => m.taskState?.status === 'awaiting_confirmation')?.taskState;
+  const [confirmBusy, setConfirmBusy] = useState(false);
+
+  const handleBudget = async (action: 'approve' | 'reject') => {
+    if (!confirmTask) return;
+    setConfirmBusy(true);
+    setActError(null);
+    try {
+      await decideBudget(confirmTask.task_id, action);
+      const next = await fetchTask(confirmTask.task_id);
+      onTaskStatePatch?.(confirmTask.task_id, next);
+    } catch (err) {
+      setActError((err as Error).message);
+    } finally {
+      setConfirmBusy(false);
+    }
+  };
+
   const handleResume = async () => {
     if (!task) return;
     setActError(null);
@@ -294,6 +312,41 @@ export default function ChatView({
       {actError && (
         <div className="shrink-0 px-4 pt-3 sm:px-6">
           <ErrorState kind="generic" message={actError} compact onDismiss={() => setActError(null)} />
+        </div>
+      )}
+      {confirmTask && (
+        <div className="shrink-0 border-b border-white/10 px-4 py-3 sm:px-6">
+          <p className="text-[13px] font-medium text-[var(--console-ink)]">預算方案待確認</p>
+          <p className="mt-1 text-[12px] text-[var(--console-sub)]">
+            {confirmTask.budget_plan?.execution_plan || confirmTask.budget_plan?.note || '任務經理正在整理草案。草案就緒後才能批准。批准前不會開始執行。'}
+          </p>
+          {!!confirmTask.budget_plan?.lines?.length && (
+            <ul className="mt-2 space-y-1 text-[12px] text-[var(--console-sub)]">
+              {confirmTask.budget_plan.lines.slice(0, 6).map((line) => (
+                <li key={line.line_id || line.title}>
+                  {line.title || '子項'} · {line.assignee || '未指派'} · {line.assumption || '未登記'}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              disabled={confirmBusy || confirmTask.budget_plan?.status !== 'pending_user'}
+              onClick={() => void handleBudget('approve')}
+              className="rounded-lg bg-[var(--console-accent)] px-3 py-1 text-[12px] text-white disabled:opacity-40"
+            >
+              批准並開始
+            </button>
+            <button
+              type="button"
+              disabled={confirmBusy}
+              onClick={() => void handleBudget('reject')}
+              className="rounded-lg border border-white/15 px-3 py-1 text-[12px] text-[var(--console-ink)] disabled:opacity-40"
+            >
+              拒絕
+            </button>
+          </div>
         </div>
       )}
     </>

@@ -251,7 +251,30 @@ export interface TaskOptions {
 /** 任務即時狀態（POST /tasks + GET /tasks/{id}） */
 export interface TaskProgress {
   task_id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
+  status:
+    | 'pending'
+    | 'running'
+    | 'awaiting_confirmation'
+    | 'rejected'
+    | 'expired'
+    | 'completed'
+    | 'failed'
+    | 'cancelled'
+    | 'interrupted';
+  budget_plan?: {
+    status?: string;
+    feasibility?: string;
+    execution_plan?: string;
+    note?: string;
+    lines?: Array<{
+      line_id?: string;
+      title?: string;
+      assignee?: string;
+      assumption?: string;
+      amount_usd?: number | null;
+      subject?: string;
+    }>;
+  } | null;
   /** 統一模式：執行策略（auto / simple / company） */
   strategy: 'auto' | 'simple' | 'company';
   /** 統一模式：實際解析的執行路徑。工業執行的路徑標籤是 company */

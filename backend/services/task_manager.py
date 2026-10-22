@@ -95,6 +95,7 @@ class TaskRecord:
         self.events: list[dict[str, Any]] = []
         self.kanban: dict[str, list[dict]] = {}
         self.budget: dict[str, Any] = {}
+        self.budget_plan: dict[str, Any] | None = None
         self.answer = ""
         self.score: float | None = None
         self.iteration = 0
@@ -145,6 +146,7 @@ class TaskRecord:
             "events_truncated": total_events > len(visible_events),
             "kanban": self.kanban,
             "budget": self.budget,
+            "budget_plan": self.budget_plan,
             "answer": self.answer,
             "score": self.score,
             "iteration": self.iteration,
@@ -187,6 +189,8 @@ class TaskRecord:
         record.events = data.get("events", [])
         record.kanban = data.get("kanban", {})
         record.budget = data.get("budget", {})
+        plan = data.get("budget_plan")
+        record.budget_plan = plan if isinstance(plan, dict) else None
         record.answer = data.get("answer", "")
         record.score = data.get("score")
         record.iteration = data.get("iteration", 0)
@@ -495,6 +499,10 @@ class TaskManager:
                 self.tasks[task_id] = record
         if record is None:
             return None
+        from backend.company.execution_gate import expire_budget_if_needed
+
+        if expire_budget_if_needed(record):
+            self._persist(record)
         if skip_tenant_check:
             return record
         from backend.tenant.tasks import task_visible_for_tenant
@@ -504,9 +512,149 @@ class TaskManager:
         return record
 
     def start_task(self, record: TaskRecord) -> None:
-        """以背景任務方式啟動（統一管線）。"""
+        """以背景任務方式啟動（統一管線）。公司路徑必須先鎖上預算方案。"""
+        if record.resolved_path == "company":
+            from backend.company.execution_gate import require_user_approved
+
+            require_user_approved(record.task_id)
         task = asyncio.create_task(self._run_unified_task(record))
         self._running_tasks[record.task_id] = task
+
+    def start_budget_draft(self, record: TaskRecord) -> None:
+        """只產生預算草案，不進入席位執行。"""
+        record.resolved_path = "company"
+        record.status = "awaiting_confirmation"
+        record.phase = "budget_draft"
+        self._persist(record)
+        task = asyncio.create_task(self._draft_company_budget(record))
+        self._running_tasks[record.task_id] = task
+
+    async def _draft_company_budget(self, record: TaskRecord) -> None:
+        from backend.company.execution_gate import auto_approve_enabled, compose_budget_draft
+
+        draft_task = asyncio.current_task()
+        try:
+            if record.cancel_requested:
+                return
+            plan = await compose_budget_draft(record)
+            record.budget_plan = plan
+            self._add_event(record, "budget_draft_ready", {
+                "feasibility": plan.get("feasibility"),
+                "lines": len(plan.get("lines") or []),
+            })
+            if auto_approve_enabled():
+                self.decide_budget(record.task_id, "approve", note="EVOL_BUDGET_AUTO_APPROVE")
+                return
+            record.status = "awaiting_confirmation"
+            record.phase = "pending_user"
+            self._add_event(record, "budget_confirmation_required", {"version": plan.get("version")})
+            self._persist(record)
+        except Exception as exc:
+            logger.exception("預算草案失敗：%s", exc)
+            record.budget_plan = {
+                "status": "pending_user",
+                "version": 1,
+                "feasibility": "narrow",
+                "execution_plan": "",
+                "lines": [],
+                "risks": [str(exc)],
+                "assumptions": [],
+                "confirmation": None,
+                "ledger": {"reserved_credits": 0, "frozen": False},
+                "note": str(exc),
+            }
+            record.status = "awaiting_confirmation"
+            record.phase = "pending_user"
+            record.error = ""
+            self._persist(record)
+        finally:
+            running = self._running_tasks.get(record.task_id)
+            if running is draft_task:
+                self._running_tasks.pop(record.task_id, None)
+
+    def decide_budget(self, task_id: str, action: str, note: str = "") -> tuple[bool, str]:
+        """批准才凍結並下達。拒絕與逾時都不執行。"""
+        from backend.company.execution_gate import expire_budget_if_needed
+
+        record = self.get_task(task_id)
+        if record is None:
+            return False, "任務不存在"
+        if expire_budget_if_needed(record):
+            self._persist(record)
+            return False, "預算確認已逾時，任務未執行"
+        plan = record.budget_plan if isinstance(record.budget_plan, dict) else None
+        if record.status in {"rejected", "expired", "cancelled", "completed", "failed"}:
+            return False, f"任務已結束（{record.status}）"
+        choice = (action or "").strip().lower()
+        if choice == "reject":
+            if plan is not None:
+                plan["status"] = "rejected"
+                plan["confirmation"] = {"action": "reject", "at": time.time(), "note": note}
+            record.status = "rejected"
+            record.phase = "rejected"
+            record.error = note or "用戶拒絕預算方案，任務未執行"
+            record.finished_at = time.time()
+            running = self._running_tasks.get(task_id)
+            if running is not None and not running.done():
+                running.cancel()
+            self._add_event(record, "budget_rejected", {"note": note})
+            self._persist(record)
+            return True, "已拒絕，不會執行"
+        if choice != "approve":
+            return False, "action 只能是 approve 或 reject"
+        if not plan or plan.get("status") != "pending_user":
+            return False, "預算草案尚未就緒"
+        plan["status"] = "locked"
+        plan["confirmation"] = {"action": "approve", "at": time.time(), "note": note}
+        ledger = plan.get("ledger") if isinstance(plan.get("ledger"), dict) else {}
+        ledger["frozen"] = True
+        plan["ledger"] = ledger
+        record.budget_plan = plan
+        record.phase = "approved"
+        self._add_event(record, "budget_locked", {"version": plan.get("version")})
+        self._reserve_execution_billing(record)
+        record.status = "pending"
+        self._persist(record)
+        self.start_task(record)
+        return True, "已確認並下達"
+
+    def update_budget_lines(self, task_id: str, lines: list[dict[str, Any]]) -> tuple[bool, str]:
+        from backend.company.execution_gate import expire_budget_if_needed, replace_budget_lines
+
+        record = self.get_task(task_id)
+        if record is None:
+            return False, "任務不存在"
+        if expire_budget_if_needed(record):
+            self._persist(record)
+            return False, "預算確認已逾時"
+        plan = record.budget_plan if isinstance(record.budget_plan, dict) else None
+        if not plan or plan.get("status") != "pending_user":
+            return False, "目前不能回填分項"
+        replace_budget_lines(plan, lines)
+        self._add_event(record, "budget_lines_updated", {"version": plan.get("version")})
+        self._persist(record)
+        return True, "已更新分項"
+
+    def _reserve_execution_billing(self, record: TaskRecord) -> None:
+        """批准後才預扣執行費。確認前的餘額預檢不走這裡。"""
+        from backend.billing.context import billing_enabled, current_billing_user
+        from backend.billing.task_lifecycle import begin_billed_task
+
+        if (record.options or {}).get("billing"):
+            return
+        uid = record.user_id or current_billing_user()
+        if not billing_enabled() or not uid:
+            return
+        meta = begin_billed_task(
+            uid,
+            task_id=record.task_id,
+            baseline_tokens=max(500, len(record.query) // 2),
+            model=str((record.options or {}).get("model") or "default"),
+        )
+        ledger = (record.budget_plan or {}).get("ledger")
+        if isinstance(ledger, dict):
+            ledger["reserved_credits"] = meta.get("reserved_credits") or 0
+        record.options = {**(record.options or {}), "billing": meta}
 
     def start_task_from_thread(self, record: TaskRecord) -> None:
         """從無 event loop 的執行緒／行程啟動任務（MCP server 用）。

@@ -489,11 +489,14 @@ export const TERMINAL_TASK_STATUSES = new Set<TaskProgress['status']>([
   'failed',
   'cancelled',
   'interrupted',
+  'rejected',
+  'expired',
 ]);
 
 const KNOWN_TASK_STATUSES = new Set<TaskProgress['status']>([
   'pending',
   'running',
+  'awaiting_confirmation',
   ...TERMINAL_TASK_STATUSES,
 ]);
 
@@ -546,6 +549,7 @@ export function isLiveMonitorTask(
 
   const task = message.taskState;
   if (task) {
+    if (task.status === 'awaiting_confirmation') return true;
     if (isRunningTaskStatus(task.status)) return true;
     if (task.status === 'failed' || task.status === 'interrupted') return true;
     if (TERMINAL_TASK_STATUSES.has(task.status)) return false;
