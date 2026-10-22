@@ -186,6 +186,15 @@ def test_contribution_decay_half_life(billing_store):
     assert row["after"] == pytest.approx(100 * CONTRIBUTION_UNLOCKED_DECAY, rel=1e-3)
 
 
+def test_fresh_contribution_points_do_not_decay_same_day(billing_store):
+    """新入帳的貢獻積分先起算 90 天，不該當天就扣 20%。"""
+    uid = "decay_fresh"
+    billing_store.ensure_account(uid, "free")
+    _seed_unlocked(uid, 100)
+    run_contribution_decay()
+    assert get_pool_store().get_balances(uid)[POOL_CONTRIBUTION_UNLOCKED] == pytest.approx(100)
+
+
 def test_convert_ratio_unchanged(billing_store):
     pools = PoolsService()
     uid = "convert_v6"

@@ -236,12 +236,15 @@ class PoolsService:
     def finalize_task(self, task_id: str, actual_total: float) -> dict[str, Any]:
         with self.store._conn() as conn:
             row = conn.execute(
-                "SELECT account_id, reserved_credits FROM tasks WHERE task_id=?", (task_id,)
+                "SELECT account_id, reserved_credits, status FROM tasks WHERE task_id=?", (task_id,)
             ).fetchone()
         if not row:
             raise ValueError(f"任務 {task_id} 不存在")
         account_id = row["account_id"]
         reserved = float(row["reserved_credits"] or 0)
+        if str(row["status"] or "") == "settled":
+            # 重複結算會再退一次預扣；已結算就只回報現況。
+            return {"task_id": task_id, "reserved": reserved, "actual": actual_total, "refund": 0, "already_settled": True}
         delta = reserved - actual_total
         if delta > 0:
             self.store.credit_pool(

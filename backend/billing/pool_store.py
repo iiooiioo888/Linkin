@@ -622,8 +622,9 @@ class PoolStore:
             "credit_policy": cp,
         }
 
-    def append_ledger(
+    def _append_ledger_conn(
         self,
+        conn: sqlite3.Connection,
         account_id: str,
         entry_type: str,
         amount: float,
@@ -635,9 +636,9 @@ class PoolStore:
         task_id: str | None = None,
         meta: dict[str, Any] | None = None,
     ) -> str:
+        """寫 ledger 列；交易由呼叫端提供，讓餘額變動與帳目同進同出。"""
         entry_id = f"led_{uuid.uuid4().hex[:12]}"
-        with self._conn() as conn:
-            conn.execute(
+        conn.execute(
                 """INSERT INTO pool_ledger(entry_id, account_id, entry_type, amount, balance_after,
                    pool_type, source, description, task_id, meta_json, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -656,6 +657,33 @@ class PoolStore:
                 ),
             )
         return entry_id
+
+    def append_ledger(
+        self,
+        account_id: str,
+        entry_type: str,
+        amount: float,
+        balance_after: float,
+        *,
+        pool_type: str | None = None,
+        source: str = "",
+        description: str = "",
+        task_id: str | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> str:
+        with self._conn() as conn:
+            return self._append_ledger_conn(
+                conn,
+                account_id,
+                entry_type,
+                amount,
+                balance_after,
+                pool_type=pool_type,
+                source=source,
+                description=description,
+                task_id=task_id,
+                meta=meta,
+            )
 
     def atomic_debit_pool(self, conn: sqlite3.Connection, account_id: str, pool_type: str, amount: float, now: str) -> bool:
         """原子扣款：UPDATE ... WHERE amount >= X。"""
@@ -712,17 +740,24 @@ class PoolStore:
                 remaining = round(remaining - take, 4)
             if remaining > 0:
                 raise ValueError("INSUFFICIENT_CREDITS")
-        total_after = self.total_spendable(account_id)
-        self.append_ledger(
-            account_id,
-            "debit",
-            -amount,
-            total_after,
-            source=source,
-            description=f"扣款 {amount:.4f}",
-            task_id=task_id,
-            meta={"breakdown": breakdown},
-        )
+            # 餘額與帳目同一個交易：程序中途死掉不會留下「扣了錢、沒記帳」。
+            rows = conn.execute(
+                "SELECT pool_type, amount FROM balances WHERE account_id = ?", (account_id,)
+            ).fetchall()
+            total_after = round(
+                sum(float(r["amount"]) for r in rows if str(r["pool_type"]) in SPEND_ORDER), 4
+            )
+            self._append_ledger_conn(
+                conn,
+                account_id,
+                "debit",
+                -amount,
+                total_after,
+                source=source,
+                description=f"扣款 {amount:.4f}",
+                task_id=task_id,
+                meta={"breakdown": breakdown},
+            )
         return breakdown
 
     def credit_pool(
@@ -763,17 +798,18 @@ class PoolStore:
                 (account_id, pool_type),
             ).fetchone()
             balance_after = float(bal_row["amount"]) if bal_row else amount
-        self.append_ledger(
-            account_id,
-            "credit",
-            amount,
-            balance_after,
-            pool_type=pool_type,
-            source=source,
-            description=description or f"入帳 {amount:.4f}",
-            task_id=task_id,
-            meta={"origin": grant_origin, "immutable": True},
-        )
+            self._append_ledger_conn(
+                conn,
+                account_id,
+                "credit",
+                amount,
+                balance_after,
+                pool_type=pool_type,
+                source=source,
+                description=description or f"入帳 {amount:.4f}",
+                task_id=task_id,
+                meta={"origin": grant_origin, "immutable": True},
+            )
 
     def create_task_record(
         self,
@@ -900,6 +936,15 @@ class PoolStore:
                 ).fetchone()
                 unused = float(row["amount"]) if row else 0.0
                 if unused <= 0:
+                    continue
+                # 本月（或之後）才發的月額度屬於「本月還沒用完」，不是上月餘額；
+                # 沒有這道檢查，每次啟動跑 rollover 都會把當月額度清零。
+                grant_row = conn.execute(
+                    "SELECT MAX(created_at) AS last FROM grants WHERE account_id=? AND pool_type=?",
+                    (account_id, POOL_MONTHLY_GRANT),
+                ).fetchone()
+                last_grant_month = str((grant_row["last"] if grant_row else "") or "")[:7]
+                if last_grant_month and last_grant_month >= mk:
                     continue
                 existing = conn.execute(
                     "SELECT 1 FROM rollover_records WHERE account_id=? AND month_key=?",
@@ -1705,6 +1750,14 @@ class PoolStore:
                     last = _parse_iso(str(log["last_decay_at"]))
                     if last > cutoff:
                         continue
+                else:
+                    # 第一次看到這筆餘額：只記起算點，不當場扣 20%。
+                    conn.execute(
+                        """INSERT INTO contribution_decay_log(account_id, last_decay_at) VALUES (?, ?)
+                           ON CONFLICT(account_id) DO UPDATE SET last_decay_at=excluded.last_decay_at""",
+                        (aid, now),
+                    )
+                    continue
                 decayed = round(amount * (1.0 - CONTRIBUTION_UNLOCKED_DECAY), 4)
                 new_amount = round(amount - decayed, 4)
                 conn.execute(

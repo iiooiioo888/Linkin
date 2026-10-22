@@ -363,10 +363,48 @@ def test_spend_priority_monthly_before_purchased(billing_store):
     assert bals.get(POOL_PURCHASED, 0) == 1000
 
 
+def test_spend_rolls_back_when_ledger_write_fails(billing_store):
+    """扣款與帳目同一交易：寫 ledger 失敗時餘額必須回到原樣。"""
+    pools = get_pool_store()
+    uid = "atomic_ledger_user"
+    billing_store.ensure_account(uid, "free")
+    before = pools.get_balances(uid)
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("ledger down")
+
+    original = pools._append_ledger_conn
+    pools._append_ledger_conn = _boom
+    try:
+        with pytest.raises(RuntimeError):
+            pools.spend_from_pools(uid, 100, source="test")
+    finally:
+        pools._append_ledger_conn = original
+
+    assert pools.get_balances(uid) == before
+
+
+def test_rollover_skips_current_month_grant(billing_store):
+    """啟動時跑 rollover 不得吃掉本月才發的月額度。"""
+    pools = get_pool_store()
+    uid = "rollover_fresh"
+    billing_store.ensure_account(uid, "free")
+    before = pools.get_balances(uid).get(POOL_MONTHLY_GRANT, 0)
+    assert before > 0
+    pools.run_monthly_rollover()
+    assert pools.get_balances(uid).get(POOL_MONTHLY_GRANT, 0) == before
+
+
 def test_monthly_rollover_proportional_and_idempotent(billing_store):
     pools = get_pool_store()
     uid = "rollover_user"
     billing_store.ensure_account(uid, "free")
+    # 把這筆月額度回填成上月發的，才符合 rollover 的語意
+    with pools._conn() as conn:
+        conn.execute(
+            "UPDATE grants SET created_at='2025-07-01T00:00:00+00:00' WHERE account_id=? AND pool_type=?",
+            (uid, POOL_MONTHLY_GRANT),
+        )
     pools.spend_from_pools(uid, 8000, source="test")
     results = pools.run_monthly_rollover("2025-08")
     row = next(r for r in results if r["account_id"] == uid)
@@ -404,6 +442,21 @@ def test_reserve_settle_and_refund(billing_store):
         assert done["refund"] >= 0
     finally:
         billing_user_id.reset(token)
+
+
+def test_settle_is_idempotent(billing_store):
+    """重複結算不得再退一次預扣。"""
+    billing_store.ensure_account("settle_twice", "pro")
+    begun = begin_billed_task("settle_twice", baseline_tokens=100, model="gpt-4o-mini")
+    tid = begun["task_id"]
+    record_llm_usage(tid, input_tokens=100, output_tokens=50, model="gpt-4o-mini")
+    first = complete_billed_task(tid)
+    before = get_pool_store().total_spendable("settle_twice")
+    second = complete_billed_task(tid)
+    assert second.get("already_settled") is True
+    assert second["refund"] == 0
+    assert get_pool_store().total_spendable("settle_twice") == before
+    assert first["reserved"] >= first["actual"]
 
 
 def test_pricing_snapshot_immutable(billing_store):
