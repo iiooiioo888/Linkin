@@ -4,7 +4,7 @@
 
 **靈境·Linkin 運行時 — 具反思閉環的統一 AI 管線、多代理人指揮鏈與監控控制台**
 
-反思閉環、RAHO 公司運行時、OPC 工業整合與世界觀走**同一條** LangGraph 管線。沒有「標準／公司／OPC」三套產品，由 `route_by_complexity` 依任務選路。
+反思閉環、RAHO 公司運行時、OPC 工業整合與 Minecraft 輕量操作共用同一條前置鏈。`resolve_execution_path` 依策略與內容選路，LangGraph、SSE 與任務 API 用同一份判斷。
 
 [![CI](https://github.com/iiooiioo888/Linkin/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/iiooiioo888/Linkin/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -28,7 +28,7 @@
 
 - [先讀哪一份](#先讀哪一份)
 - [核心能力](#核心能力)
-- [架構](#架構)
+- [運作邏輯](#運作邏輯)
 - [目錄結構](#目錄結構)
 - [快速開始](#快速開始)
 - [部署](#部署)
@@ -58,10 +58,10 @@
 
 | 能力 | 做什麼 |
 |------|--------|
-| **統一 LangGraph 管線** | FastAPI + LangGraph + LiteLLM。`route_by_complexity` 在簡單生成、RAHO 公司、OPC 工業之間選路 |
-| **反思閉環** | 多維評分；未達標就反思並改進；達標後寫入記憶 |
+| **統一管線** | 每則查詢先注入記憶、OPC 上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 在 `simple`、`company`、`opc`、`minecraft_ops` 中選一條 |
+| **反思閉環** | 簡單路徑做多維評分與改進迴圈。公司路徑預設定稿；Minecraft 輕量路徑評估一次 |
 | **RAHO 公司運行時** | L5 用戶 → L4 審計 → L3 戰術 → L2 執行；L1 憲兵審查；L0 記憶注入。**85** 內建席，可再自定義 |
-| **Grill-Me** | 複雜任務先經 `/raho/grill/*` 與指揮官把需求鎖死，再進戰役 |
+| **Grill-Me** | 對話裡的公司路徑先經 `/raho/grill/*` 鎖需求，再建立任務 |
 | **監控控制台** | 對話、控制台、靈境、Minecraft、實驗室。Linear 風 dense UI，桌面三欄約一屏高 |
 | **行動版** | 768px 以下改底部 Tab 與 safe-area；桌面 ≥1440 維持三欄 |
 | **整合召回** | MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil。只在明確召回時省 token，不接受自動 webhook |
@@ -72,36 +72,88 @@
 
 ---
 
-## 架構
+## 運作邏輯
+
+實作在 `backend/core/execution_path.py` 的 `resolve_execution_path`。圖上的條件邊 `route_by_complexity` 只負責把這份結果對到節點。
+
+### 選路
+
+`execution_strategy` 為 `simple` 或 `company` 時直接採用，後面的規則不再改路。`auto` 依序看：
+
+| 順序 | 條件 | 路徑 |
+|------|------|------|
+| 1 | 工業關鍵詞（感測、閥門、OPC、PLC…） | `opc` |
+| 2 | 靈境複雜任務 | `company` |
+| 3 | Minecraft 建造、敘事、多步 | `company` |
+| 4 | Minecraft 單步控制 | `minecraft_ops` |
+| 5 | 已開啟 cost_speed | 依複雜度設定為 `company` 或 `simple` |
+| 6 | 公司關鍵詞，或長度達到門檻 | `company`，否則 `simple` |
+
+### 圖上怎麼走
+
+每條進圖的查詢都先走完前置鏈，再分叉。路徑 `opc` 在圖上與 `simple` 同一個出口。
 
 ```mermaid
-graph LR
-    A[使用者查詢] --> B[L0 記憶檢索]
-    B --> C[整合召回<br/>MemOS / OpenViking / WeKnora]
-    C --> D{複雜度路由}
-    D -->|簡單| E[單次生成]
-    D -->|複雜| F[Grill-Me → RAHO]
-    D -->|工業| G[OPC 6 級]
-    E --> H[多維評估]
-    F --> H
-    G --> H
-    H -->|未達標| I[反思改進]
-    I --> H
-    H -->|達標| J[記憶庫]
-    H --> K[積分計量 v6]
+flowchart TD
+    START([START]) --> RM[記憶檢索]
+    RM --> OPC[OPC 上下文]
+    OPC --> LK[靈境上下文]
+    LK --> RC[整合召回]
+    RC --> ROUTE{route_by_complexity}
+    ROUTE -->|company| RUN[run_company]
+    ROUTE -->|minecraft_ops| MC[run_minecraft_ops]
+    ROUTE -->|simple 或 opc| GEN[單次生成]
+    RUN --> GATE{公司後反思}
+    GATE -->|預設 off| DEC[決定最終回答]
+    GATE -->|evaluate 或 full| LEN[長度守門]
+    MC --> LEN
+    GEN --> LEN
+    LEN -->|超長| REFL[反思改進]
+    LEN -->|合規| EVAL[多維評估]
+    EVAL -->|繼續改進| REFL
+    EVAL -->|停止| DEC
+    REFL --> LEN
+    DEC --> FIN[最終長度守門]
+    FIN -->|仍超長| REFL
+    FIN -->|可交付| SAVE[寫入記憶並存檔]
 ```
+
+公司運行時失敗且沒有足夠產出時，直接存檔結束。有部分產出則改走評估。
+
+### 四條路的收尾
+
+| 路徑 | 生成之後 |
+|------|----------|
+| `simple` | 長度守門後做多維評估。未達標、迭代未用盡、且分數仍有提升時，反思並改進 |
+| `minecraft_ops` | 輕量 ReAct 加 MineMCP。評估一次後定稿；只有超長才回到反思 |
+| `company` | RAHO 指揮鏈。`EVOL_POST_COMPANY_REFLECT` 預設 `off`，成功後進入決定最終回答與最終長度守門。`evaluate` 只評一次；`full` 進入完整迴圈。超長仍回到反思 |
+| `opc` | 任務 API 跑六級（感知 → 預處理 → 分析 → 診斷 → 決策 → 執行），彙整後進入任務側反思迴圈。主圖只在前置鏈注入感知摘要 |
+
+Grill-Me 在圖的外面。對話送出公司路徑時，前端先叫 `/raho/grill/*`，鎖住簡報後才 `POST /tasks`。
+
+### 請求從哪裡進來
+
+| 入口 | 實際分派 |
+|------|----------|
+| 對話 `#/chat` | 先取路由預覽。公司路徑先 Grill。`company` 與 `opc` 建任務並用 WebSocket。`simple` 與 `minecraft_ops` 走 SSE。預覽逾時 1.5 秒則改走 SSE |
+| 公司頁 | 直接 `POST /tasks`，策略固定 `company`，然後打開任務 |
+| `POST /chat/stream` | 路徑 `company` 走公司 SSE；`minecraft_ops` 走編譯圖；其餘走簡單串流（含圖上的 `opc`） |
+| `POST /tasks` | `opc` 跑六級，`company` 跑 RAHO，其餘走對應的手抄前置與收尾 |
+| `POST /chat` | `evoloop_graph.ainvoke`。`opc` 在這裡是單次生成 |
+
+### 分層
 
 | 層 | 路徑 | 職責 |
 |----|------|------|
-| 圖與 LLM | `backend/core/` | LangGraph、LiteLLM、模型池、評估 |
+| 圖與 LLM | `backend/core/` | LangGraph、`resolve_execution_path`、LiteLLM、評估 |
 | 公司 | `backend/company/` | RAHO、85 席、工作項 DAG、預算 |
-| 靈境 | `backend/linkin/` | 憲法、16 席、Minecraft 護欄 |
+| 靈境 | `backend/linkin/` | 憲法、16 席、Minecraft 護欄與輕量 ops |
 | 整合 | `backend/integrations/` | 六個整合客戶端與 `/integrations` |
 | 計費 | `backend/billing/` | 積分池 v6、Docker 計量、共享池路由 |
 | 前端 | `frontend/` | React 19 控制台。視覺 Token 見 [DESIGN.md](DESIGN.md) |
-| OPC | `opc_service/` | OPC UA，寫入經 `guard.py` |
+| OPC | `opc_service/` | OPC UA 與六級節點，寫入經 `guard.py` |
 
-詳圖：[docs/architecture/overview.md](docs/architecture/overview.md)
+詳圖：[docs/architecture/overview.md](docs/architecture/overview.md) · 六級細節：[docs/architecture/opc-six-stage.md](docs/architecture/opc-six-stage.md)
 
 ---
 

@@ -4,11 +4,14 @@
 
 ## 觸發條件
 
-任務被判定為「複雜」時自動啟用：
+完整優先序在 `resolve_execution_path`（見 [README 運作邏輯](../../README.md#運作邏輯)）。會進公司運行時的情況：
 
-- 查詢長度 ≥ 200 字符
-- 包含關鍵詞：開發、設計、構建、實現、系統、架構、重構、deploy、build、implement 等
 - 執行策略顯式設為 `company`
+- auto 下的靈境複雜任務，或 Minecraft 建造／敘事／多步
+- auto 下 cost_speed 把該複雜度對到 `company`
+- 前面都未命中時：查詢長度達到門檻（基準 200 字，可被路由回饋調整），或含開發、設計、構建、實現、系統、架構、重構、deploy、build、implement 等關鍵詞
+
+工業關鍵詞在公司規則之前就選定 `opc`；單步 Minecraft 控制選定 `minecraft_ops`。對話裡的公司路徑會先走 Grill-Me；公司頁直接建立策略為 `company` 的任務。
 
 ## 角色體系
 

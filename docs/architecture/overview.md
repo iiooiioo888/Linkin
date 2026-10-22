@@ -1,6 +1,6 @@
 # 架構總覽
 
-> 對齊日期：2026-09-09 · 倉庫產品名：**靈境·Linkin**（EvoLoop 運行時）
+> 對齊日期：2026-10-22 · 倉庫產品名：**靈境·Linkin**（EvoLoop 運行時）
 
 > **全景文檔**：部署、分層、LangGraph、RAHO、計費 v6、對話與前端殼的完整圖解見 **[系統架構與運作流程（全面·2026-09）](system-architecture-2026-09.md)**。
 
@@ -12,53 +12,44 @@ Linkin／EvoLoop 是一個**統一模式** AI 系統，所有任務進入同一�
 生成 → 評估 → 反思 → 優化 → 永不停止進化
 ```
 
-不是被動回答問題，而是**主動反思、迭代改進**，直到品質達標。
+簡單路徑會評估並迭代，直到品質達標。公司路徑預設定稿；要繼續打磨時把 `EVOL_POST_COMPANY_REFLECT` 設成 `evaluate` 或 `full`。
 
-## 三層能力
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    統一管線 (LangGraph)                      │
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │  反思閉環     │  │  公司運行時   │  │  OPC 整合    │      │
-│  │              │  │              │  │              │      │
-│  │  generate    │  │  raho L5–L1  │  │  sense       │      │
-│  │  evaluate    │  │  decomposer  │  │  preprocess  │      │
-│  │  reflect     │  │  reviewer    │  │  analyze     │      │
-│  │  improve     │  │  synthesizer │  │  diagnose    │      │
-│  │              │  │  budget      │  │  decide/act  │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  基礎設施：TaskManager · Archiver · TraceLogger      │  │
-│  │           EventBus · StateStore · VectorMemory       │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
+## 四條路徑
 
 | 層級 | 觸發條件 | 流程 |
 |------|----------|------|
-| **反思閉環** | 所有任務 | 生成 → 評估(0-10) → 反思 → 改進 → 迴圈直到達標 |
-| **公司運行時** | 複雜任務 | L5 Grill-Me → L4 戰役 DAG → L3 原子拆解 → L2 執行 → L1 憲兵簽核 → 審查 → 整合 |
-| **OPC 整合** | 工業任務 | 感知 → 預處理 → 分析 → 診斷 → 決策 → 執行 |
+| **反思閉環** | `simple`；以及公司後反思設為 `full` 時 | 生成 → 評估(0-10) → 反思 → 改進 → 直到達標、迭代用盡或提升過小 |
+| **公司運行時** | 策略 `company`，或 auto 判為靈境複雜／Minecraft 重型／關鍵詞與長度 | L5 Grill-Me（對話入口）→ L4 戰役 DAG → L3 原子拆解 → L2 執行 → L1 憲兵簽核 → 審查 → 整合。成功後預設定稿 |
+| **Minecraft 輕量** | 單步控制查詢 | ReAct + MineMCP，評估一次後定稿 |
+| **OPC 六級** | 任務 API 且路徑為 `opc` | 感知 → 預處理 → 分析 → 診斷 → 決策 → 執行，再進任務側反思。主圖只注入感知摘要 |
+
+選路優先序與入口分派見根目錄 [README 運作邏輯](../../README.md#運作邏輯)。實作：`backend/core/execution_path.py`。
 
 ## 統一管線流程
 
 ```mermaid
-graph LR
-    A[使用者查詢] --> B[記憶檢索]
-    B --> C[OPC 上下文增強]
-    C --> D{複雜度路由}
-    D -->|簡單任務| E[單次 LLM 生成]
-    D -->|複雜任務| F[公司運行時]
-    D -->|工業任務| G[OPC 6 級閉環]
-    E --> H[多維度評估]
-    F --> H
-    G --> H
-    H -->|分數 < 門檻| I[反思 → 改進]
-    I --> H
-    H -->|分數 ≥ 門檻| J[存入記憶庫]
+flowchart TD
+    START([START]) --> RM[記憶檢索]
+    RM --> OPC[OPC 上下文]
+    OPC --> LK[靈境上下文]
+    LK --> RC[整合召回]
+    RC --> ROUTE{route_by_complexity}
+    ROUTE -->|company| RUN[run_company]
+    ROUTE -->|minecraft_ops| MC[run_minecraft_ops]
+    ROUTE -->|simple 或 opc| GEN[單次生成]
+    RUN --> GATE{公司後反思}
+    GATE -->|預設 off| DEC[決定最終回答]
+    GATE -->|evaluate 或 full| LEN[長度守門]
+    MC --> LEN
+    GEN --> LEN
+    LEN -->|超長| REFL[反思改進]
+    LEN -->|合規| EVAL[多維評估]
+    EVAL -->|繼續改進| REFL
+    EVAL -->|停止| DEC
+    REFL --> LEN
+    DEC --> FIN[最終長度守門]
+    FIN -->|仍超長| REFL
+    FIN -->|可交付| SAVE[寫入記憶並存檔]
 ```
 
 ## 技術棧
@@ -79,19 +70,14 @@ graph LR
 ## 數據流
 
 ```
-使用者 → FastAPI → LangGraph 圖
-                      ↓
-              ┌───────┼───────┐
-              ↓       ↓       ↓
-          簡單任務  公司任務  OPC 任務
-              ↓       ↓       ↓
-              └───────┼───────┘
-                      ↓
-              評估 → 反思 → 改進（迴圈）
-                      ↓
-              決定最終回答 → 存入記憶 → 存檔
-                      ↓
-              FastAPI → 使用者
+使用者 → FastAPI
+           ├─ 對話：公司／opc → 任務 API + WebSocket
+           │         simple／minecraft_ops → SSE
+           ├─ POST /tasks：opc 六級 · company RAHO · 其餘手抄同一套前置
+           └─ POST /chat 與圖：記憶 → OPC 上下文 → 靈境 → 召回
+                              → run_company | run_minecraft_ops | 單次生成
+                              → 依路徑定稿或反思
+                              → 記憶與存檔
 ```
 
 ## 目錄結構

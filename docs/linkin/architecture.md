@@ -23,10 +23,11 @@ backend/tools/minecraft_mcp.py     JSON-RPC 客戶端（Token／乾跑／審計�
 
 統一圖：
   retrieve_memories → enhance_with_opc_context → enhance_with_linkin_context
-    → route_by_complexity → generate | run_company → 評估／反思
+    → enhance_with_recall_context → route_by_complexity
+    → generate_initial_answer | run_company | run_minecraft_ops
 ```
 
-複雜靈境任務仍走公司運行時：命中世界觀關鍵詞時由 `enhance_with_linkin_context` 注入憲法／RAG；建造／NPC／任務／道具類查詢再轉入公司運行時（預設模板從 `quick_task` 升為 `story_studio`）。Minecraft 控制查詢（座標＋方塊或明示 MCP 工具名）同樣走公司運行時與 `story_studio`，由角色呼叫 `place_block`（遠端 `pose_block`）。審查仍要求四維 ≥80，記錄員寫入 RAG。
+複雜靈境任務與 Minecraft 重型任務（建造、敘事、多步）走公司運行時：命中世界觀關鍵詞時由 `enhance_with_linkin_context` 注入憲法／RAG；這類查詢的預設模板從 `quick_task` 升為 `story_studio`。單步 Minecraft 控制走 `minecraft_ops`（輕量 ReAct + MCP，`place_block` 對遠端 `pose_block`）。公司路徑的審查仍要求四維 ≥80，記錄員寫入 RAG。
 
 ## 五層控制
 

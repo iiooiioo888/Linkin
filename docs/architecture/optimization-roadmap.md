@@ -175,7 +175,7 @@ EVOL_SEMANTIC_THRESHOLD=0.92
 
 **模組**：`opc_service/sense.py`
 
-僅在 `route_by_complexity` 走 OPC 6 級閉環時使用，與運行指標監控無關。
+工業讀數路徑使用（主圖 `enhance_with_opc_context`，以及任務 API 六級的感知級），與運行指標監控無關。
 
 | 模式 | 行為 |
 |------|------|
