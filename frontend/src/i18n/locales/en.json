@@ -18,7 +18,6 @@
   "monitor": {
     "live": "Live",
     "agents": "Agents",
-    "pipeline": "Pipeline",
     "metrics": "Metrics",
     "opc": "Metrics",
     "lab": "Lab",

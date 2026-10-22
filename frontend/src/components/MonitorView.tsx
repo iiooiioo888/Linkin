@@ -23,7 +23,6 @@ import { PanelShell } from './ui/ConsoleLayout';
 
 const AgentsMonitorPanel = lazy(() => import('./AgentsMonitorPanel'));
 const TasksMonitorPanel = lazy(() => import('./TasksMonitorPanel'));
-const PipelineView = lazy(() => import('./PipelineView'));
 const SystemMetricsPanel = lazy(() => import('./SystemMetricsPanel'));
 const ModelCallPanel = lazy(() => import('./ModelCallPanel'));
 const UserFeedbackPanel = lazy(() => import('./UserFeedbackPanel'));
@@ -78,11 +77,6 @@ function LiveTab({
   const generatedAt = useMonitorStore((s) => s.generated_at);
   const error = useMonitorStore((s) => s.error);
 
-  const dashboard = useMonitorStore((s) => s.dashboard);
-  const backgroundPhase = dashboard?.tasks?.find(
-    (t) => t.status === 'running' || t.status === 'pending',
-  )?.phase;
-
   const liveFeed = buildAnimLiveFeed({
     agents,
     optimization,
@@ -120,7 +114,6 @@ function LiveTab({
       )}
       <LiveBoard
         feed={liveFeed}
-        backgroundPhase={backgroundPhase}
         l0Snapshot={l0Snapshot}
         liteShell={liteShell}
         onOpenLab={onOpenLab}
@@ -196,14 +189,6 @@ export default function MonitorView({
         )}
         {tab === 'agents' && (
           <AgentsMonitorPanel focusAgentId={focusAgentId} onFocusAgent={onFocusAgent} deskScope="console" />
-        )}
-        {tab === 'pipeline' && (
-          <MobileLiteGate
-            gated={isMobileDesktopOnlyPanel('pipeline')}
-            summary={<p className="text-[12px] text-[var(--console-sub)]">{t('mobileShell.tasksSummary')}</p>}
-          >
-            <PipelineView messages={messages} onGoTasks={() => onTabChange('tasks')} />
-          </MobileLiteGate>
         )}
         {tab === 'metrics' && (
           <MobileLiteGate gated={isMobileDesktopOnlyPanel('metrics')}>

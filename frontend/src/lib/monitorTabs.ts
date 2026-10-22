@@ -49,7 +49,6 @@ export const MONITOR_WORK_TABS: MonitorTabItem[] = [
   { key: 'live', icon: '◎', label: '即時' },
   { key: 'tasks', icon: '▣', label: '任務' },
   { key: 'agents', icon: '◈', label: '角色' },
-  { key: 'pipeline', icon: '⬡', label: '管線' },
 ];
 
 export const MONITOR_AUDIT_TABS: MonitorTabItem[] = [
@@ -84,7 +83,6 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     label: '執行',
     items: [
       { key: 'tasks', icon: '▣', label: '任務', hint: '隊列／執行中／已完成' },
-      { key: 'pipeline', icon: '⬡', label: '管線', hint: '反思閉環階段' },
       TRACES_NAV_ITEM,
     ],
   },
@@ -171,6 +169,7 @@ export const CONSOLE_TAB_ALIASES: Record<string, MonitorTab> = {
   overview: 'live',
   balancer: 'live',
   task: 'tasks',
+  pipeline: 'agents',
   dashboard: 'tasks',
   hub: 'ops',
   cloud: 'ops',
@@ -212,7 +211,7 @@ const CORE_PAGE_KEYS = new Set<string>([...CONSOLE_TAB_KEYS, 'lab']);
 
 export const CONSOLE_CHROME_TABS: Array<{ key: MonitorTab; label: string; match: MonitorTab[] }> = [
   { key: 'live', label: '總覽', match: ['live'] },
-  { key: 'tasks', label: '執行', match: ['tasks', 'pipeline'] },
+  { key: 'tasks', label: '執行', match: ['tasks'] },
   { key: 'agents', label: '角色', match: ['agents'] },
   { key: 'feedback', label: '審計', match: ['feedback', 'metrics'] },
   { key: 'models', label: '計費', match: ['models', 'billing', 'credits'] },
