@@ -334,16 +334,17 @@ class TestThreeEntryRoutingContract:
         assert chat["max_reflection_rounds"] == task[2]
         assert chat["exec_path"] == task[0]
 
-    def test_opc_q1_task_label_vs_chat_graph_execution(self, task_manager_no_redis):
+    def test_industrial_query_is_the_company_chain(self, task_manager_no_redis):
         task = routing_snapshot_task(task_manager_no_redis, self.OPC_Q)
         sse = routing_snapshot_sse(self.OPC_Q)
         chat = routing_snapshot_chat_sync(self.OPC_Q)
 
-        assert task[0] == "opc"
-        assert sse["path"] == "opc"
-        assert chat["resolve_path"] == "opc"
-        assert chat["target"] == "generate_initial_answer"
-        assert chat["exec_path"] == "simple"
+        assert task[0] == "company"
+        assert sse["branch"] == "company"
+        assert sse["path"] == "company"
+        assert chat["resolve_path"] == "company"
+        assert chat["target"] == "run_company"
+        assert chat["exec_path"] == "company"
         assert task[1:] == (sse["complexity"], sse["max_reflection_rounds"])
         assert chat["complexity"] == task[1]
         assert chat["max_reflection_rounds"] == task[2]

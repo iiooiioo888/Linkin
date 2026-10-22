@@ -72,6 +72,7 @@ class TestRoutingPreviewContract:
         assert should_grill_user("今天天氣如何", "auto") is False
         assert should_grill_user("在坐标(100, 64, 200)处放置一个钻石块", "auto") is False
         assert should_grill_user("開發一個完整登入系統", "auto") is True
+        assert should_grill_user("產線馬達溫度感測異常請診斷", "auto") is True
 
 
 class TestCompanyPreviewReflectionCap:

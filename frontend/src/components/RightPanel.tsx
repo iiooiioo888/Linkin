@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { TaskProgress } from '../types';
-import { OPC_PHASES } from '../types';
+import { OPC_PHASES, usesIndustrialStages } from '../types';
 import { phaseIndex } from './TaskPanel';
 
 interface RightPanelProps {
@@ -35,7 +35,7 @@ function SectionTitle({ icon, text, extra }: { icon?: string; text: string; extr
 }
 
 export default function RightPanel({ task, onClose }: RightPanelProps) {
-  const isOPC = task?.resolved_path === 'opc';
+  const isOPC = usesIndustrialStages(task);
   const running = task?.status === 'running' || task?.status === 'pending';
   const failed = task?.status === 'failed';
   const currentIdx = task ? phaseIndex(OPC_PHASES, task.phase) : -1;
