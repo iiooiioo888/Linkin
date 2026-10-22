@@ -98,7 +98,7 @@ flowchart TB
     end
 
     subgraph L4["L4 · 領域運行時"]
-        Company["company/<br/>orchestrator · 任務經理 · 82 席"]
+        Company["company/<br/>orchestrator · 任務經理 · 80 席"]
         Linkin["linkin/<br/>憲法 · 16 席 · Minecraft 護欄"]
         OPCG["opc_service/<br/>6 級閉環 · guard"]
     end
@@ -433,7 +433,7 @@ flowchart LR
 | 模組 | 路徑 | 職責 |
 |------|------|------|
 | 圖定義 | `backend/core/` | LangGraph、`call_llm`、評估、路由 |
-| 公司運行時 | `backend/company/` | 協調器、任務經理、**82** 席、預算 |
+| 公司運行時 | `backend/company/` | 協調器、任務經理、**80** 席、預算 |
 | 靈境 | `backend/linkin/` | 憲法、**16** 席、Minecraft 護欄 |
 | 世界模組 | `backend/modules/` | `GET /modules`、`/{id}/api/*` |
 | Minecraft MCP | `backend/tools/` + `linkin/minecraft.py` | JSON-RPC、鐵律、審計 |

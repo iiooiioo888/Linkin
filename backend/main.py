@@ -2405,7 +2405,14 @@ async def docker_logs(service: str, tail: int = 100):
 async def docker_stats():
     """獲取容器資源使用統計（含主機 CPU/記憶體/磁碟總覽）。"""
     dm = get_docker_manager()
-    return {"stats": dm.get_stats(), "host": dm.host_stats()}
+    return {"stats": dm.get_stats(), "host": await asyncio.to_thread(dm.host_stats)}
+
+
+@app.get("/system/resources")
+async def system_resources():
+    """主機 CPU／記憶體／網路吞吐。不查容器，供總覽環使用。"""
+    dm = get_docker_manager()
+    return await asyncio.to_thread(dm.host_stats)
 
 
 @app.get("/docker/health")
@@ -2940,6 +2947,14 @@ async def delete_skill(skill_id: str):
     if not skills_store.delete(skill_id):
         raise HTTPException(status_code=404, detail="技能不存在")
     return {"ok": True, "deleted": skill_id}
+
+
+@app.get("/skills/cli-runtimes")
+async def list_skill_cli_runtimes():
+    """檢查要用 CLI 才能執行的技能：命令是否在 PATH。不安裝、不讀憑證。"""
+    from backend.company.cli_runtimes import probe_all
+
+    return {"runtimes": await asyncio.to_thread(probe_all)}
 
 
 @app.get("/skills/preview")

@@ -49,7 +49,6 @@ export const MONITOR_WORK_TABS: MonitorTabItem[] = [
   { key: 'live', icon: '◎', label: '即時' },
   { key: 'tasks', icon: '▣', label: '任務' },
   { key: 'agents', icon: '◈', label: '角色' },
-  { key: 'pipeline', icon: '⬡', label: '管線' },
 ];
 
 export const MONITOR_AUDIT_TABS: MonitorTabItem[] = [
@@ -66,7 +65,7 @@ export const MONITOR_SETUP_TABS: MonitorTabItem[] = [
 ];
 
 export const MONITOR_SYSTEM_TABS: MonitorTabItem[] = [
-  { key: 'memory', icon: '◌', label: 'L0 核心' },
+  { key: 'memory', icon: '◌', label: '記憶' },
   { key: 'context', icon: '◫', label: 'Context' },
   { key: 'integrations', icon: '⧉', label: '外部整合' },
   { key: 'skills', icon: '⚡', label: '技能與 MCP' },
@@ -84,7 +83,6 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     label: '執行',
     items: [
       { key: 'tasks', icon: '▣', label: '任務', hint: '隊列／執行中／已完成' },
-      { key: 'pipeline', icon: '⬡', label: '管線', hint: '反思閉環階段' },
       TRACES_NAV_ITEM,
     ],
   },
@@ -113,7 +111,7 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     label: '系統',
     items: [
       { key: 'llm', icon: '⊞', label: 'API 路由', hint: '金鑰、目錄、分發' },
-      { key: 'memory', icon: '◌', label: 'L0 核心', hint: '記憶／知識／態勢雷達' },
+      { key: 'memory', icon: '◌', label: '記憶', hint: '記憶／知識／態勢雷達' },
       { key: 'context', icon: '◫', label: 'Context', hint: '控制台鏡像；主表面在對話詳細區' },
       { key: 'integrations', icon: '⧉', label: '外部整合', hint: '召回／Agent 工作流／設計' },
       { key: 'skills', icon: '⚡', label: '技能與 MCP', hint: '技能庫／MCP／dsh-context 可視化' },
@@ -171,6 +169,7 @@ export const CONSOLE_TAB_ALIASES: Record<string, MonitorTab> = {
   overview: 'live',
   balancer: 'live',
   task: 'tasks',
+  pipeline: 'agents',
   dashboard: 'tasks',
   hub: 'ops',
   cloud: 'ops',
@@ -212,7 +211,7 @@ const CORE_PAGE_KEYS = new Set<string>([...CONSOLE_TAB_KEYS, 'lab']);
 
 export const CONSOLE_CHROME_TABS: Array<{ key: MonitorTab; label: string; match: MonitorTab[] }> = [
   { key: 'live', label: '總覽', match: ['live'] },
-  { key: 'tasks', label: '執行', match: ['tasks', 'pipeline'] },
+  { key: 'tasks', label: '執行', match: ['tasks'] },
   { key: 'agents', label: '角色', match: ['agents'] },
   { key: 'feedback', label: '審計', match: ['feedback', 'metrics'] },
   { key: 'models', label: '計費', match: ['models', 'billing', 'credits'] },

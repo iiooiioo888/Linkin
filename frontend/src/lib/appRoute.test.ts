@@ -21,4 +21,11 @@ describe('company page route', () => {
     expect(parseAppRoute('#/raho/run-1').view).toBe('raho');
     expect(parseAppRoute('#/raho/run-1').rahoFocus).toBe('run-1');
   });
+
+  it('opens the role desk for the old pipeline hash', () => {
+    const route = parseAppRoute('#/monitor/pipeline');
+    expect(route.view).toBe('monitor');
+    expect(route.monitorTab).toBe('agents');
+    expect(buildAppRouteHash(route)).toBe('#/monitor/agents');
+  });
 });

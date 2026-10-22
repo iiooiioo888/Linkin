@@ -1047,6 +1047,22 @@ export async function fetchDockerBudget(): Promise<DockerBudget> {
   return resp.json();
 }
 
+export interface HostResourceSample {
+  available: boolean;
+  cpu_percent?: number;
+  mem_percent?: number;
+  net_percent?: number | null;
+  net_link_assumed?: boolean;
+  error?: string;
+}
+
+/** 主機 CPU／記憶體／網路吞吐。 */
+export async function fetchHostResources(): Promise<HostResourceSample> {
+  const resp = await fetch(apiUrl('/system/resources'));
+  if (!resp.ok) throw new Error(`讀取主機資源失敗（HTTP ${resp.status}）`);
+  return resp.json() as Promise<HostResourceSample>;
+}
+
 /** 獲取容器資源使用統計。 */
 export async function fetchDockerStats(): Promise<{ stats: Record<string, import('../types').DockerContainerStats> }> {
   const resp = await fetch(apiUrl('/docker/stats'));
@@ -2432,6 +2448,27 @@ export async function previewSkillPrompt(role?: string): Promise<{ role: string;
   const resp = await fetch(apiUrl(`/skills/preview${params}`));
   if (!resp.ok) throw new Error(await readApiError(resp));
   return resp.json();
+}
+
+export interface CliRuntimeStatus {
+  id: string;
+  skill_id: string;
+  binary: string;
+  title: string;
+  summary: string;
+  install: string;
+  group: string;
+  installed: boolean;
+  path: string;
+  ok: boolean;
+  detail: string;
+}
+
+export async function fetchCliRuntimes(): Promise<CliRuntimeStatus[]> {
+  const resp = await fetch(apiUrl('/skills/cli-runtimes'));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  const data = (await resp.json()) as { runtimes: CliRuntimeStatus[] };
+  return data.runtimes ?? [];
 }
 
 export async function syncAgentSkillPacks(): Promise<AgentSkillsSyncReport> {

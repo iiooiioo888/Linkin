@@ -50,7 +50,7 @@
 | 目錄 | 職責 | 套件 README |
 |------|------|-------------|
 | `backend/core/` | 圖、節點、`call_llm`、評估、模型池 | [backend/](../backend/README.md) |
-| `backend/company/` | 協調器、**82** 席 STANDARD_ROLES、任務經理 | 同上 |
+| `backend/company/` | 協調器、**80** 席 STANDARD_ROLES、任務經理 | 同上 |
 | `backend/linkin/` | 憲法、實體、**16** 席子角色、Minecraft 業務護欄 | 同上 |
 | `backend/tools/` | MineMCP／運維等底層橋接 | 同上 |
 | `backend/hub/` | AI Hub 契約實作 | 同上 |

@@ -41,6 +41,13 @@ from backend.core.llm import call_llm, llm_kwargs_for_role, parse_json_response
 logger = logging.getLogger(__name__)
 
 
+def _draft_assumptions(result: dict[str, Any]) -> list[Any]:
+    draft = result.get("budget_draft")
+    if isinstance(draft, dict) and isinstance(draft.get("assumptions"), list):
+        return draft["assumptions"]
+    return []
+
+
 async def _llm_thread(fn, *args, **kwargs):
     """worker 執行緒跑同步 LLM；StopIteration 轉 RuntimeError（不得進 Future）。"""
     def _run():
@@ -333,17 +340,20 @@ class TaskDecomposer:
 
     async def _llm_decompose(self, goal: str) -> DecompositionResult:
         """LLM 驅動拆分：利用 LLM 理解目標語義，智能分解。"""
-        org_chart_str = self._format_org_chart()
-        role_descriptions = self._format_role_descriptions()
         try:
-            from backend.company.role_catalog import resolve_runtime
-            valid_roles = "/".join(
-                rt.value
-                for rt in self.config.roles
-                if resolve_runtime(rt.value).get("enabled", True)
-            )
+            from backend.company.manager_briefing import assemble_manager_context
+
+            context_pack = assemble_manager_context(goal, self.config, self.budget)
         except Exception:
-            valid_roles = "/".join(rt.value for rt in self.config.roles)
+            logger.debug("任務經理上下文包組裝失敗", exc_info=True)
+            context_pack = {
+                "text": "【任務】\n" + goal[:500] + "\n\n【約束】\n上下文包組裝失敗。不要假設未列出的資源、角色、技能或 MCP。",
+                "valid_roles": "/".join(rt.value for rt in self.config.roles) or "developer",
+                "omitted": {},
+                "role_ids": [],
+                "low_relevance": True,
+            }
+        valid_roles = str(context_pack.get("valid_roles") or "developer")
 
         model = self.budget.resolve_model_for_tier(BudgetTier.REASONING)
         llm_opts: dict = {}
@@ -357,12 +367,10 @@ class TaskDecomposer:
         except Exception:
             llm_opts = {}
         prompt = self.prompt_config.manager_decompose.format(
-            goal=goal,
-            org_chart=org_chart_str,
-            role_descriptions=role_descriptions,
+            context_pack=context_pack["text"],
             valid_roles=valid_roles,
             task_budget=self.config.budget.task_limit_usd,
-            active_tier=self.budget.budget_pressure,
+            active_tier=round(self.budget.budget_pressure, 2),
         )
         try:
             from backend.company.raho.scorecard import planning_paradigm_hint
@@ -408,10 +416,11 @@ class TaskDecomposer:
                     "cost_usd": round(cost, 6),
                     "context_sources": [
                         {
-                            "kind": "org_chart",
-                            "label": f"組織圖與 {len(valid_roles)} 個可指派角色",
-                            "text": f"{org_chart_str}\n{role_descriptions}",
-                        }
+                            "kind": "context_pack",
+                            "label": "任務經理上下文包",
+                            "text": context_pack["text"][:4000],
+                            "omitted": context_pack.get("omitted") or {},
+                        },
                     ],
                 })
             except Exception:
@@ -430,7 +439,16 @@ class TaskDecomposer:
                 subtasks=subtasks,
                 execution_plan=execution_plan,
                 phases=phases,
-                meta={"model": model, "cost": round(cost, 4)},
+                meta={
+                    "model": model,
+                    "cost": round(cost, 4),
+                    "draft": True,
+                    "feasibility": result.get("feasibility") or "",
+                    "budget_draft": result.get("budget_draft") or {},
+                    "risks": result.get("risks") or [],
+                    "assumptions": _draft_assumptions(result),
+                    "context_omitted": context_pack.get("omitted") or {},
+                },
             )
 
         except Exception as exc:

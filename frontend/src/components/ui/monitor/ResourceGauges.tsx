@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import './monitor.css';
 
-export type GaugeItem = { label: string; pct: number; color?: string };
+export type GaugeItem = { label: string; pct: number; color?: string; text?: string };
 
 export function ResourceGauges({ gauges, size = 48 }: { gauges: GaugeItem[]; size?: number }) {
   return (
@@ -19,7 +19,7 @@ export function ResourceGauges({ gauges, size = 48 }: { gauges: GaugeItem[]; siz
               } as CSSProperties
             }
           >
-            <span className="mon-gauge__val">{g.pct}%</span>
+            <span className="mon-gauge__val">{g.text ?? `${g.pct}%`}</span>
           </div>
           <span className="mon-gauge__lbl">{g.label}</span>
         </div>

@@ -24,7 +24,6 @@ export const MOBILE_LITE_PRIMARY_TABS: ReadonlySet<MonitorTab> = new Set([
 /** 可經「更多／進階」進入，但預設以摘要或 Desktop 提示呈現 */
 export const MOBILE_LITE_ADVANCED_TABS: ReadonlySet<MonitorTab> = new Set([
   'agents',
-  'pipeline',
   'feedback',
   'metrics',
   'llm',
@@ -46,7 +45,6 @@ export const MOBILE_DESKTOP_ONLY_PANELS: ReadonlySet<MonitorTab> = new Set([
   'integrations',
   'metrics',
   'feedback',
-  'pipeline',
 ]);
 
 /** SidePanel 主導航保留的分頁鍵 */

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
-import { agentRahoLabel, jumpToL0Kernel, INSPECT_CHAIN, KERNEL_CHAIN, RAHO_LAYERS } from '../lib/rahoUi';
+import { agentRahoLabel } from '../lib/rahoUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { fetchLlmOps } from '../api/client';
 import { routeProbeDotClass, routeProbeTone } from '../lib/llmOpsHealth';
@@ -187,52 +187,9 @@ function AgentRoster({
 
   const rows: RosterRow[] = useMemo(() => {
     const out: RosterRow[] = [];
-    if (deskScope === 'console') {
-      const pushLane = (key: string, label: string, layers: readonly number[]) => {
-        const laneRows: RosterRow[] = [];
-        for (const layer of layers) {
-          const meta = RAHO_LAYERS[layer];
-          if (!meta) continue;
-          if (layer === 5) {
-            laneRows.push({
-              kind: 'kernel',
-              key: 'user',
-              label: meta.full,
-              short: meta.short,
-              layer,
-            });
-            continue;
-          }
-          const hit =
-            filtered.find((a) => a.id === meta.role_id) ||
-            filtered.find((a) => a.raho_spine && a.raho_layer === layer);
-          if (hit) {
-            laneRows.push({ kind: 'agent', key: `spine-${hit.id}`, agent: hit });
-          } else {
-            laneRows.push({
-              kind: 'kernel',
-              key: meta.role_id || `layer-${layer}`,
-              label: meta.full,
-              short: meta.short,
-              layer,
-            });
-          }
-        }
-        if (laneRows.length) {
-          out.push({ kind: 'header', key, label, count: laneRows.length });
-          out.push(...laneRows);
-        }
-      };
-      pushLane('h-inspect', '獨立審查 L1', INSPECT_CHAIN);
-      pushLane('h-kernel', '環境核心 L0', KERNEL_CHAIN);
-    }
-    const laneRoleIds = new Set<string>(
-      [...INSPECT_CHAIN, ...KERNEL_CHAIN]
-        .map((layer) => RAHO_LAYERS[layer]?.role_id)
-        .filter((id): id is string => Boolean(id)),
-    );
+    const hiddenRoleIds = new Set(['constitutional_inspector', 'environment_kernel']);
     for (const lv of ORG_LEVELS) {
-      const list = filtered.filter((a) => a.level === lv.level && !laneRoleIds.has(a.id));
+      const list = filtered.filter((a) => a.level === lv.level && !hiddenRoleIds.has(a.id));
       if (!list.length) continue;
       out.push({ kind: 'header', key: `h-${lv.level}`, label: lv.label, count: list.length });
       for (const agent of list) {
@@ -240,7 +197,7 @@ function AgentRoster({
       }
     }
     return out;
-  }, [filtered, deskScope]);
+  }, [filtered]);
 
   const searching = query.trim().length > 0;
 
@@ -262,7 +219,7 @@ function AgentRoster({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="ar-h">
-        <span className="ar-ht">{deskScope === 'studio' ? '工作室' : '審查／組織'}</span>
+        <span className="ar-ht">{deskScope === 'studio' ? '工作室' : '組織'}</span>
         <span className="ar-hc">{agents.length}</span>
       </div>
       <div className="ar-flt" role="tablist" aria-label="角色篩選">
@@ -323,8 +280,7 @@ function AgentRoster({
                 type="button"
                 disabled={staticRow}
                 onClick={() => {
-                  if (row.layer === 0) jumpToL0Kernel();
-                  else if (!staticRow) onPick(row.key);
+                  if (!staticRow) onPick(row.key);
                 }}
                 className="ar-ri"
               >
@@ -814,12 +770,8 @@ function MonitorSidebar({
       {onRoleDesk ? (
         <AgentRoster
           deskScope={onStudioTab ? 'studio' : 'console'}
-          focusAgentId={onMemoryTab ? 'environment_kernel' : focusAgentId}
+          focusAgentId={focusAgentId}
           onPick={(id) => {
-            if (id === 'environment_kernel') {
-              jumpToL0Kernel();
-              return;
-            }
             onFocusAgent(id);
             onMonitorTabChange(onStudioTab ? 'studio' : 'agents');
           }}

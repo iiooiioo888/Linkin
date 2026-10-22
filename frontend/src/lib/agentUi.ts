@@ -138,30 +138,6 @@ export function tasksInColumn<T extends { status: string }>(items: T[], key: Tas
   return items.filter((item) => taskColumnKey(item.status) === key);
 }
 
-/** 管線階段：尚未走到＝隊列，當前＝執行中，已過＝已完成 */
-export const PIPELINE_STAGES = [
-  { id: 'sense', label: '感知' },
-  { id: 'route', label: '路由' },
-  { id: 'gen', label: '生成' },
-  { id: 'eval', label: '評估' },
-  { id: 'reflect', label: '反思' },
-  { id: 'out', label: '輸出' },
-] as const;
-
-export function pipelineStageColumn(
-  index: number,
-  activeIndex: number | null,
-  opts?: { phaseKnown?: boolean },
-): WorkItemColumnKey {
-  if (activeIndex == null) {
-    if (opts?.phaseKnown === false && index === 0) return 'executing';
-    return 'queue';
-  }
-  if (index < activeIndex) return 'done';
-  if (index === activeIndex) return 'executing';
-  return 'queue';
-}
-
 /** 執行軌跡事件：準備＝隊列，調用＝執行中，結果＝已完成 */
 export const TRACE_EVENT_COLUMNS: Record<WorkItemColumnKey, readonly string[]> = {
   queue: ['context_injection', 'phase_change', 'state_snapshot', 'memory_operation'],

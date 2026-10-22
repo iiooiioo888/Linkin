@@ -188,7 +188,7 @@ export default function RoleV3Desk({
 
   const quickActions = [
     { label: '任務列表', href: `#/monitor/agents/${encodeURIComponent(agent.id)}` },
-    { label: '環境核心', href: '#/monitor/memory' },
+    { label: '記憶', href: '#/monitor/memory' },
     { label: '系統總覽', href: '#/monitor/metrics' },
   ];
 

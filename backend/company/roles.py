@@ -6,7 +6,6 @@
 - 內建組織架構模板（page_dev / fullstack_app / research_report / quick_task / full_company / quant_desk / industrial_ops / story_studio）
 """
 
-from backend.company.raho.inspector import CONSTITUTION_LAYER as INSPECTOR_CONSTUTION
 from backend.company.state import (
     BudgetConfig,
     BudgetTier,
@@ -51,7 +50,6 @@ ROLE_MANAGER = RoleDefinition(
         RoleType.PROMPT_ENGINEER,
         RoleType.COORDINATOR,
         RoleType.SUPPORT,
-        RoleType.CONSTITUTIONAL_INSPECTOR,
     ],
     default_tier=BudgetTier.REASONING,
     max_parallel_work=5,
@@ -1245,46 +1243,6 @@ ROLE_KNOWLEDGE_MGR = RoleDefinition(
     ),
 )
 
-ROLE_CONSTITUTIONAL_INSPECTOR = RoleDefinition(
-    role_type=RoleType.CONSTITUTIONAL_INSPECTOR,
-    name="憲兵審查官",
-    level=4,
-    reporting_to=None,
-    responsibilities=[
-        "按序執行四維度壓力測試：結構合規性 → 語義完整性 → 事實一致性 → 極限邊界檢驗；任一失敗立即中斷後續測試",
-        "獨立驗收交付物：只指出錯誤並要求重做，不得幫忙改完",
-        "VERDICT: APPROVED 之後才寫入共享記憶；未簽核的產出不得被下游引用",
-        "態勢感知：結構合規與事實一致失敗一律不放行；僅系統高負載且失敗僅為極限邊界時可 CONDITIONAL_PASS",
-    ],
-    can_delegate_to=[],
-    default_tier=BudgetTier.REASONING,
-    max_parallel_work=3,
-    # 單一真相來源：raho/inspector.py CONSTITUTION_LAYER（InspectorGate 運行時即注入此憲法層，唯讀）
-    system_prompt=INSPECTOR_CONSTUTION,
-)
-
-ROLE_ENVIRONMENT_KERNEL = RoleDefinition(
-    role_type=RoleType.ENVIRONMENT_KERNEL,
-    name="環境與記憶核心",
-    level=4,
-    reporting_to=None,
-    responsibilities=[
-        "軌跡壓縮與回放：抽取決策點，供後續任務參考",
-        "知識實體檢索：沉澱名詞定義，注入任務上下文",
-        "態勢壓力計算與節能偏置",
-        "不執行具體任務、不產出交付物",
-    ],
-    can_delegate_to=[],
-    default_tier=BudgetTier.SUMMARY,
-    max_parallel_work=1,
-    system_prompt=(
-        "你是環境與記憶核心：不參與任務執行，也不產出交付物。"
-        "你把長期記憶、知識實體與態勢偏置注入任務上下文。"
-        "禁止自己動手改產出。"
-    ),
-)
-
-
 def _exec_role(
     role_type: RoleType,
     name: str,
@@ -1591,8 +1549,6 @@ STANDARD_ROLES: dict[RoleType, RoleDefinition] = {
     RoleType.SUPPORT: ROLE_SUPPORT,
     RoleType.MEMORY_CURATOR: ROLE_MEMORY_CURATOR,
     RoleType.KNOWLEDGE_MGR: ROLE_KNOWLEDGE_MGR,
-    RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
-    RoleType.ENVIRONMENT_KERNEL: ROLE_ENVIRONMENT_KERNEL,
 }
 
 
@@ -1677,11 +1633,10 @@ def create_fullstack_team() -> CompanyConfig:
             RoleType.BACKEND_DEV: ROLE_BACKEND_DEV,
             RoleType.TESTER: ROLE_TESTER,
             RoleType.REVIEWER: ROLE_REVIEWER,
-            RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
             RoleType.SYNTHESIZER: ROLE_SYNTHESIZER,
         },
         org_chart={
-            RoleType.MANAGER: [RoleType.TECH_LEAD, RoleType.CONSTITUTIONAL_INSPECTOR],
+            RoleType.MANAGER: [RoleType.TECH_LEAD],
             RoleType.TECH_LEAD: [RoleType.FRONTEND_LEAD, RoleType.BACKEND_LEAD],
             RoleType.FRONTEND_LEAD: [RoleType.JS_DEV, RoleType.CSS_DEV],
             RoleType.BACKEND_LEAD: [RoleType.BACKEND_DEV],
@@ -1703,7 +1658,6 @@ def create_research_team() -> CompanyConfig:
             RoleType.RESEARCHER: ROLE_RESEARCHER,
             RoleType.CONTENT_WRITER: ROLE_CONTENT_WRITER,
             RoleType.REVIEWER: ROLE_REVIEWER,
-            RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
             RoleType.SYNTHESIZER: ROLE_SYNTHESIZER,
         },
         max_parallel_workers=3,
@@ -1857,11 +1811,10 @@ def create_quant_desk() -> CompanyConfig:
             RoleType.ANALYST: ROLE_ANALYST,
             RoleType.RESEARCHER: ROLE_RESEARCHER,
             RoleType.REVIEWER: ROLE_REVIEWER,
-            RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
             RoleType.SYNTHESIZER: ROLE_SYNTHESIZER,
         },
         org_chart={
-            RoleType.MANAGER: [RoleType.FINANCE_LEAD, RoleType.CONSTITUTIONAL_INSPECTOR],
+            RoleType.MANAGER: [RoleType.FINANCE_LEAD],
             RoleType.FINANCE_LEAD: [
                 RoleType.QUANT_ANALYST,
                 RoleType.ANALYST,
@@ -1891,11 +1844,10 @@ def create_industrial_ops() -> CompanyConfig:
             RoleType.PLC_ENGINEER: ROLE_PLC_ENGINEER,
             RoleType.IOT_ENGINEER: ROLE_IOT_ENGINEER,
             RoleType.REVIEWER: ROLE_REVIEWER,
-            RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
             RoleType.SYNTHESIZER: ROLE_SYNTHESIZER,
         },
         org_chart={
-            RoleType.MANAGER: [RoleType.INDUSTRIAL_LEAD, RoleType.CONSTITUTIONAL_INSPECTOR],
+            RoleType.MANAGER: [RoleType.INDUSTRIAL_LEAD],
             RoleType.INDUSTRIAL_LEAD: [
                 RoleType.OPC_ENGINEER,
                 RoleType.SRE,
@@ -1923,11 +1875,10 @@ def create_story_studio() -> CompanyConfig:
             RoleType.TRANSLATOR: ROLE_TRANSLATOR,
             RoleType.COPY_EDITOR: ROLE_COPY_EDITOR,
             RoleType.REVIEWER: ROLE_REVIEWER,
-            RoleType.CONSTITUTIONAL_INSPECTOR: ROLE_CONSTITUTIONAL_INSPECTOR,
             RoleType.SYNTHESIZER: ROLE_SYNTHESIZER,
         },
         org_chart={
-            RoleType.MANAGER: [RoleType.CREATIVE_LEAD, RoleType.CONSTITUTIONAL_INSPECTOR],
+            RoleType.MANAGER: [RoleType.CREATIVE_LEAD],
             RoleType.CREATIVE_LEAD: [
                 RoleType.STORY_WRITER,
                 RoleType.NARRATIVE_EDITOR,

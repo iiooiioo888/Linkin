@@ -9,19 +9,20 @@ import {
   type AnimLiveFeed,
   budgetPct,
   buildReportLines,
-  mapPhaseToPipelineIndex,
   pickActiveAgents,
   pickBusyAgents,
 } from '../lib/animLive';
 import { isLabLink, labSections, LAB_NAV_GROUPS, type LabNavEntry, type LabSubTab } from '../lib/labTabs';
-import { filterAgentsByDesk, PIPELINE_STAGES, requestRoleSettingsDesk } from '../lib/agentUi';
+import { filterAgentsByDesk, requestRoleSettingsDesk } from '../lib/agentUi';
 import {
   buildActivityHeatmap,
   buildSparkSeries24,
   buildStatusStack,
   buildTaskDistributionMatrix,
+  hostResourceGauges,
   taskPriority,
 } from '../lib/monitorData';
+import { useHostResources } from '../lib/hostResources';
 import { navPathForTab } from '../lib/monitorTabs';
 import {
   buildWorkflowSteps,
@@ -45,7 +46,6 @@ import {
   MonitorL0StatusChip,
   MonitorStatusStrip,
   MonitorWarnBar,
-  PipelineTimeline,
   ResourceGauges,
   StackBar,
   TaskDistributionMatrix,
@@ -107,28 +107,6 @@ function WorkflowRail({
   );
 }
 
-function resolveResourceGauges(feed: AnimLiveFeed) {
-  const opt = feed.optimization;
-  const edge = opt?.edge_cache ?? opt?.opc_edge;
-  const cacheCapPct = edge?.max_size ? ((edge?.entry_count ?? 0) / edge.max_size) * 100 : 0;
-  return {
-    cacheCapPct,
-    gauges: [
-      { label: 'MEM', pct: Math.min(100, Math.round(cacheCapPct)), color: 'var(--console-green)' },
-      {
-        label: 'CPU',
-        pct: Math.min(100, (opt?.system_stats?.tasks_running ?? 0) * 12 + 8),
-        color: 'var(--console-blue)',
-      },
-      {
-        label: 'NET',
-        pct: Math.min(100, Math.round((opt?.trace.trace_count ?? 0) / 2)),
-        color: 'var(--console-cyan)',
-      },
-    ],
-  };
-}
-
 function SituationFocusCard({
   feed,
   l0Snapshot,
@@ -138,7 +116,7 @@ function SituationFocusCard({
   l0Snapshot: L0Snapshot | null;
   connected: boolean;
 }) {
-  const { gauges } = resolveResourceGauges(feed);
+  const gauges = hostResourceGauges(useHostResources());
   const running = feed.runningTasks + (feed.summary?.running_company_tasks ?? 0);
 
   return (
@@ -164,6 +142,7 @@ function SituationFocusCard({
           </div>
         </div>
         <ResourceGauges gauges={gauges} />
+        <p className="mt-2 text-center text-[10px] text-[var(--console-faint)]">主機實測</p>
       </div>
     </section>
   );
@@ -355,49 +334,6 @@ function LiveBoardDetailsToggle({
       </button>
       {open ? <div className="mon-live-details__body">{children}</div> : null}
     </div>
-  );
-}
-
-function PipelineCard({
-  feed,
-  backgroundPhase,
-  dock,
-  onOpen,
-}: {
-  feed: AnimLiveFeed;
-  backgroundPhase?: string | null;
-  dock?: boolean;
-  onOpen?: () => void;
-}) {
-  const phase = feed.streamPhase || feed.taskPhase || backgroundPhase || null;
-  const liveIdx = mapPhaseToPipelineIndex(phase);
-  const nodes = PIPELINE_STAGES.map((n, i) => ({
-    id: n.id,
-    label: n.label,
-    state: liveIdx == null
-      ? ('pending' as const)
-      : i < liveIdx
-        ? ('done' as const)
-        : i === liveIdx
-          ? ('active' as const)
-          : ('pending' as const),
-    timingMs: liveIdx != null && i === liveIdx && feed.live ? 120 : liveIdx != null && i < liveIdx ? 80 + i * 40 : null,
-  }));
-
-  return (
-    <MonitorPanel
-      title="管線"
-      accessory={
-        <>
-          <MonitorStatusDot tone={liveIdx != null ? 'info' : 'idle'} label={phase ? String(phase) : '待命'} />
-          {onOpen ? <MonitorLinkButton onClick={onOpen} /> : null}
-        </>
-      }
-    >
-      <div className={dock ? 'py-1' : 'py-2'}>
-        <PipelineTimeline nodes={nodes} />
-      </div>
-    </MonitorPanel>
   );
 }
 
@@ -870,7 +806,6 @@ function TaskStackPanel({
 function CenterMain({
   feed,
   consoleFeed,
-  backgroundPhase,
   taskMatrix,
   statusStack,
   capacityFull,
@@ -885,7 +820,6 @@ function CenterMain({
 }: {
   feed: AnimLiveFeed;
   consoleFeed: AnimLiveFeed;
-  backgroundPhase?: string | null;
   taskMatrix: ReturnType<typeof buildTaskDistributionMatrix>;
   statusStack: ReturnType<typeof buildStatusStack>;
   capacityFull: boolean;
@@ -931,9 +865,6 @@ function CenterMain({
             onOpenAgent={onOpenAgent}
             onOpenTab={onOpenTab}
           />
-          <div className="mon-span-2">
-            <PipelineCard feed={feed} backgroundPhase={backgroundPhase} dock onOpen={() => onOpenTab?.('pipeline')} />
-          </div>
           <BudgetCard feed={feed} dock onOpen={() => onOpenTab?.('models')} />
           <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
           <div className="mon-span-2">
@@ -948,7 +879,6 @@ function CenterMain({
         </div>
       ) : (
         <>
-          <PipelineCard feed={feed} backgroundPhase={backgroundPhase} onOpen={() => onOpenTab?.('pipeline')} />
           {!liteShell ? (
             <MonitorPanel title="任務分佈矩陣">
               <TaskDistributionMatrix matrix={taskMatrix} demo={taskMatrix.every((r) => r.every((c) => c.count === 0))} />
@@ -991,12 +921,13 @@ function RightRailContent({
 }) {
   const dashboard = useMonitorStore((s) => s.dashboard);
   const tasks = dashboard?.tasks ?? [];
-  const { gauges } = resolveResourceGauges(feed);
+  const gauges = hostResourceGauges(useHostResources());
 
   return (
     <div className="mon-live-stack">
       <MonitorPanel title="資源">
         <ResourceGauges gauges={gauges} />
+        <p className="mt-2 text-center text-[10px] text-[var(--console-faint)]">主機 CPU／記憶體／網路</p>
       </MonitorPanel>
       <TaskStackPanel tasks={tasks} statusStack={statusStack} onOpenTab={onOpenTab} />
       <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
@@ -1012,7 +943,6 @@ function RightRailContent({
 
 export default function LiveBoard({
   feed,
-  backgroundPhase,
   l0Snapshot = null,
   density = 'page',
   liteShell = false,
@@ -1022,7 +952,6 @@ export default function LiveBoard({
   onOpenAgent,
 }: {
   feed: AnimLiveFeed;
-  backgroundPhase?: string | null;
   l0Snapshot?: L0Snapshot | null;
   density?: LiveBoardDensity;
   liteShell?: boolean;
@@ -1137,7 +1066,6 @@ export default function LiveBoard({
     <CenterMain
       feed={feed}
       consoleFeed={consoleFeed}
-      backgroundPhase={backgroundPhase}
       taskMatrix={taskMatrix}
       statusStack={statusStack}
       capacityFull={capacityFull}

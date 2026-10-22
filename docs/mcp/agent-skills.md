@@ -17,7 +17,14 @@
 2. **手動**：`python -m backend.scripts.sync_agent_skills`
 3. **API / UI**：`POST /skills/sync-agent-packs` 或控制台「同步 Agent 包」
 
-驗證路徑：前端 `/#/monitor/skills` → 技能分頁應顯示 ~105 條 managed 技能（來源欄位、類型標籤）。`agent-reach` 類型為 CLI 參考，預設停用。
+驗證路徑：前端 `/#/monitor/skills` → 技能分頁應顯示 ~105 條 managed 技能（來源欄位、類型標籤）。`agent-reach`、`just-scrape`、`agent-browser` 類型為需 CLI，預設停用。頁面頂部「CLI 運行時」與下列命令只檢查本機 PATH，不安裝：
+
+```bash
+python -m backend.scripts.cli_runtimes
+python -m backend.scripts.cli_runtimes --json
+```
+
+API：`GET /skills/cli-runtimes`。
 
 ## MediaCrawler 多平台採集（mediacrawler）
 

@@ -1,13 +1,12 @@
 /**
- * L0 環境與記憶核心：記憶瀏覽器／知識圖譜／態勢雷達。
- * 環境與記憶：軌跡、知識與態勢。
+ * 記憶與態勢：記憶瀏覽器／知識圖譜／態勢雷達。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchL0Kernel } from '../api/client';
 import type { L0Snapshot } from '../types';
 import MemoryPanel from './MemoryPanel';
 import LcSpiderChart from './charts/LcSpiderChart';
-import { jumpToIntegrations, jumpToContextMonitor, RAHO_LAYERS } from '../lib/rahoUi';
+import { jumpToIntegrations, jumpToContextMonitor } from '../lib/rahoUi';
 import { openChatContextDetail } from '../lib/contextUi';
 import IntegrationsStrip from './IntegrationsStrip';
 
@@ -86,9 +85,9 @@ export default function L0Panel({
     <div className={`l0-panel${embed ? ' is-embed' : ''}`}>
       <div className="l0-head">
         <div>
-          <h2 className="l0-title">{RAHO_LAYERS[0]?.full ?? 'L0 環境與記憶核心'}</h2>
+          <h2 className="l0-title">記憶與態勢</h2>
           <p className="l0-sub">
-            三核驅動：記憶整理、知識圖譜、態勢偏置。不執行任務，只滲透 L1–L5。
+            記憶整理、知識圖譜、態勢偏置。注入任務上下文，不佔名冊席位。
             {nodeId ? ` · 節點 ${nodeId}` : ''}
           </p>
         </div>

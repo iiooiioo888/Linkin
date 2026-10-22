@@ -61,7 +61,9 @@ class TestIdentity:
         assert RoleType.ATOMIC_EXECUTOR not in STANDARD_ROLES
         assert RoleType.TACTICAL_COMMANDER not in STANDARD_ROLES
         assert RoleType.REQUIREMENT_AUDITOR not in STANDARD_ROLES
-        assert RoleType.ENVIRONMENT_KERNEL in STANDARD_ROLES
+        assert RoleType.ENVIRONMENT_KERNEL not in STANDARD_ROLES
+        assert RoleType.CONSTITUTIONAL_INSPECTOR not in STANDARD_ROLES
+        assert len(STANDARD_ROLES) == 80
 
 
 class TestThreeKernels:

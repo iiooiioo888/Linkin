@@ -12,7 +12,9 @@ import {
   buildActivityHeatmap,
   buildSparkSeries24,
   buildStatusStack,
+  hostResourceGauges,
 } from '../lib/monitorData';
+import { useHostResources } from '../lib/hostResources';
 import {
   ActivityHeatmap,
   KpiSparkCard,
@@ -193,6 +195,7 @@ export default function SystemMetricsPanel() {
   const [data, setData] = useState<OptimizationMonitorData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const hostGauges = hostResourceGauges(useHostResources());
 
   const refresh = useCallback(async () => {
     try {
@@ -333,13 +336,8 @@ export default function SystemMetricsPanel() {
               <ConsoleCard>
                 <ConsoleCardHeader>資源概覽</ConsoleCardHeader>
                 <div className="p-3">
-                  <ResourceGauges
-                    gauges={[
-                      { label: 'MEM', pct: Math.min(100, Math.round(cacheCapPct)), color: 'var(--console-green)' },
-                      { label: 'CPU', pct: Math.min(100, sys?.tasks_running ? 40 + (sys.tasks_running * 10) : 12), color: 'var(--console-blue)' },
-                      { label: 'NET', pct: Math.min(100, Math.round((data?.trace.trace_count ?? 0) / 2)), color: 'var(--console-cyan)' },
-                    ]}
-                  />
+                  <ResourceGauges gauges={hostGauges} />
+                  <p className="mt-2 text-center text-[10px] text-[var(--console-faint)]">主機 CPU／記憶體／網路。不是任務數估算。</p>
                   {statusStack.length > 0 ? (
                     <div className="mt-4">
                       <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">任務狀態</p>

@@ -11,6 +11,7 @@ import {
   callMcpTool,
   deleteMcpServer,
   deleteSkill,
+  fetchCliRuntimes,
   fetchMcpServers,
   fetchSkills,
   mountMcpTools,
@@ -22,6 +23,7 @@ import {
   openTokenDashboard,
   toggleMcpServer,
   toggleSkill,
+  type CliRuntimeStatus,
   type McpServerRecord,
   type SkillRecord,
 } from '../api/client';
@@ -106,7 +108,7 @@ function OkBar({ message }: { message: string | null }) {
 
 const SKILL_TYPE_LABELS: Record<string, string> = {
   'agent-pack': 'Agent 包',
-  'cli-stub': 'CLI 參考',
+  'cli-stub': '需 CLI',
   'cursor-only': 'Cursor 專用',
   custom: '自訂',
 };
@@ -145,6 +147,68 @@ const EMPTY_SKILL_FORM = {
 function skillSourceHref(source: string | undefined): string | null {
   if (!source || !/^[\w.-]+\/[\w.-]+$/.test(source)) return null;
   return `https://github.com/${source}`;
+}
+
+function CliRuntimeStrip() {
+  const [rows, setRows] = useState<CliRuntimeStatus[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setRows(await fetchCliRuntimes());
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const copyInstall = async (row: CliRuntimeStatus) => {
+    try {
+      await navigator.clipboard.writeText(row.install);
+      setCopied(row.id);
+    } catch {
+      setCopied(null);
+    }
+  };
+
+  return (
+    <section className={`${cardCls} mb-4`}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--console-sub)]">CLI 運行時</h3>
+        <button type="button" className={btnCls} onClick={() => void load()}>重新檢查</button>
+      </div>
+      <p className="mb-3 text-[11px] text-[var(--console-sub)]">
+        這些技能不是 MCP，要本機有對應命令才執行得了。這裡只檢查 PATH，不安裝，也不讀取 Cookie 或金鑰。
+      </p>
+      {error && <p className="mb-2 text-[11px] console-status-danger">{error}</p>}
+      <div className="grid gap-2 lg:grid-cols-3">
+        {rows.map((row) => (
+          <div key={row.id} id={`cli-runtime-${row.id}`} className="rounded-lg border border-white/[0.06] bg-black/20 p-2.5">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="text-[12px] text-[var(--console-ink)]">{row.title}</span>
+              <span className={`text-[10px] ${row.installed ? 'console-status-green' : 'text-amber-300'}`}>
+                {row.installed ? '已安裝' : '未安裝'}
+              </span>
+            </div>
+            <p className="mb-1 text-[10px] text-[var(--console-faint)]">{row.group} · {row.binary}</p>
+            <p className="mb-2 text-[11px] text-[var(--console-sub)]">{row.summary}</p>
+            <p className="mb-2 break-all font-mono text-[10px] text-[var(--console-faint)]">{row.installed ? row.path : row.install}</p>
+            {row.installed && <p className="mb-2 truncate text-[10px] text-[var(--console-faint)]">{row.detail}</p>}
+            {!row.installed && (
+              <button type="button" className={btnCls} onClick={() => void copyInstall(row)}>
+                {copied === row.id ? '已複製安裝命令' : '複製安裝命令'}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function SkillsSection() {
@@ -331,6 +395,7 @@ function SkillsSection() {
   return (
     <div>
       <MediaCrawlerPanel />
+      <CliRuntimeStrip />
       <ErrorBar message={error} />
       <OkBar message={message} />
 

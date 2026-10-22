@@ -175,6 +175,44 @@ class TestDockerManagerMock:
         assert out["mem_total"] == Mem.total
         assert "disk_total" in out
         assert "uptime_seconds" in out
+        assert out["net_percent"] is None
+
+    def test_host_stats_network_percent(self, docker_manager, monkeypatch):
+        """網路百分比用取樣前後的位元組差，除以網卡速率。"""
+        import types
+
+        mem = types.SimpleNamespace(total=1, used=1, available=0, percent=40.0)
+        swap = types.SimpleNamespace(total=0, used=0, percent=0.0)
+        calls = {"n": 0}
+
+        def counters(pernic=True):
+            calls["n"] += 1
+            # 0.15 秒內多 150_000 / 75_000 bytes → 1_000_000 / 500_000 B/s
+            step = (calls["n"] - 1) * 1
+            nic = types.SimpleNamespace(
+                bytes_recv=1_000 + step * 150_000,
+                bytes_sent=1_000 + step * 75_000,
+            )
+            return {"eth0": nic, "lo": types.SimpleNamespace(bytes_recv=9_999_999, bytes_sent=9_999_999)}
+
+        fake = types.SimpleNamespace(
+            virtual_memory=lambda: mem,
+            swap_memory=lambda: swap,
+            cpu_percent=lambda interval=0.1: 3.0,
+            cpu_count=lambda: 2,
+            getloadavg=lambda: (0.0, 0.0, 0.0),
+            boot_time=lambda: 1_700_000_000.0,
+            net_io_counters=counters,
+            net_if_stats=lambda: {"eth0": types.SimpleNamespace(isup=True, speed=1000), "lo": types.SimpleNamespace(isup=True, speed=0)},
+        )
+        monkeypatch.setitem(__import__("sys").modules, "psutil", fake)
+        out = docker_manager.host_stats()
+        assert out["net_rx_bps"] == 1_000_000.0
+        assert out["net_tx_bps"] == 500_000.0
+        assert out["net_link_assumed"] is False
+        assert out["net_link_mbps"] == 1000
+        # (1e6+5e5)*8 / 1e9 * 100 = 1.2
+        assert out["net_percent"] == 1.2
 
     def test_host_stats_available_without_os_uname(self, docker_manager, monkeypatch):
         """Windows 沒有 os.uname：取 hostname 不得把整輪主機指標降級成 available=False。"""

@@ -60,7 +60,7 @@
 |------|--------|
 | **統一管線** | 每則查詢先注入記憶、感測上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 在 `simple`、`company`、`minecraft_ops` 中選一條 |
 | **反思閉環** | 簡單路徑做多維評分與改進迴圈。公司路徑預設定稿；Minecraft 輕量路徑評估一次 |
-| **任務經理** | 公司任務由任務經理分析：產出里程碑、成敗標準與依賴，再拆給席位執行。工業查詢同樣進公司，預設模板 `industrial_ops`，感測讀數注入目標；寫入仍經護欄。**82** 席 |
+| **任務經理** | 公司任務由任務經理分析：產出里程碑、成敗標準與依賴，再拆給席位執行。工業查詢同樣進公司，預設模板 `industrial_ops`，感測讀數注入目標；寫入仍經護欄。**80** 席 |
 | **監控控制台** | 對話、控制台、靈境、Minecraft、實驗室。Linear 風 dense UI，桌面三欄約一屏高 |
 | **行動版** | 768px 以下改底部 Tab 與 safe-area；桌面 ≥1440 維持三欄 |
 | **整合召回** | MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil。只在明確召回時省 token，不接受自動 webhook |
@@ -172,7 +172,7 @@ Linkin/
 └── docker-compose.yml
 ```
 
-角色數字：公司 **82** 席，靈境子角色 **16** 席。對照表在 [角色介紹](docs/company/roles.md)。
+角色數字：公司 **80** 席，靈境子角色 **16** 席。對照表在 [角色介紹](docs/company/roles.md)。
 
 ---
 
@@ -291,7 +291,7 @@ npx skills@latest add vercel-labs/agent-browser --all --copy
 python -m backend.scripts.sync_agent_skills
 ```
 
-畫面上：**控制台 → 監控 → 技能與 MCP**（`/#/monitor/skills`）→「同步 Agent 包」。新匯入的技能預設停用，在列表裡啟用後才注入提示詞。類型是 `Agent 包`、`CLI 參考`、`Cursor 專用`。
+畫面上：**控制台 → 監控 → 技能與 MCP**（`/#/monitor/skills`）→「同步 Agent 包」。新匯入的技能預設停用，在列表裡啟用後才注入提示詞。類型是 `Agent 包`、`需 CLI`、`Cursor 專用`。`需 CLI` 的三條（Agent Reach、just-scrape、agent-browser）要本機命令才執行得了；同一頁的「CLI 運行時」或 `python -m backend.scripts.cli_runtimes` 只檢查 PATH，不安裝、不讀取金鑰。
 
 歸功與授權：[mattpocock/skills](https://github.com/mattpocock/skills) · [anthropics/skills](https://github.com/anthropics/skills) · [openai/skills](https://github.com/openai/skills) · [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) · [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) · [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) · [NanmiCoder/MediaCrawler](https://github.com/NanmiCoder/MediaCrawler) · [fuyi-git/token-dashboard](https://github.com/fuyi-git/token-dashboard)
 
@@ -308,7 +308,7 @@ python -m backend.scripts.sync_agent_skills
 | [目錄地圖](docs/structure.md) | 套件與路徑 |
 | [架構總覽](docs/architecture/overview.md) | 統一管線與資料流 |
 | [公司運行時](docs/architecture/company-runtime.md) | RAHO、角色、預算 |
-| [角色介紹](docs/company/roles.md) | 82 席與 16 席靈境子角色 |
+| [角色介紹](docs/company/roles.md) | 80 席與 16 席靈境子角色 |
 | [AI Hub 設計](docs/AI_HUB_DETAILED_DESIGN.md) | Hub 契約 |
 | [靈境世界觀](docs/linkin/worldview.md) | 世界觀 |
 | [Minecraft MCP](docs/linkin/minecraft-mcp.md) | 遊戲橋接 |

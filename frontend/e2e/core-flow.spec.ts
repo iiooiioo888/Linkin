@@ -166,14 +166,10 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.url()).toMatch(/#\/traces/);
   });
 
-  test('管線分頁「任務監控」跳轉至 tasks 分頁', async ({ page }) => {
+  test('舊管線網址改開角色工作台', async ({ page }) => {
     await page.goto('/#/monitor/pipeline');
-    await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
-    await expect(page.locator('.rd-col-h', { hasText: '執行中' })).toBeVisible();
-    await expect(page.locator('.rd-col-h', { hasText: '已完成' })).toBeVisible();
-    await page.getByRole('button', { name: /任務監控/ }).click();
-    await expect(page.getByPlaceholder(/搜尋任務|Search tasks/i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.url()).toMatch(/#\/monitor\/tasks/);
+    await expect(page.getByRole('heading', { name: '角色監控' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.url()).toMatch(/#\/monitor\/agents/);
   });
 
   test('Hash 路由：#/monitor/world 可開啟 Minecraft 世界觀', async ({ page }) => {
