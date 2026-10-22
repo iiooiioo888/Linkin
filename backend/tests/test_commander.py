@@ -69,11 +69,8 @@ VALID_TICKET = {
 
 
 class TestRole:
-    def test_builtin_l3_role_registered(self):
-        assert RoleType.TACTICAL_COMMANDER in STANDARD_ROLES
-        role = STANDARD_ROLES[RoleType.TACTICAL_COMMANDER]
-        assert role.level == 2
-        assert "原子" in "".join(role.responsibilities)
+    def test_commander_prompt_remains_for_internal_gate(self):
+        assert RoleType.TACTICAL_COMMANDER not in STANDARD_ROLES
         assert "Atomic SRP" in SYSTEM_PROMPT
         assert "Context Isolation" in SYSTEM_PROMPT
         assert "Tool Whitelist" in SYSTEM_PROMPT
@@ -87,7 +84,7 @@ class TestRole:
         assert "shared_memory://" in SYSTEM_PROMPT
         assert "Blackboard" in SYSTEM_PROMPT
         assert "以 A 為準" in SYSTEM_PROMPT
-        assert "基礎設施缺失" in role.system_prompt or "極速" in role.system_prompt
+        assert "基礎設施缺失" in SYSTEM_PROMPT or "極速" in SYSTEM_PROMPT
 
 
 class TestTicketGate:
@@ -426,15 +423,39 @@ class TestOrchestratorHook:
         assert all(item.artifacts["atomic_role"].get("system_prompt") for item in items)
 
     @pytest.mark.asyncio
-    async def test_execute_rejects_bad_ticket_without_running(self):
-        from backend.company.orchestrator import CompanyOrchestrator
+    async def test_execute_ignores_bad_ticket_and_uses_task_manager(self, monkeypatch, tmp_path):
+        from unittest.mock import AsyncMock
 
+        from backend.company.decomposer import DecompositionResult, DecompositionStrategy
+        from backend.company.orchestrator import CompanyOrchestrator
+        from backend.company.roles import BUILTIN_TEMPLATES
+
+        monkeypatch.setenv("EVOL_COMPANY_RUN_LOG_DIR", str(tmp_path))
         bad = {
             **VALID_TICKET,
             "clarified_goal": {**VALID_TICKET["clarified_goal"], "core_action": "處理數據"},
         }
-        orch = CompanyOrchestrator()
+
+        async def fake_decompose(goal: str, strategy=DecompositionStrategy.AUTO):
+            return DecompositionResult(
+                goal=goal,
+                strategy=DecompositionStrategy.RULE,
+                subtasks=[{"title": "實作", "assignee": "developer", "complexity": "low"}],
+                execution_plan="任務經理拆解",
+            )
+
+        orch = CompanyOrchestrator(BUILTIN_TEMPLATES["quick_task"])
+        monkeypatch.setattr(orch.decomposer, "decompose", fake_decompose)
+        monkeypatch.setattr(orch, "_execute_review_loop", AsyncMock(return_value=None))
+        monkeypatch.setattr(orch, "_review_and_synthesize", AsyncMock(return_value=("完成", {})))
+        monkeypatch.setattr(
+            orch,
+            "_manager_final_review",
+            AsyncMock(return_value={"approved": True, "score": 9}),
+        )
         result = await orch.execute("不該被拆解", ticket=bad)
-        assert result["success"] is False
-        assert result["status"] == STATUS_REJECT_L4
-        assert result["commander"]["waiting_for_l4"] is True
+        assert result.get("status") != STATUS_REJECT_L4
+        assert not (result.get("commander") or {}).get("waiting_for_l4")
+        log_events = [row["event"] for row in orch._run_log]
+        assert "command_chain_skipped" in log_events
+        assert "task_analyzed" in log_events

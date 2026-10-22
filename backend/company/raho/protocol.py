@@ -62,7 +62,7 @@ LANE_KERNEL = "kernel"
 LANE_ORDER: tuple[str, ...] = (LANE_KERNEL, LANE_COMMAND, LANE_INSPECT)
 LANE_LABELS: dict[str, str] = {
     LANE_KERNEL: "環境核心",
-    LANE_COMMAND: "指揮鏈",
+    LANE_COMMAND: "席位",
     LANE_INSPECT: "獨立審查",
 }
 COMMAND_CHAIN: tuple[int, ...] = (5, 4, 3, 2)
@@ -278,7 +278,7 @@ _ROLE_OVERLAYS: dict[str, dict[str, Any]] = {
     "requirement_auditor": {"layer": 4, "title": "需求審計官", "spine": True},
     "tactical_commander": {"layer": 3, "title": "戰術指揮官", "spine": True},
     "user": {"layer": 5, "title": "用戶", "spine": True},
-    "manager": {"layer": 4, "title": "專案經理", "spine": False},
+    "manager": {"layer": 4, "title": "任務經理", "spine": False},
     "reviewer": {"layer": 1, "title": "審查者", "spine": False},
 }
 
@@ -382,7 +382,7 @@ def direction_label(direction: str | None) -> str:
 
 def lane_label(lane: str | None) -> str:
     key = str(lane or "").strip()
-    return LANE_LABELS.get(key, key or "指揮鏈")
+    return LANE_LABELS.get(key, key or "席位")
 
 
 def raho_identity(

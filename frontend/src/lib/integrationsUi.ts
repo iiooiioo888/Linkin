@@ -83,9 +83,9 @@ export const INTEGRATION_META: Record<IntegrationName, IntegrationUiMeta> = {
 };
 
 export const GROUP_LABEL: Record<IntegrationGroup, { label: string; hint: string }> = {
-  recall: { label: 'Token 節省召回', hint: 'MemOS · OpenViking · WeKnora' },
+  recall: { label: '召回', hint: 'MemOS · OpenViking · WeKnora' },
   agent: { label: 'Agent 工作流', hint: 'Yao · Ouroboros' },
-  design: { label: '設計生成', hint: 'OpenPencil' },
+  design: { label: '設計', hint: 'OpenPencil' },
 };
 
 export function isIntegrationName(raw: string | null | undefined): raw is IntegrationName {

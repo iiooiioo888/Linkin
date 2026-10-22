@@ -68,22 +68,32 @@ class TestPrecomputedPlanner:
 
 class TestPlannerReuse:
     @pytest.mark.asyncio
-    async def test_orchestrator_skips_plan_campaign_and_commander(self, monkeypatch, tmp_path):
+    async def test_orchestrator_analyzes_with_task_manager(self, monkeypatch, tmp_path):
         monkeypatch.setenv("EVOL_COMPANY_RUN_LOG_DIR", str(tmp_path))
         monkeypatch.setenv("EVOL_RAHO_ENABLED", "true")
 
+        from backend.company.decomposer import DecompositionResult, DecompositionStrategy
         from backend.company.orchestrator import CompanyOrchestrator
         from backend.company.roles import BUILTIN_TEMPLATES
 
-        calls = {"plan_campaign": 0, "command_from_ticket": 0}
+        calls = {"plan_campaign": 0, "command_from_ticket": 0, "decompose": 0}
 
         def fake_plan_campaign(goal: str):
             calls["plan_campaign"] += 1
-            raise AssertionError("不應重算 L4")
+            raise AssertionError("不應走 L4 指揮鏈")
 
         def fake_command_from_ticket(ticket, use_llm=True):
             calls["command_from_ticket"] += 1
-            raise AssertionError("不應重算 L3")
+            raise AssertionError("不應走 L3 指揮鏈")
+
+        async def fake_decompose(goal: str, strategy=DecompositionStrategy.AUTO):
+            calls["decompose"] += 1
+            return DecompositionResult(
+                goal=goal,
+                strategy=DecompositionStrategy.RULE,
+                subtasks=[{"title": "實作登入", "assignee": "developer", "complexity": "low"}],
+                execution_plan="任務經理：先完成登入模組",
+            )
 
         monkeypatch.setattr(
             "backend.company.raho.planner.plan_campaign",
@@ -95,6 +105,7 @@ class TestPlannerReuse:
         )
 
         orch = CompanyOrchestrator(BUILTIN_TEMPLATES["quick_task"])
+        monkeypatch.setattr(orch.decomposer, "decompose", fake_decompose)
         monkeypatch.setattr(orch, "_execute_review_loop", AsyncMock(return_value=None))
         monkeypatch.setattr(
             orch,
@@ -113,9 +124,11 @@ class TestPlannerReuse:
             precomputed_planner=_precomputed_pack(),
         )
         assert result.get("success") is True
-        assert calls == {"plan_campaign": 0, "command_from_ticket": 0}
+        assert calls == {"plan_campaign": 0, "command_from_ticket": 0, "decompose": 1}
         log_events = [row["event"] for row in orch._run_log]
-        assert "planner_reused" in log_events
+        assert "task_analyzed" in log_events
+        assert "command_chain_skipped" in log_events
+        assert "planner_reused" not in log_events
 
 
 class TestPostCompanyReflection:

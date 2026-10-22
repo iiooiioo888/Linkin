@@ -7,12 +7,14 @@ import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { agentOpenCount, dispatchEditApiRoute, dispatchJumpAgent, dispatchNewApiRoute, filterAgentsByDesk, isAlertAgent, isLiveAgent, taskColumnKey, tasksInColumn, TASK_COLUMNS, API_ROUTES_CHANGED_EVENT, EDIT_API_ROUTE_EVENT, NEW_API_ROUTE_EVENT, type AgentDeskScope, type TaskColumnKey } from '../lib/agentUi';
-import { agentRahoLabel, jumpToL0Kernel, COMMAND_CHAIN, INSPECT_CHAIN, KERNEL_CHAIN, RAHO_LAYERS, isRahoSpineRole } from '../lib/rahoUi';
+import { agentRahoLabel, jumpToL0Kernel, INSPECT_CHAIN, KERNEL_CHAIN, RAHO_LAYERS } from '../lib/rahoUi';
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { fetchLlmOps } from '../api/client';
 import { routeProbeDotClass, routeProbeTone } from '../lib/llmOpsHealth';
 import type { ApiRoutePublic, ChatSession, RoleAgent, TaskSummary } from '../types';
 import {
+  isLabLink,
+  labSections,
   LAB_NAV_GROUPS,
   type LabSubTab,
 } from '../lib/labTabs';
@@ -221,12 +223,16 @@ function AgentRoster({
           out.push(...laneRows);
         }
       };
-      pushLane('h-command', '指揮鏈 L5–L2', COMMAND_CHAIN);
       pushLane('h-inspect', '獨立審查 L1', INSPECT_CHAIN);
       pushLane('h-kernel', '環境核心 L0', KERNEL_CHAIN);
     }
+    const laneRoleIds = new Set<string>(
+      [...INSPECT_CHAIN, ...KERNEL_CHAIN]
+        .map((layer) => RAHO_LAYERS[layer]?.role_id)
+        .filter((id): id is string => Boolean(id)),
+    );
     for (const lv of ORG_LEVELS) {
-      const list = filtered.filter((a) => a.level === lv.level && !isRahoSpineRole(a.id));
+      const list = filtered.filter((a) => a.level === lv.level && !laneRoleIds.has(a.id));
       if (!list.length) continue;
       out.push({ kind: 'header', key: `h-${lv.level}`, label: lv.label, count: list.length });
       for (const agent of list) {
@@ -256,7 +262,7 @@ function AgentRoster({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="ar-h">
-        <span className="ar-ht">{deskScope === 'studio' ? '工作室' : '指揮／審查／組織'}</span>
+        <span className="ar-ht">{deskScope === 'studio' ? '工作室' : '審查／組織'}</span>
         <span className="ar-hc">{agents.length}</span>
       </div>
       <div className="ar-flt" role="tablist" aria-label="角色篩選">
@@ -625,17 +631,32 @@ function LabSidebar({
       <nav className="sp-nav pb-3" aria-label="實驗室">
         {LAB_NAV_GROUPS.map((group) => (
           <div key={group.id}>
-            <div className="sp-group">{group.label}</div>
-            <div className="sp-list">
-              {group.items.map((item) => (
-                <TabBtn
-                  key={item.key}
-                  item={item}
-                  active={labSubTab === item.key}
-                  onClick={() => onLabSubTabChange(item.key)}
-                />
-              ))}
-            </div>
+            <div className="sp-group sp-group--as-written">{group.label}</div>
+            {labSections(group).map((section) => (
+              <div key={section.id}>
+                {section.label ? <div className="sp-sub">{section.label}</div> : null}
+                <div className="sp-list">
+                  {section.items.map((item) =>
+                    isLabLink(item) ? (
+                      <a key={item.key} href={item.href} title={item.hint} className="sp-item no-underline">
+                        <span className="sp-item-ic">{item.icon}</span>
+                        <span className="sp-item-txt">
+                          <span className="sp-item-l">{item.label}</span>
+                          {item.hint ? <span className="sp-item-h">{item.hint}</span> : null}
+                        </span>
+                      </a>
+                    ) : (
+                      <TabBtn
+                        key={item.key}
+                        item={item}
+                        active={labSubTab === item.key}
+                        onClick={() => onLabSubTabChange(item.key)}
+                      />
+                    ),
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         ))}
       </nav>

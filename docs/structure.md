@@ -1,17 +1,42 @@
 # 專案目錄地圖
 
 > **詳文單一來源**：改目錄或新增套件時，先更新本文，再同步根 `README.md`／`docs/architecture/overview.md` 的精簡樹。  
-> 對齊日期：2026-09-09 · 測試收錄約 **639**（`pytest --collect-only -q`）
+> 對齊日期：2026-10-22
 
-## 一眼看懂
+## 組件分類
+
+系統分成四類。新套件先歸進其中一類，再寫進下面的目錄表。選路是三條：`simple`、`company`、`minecraft_ops`。工業查詢走 `company`，感測讀數由 `backend/core/` 注入，寫入經 `opc_service/guard.py`。
+
+| 類 | 做什麼 | 落在哪 | 實驗室 |
+|----|--------|--------|--------|
+| **核心的開發組件** | 前置注入、選路、簡單路徑的生成／評估／反思；任務經理分析與 82 席；提示詞、架構圖、精簡、A/B、臨時容器 | `backend/core/`、`backend/company/`（量化工具見下一類）、`backend/billing/`、`backend/prompts/`、對話與控制台 | 提示詞、架構、精簡、容器、A/B |
+| **minecraft組件** | 憲法、16 席子角色、世界模組、MineMCP 寫入護欄、`minecraft_ops` | `backend/linkin/`、`backend/modules/`、`backend/tools/`、Minecraft 畫面 | 側欄進入 `#/modules/minecraft` |
+| **價格分析探針組件** | 廠商延遲與報價探針；策略庫與策略圖 | `backend/hub/`、`backend/company/quant_*.py`、Hub 監控（基礎設施 → AI Hub） | 策略庫、策略圖、價格探針 |
+| **整合** | 依功能再分：召回、採集、工業接線、Agent 工作流、設計、技能。見下一節 | `backend/memory/`、`backend/integrations/`、`.agents/skills/`、`opc_service/` | `LAB_INTEGRATE_SECTIONS` |
+
+### 整合的功能
+
+實驗室側欄的單一來源是 `frontend/src/lib/labTabs.ts` 的 `LAB_INTEGRATE_SECTIONS`。六個外部客戶端的群組（`recall`／`agent`／`design`）與此對齊。
+
+| 功能 | 做什麼 | 落在哪 |
+|------|--------|--------|
+| **召回** | 向量記憶與 Token 節省注入：MemOS、OpenViking、WeKnora | `backend/memory/`、`backend/integrations/memos.py`、`openviking.py`、`weknora.py` |
+| **採集** | 網頁轉 Markdown、社媒公開採集、Agent Reach 即時閱讀與搜尋 | 實驗室「爬蟲」；MediaCrawler 與 [Agent Reach](https://github.com/Panniantong/Agent-Reach)（`.agents/skills/agent-reach/`） |
+| **工業接線** | OPC 讀寫。寫入經護欄。實驗室 MCP 頁把 OPC 開關放在這一組 | `opc_service/` |
+| **Agent 工作流** | 任務板與訪談閘門：Yao、Ouroboros | `backend/integrations/yao.py`、`ouroboros.py` |
+| **設計** | Design-as-Code，須顯式觸發：OpenPencil | `backend/integrations/openpencil.py` |
+| **技能** | Agent skills | `.agents/skills/`、`#/monitor/skills` |
+
+控制台左側（總覽、執行、角色、審計、計費、系統）是核心的開發組件裡的導覽，定義在 `frontend/src/lib/monitorTabs.ts` 的 `CONSOLE_NAV_GROUPS`。Minecraft 世界模組用自己的導覽。實驗室四類的單一來源是 `frontend/src/lib/labTabs.ts` 的 `LAB_NAV_GROUPS`。
 
 ```
-請求 → backend/main.py (FastAPI)
-     → backend/core/graph.py (LangGraph)
-         ├─ 簡單 → nodes（生成／評估／反思）
-         ├─ 複雜 → company/ + raho/
-         └─ 工業 → opc_service 上下文 + 6 級閉環
-前端 frontend/ 只觀測與配置；寫世界／OPC 仍走護欄。
+請求 → backend/main.py
+     → 前置：記憶、OPC 讀數、靈境、整合召回
+     → resolve_execution_path
+         ├─ simple          → 生成／評估／反思
+         ├─ company         → 任務經理分析 → 席位（含工業模板）
+         └─ minecraft_ops   → 輕量 ReAct + MineMCP
+寫世界／OPC 仍走護欄。
 ```
 
 ## 根目錄
@@ -19,10 +44,10 @@
 | 路徑 | 職責 | 備註 |
 |------|------|------|
 | `backend/` | FastAPI + LangGraph 主程式 | 見 [backend/README.md](../backend/README.md) |
-| `opc_service/` | OPC UA 微服務與護欄 | 見 [opc_service/README.md](../opc_service/README.md) |
+| `opc_service/` | OPC UA 微服務與護欄 | 整合類。見 [opc_service/README.md](../opc_service/README.md) |
 | `frontend/` | React 19 監控中心 | 見 [frontend/README.md](../frontend/README.md) |
 | `docs/` | **知識庫（詳文唯一來源）** | 本目錄 |
-| `vendor/archify/` | 策略圖 CLI（`file:` 依賴） | 勿當產品業務邏輯改 |
+| `vendor/archify/` | 策略圖與架構圖 CLI（`file:` 依賴） | 價格分析探針／核心開發共用。勿當產品業務邏輯改 |
 | `AGENTS.md` | Agent／自動化約束與禁止事項 | CI／協作必讀 |
 | `CONTRIBUTING.md` | 貢獻流程與送審清單 | |
 | `DESIGN.md` | **前端視覺 Token**（非系統設計） | 說明見 [design/README.md](design/README.md) |
@@ -48,14 +73,16 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 |------|------|
 | `main.py` | REST／SSE／WebSocket 入口 |
 | `auth/` | 登入閘門 |
-| `core/` | 圖、節點、`call_llm`、評估、模型池、路由 |
-| `company/` | 多代理人協調、`raho/`、角色目錄、量化工具 |
-| `linkin/` | 靈境憲法、實體、Minecraft **業務**護欄、16 席子角色種子 |
-| `modules/` | 可插拔世界／整合模組目錄（`GET /modules`）；Minecraft 為內建模組 |
-| `tools/` | MineMCP／運維等**底層**橋接（角色勿直連） |
-| `hub/` | AI Hub（探針／熔斷／目錄）；契約：`AI_HUB_DETAILED_DESIGN.md` |
-| `memory/` | 向量記憶（Chroma 等） |
-| `services/` | 任務、軌跡、監控、llm_ops、雲控制台、實驗室… |
+| `core/` | 核心的開發組件：圖、節點、`call_llm`、評估、模型池、路由 |
+| `company/` | 核心的開發組件：任務經理、82 席、工作項、預算。量化工具屬價格分析探針組件 |
+| `linkin/` | minecraft組件：憲法、實體、Minecraft **業務**護欄、16 席子角色種子 |
+| `modules/` | minecraft組件：可插拔世界模組目錄（`GET /modules`）；Minecraft 為內建模組 |
+| `tools/` | minecraft組件：MineMCP／運維等**底層**橋接（角色勿直連） |
+| `hub/` | 價格分析探針組件：廠商延遲／價格探針、熔斷、目錄；契約：`AI_HUB_DETAILED_DESIGN.md` |
+| `billing/` | 核心的開發組件：積分池 v6、Docker 計量 |
+| `memory/` | 整合：向量記憶（Chroma 等） |
+| `integrations/` | 整合：MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil |
+| `services/` | 任務、軌跡、監控、llm_ops、雲控制台、實驗室。跨四類，不單獨成類 |
 | `environment/` | 環境探測／執行環境輔助 |
 | `middleware/` | FastAPI 中介層 |
 | `prompts/` | 共用提示詞片段 |
@@ -89,19 +116,19 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `llm_ops.py` | 模型目錄爬取／運維 |
 | `cloud_console.py` · `docker_manager.py` · `aliyun_bss.py` | 雲／Docker／帳單 |
 | `opc_monitor.py` · `optimization_monitor.py` | OPC 與優化指標 |
-| `lab_tools.py` · `commander.py` · `auditor.py` | 實驗室、指揮、審計 |
+| `lab_tools.py` | 實驗室工具 |
 
 ### backend/company/（關鍵）
 
 | 路徑 | 職責 |
 |------|------|
 | `orchestrator.py` · `work_item.py` · `state.py` | 協調、工作項 DAG、狀態機 |
-| `roles.py` · `role_catalog.py` · `role_memory.py` | 85 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
-| `raho/` | RAHO L5–L1 |
+| `roles.py` · `role_catalog.py` · `role_memory.py` | 82 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
+| `raho/` | 憲兵審查、環境注入，以及仍供執行期使用的內部協議 |
 | `budget.py` · `rate_card.py` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
 | `seat_io.py` | 席位投遞 I/O 軌跡（prompt／system／response 全文＋來源分解）；前端席位監察頁資料源，契約見 [api/reference.md](api/reference.md) |
 | `decomposer.py` · `react_loop.py` · `tools.py` | 拆解、ReAct、工具 |
-| `quant_*.py` · `docker_tools.py` · `archify_compile.py` | 量化、Docker、策略圖 |
+| `quant_*.py` · `docker_tools.py` · `archify_compile.py` | 量化與策略圖（價格分析探針）；Docker 容器（核心的開發組件） |
 
 ### backend/linkin/（關鍵）
 
@@ -146,7 +173,7 @@ python backend/scripts/test_llm_connection.py
 
 | 數字 | 含義 | 來源 |
 |------|------|------|
-| **85** | 公司 `STANDARD_ROLES`（含 RAHO 脊柱） | `backend/company/roles.py` |
+| **82** | 公司 `STANDARD_ROLES` | `backend/company/roles.py` |
 | **16** | 靈境子角色（4 總監 × 總監+執行者+審查員+記錄員） | `backend/linkin/roles.py` |
 | **8** | `BUILTIN_TEMPLATES` 組織模板 | `backend/company/roles.py` |
 

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ChatMessage, ChatSession, RoutingPreview, TaskOptions, TaskProgress } from './types';
 import { usesIndustrialStages } from './types';
-import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, streamAuditor, TaskWebSocket } from './api/client';
+import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, resumeTask, sendChatStream, TaskWebSocket } from './api/client';
 import type { ChatBillingFootnote } from './api/client';
 import { formatChatBillingFootnote, requestBillingRefresh } from './lib/billingUi';
 import type { TaskWsMessage } from './api/client';
@@ -22,7 +22,6 @@ import {
   type AppRoute,
 } from './lib/appRoute';
 import { isLinkinStudioAgent, requestRoleGrillDesk } from './lib/agentUi';
-import { battleBlocked, battleFromPlanner, hasReusablePlanner } from './lib/plannerReuse';
 import {
   loadActiveSessionId,
   loadSessions,
@@ -34,7 +33,6 @@ import { coerceTaskProgressStatus, isTerminalTaskStatus } from './lib/chatWorksp
 import {
   parseRoutingPreview,
   resolveRoutingPreviewForSend,
-  shouldRunGrill,
   usesTaskWorkspace,
 } from './lib/routingPreview';
 import { hydrateWorldModules } from './lib/worldModules';
@@ -349,115 +347,6 @@ export default function App() {
         patchAssistantRouting(routingPreview);
       }
 
-      if (shouldRunGrill(options.executionStrategy, routingPreview, options.skipGrill)) {
-        try {
-          const grill = await streamAuditor({ query });
-          if (grill.should_grill && !grill.locked && !grill.terminated) {
-            updateSession(sessionId, (s) => ({
-              ...s,
-              updatedAt: Date.now(),
-              messages: s.messages.map((m) =>
-                m.id === assistantId
-                  ? {
-                      ...m,
-                      streaming: false,
-                      content: grill.question?.question || '請先接受需求審計',
-                      grill: {
-                        ...grill,
-                        originalQuery: query,
-                        history: grill.question
-                          ? [{ role: 'assistant', content: grill.question.question, why: grill.question.why }]
-                          : [],
-                        sendOptions: {
-                          executionStrategy: options.executionStrategy,
-                          companyTemplate: options.companyTemplate,
-                          taskOptions: options.taskOptions,
-                          routingPreviewSnapshot: options.routingPreviewSnapshot,
-                        },
-                      },
-                    }
-                  : m,
-              ),
-            }));
-            setSending(false);
-            return;
-          }
-          if (grill.terminated) {
-            updateSession(sessionId, (s) => ({
-              ...s,
-              updatedAt: Date.now(),
-              messages: s.messages.map((m) =>
-                m.id === assistantId
-                  ? {
-                      ...m,
-                      streaming: false,
-                      content: grill.termination_report || '需求審計失敗',
-                      grill: { ...grill, originalQuery: query, history: [] },
-                    }
-                  : m,
-              ),
-            }));
-            setSending(false);
-            return;
-          }
-          // 僅當真的有 L4 門票（經過完整審計並 APPROVED_FOR_PLANNING）才要 L3 拆解；
-          // grill 直通（寒暄／簡單 query，無門票）時直接執行，
-          // 否則 planBattle 會以「缺少 APPROVED_FOR_PLANNING」硬擋下所有任務。
-          if (grill.locked && grill.locked_brief && grill.ticket) {
-            workQuery = grill.locked_brief;
-            semanticLock = {
-              locked: true,
-              locked_brief: grill.locked_brief,
-              ticket: grill.ticket ?? null,
-            };
-            if (grill.planner && hasReusablePlanner(grill.planner)) {
-              precomputedPlanner = grill.planner;
-            }
-            try {
-              let battle = battleFromPlanner(grill.planner ?? null) ?? undefined;
-              if (!hasReusablePlanner(grill.planner)) {
-                battle = await planBattle(
-                  (grill.ticket ?? undefined) as Record<string, unknown> | undefined,
-                  grill.locked_brief,
-                );
-              }
-              updateSession(sessionId, (s) => ({
-                ...s,
-                updatedAt: Date.now(),
-                messages: s.messages.map((m) =>
-                  m.id === assistantId
-                    ? { ...m, battle: battle ?? undefined, grill: { ...grill, originalQuery: query } }
-                    : m,
-                ),
-              }));
-              if (battleBlocked(battle)) {
-                updateSession(sessionId, (s) => ({
-                  ...s,
-                  messages: s.messages.map((m) =>
-                    m.id === assistantId
-                      ? {
-                          ...m,
-                          streaming: false,
-                          content:
-                            battle?.status === 'REJECT_TO_L4'
-                              ? 'L3 退回 L4：門票缺件，拒絕拆解。'
-                              : 'L3 上交用戶：約束內不可行。',
-                          battle,
-                        }
-                      : m,
-                  ),
-                }));
-                setSending(false);
-                return;
-              }
-            } catch {
-              // L3 不可用時仍帶門票進入公司運行時
-            }
-          }
-        } catch {
-          // Grill 不可用時降級直通執行
-        }
-      }
       if (options.taskOptions?.semantic_brief || options.taskOptions?.auditor_ticket) {
         semanticLock = {
           locked: true,
@@ -466,7 +355,7 @@ export default function App() {
         };
       }
 
-      // ── 簡單／minecraft_ops 走 SSE；指揮鏈（含工業）建任務 ──
+      // ── 簡單／minecraft_ops 走 SSE；公司任務（含工業）建任務，由任務經理分析 ──
       if (workQuery.trim() !== query.trim()) {
         routingPreview = await resolveRoutingPreviewForSend({
           query: workQuery,
@@ -857,139 +746,6 @@ export default function App() {
     [activeSession, i18n.language, updateSession],
   );
 
-  const handleGrillAnswer = useCallback(
-    async (messageId: string, answer: string, forceLock = false) => {
-      if (!activeSession) return;
-      const sessionId = activeSession.id;
-      const msg = activeSession.messages.find((m) => m.id === messageId);
-      const grill = msg?.grill;
-      if (!msg || !grill?.session_id) return;
-      setSending(true);
-      setError(null);
-      try {
-        const next = await streamAuditor({
-          sessionId: grill.session_id,
-          answer,
-          forceLock,
-        });
-        const history = [
-          ...(grill.history ?? []),
-          { role: 'user' as const, content: answer },
-          ...(next.question
-            ? [{ role: 'assistant' as const, content: next.question.question, why: next.question.why }]
-            : []),
-        ];
-        updateSession(sessionId, (s) => ({
-          ...s,
-          updatedAt: Date.now(),
-          messages: s.messages.map((m) =>
-            m.id === messageId
-              ? {
-                  ...m,
-                  content:
-                    next.termination_report
-                    || next.question?.question
-                    || (next.locked ? '需求已鎖定，開始規劃。' : m.content),
-                  grill: { ...grill, ...next, history, originalQuery: grill.originalQuery, sendOptions: grill.sendOptions },
-                }
-              : m,
-          ),
-        }));
-        if (next.terminated) {
-          return;
-        }
-        if (next.locked) {
-          const opts = grill.sendOptions ?? {
-            executionStrategy: (msg.executionStrategy ?? 'auto') as SendOptions['executionStrategy'],
-            companyTemplate: 'quick_task' as const,
-          };
-          let blocked = false;
-          try {
-            let battle = battleFromPlanner(next.planner ?? null) ?? undefined;
-            if (!hasReusablePlanner(next.planner)) {
-              battle = await planBattle(
-                (next.ticket ?? undefined) as Record<string, unknown> | undefined,
-                next.locked_brief || '',
-              );
-            }
-            updateSession(sessionId, (s) => ({
-              ...s,
-              messages: s.messages.map((m) =>
-                m.id === messageId ? { ...m, battle: battle ?? undefined } : m,
-              ),
-            }));
-            if (battleBlocked(battle)) {
-              blocked = true;
-            }
-          } catch {
-            // L3 不可用時仍進入公司運行時
-          }
-          if (blocked) {
-            return;
-          }
-          void sendQuery(next.locked_brief || grill.originalQuery || answer, {
-            executionStrategy: opts.executionStrategy,
-            companyTemplate: (opts.companyTemplate as SendOptions['companyTemplate']) || 'quick_task',
-            skipGrill: true,
-            taskOptions: {
-              ...opts.taskOptions,
-              semantic_brief: next.locked_brief || grill.originalQuery,
-              auditor_ticket: next.ticket ?? undefined,
-              precomputed_planner: hasReusablePlanner(next.planner)
-                ? (next.planner as Record<string, unknown>)
-                : opts.taskOptions?.precomputed_planner,
-            },
-          });
-        }
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setSending(false);
-      }
-    },
-    [activeSession, sendQuery, updateSession],
-  );
-
-  const handleBattlePick = useCallback(
-    (messageId: string, choice: string) => {
-      const msg = activeSession?.messages.find((m) => m.id === messageId);
-      const grill = msg?.grill;
-      const opts = grill?.sendOptions ?? {
-        executionStrategy: (msg?.executionStrategy ?? 'auto') as SendOptions['executionStrategy'],
-        companyTemplate: 'quick_task' as const,
-      };
-      const baseTicket = grill?.ticket ?? opts.taskOptions?.auditor_ticket ?? {};
-      const ticket = { ...baseTicket, user_override: choice };
-      updateSession(activeSession?.id ?? '', (s) => ({
-        ...s,
-        messages: s.messages.map((m) =>
-          m.id === messageId
-            ? {
-                ...m,
-                battle: m.battle
-                  ? { ...m.battle, waiting_for_user_decision: false, status: 'PLAN_READY' }
-                  : m.battle,
-              }
-            : m,
-        ),
-      }));
-      void sendQuery(grill?.locked_brief || grill?.originalQuery || choice, {
-        executionStrategy: opts.executionStrategy,
-        companyTemplate: (opts.companyTemplate as SendOptions['companyTemplate']) || 'quick_task',
-        skipGrill: true,
-        taskOptions: {
-          ...opts.taskOptions,
-          semantic_brief: grill?.locked_brief || grill?.originalQuery,
-          auditor_ticket: ticket,
-          precomputed_planner: hasReusablePlanner(grill?.planner)
-            ? (grill?.planner as Record<string, unknown>)
-            : opts.taskOptions?.precomputed_planner,
-        },
-      });
-    },
-    [activeSession, sendQuery, updateSession],
-  );
-
   const handleRetry = useCallback(() => {
     if (lastQuery)
       void sendQuery(lastQuery, {
@@ -1338,8 +1094,6 @@ export default function App() {
               onOpenTask={handleOpenTask}
               onOpenTrace={handleOpenTrace}
               onSuggest={handleSuggest}
-              onGrillAnswer={handleGrillAnswer}
-              onBattlePick={handleBattlePick}
               onDecisionPending={handleDecisionPending}
               onDecisionResolved={handleDecisionResolved}
               onTaskStatePatch={handleTaskStatePatch}

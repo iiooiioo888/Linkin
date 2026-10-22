@@ -766,6 +766,19 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
+.sp-group--as-written {
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.sp-sub {
+  padding: 6px 12px 2px 18px;
+  color: var(--apple-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 .sp-nav-fold {
   border-bottom: 1px solid color-mix(in srgb, var(--console-line) 65%, transparent);
 }

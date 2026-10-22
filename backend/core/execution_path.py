@@ -2,7 +2,7 @@
 
 優先序（auto）：
   1. 強制策略 simple / company
-  2. 工業關鍵詞 → company（指揮鏈即 OPC；預設模板 industrial_ops）
+  2. 工業關鍵詞 → company（任務經理分析；預設模板 industrial_ops 席位）
   3. 靈境複雜任務 → company
   4. Minecraft 重型任務（建造／敘事／多步） → company
   5. Minecraft 單步控制查詢 → minecraft_ops（輕量 ReAct + MCP）
@@ -94,14 +94,14 @@ def is_complex_task(query: str, *, use_routing_feedback: bool = True) -> bool:
 
 
 def needs_opc_context(query: str) -> bool:
-    """判斷任務是否走指揮鏈的工業執行（感知到執行）。"""
+    """判斷任務是否要注入 OPC 讀數，並預設改用工業運維席。"""
     return bool(_OPC_KEYWORDS.search(query))
 
 
 def resolve_company_template(query: str, template: str | None = None) -> str:
     """預設 quick_task 遇上工業查詢時改為工業運維席。
 
-    指揮鏈與 OPC 是同一條。呼叫端已指定其他模板時保留。
+    分析仍由任務經理做。呼叫端已指定其他模板時保留。
     """
     requested = (template or "quick_task").strip() or "quick_task"
     if requested == "quick_task" and needs_opc_context(query or ""):
@@ -164,7 +164,7 @@ def resolve_execution_path(
         return "company"
 
     if needs_opc_context(text):
-        logger.debug("execution_path: industrial → company（指揮鏈）")
+        logger.debug("execution_path: industrial → company（任務經理）")
         return "company"
 
     try:

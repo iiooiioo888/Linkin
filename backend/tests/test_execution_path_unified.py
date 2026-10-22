@@ -80,41 +80,19 @@ class TestExecutionPathMatrix:
     def test_auto_keyword_complex(self):
         self._assert_all_agree(self.COMPLEX_Q, "auto", "run_company", "company")
 
-    def test_industrial_chain_assembles_answer(self, monkeypatch):
-        import asyncio
+    def test_company_node_does_not_run_command_chain(self):
+        import inspect
 
-        from backend.core.industrial_chain import run_industrial_chain
+        from backend.core.company_nodes import run_company, with_opc_summary
 
-        async def sense(_state):
-            return {"opc_status": "ok", "opc_readings": {"motor": 1}}
+        source = inspect.getsource(run_company)
+        assert "run_industrial_chain" not in source
+        assert "requirement_auditor" not in source
+        merged = with_opc_summary("診斷馬達", "【工業數據上下文（OPC 即時讀數）】")
+        assert merged.startswith("診斷馬達")
+        assert "OPC 即時讀數" in merged
 
-        async def preprocess(_state):
-            return {"opc_quality_report": {"total": 1, "good": 1, "bad": 0}, "opc_readings_clean": {}}
-
-        async def analyze(_state):
-            return {"opc_analysis": {"summary": "穩定"}}
-
-        async def diagnose(_state):
-            return {"opc_diagnosis": {"anomaly_detected": False, "severity": "normal", "root_cause": "無", "analysis": "正常"}}
-
-        async def decide(_state):
-            return {"opc_decisions": [], "opc_decision_summary": ""}
-
-        async def act(_state):
-            return {"opc_actions": []}
-
-        monkeypatch.setattr("backend.core.industrial_chain.sense_opc", sense)
-        monkeypatch.setattr("backend.core.industrial_chain.preprocess_opc", preprocess)
-        monkeypatch.setattr("backend.core.industrial_chain.analyze_opc", analyze)
-        monkeypatch.setattr("backend.core.industrial_chain.diagnose_opc", diagnose)
-        monkeypatch.setattr("backend.core.industrial_chain.decide_opc", decide)
-        monkeypatch.setattr("backend.core.industrial_chain.act_opc", act)
-
-        state = asyncio.run(run_industrial_chain({"query": self.OPC_Q}))
-        assert "指揮鏈" in state["current_answer"]
-        assert state.get("cancelled") is not True
-
-    def test_auto_industrial_is_company_chain(self):
+    def test_auto_industrial_is_company_for_task_manager(self):
         from backend.core.routing_preview import build_routing_preview
 
         self._assert_all_agree(self.OPC_Q, "auto", "run_company", "company")

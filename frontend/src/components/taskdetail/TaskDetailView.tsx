@@ -1,7 +1,7 @@
 /**
  * TaskDetailView — 任務詳情整頁（#/task/{taskId}）。
  *
- * 匯合三個分析產物區塊（01 概覽／02 需求分析／03 作戰計劃）＋
+ * 匯合分析產物區塊（01 概覽／02 任務分析／03 工作拆解）＋
  * 04 看板工作項 ＋ 05 事件時間軸 ＋ 06 預算，全部讀自任務快照
  * （GET /tasks/{id}?events_limit=0 的完整事件流），無額外端點。
  * 執行中每 3 秒回調 onRefresh 讓父層重抓快照。
@@ -63,8 +63,8 @@ interface TaskDetailViewProps {
 
 const ANCHORS: Array<{ id: string; label: string }> = [
   { id: 'td-overview', label: '01 概覽' },
-  { id: 'td-requirement', label: '02 需求分析' },
-  { id: 'td-plan', label: '03 作戰計劃' },
+  { id: 'td-requirement', label: '02 任務分析' },
+  { id: 'td-plan', label: '03 工作拆解' },
   { id: 'td-board', label: '04 工作項' },
   { id: 'td-events', label: '05 事件流' },
   { id: 'td-context', label: '07 Context' },

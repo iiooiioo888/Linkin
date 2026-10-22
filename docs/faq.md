@@ -40,7 +40,7 @@ python -m backend.scripts.seed_demo_content
 
 | 數字 | 含義 |
 |------|------|
-| **85** | 公司 `STANDARD_ROLES`（含 RAHO 脊柱） |
+| **82** | 公司 `STANDARD_ROLES` |
 | **16** | 靈境子角色（4 總監 × 總監+執行者+審查員+記錄員） |
 
 詳見 [目錄地圖](structure.md) · [公司運行時](architecture/company-runtime.md)。

@@ -54,15 +54,10 @@ RICH_A5 = "確認。後果由我承擔，以上作為最終合約依據。"
 
 
 class TestAuditorRole:
-    def test_builtin_l4_role_registered(self):
-        assert RoleType.REQUIREMENT_AUDITOR in STANDARD_ROLES
-        role = STANDARD_ROLES[RoleType.REQUIREMENT_AUDITOR]
-        assert role.level == 4
-        assert role.name == "需求審計官"
-        assert RoleType.TACTICAL_COMMANDER in STANDARD_ROLES
-        commander = STANDARD_ROLES[RoleType.TACTICAL_COMMANDER]
-        assert commander.name == "戰術指揮官"
-        assert commander.reporting_to == RoleType.REQUIREMENT_AUDITOR
+    def test_chain_seats_removed_from_catalog(self):
+        assert RoleType.REQUIREMENT_AUDITOR not in STANDARD_ROLES
+        assert RoleType.TACTICAL_COMMANDER not in STANDARD_ROLES
+        assert RoleType.ATOMIC_EXECUTOR not in STANDARD_ROLES
 
 
 SPEC_QUESTIONS = {
@@ -151,13 +146,11 @@ class TestGateway:
         assert tree.nodes[0].kind == "user_grill"
         assert tree.nodes[0].from_layer == 4
 
-    def test_role_uses_gateway_system_prompt(self):
+    def test_gateway_system_prompt_still_defines_lock(self):
         from backend.services.auditor import SYSTEM_PROMPT
 
-        role = STANDARD_ROLES[RoleType.REQUIREMENT_AUDITOR]
-        assert role.system_prompt == SYSTEM_PROMPT
-        assert "禁止確認偏誤" in role.system_prompt
-        assert "APPROVED_FOR_PLANNING" in role.system_prompt
+        assert "禁止確認偏誤" in SYSTEM_PROMPT
+        assert "APPROVED_FOR_PLANNING" in SYSTEM_PROMPT
 
     def test_vague_answer_rejected(self):
         started = auditor_start("我想做一個能幫我自動管粉絲的 AI。")
@@ -222,9 +215,9 @@ class TestGateway:
         assert failed["terminated"] is True
 
     def test_should_grill_company_forced(self):
-        assert should_grill_user("隨便", "company") is True
+        assert should_grill_user("隨便", "company") is False
         assert should_grill_user("你好", "simple") is False
-        assert should_grill_user("開發一個完整登入系統", "auto") is True
+        assert should_grill_user("開發一個完整登入系統", "auto") is False
 
     def test_process_user_request_terminates_over_auth(self):
         auditor = RequirementAuditor()

@@ -47,7 +47,7 @@ backend/tools/minecraft_mcp.py     JSON-RPC 客戶端（Token／乾跑／審計�
 |------|------|------|
 | FastAPI 入口 | `backend/main.py` | 已掛載 `/linkin/*` |
 | 統一圖 / 節點 / LLM | `backend/core/` | EvoLoop 既有 |
-| 公司協調器與 **85** 席 `STANDARD_ROLES` | `backend/company/` | 既有；靈境另加 **16** 席 custom 子角色 |
+| 公司協調器與 **82** 席 `STANDARD_ROLES` | `backend/company/` | 既有；靈境另加 **16** 席 custom 子角色 |
 | AI Hub | `backend/hub/` | 既有 |
 | 監控／雲／Docker | `backend/services/` | 既有 |
 | 靈境憲法／API／工具 | `backend/linkin/` | 已落地（含管線注入 `pipeline.py`、Minecraft 護欄 `minecraft.py`、Sponge Schematic v3 `schematic.py`） |

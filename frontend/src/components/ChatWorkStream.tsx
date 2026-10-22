@@ -10,7 +10,6 @@ import { MonitorSection } from './ChatMonitorCards';
 import MarkdownBody from './media/MarkdownBody';
 import { StatusColumnBoard } from './StatusColumnBoard';
 import { L0BiasHint } from './L0BiasHint';
-import { jumpToGrillTree } from '../lib/rahoUi';
 import { usesIndustrialStages } from '../types';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, ITEM_STATUS_META, roleLabel } from './TaskPanel';
 import { eventClock } from '../lib/taskTiming';
@@ -49,7 +48,7 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
   const liveThink = (thinking || parsedDraft.thinking).trim();
   const items = useMemo(() => flattenItems(task), [task]);
   const recentEvents = [...(task.events ?? [])].slice(-12).reverse();
-  const pathLabel = industrial || isCompany ? '指揮鏈' : '反思閉環';
+  const pathLabel = industrial || isCompany ? '公司' : '反思閉環';
 
   return (
     <aside className="apple-canvas hidden min-h-0 w-[300px] shrink-0 flex-col overflow-y-auto border-l border-white/[0.08] p-4 lg:flex xl:w-[340px]">
@@ -75,12 +74,6 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
 
       {/* 決策阻塞點改由 ChatView 輸入列上方呈現，避免側欄 hidden／overflow 擋點擊 */}
       <L0BiasHint snapshot={task.raho?.l0} compact />
-      {(task.raho?.trees?.length ?? 0) > 0 ? (
-        <button type="button" className="l0-link mb-3" onClick={() => jumpToGrillTree()}>
-          對照質詢 · {task.raho!.trees!.length} 條鏈
-        </button>
-      ) : null}
-
       <MonitorSection title="當前階段" hint={phaseLabel} badge={running ? 'LIVE' : undefined}>
         <p className="text-[12px] leading-relaxed text-[var(--console-sub)]">{task.query.slice(0, 120)}</p>
       </MonitorSection>

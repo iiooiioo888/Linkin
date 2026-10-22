@@ -67,7 +67,7 @@ const PIPELINE_PHASE_RULES: Array<{ pattern: RegExp; index: number }> = [
   },
   {
     pattern:
-      /\b(route_by_complexity|campaign_plan|decompose|analyze_opc|diagnose_opc|decide_opc|路由|complexity|starting|resuming)\b/i,
+      /\b(route_by_complexity|task_analysis|campaign_plan|decompose|analyze_opc|diagnose_opc|decide_opc|路由|complexity|starting|resuming)\b/i,
     index: 1,
   },
   {

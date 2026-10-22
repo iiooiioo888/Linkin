@@ -58,10 +58,10 @@ class TestIdentity:
         from backend.company.roles import STANDARD_ROLES
         from backend.company.state import RoleType
 
-        assert RoleType.ATOMIC_EXECUTOR in STANDARD_ROLES
+        assert RoleType.ATOMIC_EXECUTOR not in STANDARD_ROLES
+        assert RoleType.TACTICAL_COMMANDER not in STANDARD_ROLES
+        assert RoleType.REQUIREMENT_AUDITOR not in STANDARD_ROLES
         assert RoleType.ENVIRONMENT_KERNEL in STANDARD_ROLES
-        assert STANDARD_ROLES[RoleType.ATOMIC_EXECUTOR].reporting_to == RoleType.TACTICAL_COMMANDER
-        assert STANDARD_ROLES[RoleType.TACTICAL_COMMANDER].reporting_to == RoleType.REQUIREMENT_AUDITOR
 
 
 class TestThreeKernels:

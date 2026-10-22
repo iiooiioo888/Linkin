@@ -334,7 +334,7 @@ class TestThreeEntryRoutingContract:
         assert chat["max_reflection_rounds"] == task[2]
         assert chat["exec_path"] == task[0]
 
-    def test_industrial_query_is_the_company_chain(self, task_manager_no_redis):
+    def test_industrial_query_is_company_for_task_manager(self, task_manager_no_redis):
         task = routing_snapshot_task(task_manager_no_redis, self.OPC_Q)
         sse = routing_snapshot_sse(self.OPC_Q)
         chat = routing_snapshot_chat_sync(self.OPC_Q)

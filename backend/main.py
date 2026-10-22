@@ -1001,40 +1001,15 @@ async def _company_stream(req: ChatRequest):
 
     template_name = resolve_company_template(query, req.company_template or "quick_task")
 
-    if template_name == "industrial_ops":
-        from backend.core.industrial_chain import run_industrial_chain
-        from backend.core.routing_preview import build_routing_preview
+    try:
+        from backend.core.company_nodes import enhance_with_opc_context, with_opc_summary
 
-        preview = build_routing_preview(
-            query,
-            mode=req.execution_strategy,
-            company_template=template_name,
-        )
-        yield _sse_path_resolved(preview)
-        try:
-            industrial = await run_industrial_chain(
-                {"query": query, "session_id": session_id}
-            )
-            answer = str(industrial.get("current_answer") or "")
-            done_industrial = {
-                "answer": answer,
-                "score": None,
-                "iteration": 0,
-                "resolved_path": "company",
-                "template": "industrial_ops",
-                "complexity": preview.get("complexity"),
-            }
-            billing_snap = chat_billing_snapshot()
-            if billing_snap:
-                done_industrial["billing"] = billing_snap
-            yield f"event: done\ndata: {json_mod.dumps(done_industrial, ensure_ascii=False)}\n\n"
-        except Exception as exc:
-            yield f"event: error\ndata: {json_mod.dumps({'error': str(exc)[:500]}, ensure_ascii=False)}\n\n"
-        finally:
-            end_chat_billing(billing_token)
-        return
+        opc_state = await enhance_with_opc_context({"query": query, "session_id": session_id})
+        query = with_opc_summary(query, str((opc_state.get("opc_context") or {}).get("summary") or ""))
+    except Exception:
+        logger.debug("公司 SSE 的 OPC 摘要略過", exc_info=True)
 
-    # 選擇組織模板
+    # 選擇組織模板。工業查詢用 industrial_ops 席位，仍由任務經理分析。
     config = BUILTIN_TEMPLATES.get(template_name)
     if config is None:
         config = BUILTIN_TEMPLATES["quick_task"]

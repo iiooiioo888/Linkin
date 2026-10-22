@@ -71,8 +71,8 @@ class TestRoutingPreviewContract:
 
         assert should_grill_user("今天天氣如何", "auto") is False
         assert should_grill_user("在坐标(100, 64, 200)处放置一个钻石块", "auto") is False
-        assert should_grill_user("開發一個完整登入系統", "auto") is True
-        assert should_grill_user("產線馬達溫度感測異常請診斷", "auto") is True
+        assert should_grill_user("開發一個完整登入系統", "auto") is False
+        assert should_grill_user("產線馬達溫度感測異常請診斷", "company") is False
 
 
 class TestCompanyPreviewReflectionCap:
@@ -111,7 +111,6 @@ class TestTaskPathResolvedSingleSource:
         monkeypatch.setattr(mgr, "_run_simple_task", _noop)
         monkeypatch.setattr(mgr, "_run_company_task", _noop)
         monkeypatch.setattr(mgr, "_run_minecraft_ops_task", _noop)
-        monkeypatch.setattr(mgr, "_run_opc_task", _noop)
 
         for query, strategy, expected in cases:
             record = TaskRecord(f"path-{expected}", query, strategy, "quick_task")

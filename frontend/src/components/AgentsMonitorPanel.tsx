@@ -1,6 +1,6 @@
 /**
  * AgentsMonitorPanel — 每位公司角色一張獨立工作台。
- * 每位角色一張工作台：質詢鏈與任用合在同一視圖。
+ * 每位角色一張工作台：任用與組織回報。
  * 角色名冊在左側 SidePanel；總覽是控制台「即時」，不在此頁重複。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -57,7 +57,7 @@ function ExtraGrid({ cells }: { cells: Array<{ label: string; value: string; col
   );
 }
 
-function RoleMonitorExtras({ agent, onOpenQuant, onOpenGrill }: { agent: RoleAgent; onOpenQuant?: () => void; onOpenGrill?: () => void }) {
+function RoleMonitorExtras({ agent, onOpenQuant }: { agent: RoleAgent; onOpenQuant?: () => void }) {
   const m = agent.metrics ?? blankMetrics();
   if (isQuantDeskRole(agent.id)) {
     return (
@@ -86,57 +86,6 @@ function RoleMonitorExtras({ agent, onOpenQuant, onOpenGrill }: { agent: RoleAge
           { label: '線路', value: agent.raho_lane_label || '獨立審查' },
         ]}
       />
-    );
-  }
-  if (agent.id === 'atomic_executor') {
-    return (
-      <div className="space-y-2">
-        <ExtraGrid
-          cells={[
-            { label: '戰前質詢', value: String(m.grill_count) },
-            { label: '被質詢率', value: `${Math.round((m.grill_rate ?? 0) * 100)}%` },
-            { label: '重試', value: String(m.retries) },
-            { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
-          ]}
-        />
-        <button type="button" className="rd-btn inline-flex text-[11px] text-[var(--console-accent)]" onClick={onOpenGrill}>
-          查看質詢
-        </button>
-      </div>
-    );
-  }
-  if (agent.id === 'tactical_commander') {
-    return (
-      <div className="space-y-2">
-        <ExtraGrid
-          cells={[
-            { label: '被質詢', value: `${Math.round((m.grill_rate ?? 0) * 100)}%` },
-            { label: '決策清晰', value: `${Math.round((m.decision_clarity ?? 1) * 100)}%` },
-            { label: '上交用戶', value: String(m.human_escalations) },
-            { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
-          ]}
-        />
-        <button type="button" className="rd-btn inline-flex text-[11px] text-[var(--console-accent)]" onClick={onOpenGrill}>
-          查看質詢
-        </button>
-      </div>
-    );
-  }
-  if (agent.id === 'requirement_auditor') {
-    return (
-      <div className="space-y-2">
-        <ExtraGrid
-          cells={[
-            { label: '審計回合', value: String(m.grill_count) },
-            { label: '鎖定清晰', value: `${Math.round((m.decision_clarity ?? 1) * 100)}%` },
-            { label: '終止／失敗', value: String(m.errors) },
-            { label: '線路', value: agent.raho_lane_label || '指揮鏈' },
-          ]}
-        />
-        <button type="button" className="rd-btn inline-flex text-[11px] text-[var(--console-accent)]" onClick={onOpenGrill}>
-          查看質詢
-        </button>
-      </div>
     );
   }
   if (agent.id === 'reviewer') {
@@ -363,7 +312,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
       }
       if (consumePendingGrillReveal()) {
         window.requestAnimationFrame(() => {
-          document.getElementById('role-grill-spine')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          document.getElementById('role-system')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
       }
     };
@@ -412,7 +361,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
   const revealGrill = () => {
     setDeskTab('tasks');
     window.requestAnimationFrame(() => {
-      document.getElementById('role-grill-spine')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById('role-system')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   };
 
@@ -594,7 +543,6 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                       <RoleMonitorExtras
                         agent={selected}
                         onOpenQuant={() => setDeskTab('quant')}
-                        onOpenGrill={revealGrill}
                       />
                     </section>
                     <section className="rd-sec">
@@ -673,9 +621,7 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
                       setItemFilter(workItemColumnKey(item.status));
                       setExpandedId(`${item.task_id}-${item.id}-${item.kind}`);
                     }}
-                    grillNodes={selectedGrill}
                     l0={l0}
-                    onOpenGrill={revealGrill}
                   />
                 ) : null}
               </div>

@@ -200,7 +200,7 @@ export function taskEta(task: TaskProgress, nowMs: number): EtaInfo | null {
     const list = industrial
       ? ['sense_opc', 'preprocess_opc', 'analyze_opc', 'diagnose_opc', 'decide_opc', 'act_opc', 'done']
       : isCompany
-        ? ['campaign_plan', 'decompose', 'execute_review', 'synthesize', 'final_review', 'evaluate', 'done']
+        ? ['task_analysis', 'decompose', 'execute_review', 'synthesize', 'final_review', 'evaluate', 'done']
         : ['done'];
     const pendingPhases = list.filter((p) => p !== 'done' && !known.has(p) && p !== curPhase);
     remaining += pendingPhases.length * unseenEst;

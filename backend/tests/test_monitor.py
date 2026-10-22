@@ -160,7 +160,7 @@ def test_agent_monitor_catalog_when_empty(tmp_path, monkeypatch):
     assert data["summary"]["roles_busy"] == 0
     assert data["summary"]["work_items_open"] == 0
     manager = next(a for a in data["agents"] if a["id"] == "manager")
-    assert manager["name"] == "專案經理"
+    assert manager["name"] == "任務經理"
     assert manager["status"] == "idle"
     assert manager["level"] == 0
     assert manager["work_items"] == []
@@ -362,7 +362,7 @@ def test_monitor_agents_http_endpoint(tmp_path, monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert body["summary"]["roles_total"] >= 16
-    assert any(a["id"] == "manager" and a["name"] == "專案經理" for a in body["agents"])
+    assert any(a["id"] == "manager" and a["name"] == "任務經理" for a in body["agents"])
     assert "work_items" in body["agents"][0]
 
 
@@ -594,11 +594,10 @@ def test_agent_monitor_ingests_auditor_sessions(tmp_path, monkeypatch):
     monkeypatch.setattr(task_manager, "tasks", {})
     STORE.user_sessions.clear()
 
-    started = auditor_start("我想做一個能幫我自動管粉絲的 AI。")
+    auditor_start("我想做一個能幫我自動管粉絲的 AI。")
     data = collect_agent_monitor()
-    auditor = next(a for a in data["agents"] if a["id"] == "requirement_auditor")
-    assert auditor["status"] == "busy"
-    assert auditor["work_items"]
-    assert auditor["work_items"][0]["kind"] == "requirement_audit"
-    assert started["session_id"] in auditor["work_items"][0]["id"]
+    ids = {a["id"] for a in data["agents"]}
+    assert "requirement_auditor" not in ids
+    assert "tactical_commander" not in ids
+    assert "atomic_executor" not in ids
     STORE.user_sessions.clear()

@@ -17,8 +17,6 @@ interface MessageListProps {
   /** 開啟對話底部詳細區 Context */
   onOpenContext?: (taskId: string) => void;
   onSuggest?: (text: string, companyMode: boolean) => void;
-  onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
-  onBattlePick?: (messageId: string, choice: string) => void;
   onTaskStatePatch?: (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => void;
   variant?: 'default' | 'drawer';
   /** 左右分裂時隱藏氣泡內看板，避免與右側監控重複 */
@@ -38,8 +36,6 @@ export default function MessageList({
   onOpenTrace,
   onOpenContext,
   onSuggest,
-  onGrillAnswer,
-  onBattlePick,
   onTaskStatePatch,
   variant = 'default',
   hideTaskCard = false,
@@ -118,8 +114,6 @@ export default function MessageList({
             onOpenTask={msg.taskState ? () => onOpenTask?.(msg.id) : undefined}
             onOpenTrace={onOpenTrace}
             onOpenContext={onOpenContext}
-            onGrillAnswer={onGrillAnswer}
-            onBattlePick={onBattlePick}
             onTaskStatePatch={onTaskStatePatch}
             variant={variant === 'drawer' || hideTaskCard ? 'workspace' : 'default'}
           />

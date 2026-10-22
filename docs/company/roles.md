@@ -1,64 +1,46 @@
 # 角色介紹
 
 > 來源：`backend/company/roles.py`（`STANDARD_ROLES`）＋`backend/linkin/roles.py`（靈境子角色種子）
-> 對齊日期：2026-09-09 · 內建 **85** 席＋靈境 **16** 席＋模板 **8**
+> 對齊日期：2026-10-22 · 內建 **82** 席＋靈境 **16** 席＋模板 **8**
 
 ## 先分清楚三種「角色」
 
 | 種類 | 數量 | 程式來源 | 用途 |
 |------|------|----------|------|
-| **公司 STANDARD_ROLES** | 85 | `backend/company/roles.py` | 複雜任務／RAHO 調度的代理人席位 |
+| **公司 STANDARD_ROLES** | 82 | `backend/company/roles.py` | 複雜任務由任務經理調度的代理人席位 |
 | **靈境子角色** | 16 | `backend/linkin/roles.py` → `role_catalog` | 建築／敘事／NPC／道具四部門 |
 | **組織模板 BUILTIN_TEMPLATES** | 8 | 同 `roles.py` | 預組團隊（非獨立角色） |
 
 監控中心可覆寫 Prompt／預算／工具；持久化於 `EVOL_ROLE_CATALOG_PATH`（預設 `backend/data/role_catalog.json`）。
 詳見 [公司運行時](../architecture/company-runtime.md) · [術語表](../glossary.md)。
 
-## 組織職級 vs RAHO 指揮鏈
+## 組織職級
 
-兩套編號**不要混用**：
+任務分析由 **任務經理**（Level 0）負責，再交給後續席位。
 
 | 維度 | 含義 |
 |------|------|
-| **組織職級 Level 0–4** | `RoleDefinition.level`：數字越小越高層（Manager=0） |
-| **RAHO L5–L0** | 指揮／審查協議層：用戶→審計→戰術→原子執行；獨立憲兵；環境核心注入 |
+| **組織職級 Level 0–4** | `RoleDefinition.level`：數字越小越高層（任務經理=0） |
 
 ```
-組織： L0 Manager → L1 Leads → L2 Domain Leads → L3 Executors → L4 Support
-RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
-       └─ 獨立 L1 憲兵（不隸屬 L3）
-       └─ L0 環境與記憶核心（滲透各層，不參與質詢）
+組織： L0 任務經理 → L1 Leads → L2 Domain Leads → L3 Executors → L4 Support
 ```
 
-## 層級一覽（85 席）
+## 層級一覽（82 席）
 
 | 組織 Level | 名稱 | 席數 |
 |------------|------|------|
 | 0 | 最高決策層 | 1 |
 | 1 | 技術領導層 | 10 |
-| 2 | 領域領導層 | 5 |
-| 3 | 執行層 | 55 |
-| 4 | 支援角色 | 14 |
-
-## RAHO 脊柱（必讀）
-
-這五席是遞歸對抗分層的固定脊柱，與一般「部門員工」不同：
-
-| ID | 中文名 | RAHO | 一句話 |
-|----|--------|------|--------|
-| `requirement_auditor` | 需求審計官 | RAHO L4 | 戰役／需求審計，語意鎖定與高層 DAG |
-| `tactical_commander` | 戰術指揮官 | RAHO L3 | 原子拆解、孵化 L2、Grill SOP |
-| `atomic_executor` | 原子執行者 | RAHO L2 | 專注單一 KPI，任務結束回收 |
-| `constitutional_inspector` | 憲兵審查官 | RAHO L1 | 獨立四維驗收與簽核 |
-| `environment_kernel` | 環境與記憶核心 | RAHO L0 | 環境與記憶注入各層 |
-
-完整協議見 [company-runtime.md](../architecture/company-runtime.md#raho遞歸對抗分層)。
+| 2 | 領域領導層 | 4 |
+| 3 | 執行層 | 54 |
+| 4 | 支援角色 | 13 |
 
 ## Level 0：最高決策層（1）
 
 | ID | 名稱 | 分類 | 預算層 | 主要職責 |
 |----|------|------|--------|----------|
-| `manager` | 專案經理 | 管理 | `reasoning` | 接收使用者目標，經 decomposer 分解為原子工作項 DAG（含依賴拓撲與並發分組）；根據角色能力與層級指派工作項給合適的執行者 |
+| `manager` | 任務經理 | 管理 | `reasoning` | 分析使用者任務，產出里程碑與成敗標準；再經 decomposer 分解為原子工作項 DAG，並指派執行者 |
 
 ## Level 1：技術領導層（10）
 
@@ -75,23 +57,21 @@ RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
 | `security_lead` | 資安主管 | 資安 | `reasoning` | 制定威脅模型與安全閘門；審查認證、授權與敏感資料流向 |
 | `tech_lead` | 技術主管 | 管理 | `reasoning` | 制定技術方向與架構決策；審查程式碼品質與技術方案 |
 
-## Level 2：領域領導層（5）
+## Level 2：領域領導層（4）
 
 | ID | 名稱 | 分類 | 預算層 | 主要職責 |
 |----|------|------|--------|----------|
 | `backend_lead` | 後端主管 | 後端 | `reasoning` | 設計 API 架構與資料庫模型；審查後端程式碼品質 |
 | `data_lead` | 資料主管 | 資料 | `reasoning` | 制定資料資產與分析策略；審查管線品質、指標定義與倉儲設計 |
 | `frontend_lead` | 前端主管 | 前端邏輯 | `reasoning` | 制定前端架構與技術選型（React/Vue/框架選擇）；審查 UI/JS/CSS 交付物品質 |
-| `tactical_commander` | 戰術指揮官 | 管理 | `reasoning` | 承接 L4 門票 JSON（clarified_goal／hard_constraints／risk_register），拆成原子級 DAG 戰鬥指令（battle_plan YAML），禁止模糊節點；鐵律四條：Atomic SRP（… |
 | `test_lead` | 測試主管 | 測試 | `routine` | 制定測試策略（單元/整合/E2E）；審查測試案例覆蓋率 |
 
-## Level 3：執行層（55）
+## Level 3：執行層（54）
 
 | ID | 名稱 | 分類 | 預算層 | 主要職責 |
 |----|------|------|--------|----------|
 | `accessibility_eng` | 無障礙工程師 | UI 設計 | `routine` | 檢查對比、鍵盤操作與讀屏標籤；產出 WCAG 修復清單 |
 | `api_engineer` | API 契約工程師 | 後端 | `reasoning` | 維護 OpenAPI 欄位、錯誤碼與相容性；檢查 Request/Response Header 與邊界條件 |
-| `atomic_executor` | 原子執行者 | 管理 | `routine` | 戰前檢查清單必答 5 問：輸入完整性／工具可用性／成功標準明確性／邏輯一致性／約束合理性；任一未過禁止動手，立即向 L3 發結構化 [GRILL]（blocker_type ∈ 資料缺失／工具不足／標準模糊／容量矛盾／約束衝突，附 s… |
 | `backend_dev` | 後端開發者 | 後端 | `routine` | 實作 RESTful API 端點與業務邏輯；設計資料庫 schema 與查詢優化 |
 | `billing_ops` | 計費運維 | AI Hub | `routine` | 核對用量、發票與異常扣款；對齊角色日預算與 Hub 攔截 |
 | `cache_engineer` | 快取工程師 | 維運 | `reasoning` | 設計 Key、TTL 與失效；追蹤命中率與雪崩 |
@@ -145,22 +125,21 @@ RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
 | `ui_designer` | UI 設計師 | UI 設計 | `routine` | 設計頁面視覺佈局與線框圖（wireframe）；產出 UI 元件設計稿與互動原型 |
 | `ux_researcher` | UX 研究員 | 產品 | `routine` | 規劃可用性測試與訪談大綱；整理痛點、任務成功率與改進假設 |
 
-## Level 4：支援角色（14）
+## Level 4：支援角色（13）
 
 | ID | 名稱 | 分類 | 預算層 | 主要職責 |
 |----|------|------|--------|----------|
 | `analyst` | 分析師 | 資料 | `routine` | 研究、分析與收集資料；提供數據驅動的見解與建議 |
-| `constitutional_inspector` | 憲兵審查官 | 審查 | `reasoning` | 按序執行四維度壓力測試：結構合規性 → 語義完整性 → 事實一致性（semantic_similarity／exact_match 交叉比對 INPUT_REF）→ 極限邊界檢驗；任一失敗立即中斷後續測試；雙向質詢權：測試 1/2 失… |
+| `constitutional_inspector` | 憲兵審查官 | 審查 | `reasoning` | 按序執行四維度壓力測試；獨立驗收，未簽核的產出不得被下游引用 |
 | `content_writer` | 內容撰寫 | 文件 | `summary` | 撰寫對外文案、報告敘事與摘要；統一語氣與讀者對象 |
 | `coordinator` | 協調者 | 管理 | `routine` | 跨角色溝通，解決協作瓶頸；處理工作項阻塞，協調解除依賴 |
-| `environment_kernel` | 環境與記憶核心 | 記憶／知識庫 | `summary` | 軌跡壓縮與回放：record_trace／traces_from_trees 抽取質詢與簽核決策點（STM／MTM／LTM）；知識實體檢索：remember_query 沉澱名詞定義，match_knowledge 關鍵詞＋Chrom… |
+| `environment_kernel` | 環境與記憶核心 | 記憶／知識庫 | `summary` | 軌跡壓縮、知識檢索與態勢偏置；不執行具體任務 |
 | `knowledge_mgr` | 知識庫管理員 | 記憶／知識庫 | `summary` | 維護 runbook、FAQ 與術語表；把完成的工作項沉澱成可重用知識 |
 | `legal` | 合規審查 | 合規 | `reasoning` | 檢查個資、授權與敏感內容；標示資料出境與留存風險 |
 | `memory_curator` | 記憶庫策展 | 記憶／知識庫 | `routine` | 整理向量記憶、去重與過期策略；檢查檢索命中是否與任務相關 |
 | `prompt_engineer` | Prompt 工程師 | AI / Prompt | `reasoning` | 設計角色系統提示與評估標準；規劃模型路由、故障轉移與成本權衡 |
-| `requirement_auditor` | 需求審計官 | 審查 | `reasoning` | 零信任審查使用者需求：禁止確認偏誤與模糊妥協，簡單查詢自動短路放行（should_grill=false，ticket:null）；五維評分（目標具體性／邊界清晰度／約束量化度／風險感知度／成功定義），各維 >90 才鎖定放行（AUD… |
 | `researcher` | 研究員 | 研究 | `reasoning` | 蒐集文獻、競品與領域背景；提出可驗證的假設與實驗設計 |
-| `reviewer` | 審查者 | 審查 | `reasoning` | RAHO 任務：在 L1 憲兵簽核之後做第二道交付品質審查（公司管線 review 階段的最後一輪）；非 RAHO 模板：擔任主審查席，決定通過或退回修改；回饋必須具體、可執行並附改進建議；退回計入重做輪次（orchestrator … |
+| `reviewer` | 審查者 | 審查 | `reasoning` | 擔任交付品質審查，決定通過或退回修改；回饋必須具體、可執行並附改進建議 |
 | `support` | 支援專員 | 產品 | `summary` | 整理工單、FAQ 與使用者回饋；把問題轉成可指派的缺陷或需求 |
 | `synthesizer` | 整合者 | 審查 | `reasoning` | 合併多個工作項的交付物為統一的最終產出；解決不同交付物之間的矛盾與重複 |
 
@@ -172,7 +151,7 @@ RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
 | `fullstack_app` | 全端開發團隊 | 全端開發＋審查 | `backend_dev`、`backend_lead`、`constitutional_inspector`、`css_dev`、`frontend_lead`、`js_dev`、`manager`、`reviewer` 等 11 席 |
 | `research_report` | 研究報告團隊 | 研究調查與報告 | `analyst`、`constitutional_inspector`、`content_writer`、`manager`、`researcher`、`reviewer`、`synthesizer` |
 | `quick_task` | 快速任務團隊 | 單一任務、成本最低 | `developer`、`manager` |
-| `full_company` | EvoLoop 完整公司 | 全席啟用 | `accessibility_eng`、`ai_lead`、`analyst`、`api_engineer`、`architect`、`atomic_executor`、`backend_dev`、`backend_lead` 等 85 席 |
+| `full_company` | EvoLoop 完整公司 | 全席啟用 | `accessibility_eng`、`ai_lead`、`analyst`、`api_engineer`、`architect`、`backend_dev`、`backend_lead`、`billing_ops` 等 82 席 |
 | `quant_desk` | 量化研究桌 | 行情／回測／組合 | `analyst`、`constitutional_inspector`、`finance_lead`、`manager`、`market_data_eng`、`portfolio_mgr`、`quant_analyst`、`researcher` 等 12 席 |
 | `industrial_ops` | 工業運維團隊 | OPC／PLC／IoT | `constitutional_inspector`、`industrial_lead`、`iot_engineer`、`manager`、`opc_engineer`、`plc_engineer`、`reviewer`、`security_eng` 等 10 席 |
 | `story_studio` | 故事工作室 | 敘事／世界觀／可調 MCP | `constitutional_inspector`、`content_writer`、`copy_editor`、`creative_lead`、`manager`、`narrative_editor`、`reviewer`、`story_writer` 等 10 席 |

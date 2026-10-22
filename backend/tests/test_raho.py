@@ -88,8 +88,8 @@ class TestSemanticLock:
     def test_should_grill_skips_simple_and_chitchat(self):
         assert should_grill_user("你好", "simple") is False
         assert should_grill_user("你好", "auto") is False
-        assert should_grill_user("開發一個完整登入系統", "auto") is True
-        assert should_grill_user("隨便", "company") is True
+        assert should_grill_user("開發一個完整登入系統", "auto") is False
+        assert should_grill_user("隨便", "company") is False
 
     def test_start_asks_then_lock(self, monkeypatch):
         monkeypatch.setattr(
@@ -289,10 +289,9 @@ class TestRahoIdentity:
         assert inspector["independent"] is True
         assert inspector["reports_to"] is None
         assert inspector["lane"] == "inspect"
-        commander = STANDARD_ROLES[RoleType.TACTICAL_COMMANDER]
-        assert commander.reporting_to == RoleType.REQUIREMENT_AUDITOR
-        executor = STANDARD_ROLES[RoleType.ATOMIC_EXECUTOR]
-        assert executor.reporting_to == RoleType.TACTICAL_COMMANDER
+        assert RoleType.TACTICAL_COMMANDER not in STANDARD_ROLES
+        assert RoleType.ATOMIC_EXECUTOR not in STANDARD_ROLES
+        assert RoleType.REQUIREMENT_AUDITOR not in STANDARD_ROLES
         l2 = raho_identity("atomic_executor")
         assert l2["grill_targets"] == ["tactical_commander"]
         assert l2["escalate_targets"] == [
@@ -415,17 +414,10 @@ class TestRahoApi:
             )
             assert started.status_code == 200
             body = started.json()
-            assert body["locked"] is False
-            sid = body["session_id"]
-            locked = client.post(
-                "/raho/grill/turn",
-                json={"session_id": sid, "answer": "直接執行", "force_lock": True},
-            )
-            assert locked.status_code == 200
-            body = locked.json()
-            assert body["locked"] is False
-            assert body["terminated"] is True
-            assert body["status"] == "FAILED"
+            assert body["should_grill"] is False
+            assert body["locked"] is True
+            assert body["locked_brief"] == "打造完整成長策略"
+            assert body["session_id"] == ""
 
             tree = client.get("/raho/tree")
             assert tree.status_code == 200

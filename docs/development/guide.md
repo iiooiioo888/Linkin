@@ -91,7 +91,7 @@ Linkin/
 │   │   ├── llm.py              #   call_llm（唯一允許的 LLM 出口）
 │   │   ├── provider_pool.py    #   模型池鎖定
 │   │   └── evaluation.py       #   多維評估
-│   ├── company/                # 協調器、角色（85）、raho/、量化
+│   ├── company/                # 協調器、角色（82）、任務經理、量化
 │   ├── linkin/                 # 靈境＋16 席子角色＋Minecraft 業務護欄
 │   ├── tools/ · hub/ · memory/ · services/
 │   ├── config/                 # 執行期 JSON（價卡等）

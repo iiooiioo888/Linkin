@@ -13,7 +13,7 @@ import {
   pickActiveAgents,
   pickBusyAgents,
 } from '../lib/animLive';
-import { LAB_INTEGRATION_TABS, type LabSubTab } from '../lib/labTabs';
+import { isLabLink, labSections, LAB_NAV_GROUPS, type LabNavEntry, type LabSubTab } from '../lib/labTabs';
 import { filterAgentsByDesk, PIPELINE_STAGES, requestRoleSettingsDesk } from '../lib/agentUi';
 import {
   buildActivityHeatmap,
@@ -707,6 +707,40 @@ function ExternalIntegrationsCard({
   );
 }
 
+function labChip(
+  item: LabNavEntry,
+  chipClass: string,
+  onOpenLab?: (sub: LabSubTab) => void,
+) {
+  if (isLabLink(item)) {
+    return (
+      <a key={item.key} href={item.href} className={chipClass} title={item.hint}>
+        {item.label}
+      </a>
+    );
+  }
+  return onOpenLab ? (
+    <button
+      key={item.key}
+      type="button"
+      onClick={() => onOpenLab(item.key)}
+      className={chipClass}
+      title={item.upstream?.name ?? item.hint}
+    >
+      {item.label}
+    </button>
+  ) : (
+    <a
+      key={item.key}
+      href={item.key === 'prompt' ? '#/monitor/lab' : `#/monitor/lab/${item.key}`}
+      className={chipClass}
+      title={item.upstream?.name ?? item.hint}
+    >
+      {item.label}
+    </a>
+  );
+}
+
 function LabToolsCard({
   dock,
   onOpenLab,
@@ -729,32 +763,27 @@ function LabToolsCard({
       }
       className={dock ? '' : 'mon-span-2'}
     >
-      <div className="flex flex-wrap gap-2">
-        {LAB_INTEGRATION_TABS.map((item) =>
-          onOpenLab ? (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => onOpenLab(item.key)}
-              className={chipClass}
-              title={item.upstream?.name}
-            >
-              {item.label}
-            </button>
-          ) : (
-            <a
-              key={item.key}
-              href={item.key === 'prompt' ? '#/monitor/lab' : `#/monitor/lab/${item.key}`}
-              className={chipClass}
-              title={item.upstream?.name}
-            >
-              {item.label}
-            </a>
-          ),
-        )}
+      <div className="space-y-3">
+        {LAB_NAV_GROUPS.map((group) => (
+          <div key={group.id}>
+            <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-[var(--console-faint)]">{group.label}</p>
+            <div className="space-y-2">
+              {labSections(group).map((section) => (
+                <div key={section.id}>
+                  {section.label ? (
+                    <p className="mb-1 text-[10px] text-[var(--console-faint)]">{section.label}</p>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    {section.items.map((item) => labChip(item, chipClass, onOpenLab))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
       <p className="mt-2 text-[10px] leading-relaxed text-[var(--console-faint)]">
-        Firecrawl 爬蟲 · Prompt Optimizer · Archify 架構 · Ponytail 精簡 · stock-quant 策略庫
+        核心的開發組件 · minecraft組件 · 價格分析探針組件 · 整合
       </p>
     </MonitorPanel>
   );

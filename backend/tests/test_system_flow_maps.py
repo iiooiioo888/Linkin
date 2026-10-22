@@ -23,7 +23,7 @@ from backend.company.system_flow_maps import (
     [
         (deploy_topology_ir, "architecture", "部署"),
         (langgraph_pipeline_ir, "workflow", "LangGraph"),
-        (raho_spine_ir, "workflow", "RAHO"),
+        (raho_spine_ir, "workflow", "任務經理"),
         (shared_pool_mining_ir, "lifecycle", "共享池"),
         (credit_pools_lifecycle_ir, "lifecycle", "積分池"),
         (opc_six_stage_ir, "workflow", "OPC"),

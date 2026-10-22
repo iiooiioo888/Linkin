@@ -3,447 +3,6 @@
   "generated_from": "backend",
   "agents": [
     {
-      "id": "requirement_auditor",
-      "name": "需求審計官",
-      "level": 4,
-      "level_label": "支援角色",
-      "raho_layer": 4,
-      "raho_label": "L4 需求審計官",
-      "raho_short": "L4 審計",
-      "raho_title": "需求審計官",
-      "raho_spine": true,
-      "grill_targets": [
-        "user"
-      ],
-      "grill_target_labels": [
-        "L5 用戶"
-      ],
-      "reports_to": "user",
-      "escalate_targets": [
-        "user"
-      ],
-      "escalate_target_labels": [
-        "L5 用戶"
-      ],
-      "raho_independent": false,
-      "category": "review",
-      "reporting_to": null,
-      "can_delegate_to": [
-        "tactical_commander"
-      ],
-      "direct_reports": [
-        "tactical_commander"
-      ],
-      "responsibilities": [
-        "零信任審查使用者需求：禁止確認偏誤與模糊妥協，簡單查詢自動短路放行（should_grill=false，ticket:null）",
-        "五維評分（目標具體性／邊界清晰度／約束量化度／風險感知度／成功定義），各維 >90 才鎖定放行（AUDITOR_DIM_THRESHOLD）",
-        "Phase 1–4 分階段攻堅追問（題庫 1–11 一字不改），同階段 3 輪繞圈即觸發終止協議",
-        "鎖定後核發戰術指令：locked_brief＋門票 status=APPROVED_FOR_PLANNING，交 L3 戰術指揮官拆解；未達標產出審計失敗報告，禁止進入 Planner",
-        "對用戶追問受 EVOL_RAHO_USER_GRILL 閘門控制（預設僅複雜任務開；關閉時直接鎖定放行，質詢只發生在 AI 角色之間）"
-      ],
-      "system_prompt": "# 系統指令：需求審計官（Requirement Auditor）\n\n## 角色定位\n你是一名「零信任架構」的資深需求審計官。你的天職不是「幫助」用戶，而是「審查」用戶。你預設用戶的需求是模糊、矛盾、且缺乏實操性的。你必須透過極具侵略性的結構化追問，將需求拆解至原子級別的可執行單元。\n\n## 最高鐵律（不可違反）\n0. **先檢索再追問（L0 知識庫）**：收到用戶需求後，第一步不是發問，而是先對照 L0 知識庫。若庫中已有名詞定義（例如「轉化率」），你必須引用該定義來反問，避免雙方對基礎名詞理解不一致。\n1. **禁止確認偏誤**：絕不能在用戶第一次解釋時就說「明白了」。你必須假設自己完全不懂，直到用戶補齊所有缺失維度。\n2. **禁止模糊妥協**：若用戶回答「大概」、「盡量」、「好一點」，視為無效回答，必須要求量化（數字、時間、具體案例）。\n3. **置信度閾值（Locking Condition）**：只有當以下 5 個維度的內部評分皆 > 90 分時，你才能輸出最終的「需求確認書」。否則，必須繼續追問或直接宣告需求不可行。\n\n## 思維框架（5 維度評分表）\n每一輪對話結束後，你必須在內部（隱式）為以下維度打分，決定是否放行：\n- **目標具體性（Specificity）**：是否包含明確的「主語 + 謂語 + 受詞 + 量化結果」？\n- **邊界清晰度（Boundary）**：是否明確指出「做什麼」與「絕對不做什麼」？\n- **約束量化度（Constraints）**：時間、預算、人力、既有資源是否為具體數字？\n- **風險感知度（Risk）**：用戶是否承認並預判了主要失敗模式？\n- **成功定義（Success Definition）**：是否有脫離「主觀感受」的客觀判定標準？\n\n## 追問策略（分層攻堅）\n遵循以下 4 個階段進行攻防。若該階段任一核心問題回答不完整，不得進入下一階段。\n同一階段內可追問 3 輪，若用戶仍在繞圈子，立即觸發「終止協議」。\n題庫 1–11 必須一字不改；12–16 為同一階段的補充攻擊角度。\n\n### Phase 1 基礎錨定（釐清本質，剝除廢話）\n1. 「我們現在不談解決方案。請用『最終用戶』的視角，描述他完成任務前後那一刻的具體變化。」\n2. 「現狀的痛點是什麼？如果用數字量化這個痛點，目前每個月損失多少錢 / 浪費多少小時？」\n3. 「這個需求的發起人是誰？是終端使用者要的，還是你老闆覺得要的？這兩者的差異你怎麼處理？」\n\n### Phase 2 量化絞殺（逼出數字與時程）\n4. 「我不接受『提升效率』。請填入數字：『目前需 X 小時，目標壓縮至 Y 小時，且準確率不得低於 Z%』，請現在給出 X、Y、Z。」\n5. 「若預算超支 30%，你是要砍功能（犧牲範圍），還是延後上線（犧牲時間），還是借貸補足（犧牲成本）？請排序。」\n6. 「所謂的『完成』，具體會產出什麼格式的交付物？是 Excel 報表、可點擊的 Prototype，還是一份純文字的備忘錄？」\n\n### Phase 3 對抗性壓力測試（攻擊邏輯漏洞）\n7. 「假設這個方案做出來，但關鍵數據源（如 API）突然斷了，你的備案是什麼？如果沒有備案，我將標記此需求為高風險。」\n8. 「你提到希望系統『智慧』一點，但同時又要求『絕對可控』。這兩者是互斥的，當 AI 的判斷與你的直覺衝突時，你聽誰的？具體情境下如何取捨？」\n9. 「如果只能做到現在所提需求的 80%，剩下的 20% 你願意犧牲哪一部分？請具體指出這 20% 的內容。」\n\n### Phase 4 語義鎖定（強迫複誦確認）\n10. 「為了避免誤會，請用你自己的話（不許複製貼上）重新定義一次『成功』，字數不得超過 50 字。」\n11. 「如果我現在交付了你說的 A 功能，但你實際想要的是 B 感覺，後果由誰承擔？你現在確定要將剛才的所有回答作為最終合約依據嗎？」\n\n補充攻擊角度：\n12. 「這個任務不做會怎樣？90 天後現狀會惡化到什麼可量化程度？請給數字。」\n13. 「人力投入是幾人、每天幾小時、持續幾週？既有系統／資料庫／帳號有哪些必須沿用的技術？請給數字與名單。」\n14. 「若上線後第一週指標不升反降，停損條件是什麼？誰有權按下停止？請給觸發數字與角色。」\n15. 「請列出三個『絕對不可以發生』的結果，作為驗收否決項。」\n16. 「請確認：以上回答將作為 Planner 唯一依據。若之後改口，以本輪鎖定為準。同意請回覆『確認鎖定』。」\n\n## 終止協議（Termination Protocol）\n若用戶出現以下行為，立即中止並輸出「需求審計失敗報告」，禁止進入 Planner：\n- 重複跳針：連續 2 輪重複相同句子，拒絕量化。\n- 過度授權：回覆「你看著辦吧」「你是 AI 你應該比我懂」→ 必須回覆「我無法為我無法理解的目標負責，請重新填寫 Phase 2 的量化指標。」\n- 明顯矛盾：說「預算無限」卻要求「使用開源免費方案」。\n- 超過 10 輪仍未達五維 > 90。\n\n## 最終輸出\n五維皆 > 90 且 Phase 4 鎖定後，不再閒聊，直接輸出 JSON：\n{\"status\":\"APPROVED_FOR_PLANNING\",\"confidence_score\":94.5,\"clarified_goal\":{\"target_audience\":\"...\",\"core_action\":\"...\",\"quantified_success\":\"...\"},\"hard_constraints\":{\"deadline\":\"YYYY-MM-DD\",\"budget_range\":\"...\",\"must_use_tech\":[],\"absolute_exclusions\":[]},\"risk_register\":{\"identified_risks\":[],\"user_priority\":\"...\"},\"audit_trail\":[]}\n\n使用繁體中文。一次只問一個問題。禁止在五維未達標時輸出 APPROVED_FOR_PLANNING。禁止說「明白了」。\n",
-      "max_parallel_work": 1,
-      "default_tier": "reasoning",
-      "preferred_model": "",
-      "preferred_provider": "",
-      "daily_budget_usd": 0.0,
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
-      "cloud_daily_budget_usd": 0.0,
-      "cloud_weekly_budget_usd": 0.0,
-      "cloud_monthly_budget_usd": 0.0,
-      "tools_allowed": [],
-      "notes": "",
-      "enabled": true,
-      "is_custom": false,
-      "is_builtin": true,
-      "alert_on_error": true,
-      "alert_on_budget": true,
-      "alert_on_sla": true,
-      "temperature": 0.7,
-      "max_output_tokens": 4096,
-      "timeout_ms": 120000,
-      "routing_strategy": "quality_first",
-      "failover_models": [],
-      "sla_latency_ms": 0,
-      "max_retries": 3,
-      "language": "zh-TW",
-      "always_require_review": false,
-      "priority": 3,
-      "description": "",
-      "max_daily_items": 0,
-      "require_human_approval": false,
-      "stream_enabled": true,
-      "cache_enabled": true,
-      "pii_redact": true,
-      "mainland_only": false,
-      "heartbeat_sec": 0,
-      "on_call": false,
-      "tags": [],
-      "notify_channel": "",
-      "quiet_hours": "",
-      "context_window": 0,
-      "allow_tool_use": true,
-      "auto_escalate": true,
-      "templates": [
-        "full_company"
-      ],
-      "status": "idle",
-      "inbox": {
-        "planning": 0,
-        "ready": 0,
-        "executing": 0,
-        "in_review": 0,
-        "rework": 0,
-        "done": 0,
-        "blocked": 0,
-        "cancelled": 0
-      },
-      "queue": 0,
-      "executing": 0,
-      "done": 0,
-      "blocked": 0,
-      "cost_usd": 0.0,
-      "api_cost_usd": 0.0,
-      "cloud_cost_usd": 0.0,
-      "docker_cost_usd": 0.0,
-      "aliyun_cost_usd": 0.0,
-      "last_activity_at": null,
-      "work_items": [],
-      "events": [],
-      "active_task_ids": [],
-      "current_item": null,
-      "company_tasks": [],
-      "capacity_used": 0,
-      "metrics": {
-        "review_pass": 0,
-        "review_rework": 0,
-        "review_force": 0,
-        "errors": 0,
-        "tool_calls": 0,
-        "budget_alerts": 0,
-        "items_total": 0,
-        "success_rate": 0.0,
-        "avg_cost_usd": 0.0,
-        "capacity_pct": 0.0,
-        "daily_spent_usd": 0.0,
-        "api_spent_usd": 0.0,
-        "cloud_spent_usd": 0.0,
-        "avg_latency_ms": 0.0,
-        "tokens_in": 0,
-        "tokens_out": 0,
-        "last_model": "",
-        "sla_breaches": 0,
-        "retries": 0,
-        "failovers": 0,
-        "cache_hits": 0,
-        "human_escalations": 0,
-        "p95_latency_ms": 0.0,
-        "weekly_spent_usd": 0.0,
-        "grill_count": 0,
-        "grill_rate": 0.0,
-        "decision_clarity": 1.0
-      },
-      "alerts": []
-    },
-    {
-      "id": "tactical_commander",
-      "name": "戰術指揮官",
-      "level": 2,
-      "level_label": "領域領導層",
-      "raho_layer": 3,
-      "raho_label": "L3 戰術指揮官",
-      "raho_short": "L3 指揮",
-      "raho_title": "戰術指揮官",
-      "raho_spine": true,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
-      "escalate_targets": [
-        "requirement_auditor",
-        "user"
-      ],
-      "escalate_target_labels": [
-        "L4 需求審計官",
-        "L5 用戶"
-      ],
-      "raho_independent": false,
-      "category": "management",
-      "reporting_to": "requirement_auditor",
-      "can_delegate_to": [
-        "atomic_executor",
-        "analyst",
-        "researcher",
-        "crawler",
-        "developer",
-        "content_writer",
-        "reviewer"
-      ],
-      "direct_reports": [
-        "atomic_executor"
-      ],
-      "responsibilities": [
-        "承接 L4 門票 JSON（clarified_goal／hard_constraints／risk_register），拆成原子級 DAG 戰鬥指令（battle_plan YAML），禁止模糊節點",
-        "鐵律四條：Atomic SRP（>3 動詞必拆）、Context Isolation（L2 簡報 ≤200 Token，只傳 Input Ref＋Output Schema）、Tool Whitelist（僅限 KNOWN_TOOLS，禁止 *／all）、Grill-Response（3 輪內必覆，無解 [ESCALATE]）",
-        "拆解前強制檢查清單：core_action 具體受詞、deadline>48h 否則極速模式、absolute_exclusions 非空；缺件直接 REJECT_TO_L4",
-        "向下 Grill SOP：資料缺失→補查或上拋 L4；工具不足→重發權限或標記基礎設施缺失上拋 L5；邏輯矛盾→明確裁定或上拋 L4；單純確認→1 輪量化",
-        "孵化 L2 時分配 max_iterations／token_budget，產出只走黑板指標 shared_memory://，L2 間禁止互聊",
-        "約束內不可行輸出 ESCALATE_TO_USER（附 2~3 個建議方案），禁止硬拆死迴圈；拆解前先讀 L0 長期記憶沿用成功 DAG"
-      ],
-      "system_prompt": "# 系統指令：戰術指揮官（Tactical Commander）\n\n## 人格：微雕與偏執\n你極度恐懼「模糊」，極度苛求「顆粒度」。你是撰寫作戰手冊的總參謀長：承接 L4 門票 JSON，轉化為無懈可擊的原子級作戰地圖（Atomic Battle Map），並精準孵化只為單一任務而生的 L2 特戰隊員。你擁有處理下屬（L2）質詢與向上級（L4／用戶）請示的清晰協議。\n\n## 角色定位\n你是最高作戰指揮部的大腦。你的眼中沒有「大概」和「差不多」，只有「節點」與「交付物」。你接收 L4（需求審計官）產出的高階戰略 JSON，你的使命是將其拆解為最小可執行單元（原子任務），並為每個原子任務「親手打造」一個專屬的 L2 原子執行者。\n\n## 核心鐵律（不可違反）\n1. **單一職責原則（Atomic SRP）**：你拆出的每一個 L2 原子任務，在生命周期內**只做一件事**（例如「提取 PDF 第三頁的表格」或「撰寫競品 A 的 200 字威脅分析」）。若一個任務描述超過 3 個動詞，視為違規，必須強制拆分。\n2. **上下文隔離（Context Isolation）**：L2 角色絕不繼承 L3 的冗長對話歷史。你傳遞給 L2 的「任務簡報」必須在 **200 個 Token 以內**，且必須包含明確的「輸入來源（Input Ref）」與「輸出格式範例（Output Schema）」。\n3. **工具白名單強制（Tool Whitelist）**：你必須明確指定該 L2 角色能且僅能用哪些工具（如 `read_file`, `web_search`, `python_exec`）。不允許開放「所有工具」。\n4. **質詢響應義務（Grill-Response Obligation）**：當 L2 對你的指令發起 [GRILL] 質詢時，你必須在 **3 輪對話內**給出明確的修正或補充。若 3 輪無法解決，你必須自動發起 [ESCALATE] 向上級（L4 或用戶）求助。\n5. **先查長期記憶（L0 Memory Bank）**：拆解前先讀 L0。若該用戶偏好簡潔輸出，每個 L2 的 Success Criteria 須強制加入字數上限；若歷史有類似任務失敗，優先沿用成功的 DAG，並補上當時的解法（例如反爬改走代理池）。環境雷達若顯示 API 延遲偏高，將 Max Iterations 降為 1。\n\n## 思維框架：拆解四步法\n在生成最終輸出前，你必須在內部遵循以下邏輯鏈進行推理（Chain of Thought）：\n1. **輸入解析（Parsing）**：掃描 L4 JSON 中的 `clarified_goal`、`hard_constraints` 與 `risk_register`。\n2. **依賴拓撲（Topology）**：繪製節點 DAG（有向無環圖）。判斷哪些節點可並行（Parallel），哪些必須串行（Sequential）。\n3. **角色模板匹配（Templating）**：從「微型角色模板庫」中挑選或動態生成每個節點所需的 System Prompt（必須包含角色性格、產出格式、失敗回退話術）。\n4. **資源預算分配（Budgeting）**：為每個 L2 設定該任務的「最大迭代次數」（Max EvoLoop Iterations）與「Token 預算帽」，防止某個子任務無限消耗資源。\n\n## 強制內部檢查清單\n接收 L4 JSON 後、動手拆解前必須完成最後一道防線。缺失則拒絕拆解並直接回退給 L4：\n□ clarified_goal.core_action 是否包含具體的「受詞」（例如：「分析競品定價」而非「處理數據」）？\n□ hard_constraints.deadline 距離現在是否大於 48 小時？（若少於 48 小時，標記為「極速模式」，強制減少串行節點）。\n□ hard_constraints.absolute_exclusions 是否為非空陣列？（若為空，要求補充「絕對不做的事」）。\n\n## 向下 Grill-Me 標準回應協議（SOP）\n當收到 L2 質詢時，嚴禁敷衍。必須嚴格遵循決策樹：\n\n| L2 質詢類型 | L3 必須採取的行動 | 是否向上提交（Escalate）？ |\n| --- | --- | --- |\n| 資料缺失（Data Missing）「欄位不存在於來源中」 | 先查替代欄位；有則立即回覆；無則暫停 L2 並向 L4 請求補充數據源。 | 是（提交至 L4） |\n| 工具權限不足（Tool Insufficient）「無法用 read_file 處理 .mov」 | 檢查白名單；系統有該工具則重發權限；無則回覆「無法執行」，標記「基礎設施缺失」。 | 是（提交至 L5 用戶決策） |\n| 邏輯矛盾（Logic Conflict）「A 節點保守、B 節點激進」 | 必須回覆明確的優先級裁定（例如「以 A 為準，B 需修正」）；自己無法裁定則立即升級。 | 是（提交至 L4 規劃官） |\n| 單純確認（Clarification）「高品質是語法還是深度？」 | 必須在 1 輪內給出量化定義（例如「語法錯誤 < 1 處，且觀點需引用至少 2 個來源」）。 | 否（直接處理） |\n\n## 最終輸出格式\n完成推理後必須輸出可解析的戰鬥指令 YAML（人類可讀，機器可直接解析），餵給 Scheduler 孵化 L2。L2 之間不得互聊；只傳共享記憶體指標（shared_memory://…），資料經黑板（Blackboard）傳遞。\n\n```yaml\n# L3 戰術指揮官產出之物\nbattle_plan:\n  plan_id: \"PLAN-20260908-001\"\n  based_on_l4_json: \"L4-JSON-HASH-XXXX\"\n  global_settings:\n    default_model: \"gpt-5.6-luna\"\n    max_parallel_workers: 5\n    global_timeout_minutes: 120\n  dag_nodes:\n    - node_id: \"N1\"\n      description: \"爬取競品 A 官網最新價格\"\n      depends_on: []\n      assigned_role_template: \"web_scraper\"\n    - node_id: \"N3\"\n      description: \"撰寫價格威脅分析報告 (融合 N1, N2)\"\n      depends_on: [\"N1\", \"N2\"]\n      assigned_role_template: \"data_synthesizer\"\n  atomic_role_instances:\n    - instance_id: \"ROLE-N1\"\n      node_id: \"N1\"\n      system_prompt: |\n        你是一名價格偵查員。你的唯一任務是：根據 {input_ref} 提取產品名稱與對應價格。\n        嚴格輸出 JSON：[{\"product\": \"A\", \"price\": 100}]。\n        若頁面載入失敗，請重試一次，若仍失敗，輸出空陣列 []，不要編造數據。\n      allowed_tools: [\"web_fetch\", \"json_formatter\"]\n      input_ref: \"shared_memory://user_uploaded/url_list.csv\"\n      output_schema: \"List[Dict[str, str]]\"\n      success_criteria: \"產出 JSON 中至少包含 5 筆有效產品\"\n      max_iterations: 2\n      token_budget: 2000\n```\n\n## 異常處理：向上提交\n若 L4 目標在約束內不可能完成（例如「24 小時內爬完 100 萬個網頁」），禁止硬拆，立即輸出不可行報告給 L5：\n{\"status\":\"ESCALATE_TO_USER\",\"reason\":\"資源不足\",\"details\":\"N1 任務要求爬取 100 萬個網頁，但約束中僅允許使用單台 PC 且無代理池，預估耗時 300 小時，嚴重超出 24 小時截止日。\",\"suggested_alternatives\":[\"方案 A：將樣本縮減至 1,000 個網頁（推薦）\",\"方案 B：開放預算購買 10 個代理服務器（成本增加 3 萬）\"],\"waiting_for_user_decision\":true}\n\n## 設計背後的極致亮點\n- 原子化強制隔離：L2 Prompt <200 Token，單一機械動作，降低幻覺。\n- 輸入輸出指標化：只傳 shared_memory:// 指標，L2 互不對話，資料走黑板（Blackboard）。\n- 內建認慫機制：硬體限制或邏輯死胡同時輸出 ESCALATE_TO_USER，禁止無謂死迴圈。\n\n使用繁體中文。禁止對 L2 灌入完整戰役對話。輸出必須是可解析的戰鬥指令 YAML／JSON。\n",
-      "max_parallel_work": 1,
-      "default_tier": "reasoning",
-      "preferred_model": "",
-      "preferred_provider": "",
-      "daily_budget_usd": 0.0,
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
-      "cloud_daily_budget_usd": 0.0,
-      "cloud_weekly_budget_usd": 0.0,
-      "cloud_monthly_budget_usd": 0.0,
-      "tools_allowed": [],
-      "notes": "",
-      "enabled": true,
-      "is_custom": false,
-      "is_builtin": true,
-      "alert_on_error": true,
-      "alert_on_budget": true,
-      "alert_on_sla": true,
-      "temperature": 0.7,
-      "max_output_tokens": 4096,
-      "timeout_ms": 120000,
-      "routing_strategy": "quality_first",
-      "failover_models": [],
-      "sla_latency_ms": 0,
-      "max_retries": 3,
-      "language": "zh-TW",
-      "always_require_review": false,
-      "priority": 3,
-      "description": "",
-      "max_daily_items": 0,
-      "require_human_approval": false,
-      "stream_enabled": true,
-      "cache_enabled": true,
-      "pii_redact": true,
-      "mainland_only": false,
-      "heartbeat_sec": 0,
-      "on_call": false,
-      "tags": [],
-      "notify_channel": "",
-      "quiet_hours": "",
-      "context_window": 0,
-      "allow_tool_use": true,
-      "auto_escalate": true,
-      "templates": [
-        "full_company"
-      ],
-      "status": "idle",
-      "inbox": {
-        "planning": 0,
-        "ready": 0,
-        "executing": 0,
-        "in_review": 0,
-        "rework": 0,
-        "done": 0,
-        "blocked": 0,
-        "cancelled": 0
-      },
-      "queue": 0,
-      "executing": 0,
-      "done": 0,
-      "blocked": 0,
-      "cost_usd": 0.0,
-      "api_cost_usd": 0.0,
-      "cloud_cost_usd": 0.0,
-      "docker_cost_usd": 0.0,
-      "aliyun_cost_usd": 0.0,
-      "last_activity_at": null,
-      "work_items": [],
-      "events": [],
-      "active_task_ids": [],
-      "current_item": null,
-      "company_tasks": [],
-      "capacity_used": 0,
-      "metrics": {
-        "review_pass": 0,
-        "review_rework": 0,
-        "review_force": 0,
-        "errors": 0,
-        "tool_calls": 0,
-        "budget_alerts": 0,
-        "items_total": 0,
-        "success_rate": 0.0,
-        "avg_cost_usd": 0.0,
-        "capacity_pct": 0.0,
-        "daily_spent_usd": 0.0,
-        "api_spent_usd": 0.0,
-        "cloud_spent_usd": 0.0,
-        "avg_latency_ms": 0.0,
-        "tokens_in": 0,
-        "tokens_out": 0,
-        "last_model": "",
-        "sla_breaches": 0,
-        "retries": 0,
-        "failovers": 0,
-        "cache_hits": 0,
-        "human_escalations": 0,
-        "p95_latency_ms": 0.0,
-        "weekly_spent_usd": 0.0,
-        "grill_count": 0,
-        "grill_rate": 0.0,
-        "decision_clarity": 1.0
-      },
-      "alerts": []
-    },
-    {
-      "id": "atomic_executor",
-      "name": "原子執行者",
-      "level": 3,
-      "level_label": "執行層",
-      "raho_layer": 2,
-      "raho_label": "L2 原子執行者",
-      "raho_short": "L2 執行",
-      "raho_title": "原子執行者",
-      "raho_spine": true,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
-      "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
-        "user"
-      ],
-      "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
-        "L5 用戶"
-      ],
-      "raho_independent": false,
-      "category": "management",
-      "reporting_to": "tactical_commander",
-      "can_delegate_to": [],
-      "direct_reports": [],
-      "responsibilities": [
-        "戰前檢查清單必答 5 問：輸入完整性／工具可用性／成功標準明確性／邏輯一致性／約束合理性；任一未過禁止動手，立即向 L3 發結構化 [GRILL]（blocker_type ∈ 資料缺失／工具不足／標準模糊／容量矛盾／約束衝突，附 suggested_fix）",
-        "上級 MAX_SUPERIOR_ROUNDS（3）輪內未覆或仍無法通過檢查 → [GRILL] 自動升級 [ESCALATE] 至 L4／L5",
-        "執行紀律：一次一動、沉默運作（除產出外禁止廢話）、嚴格遵守 OUTPUT_SCHEMA",
-        "失敗收斂：最多重試任務層 MAX_ITERATIONS（預設 2）；耗盡輸出 {\"status\": \"FAILED\", \"partial_output\": …} 並終止，禁止幻想成功",
-        "產出經 L1 憲兵 VERDICT: APPROVED 簽核後才寫入共享記憶體；遵守 L0 節能偏置（高壓態勢下 Max Iterations 視為 1）"
-      ],
-      "system_prompt": "# ==========================================\n# [憲法層 - 唯讀區塊] 此區塊優先級高於所有後續指令\n# ==========================================\n\n## 核心身份\n你是一個「原子任務執行者」。你的智商極高，但視野極窄。你**沒有**個人意志、情感或好奇心。\n你的唯一存在意義，就是完成下方任務層 `TASK_DESCRIPTION` 中定義的單一原子任務。\n\n## 最高行動綱領（Pre-Execution Protocol）\n在調用任何工具、輸出任何內容之前，**你必須強制執行「戰前檢查清單（Pre-flight Checklist）」**。\n若檢查清單中任一項未通過，**禁止**開始執行任務，必須立即發起 [GRILL] 質詢。\n\n### 戰前檢查清單（必答 5 問）\n1. **輸入完整性（Input Integrity）**：任務層 `INPUT_REF` 指向的記憶體位置是否包含有效數據？若數據缺失或格式不符，判定為「資料缺失」。\n2. **工具可用性（Tool Availability）**：我的工具白名單 `ALLOWED_TOOLS` 是否足以達成目標？若缺乏必要工具，判定為「工具不足」。\n3. **成功標準明確性（Success Clarity）**：`SUCCESS_CRITERIA` 是否包含「可驗證的客觀條件」（例如：包含特定關鍵字、長度範圍、JSON 鍵值對）？若僅有「盡量完美」等主觀描述，判定為「標準模糊」。\n4. **邏輯一致性（Logic Consistency）**：任務目標與 `OUTPUT_SCHEMA` 是否有矛盾？（例如：要求摘要 100 頁 PDF，但輸出 Schema 只允許 50 字，判定為「容量矛盾」）。\n5. **約束合理性（Constraint Feasibility）**：`MAX_ITERATIONS` 與 `TOKEN_BUDGET` 是否足以應對突發狀況？（例如：若第一次執行失敗，剩餘迭代次數是否足以重試？）。\n\n---\n\n## [GRILL] 質詢協議（向上級發聲）\n若上述檢查未通過，你**不得**試圖自行腦補修正。你必須輸出以下格式的 [GRILL] 訊息，並**立即暫停**所有後續動作，直至上級（L3 指揮官）回覆：\n\n```json\n{\n  \"type\": \"GRILL\",\n  \"target\": \"L3_Commander\",\n  \"blocker_type\": \"資料缺失\" | \"工具不足\" | \"標準模糊\" | \"容量矛盾\" | \"約束衝突\",\n  \"details\": \"具體描述哪裡有坑，為什麼過不去。\",\n  \"suggested_fix\": \"提供一個你認為可行的具體修改建議（例如：將 INPUT_REF 改為 X，或放寬字數限制至 200 字）。\"\n}\n```\n\n### 等待上級回覆期間\n若上級在 3 輪對話內提供修正指令，你必須重新執行「戰前檢查清單」，通過後方可執行。\n\n若上級超時未回覆，或回覆依然無法通過檢查，你必須自動將此 [GRILL] 升級為 [ESCALATE] 並提交至 L4（需求審計官）或 L5（用戶）。\n\n## 執行紀律（Execution Discipline）\n當且僅當「戰前檢查清單」完全通過時，你才進入執行階段。執行時必須遵守：\n\n1. **一次一動**：嚴格按照邏輯順序調用工具，不得跳步。\n2. **沉默運作**：除最終產出外，禁止輸出任何解釋、廢話或 Markdown 格式修飾（除非 Output Schema 要求）。\n3. **失敗收斂**：若執行過程中報錯，最多重試任務層 `MAX_ITERATIONS` 次。若仍失敗，輸出 `{\"status\": \"FAILED\", \"partial_output\": \"...\"}` 並終止任務，不得幻想成功。\n\n## 最終輸出強制格式\n最終必須嚴格遵守任務層 `OUTPUT_SCHEMA` 的定義。若輸出不符合該 Schema，視為任務失敗。\n",
-      "max_parallel_work": 4,
-      "default_tier": "routine",
-      "preferred_model": "",
-      "preferred_provider": "",
-      "daily_budget_usd": 0.0,
-      "weekly_budget_usd": 0.0,
-      "monthly_budget_usd": 0.0,
-      "cloud_daily_budget_usd": 0.0,
-      "cloud_weekly_budget_usd": 0.0,
-      "cloud_monthly_budget_usd": 0.0,
-      "tools_allowed": [],
-      "notes": "",
-      "enabled": true,
-      "is_custom": false,
-      "is_builtin": true,
-      "alert_on_error": true,
-      "alert_on_budget": true,
-      "alert_on_sla": true,
-      "temperature": 0.7,
-      "max_output_tokens": 4096,
-      "timeout_ms": 120000,
-      "routing_strategy": "quality_first",
-      "failover_models": [],
-      "sla_latency_ms": 0,
-      "max_retries": 3,
-      "language": "zh-TW",
-      "always_require_review": false,
-      "priority": 3,
-      "description": "",
-      "max_daily_items": 0,
-      "require_human_approval": false,
-      "stream_enabled": true,
-      "cache_enabled": true,
-      "pii_redact": true,
-      "mainland_only": false,
-      "heartbeat_sec": 0,
-      "on_call": false,
-      "tags": [],
-      "notify_channel": "",
-      "quiet_hours": "",
-      "context_window": 0,
-      "allow_tool_use": true,
-      "auto_escalate": true,
-      "templates": [
-        "full_company"
-      ],
-      "status": "idle",
-      "inbox": {
-        "planning": 0,
-        "ready": 0,
-        "executing": 0,
-        "in_review": 0,
-        "rework": 0,
-        "done": 0,
-        "blocked": 0,
-        "cancelled": 0
-      },
-      "queue": 0,
-      "executing": 0,
-      "done": 0,
-      "blocked": 0,
-      "cost_usd": 0.0,
-      "api_cost_usd": 0.0,
-      "cloud_cost_usd": 0.0,
-      "docker_cost_usd": 0.0,
-      "aliyun_cost_usd": 0.0,
-      "last_activity_at": null,
-      "work_items": [],
-      "events": [],
-      "active_task_ids": [],
-      "current_item": null,
-      "company_tasks": [],
-      "capacity_used": 0,
-      "metrics": {
-        "review_pass": 0,
-        "review_rework": 0,
-        "review_force": 0,
-        "errors": 0,
-        "tool_calls": 0,
-        "budget_alerts": 0,
-        "items_total": 0,
-        "success_rate": 0.0,
-        "avg_cost_usd": 0.0,
-        "capacity_pct": 0.0,
-        "daily_spent_usd": 0.0,
-        "api_spent_usd": 0.0,
-        "cloud_spent_usd": 0.0,
-        "avg_latency_ms": 0.0,
-        "tokens_in": 0,
-        "tokens_out": 0,
-        "last_model": "",
-        "sla_breaches": 0,
-        "retries": 0,
-        "failovers": 0,
-        "cache_hits": 0,
-        "human_escalations": 0,
-        "p95_latency_ms": 0.0,
-        "weekly_spent_usd": 0.0,
-        "grill_count": 0,
-        "grill_rate": 0.0,
-        "decision_clarity": 1.0
-      },
-      "alerts": []
-    },
-    {
       "id": "constitutional_inspector",
       "name": "憲兵審查官",
       "level": 4,
@@ -453,21 +12,13 @@
       "raho_short": "L1 憲兵",
       "raho_title": "憲兵審查官",
       "raho_spine": true,
-      "grill_targets": [
-        "atomic_executor",
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L2 原子執行者",
-        "L3 戰術指揮官"
-      ],
+      "grill_targets": [],
+      "grill_target_labels": [],
       "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": true,
@@ -733,19 +284,13 @@
       "raho_short": "L3 AI 主",
       "raho_title": "AI 主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -886,19 +431,13 @@
       "raho_short": "L3 架構師",
       "raho_title": "架構師",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -1037,19 +576,13 @@
       "raho_short": "L3 創意主管",
       "raho_title": "創意主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -1191,21 +724,13 @@
       "raho_short": "L2 建築總監",
       "raho_title": "建築總監",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -1353,21 +878,13 @@
       "raho_short": "L2 道具總監",
       "raho_title": "道具總監",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -1509,21 +1026,13 @@
       "raho_short": "L2 敘事總監",
       "raho_title": "敘事總監",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -1665,21 +1174,13 @@
       "raho_short": "L2 NPC總",
       "raho_title": "NPC總監",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -1821,19 +1322,13 @@
       "raho_short": "L3 金融主管",
       "raho_title": "金融主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -1977,19 +1472,13 @@
       "raho_short": "L3 成長主管",
       "raho_title": "成長主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -2126,19 +1615,13 @@
       "raho_short": "L3 工業主管",
       "raho_title": "工業主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -2279,19 +1762,13 @@
       "raho_short": "L3 平台主管",
       "raho_title": "平台主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -2434,19 +1911,13 @@
       "raho_short": "L3 產品主管",
       "raho_title": "產品主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -2595,19 +2066,13 @@
       "raho_short": "L3 資安主管",
       "raho_title": "資安主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -2746,19 +2211,13 @@
       "raho_short": "L3 技術主管",
       "raho_title": "技術主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -2937,19 +2396,13 @@
       "raho_short": "L3 後端主管",
       "raho_title": "後端主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -3093,21 +2546,13 @@
       "raho_short": "L2 建築執行",
       "raho_title": "建築執行者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -3245,21 +2690,13 @@
       "raho_short": "L2 道具執行",
       "raho_title": "道具執行者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -3393,21 +2830,13 @@
       "raho_short": "L2 敘事執行",
       "raho_title": "敘事執行者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -3541,21 +2970,13 @@
       "raho_short": "L2 NPC執",
       "raho_title": "NPC執行者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -3690,19 +3111,13 @@
       "raho_short": "L3 資料主管",
       "raho_title": "資料主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -3842,19 +3257,13 @@
       "raho_short": "L3 前端主管",
       "raho_title": "前端主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -3998,19 +3407,13 @@
       "raho_short": "L3 測試主管",
       "raho_title": "測試主管",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -4148,21 +3551,13 @@
       "raho_short": "L2 無障礙工",
       "raho_title": "無障礙工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -4290,21 +3685,13 @@
       "raho_short": "L2 API ",
       "raho_title": "API 契約工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -4432,21 +3819,13 @@
       "raho_short": "L2 後端開發",
       "raho_title": "後端開發者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -4578,21 +3957,13 @@
       "raho_short": "L2 計費運維",
       "raho_title": "計費運維",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -4720,21 +4091,13 @@
       "raho_short": "L2 快取工程",
       "raho_title": "快取工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -4862,21 +4225,13 @@
       "raho_short": "L2 混沌工程",
       "raho_title": "混沌工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -5004,21 +4359,13 @@
       "raho_short": "L2 雲架構師",
       "raho_title": "雲架構師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -5146,21 +4493,13 @@
       "raho_short": "L2 對話設計",
       "raho_title": "對話設計師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -5288,21 +4627,13 @@
       "raho_short": "L2 文案編輯",
       "raho_title": "文案編輯",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -5431,21 +4762,13 @@
       "raho_short": "L2 爬蟲工程",
       "raho_title": "爬蟲工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -5574,21 +4897,13 @@
       "raho_short": "L2 CSS ",
       "raho_title": "CSS 開發者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -5720,21 +5035,13 @@
       "raho_short": "L2 建築審查",
       "raho_title": "建築審查員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -5867,21 +5174,13 @@
       "raho_short": "L2 道具審查",
       "raho_title": "道具審查員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -6014,21 +5313,13 @@
       "raho_short": "L2 敘事審查",
       "raho_title": "敘事審查員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -6161,21 +5452,13 @@
       "raho_short": "L2 NPC審",
       "raho_title": "NPC審查員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -6308,21 +5591,13 @@
       "raho_short": "L2 客戶成功",
       "raho_title": "客戶成功",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -6450,21 +5725,13 @@
       "raho_short": "L2 資料工程",
       "raho_title": "資料工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -6592,21 +5859,13 @@
       "raho_short": "L2 資料科學",
       "raho_title": "資料科學家",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -6734,21 +5993,13 @@
       "raho_short": "L2 資料庫管",
       "raho_title": "資料庫管理員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -6876,21 +6127,13 @@
       "raho_short": "L2 通用開發",
       "raho_title": "通用開發者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -7021,21 +6264,13 @@
       "raho_short": "L2 維運工程",
       "raho_title": "維運工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -7165,21 +6400,13 @@
       "raho_short": "L2 評測工程",
       "raho_title": "評測工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -7307,21 +6534,13 @@
       "raho_short": "L2 功能開關",
       "raho_title": "功能開關工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -7449,21 +6668,13 @@
       "raho_short": "L2 GitH",
       "raho_title": "GitHub 工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -7592,21 +6803,13 @@
       "raho_short": "L2 Hub ",
       "raho_title": "Hub 值班",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -7734,21 +6937,13 @@
       "raho_short": "L2 事故指揮",
       "raho_title": "事故指揮官",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -7876,21 +7071,13 @@
       "raho_short": "L2 整合工程",
       "raho_title": "整合工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -8018,21 +7205,13 @@
       "raho_short": "L2 IoT ",
       "raho_title": "IoT 工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -8161,21 +7340,13 @@
       "raho_short": "L2 JS 開",
       "raho_title": "JS 開發者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -8307,21 +7478,13 @@
       "raho_short": "L2 負載測試",
       "raho_title": "負載測試工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -8441,13 +7604,13 @@
     },
     {
       "id": "manager",
-      "name": "專案經理",
+      "name": "任務經理",
       "level": 0,
       "level_label": "最高決策層",
       "raho_layer": 4,
-      "raho_label": "L4 專案經理",
-      "raho_short": "L4 專案經理",
-      "raho_title": "專案經理",
+      "raho_label": "任務經理",
+      "raho_short": "任務經理",
+      "raho_title": "任務經理",
       "raho_spine": false,
       "grill_targets": [
         "user"
@@ -8483,10 +7646,7 @@
         "prompt_engineer",
         "coordinator",
         "support",
-        "requirement_auditor",
-        "tactical_commander",
-        "constitutional_inspector",
-        "atomic_executor"
+        "constitutional_inspector"
       ],
       "direct_reports": [
         "tech_lead",
@@ -8508,7 +7668,7 @@
         "控制預算，在成本與品質間取得平衡",
         "管理 Docker 容器化部署：查詢狀態、讀取日誌、重啟服務"
       ],
-      "system_prompt": "你是一位經驗豐富的專案經理，擅長將複雜目標分解為可執行的任務、分配給合適的團隊成員，並追蹤進度。你注重效率與品質的平衡，在預算範圍內做出最佳決策。你了解每個角色的專業領域，能根據任務類型自動指派最合適的執行者。你可以使用 Docker 工具來管理容器化部署：查詢狀態、讀取日誌、重啟服務。",
+      "system_prompt": "你是一位任務經理。你自己分析任務，產出里程碑與成敗標準，再把工作拆給團隊。擅長將複雜目標分解為可執行的任務、分配給合適的團隊成員，並追蹤進度。你注重效率與品質的平衡，在預算範圍內做出最佳決策。你了解每個角色的專業領域，能根據任務類型自動指派最合適的執行者。你可以使用 Docker 工具來管理容器化部署：查詢狀態、讀取日誌、重啟服務。",
       "max_parallel_work": 5,
       "default_tier": "reasoning",
       "preferred_model": "",
@@ -8630,21 +7790,13 @@
       "raho_short": "L2 行情工程",
       "raho_title": "行情工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -8773,21 +7925,13 @@
       "raho_short": "L2 機器學習",
       "raho_title": "機器學習工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -8915,21 +8059,13 @@
       "raho_short": "L2 MLOp",
       "raho_title": "MLOps 工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -9057,21 +8193,13 @@
       "raho_short": "L2 行動開發",
       "raho_title": "行動開發者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -9199,21 +8327,13 @@
       "raho_short": "L2 敘事編輯",
       "raho_title": "敘事編輯",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -9342,21 +8462,13 @@
       "raho_short": "L2 可觀測性",
       "raho_title": "可觀測性工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -9484,21 +8596,13 @@
       "raho_short": "L2 OPC ",
       "raho_title": "OPC 工業工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -9628,21 +8732,13 @@
       "raho_short": "L2 滲透測試",
       "raho_title": "滲透測試工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -9770,21 +8866,13 @@
       "raho_short": "L2 效能工程",
       "raho_title": "效能工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -9912,21 +9000,13 @@
       "raho_short": "L2 PLC ",
       "raho_title": "PLC 工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -10055,21 +9135,13 @@
       "raho_short": "L2 投資組合",
       "raho_title": "投資組合經理",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -10198,21 +9270,13 @@
       "raho_short": "L2 隱私長",
       "raho_title": "隱私長",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -10340,21 +9404,13 @@
       "raho_short": "L2 產品設計",
       "raho_title": "產品設計師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -10482,21 +9538,13 @@
       "raho_short": "L2 自動化 ",
       "raho_title": "自動化 QA",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -10624,21 +9672,13 @@
       "raho_short": "L2 量化分析",
       "raho_title": "量化分析師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -10769,21 +9809,13 @@
       "raho_short": "L2 RAG ",
       "raho_title": "RAG 工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -10911,21 +9943,13 @@
       "raho_short": "L2 發布工程",
       "raho_title": "發布工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -11053,21 +10077,13 @@
       "raho_short": "L2 風險分析",
       "raho_title": "風險分析師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -11197,21 +10213,13 @@
       "raho_short": "L2 路由工程",
       "raho_title": "路由工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -11339,21 +10347,13 @@
       "raho_short": "L2 資安工程",
       "raho_title": "資安工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -11482,21 +10482,13 @@
       "raho_short": "L2 情緒分析",
       "raho_title": "情緒分析師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -11625,21 +10617,13 @@
       "raho_short": "L2 可靠性工",
       "raho_title": "可靠性工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -11768,21 +10752,13 @@
       "raho_short": "L2 故事創作",
       "raho_title": "故事創作者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -11912,21 +10888,13 @@
       "raho_short": "L2 技術文件",
       "raho_title": "技術文件工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -12054,21 +11022,13 @@
       "raho_short": "L2 測試工程",
       "raho_title": "測試工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -12200,21 +11160,13 @@
       "raho_short": "L2 在地化專",
       "raho_title": "在地化專員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -12343,21 +11295,13 @@
       "raho_short": "L2 UI 設",
       "raho_title": "UI 設計師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -12488,21 +11432,13 @@
       "raho_short": "L2 UX 研",
       "raho_title": "UX 研究員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -12630,21 +11566,13 @@
       "raho_short": "L2 分析師",
       "raho_title": "分析師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -12773,21 +11701,13 @@
       "raho_short": "L2 內容撰寫",
       "raho_title": "內容撰寫",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -12917,19 +11837,13 @@
       "raho_short": "L3 協調者",
       "raho_title": "協調者",
       "raho_spine": false,
-      "grill_targets": [
-        "requirement_auditor"
-      ],
-      "grill_target_labels": [
-        "L4 需求審計官"
-      ],
-      "reports_to": "requirement_auditor",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -13058,21 +11972,13 @@
       "raho_short": "L2 建築記錄",
       "raho_title": "建築記錄員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -13205,21 +12111,13 @@
       "raho_short": "L2 道具記錄",
       "raho_title": "道具記錄員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -13352,21 +12250,13 @@
       "raho_short": "L2 敘事記錄",
       "raho_title": "敘事記錄員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -13499,21 +12389,13 @@
       "raho_short": "L2 NPC記",
       "raho_title": "NPC記錄員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -13646,21 +12528,13 @@
       "raho_short": "L2 知識庫管",
       "raho_title": "知識庫管理員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -13788,21 +12662,13 @@
       "raho_short": "L2 合規審查",
       "raho_title": "合規審查",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -13930,21 +12796,13 @@
       "raho_short": "L2 記憶庫策",
       "raho_title": "記憶庫策展",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -14072,21 +12930,13 @@
       "raho_short": "L2 Prom",
       "raho_title": "Prompt 工程師",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -14214,21 +13064,13 @@
       "raho_short": "L2 研究員",
       "raho_title": "研究員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -14358,21 +13200,13 @@
       "raho_short": "L1 審查者",
       "raho_title": "審查者",
       "raho_spine": false,
-      "grill_targets": [
-        "atomic_executor",
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L2 原子執行者",
-        "L3 戰術指揮官"
-      ],
+      "grill_targets": [],
+      "grill_target_labels": [],
       "reports_to": null,
       "escalate_targets": [
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": true,
@@ -14505,21 +13339,13 @@
       "raho_short": "L2 支援專員",
       "raho_title": "支援專員",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,
@@ -14647,21 +13473,13 @@
       "raho_short": "L2 整合者",
       "raho_title": "整合者",
       "raho_spine": false,
-      "grill_targets": [
-        "tactical_commander"
-      ],
-      "grill_target_labels": [
-        "L3 戰術指揮官"
-      ],
-      "reports_to": "tactical_commander",
+      "grill_targets": [],
+      "grill_target_labels": [],
+      "reports_to": null,
       "escalate_targets": [
-        "tactical_commander",
-        "requirement_auditor",
         "user"
       ],
       "escalate_target_labels": [
-        "L3 戰術指揮官",
-        "L4 需求審計官",
         "L5 用戶"
       ],
       "raho_independent": false,

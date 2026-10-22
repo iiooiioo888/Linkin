@@ -14,7 +14,7 @@
 |:----:|------|--------|
 | 1 | [根 README](../README.md) | 落地頁、快速開始、約束摘要 |
 | 2 | 本文 | 心智模型 |
-| 3 | [目錄地圖](structure.md) | 套件路徑單一來源（85 vs 16 角色別搞混） |
+| 3 | [目錄地圖](structure.md) | 套件路徑單一來源（82 vs 16 角色別搞混） |
 | 4 | [術語表](glossary.md) | RAHO／L 層／埠號（5 分鐘） |
 | 5 | [AGENTS.md](../AGENTS.md) | 模組邊界與**禁止事項** |
 | 6 | [架構總覽](architecture/overview.md) | 資料流 |
@@ -50,7 +50,7 @@
 | 目錄 | 職責 | 套件 README |
 |------|------|-------------|
 | `backend/core/` | 圖、節點、`call_llm`、評估、模型池 | [backend/](../backend/README.md) |
-| `backend/company/` | 協調器、**85** 席 STANDARD_ROLES、RAHO | 同上 |
+| `backend/company/` | 協調器、**82** 席 STANDARD_ROLES、任務經理 | 同上 |
 | `backend/linkin/` | 憲法、實體、**16** 席子角色、Minecraft 業務護欄 | 同上 |
 | `backend/tools/` | MineMCP／運維等底層橋接 | 同上 |
 | `backend/hub/` | AI Hub 契約實作 | 同上 |
@@ -98,7 +98,7 @@ cd frontend; npm install; npm run dev   # :3001
 ## 7. 下一步
 
 - 目錄地圖：[structure.md](structure.md)  
-- 角色一覽：[company/roles.md](company/roles.md)（85＋16＋模板）  
+- 角色一覽：[company/roles.md](company/roles.md)（82＋16＋模板）  
 - 術語表：[glossary.md](glossary.md)  
 - 知識庫總目錄：[README.md](README.md)  
 - 卡住：[faq.md](faq.md)

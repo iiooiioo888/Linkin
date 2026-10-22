@@ -811,18 +811,18 @@ export type CompanyTemplate = (typeof COMPANY_TEMPLATES)[number]['value'];
 
 // ==================== OPC 6 級閉環 ====================
 
-/** 指揮鏈的工業步驟。舊任務的 resolved_path 可能仍是 opc。 */
+/** 舊任務曾把工業六級標成 opc 或 *_opc。新任務由任務經理分析，不再走這條階段。 */
 export function usesIndustrialStages(task: {
   resolved_path?: string | null;
   template?: string | null;
   phase?: string | null;
 } | null | undefined): boolean {
   if (!task) return false;
-  if (task.resolved_path === 'opc' || task.template === 'industrial_ops') return true;
+  if (task.resolved_path === 'opc') return true;
   return String(task.phase || '').endsWith('_opc');
 }
 
-/** 指揮鏈工業步驟（感知到執行） */
+/** 舊工業任務的階段（感知到執行）。新公司任務用任務分析與席位分工。 */
 export const OPC_PHASES: { key: string; label: string; icon: string }[] = [
   { key: 'sense_opc', label: '感知', icon: '📡' },
   { key: 'preprocess_opc', label: '預處理', icon: '🧹' },

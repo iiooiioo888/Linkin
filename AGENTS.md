@@ -5,10 +5,10 @@
 Linkin 基於 EvoLoop：具備自我反思閉環的**統一模式** AI 系統。核心為 **LangGraph 統一管線**。每則查詢先注入記憶、OPC 上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 選路（`route_by_complexity` 是圖上的條件邊）：
 
 - **simple**：單次生成，接著多維評估與反思改進
-- **company（指揮鏈，含 OPC）**：L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 專注執行；獨立審查 L1 憲兵；L0 注入記憶與感測。工業查詢用模板 `industrial_ops`，執行步驟是感知 → 預處理 → 分析 → 診斷 → 決策 → 執行，寫入經 `opc_service/guard.py`。對話入口先 Grill。成功後預設定稿，公司後反思由 `EVOL_POST_COMPANY_REFLECT` 決定
+- **company（含工業查詢）**：任務經理分析任務，產出里程碑與成敗標準，再拆給席位執行。工業查詢用模板 `industrial_ops`，感測讀數注入目標；寫入經 `opc_service/guard.py`。成功後預設定稿，公司後反思由 `EVOL_POST_COMPANY_REFLECT` 決定
 - **minecraft_ops**：單步 Minecraft 控制，輕量 ReAct + MCP，評估一次後定稿
 
-不再區分「標準／公司／OPC」三種產品模式。公司指揮鏈與 OPC 是同一條。優先序與入口分派見根目錄 README「運作邏輯」。
+不再區分「標準／公司／OPC」三種產品模式。工業查詢進入公司運行時，由任務經理分析。優先序與入口分派見根目錄 README「運作邏輯」。
 
 **文件入口：** [docs/onboarding.md](docs/onboarding.md) · [docs/structure.md](docs/structure.md) · [docs/glossary.md](docs/glossary.md) · [docs/README.md](docs/README.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
 
@@ -17,14 +17,14 @@ Linkin 基於 EvoLoop：具備自我反思閉環的**統一模式** AI 系統。
 | 模組 | 路徑 | 職責 |
 | --- | --- | --- |
 | 圖定義 | `backend/core/` | LangGraph 反思閉環、LiteLLM（`llm.py`）、多 API 路由（`api_router.py`）、模型池鎖定、EvoLoopState |
-| 公司運行時 | `backend/company/` | 協調器、RAHO（`company/raho/`）、**85** 席角色、工作項 DAG、預算、Prompt；席位表見 `docs/company/roles.md` |
+| 公司運行時 | `backend/company/` | 協調器、任務經理、**82** 席角色、工作項 DAG、預算、Prompt；席位表見 `docs/company/roles.md` |
 | 靈境 | `backend/linkin/` | 憲法、實體、**16** 席子角色、Minecraft 業務護欄；見同文「靈境子角色」 |
 | 世界模組 | `backend/modules/` | 可插拔目錄與閘道（`GET /modules`、`/{id}/api/*`）；Minecraft 為第一個模組 |
 | Minecraft MCP | `backend/tools/` + `backend/linkin/minecraft.py` | MineMCP JSON-RPC、鐵律、審計；角色經 tool_registry |
 | AI Hub | `backend/hub/` | 探針／熔斷／目錄（契約：`docs/AI_HUB_DETAILED_DESIGN.md`） |
 | OPC 微服務 | `opc_service/` | OPC UA 讀寫與訂閱、護欄、模擬伺服器 |
 
-套件 README：`backend/README.md` · `opc_service/README.md` · `frontend/README.md` · 目錄地圖：`docs/structure.md`
+套件 README：`backend/README.md` · `opc_service/README.md` · `frontend/README.md`。四類組件（核心的開發組件、minecraft組件、價格分析探針組件、整合）見 [docs/structure.md](docs/structure.md#組件分類)。新套件先歸進其中一類。整合再按召回、採集、工業接線、Agent 工作流、設計、技能劃分，見 [docs/structure.md](docs/structure.md#整合的功能)。
 
 ## 關鍵約束
 

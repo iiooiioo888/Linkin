@@ -27,8 +27,8 @@ export const STRATEGY_LABEL: Record<string, string> = {
 
 export const PATH_META: Record<string, { label: string; icon: string; tone: string }> = {
   simple: { label: '反思閉環', icon: '⚙', tone: 'var(--apple-blue-soft)' },
-  company: { label: '指揮鏈', icon: '🏢', tone: 'var(--apple-green)' },
-  opc: { label: '指揮鏈', icon: '🏭', tone: 'var(--apple-orange)' },
+  company: { label: '公司', icon: '🏢', tone: 'var(--apple-green)' },
+  opc: { label: '公司', icon: '🏭', tone: 'var(--apple-orange)' },
   minecraft_ops: { label: 'Minecraft 輕量操作', icon: '⛏', tone: 'var(--console-accent)' },
   '': { label: '尚未路由', icon: '·', tone: 'var(--apple-tertiary)' },
 };
@@ -54,7 +54,7 @@ export function ticketStatusLabel(status?: string | null): string {
   return TICKET_STATUS_LABEL[status] || status;
 }
 
-/** 門票欄位中文名（五維評分見 GrillUserCard 同一套措辭）。 */
+/** 任務欄位中文名。 */
 export const DIMENSION_META: Array<{ key: 'specificity' | 'boundary' | 'constraints' | 'risk' | 'success'; label: string; note: string }> = [
   { key: 'specificity', label: '目標具體性', note: '主語＋謂語＋受詞＋量化結果' },
   { key: 'boundary', label: '邊界清晰度', note: '做什麼與絕對不做什麼' },

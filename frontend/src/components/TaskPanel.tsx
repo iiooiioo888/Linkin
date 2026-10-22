@@ -40,8 +40,8 @@ export const STANDARD_PHASES: { key: string; label: string }[] = [
 ];
 
 export const COMPANY_PHASES: { key: string; label: string }[] = [
-  { key: 'campaign_plan', label: '戰役規劃' },
-  { key: 'decompose', label: '原子拆解' },
+  { key: 'task_analysis', label: '任務分析' },
+  { key: 'decompose', label: '工作拆解' },
   { key: 'execute_review', label: '執行與審查' },
   { key: 'synthesize', label: '整合交付' },
   { key: 'final_review', label: '最終審查' },
@@ -54,7 +54,7 @@ export { OPC_PHASES };
 // ── 角色顯示名稱 ──
 
 export const ROLE_LABELS: Record<string, string> = {
-  manager: '專案經理',
+  manager: '任務經理',
   tech_lead: '技術主管',
   architect: '架構師',
   frontend_lead: '前端主管',
