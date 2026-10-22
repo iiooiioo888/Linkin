@@ -77,7 +77,7 @@ const MAPS: LabTabItem = {
 
 const RUNNER: LabTabItem = { key: 'runner', icon: '⎈', label: '容器', hint: '臨時 Docker 任務' };
 
-const MCP: LabTabItem = { key: 'mcp', icon: '◇', label: 'MCP', hint: 'OPC／記憶／爬蟲開關' };
+const MCP: LabTabItem = { key: 'mcp', icon: '◇', label: 'MCP', hint: 'OPC／記憶／採集／容器開關' };
 
 const AB: LabTabItem = { key: 'ab', icon: '▣', label: 'A/B', hint: '提示詞對照' };
 
@@ -111,21 +111,102 @@ export const LAB_TABS: LabTabItem[] = [
 
 export type LabNavGroupId = 'core' | 'minecraft' | 'price' | 'integrate';
 
+/** 整合類再按功能切開。其他三類沒有這個子層。 */
+export type LabNavSection = {
+  id: string;
+  label: string;
+  items: LabNavEntry[];
+};
+
 export type LabNavGroup = {
   id: LabNavGroupId;
   label: string;
   items: LabNavEntry[];
+  sections?: LabNavSection[];
 };
+
+const link = (key: string, icon: string, label: string, hint: string, href: string): LabLinkItem => ({
+  key,
+  icon,
+  label,
+  hint,
+  href,
+});
+
+/** 整合的功能。實驗室側欄、即時看板與目錄地圖共用這份順序。 */
+export const LAB_INTEGRATE_SECTIONS: LabNavSection[] = [
+  {
+    id: 'recall',
+    label: '召回',
+    items: [
+      link('memos', '◌', 'MemOS', '長期記憶', '#/monitor/integrations/memos'),
+      link('openviking', '⬡', 'OpenViking', '分層上下文', '#/monitor/integrations/openviking'),
+      link('weknora', '◈', 'WeKnora', '知識庫', '#/monitor/integrations/weknora'),
+      link('vector-memory', '○', '向量記憶', '檢索', '#/monitor/memory'),
+    ],
+  },
+  {
+    id: 'crawl',
+    label: '採集',
+    items: [
+      FIRECRAWL,
+      link('social', '⧉', '社媒', 'MediaCrawler', '#/monitor/skills'),
+    ],
+  },
+  {
+    id: 'wire',
+    label: '工業接線',
+    items: [MCP],
+  },
+  {
+    id: 'agent',
+    label: 'Agent 工作流',
+    items: [
+      link('yao', '▣', 'Yao', '任務板', '#/monitor/integrations/yao'),
+      link('ouroboros', '⟳', 'Ouroboros', '訪談閘門', '#/monitor/integrations/ouroboros'),
+    ],
+  },
+  {
+    id: 'design',
+    label: '設計',
+    items: [link('openpencil', '✎', 'OpenPencil', 'Design-as-Code', '#/monitor/integrations/openpencil')],
+  },
+  {
+    id: 'skills',
+    label: '技能',
+    items: [link('skills', '⚡', '技能庫', '技能與 MCP', '#/monitor/skills')],
+  },
+];
 
 export const LAB_NAV_GROUPS: LabNavGroup[] = [
   { id: 'core', label: '核心的開發組件', items: LAB_CORE_TABS },
   { id: 'minecraft', label: 'minecraft組件', items: [MINECRAFT_LINK] },
   { id: 'price', label: '價格分析探針組件', items: [...LAB_PRICE_TABS, PRICE_PROBE_LINK] },
-  { id: 'integrate', label: '整合', items: LAB_INTEGRATE_TABS },
+  {
+    id: 'integrate',
+    label: '整合',
+    sections: LAB_INTEGRATE_SECTIONS,
+    items: LAB_INTEGRATE_SECTIONS.flatMap((section) => section.items),
+  },
 ];
+
+export function labSections(group: LabNavGroup): LabNavSection[] {
+  if (group.sections?.length) return group.sections;
+  return [{ id: group.id, label: '', items: group.items }];
+}
 
 export function labGroupForTab(tab: LabSubTab): LabNavGroup | undefined {
   return LAB_NAV_GROUPS.find((group) => group.items.some((item) => !isLabLink(item) && item.key === tab));
+}
+
+export function labSectionForTab(tab: LabSubTab): LabNavSection | undefined {
+  for (const group of LAB_NAV_GROUPS) {
+    const section = labSections(group).find((item) =>
+      item.items.some((entry) => !isLabLink(entry) && entry.key === tab),
+    );
+    if (section) return section;
+  }
+  return undefined;
 }
 
 export function normalizeLabSubTab(tab: string | null | undefined): LabSubTab {

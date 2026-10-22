@@ -13,7 +13,7 @@ import {
   pickActiveAgents,
   pickBusyAgents,
 } from '../lib/animLive';
-import { isLabLink, LAB_NAV_GROUPS, type LabSubTab } from '../lib/labTabs';
+import { isLabLink, labSections, LAB_NAV_GROUPS, type LabNavEntry, type LabSubTab } from '../lib/labTabs';
 import { filterAgentsByDesk, PIPELINE_STAGES, requestRoleSettingsDesk } from '../lib/agentUi';
 import {
   buildActivityHeatmap,
@@ -707,6 +707,40 @@ function ExternalIntegrationsCard({
   );
 }
 
+function labChip(
+  item: LabNavEntry,
+  chipClass: string,
+  onOpenLab?: (sub: LabSubTab) => void,
+) {
+  if (isLabLink(item)) {
+    return (
+      <a key={item.key} href={item.href} className={chipClass} title={item.hint}>
+        {item.label}
+      </a>
+    );
+  }
+  return onOpenLab ? (
+    <button
+      key={item.key}
+      type="button"
+      onClick={() => onOpenLab(item.key)}
+      className={chipClass}
+      title={item.upstream?.name ?? item.hint}
+    >
+      {item.label}
+    </button>
+  ) : (
+    <a
+      key={item.key}
+      href={item.key === 'prompt' ? '#/monitor/lab' : `#/monitor/lab/${item.key}`}
+      className={chipClass}
+      title={item.upstream?.name ?? item.hint}
+    >
+      {item.label}
+    </a>
+  );
+}
+
 function LabToolsCard({
   dock,
   onOpenLab,
@@ -733,36 +767,17 @@ function LabToolsCard({
         {LAB_NAV_GROUPS.map((group) => (
           <div key={group.id}>
             <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-[var(--console-faint)]">{group.label}</p>
-            <div className="flex flex-wrap gap-2">
-              {group.items.map((item) => {
-                if (isLabLink(item)) {
-                  return (
-                    <a key={item.key} href={item.href} className={chipClass} title={item.hint}>
-                      {item.label}
-                    </a>
-                  );
-                }
-                return onOpenLab ? (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => onOpenLab(item.key)}
-                    className={chipClass}
-                    title={item.upstream?.name ?? item.hint}
-                  >
-                    {item.label}
-                  </button>
-                ) : (
-                  <a
-                    key={item.key}
-                    href={item.key === 'prompt' ? '#/monitor/lab' : `#/monitor/lab/${item.key}`}
-                    className={chipClass}
-                    title={item.upstream?.name ?? item.hint}
-                  >
-                    {item.label}
-                  </a>
-                );
-              })}
+            <div className="space-y-2">
+              {labSections(group).map((section) => (
+                <div key={section.id}>
+                  {section.label ? (
+                    <p className="mb-1 text-[10px] text-[var(--console-faint)]">{section.label}</p>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    {section.items.map((item) => labChip(item, chipClass, onOpenLab))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ))}

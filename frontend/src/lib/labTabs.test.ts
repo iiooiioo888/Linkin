@@ -24,6 +24,23 @@ describe('lab component groups', () => {
     expect(LAB_TABS).toHaveLength(9);
   });
 
+  it('splits 整合 by function', () => {
+    const group = LAB_NAV_GROUPS.find((item) => item.id === 'integrate');
+    expect(group?.sections?.map((section) => section.label)).toEqual([
+      '召回',
+      '採集',
+      '工業接線',
+      'Agent 工作流',
+      '設計',
+      '技能',
+    ]);
+    expect(group?.sections?.find((section) => section.id === 'crawl')?.items.map((item) => item.label)).toEqual([
+      '爬蟲',
+      '社媒',
+    ]);
+    expect(group?.sections?.find((section) => section.id === 'wire')?.items.map((item) => item.key)).toEqual(['mcp']);
+  });
+
   it('links minecraft and the price probe out of the lab', () => {
     const minecraft = LAB_NAV_GROUPS.find((group) => group.id === 'minecraft')?.items[0];
     const probe = LAB_NAV_GROUPS.find((group) => group.id === 'price')?.items.find((item) => isLabLink(item));

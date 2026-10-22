@@ -24,7 +24,7 @@ Linkin 基於 EvoLoop：具備自我反思閉環的**統一模式** AI 系統。
 | AI Hub | `backend/hub/` | 探針／熔斷／目錄（契約：`docs/AI_HUB_DETAILED_DESIGN.md`） |
 | OPC 微服務 | `opc_service/` | OPC UA 讀寫與訂閱、護欄、模擬伺服器 |
 
-套件 README：`backend/README.md` · `opc_service/README.md` · `frontend/README.md`。四類組件（核心的開發組件、minecraft組件、價格分析探針組件、整合）見 [docs/structure.md](docs/structure.md#組件分類)。新套件先歸進其中一類。
+套件 README：`backend/README.md` · `opc_service/README.md` · `frontend/README.md`。四類組件（核心的開發組件、minecraft組件、價格分析探針組件、整合）見 [docs/structure.md](docs/structure.md#組件分類)。新套件先歸進其中一類。整合再按召回、採集、工業接線、Agent 工作流、設計、技能劃分，見 [docs/structure.md](docs/structure.md#整合的功能)。
 
 ## 關鍵約束
 

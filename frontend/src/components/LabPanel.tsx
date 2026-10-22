@@ -17,7 +17,7 @@ import {
   labOptimizePrompt,
   labPonytailReview,
 } from '../api/client';
-import { isLabLink, LAB_TABS, labGroupForTab, type LabSubTab } from '../lib/labTabs';
+import { isLabLink, LAB_TABS, labGroupForTab, labSectionForTab, type LabSubTab } from '../lib/labTabs';
 import { activityNavPath } from '../lib/monitorTabs';
 import { extractMarkdownImages } from '../lib/visualCards';
 import ArchifyFrame from './ArchifyFrame';
@@ -33,12 +33,14 @@ const DEMO_BEFORE = `你是一位工業助手。根據感測資料回答問題�
 請盡量詳細說明。`;
 
 const MCP_TOOLS = [
-  { id: 'opc.read', name: 'OPC Read', desc: '讀取白名單標籤', enabled: true, risk: 'low' },
-  { id: 'opc.write', name: 'OPC Write', desc: '經護欄寫入', enabled: true, risk: 'high' },
-  { id: 'memory.search', name: 'Memory Search', desc: '向量記憶檢索', enabled: true, risk: 'low' },
-  { id: 'firecrawl.scrape', name: 'Firecrawl Scrape', desc: '網頁 → Markdown', enabled: true, risk: 'mid' },
-  { id: 'docker.inspect', name: 'Docker Inspect', desc: '容器狀態查詢', enabled: false, risk: 'mid' },
+  { id: 'opc.read', name: 'OPC Read', desc: '讀取白名單標籤', enabled: true, risk: 'low', fn: '工業接線' },
+  { id: 'opc.write', name: 'OPC Write', desc: '經護欄寫入', enabled: true, risk: 'high', fn: '工業接線' },
+  { id: 'memory.search', name: 'Memory Search', desc: '向量記憶檢索', enabled: true, risk: 'low', fn: '召回' },
+  { id: 'firecrawl.scrape', name: 'Firecrawl Scrape', desc: '網頁 → Markdown', enabled: true, risk: 'mid', fn: '採集' },
+  { id: 'docker.inspect', name: 'Docker Inspect', desc: '容器狀態查詢', enabled: false, risk: 'mid', fn: '容器' },
 ];
+
+const MCP_FUNCTIONS = ['工業接線', '召回', '採集', '容器'] as const;
 
 const AB_SERIES = [
   { name: '準確', a: 7.2, b: 8.6 },
@@ -76,6 +78,9 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
   const tab = activeTab;
   const tabMeta = LAB_TABS.find((t) => t.key === tab);
   const activeGroup = labGroupForTab(tab);
+  const activeSection = labSectionForTab(tab);
+  const chipTitle = activeSection?.label || activeGroup?.label;
+  const chipItems = activeSection?.items ?? [];
 
   // Prompt Optimizer
   const [before, setBefore] = useState(DEMO_BEFORE);
@@ -235,13 +240,13 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-        {activeGroup && (
+        {chipTitle && chipItems.length > 0 && (
           <div className="mx-auto mb-5 max-w-5xl md:hidden">
             <p className="mb-2 text-[10px] font-semibold tracking-wide text-[var(--console-faint)]">
-              {activeGroup.label}
+              {chipTitle}
             </p>
             <div className="flex flex-wrap gap-2">
-              {activeGroup.items.map((item) =>
+              {chipItems.map((item) =>
                 isLabLink(item) ? (
                   <a
                     key={item.key}
@@ -552,44 +557,51 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
         {tab === 'mcp' && (
           <div className="mx-auto max-w-2xl space-y-3">
             <p className="text-[11px] text-[var(--console-sub)]">
-              執行期通用工具開關（OPC／記憶／爬蟲／Docker）。Minecraft 放置、填充與指令在
-              「{activityNavPath('minecraft')}」，不與實驗室混用。
+              開關按功能排列：工業接線、召回、採集、容器。Minecraft 放置、填充與指令在
+              「{activityNavPath('minecraft')}」。
             </p>
-            {tools.map((t) => (
-              <label
-                key={t.id}
-                className="apple-card apple-card--tight flex cursor-pointer items-center gap-4 px-4 py-3"
-              >
-                <input
-                  type="checkbox"
-                  checked={t.enabled}
-                  onChange={() =>
-                    setTools((prev) =>
-                      prev.map((x) => (x.id === t.id ? { ...x, enabled: !x.enabled } : x)),
-                    )
-                  }
-                  className="h-4 w-4 accent-[var(--console-accent)]"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-bold text-[var(--console-ink)]">{t.name}</p>
-                  <p className="mt-0.5 text-[11px] text-[var(--console-sub)]">{t.desc}</p>
-                </div>
-                <span
-                  className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                  style={{
-                    color:
-                      t.risk === 'high' ? '#FF3B30' : t.risk === 'mid' ? '#FF9500' : '#34C759',
-                    background:
-                      t.risk === 'high'
-                        ? 'rgba(255,59,48,0.12)'
-                        : t.risk === 'mid'
-                          ? 'rgba(255,149,0,0.12)'
-                          : 'rgba(52,199,89,0.12)',
-                  }}
-                >
-                  {t.risk}
-                </span>
-              </label>
+            {MCP_FUNCTIONS.map((fn) => (
+              <section key={fn} className="space-y-2">
+                <h3 className="text-[11px] font-semibold tracking-wide text-[var(--console-faint)]">{fn}</h3>
+                {tools
+                  .filter((t) => t.fn === fn)
+                  .map((t) => (
+                    <label
+                      key={t.id}
+                      className="apple-card apple-card--tight flex cursor-pointer items-center gap-4 px-4 py-3"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={t.enabled}
+                        onChange={() =>
+                          setTools((prev) =>
+                            prev.map((x) => (x.id === t.id ? { ...x, enabled: !x.enabled } : x)),
+                          )
+                        }
+                        className="h-4 w-4 accent-[var(--console-accent)]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-bold text-[var(--console-ink)]">{t.name}</p>
+                        <p className="mt-0.5 text-[11px] text-[var(--console-sub)]">{t.desc}</p>
+                      </div>
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                        style={{
+                          color:
+                            t.risk === 'high' ? '#FF3B30' : t.risk === 'mid' ? '#FF9500' : '#34C759',
+                          background:
+                            t.risk === 'high'
+                              ? 'rgba(255,59,48,0.12)'
+                              : t.risk === 'mid'
+                                ? 'rgba(255,149,0,0.12)'
+                                : 'rgba(52,199,89,0.12)',
+                        }}
+                      >
+                        {t.risk}
+                      </span>
+                    </label>
+                  ))}
+              </section>
             ))}
           </div>
         )}

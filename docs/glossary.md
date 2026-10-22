@@ -8,6 +8,7 @@
 | **EvoLoop** | 上游／運行時核心：LangGraph 統一管線（反思／公司／OPC） |
 | **統一模式** | 不再分「標準／公司／OPC」三套產品；由複雜度路由選路 |
 | **組件分類** | 核心的開發組件、minecraft組件、價格分析探針組件、整合。見 [目錄地圖](structure.md#組件分類) |
+| **整合的功能** | 召回、採集、工業接線、Agent 工作流、設計、技能。見 [目錄地圖](structure.md#整合的功能) |
 | **`resolve_execution_path`** | 選路唯一實作：`simple`／`company`／`opc`／`minecraft_ops`。Task、SSE、圖共用 |
 | **`route_by_complexity`** | 圖的條件邊：`company`（含工業）→ `run_company`，`minecraft_ops` → `run_minecraft_ops`，`simple` → 單次生成 |
 | **反思閉環** | 生成 → 多維評估 →（低分）反思 → 改進 → 再評估 |

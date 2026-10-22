@@ -12,7 +12,20 @@
 | **核心的開發組件** | 前置注入、選路、簡單路徑的生成／評估／反思；任務經理分析與 82 席；提示詞、架構圖、精簡、A/B、臨時容器 | `backend/core/`、`backend/company/`（量化工具見下一類）、`backend/billing/`、`backend/prompts/`、對話與控制台 | 提示詞、架構、精簡、容器、A/B |
 | **minecraft組件** | 憲法、16 席子角色、世界模組、MineMCP 寫入護欄、`minecraft_ops` | `backend/linkin/`、`backend/modules/`、`backend/tools/`、Minecraft 畫面 | 側欄進入 `#/modules/minecraft` |
 | **價格分析探針組件** | 廠商延遲與報價探針；策略庫與策略圖 | `backend/hub/`、`backend/company/quant_*.py`、Hub 監控（基礎設施 → AI Hub） | 策略庫、策略圖、價格探針 |
-| **整合** | 向量記憶、六個召回客戶端、技能、爬蟲、MCP／OPC／記憶開關 | `backend/memory/`、`backend/integrations/`、`.agents/skills/`、`opc_service/` | 爬蟲、MCP |
+| **整合** | 依功能再分：召回、採集、工業接線、Agent 工作流、設計、技能。見下一節 | `backend/memory/`、`backend/integrations/`、`.agents/skills/`、`opc_service/` | `LAB_INTEGRATE_SECTIONS` |
+
+### 整合的功能
+
+實驗室側欄的單一來源是 `frontend/src/lib/labTabs.ts` 的 `LAB_INTEGRATE_SECTIONS`。六個外部客戶端的群組（`recall`／`agent`／`design`）與此對齊。
+
+| 功能 | 做什麼 | 落在哪 |
+|------|--------|--------|
+| **召回** | 向量記憶與 Token 節省注入：MemOS、OpenViking、WeKnora | `backend/memory/`、`backend/integrations/memos.py`、`openviking.py`、`weknora.py` |
+| **採集** | 網頁轉 Markdown、社媒公開採集 | 實驗室「爬蟲」；MediaCrawler 在技能頁 |
+| **工業接線** | OPC 讀寫。寫入經護欄。實驗室 MCP 頁把 OPC 開關放在這一組 | `opc_service/` |
+| **Agent 工作流** | 任務板與訪談閘門：Yao、Ouroboros | `backend/integrations/yao.py`、`ouroboros.py` |
+| **設計** | Design-as-Code，須顯式觸發：OpenPencil | `backend/integrations/openpencil.py` |
+| **技能** | Agent skills | `.agents/skills/`、`#/monitor/skills` |
 
 控制台左側（總覽、執行、角色、審計、計費、系統）是核心的開發組件裡的導覽，定義在 `frontend/src/lib/monitorTabs.ts` 的 `CONSOLE_NAV_GROUPS`。Minecraft 世界模組用自己的導覽。實驗室四類的單一來源是 `frontend/src/lib/labTabs.ts` 的 `LAB_NAV_GROUPS`。
 

@@ -146,7 +146,7 @@ flowchart TD
 | 核心的開發組件 | `backend/core/`、`backend/company/`、`backend/billing/`。實驗室：提示詞、架構、精簡、容器、A/B |
 | minecraft組件 | `backend/linkin/`、`backend/modules/`、`backend/tools/`。畫面在 `#/modules/minecraft` |
 | 價格分析探針組件 | `backend/hub/`、`backend/company/quant_*.py`。實驗室：策略庫、策略圖、價格探針 |
-| 整合 | `backend/memory/`、`backend/integrations/`、`opc_service/`。實驗室：爬蟲、MCP |
+| 整合 | 再按召回、採集、工業接線、Agent 工作流、設計、技能。見 [目錄地圖](docs/structure.md#整合的功能) |
 
 詳圖：[docs/architecture/overview.md](docs/architecture/overview.md) · 微服務 sense → act：[docs/architecture/opc-six-stage.md](docs/architecture/opc-six-stage.md)
 
