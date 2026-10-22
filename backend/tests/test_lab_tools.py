@@ -130,6 +130,33 @@ def test_lab_api_endpoints(client: TestClient, monkeypatch):
     assert r.json()["meta"]["title"]
 
 
+def test_firecrawl_http_error_maps_to_502(client: TestClient, monkeypatch):
+    """回歸：main.py 的 except 子句引用 httpx，但模組未 import httpx，
+    上游 HTTP 錯誤會在異常處理路徑引發 NameError 而非回傳 502。"""
+
+    def _raise_status(url, **kw):
+        request = httpx.Request("POST", "https://api.firecrawl.dev/v2/scrape")
+        response = httpx.Response(503, request=request)
+        raise httpx.HTTPStatusError("upstream down", request=request, response=response)
+
+    def _raise_transport(url, **kw):
+        raise httpx.ConnectError("dns failure")
+
+    monkeypatch.setattr(lab_tools, "firecrawl_scrape", _raise_status)
+    r = client.post("/lab/firecrawl/scrape", json={"url": "https://example.com"})
+    assert r.status_code == 502
+    assert "503" in r.json()["detail"]
+
+    monkeypatch.setattr(lab_tools, "firecrawl_scrape", _raise_transport)
+    r = client.post("/lab/firecrawl/scrape", json={"url": "https://example.com"})
+    assert r.status_code == 502
+    assert "dns failure" in r.json()["detail"]
+
+    monkeypatch.setattr(lab_tools, "firecrawl_search", _raise_status)
+    r = client.post("/lab/firecrawl/search", json={"query": "evoloop"})
+    assert r.status_code == 502
+
+
 def test_company_tool_registry_includes_lab_tools():
     from backend.company.tools import tool_registry
 

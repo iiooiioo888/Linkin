@@ -6,6 +6,10 @@
 
 未啟用或無 Token 時走乾跑，不連真實伺服器，測試無需 Minecraft。
 寫入前必須經過本模組允許清單與靈境鐵律，禁止把檔案系統工具暴露給角色。
+
+本模組另含兜底護欄（defense-in-depth）：fill 體積上限、命令鏈禁止、敏感指令
+二次確認。第一道防線在 backend/linkin/minecraft.py 鐵律層；此處為第二道，
+對繞過鐵律層直連橋接層的呼叫同樣生效（含乾跑），且拒絕結果寫入審計。
 """
 
 from __future__ import annotations
@@ -339,6 +343,90 @@ def _deny_file_tool(remote_name: str, cfg: MinecraftMcpConfig) -> dict[str, Any]
     return None
 
 
+# ── 兜底護欄 regex（與 backend/linkin/tools.py 鐵律保持一致）──
+# 執行期優先惰性導入鐵律層維持單一來源；導入失敗時退回本地副本。
+_SENSITIVE_CMD_FALLBACK_RE = re.compile(
+    r"("
+    r"kick|ban|pardon|op\b|deop|stop|restart|whitelist|gamemode|difficulty|"
+    r"worldborder|save-off|save-on|op-permission|"
+    r"踢出|封禁|停服|重啟|重启|修改世界|管理員|管理员|白名單|白名单"
+    r")",
+    re.IGNORECASE,
+)
+_COMMAND_CHAIN_FALLBACK_RE = re.compile(r"(&&|;|\n\s*&&|\s\|\s)")
+
+
+def _guard_regexes() -> tuple[re.Pattern[str], re.Pattern[str]]:
+    """回傳 (敏感指令, 命令鏈) regex：優先用鐵律層的單一來源。"""
+    try:
+        from backend.linkin.tools import COMMAND_CHAIN_RE, SENSITIVE_ADMIN_RE
+
+        return SENSITIVE_ADMIN_RE, COMMAND_CHAIN_RE
+    except Exception:  # noqa: BLE001 — 鐵律層不可用時退回本地副本
+        return _SENSITIVE_CMD_FALLBACK_RE, _COMMAND_CHAIN_FALLBACK_RE
+
+
+def _guard_fill_volume(arguments: dict[str, Any], cfg: MinecraftMcpConfig) -> dict[str, Any] | None:
+    """兜底護欄：fill 座標有效性與體積上限（鐵律層另與憲法上限取小）。"""
+    try:
+        coords = [int(arguments[key]) for key in ("x1", "y1", "z1", "x2", "y2", "z2")]
+    except (KeyError, TypeError, ValueError):
+        return {
+            "ok": False,
+            "error": "fill_block 需要整數座標 x1/y1/z1/x2/y2/z2",
+            "code": "block_limit",
+        }
+    volume = fill_volume(*coords)
+    if volume <= 0:
+        return {"ok": False, "error": "fill 範圍無效", "code": "block_limit", "block_count": volume}
+    if volume > cfg.max_fill:
+        return {
+            "ok": False,
+            "error": f"單次 fill 不得超過 {cfg.max_fill} 方塊（收到 {volume}）",
+            "code": "block_limit",
+            "block_count": volume,
+            "max_blocks": cfg.max_fill,
+        }
+    return None
+
+
+def _guard_execute_command(arguments: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """兜底護欄：命令鏈禁止 + 敏感指令二次確認。
+
+    回傳 (阻擋原因或 None, 去除 confirmed 旗標後的乾淨參數)。
+    confirmed 僅供本地護欄判斷，不會傳給遠端 MineMCP。
+    """
+    clean = {k: v for k, v in arguments.items() if k not in ("confirmed", "confirm")}
+    command = str(clean.get("command") or "").strip()
+    clean["command"] = command
+    confirmed = bool(arguments.get("confirmed") or arguments.get("confirm"))
+    if not command:
+        return {"ok": False, "error": "execute_command 需要 command", "code": "invalid"}, clean
+    sensitive_re, chain_re = _guard_regexes()
+    if chain_re.search(command):
+        return (
+            {
+                "ok": False,
+                "error": "禁止使用命令鏈（&&、;、|）。單次呼叫僅限一個指令。",
+                "code": "command_chain",
+                "command": command,
+            },
+            clean,
+        )
+    if sensitive_re.search(command) and not confirmed:
+        return (
+            {
+                "ok": False,
+                "error": "敏感操作需二次確認（踢出玩家、修改世界設定、停服等）：請明確攜帶 confirmed=true",
+                "code": "needs_confirmation",
+                "needs_confirmation": True,
+                "command": command,
+            },
+            clean,
+        )
+    return None, clean
+
+
 def call_mcp_tool(
     tool_name: str,
     arguments: dict[str, Any] | None = None,
@@ -368,6 +456,40 @@ def call_mcp_tool(
         }
         _append_audit({**err, "tool": local_name, "role": role}, cfg)
         return err
+
+    # ── 兜底護欄（defense-in-depth）──
+    # 第一道護欄在 backend/linkin/minecraft.py（鐵律層）；此處為第二道防線，
+    # 對繞過鐵律層直連橋接層的呼叫同樣生效（含乾跑），拒絕結果寫入審計。
+    if remote_name == FILL_BLOCK:
+        blocked = _guard_fill_volume(arguments, cfg)
+        if blocked:
+            _append_audit(
+                {
+                    "tool": local_name,
+                    "remote": remote_name,
+                    "ok": False,
+                    "code": blocked.get("code"),
+                    "error": blocked["error"],
+                    "role": role,
+                },
+                cfg,
+            )
+            return blocked
+    elif remote_name == EXECUTE_COMMAND:
+        blocked, arguments = _guard_execute_command(arguments)
+        if blocked:
+            _append_audit(
+                {
+                    "tool": local_name,
+                    "remote": remote_name,
+                    "ok": False,
+                    "code": blocked.get("code"),
+                    "error": blocked["error"],
+                    "role": role,
+                },
+                cfg,
+            )
+            return blocked
 
     if cfg.dry_run:
         result = {
@@ -568,12 +690,13 @@ def fill_block(
 def execute_command(
     command: str,
     *,
+    confirmed: bool = False,
     role: str | None = None,
     client: httpx.Client | None = None,
 ) -> dict[str, Any]:
     return call_mcp_tool(
         EXECUTE_COMMAND,
-        {"command": str(command).strip()},
+        {"command": str(command).strip(), "confirmed": bool(confirmed)},
         client=client,
         role=role,
     )

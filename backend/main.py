@@ -15,6 +15,7 @@ from typing import Any
 import asyncio
 import json as json_mod
 
+import httpx
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -48,6 +49,7 @@ from backend.services.cloud_console import (
 )
 from backend.services.task_broadcaster import task_broadcaster
 from backend.services.task_manager import task_manager
+from backend.services import ab_eval
 from backend.services import lab_tools
 from backend.hub.api import register_hub
 from backend.linkin.api import register_linkin
@@ -1348,6 +1350,81 @@ async def lab_archify_generate(body: ArchifyGenerateRequest):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+# ═══════════════════════════════════════════════════════════
+# A/B 評估 API（路線圖 Phase 12：記憶蒸餾 + A/B 評估）
+# ═══════════════════════════════════════════════════════════
+
+class AbVariant(BaseModel):
+    label: str
+    system: str | None = None
+    model: str | None = None
+
+
+class AbCase(BaseModel):
+    query: str
+    reference: str | None = None
+
+
+class AbExperimentRequest(BaseModel):
+    name: str
+    kind: str = "prompt"  # prompt | model
+    variant_a: AbVariant
+    variant_b: AbVariant
+    cases: list[AbCase]
+    tie_margin: float | None = None
+
+
+@app.post("/ab/experiments")
+def create_ab_experiment(body: AbExperimentRequest):
+    """建立 A/B 實驗（Prompt 或模型雙變體，尚未執行）。"""
+    try:
+        return ab_eval.create_experiment(
+            body.name,
+            [case.model_dump(exclude_none=True) for case in body.cases],
+            body.variant_a.model_dump(exclude_none=True),
+            body.variant_b.model_dump(exclude_none=True),
+            kind=body.kind,
+            tie_margin=body.tie_margin,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/ab/experiments")
+def list_ab_experiments():
+    """A/B 實驗列表（摘要）。"""
+    return {"experiments": ab_eval.list_experiments()}
+
+
+@app.get("/ab/experiments/{experiment_id}")
+def get_ab_experiment(experiment_id: str):
+    """A/B 實驗詳情（含逐案例結果與聚合）。"""
+    exp = ab_eval.get_experiment(experiment_id)
+    if exp is None:
+        raise HTTPException(status_code=404, detail="實驗不存在")
+    return exp
+
+
+@app.post("/ab/experiments/{experiment_id}/run")
+def run_ab_experiment(experiment_id: str):
+    """執行 A/B 實驗：雙變體生成 → 4 維評估 → 勝負與符號檢定顯著性。"""
+    try:
+        return ab_eval.run_experiment(experiment_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.warning("A/B 實驗執行失敗：%s", exc)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.delete("/ab/experiments/{experiment_id}")
+def delete_ab_experiment(experiment_id: str):
+    """刪除 A/B 實驗。"""
+    if not ab_eval.delete_experiment(experiment_id):
+        raise HTTPException(status_code=404, detail="實驗不存在")
+    return {"deleted": True, "id": experiment_id}
 
 
 # ═══════════════════════════════════════════════════════════

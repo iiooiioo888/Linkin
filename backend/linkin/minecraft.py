@@ -174,7 +174,11 @@ def execute_named_tool(
         return result
     if name == mcp.EXECUTE_COMMAND:
         params = prepare_command(args)
-        result = mcp.execute_command(params["command"], role=role)
+        result = mcp.execute_command(
+            params["command"],
+            confirmed=params.get("confirmed", False),
+            role=role,
+        )
         result["params"] = params
         result["sensitive"] = is_sensitive_admin(params["command"])
         return result

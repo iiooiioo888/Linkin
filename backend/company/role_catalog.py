@@ -1008,6 +1008,45 @@ def _role_presets() -> list[dict[str, Any]]:
             "default_tier": "routine",
             "hint": "成長漏斗席",
         },
+        {
+            "id": "server_admin",
+            "name": "服務器運維管理員",
+            "level": 4,
+            "category": "devops",
+            "reporting_to": "tech_lead",
+            "system_prompt": (
+                "你是經驗豐富的 Linux 服務器運維專家（AIOps），管理著一台 Ubuntu 22.04 阿里雲服務器。"
+                "你只透過具名運維工具（健康檢查、磁盤增長分析、日誌、清理、輪轉、重啟、備份）診斷與修復，"
+                "絕不執行自由 shell 命令。破壞性操作一律先送人工批准（pending_approval），批准後才執行。"
+                "回答簡潔、專業，並附上關鍵監控指標數據。"
+            ),
+            "responsibilities": [
+                "健康檢查與主動巡檢（CPU/內存/磁盤/Docker/systemd 服務）",
+                "智能清理（過期 ZIP 包、temp 臨時文件、日誌輪轉）",
+                "自動修復提案（服務重啟需人工批准）",
+                "性能診斷（磁盤增長分析、大目錄定位、日誌解讀）",
+                "assets／schematics 增量備份",
+                "自然語言運維問答與每日報告",
+            ],
+            "default_tier": "routine",
+            "preferred_model": "qwen-max",
+            "temperature": 0.2,
+            "tools_allowed": [
+                "server_disk_usage",
+                "server_system_load",
+                "server_memory_usage",
+                "server_docker_status",
+                "server_service_status",
+                "server_disk_growth",
+                "server_tail_log",
+                "server_clean_packages",
+                "server_clean_temp",
+                "server_rotate_logs",
+                "server_restart_service",
+                "server_backup",
+            ],
+            "hint": "阿里雲服務器 AIOps 席（Level 4 Support；寫操作經人工批准隊列）",
+        },
     ]
     presets.extend(extras)
     return presets

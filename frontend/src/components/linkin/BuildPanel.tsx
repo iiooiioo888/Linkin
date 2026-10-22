@@ -305,6 +305,7 @@ export default function BuildPanel() {
       {result && (
         <p className="mt-3 text-[11px] text-[#8a8f98]">
           {result.style} · {result.width ?? '?'}×{result.height ?? '?'}×{result.length ?? '?'} · v{result.schematic_version ?? 3}
+          {result.generator === 'llm' ? ' · 🧠 LLM 設計' : ''}
           {result.note ? ` · ${result.note}` : ''}
         </p>
       )}
@@ -327,10 +328,28 @@ export default function BuildPanel() {
                 </span>
               )}
               <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">v{item.schematic_version ?? 3}</span>
+              {item.generator === 'llm' && (
+                <span className="rounded-md bg-[#64D2FF]/15 px-1.5 py-0.5 text-[10px] text-[#64D2FF]">
+                  🧠 LLM 設計{item.design?.op_count ? ` · ${item.design.op_count} ops` : ''}
+                </span>
+              )}
               {item.status && <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{item.status}</span>}
             </div>
             <p className="mt-1 text-[12px] leading-relaxed text-[#AEAEB2]">{item.prompt}</p>
             {item.note && <p className="mt-1 text-[11px] text-[#8a8f98]">{item.note}</p>}
+            {item.design?.ops?.length ? (
+              <details className="mt-1">
+                <summary className="cursor-pointer text-[10px] text-[#64D2FF]">
+                  設計指令（{item.design.op_count ?? item.design.ops.length} ops{item.design.model ? ` · ${item.design.model}` : ''}）
+                </summary>
+                <pre className="mt-1 max-h-40 overflow-auto rounded-lg bg-black/30 p-2 text-[10px] leading-relaxed text-[#8a8f98]">
+                  {JSON.stringify(item.design.ops, null, 1)}
+                </pre>
+                {item.design.warnings?.length ? (
+                  <p className="mt-1 text-[10px] text-[#D29922]">校驗警告：{item.design.warnings.join('；')}</p>
+                ) : null}
+              </details>
+            ) : null}
             <div className="mt-2 flex flex-wrap gap-3">
               <button type="button" disabled={busy !== 'idle'} onClick={() => void loadPreview(item.id)} className="text-[10px] text-[#64D2FF] disabled:opacity-40">
                 3D 預覽

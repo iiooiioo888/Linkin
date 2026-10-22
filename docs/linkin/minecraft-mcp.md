@@ -45,6 +45,18 @@ MineMCP 給編輯器的 MCP 連線 URL 是 `http://localhost:3000/sse?token=…`
 
 未啟用或無 Token：**乾跑**。工具仍可被角色呼叫，回傳 `dry_run: true`，不寫入世界。單元測試一律乾跑。
 
+### 兜底護欄（defense-in-depth）
+
+鐵律層（`backend/linkin/minecraft.py`）是第一道防線；橋接層（`backend/tools/minecraft_mcp.py` 的 `call_mcp_tool`）內建第二道兜底護欄，**對繞過鐵律層直連橋接層的呼叫同樣生效（含乾跑）**：
+
+| 護欄 | 行為 | 錯誤碼 |
+|------|------|--------|
+| fill 體積上限 | 超過 `EVOL_MC_MCP_MAX_FILL`（clamp ≤5000）或座標無效 → 拒絕，不發 HTTP | `block_limit` |
+| 命令鏈 | 指令含 `&&`、`;`、`\|` → 拒絕 | `command_chain` |
+| 敏感指令 | 命中敏感 regex 且未攜帶 `confirmed=true` → 拒絕 | `needs_confirmation` |
+
+`confirmed` 旗標僅供本地護欄判斷，不會傳給遠端 MineMCP。所有拒絕均寫入審計日誌。敏感指令與命令鏈 regex 執行期優先用鐵律層的單一來源（`backend/linkin/tools.py`），橋接層內建同規則副本作為後備。
+
 Docker 後端要打宿主機上的 Minecraft 時，Windows 可用 `EVOL_MC_MCP_URL=http://host.docker.internal:3000`。
 
 ## 公司角色與 `tools_allowed`

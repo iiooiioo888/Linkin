@@ -24,6 +24,7 @@ import {
   saveSessions,
 } from './lib/storage';
 import { splitThink } from './lib/splitThink';
+import { uuidv4 } from './lib/uuid';
 import AppShell from './components/AppShell';
 import type { MonitorTab, ViewKey } from './components/AppShell';
 import type { LabSubTab } from './lib/labTabs';
@@ -233,13 +234,13 @@ export default function App() {
       setSending(true);
 
       const userMsg: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         role: 'user',
         content: query,
         timestamp: Date.now(),
         executionStrategy: options.executionStrategy,
       };
-      const assistantId = crypto.randomUUID();
+      const assistantId = uuidv4();
       const placeholder: ChatMessage = {
         id: assistantId,
         role: 'assistant',

@@ -234,6 +234,77 @@ data: {"error": "錯誤訊息"}
 
 ---
 
+## A/B 評估
+
+### POST /ab/experiments
+
+建立 A/B 實驗（`status=created`，尚未執行）。
+
+**請求：**
+```json
+{
+  "name": "首頁文案提示詞對比",
+  "kind": "prompt",
+  "variant_a": {"label": "精簡版", "system": "你是簡潔的文案助手。"},
+  "variant_b": {"label": "詳細版", "system": "你是詳盡的文案助手，會補充背景。"},
+  "cases": [
+    {"query": "寫一句產品首頁標語"},
+    {"query": "寫一句促銷標語", "reference": "限时五折"}
+  ],
+  "tie_margin": 0.5
+}
+```
+
+`kind`：
+- `prompt`：兩變體必須給 `system`（提示詞對比）
+- `model`：兩變體必須給 `model`（模型對比）
+
+`cases` 至少 1 個，上限 `EVOL_AB_MAX_CASES`（預設 20）。`reference` 選填，會對兩變體同樣注入以保持公平。
+
+**回應：** 完整實驗物件，含 `id`、`tie_margin`、`created_at`。參數校驗失敗回 400。
+
+---
+
+### POST /ab/experiments/{id}/run
+
+執行實驗：雙變體生成 → 4 維評估 → 勝負判定 → 聚合。同步執行，案例多時耗時較長。
+
+**回應摘要欄位：**
+```json
+{
+  "status": "completed",
+  "summary": {
+    "cases": 2, "scored": 2,
+    "wins_a": 2, "wins_b": 0, "ties": 0, "errors": 0,
+    "avg_overall_a": 9.0, "avg_overall_b": 6.4,
+    "avg_dimensions_a": {"accuracy": 9.0, "completeness": 9.0, "clarity": 9.0, "relevance": 9.0},
+    "p_value": 0.5, "significant": false,
+    "winner": "精簡版", "tie_margin": 0.5
+  },
+  "results": [{"query": "...", "score_a": 9.0, "score_b": 6.4, "winner": "a", "errors": {}}]
+}
+```
+
+`p_value` 為符號檢定（雙側精確二項）只計入分出勝負的案例；`significant` 為 `p_value < 0.05`。樣本太少時即使全勝也不顯著（3 勝 0 負 → p=0.25）。實驗不存在回 404。全部案例都失敗時 `status` 為 `failed`。
+
+---
+
+### GET /ab/experiments
+
+實驗摘要列表（不含 `cases` 與逐案例結果）。
+
+### GET /ab/experiments/{id}
+
+實驗詳情，含逐案例結果與聚合。不存在回 404。
+
+### DELETE /ab/experiments/{id}
+
+刪除實驗。回傳 `{"deleted": true, "id": "..."}`；不存在回 404。
+
+**環境變數：** `EVOL_AB_STORE_PATH`（預設 `backend/data/ab_experiments.json`）、`EVOL_AB_MAX_CASES`、`EVOL_AB_TIE_MARGIN`
+
+---
+
 ## 靈境·Linkin
 
 完整表格見 [靈境 API](../linkin/api.md)。常用端點：

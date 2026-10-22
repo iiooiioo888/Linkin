@@ -1,5 +1,6 @@
 /** 多會話 localStorage 持久化（補償後端無 /history 端點）。 */
 import type { ChatSession } from '../types';
+import { uuidv4 } from './uuid';
 
 const SESSIONS_KEY = 'evoloop_sessions';
 const ACTIVE_KEY = 'evoloop_active_session';
@@ -37,5 +38,5 @@ export function saveActiveSessionId(id: string): void {
 }
 
 export function newSessionId(): string {
-  return crypto.randomUUID().replace(/-/g, '');
+  return uuidv4().replace(/-/g, '');
 }

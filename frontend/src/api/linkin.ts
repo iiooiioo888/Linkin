@@ -91,6 +91,17 @@ export type Building = {
   schematic_version?: number;
   format?: string;
   biome?: string;
+  /** 生成來源："llm"（LLM 理解需求設計 DSL）或 "procedural"（程序化生成） */
+  generator?: string;
+  /** LLM 設計 payload（DSL op 序列），僅 generator === "llm" 時存在 */
+  design?: {
+    kind?: string;
+    size?: number[];
+    ops?: Array<Record<string, unknown>>;
+    op_count?: number;
+    warnings?: string[];
+    model?: string;
+  };
 };
 
 export type BuildingPreview = {

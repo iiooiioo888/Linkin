@@ -12,7 +12,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2+-1c3d5a?logo=langchain&logoColor=white)](https://github.com/langchain-ai/langgraph)
 [![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)](https://react.dev/)
-[![Tests](https://img.shields.io/badge/Tests-251%20passed-success?logo=pytest&logoColor=white)](backend/tests/)
+[![Tests](https://img.shields.io/badge/Tests-447%20passed-success?logo=pytest&logoColor=white)](backend/tests/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 **倉庫：** [https://github.com/iiooiioo888/Linkin](https://github.com/iiooiioo888/Linkin)
@@ -327,6 +327,7 @@ linkin/                          # 本倉庫目錄名（基於 EvoLoop）
 - `GET/PUT /config` · `POST /config/test`
 - `GET /docker/*` · `GET/POST /cloud/*` — 實例與雲控制台
 - `GET /memories` · `DELETE /memories/{id}` · `POST /memories/cleanup` — 記憶庫；Chroma 空則讀 JSON
+- `GET/POST/DELETE /ab/experiments*` · `POST /ab/experiments/{id}/run` — A/B 評估實驗（Prompt／模型雙變體 → 4 維評估 → 勝負 + 符號檢定顯著性）
 
 ---
 
@@ -397,6 +398,10 @@ EVOL_LLM_OPS_INTERVAL_SEC=300
 | 18 | **通用目錄爬取** | OpenRouter 等端點定時／手動同步 `/models` |
 | 19 | **角色目錄** | 監控中心可編輯內建設定並建立自定義角色（80 席） |
 | 20 | **單一前端版本** | Hub 併入監控中心；Pages／CI 單一主線 |
+| 21 | **A/B 評估框架** | Prompt／模型雙變體對比：生成 → 4 維評估 → 勝負聚合 + 符號檢定顯著性（`/ab/experiments`） |
+| 22 | **MCP 護欄深化** | 底層橋接層補 fill 上限／命令鏈／敏感確認兜底護欄（defense-in-depth，乾跑與 live 皆生效） |
+| 23 | **LLM 建築設計** | LLM 理解自然語言需求 → 受約束建築 DSL（cuboid／arch／column…）→ 編譯成 `.schem` 體素模型；無金鑰或輸出無效自動降級程序化生成 |
+| 24 | **服務器運維智能體（AIOps）** | Level 4 支援席：健康檢查／磁盤增長診斷／智慧清理／日誌輪轉／服務重啟／增量備份／巡檢日報；自然語言問答（LLM 規劃 + 關鍵詞兜底），寫操作一律轉人工批准隊列，具名工具白名單、無自由 shell（`/linkin/server/*`） |
 
 詳見 [知識庫](docs/README.md)。
 
@@ -693,12 +698,13 @@ Pages 僅靜態前端預覽。聊天、寫入 OPC、刷新模型目錄等需連�
 | Phase 6–8 | 公司運行時、OPC、軌跡可視化 | ✅ |
 | Phase 9–10 | 系統優化、知識庫 | ✅ |
 | Phase 11 | MCP 工具接入（MineMCP → 公司角色工具） | ✅ |
-| Phase 12 | 記憶蒸餾 + A/B 評估 | ⏳ |
+| Phase 12 | 記憶蒸餾 + A/B 評估 | ✅ |
 | Phase 13 | 監控中心擴充（角色設定／自定義角色／80 席） | ✅ |
 | Phase 14 | 模型池鎖定 + OpenRouter 爬取 + LLM 運維 | ✅ |
 | Phase 15 | 合拼單一版本 + GitHub Pages | ✅ |
 | Phase 16 | 角色總覽操作（層級跳轉／篩選／成本列）+ 示範種子 | ✅ |
 | Phase 17 | 靈境·Linkin（憲法／RAG／監控分頁／統一管線注入） | ✅ |
+| Phase 18 | LLM 建築設計 + 服務器運維智能體（AIOps） | ✅ |
 
 ---
 

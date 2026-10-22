@@ -414,6 +414,10 @@ def _register_builtin_tools() -> None:
 
     _register_mc(tool_registry)
 
+    from backend.linkin.server_admin import register_company_tools as _register_sa
+
+    _register_sa(tool_registry)
+
 
 # 模組載入時註冊內建工具
 _register_builtin_tools()
