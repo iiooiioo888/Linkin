@@ -209,8 +209,9 @@ def build_skill_record(
         )
     elif skill_type == "cli-stub":
         content = (
-            "【Linkin 提示】此技能依賴外部 CLI（如 just-scrape、agent-browser、agent-reach），非 MCP。"
-            " Linkin 可注入方法論；實際抓取、瀏覽器或網路閱讀需在已安裝 CLI 的環境執行。\n\n"
+            "【Linkin 提示】此技能依賴外部 CLI（agent-reach、just-scrape 或 agent-browser），不是 MCP。"
+            " 先執行 `python -m backend.scripts.cli_runtimes` 確認命令已在 PATH；"
+            " 未安裝時只注入方法論，不代為安裝、不讀取本機 Cookie 或金鑰。\n\n"
             + content
         )
     budget = min(20000, max(2400, len(content) // 2))

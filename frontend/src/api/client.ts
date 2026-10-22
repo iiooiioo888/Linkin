@@ -2434,6 +2434,27 @@ export async function previewSkillPrompt(role?: string): Promise<{ role: string;
   return resp.json();
 }
 
+export interface CliRuntimeStatus {
+  id: string;
+  skill_id: string;
+  binary: string;
+  title: string;
+  summary: string;
+  install: string;
+  group: string;
+  installed: boolean;
+  path: string;
+  ok: boolean;
+  detail: string;
+}
+
+export async function fetchCliRuntimes(): Promise<CliRuntimeStatus[]> {
+  const resp = await fetch(apiUrl('/skills/cli-runtimes'));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  const data = (await resp.json()) as { runtimes: CliRuntimeStatus[] };
+  return data.runtimes ?? [];
+}
+
 export async function syncAgentSkillPacks(): Promise<AgentSkillsSyncReport> {
   const resp = await fetch(apiUrl('/skills/sync-agent-packs'), { method: 'POST' });
   if (!resp.ok) throw new Error(await readApiError(resp));

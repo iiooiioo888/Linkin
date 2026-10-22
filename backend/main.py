@@ -2942,6 +2942,14 @@ async def delete_skill(skill_id: str):
     return {"ok": True, "deleted": skill_id}
 
 
+@app.get("/skills/cli-runtimes")
+async def list_skill_cli_runtimes():
+    """檢查要用 CLI 才能執行的技能：命令是否在 PATH。不安裝、不讀憑證。"""
+    from backend.company.cli_runtimes import probe_all
+
+    return {"runtimes": await asyncio.to_thread(probe_all)}
+
+
 @app.get("/skills/preview")
 async def preview_skill_prompt(role: str | None = None):
     """預覽某角色實際會被注入的技能區塊（除錯用）。"""

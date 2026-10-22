@@ -291,7 +291,7 @@ npx skills@latest add vercel-labs/agent-browser --all --copy
 python -m backend.scripts.sync_agent_skills
 ```
 
-畫面上：**控制台 → 監控 → 技能與 MCP**（`/#/monitor/skills`）→「同步 Agent 包」。新匯入的技能預設停用，在列表裡啟用後才注入提示詞。類型是 `Agent 包`、`CLI 參考`、`Cursor 專用`。
+畫面上：**控制台 → 監控 → 技能與 MCP**（`/#/monitor/skills`）→「同步 Agent 包」。新匯入的技能預設停用，在列表裡啟用後才注入提示詞。類型是 `Agent 包`、`需 CLI`、`Cursor 專用`。`需 CLI` 的三條（Agent Reach、just-scrape、agent-browser）要本機命令才執行得了；同一頁的「CLI 運行時」或 `python -m backend.scripts.cli_runtimes` 只檢查 PATH，不安裝、不讀取金鑰。
 
 歸功與授權：[mattpocock/skills](https://github.com/mattpocock/skills) · [anthropics/skills](https://github.com/anthropics/skills) · [openai/skills](https://github.com/openai/skills) · [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) · [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) · [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) · [NanmiCoder/MediaCrawler](https://github.com/NanmiCoder/MediaCrawler) · [fuyi-git/token-dashboard](https://github.com/fuyi-git/token-dashboard)
 
