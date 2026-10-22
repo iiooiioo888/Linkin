@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from backend.company.execution_gate import ExecutionNotApproved, require_user_approved

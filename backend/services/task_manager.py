@@ -550,7 +550,7 @@ class TaskManager:
             self._add_event(record, "budget_confirmation_required", {"version": plan.get("version")})
             self._persist(record)
         except Exception as exc:
-            logger.exception("預算草案失敗：%s", exc)
+            logger.exception("預算草案失敗")
             record.budget_plan = {
                 "status": "pending_user",
                 "version": 1,
