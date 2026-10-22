@@ -139,17 +139,14 @@ flowchart TD
 
 ### 組件分類
 
-七類的路徑與控制台分組以 [目錄地圖](docs/structure.md#組件分類) 為準。
+四類的路徑與實驗室分組以 [目錄地圖](docs/structure.md#組件分類) 為準。
 
 | 類 | 落在哪 |
 |----|--------|
-| 管線 | `backend/core/` |
-| 公司 | `backend/company/` |
-| 靈境 | `backend/linkin/`、`backend/modules/`、`backend/tools/` |
-| 工業 | `opc_service/`（讀數注入公司任務，寫入經 `guard.py`） |
-| 模型與計費 | `backend/core/llm.py`、`backend/hub/`、`backend/billing/` |
-| 記憶與整合 | `backend/memory/`、`backend/integrations/` |
-| 控制台 | `frontend/`。視覺 Token 見 [DESIGN.md](DESIGN.md) |
+| 核心的開發組件 | `backend/core/`、`backend/company/`、`backend/billing/`。實驗室：提示詞、架構、精簡、容器、A/B |
+| minecraft組件 | `backend/linkin/`、`backend/modules/`、`backend/tools/`。畫面在 `#/modules/minecraft` |
+| 價格分析探針組件 | `backend/hub/`、`backend/company/quant_*.py`。實驗室：策略庫、策略圖、價格探針 |
+| 整合 | `backend/memory/`、`backend/integrations/`、`opc_service/`。實驗室：爬蟲、MCP |
 
 詳圖：[docs/architecture/overview.md](docs/architecture/overview.md) · 微服務 sense → act：[docs/architecture/opc-six-stage.md](docs/architecture/opc-six-stage.md)
 

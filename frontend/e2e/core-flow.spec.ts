@@ -24,7 +24,18 @@ test.describe('EvoLoop 核心 UI', () => {
     await page.goto('/#/monitor/lab');
     await expect(page.getByText(/實驗室 · 提示詞|Lab · Prompt/)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/優化前|Before/)).toBeVisible({ timeout: 15_000 });
+    const labNav = page.getByRole('navigation', { name: '實驗室' });
+    await expect(labNav.getByText('核心的開發組件')).toBeVisible();
+    await expect(labNav.getByText('minecraft組件')).toBeVisible();
+    await expect(labNav.getByText('價格分析探針組件')).toBeVisible();
+    await expect(labNav.getByText('整合', { exact: true })).toBeVisible();
+    await expect(labNav.getByText('實驗', { exact: true })).toHaveCount(0);
+    await labNav.getByRole('button', { name: /策略庫/ }).click();
+    await expect(page).toHaveURL(/#\/monitor\/lab\/quant/);
+    await labNav.getByRole('link', { name: /Minecraft/ }).click();
+    await expect(page).toHaveURL(/#\/modules\/minecraft/);
 
+    await page.goto('/#/monitor/lab');
     await page.reload();
     await expect(page.url()).toMatch(/#\/monitor\/lab/);
   });

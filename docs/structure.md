@@ -5,19 +5,16 @@
 
 ## 組件分類
 
-系統分成七類。新套件先歸進其中一類，再寫進下面的目錄表。選路只有三條：`simple`、`company`、`minecraft_ops`。工業查詢走 `company`。
+系統分成四類。新套件先歸進其中一類，再寫進下面的目錄表。選路是三條：`simple`、`company`、`minecraft_ops`。工業查詢走 `company`，感測讀數由 `backend/core/` 注入，寫入經 `opc_service/guard.py`。
 
-| 類 | 做什麼 | 落在哪 |
-|----|--------|--------|
-| **管線** | 前置注入、選路、簡單路徑的生成／評估／反思 | `backend/core/`（`execution_path.py`、`graph.py`、`nodes.py`、`llm.py`） |
-| **公司** | 任務經理分析，82 席執行，工作項 DAG、預算；憲兵審查與環境核心在這一類裡 | `backend/company/` |
-| **靈境** | 憲法、16 席子角色、世界模組、Minecraft 寫入護欄 | `backend/linkin/`、`backend/modules/`、`backend/tools/` |
-| **工業** | 感測讀數注入公司任務；寫入經護欄。微服務自身仍有 sense → act | `opc_service/`，讀數由 `backend/core/` 注入 |
-| **模型與計費** | 唯一 LLM 出口、模型池、Hub、積分池 | `backend/core/llm.py`、`backend/hub/`、`backend/billing/` |
-| **記憶與整合** | 向量記憶、六個整合客戶端、技能 | `backend/memory/`、`backend/integrations/`、`.agents/skills/` |
-| **控制台** | 對話、控制台、世界模組畫面、實驗室 | `frontend/` |
+| 類 | 做什麼 | 落在哪 | 實驗室 |
+|----|--------|--------|--------|
+| **核心的開發組件** | 前置注入、選路、簡單路徑的生成／評估／反思；任務經理分析與 82 席；提示詞、架構圖、精簡、A/B、臨時容器 | `backend/core/`、`backend/company/`（量化工具見下一類）、`backend/billing/`、`backend/prompts/`、對話與控制台 | 提示詞、架構、精簡、容器、A/B |
+| **minecraft組件** | 憲法、16 席子角色、世界模組、MineMCP 寫入護欄、`minecraft_ops` | `backend/linkin/`、`backend/modules/`、`backend/tools/`、Minecraft 畫面 | 側欄進入 `#/modules/minecraft` |
+| **價格分析探針組件** | 廠商延遲與報價探針；策略庫與策略圖 | `backend/hub/`、`backend/company/quant_*.py`、Hub 監控（基礎設施 → AI Hub） | 策略庫、策略圖、價格探針 |
+| **整合** | 向量記憶、六個召回客戶端、技能、爬蟲、MCP／OPC／記憶開關 | `backend/memory/`、`backend/integrations/`、`.agents/skills/`、`opc_service/` | 爬蟲、MCP |
 
-控制台左側再分成：總覽、執行、角色、審計、計費、系統。定義在 `frontend/src/lib/monitorTabs.ts` 的 `CONSOLE_NAV_GROUPS`。世界模組（目前 Minecraft）用自己的導覽，不進控制台分組。
+控制台左側（總覽、執行、角色、審計、計費、系統）是核心的開發組件裡的導覽，定義在 `frontend/src/lib/monitorTabs.ts` 的 `CONSOLE_NAV_GROUPS`。Minecraft 世界模組用自己的導覽。實驗室四類的單一來源是 `frontend/src/lib/labTabs.ts` 的 `LAB_NAV_GROUPS`。
 
 ```
 請求 → backend/main.py
@@ -34,10 +31,10 @@
 | 路徑 | 職責 | 備註 |
 |------|------|------|
 | `backend/` | FastAPI + LangGraph 主程式 | 見 [backend/README.md](../backend/README.md) |
-| `opc_service/` | OPC UA 微服務與護欄 | 見 [opc_service/README.md](../opc_service/README.md) |
+| `opc_service/` | OPC UA 微服務與護欄 | 整合類。見 [opc_service/README.md](../opc_service/README.md) |
 | `frontend/` | React 19 監控中心 | 見 [frontend/README.md](../frontend/README.md) |
 | `docs/` | **知識庫（詳文唯一來源）** | 本目錄 |
-| `vendor/archify/` | 策略圖 CLI（`file:` 依賴） | 勿當產品業務邏輯改 |
+| `vendor/archify/` | 策略圖與架構圖 CLI（`file:` 依賴） | 價格分析探針／核心開發共用。勿當產品業務邏輯改 |
 | `AGENTS.md` | Agent／自動化約束與禁止事項 | CI／協作必讀 |
 | `CONTRIBUTING.md` | 貢獻流程與送審清單 | |
 | `DESIGN.md` | **前端視覺 Token**（非系統設計） | 說明見 [design/README.md](design/README.md) |
@@ -63,16 +60,16 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 |------|------|
 | `main.py` | REST／SSE／WebSocket 入口 |
 | `auth/` | 登入閘門 |
-| `core/` | 管線類：圖、節點、`call_llm`、評估、模型池、路由 |
-| `company/` | 公司類：任務經理、82 席、工作項、預算、量化工具 |
-| `linkin/` | 靈境類：憲法、實體、Minecraft **業務**護欄、16 席子角色種子 |
-| `modules/` | 靈境類：可插拔世界模組目錄（`GET /modules`）；Minecraft 為內建模組 |
-| `tools/` | 靈境類：MineMCP／運維等**底層**橋接（角色勿直連） |
-| `hub/` | 模型與計費類：AI Hub（探針／熔斷／目錄）；契約：`AI_HUB_DETAILED_DESIGN.md` |
-| `billing/` | 模型與計費類：積分池 v6、Docker 計量 |
-| `memory/` | 記憶與整合類：向量記憶（Chroma 等） |
-| `integrations/` | 記憶與整合類：MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil |
-| `services/` | 任務、軌跡、監控、llm_ops、雲控制台、實驗室… |
+| `core/` | 核心的開發組件：圖、節點、`call_llm`、評估、模型池、路由 |
+| `company/` | 核心的開發組件：任務經理、82 席、工作項、預算。量化工具屬價格分析探針組件 |
+| `linkin/` | minecraft組件：憲法、實體、Minecraft **業務**護欄、16 席子角色種子 |
+| `modules/` | minecraft組件：可插拔世界模組目錄（`GET /modules`）；Minecraft 為內建模組 |
+| `tools/` | minecraft組件：MineMCP／運維等**底層**橋接（角色勿直連） |
+| `hub/` | 價格分析探針組件：廠商延遲／價格探針、熔斷、目錄；契約：`AI_HUB_DETAILED_DESIGN.md` |
+| `billing/` | 核心的開發組件：積分池 v6、Docker 計量 |
+| `memory/` | 整合：向量記憶（Chroma 等） |
+| `integrations/` | 整合：MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil |
+| `services/` | 任務、軌跡、監控、llm_ops、雲控制台、實驗室。跨四類，不單獨成類 |
 | `environment/` | 環境探測／執行環境輔助 |
 | `middleware/` | FastAPI 中介層 |
 | `prompts/` | 共用提示詞片段 |
@@ -118,7 +115,7 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `budget.py` · `rate_card.py` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
 | `seat_io.py` | 席位投遞 I/O 軌跡（prompt／system／response 全文＋來源分解）；前端席位監察頁資料源，契約見 [api/reference.md](api/reference.md) |
 | `decomposer.py` · `react_loop.py` · `tools.py` | 拆解、ReAct、工具 |
-| `quant_*.py` · `docker_tools.py` · `archify_compile.py` | 量化、Docker、策略圖 |
+| `quant_*.py` · `docker_tools.py` · `archify_compile.py` | 量化與策略圖（價格分析探針）；Docker 容器（核心的開發組件） |
 
 ### backend/linkin/（關鍵）
 

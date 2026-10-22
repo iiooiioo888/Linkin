@@ -13,6 +13,7 @@ import { fetchLlmOps } from '../api/client';
 import { routeProbeDotClass, routeProbeTone } from '../lib/llmOpsHealth';
 import type { ApiRoutePublic, ChatSession, RoleAgent, TaskSummary } from '../types';
 import {
+  isLabLink,
   LAB_NAV_GROUPS,
   type LabSubTab,
 } from '../lib/labTabs';
@@ -629,16 +630,26 @@ function LabSidebar({
       <nav className="sp-nav pb-3" aria-label="實驗室">
         {LAB_NAV_GROUPS.map((group) => (
           <div key={group.id}>
-            <div className="sp-group">{group.label}</div>
+            <div className="sp-group sp-group--as-written">{group.label}</div>
             <div className="sp-list">
-              {group.items.map((item) => (
-                <TabBtn
-                  key={item.key}
-                  item={item}
-                  active={labSubTab === item.key}
-                  onClick={() => onLabSubTabChange(item.key)}
-                />
-              ))}
+              {group.items.map((item) =>
+                isLabLink(item) ? (
+                  <a key={item.key} href={item.href} title={item.hint} className="sp-item no-underline">
+                    <span className="sp-item-ic">{item.icon}</span>
+                    <span className="sp-item-txt">
+                      <span className="sp-item-l">{item.label}</span>
+                      {item.hint ? <span className="sp-item-h">{item.hint}</span> : null}
+                    </span>
+                  </a>
+                ) : (
+                  <TabBtn
+                    key={item.key}
+                    item={item}
+                    active={labSubTab === item.key}
+                    onClick={() => onLabSubTabChange(item.key)}
+                  />
+                ),
+              )}
             </div>
           </div>
         ))}

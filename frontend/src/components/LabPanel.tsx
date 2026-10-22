@@ -17,7 +17,7 @@ import {
   labOptimizePrompt,
   labPonytailReview,
 } from '../api/client';
-import { LAB_INTEGRATION_TABS, LAB_TABS, type LabSubTab } from '../lib/labTabs';
+import { isLabLink, LAB_TABS, labGroupForTab, type LabSubTab } from '../lib/labTabs';
 import { activityNavPath } from '../lib/monitorTabs';
 import { extractMarkdownImages } from '../lib/visualCards';
 import ArchifyFrame from './ArchifyFrame';
@@ -75,6 +75,7 @@ interface LabPanelProps {
 export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
   const tab = activeTab;
   const tabMeta = LAB_TABS.find((t) => t.key === tab);
+  const activeGroup = labGroupForTab(tab);
 
   // Prompt Optimizer
   const [before, setBefore] = useState(DEMO_BEFORE);
@@ -234,26 +235,43 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-        {/* 整合工具概覽（僅四大工具分頁顯示） */}
-        {LAB_INTEGRATION_TABS.some((t) => t.key === tab) && (
-          <div className="mx-auto mb-5 flex max-w-5xl flex-wrap gap-2 md:hidden">
-            {LAB_INTEGRATION_TABS.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => onTabChange(item.key)}
-                className={`rounded-xl border px-3 py-2 text-left transition-colors ${
-                  tab === item.key
-                    ? 'border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]'
-                    : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
-                }`}
-              >
-                <span className="block text-[12px] font-bold text-[var(--console-ink)]">{item.label}</span>
-                {item.upstream && (
-                  <span className="mt-0.5 block text-[10px] text-[var(--console-sub)]">{item.upstream.name}</span>
-                )}
-              </button>
-            ))}
+        {activeGroup && (
+          <div className="mx-auto mb-5 max-w-5xl md:hidden">
+            <p className="mb-2 text-[10px] font-semibold tracking-wide text-[var(--console-faint)]">
+              {activeGroup.label}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {activeGroup.items.map((item) =>
+                isLabLink(item) ? (
+                  <a
+                    key={item.key}
+                    href={item.href}
+                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-left no-underline hover:bg-white/[0.04]"
+                  >
+                    <span className="block text-[12px] font-bold text-[var(--console-ink)]">{item.label}</span>
+                    {item.hint ? (
+                      <span className="mt-0.5 block text-[10px] text-[var(--console-sub)]">{item.hint}</span>
+                    ) : null}
+                  </a>
+                ) : (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => onTabChange(item.key)}
+                    className={`rounded-xl border px-3 py-2 text-left transition-colors ${
+                      tab === item.key
+                        ? 'border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]'
+                        : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <span className="block text-[12px] font-bold text-[var(--console-ink)]">{item.label}</span>
+                    {item.upstream && (
+                      <span className="mt-0.5 block text-[10px] text-[var(--console-sub)]">{item.upstream.name}</span>
+                    )}
+                  </button>
+                ),
+              )}
+            </div>
           </div>
         )}
 

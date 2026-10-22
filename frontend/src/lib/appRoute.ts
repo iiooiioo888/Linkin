@@ -5,7 +5,7 @@
  *   #/chat
  *   #/monitor | #/monitor/tasks | #/monitor/tasks/{taskId}
  *   #/monitor/agents/{agentId}
- *   #/monitor/lab | #/monitor/lab/{prompt|firecrawl|archify|ponytail|quant|maps|mcp|ab}
+ *   #/monitor/lab | #/monitor/lab/{prompt|archify|ponytail|runner|ab|quant|maps|firecrawl|mcp}
  *   #/monitor/integrations | #/monitor/integrations/{memos|openviking|weknora|yao|ouroboros|openpencil}
  *   #/monitor/credits | #/monitor/billing | #/monitor/wallet — 舊深鏈正規化至 models（AI 用量）
  *   #/monitor/context | #/monitor/context/{taskId}
