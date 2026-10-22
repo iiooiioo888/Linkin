@@ -17,7 +17,7 @@
 2. **手動**：`python -m backend.scripts.sync_agent_skills`
 3. **API / UI**：`POST /skills/sync-agent-packs` 或控制台「同步 Agent 包」
 
-驗證路徑：前端 `/#/monitor/skills` → 技能分頁應顯示 ~102 條 managed 技能（來源欄位、類型標籤）。
+驗證路徑：前端 `/#/monitor/skills` → 技能分頁應顯示 ~105 條 managed 技能（來源欄位、類型標籤）。`agent-reach` 類型為 CLI 參考，預設停用。
 
 ## MediaCrawler 多平台採集（mediacrawler）
 
@@ -30,6 +30,30 @@
 | API | `GET /mediacrawler/status` · `POST /mediacrawler/jobs` · `GET /mediacrawler/jobs/{id}/results` |
 
 伺服器前置：`MEDIACRAWLER_HOME` 指向 clone 目錄；`EVOL_MEDIACRAWLER_ENABLED=true` 啟用實際爬取（預設僅乾跑校驗）。v1 支援 Cookie 登入；QR 需在伺服器手動執行上游 CLI。
+
+## Agent Reach 網際網路閱讀（agent-reach）
+
+上游：[Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach)（技能與路由表 vendored 於 `.agents/skills/agent-reach/`，授權 MIT）。它是選型／安裝／體檢路由器，讀取仍由上游 CLI 直接完成，Linkin 不另包一層。
+
+| 入口 | 說明 |
+|------|------|
+| 技能目錄 | `.agents/skills/agent-reach/SKILL.md` 與 `references/` |
+| 控制台 | `/#/monitor/skills` 啟用 `agent-reach` 後才注入提示詞 |
+| 對話觸發 | 全網調研、貼上 URL，或點名 Twitter／Reddit／YouTube／GitHub／B站／小紅書閱讀等 |
+| CLI | `agent-reach doctor` · `agent-reach install --env=auto` |
+
+與 `mediacrawler` 並存：批次採集走 MediaCrawler API；即時閱讀與搜尋走 Agent Reach。Cookie、Token 只留在執行環境的 `~/.agent-reach/`（權限 600），不要提交進倉庫。
+
+伺服器安裝（不要從 PyPI 裝同名套件，那不是本專案）：
+
+```bash
+pipx install https://github.com/Panniantong/agent-reach/archive/main.zip
+agent-reach install --env=auto
+# 使用者明確同意修改系統後才加 --system
+agent-reach doctor
+```
+
+零配置渠道：網頁（Jina Reader）、YouTube、GitHub、RSS、Exa 搜尋、V2EX、B站基礎搜尋。Twitter、Reddit、小紅書、Facebook、Instagram、LinkedIn、Boss直聘、雪球、小宇宙需使用者另行授權，見上游 `docs/install.md`。
 
 ## Token 用量看板（token-dashboard）
 
@@ -54,6 +78,7 @@
 | [openai/skills](https://github.com/openai/skills) | 43 | 部分 | 見下方「OpenAI 技能相關 MCP」 |
 | [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) | 1 | 無（CLI） | 使用 `just-scrape` CLI + `SGAI_API_KEY` |
 | [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | 1 | 無（CLI） | 使用 `agent-browser` CLI（`npm i -g agent-browser`） |
+| [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) | 1 | 無（CLI） | `agent-reach` 路由；讀取走 yt-dlp、gh、Jina、mcporter 等上游工具 |
 
 ### 命名衝突
 

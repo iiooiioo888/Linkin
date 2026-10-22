@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -30,6 +31,37 @@ class TestParseSkillFrontmatter:
         assert meta == {}
         assert body == "plain markdown"
 
+    def test_folded_description_skips_nested_map(self):
+        text = (
+            "---\n"
+            "name: agent-reach\n"
+            "description: >\n"
+            "  MUST USE this\n"
+            "  and that.\n"
+            "\n"
+            "  Second paragraph.\n"
+            "metadata:\n"
+            "  homepage: https://example.com\n"
+            "---\n"
+            "\n"
+            "Body\n"
+        )
+        meta, body = parse_skill_frontmatter(text)
+        assert meta["name"] == "agent-reach"
+        assert meta["description"] == "MUST USE this and that.\nSecond paragraph."
+        assert "homepage" not in meta
+        assert "metadata" not in meta
+        assert body == "Body"
+
+    def test_vendored_agent_reach_skill(self):
+        path = Path(".agents/skills/agent-reach/SKILL.md")
+        meta, body = parse_skill_frontmatter(path.read_text(encoding="utf-8"))
+        assert meta["name"] == "agent-reach"
+        assert meta["description"].startswith("MUST USE")
+        assert "小紅書" in body
+        assert "mediacrawler" in body
+        assert classify_skill_type("agent-reach", meta) == "cli-stub"
+
 
 class TestClassifySkillType:
     def test_cursor_only(self):
@@ -38,6 +70,7 @@ class TestClassifySkillType:
 
     def test_cli_stub(self):
         assert classify_skill_type("agent-browser", {}) == "cli-stub"
+        assert classify_skill_type("agent-reach", {}) == "cli-stub"
         assert classify_skill_type("just-scrape", {}) == "cli-stub"
 
     def test_agent_pack_default(self):

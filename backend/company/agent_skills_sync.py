@@ -30,7 +30,7 @@ AGENTS_SKILLS_DIR = Path(".agents/skills")
 SKILLS_LOCK_PATH = Path("skills-lock.json")
 MCP_MANIFEST_PATH = Path("backend/data/agent_mcp_manifest.json")
 
-_CLI_STUB_IDS = frozenset({"agent-browser", "just-scrape"})
+_CLI_STUB_IDS = frozenset({"agent-browser", "agent-reach", "just-scrape"})
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 _FM_LINE_RE = re.compile(r"^([a-zA-Z0-9_-]+):\s*(.*)$")
 
@@ -69,17 +69,71 @@ def _strip_quotes(value: str) -> str:
     return value
 
 
+_FOLDED_MARKERS = frozenset({">", ">-", ">+", "|", "|-", "|+"})
+
+
+def _consume_block(lines: list[str], index: int, *, folded: bool) -> tuple[str, int]:
+    """讀取縮排區塊。folded（`>`）把換行折成空白，空行保留為段落。"""
+    parts: list[str] = []
+    blank = False
+    while index < len(lines):
+        line = lines[index]
+        if line.strip() and line[0] not in " \t":
+            break
+        index += 1
+        if not line.strip():
+            blank = True
+            continue
+        chunk = line.strip()
+        if folded:
+            if not parts:
+                parts.append(chunk)
+            elif blank:
+                parts.append("\n" + chunk)
+            else:
+                parts.append(" " + chunk)
+            blank = False
+            continue
+        if blank and parts:
+            parts.append("")
+        parts.append(chunk)
+        blank = False
+    if folded:
+        return "".join(parts).strip(), index
+    return "\n".join(parts).strip(), index
+
+
 def parse_skill_frontmatter(text: str) -> tuple[dict[str, str], str]:
-    """解析 SKILL.md YAML frontmatter（無 PyYAML 依賴的簡化版）。"""
+    """解析 SKILL.md YAML frontmatter（無 PyYAML 依賴的簡化版）。
+
+    支援單行值，以及 `>` / `|` 多行純量。巢狀對應（如 `metadata:`）整段略過，
+    避免把子鍵拼進上一欄。
+    """
     match = _FRONTMATTER_RE.match(text or "")
     if not match:
         return {}, (text or "").strip()
     meta: dict[str, str] = {}
-    for line in match.group(1).splitlines():
-        m = _FM_LINE_RE.match(line.strip())
-        if not m:
+    lines = match.group(1).splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if not line.strip() or line[0] in " \t":
+            index += 1
             continue
-        meta[m.group(1)] = _strip_quotes(m.group(2))
+        found = _FM_LINE_RE.match(line.rstrip())
+        if not found:
+            index += 1
+            continue
+        key, raw = found.group(1), found.group(2).strip()
+        index += 1
+        if raw in _FOLDED_MARKERS:
+            value, index = _consume_block(lines, index, folded=raw.startswith(">"))
+            meta[key] = value
+            continue
+        if raw == "":
+            _, index = _consume_block(lines, index, folded=False)
+            continue
+        meta[key] = _strip_quotes(raw)
     body = (text or "")[match.end():].strip()
     return meta, body
 
@@ -155,8 +209,8 @@ def build_skill_record(
         )
     elif skill_type == "cli-stub":
         content = (
-            "【Linkin 提示】此技能依賴外部 CLI（如 just-scrape、agent-browser），非 MCP。"
-            " Linkin 可注入方法論；實際抓取/瀏覽器操作需在已安裝 CLI 的環境執行。\n\n"
+            "【Linkin 提示】此技能依賴外部 CLI（如 just-scrape、agent-browser、agent-reach），非 MCP。"
+            " Linkin 可注入方法論；實際抓取、瀏覽器或網路閱讀需在已安裝 CLI 的環境執行。\n\n"
             + content
         )
     budget = min(20000, max(2400, len(content) // 2))

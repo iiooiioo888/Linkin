@@ -194,8 +194,9 @@ python -m backend.scripts.seed_demo_content
 | [openai/skills](https://github.com/openai/skills) | 43 | Codex 技能（Figma、部署、安全、Playwright…） | [作者頁](https://mcpservers.org/zh-TW/agent-skills/author/openai) |
 | [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) | 1 | `just-scrape`（CLI + `SGAI_API_KEY`） | [作者頁](https://mcpservers.org/zh-TW/agent-skills/author/scrapegraphai) |
 | [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | 1 | `agent-browser` 瀏覽器自動化 CLI | [技能頁](https://mcpservers.org/zh-TW/agent-skills/vercel/agent-browser) |
+| [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) | 1 | `agent-reach` 網際網路閱讀／搜尋路由（CLI，非包裝層） | — |
 
-**共 102 項**（Anthropic/OpenAI 的 `pdf`、`skill-creator` 因名稱衝突分別命名為 `anthropic-pdf` / `openai-pdf` 與 `anthropic-skill-creator` / `openai-skill-creator`）。
+**共 103 項**（Anthropic/OpenAI 的 `pdf`、`skill-creator` 因名稱衝突分別命名為 `anthropic-pdf` / `openai-pdf` 與 `anthropic-skill-creator` / `openai-skill-creator`）。另有本倉庫維護的 `mediacrawler`、`token-dashboard`，目錄合計 **105**。
 
 **首次設定（每個 clone 一次）：**
 
@@ -209,12 +210,13 @@ npx skills@latest add anthropics/skills --all --copy
 npx skills@latest add openai/skills --all --copy
 npx skills@latest add scrapegraphai/just-scrape --all --copy
 npx skills@latest add vercel-labs/agent-browser --all --copy
+# Agent Reach 已內嵌於 .agents/skills/agent-reach/（勿從 PyPI 安裝同名套件）
 # 安裝後請刪除各 Agent 目錄下的 skills 副本，僅保留 .agents/skills/
 ```
 
 **接著在 Agent 中執行一次 `setup-matt-pocock-skills`**，配置 issue tracker、分類標籤與 domain 文件版面（詳見 `.agents/skills/setup-matt-pocock-skills/SKILL.md`）。
 
-**可選 MCP / CLI：** 多數技能為 skills-only。OpenAI 的 Figma / Linear / Developer Docs 等技能可搭配 MCP；ScrapeGraphAI 與 agent-browser 為 CLI。設定說明與 Cursor 範例片段見 [docs/mcp/agent-skills.md](docs/mcp/agent-skills.md)。
+**可選 MCP / CLI：** 多數技能為 skills-only。OpenAI 的 Figma / Linear / Developer Docs 等技能可搭配 MCP；ScrapeGraphAI、agent-browser 與 agent-reach 為 CLI。設定說明與 Cursor 範例片段見 [docs/mcp/agent-skills.md](docs/mcp/agent-skills.md)。
 
 ### Linkin 運行時（與 Cursor 目錄的差異）
 
@@ -232,7 +234,7 @@ python -m backend.scripts.sync_agent_skills
 
 在 UI 驗證：**控制台 → 監控 → 技能與 MCP**（`/#/monitor/skills`）→「同步 Agent 包」。匯入的技能預設 **停用**；在列表中啟用後才會注入角色提示詞。類型標籤：`Agent 包`（可注入）、`CLI 參考`、`Cursor 專用`（僅目錄展示）。
 
-歸功與授權：[mattpocock/skills](https://github.com/mattpocock/skills) · [anthropics/skills](https://github.com/anthropics/skills) · [openai/skills](https://github.com/openai/skills) · [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) · [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser)
+歸功與授權：[mattpocock/skills](https://github.com/mattpocock/skills) · [anthropics/skills](https://github.com/anthropics/skills) · [openai/skills](https://github.com/openai/skills) · [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) · [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) · [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach)
 
 ---
 
