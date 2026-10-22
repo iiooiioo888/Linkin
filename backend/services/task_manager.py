@@ -63,6 +63,7 @@ from backend.services.trace_logger import (
     load_checkpoint,
     save_checkpoint,
 )
+
 logger = logging.getLogger(__name__)
 
 # 任務記憶體上限（避免無限增長）

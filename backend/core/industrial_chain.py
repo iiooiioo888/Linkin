@@ -9,14 +9,13 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from backend.core.opc_degrade import note_opc_from_sense_result
 from opc_service.act import act_opc
 from opc_service.analyze import analyze_opc
 from opc_service.decide import decide_opc
 from opc_service.diagnose import diagnose_opc
 from opc_service.preprocess import preprocess_opc
 from opc_service.sense import sense_opc
-
-from backend.core.opc_degrade import note_opc_from_sense_result
 
 PhaseHook = Callable[[str, dict[str, Any]], Awaitable[bool | None] | bool | None]
 
