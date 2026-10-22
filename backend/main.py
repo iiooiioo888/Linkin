@@ -2405,7 +2405,14 @@ async def docker_logs(service: str, tail: int = 100):
 async def docker_stats():
     """獲取容器資源使用統計（含主機 CPU/記憶體/磁碟總覽）。"""
     dm = get_docker_manager()
-    return {"stats": dm.get_stats(), "host": dm.host_stats()}
+    return {"stats": dm.get_stats(), "host": await asyncio.to_thread(dm.host_stats)}
+
+
+@app.get("/system/resources")
+async def system_resources():
+    """主機 CPU／記憶體／網路吞吐。不查容器，供總覽環使用。"""
+    dm = get_docker_manager()
+    return await asyncio.to_thread(dm.host_stats)
 
 
 @app.get("/docker/health")

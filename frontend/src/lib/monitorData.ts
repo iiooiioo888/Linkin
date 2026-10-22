@@ -146,9 +146,33 @@ export function agentResourceGauges(agent: RoleAgent): Array<{ label: string; pc
   const memPct = Math.min(100, Math.round(((m?.tokens_in ?? 0) + (m?.tokens_out ?? 0)) / 1000));
   const netPct = Math.min(100, Math.round((m?.tool_calls ?? 0) * 5));
   return [
-    { label: 'CPU', pct: capPct, color: 'var(--console-blue)' },
-    { label: 'MEM', pct: memPct, color: 'var(--console-green)' },
-    { label: 'NET', pct: netPct, color: 'var(--console-cyan)' },
+    { label: '容量', pct: capPct, color: 'var(--console-blue)' },
+    { label: 'Token', pct: memPct, color: 'var(--console-green)' },
+    { label: '呼叫', pct: netPct, color: 'var(--console-cyan)' },
+  ];
+}
+
+export type HostResourceSample = {
+  available?: boolean;
+  cpu_percent?: number;
+  mem_percent?: number;
+  net_percent?: number | null;
+};
+
+export function hostResourceGauges(host: HostResourceSample | null): Array<{ label: string; pct: number; color: string; text?: string }> {
+  const missing = !host?.available;
+  const net = host?.net_percent;
+  const cell = (label: string, value: number | null | undefined, color: string) => {
+    if (missing || value == null || Number.isNaN(value)) {
+      return { label, pct: 0, color, text: '—' };
+    }
+    const pct = Math.min(100, Math.max(0, Math.round(value)));
+    return { label, pct, color };
+  };
+  return [
+    cell('CPU', host?.cpu_percent, 'var(--console-blue)'),
+    cell('MEM', host?.mem_percent, 'var(--console-green)'),
+    cell('NET', net ?? null, 'var(--console-cyan)'),
   ];
 }
 
