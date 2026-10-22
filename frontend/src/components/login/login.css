@@ -1,21 +1,21 @@
 /* 登入頁 OPC v3 — gold/dark card + 分層金字塔標誌 */
 
 .login-page {
-  --login-bg: #0b0a09;
-  --login-card: #161410;
-  --login-line: #2e2923;
-  --login-line-hi: #40392f;
-  --login-ink: #f4efe6;
-  --login-sub: #b3aa9c;
-  --login-faint: #8a8174;
-  --login-dim: #3a342c;
-  --login-accent: #e4c27a;
-  --login-accent-hi: #f0d7a0;
-  --login-accent-dk: #6e5a32;
-  --login-cyan: #5fb8c9;
-  --login-green: #6fa87f;
-  --login-blue: #7a92b8;
-  --login-red: #c47a7a;
+  --login-bg: var(--console-bg);
+  --login-card: var(--console-card);
+  --login-line: var(--console-line);
+  --login-line-hi: var(--console-line-strong);
+  --login-ink: var(--console-ink);
+  --login-sub: var(--console-sub);
+  --login-faint: var(--console-faint);
+  --login-dim: var(--console-bg);
+  --login-accent: var(--console-accent);
+  --login-accent-hi: #f3ddb0;
+  --login-accent-dk: var(--console-accent-soft);
+  --login-cyan: var(--console-cyan);
+  --login-green: var(--console-green);
+  --login-blue: var(--console-blue);
+  --login-red: var(--console-danger);
 
   position: relative;
   display: flex;
@@ -43,7 +43,7 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse 80% 60% at 50% 45%, rgba(10, 10, 13, 0.35) 0%, rgba(10, 10, 13, 0.82) 100%);
+  background: radial-gradient(ellipse 80% 60% at 50% 45%, rgba(10, 9, 8, 0.2) 0%, rgba(10, 9, 8, 0.78) 100%);
 }
 
 .login-card {
@@ -138,7 +138,7 @@
 }
 
 .login-title__accent {
-  color: var(--login-accent);
+  color: inherit;
 }
 
 .login-sub {
@@ -236,18 +236,13 @@
   justify-content: center;
   margin-top: 18px;
   height: 40px;
-  border: 1px solid color-mix(in srgb, var(--login-accent-dk) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--login-accent-dk) 70%, var(--login-accent));
   border-radius: 8px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--login-accent-hi) 85%, var(--login-accent)) 0%,
-    var(--login-accent) 50%,
-    color-mix(in srgb, var(--login-accent) 80%, var(--login-accent-dk)) 100%
-  );
-  color: #0a0a0d;
+  background: var(--login-accent);
+  color: var(--console-accent-ink);
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
   cursor: pointer;
   transition: filter 0.15s ease, opacity 0.15s ease;
 }

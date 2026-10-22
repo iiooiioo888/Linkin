@@ -255,15 +255,15 @@ function MobileBottomBar({
             aria-label={t('common.dismiss')}
             onClick={() => setMoreOpen(false)}
           />
-          <div className="fixed bottom-[calc(56px+env(safe-area-inset-bottom))] left-0 right-0 z-[91] mx-3 mb-2 overflow-hidden rounded-2xl border border-white/[0.08] bg-[var(--console-sidebar)] shadow-2xl md:hidden">
-            <p className="border-b border-white/[0.06] px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+          <div className="fixed bottom-[calc(56px+env(safe-area-inset-bottom))] left-0 right-0 z-[91] mx-3 mb-2 overflow-hidden rounded-2xl border border-[var(--console-line)] bg-[var(--console-sidebar)] shadow-2xl md:hidden">
+            <p className="border-b border-[var(--console-line)] px-4 py-2 text-[12px] text-[var(--console-sub)]">
               {t('monitor.more')}
             </p>
-            <p className="border-b border-white/[0.06] px-4 py-2 text-[10px] leading-relaxed text-[var(--console-sub)]">
+            <p className="border-b border-[var(--console-line)] px-4 py-2 text-[12px] leading-relaxed text-[var(--console-faint)]">
               {t('mobileShell.moreNote')}
             </p>
-            <div className="mobile-more-console-nav border-b border-white/[0.06] px-3 py-2">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+            <div className="mobile-more-console-nav border-b border-[var(--console-line)] px-3 py-2">
+              <p className="mb-2 text-[12px] text-[var(--console-sub)]">
                 控制台
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -275,7 +275,7 @@ function MobileBottomBar({
                       onMobileConsoleTab?.(tab.key);
                       setMoreOpen(false);
                     }}
-                    className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-[11px] text-[var(--console-sub)] hover:border-[var(--console-accent)] hover:text-[var(--console-ink)]"
+                    className="rounded-lg border border-[var(--console-line)] px-2.5 py-1.5 text-[11px] text-[var(--console-sub)] hover:border-[var(--console-accent)] hover:text-[var(--console-ink)]"
                   >
                     {tab.label}
                   </button>
@@ -291,7 +291,7 @@ function MobileBottomBar({
                     onActivityChange(item.key);
                     setMoreOpen(false);
                   }}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[12px] text-[var(--console-sub)] hover:bg-white/[0.04] hover:text-[var(--console-ink)]"
+                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[12px] text-[var(--console-sub)] hover:bg-[var(--console-card)] hover:text-[var(--console-ink)]"
                 >
                   <span className="shrink-0 opacity-80">{item.icon(activity === item.key)}</span>
                   {item.label}

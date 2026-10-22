@@ -40,10 +40,10 @@ const REFRESH_MS = 3000;
 /** 看板狀態 → 顯示標籤（對應 backend/company/state.py::WorkItemStatus）。 */
 const KANBAN_LABEL: Record<string, { label: string; tone: string }> = {
   planning: { label: '規劃中', tone: 'var(--apple-tertiary)' },
-  ready: { label: '待領取', tone: '#64d2ff' },
+  ready: { label: '待領取', tone: 'var(--console-cyan)' },
   executing: { label: '執行中', tone: 'var(--apple-blue)' },
   in_review: { label: '審查中', tone: 'var(--apple-orange)' },
-  rework: { label: '退回重修', tone: '#bf5af2' },
+  rework: { label: '退回重修', tone: 'var(--console-purple)' },
   done: { label: '已完成', tone: 'var(--apple-green)' },
   blocked: { label: '阻塞', tone: 'var(--apple-red)' },
   cancelled: { label: '已取消', tone: 'var(--apple-gray)' },

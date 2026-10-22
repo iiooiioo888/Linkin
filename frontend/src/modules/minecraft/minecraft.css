@@ -1,17 +1,16 @@
-/* Minecraft 模組整頁。v3 token：金 #c9a961、底 #08080a、panel #0c0c0f、card #121216 */
+/* Minecraft 模組整頁。色票跟主控台同一套漆夜。 */
 .mc-page {
-  --mc-gold: #c9a961;
-  --mc-gold-dim: #6e5a32;
-  --mc-bg: #08080a;
-  --mc-panel: #0c0c0f;
-  --mc-card: #121216;
+  --mc-gold: var(--console-accent);
+  --mc-gold-dim: var(--console-accent-soft);
+  --mc-bg: var(--console-bg);
+  --mc-panel: var(--console-sidebar);
+  --mc-card: var(--console-card);
   display: flex;
   height: 100%;
   min-height: 0;
   flex-direction: column;
   background:
-    radial-gradient(760px 280px at 0% -8%, color-mix(in srgb, var(--mc-gold) 12%, transparent), transparent 70%),
-    radial-gradient(520px 240px at 100% 0%, color-mix(in srgb, var(--mc-gold) 6%, transparent), transparent 68%),
+    radial-gradient(640px 200px at 12% -6%, color-mix(in srgb, var(--mc-gold) 8%, transparent), transparent 72%),
     var(--mc-bg);
 }
 
@@ -41,18 +40,20 @@
 
 .mc-kicker {
   margin: 0;
-  font-size: 12px;
+  font-family: 'Noto Serif TC', 'Songti TC', serif;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--mc-gold);
+  letter-spacing: 0.04em;
+  color: var(--console-sub);
 }
 
 .mc-title {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
+  font-family: 'Noto Serif TC', 'Songti TC', serif;
   font-size: 28px;
-  font-weight: 650;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
   color: var(--console-ink);
 }
 
@@ -506,7 +507,7 @@ button.mc-row.is-on {
   overflow: hidden;
   border: 1px solid var(--console-line);
   border-radius: 16px;
-  background: #11140f;
+  background: var(--console-bg);
 }
 
 .mc-map-frame iframe {
@@ -514,7 +515,7 @@ button.mc-row.is-on {
   height: 100%;
   min-height: 420px;
   border: 0;
-  background: #11140f;
+  background: var(--console-bg);
 }
 
 @media (max-width: 900px) {
@@ -836,8 +837,8 @@ button.mc-row.is-on {
 }
 
 .mc-ops__kind--gm {
-  border-color: color-mix(in srgb, #c9a961 50%, var(--console-line));
-  color: #c9a961;
+  border-color: color-mix(in srgb, var(--console-accent) 50%, var(--console-line));
+  color: var(--console-accent);
 }
 
 .mc-ops__kind--pipeline {
@@ -933,7 +934,7 @@ button.mc-row.is-on {
 
 .mc-rules__rec-type {
   font-weight: 640;
-  color: #c9a961;
+  color: var(--console-accent);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -966,15 +967,15 @@ button.mc-row.is-on {
   margin-top: 14px;
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, #c9a961 35%, var(--console-line));
-  background: color-mix(in srgb, #c9a961 8%, var(--console-card));
+  border: 1px solid color-mix(in srgb, var(--console-accent) 35%, var(--console-line));
+  background: color-mix(in srgb, var(--console-accent) 8%, var(--console-card));
 }
 
 .mc-rules__outcome-title {
   margin: 0;
   font-size: 12px;
   font-weight: 640;
-  color: #c9a961;
+  color: var(--console-accent);
 }
 
 .mc-rules__diff {
@@ -1057,11 +1058,11 @@ button.mc-row.is-on {
 }
 
 .mc-hub-bridge__kicker {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--mc-gold);
+  font-family: 'Noto Serif TC', 'Songti TC', serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--console-sub);
 }
 
 .mc-hub-bridge__state {

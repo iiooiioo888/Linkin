@@ -14,9 +14,9 @@ import {
 import '@xyflow/react/dist/style.css';
 import { mapPhaseToDagNodeId } from '../lib/animLive';
 
-const BLUE = '#e4c27a';
-const GREEN = '#8fbf9a';
-const GRAY = '#8a8174';
+const BLUE = '#e8c98a';
+const GREEN = '#6fa87f';
+const GRAY = '#9b9183';
 
 const STAGES = [
   { id: 'sense', label: '感知', x: 40, y: 80 },

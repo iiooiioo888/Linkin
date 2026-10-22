@@ -16,17 +16,17 @@ const ROLE_LAYER: Record<string, number> = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  hub: '#e4c27a',
-  wired: '#8fbf9a',
-  catalog: '#8a8174',
+  hub: '#e8c98a',
+  wired: '#6fa87f',
+  catalog: '#9b9183',
 };
 
 const ROLE_COLOR: Record<string, string> = {
-  frontend: '#e4c27a',
-  api: '#5856D6',
-  service: '#34C759',
-  data: '#FF9500',
-  external: '#FF2D55',
+  frontend: '#e8c98a',
+  api: '#7a92b8',
+  service: '#6fa87f',
+  data: '#c9a961',
+  external: '#b88080',
 };
 
 type Pos = { x: number; y: number; w: number; h: number };

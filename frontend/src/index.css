@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-/* ---- 極簡深色設計語彙 ---- */
+/* 漆夜靈絲：金只作細絲（焦點、主動作、作用中導航），表面用實色漆。 */
 :root {
   --apple-blue: var(--console-blue);
   --apple-blue-soft: var(--console-blue);
@@ -28,25 +28,26 @@
   --app-statusbar-height: 26px;
   --mobile-tab-bar-height: 56px;
 
-  /* ---- 控制台 OCD 三欄設計 tokens（8pt grid · gold/dark v3） ---- */
+  /* ---- 控制台三欄（8pt）。漆夜 #0a0908、素紙 #f6f1e6、靈絲 #e8c98a ---- */
   --u: 8px;
   --u2: 16px;
   --u3: 24px;
   --u4: 32px;
   --u6: 48px;
-  --console-bg: #0b0a09;
-  --console-sidebar: #12110f;
-  --console-card: #191815;
-  --console-card-elevated: #221f1b;
-  --console-line: #2e2923;
-  --console-line-strong: #40392f;
+  --console-bg: #0a0908;
+  --console-sidebar: #12100e;
+  --console-card: #1b1815;
+  --console-card-elevated: #242019;
+  --console-line: #322c26;
+  --console-line-strong: #463f36;
   --console-line-hi: var(--console-line-strong);
-  --console-ink: #f4efe6;
-  --console-sub: #b3aa9c;
-  --console-faint: #8a8174;
-  --console-dim: #3a342c;
-  --console-accent: #e4c27a;
-  --console-accent-soft: #8d6e3a;
+  --console-ink: #f6f1e6;
+  --console-sub: #c8bfb0;
+  --console-faint: #9b9183;
+  --console-dim: #2c2721;
+  --console-accent: #e8c98a;
+  --console-accent-soft: #9a7844;
+  --console-accent-ink: #1c160e;
   --console-green: #6fa87f;
   --console-green-dk: #2e4a38;
   --console-blue: #7a92b8;
@@ -137,7 +138,7 @@ body.scroll-lock {
 
 .apple-canvas {
   background:
-    radial-gradient(880px 360px at 0% 0%, color-mix(in srgb, var(--console-accent) 9%, transparent), transparent 68%),
+    radial-gradient(640px 220px at 8% -8%, color-mix(in srgb, var(--console-accent) 7%, transparent), transparent 72%),
     var(--apple-canvas);
   color: var(--apple-light);
 }
@@ -168,10 +169,10 @@ body.scroll-lock {
   content: '';
   position: absolute;
   bottom: -1px;
-  left: 16px;
-  width: 56px;
+  left: 18px;
+  width: 88px;
   height: 1px;
-  background: var(--console-accent);
+  background: linear-gradient(90deg, var(--console-accent), transparent);
   pointer-events: none;
 }
 
@@ -206,18 +207,19 @@ body.scroll-lock {
 }
 
 .activity-rail-btn.is-active {
-  background: color-mix(in srgb, var(--console-accent) 14%, transparent);
-  color: var(--console-accent);
+  background: transparent;
+  color: var(--console-ink);
 }
 
 .activity-rail-btn.is-active::before {
   content: '';
   position: absolute;
-  left: -8px;
+  left: -7px;
   width: 2px;
-  height: 16px;
+  height: 18px;
   border-radius: 1px;
   background: var(--console-accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--console-accent) 65%, transparent);
 }
 
 button:focus-visible,
@@ -824,7 +826,7 @@ textarea:focus-visible {
 
 .sp-item:focus-visible {
   outline: none;
-  border-color: rgba(255, 159, 10, 0.9);
+  border-color: color-mix(in srgb, var(--console-amber) 90%, transparent);
 }
 
 .sp-item-ic {
@@ -1049,16 +1051,36 @@ textarea:focus-visible {
 }
 
 .apple-composer {
-  border-radius: var(--apple-radius-lg);
-  border: 1px solid var(--apple-hairline);
-  background: var(--apple-surface);
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--console-accent) 26%, var(--console-line));
+  background: var(--console-card-elevated);
   overflow: hidden;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.apple-composer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14%;
+  right: 14%;
+  z-index: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--console-accent), transparent);
+  pointer-events: none;
+}
+
 .apple-composer:focus-within {
-  border-color: color-mix(in srgb, var(--console-accent) 55%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--console-accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--console-accent) 62%, var(--console-line));
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--console-accent) 16%, transparent),
+    0 18px 40px rgba(0, 0, 0, 0.32);
+}
+
+.apple-composer:focus-within::before {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--console-accent) 80%, transparent);
 }
 
 .apple-composer__field {
@@ -1194,7 +1216,7 @@ textarea:focus-visible {
   border: none;
   border-radius: 50%;
   background: var(--console-accent);
-  color: #1a140c;
+  color: var(--console-accent-ink);
   cursor: pointer;
   transition: opacity 0.15s ease, transform 0.1s ease;
 }
@@ -1394,7 +1416,7 @@ textarea:focus-visible {
 
 .media-gallery {
   --neiki-accent: var(--console-accent);
-  --neiki-bg: #1c1c1e;
+  --neiki-bg: var(--console-card);
 }
 
 .media-gallery a {
@@ -1803,6 +1825,15 @@ textarea:focus-visible {
   .node-ring {
     animation: none;
   }
+
+  .apple-composer,
+  .apple-send-btn {
+    transition: none;
+  }
+
+  .apple-send-btn:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 /* ---- IDE 布局動效 ---- */
@@ -2018,7 +2049,7 @@ textarea:focus-visible {
   margin: 0;
   padding: 6px 12px;
   border-bottom: 1px solid var(--apple-hairline);
-  background: #1c1c1e;
+  background: var(--console-card);
 }
 
 .console-rd-shell .rd-rp > .rd-sec > :not(.rd-tt) {
@@ -2089,12 +2120,12 @@ textarea:focus-visible {
 }
 
 .rd-tag--ok {
-  background: rgba(48, 209, 88, 0.12);
+  background: color-mix(in srgb, var(--console-green) 12%, transparent);
   color: var(--apple-green);
 }
 
 .rd-tag--err {
-  background: rgba(255, 69, 58, 0.12);
+  background: color-mix(in srgb, var(--console-danger) 12%, transparent);
   color: var(--apple-red);
 }
 
@@ -2468,7 +2499,7 @@ textarea:focus-visible {
 }
 
 .rd-badge.run {
-  background: rgba(255, 159, 10, 0.12);
+  background: color-mix(in srgb, var(--console-amber) 12%, transparent);
   color: var(--apple-orange);
 }
 
@@ -2683,7 +2714,7 @@ textarea:focus-visible {
 .rd-od.off { background: var(--apple-tertiary); }
 .rd-od.run {
   background: var(--apple-orange);
-  box-shadow: 0 0 5px rgba(255, 159, 10, 0.45);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--console-amber) 45%, transparent);
   animation: rd-pulse 2s infinite;
 }
 
@@ -3247,7 +3278,7 @@ textarea:focus-visible {
   scroll-margin-top: 56px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  background: #1c1c1e;
+  background: var(--console-card);
   padding: 14px;
 }
 
@@ -3334,7 +3365,7 @@ textarea:focus-visible {
   color: var(--apple-blue-soft);
 }
 .ar-fbtn.on.alert {
-  background: rgba(255, 69, 58, 0.12);
+  background: color-mix(in srgb, var(--console-danger) 12%, transparent);
   color: var(--apple-red);
 }
 
@@ -3529,7 +3560,7 @@ textarea:focus-visible {
   flex-shrink: 0;
   background: transparent;
   font-size: 8px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .sq-tree-check input {
@@ -3904,20 +3935,20 @@ textarea:focus-visible {
 }
 
 .raho-grill-card {
-  border: 1px solid rgba(255, 159, 10, 0.28);
-  background: rgba(255, 159, 10, 0.06);
+  border: 1px solid color-mix(in srgb, var(--console-amber) 28%, transparent);
+  background: color-mix(in srgb, var(--console-amber) 6%, transparent);
   border-radius: 14px;
   padding: 14px;
 }
 
 .raho-grill-card.is-locked {
-  border-color: rgba(48, 209, 88, 0.35);
-  background: rgba(48, 209, 88, 0.06);
+  border-color: color-mix(in srgb, var(--console-green) 35%, transparent);
+  background: color-mix(in srgb, var(--console-green) 6%, transparent);
 }
 
 .raho-grill-card.is-failed {
-  border-color: rgba(255, 69, 58, 0.4);
-  background: rgba(255, 69, 58, 0.06);
+  border-color: color-mix(in srgb, var(--console-danger) 40%, transparent);
+  background: color-mix(in srgb, var(--console-danger) 6%, transparent);
 }
 
 .raho-grill-head {
@@ -3929,9 +3960,8 @@ textarea:focus-visible {
 }
 
 .raho-grill-kicker {
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #ff9f0a;
+  letter-spacing: 0.01em;
+  color: var(--console-sub);
   font-weight: 600;
 }
 
@@ -3966,7 +3996,7 @@ textarea:focus-visible {
 
 .raho-legend-h {
   font-size: 10px;
-  color: #8e8e93;
+  color: var(--console-faint);
   margin-bottom: 6px;
 }
 
@@ -4026,8 +4056,8 @@ textarea:focus-visible {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  border: 1px solid rgba(100, 210, 255, 0.22);
-  background: rgba(100, 210, 255, 0.05);
+  border: 1px solid color-mix(in srgb, var(--console-blue) 22%, transparent);
+  background: color-mix(in srgb, var(--console-blue) 5%, transparent);
   border-radius: 10px;
   padding: 8px 10px;
 }
@@ -4035,7 +4065,7 @@ textarea:focus-visible {
 .raho-org-hint,
 .raho-org-note {
   font-size: 10px;
-  color: #8e8e93;
+  color: var(--console-faint);
   margin: 0;
 }
 
@@ -4058,13 +4088,13 @@ textarea:focus-visible {
 }
 
 .raho-org-col.is-inspect {
-  border-color: rgba(255, 159, 10, 0.28);
-  background: rgba(255, 159, 10, 0.05);
+  border-color: color-mix(in srgb, var(--console-amber) 28%, transparent);
+  background: color-mix(in srgb, var(--console-amber) 5%, transparent);
 }
 
 .raho-org-h {
   font-size: 10px;
-  color: #8e8e93;
+  color: var(--console-faint);
   margin-bottom: 8px;
 }
 
@@ -4104,13 +4134,13 @@ textarea:focus-visible {
 
 .raho-pyr-item.is-l0,
 .raho-desk-chip.is-l0 {
-  border-color: rgba(100, 210, 255, 0.28);
+  border-color: color-mix(in srgb, var(--console-blue) 28%, transparent);
   color: var(--console-accent);
 }
 
 .raho-pyr-item.is-l1,
 .raho-desk-chip.is-l1 {
-  border-color: rgba(255, 159, 10, 0.35);
+  border-color: color-mix(in srgb, var(--console-amber) 35%, transparent);
   color: #ffd60a;
 }
 
@@ -4131,8 +4161,8 @@ textarea:focus-visible {
 .raho-pyr-n {
   margin-left: auto;
   border-radius: 999px;
-  background: rgba(255, 69, 58, 0.18);
-  color: #ff453a;
+  background: color-mix(in srgb, var(--console-danger) 18%, transparent);
+  color: var(--console-danger);
   padding: 0 6px;
   font-size: 10px;
 }
@@ -4190,7 +4220,7 @@ textarea:focus-visible {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .raho-edge-role {
@@ -4239,7 +4269,7 @@ textarea:focus-visible {
   border-radius: 6px;
   padding: 3px 6px;
   font-size: 10px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .raho-desk-chip.on {
@@ -4276,7 +4306,7 @@ textarea:focus-visible {
   margin: 0 0 6px;
   font-size: 10px;
   letter-spacing: 0.04em;
-  color: #30d158;
+  color: var(--console-green);
 }
 
 .raho-phase-stepper {
@@ -4312,28 +4342,28 @@ textarea:focus-visible {
 }
 
 .raho-phase-step.is-active {
-  background: rgba(255, 159, 10, 0.16);
+  background: color-mix(in srgb, var(--console-amber) 16%, transparent);
   color: #ffd60a;
 }
 
 .raho-phase-step.is-active i,
 .raho-phase-step.is-done i {
-  background: #ff9f0a;
-  color: #1c1c1e;
+  background: var(--console-amber);
+  color: var(--console-card);
 }
 
 .raho-phase-step.is-done {
-  color: #30d158;
+  color: var(--console-green);
 }
 
 .raho-phase-step.is-done i {
-  background: #30d158;
+  background: var(--console-green);
 }
 
 .raho-grill-meta {
   margin: 0 0 4px;
   font-size: 10px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .raho-grill-lead {
@@ -4352,11 +4382,11 @@ textarea:focus-visible {
 
 .raho-grill-meter-fill {
   height: 100%;
-  background: #ff9f0a;
+  background: var(--console-amber);
 }
 
 .raho-grill-meter-fill.is-ok {
-  background: #30d158;
+  background: var(--console-green);
 }
 
 .raho-grill-dims {
@@ -4370,12 +4400,12 @@ textarea:focus-visible {
   display: flex;
   justify-content: space-between;
   font-size: 10px;
-  color: #8e8e93;
+  color: var(--console-faint);
   margin-bottom: 2px;
 }
 
 .raho-dim-meta .ok {
-  color: #30d158;
+  color: var(--console-green);
 }
 
 .raho-fail-report,
@@ -4392,12 +4422,12 @@ textarea:focus-visible {
 }
 
 .raho-fail-report {
-  background: rgba(255, 69, 58, 0.08);
+  background: color-mix(in srgb, var(--console-danger) 8%, transparent);
   color: #ff8a80;
 }
 
 .raho-ticket {
-  background: rgba(48, 209, 88, 0.08);
+  background: color-mix(in srgb, var(--console-green) 8%, transparent);
   color: #d4f5dd;
 }
 
@@ -4433,7 +4463,7 @@ textarea:focus-visible {
   display: block;
   margin-top: 4px;
   font-size: 11px;
-  color: #8e8e93;
+  color: var(--console-faint);
   font-style: normal;
 }
 
@@ -4448,7 +4478,7 @@ textarea:focus-visible {
 .raho-grill-current-why {
   margin-top: 4px;
   font-size: 11px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .raho-grill-choices {
@@ -4464,8 +4494,8 @@ textarea:focus-visible {
 }
 
 .raho-grill-choice.is-vague {
-  border-color: rgba(255, 159, 10, 0.35);
-  background: rgba(255, 159, 10, 0.08);
+  border-color: color-mix(in srgb, var(--console-amber) 35%, transparent);
+  background: color-mix(in srgb, var(--console-amber) 8%, transparent);
 }
 
 .raho-grill-composer textarea,
@@ -4474,7 +4504,7 @@ textarea:focus-visible {
   margin-top: 8px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: #1c1c1e;
+  background: var(--console-card);
   color: var(--console-ink);
   padding: 8px 10px;
   font-size: 13px;
@@ -4514,8 +4544,8 @@ textarea:focus-visible {
 }
 
 .raho-battle-card.is-failed {
-  border-color: rgba(255, 69, 58, 0.4);
-  background: rgba(255, 69, 58, 0.06);
+  border-color: color-mix(in srgb, var(--console-danger) 40%, transparent);
+  background: color-mix(in srgb, var(--console-danger) 6%, transparent);
 }
 
 .raho-battle-card.is-escalate {
@@ -4545,7 +4575,7 @@ textarea:focus-visible {
 }
 
 .raho-battle-checks li.is-fail {
-  color: #ff453a;
+  color: var(--console-danger);
 }
 
 .raho-battle-cot {
@@ -4565,7 +4595,7 @@ textarea:focus-visible {
 .raho-battle-dag code {
   display: block;
   font-size: 11px;
-  color: #8e8e93;
+  color: var(--console-faint);
   font-style: normal;
 }
 
@@ -4584,7 +4614,7 @@ textarea:focus-visible {
 .raho-battle-yaml {
   margin-top: 6px;
   font-size: 11px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .raho-battle-prompt summary,
@@ -4635,7 +4665,7 @@ textarea:focus-visible {
 .l0-panel.is-embed {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
-  background: #1c1c1e;
+  background: var(--console-card);
   padding: 12px;
   margin-bottom: 14px;
 }
@@ -4657,7 +4687,7 @@ textarea:focus-visible {
 .l0-sub {
   margin-top: 4px;
   font-size: 12px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .l0-head-acts {
@@ -4670,13 +4700,13 @@ textarea:focus-visible {
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 10px;
-  color: #30d158;
-  background: rgba(48, 209, 88, 0.12);
+  color: var(--console-green);
+  background: color-mix(in srgb, var(--console-green) 12%, transparent);
 }
 
 .l0-pressure.is-hot {
-  color: #ff9f0a;
-  background: rgba(255, 159, 10, 0.14);
+  color: var(--console-amber);
+  background: color-mix(in srgb, var(--console-amber) 14%, transparent);
 }
 
 .l0-tabs {
@@ -4692,11 +4722,11 @@ textarea:focus-visible {
   border-radius: 8px;
   padding: 4px 10px;
   font-size: 11px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .l0-tab.on {
-  border-color: rgba(100, 210, 255, 0.35);
+  border-color: color-mix(in srgb, var(--console-blue) 35%, transparent);
   color: var(--console-accent);
 }
 
@@ -4728,7 +4758,7 @@ textarea:focus-visible {
 .l0-card-d {
   margin-top: 4px;
   font-size: 11px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .l0-link {
@@ -4757,7 +4787,7 @@ textarea:focus-visible {
   flex-direction: column;
   gap: 4px;
   font-size: 10px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .l0-metric strong {
@@ -4768,7 +4798,7 @@ textarea:focus-visible {
 .l0-warn {
   margin-top: 10px;
   font-size: 11px;
-  color: #ff9f0a;
+  color: var(--console-amber);
 }
 
 .l0-vectors {
@@ -4787,8 +4817,8 @@ textarea:focus-visible {
   margin: 0 0 12px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(100, 210, 255, 0.18);
-  background: rgba(100, 210, 255, 0.06);
+  border: 1px solid color-mix(in srgb, var(--console-blue) 18%, transparent);
+  background: color-mix(in srgb, var(--console-blue) 6%, transparent);
   text-align: left;
   cursor: pointer;
 }
@@ -4806,7 +4836,7 @@ textarea:focus-visible {
 
 .l0-live span {
   font-size: 10px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 
 .l0-graph {
@@ -4823,8 +4853,8 @@ textarea:focus-visible {
 
 .l0-chip {
   border-radius: 999px;
-  border: 1px solid rgba(100, 210, 255, 0.22);
-  background: rgba(100, 210, 255, 0.08);
+  border: 1px solid color-mix(in srgb, var(--console-blue) 22%, transparent);
+  background: color-mix(in srgb, var(--console-blue) 8%, transparent);
   padding: 2px 8px;
   font-size: 10px;
   color: var(--console-accent);
@@ -4846,7 +4876,7 @@ textarea:focus-visible {
   right: 0;
   bottom: 0;
   left: 0;
-  background: linear-gradient(180deg, #ff453a, #ff9f0a 55%, #30d158);
+  background: linear-gradient(180deg, var(--console-danger), var(--console-amber) 55%, var(--console-green));
 }
 
 .l0-thermo span {
@@ -4862,28 +4892,28 @@ textarea:focus-visible {
 
 /* ---- 對話工作台（1.html Enterprise Workspace） ---- */
 .ws {
-  --ws-bg: #09090b;
-  --ws-sidebar: #0c0c0e;
-  --ws-panel: #111113;
-  --ws-card: #161618;
-  --ws-card-hover: #1c1c1f;
-  --ws-input: #09090b;
-  --ws-border: #1f1f22;
-  --ws-border-2: #27272a;
-  --ws-text: #fafafa;
-  --ws-muted: #a1a1aa;
-  --ws-dim: #71717a;
+  --ws-bg: var(--console-bg);
+  --ws-sidebar: var(--console-sidebar);
+  --ws-panel: color-mix(in srgb, var(--console-card) 72%, var(--console-bg));
+  --ws-card: var(--console-card);
+  --ws-card-hover: var(--console-card-elevated);
+  --ws-input: var(--console-bg);
+  --ws-border: var(--console-line);
+  --ws-border-2: var(--console-line-strong);
+  --ws-text: var(--console-ink);
+  --ws-muted: var(--console-sub);
+  --ws-dim: var(--console-faint);
   --ws-blue: var(--console-blue);
   --ws-blue-dim: color-mix(in srgb, var(--console-blue) 15%, transparent);
-  --ws-purple: var(--console-sub);
-  --ws-purple-dim: color-mix(in srgb, var(--console-sub) 15%, transparent);
+  --ws-purple: var(--console-purple);
+  --ws-purple-dim: color-mix(in srgb, var(--console-purple) 15%, transparent);
   --ws-green: var(--console-green);
   --ws-green-dim: color-mix(in srgb, var(--console-green) 15%, transparent);
   --ws-orange: var(--console-amber);
   --ws-orange-dim: color-mix(in srgb, var(--console-amber) 15%, transparent);
   --ws-red: var(--console-danger);
   --ws-red-dim: color-mix(in srgb, var(--console-danger) 15%, transparent);
-  --ws-code-bg: #0d1117;
+  --ws-code-bg: #100e0c;
   --ws-code-text: #c9d1d9;
   --ws-code-kw: #ff7b72;
   --ws-code-fn: #d2a8ff;
@@ -4896,7 +4926,7 @@ textarea:focus-visible {
   --ws-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --ws-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   --ws-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-  --ws-glow: 0 0 16px color-mix(in srgb, var(--console-blue) 20%, transparent);
+  --ws-glow: 0 0 16px color-mix(in srgb, var(--console-accent) 18%, transparent);
   position: relative;
   display: flex;
   min-height: 0;
@@ -5131,7 +5161,7 @@ textarea:focus-visible {
 .ws-btn:hover:not(:disabled) {
   background: var(--ws-card-hover);
   color: var(--ws-text);
-  border-color: var(--ws-blue);
+  border-color: var(--console-line-strong);
 }
 
 .ws-btn:disabled {
@@ -5142,12 +5172,12 @@ textarea:focus-visible {
 .ws-btn-primary {
   background: var(--console-accent);
   border-color: var(--console-accent);
-  color: #1a140c;
+  color: var(--console-accent-ink);
 }
 
 .ws-btn-primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--console-accent) 82%, white);
-  color: #1a140c;
+  background: color-mix(in srgb, var(--console-accent) 86%, white);
+  color: var(--console-accent-ink);
   box-shadow: none;
 }
 
@@ -5502,8 +5532,42 @@ textarea:focus-visible {
 .ws-empty {
   padding: 16px 8px;
   color: var(--ws-dim);
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.5;
   text-align: center;
+}
+
+.chat-empty-title {
+  margin: 0;
+  font-family: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.3;
+  color: var(--console-ink);
+}
+
+@media (min-width: 640px) {
+  .chat-empty-title {
+    font-size: 30px;
+  }
+}
+
+.chat-suggest {
+  border: 1px solid var(--console-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--console-card) 88%, transparent);
+  padding: 8px 14px;
+  color: var(--console-sub);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.chat-suggest:hover {
+  border-color: color-mix(in srgb, var(--console-accent) 42%, var(--console-line));
+  color: var(--console-ink);
 }
 
 .ws-bottom {
@@ -5534,7 +5598,7 @@ textarea:focus-visible {
   margin-left: 4px;
   padding: 0 5px;
   border-radius: 4px;
-  background: rgba(100, 210, 255, 0.14);
+  background: color-mix(in srgb, var(--console-blue) 14%, transparent);
   color: var(--console-accent);
   font-size: 9px;
   font-weight: 600;
@@ -5545,18 +5609,18 @@ textarea:focus-visible {
 .ws-tab-badge.is-lock {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-weight: 500;
-  color: #30d158;
-  background: rgba(48, 209, 88, 0.14);
-  border: 1px solid rgba(48, 209, 88, 0.28);
+  color: var(--console-green);
+  background: color-mix(in srgb, var(--console-green) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--console-green) 28%, transparent);
 }
 
 .ws-tab.is-on .ws-tab-badge {
-  background: rgba(100, 210, 255, 0.22);
+  background: color-mix(in srgb, var(--console-blue) 22%, transparent);
 }
 
 .ws-tab.is-on .ws-tab-badge.is-lock {
-  color: #30d158;
-  background: rgba(48, 209, 88, 0.18);
+  color: var(--console-green);
+  background: color-mix(in srgb, var(--console-green) 18%, transparent);
 }
 
 /* 無右側監控時：主欄吃滿寬度 */
@@ -5633,7 +5697,7 @@ textarea:focus-visible {
   color: var(--ws-text);
   background: var(--ws-card);
   border-color: var(--ws-border);
-  box-shadow: var(--ws-shadow-sm);
+  box-shadow: inset 0 -2px 0 var(--console-accent);
 }
 
 .ws-count {
@@ -6094,20 +6158,15 @@ textarea:focus-visible {
 }
 
 .ws-chat .apple-input-bar {
-  border-top: 1px solid var(--ws-border);
-  background: var(--ws-bg);
-  padding: 16px 20px;
-}
-
-.ws-chat .apple-composer {
-  border-color: var(--ws-border-2);
-  background: var(--ws-card);
-  border-radius: 8px;
+  border-top: 1px solid transparent;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--console-bg) 88%, black) 28%);
+  padding: 10px 20px 18px;
 }
 
 .ws-chat .apple-composer__field {
-  color: var(--ws-text);
-  font-size: 12px;
+  color: var(--console-ink);
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .ws .raho-decision-bar {
@@ -6142,11 +6201,11 @@ textarea:focus-visible {
 }
 
 .ws-msg-b {
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 12px;
-  line-height: 1.5;
-  box-shadow: var(--ws-shadow-sm);
+  padding: 11px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  box-shadow: none;
 }
 
 .ws-msg.is-agent .ws-msg-b {
@@ -6157,10 +6216,11 @@ textarea:focus-visible {
 }
 
 .ws-msg.is-user .ws-msg-b {
-  background: color-mix(in srgb, var(--console-accent) 86%, #fff);
-  color: #1a140c;
-  border: 1px solid transparent;
+  background: var(--console-card-elevated);
+  color: var(--console-ink);
+  border: 1px solid color-mix(in srgb, var(--console-accent) 32%, var(--console-line));
   border-top-right-radius: 4px;
+  box-shadow: inset -2px 0 0 var(--console-accent);
 }
 
 .ws-msg-time {
@@ -6174,7 +6234,7 @@ textarea:focus-visible {
 .ws-msg.is-user .markdown-body,
 .ws-msg.is-user .markdown-body p,
 .ws-msg.is-user .markdown-body li {
-  color: #fff;
+  color: var(--console-ink);
 }
 
 .ws-toast {
@@ -6612,7 +6672,7 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 8px;
   font-size: 10px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 .integ-strip-link {
   font-size: 10px;
@@ -6674,19 +6734,19 @@ textarea:focus-visible {
   opacity: 0.72;
 }
 .integ-chip.is-ok {
-  border-color: color-mix(in srgb, var(--integ-accent, #30d158) 35%, transparent);
+  border-color: color-mix(in srgb, var(--integ-accent, var(--console-green)) 35%, transparent);
   color: var(--console-ink);
 }
 .integ-chip.is-ok .integ-chip-glyph {
-  color: var(--integ-accent, #30d158);
+  color: var(--integ-accent, var(--console-green));
 }
 .integ-chip.is-warn {
-  border-color: rgba(255, 159, 10, 0.4);
-  color: #ff9f0a;
+  border-color: color-mix(in srgb, var(--console-amber) 40%, transparent);
+  color: var(--console-amber);
 }
 .integ-chip.is-err {
-  border-color: rgba(255, 69, 58, 0.45);
-  color: #ff453a;
+  border-color: color-mix(in srgb, var(--console-danger) 45%, transparent);
+  color: var(--console-danger);
 }
 .integ-panel-focus {
   outline: 1px solid color-mix(in srgb, var(--integ-accent, var(--console-accent)) 55%, transparent);
@@ -6698,8 +6758,8 @@ textarea:focus-visible {
   margin-bottom: 16px;
   padding: 14px 16px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(135deg, rgba(94, 106, 210, 0.12), rgba(100, 210, 255, 0.06));
+  border: 1px solid var(--console-line);
+  background: var(--console-card);
 }
 .integ-hero h2 {
   margin: 0;
@@ -6711,7 +6771,7 @@ textarea:focus-visible {
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 .l0-integ-bar {
   margin-bottom: 12px;
@@ -6763,11 +6823,11 @@ textarea:focus-visible {
   border: 0;
   background: transparent;
   cursor: pointer;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 .ctx-trend-col.is-active .ctx-trend-bar {
   outline: 1px solid var(--console-accent);
-  box-shadow: 0 0 0 2px rgba(100, 210, 255, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--console-blue) 20%, transparent);
 }
 .ctx-trend-bar {
   display: flex;
@@ -6790,13 +6850,13 @@ textarea:focus-visible {
   gap: 2px;
   font-style: normal;
   font-size: 9px;
-  color: #ff9f0a;
+  color: var(--console-amber);
 }
 .ctx-trend-marks em {
   font-style: normal;
   padding: 0 3px;
   border-radius: 4px;
-  background: rgba(255, 159, 10, 0.15);
+  background: color-mix(in srgb, var(--console-amber) 15%, transparent);
 }
 .ctx-rings {
   display: grid;
@@ -6823,14 +6883,14 @@ textarea:focus-visible {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #1c1c1e;
+  background: var(--console-card);
 }
 .ctx-ring-meta p {
   margin: 0;
 }
 .ctx-ring-meta .label {
   font-size: 10px;
-  color: #8e8e93;
+  color: var(--console-faint);
 }
 .ctx-ring-meta .value {
   font-size: 14px;
@@ -6863,10 +6923,10 @@ textarea:focus-visible {
   font-size: 10px;
 }
 .ctx-delta.is-up {
-  color: #30d158;
+  color: var(--console-green);
 }
 .ctx-delta.is-down {
-  color: #ff453a;
+  color: var(--console-danger);
 }
 .ctx-modal-root {
   position: fixed;
@@ -6893,7 +6953,7 @@ textarea:focus-visible {
   padding: 18px 18px 20px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(180deg, #1c1c1e 0%, #141416 100%);
+  background: linear-gradient(180deg, var(--console-card) 0%, #141416 100%);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
   animation: ctx-modal-in 0.18s ease-out;
 }
@@ -6920,7 +6980,7 @@ textarea:focus-visible {
 .ctx-panel.is-embed .ctx-embed-hero p {
   margin: 4px 0 0;
   font-size: 11px;
-  color: #8e8e93;
+  color: var(--console-faint);
   line-height: 1.4;
 }
 .ctx-panel.is-embed .ctx-trend {
@@ -6953,7 +7013,7 @@ textarea:focus-visible {
   height: 40px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: conic-gradient(#30d158 calc(var(--p) * 1%), rgba(255, 255, 255, 0.08) 0);
+  background: conic-gradient(var(--console-green) calc(var(--p) * 1%), rgba(255, 255, 255, 0.08) 0);
   position: relative;
 }
 .ctx-agent-ring::after {
@@ -6961,7 +7021,7 @@ textarea:focus-visible {
   position: absolute;
   inset: 7px;
   border-radius: 50%;
-  background: #1c1c1e;
+  background: var(--console-card);
 }
 
 .ctx-chip {
@@ -6977,28 +7037,28 @@ textarea:focus-visible {
   background: rgba(255, 255, 255, 0.04);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
-  color: #8e8e93;
+  color: var(--console-faint);
   vertical-align: middle;
 }
 .ctx-chip.is-tool {
-  color: #bf5af2;
+  color: var(--console-purple);
   border-color: rgba(191, 90, 242, 0.35);
   background: rgba(191, 90, 242, 0.1);
 }
 .ctx-chip.is-mcp {
   color: var(--console-accent);
-  border-color: rgba(100, 210, 255, 0.35);
-  background: rgba(100, 210, 255, 0.1);
+  border-color: color-mix(in srgb, var(--console-blue) 35%, transparent);
+  background: color-mix(in srgb, var(--console-blue) 10%, transparent);
 }
 .ctx-chip.is-dsh {
-  color: #30d158;
-  border-color: rgba(48, 209, 88, 0.35);
-  background: rgba(48, 209, 88, 0.1);
+  color: var(--console-green);
+  border-color: color-mix(in srgb, var(--console-green) 35%, transparent);
+  background: color-mix(in srgb, var(--console-green) 10%, transparent);
 }
 .ctx-chip.is-plugin {
-  color: #ff9f0a;
-  border-color: rgba(255, 159, 10, 0.35);
-  background: rgba(255, 159, 10, 0.1);
+  color: var(--console-amber);
+  border-color: color-mix(in srgb, var(--console-amber) 35%, transparent);
+  background: color-mix(in srgb, var(--console-amber) 10%, transparent);
 }
 .ctx-brief-jump {
   width: 100%;

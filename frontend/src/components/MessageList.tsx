@@ -88,7 +88,7 @@ export default function MessageList({
         {messages.length === 0 && (
           <div className={`flex flex-col items-center gap-8 text-center ${variant === 'drawer' ? 'py-10' : 'py-20 sm:py-28'}`}>
             <div>
-              <h2 className="text-[20px] font-semibold tracking-tight text-[var(--console-ink)] sm:text-[22px]">
+              <h2 className="chat-empty-title">
                 {t('chat.emptyTitle')}
               </h2>
               <p className="mt-2 max-w-md text-[13px] leading-relaxed text-[var(--console-faint)]">
@@ -101,7 +101,7 @@ export default function MessageList({
                   key={s.text}
                   type="button"
                   onClick={() => onSuggest?.(s.text, s.company)}
-                  className="rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-[12px] text-[var(--console-sub)] transition-colors hover:border-white/[0.14] hover:text-[var(--console-ink)]"
+                  className="chat-suggest"
                 >
                   {s.text}
                 </button>

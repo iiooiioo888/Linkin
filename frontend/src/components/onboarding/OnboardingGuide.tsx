@@ -22,7 +22,7 @@ export default function OnboardingGuide({ onStartChat }: OnboardingGuideProps) {
 
   return (
     <div
-      className="shrink-0 border-b border-[color-mix(in_srgb,var(--console-accent)_25%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_8%,transparent)] px-4 py-3 sm:px-6"
+      className="shrink-0 border-b border-[var(--console-line)] bg-[var(--console-sidebar)] px-4 py-3 sm:px-6"
       data-testid="onboarding-guide"
       role="region"
       aria-label={t('onboarding.title')}
@@ -39,14 +39,14 @@ export default function OnboardingGuide({ onStartChat }: OnboardingGuideProps) {
               onStartChat?.();
               close();
             }}
-            className="rounded-lg bg-[color-mix(in_srgb,var(--console-accent)_22%,transparent)] px-3 py-1.5 text-[11px] font-medium text-[var(--console-accent)] ring-1 ring-[color-mix(in_srgb,var(--console-accent)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_30%,transparent)]"
+            className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_45%,var(--console-line))] bg-transparent px-3 py-1.5 text-[11px] font-medium text-[var(--console-ink)] hover:border-[var(--console-accent)]"
           >
             {t('onboarding.startCta')}
           </button>
           <button
             type="button"
             onClick={close}
-            className="rounded-lg px-2.5 py-1.5 text-[11px] text-[var(--console-sub)] hover:bg-white/[0.04] hover:text-[var(--console-ink)]"
+            className="rounded-lg px-2.5 py-1.5 text-[11px] text-[var(--console-sub)] hover:bg-[var(--console-card)] hover:text-[var(--console-ink)]"
           >
             {t('common.dismiss')}
           </button>

@@ -5,8 +5,7 @@
   min-height: 0;
   flex-direction: column;
   background:
-    radial-gradient(920px 380px at 0% 0%, color-mix(in srgb, var(--console-accent) 10%, transparent), transparent 68%),
-    radial-gradient(640px 280px at 100% 12%, color-mix(in srgb, var(--console-blue) 8%, transparent), transparent 70%);
+    radial-gradient(640px 200px at 12% -6%, color-mix(in srgb, var(--console-accent) 8%, transparent), transparent 72%);
 }
 
 .company-page__scroll {
@@ -27,18 +26,20 @@
 
 .company-kicker {
   margin: 0;
-  font-size: 12px;
+  font-family: 'Noto Serif TC', 'Songti TC', serif;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--console-accent);
+  letter-spacing: 0.04em;
+  color: var(--console-sub);
 }
 
 .company-title {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
+  font-family: 'Noto Serif TC', 'Songti TC', serif;
   font-size: 28px;
-  font-weight: 650;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
   color: var(--console-ink);
 }
 
