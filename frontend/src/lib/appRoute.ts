@@ -6,6 +6,7 @@
  *   #/monitor | #/monitor/tasks | #/monitor/tasks/{taskId}
  *   #/monitor/agents/{agentId}
  *   #/monitor/lab | #/monitor/lab/{prompt|archify|ponytail|runner|ab|quant|maps|firecrawl|mcp}
+ *   #/monitor/skills | #/monitor/skills/{skillId}   技能深鏈（採集的 Agent Reach 等）
  *   #/monitor/integrations | #/monitor/integrations/{memos|openviking|weknora|yao|ouroboros|openpencil}
  *   #/monitor/credits | #/monitor/billing | #/monitor/wallet — 舊深鏈正規化至 models（AI 用量）
  *   #/monitor/context | #/monitor/context/{taskId}
@@ -22,6 +23,19 @@ import { markGrillReveal, setPendingDeskTab } from './agentUi';
 import { normalizeLabSubTab, type LabSubTab } from './labTabs';
 import { normalizeMonitorTab } from './monitorTabs';
 import { getWorldModule, hashPageForTab, moduleIdForTab, tabForModulePage } from './worldModules';
+
+let pendingSkillFocus: string | null = null;
+
+/** `#/monitor/skills/{id}` 在路由正規化後仍要把該技能捲到畫面裡。 */
+export function rememberSkillFocus(id: string) {
+  pendingSkillFocus = id;
+}
+
+export function takeSkillFocus(): string | null {
+  const id = pendingSkillFocus;
+  pendingSkillFocus = null;
+  return id;
+}
 
 export interface AppRoute {
   view: ViewKey;
@@ -92,6 +106,7 @@ export function parseAppRoute(hash: string): AppRoute {
     }
     const tab = normalizeMonitorTab(rawTab);
     const focusRaw = parts[2] ? decodeURIComponent(parts[2]) : null;
+    if (tab === 'skills' && focusRaw) rememberSkillFocus(focusRaw);
     const labSubTab = tab === 'lab' ? normalizeLabSubTab(focusRaw) : 'prompt';
     return {
       view: 'monitor',

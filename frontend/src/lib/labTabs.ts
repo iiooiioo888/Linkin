@@ -151,6 +151,13 @@ export const LAB_INTEGRATE_SECTIONS: LabNavSection[] = [
     items: [
       FIRECRAWL,
       link('social', '⧉', '社媒', 'MediaCrawler', '#/monitor/skills'),
+      link(
+        'agent-reach',
+        '⌁',
+        'Agent Reach',
+        '即時閱讀與搜尋',
+        '#/monitor/skills/agent-reach',
+      ),
     ],
   },
   {

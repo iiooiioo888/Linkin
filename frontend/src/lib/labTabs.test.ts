@@ -37,7 +37,12 @@ describe('lab component groups', () => {
     expect(group?.sections?.find((section) => section.id === 'crawl')?.items.map((item) => item.label)).toEqual([
       '爬蟲',
       '社媒',
+      'Agent Reach',
     ]);
+    const reach = group?.sections
+      ?.find((section) => section.id === 'crawl')
+      ?.items.find((item) => item.key === 'agent-reach');
+    expect(reach && isLabLink(reach) ? reach.href : '').toBe('#/monitor/skills/agent-reach');
     expect(group?.sections?.find((section) => section.id === 'wire')?.items.map((item) => item.key)).toEqual(['mcp']);
   });
 

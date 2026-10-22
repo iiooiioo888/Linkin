@@ -26,6 +26,7 @@ import {
   type SkillRecord,
 } from '../api/client';
 import { fetchPlugins, togglePlugin, type PluginCatalogEntry } from '../api/plugins';
+import { takeSkillFocus } from '../lib/appRoute';
 import { openChatContextDetail, openContextModal } from '../lib/contextUi';
 import { jumpToContextMonitor } from '../lib/rahoUi';
 import MediaCrawlerPanel from './MediaCrawlerPanel';
@@ -141,6 +142,11 @@ const EMPTY_SKILL_FORM = {
   skill_budget: 2400,
 };
 
+function skillSourceHref(source: string | undefined): string | null {
+  if (!source || !/^[\w.-]+\/[\w.-]+$/.test(source)) return null;
+  return `https://github.com/${source}`;
+}
+
 function SkillsSection() {
   const { t } = useTranslation();
   const [skills, setSkills] = useState<SkillRecord[]>([]);
@@ -150,6 +156,7 @@ function SkillsSection() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [focusId] = useState<string | null>(() => takeSkillFocus());
 
   const load = useCallback(async () => {
     setError(null);
@@ -163,6 +170,11 @@ function SkillsSection() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!focusId || skills.length === 0) return;
+    document.getElementById(`skill-card-${focusId}`)?.scrollIntoView({ block: 'center' });
+  }, [focusId, skills]);
 
   const startEdit = (s: SkillRecord) => {
     setEditing(true);
@@ -266,7 +278,13 @@ function SkillsSection() {
   }), [skills]);
 
   const renderSkillCard = (s: SkillRecord) => (
-    <div key={s.id} className={`${cardCls} ${s.enabled ? '' : 'opacity-50'}`}>
+    <div
+      key={s.id}
+      id={`skill-card-${s.id}`}
+      className={`${cardCls} ${s.enabled ? '' : 'opacity-50'} ${
+        focusId === s.id ? 'ring-1 ring-[color-mix(in_srgb,var(--console-accent)_55%,transparent)]' : ''
+      }`}
+    >
       <div className="mb-1 flex items-start justify-between gap-2">
         <div>
           <p className="text-[13px] font-medium text-[var(--console-ink)]">{s.name}</p>
@@ -279,7 +297,23 @@ function SkillsSection() {
           </span>
         </div>
       </div>
-      {s.source && <p className="mb-1 text-[10px] text-[var(--console-faint)]">來源：{s.source}</p>}
+      {s.source && (
+        <p className="mb-1 text-[10px] text-[var(--console-faint)]">
+          來源：
+          {skillSourceHref(s.source) ? (
+            <a
+              href={skillSourceHref(s.source) ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--console-accent)] hover:underline"
+            >
+              {s.source}
+            </a>
+          ) : (
+            s.source
+          )}
+        </p>
+      )}
       {s.description && <p className="mb-1 text-[11px] text-[var(--console-sub)]">{s.description}</p>}
       {s.trigger && <p className="mb-1 text-[10px] console-status-blue/80">適用：{s.trigger}</p>}
       <pre className="mb-2 max-h-24 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-2 font-mono text-[10px] leading-relaxed text-[var(--console-sub)]">{s.content}</pre>

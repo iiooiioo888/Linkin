@@ -31,6 +31,10 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(labNav.getByText('整合', { exact: true })).toBeVisible();
     await expect(labNav.getByText('召回', { exact: true })).toBeVisible();
     await expect(labNav.getByText('採集', { exact: true })).toBeVisible();
+    await expect(labNav.getByRole('link', { name: /Agent Reach/ })).toHaveAttribute(
+      'href',
+      '#/monitor/skills/agent-reach',
+    );
     await expect(labNav.getByText('工業接線', { exact: true })).toBeVisible();
     await expect(labNav.getByText('Agent 工作流', { exact: true })).toBeVisible();
     await expect(labNav.getByText('設計', { exact: true })).toBeVisible();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAppRouteHash, getDefaultRoute, parseAppRoute } from './appRoute';
+import { buildAppRouteHash, getDefaultRoute, parseAppRoute, takeSkillFocus } from './appRoute';
 
 describe('company page route', () => {
   it('keeps #/company as its own full-page view', () => {
@@ -7,6 +7,13 @@ describe('company page route', () => {
     expect(route.view).toBe('company');
     expect(buildAppRouteHash(route)).toBe('#/company');
     expect(parseAppRoute(buildAppRouteHash({ ...getDefaultRoute(), view: 'company' })).view).toBe('company');
+  });
+
+  it('remembers a skill deep link for the skills page', () => {
+    const route = parseAppRoute('#/monitor/skills/agent-reach');
+    expect(route.monitorTab).toBe('skills');
+    expect(takeSkillFocus()).toBe('agent-reach');
+    expect(takeSkillFocus()).toBeNull();
   });
 
   it('does not steal chat or raho hashes', () => {

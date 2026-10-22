@@ -38,7 +38,7 @@
 | 入口 | 說明 |
 |------|------|
 | 技能目錄 | `.agents/skills/agent-reach/SKILL.md` 與 `references/` |
-| 控制台 | `/#/monitor/skills` 啟用 `agent-reach` 後才注入提示詞 |
+| 控制台 | 實驗室「採集 → Agent Reach」或 `/#/monitor/skills/agent-reach`。預設停用，啟用後才注入提示詞 |
 | 對話觸發 | 全網調研、貼上 URL，或點名 Twitter／Reddit／YouTube／GitHub／B站／小紅書閱讀等 |
 | CLI | `agent-reach doctor` · `agent-reach install --env=auto` |
 
