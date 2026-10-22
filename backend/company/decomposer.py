@@ -334,7 +334,19 @@ class TaskDecomposer:
     async def _llm_decompose(self, goal: str) -> DecompositionResult:
         """LLM 驅動拆分：利用 LLM 理解目標語義，智能分解。"""
         org_chart_str = self._format_org_chart()
-        role_descriptions = self._format_role_descriptions()
+        try:
+            from backend.company.manager_briefing import collect_manager_briefing
+
+            briefing = collect_manager_briefing(self.config, self.budget)
+        except Exception:
+            logger.debug("任務經理現場簡報失敗，改用角色職責", exc_info=True)
+            briefing = {
+                "resources": "（資源讀取失敗）",
+                "roles": self._format_role_descriptions(),
+                "skills": "（技能目錄讀取失敗）",
+                "mcp_tools": "（MCP 與工具目錄讀取失敗）",
+            }
+        role_descriptions = briefing["roles"]
         try:
             from backend.company.role_catalog import resolve_runtime
             valid_roles = "/".join(
@@ -360,6 +372,9 @@ class TaskDecomposer:
             goal=goal,
             org_chart=org_chart_str,
             role_descriptions=role_descriptions,
+            resources=briefing["resources"],
+            skills=briefing["skills"],
+            mcp_tools=briefing["mcp_tools"],
             valid_roles=valid_roles,
             task_budget=self.config.budget.task_limit_usd,
             active_tier=self.budget.budget_pressure,
@@ -410,8 +425,23 @@ class TaskDecomposer:
                         {
                             "kind": "org_chart",
                             "label": f"組織圖與 {len(valid_roles)} 個可指派角色",
-                            "text": f"{org_chart_str}\n{role_descriptions}",
-                        }
+                            "text": f"{org_chart_str}\n{role_descriptions}"[:4000],
+                        },
+                        {
+                            "kind": "resources",
+                            "label": "系統可用資源",
+                            "text": briefing["resources"][:2000],
+                        },
+                        {
+                            "kind": "skills",
+                            "label": "已啟用技能",
+                            "text": briefing["skills"][:2000],
+                        },
+                        {
+                            "kind": "mcp",
+                            "label": "MCP 與內建工具",
+                            "text": briefing["mcp_tools"][:2000],
+                        },
                     ],
                 })
             except Exception:
