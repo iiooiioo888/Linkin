@@ -82,6 +82,7 @@ export default function TaskDetailView({
   onResume,
 }: TaskDetailViewProps) {
   const [eventsOpen, setEventsOpen] = useState(false);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
   const running = !!task && (task.status === 'running' || task.status === 'pending');
   const nowMs = useNowTick(running, 1000);
   const eta = useMemo(() => (task ? taskEta(task, nowMs) : null), [task, nowMs]);
@@ -128,19 +129,33 @@ export default function TaskDetailView({
             <button
               type="button"
               className="rd-btn !px-2 !py-[3px] !text-[10px]"
-              onClick={() => onOpenRaho(task.raho?.run_id || task.task_id)}
+              onClick={() => setAnalysisOpen((open) => !open)}
             >
-              席位 I/O 監察
+              {analysisOpen ? '收合分析' : '展開分析'}
             </button>
           ) : null}
           {task ? (
-            <button
-              type="button"
-              className="rd-btn !px-2 !py-[3px] !text-[10px]"
-              onClick={() => onOpenTrace(task.task_id)}
-            >
-              執行軌跡
-            </button>
+            <details className="relative">
+              <summary className="rd-btn !px-2 !py-[3px] !text-[10px] cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                追查
+              </summary>
+              <div className="absolute right-0 z-20 mt-1 flex min-w-[7.5rem] flex-col overflow-hidden rounded-md border border-[var(--apple-hairline)] bg-[var(--apple-surface)] shadow-lg">
+                <button
+                  type="button"
+                  className="px-2.5 py-1.5 text-left text-[10px] text-[var(--apple-label)] hover:bg-[var(--apple-surface)]"
+                  onClick={() => onOpenTrace(task.task_id)}
+                >
+                  執行軌跡
+                </button>
+                <button
+                  type="button"
+                  className="px-2.5 py-1.5 text-left text-[10px] text-[var(--apple-label)] hover:bg-[var(--apple-surface)]"
+                  onClick={() => onOpenRaho(task.raho?.run_id || task.task_id)}
+                >
+                  席位 I/O
+                </button>
+              </div>
+            </details>
           ) : null}
           <button type="button" className="rd-btn !px-2 !py-[3px] !text-[10px]" onClick={onRefresh}>
             刷新
@@ -148,8 +163,7 @@ export default function TaskDetailView({
         </div>
       </div>
 
-      {/* ── 錨點導覽 ── */}
-      {task ? (
+      {task && analysisOpen ? (
         <div className="flex shrink-0 flex-wrap gap-1 border-b border-[var(--apple-hairline)] px-3 py-1.5">
           {ANCHORS.map((a) => (
             <a
@@ -194,6 +208,8 @@ export default function TaskDetailView({
             <section id="td-overview" className="scroll-mt-2">
               <OverviewSection task={task} eta={eta} />
             </section>
+            {analysisOpen ? (
+              <>
             <section id="td-requirement" className="scroll-mt-2">
               <RequirementSection task={task} />
             </section>
@@ -273,6 +289,12 @@ export default function TaskDetailView({
                 </div>
               </Card>
             </section>
+              </>
+            ) : (
+              <p className="text-[11px] text-[var(--apple-tertiary)]">
+                先看上方狀態。需要需求、計畫、工作項或事件時再展開分析。
+              </p>
+            )}
           </div>
         ) : null}
       </div>
