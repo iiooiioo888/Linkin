@@ -20,8 +20,10 @@ import {
   buildSparkSeries24,
   buildStatusStack,
   buildTaskDistributionMatrix,
+  hostResourceGauges,
   taskPriority,
 } from '../lib/monitorData';
+import { useHostResources } from '../lib/hostResources';
 import { navPathForTab } from '../lib/monitorTabs';
 import {
   buildWorkflowSteps,
@@ -107,28 +109,6 @@ function WorkflowRail({
   );
 }
 
-function resolveResourceGauges(feed: AnimLiveFeed) {
-  const opt = feed.optimization;
-  const edge = opt?.edge_cache ?? opt?.opc_edge;
-  const cacheCapPct = edge?.max_size ? ((edge?.entry_count ?? 0) / edge.max_size) * 100 : 0;
-  return {
-    cacheCapPct,
-    gauges: [
-      { label: 'MEM', pct: Math.min(100, Math.round(cacheCapPct)), color: 'var(--console-green)' },
-      {
-        label: 'CPU',
-        pct: Math.min(100, (opt?.system_stats?.tasks_running ?? 0) * 12 + 8),
-        color: 'var(--console-blue)',
-      },
-      {
-        label: 'NET',
-        pct: Math.min(100, Math.round((opt?.trace.trace_count ?? 0) / 2)),
-        color: 'var(--console-cyan)',
-      },
-    ],
-  };
-}
-
 function SituationFocusCard({
   feed,
   l0Snapshot,
@@ -138,7 +118,7 @@ function SituationFocusCard({
   l0Snapshot: L0Snapshot | null;
   connected: boolean;
 }) {
-  const { gauges } = resolveResourceGauges(feed);
+  const gauges = hostResourceGauges(useHostResources());
   const running = feed.runningTasks + (feed.summary?.running_company_tasks ?? 0);
 
   return (
@@ -164,6 +144,7 @@ function SituationFocusCard({
           </div>
         </div>
         <ResourceGauges gauges={gauges} />
+        <p className="mt-2 text-center text-[10px] text-[var(--console-faint)]">主機實測</p>
       </div>
     </section>
   );
@@ -991,12 +972,13 @@ function RightRailContent({
 }) {
   const dashboard = useMonitorStore((s) => s.dashboard);
   const tasks = dashboard?.tasks ?? [];
-  const { gauges } = resolveResourceGauges(feed);
+  const gauges = hostResourceGauges(useHostResources());
 
   return (
     <div className="mon-live-stack">
       <MonitorPanel title="資源">
         <ResourceGauges gauges={gauges} />
+        <p className="mt-2 text-center text-[10px] text-[var(--console-faint)]">主機 CPU／記憶體／網路</p>
       </MonitorPanel>
       <TaskStackPanel tasks={tasks} statusStack={statusStack} onOpenTab={onOpenTab} />
       <ApiPoolCard feed={feed} onOpen={() => onOpenTab?.('llm')} />
