@@ -28,6 +28,7 @@ export default function EphemeralContainerPanel() {
   const [busy, setBusy] = useState(false);
   const logRef = useRef<HTMLPreElement>(null);
   const wsRef = useRef<ContainerTaskWebSocket | null>(null);
+  const pollRef = useRef<number | null>(null);
 
   useEffect(() => {
     fetchContainerConfig()
@@ -74,7 +75,14 @@ export default function EphemeralContainerPanel() {
     [onWsMessage],
   );
 
-  useEffect(() => () => wsRef.current?.close(), []);
+  useEffect(
+    () => () => {
+      wsRef.current?.close();
+      // 卸載後不能再輪詢：否則切到別的 Lab 分頁仍每 1.5 秒打一次。
+      if (pollRef.current !== null) window.clearInterval(pollRef.current);
+    },
+    [],
+  );
 
   const parseCommand = (raw: string): string[] => {
     const trimmed = raw.trim();
@@ -109,17 +117,22 @@ export default function EphemeralContainerPanel() {
       setTaskId(task_id);
       setStatus('queued');
       connectWs(task_id);
-      const poll = window.setInterval(async () => {
+      const stopPoll = () => {
+        if (pollRef.current !== null) {
+          window.clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+        setBusy(false);
+      };
+      pollRef.current = window.setInterval(async () => {
         try {
           const t = await fetchContainerTask(task_id);
           setStatus(t.status);
           if (t.status === 'succeeded' || t.status === 'failed' || t.status === 'timed_out') {
-            window.clearInterval(poll);
-            setBusy(false);
+            stopPoll();
           }
         } catch {
-          window.clearInterval(poll);
-          setBusy(false);
+          stopPoll();
         }
       }, 1500);
     } catch (e) {

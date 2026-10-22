@@ -617,9 +617,11 @@ export default function App() {
           }
         };
 
-        // 轮询降级方案
+        // 轮询降级方案：WS onClose 与 3 秒检查都会调用，这里保证只跑一条链
+        let polling = false;
         const pollProgress = async () => {
-          if (finished) return;
+          if (finished || polling) return;
+          polling = true;
           try {
             const progress = await fetchTask(task_id);
             applyProgress(progress);
