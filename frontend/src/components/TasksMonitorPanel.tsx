@@ -9,6 +9,7 @@ import { cancelTask, fetchTask, resumeTask } from '../api/client';
 import { TASK_COLUMNS, taskColumnKey, tasksInColumn, type TaskColumnKey } from '../lib/agentUi';
 import { useMonitorStore } from '../stores/monitorStore';
 import type { TaskProgress, TaskSummary } from '../types';
+import { usesIndustrialStages } from '../types';
 import { StatusColumnBoard } from './StatusColumnBoard';
 import TaskPanel, {
   COMPANY_PHASES,
@@ -66,7 +67,7 @@ function fmtDur(sec: number): string {
 }
 
 function phasesFor(task: TaskSummary) {
-  if (task.resolved_path === 'opc') return OPC_PHASES;
+  if (usesIndustrialStages(task)) return OPC_PHASES;
   if (task.resolved_path === 'company') return COMPANY_PHASES;
   return STANDARD_PHASES;
 }

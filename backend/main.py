@@ -997,7 +997,42 @@ async def _company_stream(req: ChatRequest):
     query = req.query
     if isinstance(lock, dict) and lock.get("locked_brief"):
         query = str(lock["locked_brief"])
-    template_name = req.company_template or "quick_task"
+    from backend.core.execution_path import resolve_company_template
+
+    template_name = resolve_company_template(query, req.company_template or "quick_task")
+
+    if template_name == "industrial_ops":
+        from backend.core.industrial_chain import run_industrial_chain
+        from backend.core.routing_preview import build_routing_preview
+
+        preview = build_routing_preview(
+            query,
+            mode=req.execution_strategy,
+            company_template=template_name,
+        )
+        yield _sse_path_resolved(preview)
+        try:
+            industrial = await run_industrial_chain(
+                {"query": query, "session_id": session_id}
+            )
+            answer = str(industrial.get("current_answer") or "")
+            done_industrial = {
+                "answer": answer,
+                "score": None,
+                "iteration": 0,
+                "resolved_path": "company",
+                "template": "industrial_ops",
+                "complexity": preview.get("complexity"),
+            }
+            billing_snap = chat_billing_snapshot()
+            if billing_snap:
+                done_industrial["billing"] = billing_snap
+            yield f"event: done\ndata: {json_mod.dumps(done_industrial, ensure_ascii=False)}\n\n"
+        except Exception as exc:
+            yield f"event: error\ndata: {json_mod.dumps({'error': str(exc)[:500]}, ensure_ascii=False)}\n\n"
+        finally:
+            end_chat_billing(billing_token)
+        return
 
     # 選擇組織模板
     config = BUILTIN_TEMPLATES.get(template_name)

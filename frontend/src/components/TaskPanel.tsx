@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from 'react';
 import type { TaskProgress, KanbanItem } from '../types';
-import { OPC_PHASES } from '../types';
+import { OPC_PHASES, usesIndustrialStages } from '../types';
 import { WORK_ITEM_COLUMNS, workItemColumnKey } from '../lib/agentUi';
 import { eventClock, formatDuration, lastEventTsOf, taskEta, useNowTick } from '../lib/taskTiming';
 import RahoDecisionBar from './RahoDecisionBar';
@@ -212,8 +212,8 @@ export default function TaskPanel({
 }: TaskPanelProps) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [resuming, setResuming] = useState(false);
-  const isCompany = task.resolved_path === 'company';
-  const isOPC = task.resolved_path === 'opc';
+  const isOPC = usesIndustrialStages(task);
+  const isCompany = task.resolved_path === 'company' || task.resolved_path === 'opc';
   const isCancelled = task.status === 'cancelled';
   const isInterrupted = task.status === 'interrupted';
   const compactTerminal = isCancelled || isInterrupted;

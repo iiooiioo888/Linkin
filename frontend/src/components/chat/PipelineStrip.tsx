@@ -3,6 +3,7 @@
  */
 import { useTranslation } from 'react-i18next';
 import type { TaskProgress } from '../../types';
+import { usesIndustrialStages } from '../../types';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES } from '../TaskPanel';
 
 interface PipelineStripProps {
@@ -12,7 +13,7 @@ interface PipelineStripProps {
 }
 
 function phasesFor(task: TaskProgress) {
-  if (task.resolved_path === 'opc') return OPC_PHASES;
+  if (usesIndustrialStages(task)) return OPC_PHASES;
   if (task.resolved_path === 'company') return COMPANY_PHASES;
   return STANDARD_PHASES;
 }

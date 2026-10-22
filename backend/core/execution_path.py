@@ -2,7 +2,7 @@
 
 優先序（auto）：
   1. 強制策略 simple / company
-  2. OPC 工業關鍵詞 → opc（僅 Task API 分派；圖與 SSE 不進 OPC 六級）
+  2. 工業關鍵詞 → company（指揮鏈即 OPC；預設模板 industrial_ops）
   3. 靈境複雜任務 → company
   4. Minecraft 重型任務（建造／敘事／多步） → company
   5. Minecraft 單步控制查詢 → minecraft_ops（輕量 ReAct + MCP）
@@ -94,8 +94,19 @@ def is_complex_task(query: str, *, use_routing_feedback: bool = True) -> bool:
 
 
 def needs_opc_context(query: str) -> bool:
-    """判斷任務是否需要 OPC 工業上下文。"""
+    """判斷任務是否走指揮鏈的工業執行（感知到執行）。"""
     return bool(_OPC_KEYWORDS.search(query))
+
+
+def resolve_company_template(query: str, template: str | None = None) -> str:
+    """預設 quick_task 遇上工業查詢時改為工業運維席。
+
+    指揮鏈與 OPC 是同一條。呼叫端已指定其他模板時保留。
+    """
+    requested = (template or "quick_task").strip() or "quick_task"
+    if requested == "quick_task" and needs_opc_context(query or ""):
+        return "industrial_ops"
+    return requested
 
 
 def is_minecraft_heavy_task(query: str) -> bool:
@@ -153,7 +164,8 @@ def resolve_execution_path(
         return "company"
 
     if needs_opc_context(text):
-        return "opc"
+        logger.debug("execution_path: industrial → company（指揮鏈）")
+        return "company"
 
     try:
         from backend.linkin.pipeline import is_linkin_complex_task

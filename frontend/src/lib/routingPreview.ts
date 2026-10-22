@@ -63,7 +63,7 @@ export async function resolveRoutingPreviewForSend(params: {
   }
 }
 
-/** 任務 API 路徑（非 SSE 簡單／minecraft_ops 串流）。 */
+/** 任務 API 路徑（非 SSE 簡單／minecraft_ops 串流）。opc 是舊標籤，與 company 同一條指揮鏈。 */
 export function usesTaskWorkspace(
   strategy: RoutingPreviewMode,
   preview: RoutingPreview | null | undefined,

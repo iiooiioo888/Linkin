@@ -15,6 +15,7 @@ import {
 } from '../lib/chatWorkspace';
 import { ticketOf } from './taskdetail/narrow';
 import { DIMENSION_META, ticketStatusLabel } from './taskdetail/labels';
+import { usesIndustrialStages } from '../types';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, roleLabel } from './TaskPanel';
 import { MonitorSection } from './ChatMonitorCards';
 import { L0BiasHint } from './L0BiasHint';
@@ -64,7 +65,7 @@ export default function ChatTaskMonitor({
   const nodes = useMemo(() => flattenWsNodes(task), [task]);
   const ticket = ticketOf(task);
   const phases =
-    task.resolved_path === 'opc' ? OPC_PHASES : task.resolved_path === 'company' ? COMPANY_PHASES : STANDARD_PHASES;
+    usesIndustrialStages(task) ? OPC_PHASES : task.resolved_path === 'company' ? COMPANY_PHASES : STANDARD_PHASES;
   const phaseLabel = phases.find((p) => p.key === task.phase)?.label ?? (task.phase || '待命');
   const eta = taskEta(task, now);
   const tokens = wsTokens(task);

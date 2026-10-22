@@ -80,9 +80,52 @@ class TestExecutionPathMatrix:
     def test_auto_keyword_complex(self):
         self._assert_all_agree(self.COMPLEX_Q, "auto", "run_company", "company")
 
-    def test_auto_opc_task_path(self):
-        self._assert_all_agree(self.OPC_Q, "auto", "generate_initial_answer", "opc")
-        assert chat_stream_uses_company_sse(self.OPC_Q, "auto") is False
+    def test_industrial_chain_assembles_answer(self, monkeypatch):
+        import asyncio
+
+        from backend.core.industrial_chain import run_industrial_chain
+
+        async def sense(_state):
+            return {"opc_status": "ok", "opc_readings": {"motor": 1}}
+
+        async def preprocess(_state):
+            return {"opc_quality_report": {"total": 1, "good": 1, "bad": 0}, "opc_readings_clean": {}}
+
+        async def analyze(_state):
+            return {"opc_analysis": {"summary": "穩定"}}
+
+        async def diagnose(_state):
+            return {"opc_diagnosis": {"anomaly_detected": False, "severity": "normal", "root_cause": "無", "analysis": "正常"}}
+
+        async def decide(_state):
+            return {"opc_decisions": [], "opc_decision_summary": ""}
+
+        async def act(_state):
+            return {"opc_actions": []}
+
+        monkeypatch.setattr("backend.core.industrial_chain.sense_opc", sense)
+        monkeypatch.setattr("backend.core.industrial_chain.preprocess_opc", preprocess)
+        monkeypatch.setattr("backend.core.industrial_chain.analyze_opc", analyze)
+        monkeypatch.setattr("backend.core.industrial_chain.diagnose_opc", diagnose)
+        monkeypatch.setattr("backend.core.industrial_chain.decide_opc", decide)
+        monkeypatch.setattr("backend.core.industrial_chain.act_opc", act)
+
+        state = asyncio.run(run_industrial_chain({"query": self.OPC_Q}))
+        assert "指揮鏈" in state["current_answer"]
+        assert state.get("cancelled") is not True
+
+    def test_auto_industrial_is_company_chain(self):
+        from backend.core.routing_preview import build_routing_preview
+
+        self._assert_all_agree(self.OPC_Q, "auto", "run_company", "company")
+        preview = build_routing_preview(self.OPC_Q, mode="auto")
+        assert preview["template"] == "industrial_ops"
+        assert "opc_keyword" in preview["reason_codes"]
+        explicit = build_routing_preview(
+            self.OPC_Q, mode="auto", company_template="full_company"
+        )
+        assert explicit["path"] == "company"
+        assert explicit["template"] == "full_company"
 
 
 class TestMinecraftOpsReflectionCap:

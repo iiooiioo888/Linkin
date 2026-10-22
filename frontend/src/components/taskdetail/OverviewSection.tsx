@@ -2,7 +2,7 @@
  * 01 概覽 — 任務身分、路由、階段與耗時。
  */
 import type { TaskProgress } from '../../types';
-import { OPC_PHASES } from '../../types';
+import { OPC_PHASES, usesIndustrialStages } from '../../types';
 import { COMPANY_PHASES, STANDARD_PHASES, phaseIndex } from '../TaskPanel';
 import type { EtaInfo } from '../../lib/taskTiming';
 import { eventClock, formatDuration, lastEventTsOf } from '../../lib/taskTiming';
@@ -13,9 +13,9 @@ import { allKanbanItems, num, textField, timeText } from './narrow';
 const TERMINAL = new Set(['completed', 'failed', 'cancelled', 'interrupted']);
 
 export default function OverviewSection({ task, eta }: { task: TaskProgress; eta: EtaInfo | null }) {
-  const isCompany = task.resolved_path === 'company';
-  const isOPC = task.resolved_path === 'opc';
-  const phases: { key: string; label: string }[] = isOPC
+  const industrial = usesIndustrialStages(task);
+  const isCompany = task.resolved_path === 'company' || task.resolved_path === 'opc';
+  const phases: { key: string; label: string }[] = industrial
     ? OPC_PHASES
     : isCompany
       ? COMPANY_PHASES

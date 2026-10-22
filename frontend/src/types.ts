@@ -254,7 +254,7 @@ export interface TaskProgress {
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
   /** 統一模式：執行策略（auto / simple / company） */
   strategy: 'auto' | 'simple' | 'company';
-  /** 統一模式：實際解析的執行路徑（simple / company / opc） */
+  /** 統一模式：實際解析的執行路徑。工業執行的路徑標籤是 company */
   resolved_path: 'simple' | 'company' | 'opc' | 'minecraft_ops' | '';
   query: string;
   template: string;
@@ -811,7 +811,18 @@ export type CompanyTemplate = (typeof COMPANY_TEMPLATES)[number]['value'];
 
 // ==================== OPC 6 級閉環 ====================
 
-/** OPC 6 級階段定義 */
+/** 指揮鏈的工業步驟。舊任務的 resolved_path 可能仍是 opc。 */
+export function usesIndustrialStages(task: {
+  resolved_path?: string | null;
+  template?: string | null;
+  phase?: string | null;
+} | null | undefined): boolean {
+  if (!task) return false;
+  if (task.resolved_path === 'opc' || task.template === 'industrial_ops') return true;
+  return String(task.phase || '').endsWith('_opc');
+}
+
+/** 指揮鏈工業步驟（感知到執行） */
 export const OPC_PHASES: { key: string; label: string; icon: string }[] = [
   { key: 'sense_opc', label: '感知', icon: '📡' },
   { key: 'preprocess_opc', label: '預處理', icon: '🧹' },

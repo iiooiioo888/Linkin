@@ -5,11 +5,10 @@
 Linkin 基於 EvoLoop：具備自我反思閉環的**統一模式** AI 系統。核心為 **LangGraph 統一管線**。每則查詢先注入記憶、OPC 上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 選路（`route_by_complexity` 是圖上的條件邊）：
 
 - **simple**：單次生成，接著多維評估與反思改進
-- **company**：RAHO（L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 專注執行；獨立審查 L1 憲兵；L0 注入每一層；其後 Reviewer → Synthesizer）。對話入口先 Grill。成功後預設定稿，公司後反思由 `EVOL_POST_COMPANY_REFLECT` 決定
+- **company（指揮鏈，含 OPC）**：L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 專注執行；獨立審查 L1 憲兵；L0 注入記憶與感測。工業查詢用模板 `industrial_ops`，執行步驟是感知 → 預處理 → 分析 → 診斷 → 決策 → 執行，寫入經 `opc_service/guard.py`。對話入口先 Grill。成功後預設定稿，公司後反思由 `EVOL_POST_COMPANY_REFLECT` 決定
 - **minecraft_ops**：單步 Minecraft 控制，輕量 ReAct + MCP，評估一次後定稿
-- **opc**：任務 API 跑六級閉環（感知 → 預處理 → 分析 → 診斷 → 決策 → 執行），再進任務側反思。圖與 SSE 在前置鏈注入感測上下文，生成出口與 simple 相同
 
-不再區分「標準／公司／OPC」三種產品模式。優先序與入口分派見根目錄 README「運作邏輯」。
+不再區分「標準／公司／OPC」三種產品模式。公司指揮鏈與 OPC 是同一條。優先序與入口分派見根目錄 README「運作邏輯」。
 
 **文件入口：** [docs/onboarding.md](docs/onboarding.md) · [docs/structure.md](docs/structure.md) · [docs/glossary.md](docs/glossary.md) · [docs/README.md](docs/README.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
 

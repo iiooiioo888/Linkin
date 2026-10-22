@@ -3,7 +3,7 @@
 > 對齊日期：**2026-09-12** · 套件：`opc_service/`  
 > 程式入口：`opc_service/graph.py`、`guard.py`、`sense`…`act` 各級節點
 
-OPC 整合將工業感測與控制嵌入 EvoLoop **統一管線**：完整六級閉環在 `opc_service` 獨立編圖；主圖僅在工業關鍵詞命中時注入 **S1 感知摘要**（`enhance_with_opc_context`）。
+OPC 與公司指揮鏈是同一條。工業查詢走 `company` 與模板 `industrial_ops`，步驟就是下面的感知到執行（`backend/core/industrial_chain.py`）。`opc_service` 提供讀寫與護欄；主圖在前置鏈注入感知摘要。
 
 ---
 

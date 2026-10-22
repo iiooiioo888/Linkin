@@ -14,14 +14,13 @@ Linkin／EvoLoop 是一個**統一模式** AI 系統，所有任務進入同一�
 
 簡單路徑會評估並迭代，直到品質達標。公司路徑預設定稿；要繼續打磨時把 `EVOL_POST_COMPANY_REFLECT` 設成 `evaluate` 或 `full`。
 
-## 四條路徑
+## 三條路徑
 
 | 層級 | 觸發條件 | 流程 |
 |------|----------|------|
 | **反思閉環** | `simple`；以及公司後反思設為 `full` 時 | 生成 → 評估(0-10) → 反思 → 改進 → 直到達標、迭代用盡或提升過小 |
-| **公司運行時** | 策略 `company`，或 auto 判為靈境複雜／Minecraft 重型／關鍵詞與長度 | L5 Grill-Me（對話入口）→ L4 戰役 DAG → L3 原子拆解 → L2 執行 → L1 憲兵簽核 → 審查 → 整合。成功後預設定稿 |
+| **指揮鏈（含 OPC）** | 策略 `company`，或 auto 判為工業、靈境複雜、Minecraft 重型、關鍵詞與長度 | L5 Grill-Me（對話入口）→ L4 → L3 → L2 → L1。工業模板 `industrial_ops` 的步驟是感知 → 預處理 → 分析 → 診斷 → 決策 → 執行。成功後預設定稿 |
 | **Minecraft 輕量** | 單步控制查詢 | ReAct + MineMCP，評估一次後定稿 |
-| **OPC 六級** | 任務 API 且路徑為 `opc` | 感知 → 預處理 → 分析 → 診斷 → 決策 → 執行，再進任務側反思。主圖只注入感知摘要 |
 
 選路優先序與入口分派見根目錄 [README 運作邏輯](../../README.md#運作邏輯)。實作：`backend/core/execution_path.py`。
 
@@ -34,9 +33,9 @@ flowchart TD
     OPC --> LK[靈境上下文]
     LK --> RC[整合召回]
     RC --> ROUTE{route_by_complexity}
-    ROUTE -->|company| RUN[run_company]
+    ROUTE -->|company，含工業| RUN[run_company]
     ROUTE -->|minecraft_ops| MC[run_minecraft_ops]
-    ROUTE -->|simple 或 opc| GEN[單次生成]
+    ROUTE -->|simple| GEN[單次生成]
     RUN --> GATE{公司後反思}
     GATE -->|預設 off| DEC[決定最終回答]
     GATE -->|evaluate 或 full| LEN[長度守門]
@@ -71,10 +70,10 @@ flowchart TD
 
 ```
 使用者 → FastAPI
-           ├─ 對話：公司／opc → 任務 API + WebSocket
+           ├─ 對話：指揮鏈（含工業）→ 任務 API + WebSocket
            │         simple／minecraft_ops → SSE
-           ├─ POST /tasks：opc 六級 · company RAHO · 其餘手抄同一套前置
-           └─ POST /chat 與圖：記憶 → OPC 上下文 → 靈境 → 召回
+           ├─ POST /tasks：industrial_ops 感知到執行 · 其他模板席位分工
+           └─ POST /chat 與圖：記憶 → 感測上下文 → 靈境 → 召回
                               → run_company | run_minecraft_ops | 單次生成
                               → 依路徑定稿或反思
                               → 記憶與存檔

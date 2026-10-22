@@ -8,7 +8,7 @@
 | **EvoLoop** | 上游／運行時核心：LangGraph 統一管線（反思／公司／OPC） |
 | **統一模式** | 不再分「標準／公司／OPC」三套產品；由複雜度路由選路 |
 | **`resolve_execution_path`** | 選路唯一實作：`simple`／`company`／`opc`／`minecraft_ops`。Task、SSE、圖共用 |
-| **`route_by_complexity`** | 圖的條件邊：`company` → `run_company`，`minecraft_ops` → `run_minecraft_ops`，`simple` 與 `opc` → 單次生成 |
+| **`route_by_complexity`** | 圖的條件邊：`company`（含工業）→ `run_company`，`minecraft_ops` → `run_minecraft_ops`，`simple` → 單次生成 |
 | **反思閉環** | 生成 → 多維評估 →（低分）反思 → 改進 → 再評估 |
 | **公司運行時** | 複雜任務的多代理人協調（協調器＋角色＋預算＋工作項 DAG） |
 | **RAHO** | 遞歸對抗分層組織：L5→L4→L3→L2；獨立 L1 憲兵；L0 注入各層 |
@@ -25,7 +25,7 @@
 | **LiteLLM／`call_llm`** | 唯一允許的 LLM 出口（`backend.core.llm.call_llm`） |
 | **模型池鎖定** | 僅依已存 API／端點開放可用模型並 clamp |
 | **AI Hub** | 探針／熔斷／目錄；契約見 `AI_HUB_DETAILED_DESIGN.md`（路徑勿搬） |
-| **OPC 六級** | 任務 API 在路徑 `opc` 時：sense → preprocess → analyze → diagnose → decide → act。主圖只注入感知摘要 |
+| **OPC／指揮鏈工業步驟** | 與公司指揮鏈同一條。模板 `industrial_ops`：sense → preprocess → analyze → diagnose → decide → act。寫入經護欄 |
 | **護欄（guard）** | OPC 寫入白名單／邊界；Minecraft 寫入允許清單與體積上限 |
 | **MineMCP** | Minecraft JSON-RPC 橋；角色經 tool_registry，禁止直連 |
 | **憲法／worldview** | 靈境世界觀最高裁決依據（`backend/linkin/`） |

@@ -11,6 +11,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { KanbanItem, TaskEvent, TaskProgress } from '../types';
+import { usesIndustrialStages } from '../types';
 
 /** 每秒 tick（僅執行中需要，避免定時器常開）。 */
 export function useNowTick(active: boolean, intervalMs = 1000): number {
@@ -194,12 +195,12 @@ export function taskEta(task: TaskProgress, nowMs: number): EtaInfo | null {
   const known = new Set(segs.map((s) => s.phase));
   const unseenEst = med;
   if (unseenEst != null) {
+    const industrial = usesIndustrialStages(task);
     const isCompany = task.resolved_path === 'company';
-    const isOPC = task.resolved_path === 'opc';
-    const list = isCompany
-      ? ['campaign_plan', 'decompose', 'execute_review', 'synthesize', 'final_review', 'evaluate', 'done']
-      : isOPC
-        ? ['sense_opc', 'preprocess_opc', 'analyze_opc', 'diagnose_opc', 'decide_opc', 'act_opc', 'done']
+    const list = industrial
+      ? ['sense_opc', 'preprocess_opc', 'analyze_opc', 'diagnose_opc', 'decide_opc', 'act_opc', 'done']
+      : isCompany
+        ? ['campaign_plan', 'decompose', 'execute_review', 'synthesize', 'final_review', 'evaluate', 'done']
         : ['done'];
     const pendingPhases = list.filter((p) => p !== 'done' && !known.has(p) && p !== curPhase);
     remaining += pendingPhases.length * unseenEst;

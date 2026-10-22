@@ -150,7 +150,7 @@ flowchart TB
 
 ## 3. LangGraph 統一管線
 
-所有任務進入**同一條管線**；不再區分「標準／公司／OPC」產品模式。選路實作是 `resolve_execution_path`，圖上的 `route_by_complexity` 把結果對到三個出口。路徑 `opc` 與 `simple` 共用單次生成；六級閉環由任務 API 的 `_run_opc_task` 執行。
+所有任務進入**同一條管線**；不再區分「標準／公司／OPC」產品模式。選路實作是 `resolve_execution_path`。公司指揮鏈與 OPC 是同一條：工業查詢進入 `run_company`，模板 `industrial_ops`，步驟為感知到執行。
 
 ```mermaid
 flowchart TD
@@ -160,9 +160,9 @@ flowchart TD
     LINKIN_CTX --> RECALL[enhance_with_recall_context<br/>Recall 橋接]
     RECALL --> ROUTE{route_by_complexity}
 
-    ROUTE -->|company| RC[run_company<br/>公司運行時]
+    ROUTE -->|company，含工業| RC[run_company<br/>指揮鏈]
     ROUTE -->|minecraft_ops| MC[run_minecraft_ops<br/>輕量 ReAct]
-    ROUTE -->|simple 或 opc| GEN[generate_initial_answer<br/>單次 LLM]
+    ROUTE -->|simple| GEN[generate_initial_answer<br/>單次 LLM]
 
     RC --> SEC{should_evaluate_company}
     SEC -->|成功且公司後反思關閉| DEC
@@ -195,7 +195,7 @@ flowchart TD
 
 | 值 | 行為 |
 |----|------|
-| `auto`（預設） | 工業關鍵詞 → `opc`；靈境複雜或 Minecraft 重型 → `company`；Minecraft 單步 → `minecraft_ops`；其後 cost_speed，再關鍵詞與長度 |
+| `auto`（預設） | 工業關鍵詞 → `company`／`industrial_ops`；靈境複雜或 Minecraft 重型 → `company`；Minecraft 單步 → `minecraft_ops`；其後 cost_speed，再關鍵詞與長度 |
 | `simple` | 強制 `generate_initial_answer` |
 | `company` | 強制 `run_company` |
 

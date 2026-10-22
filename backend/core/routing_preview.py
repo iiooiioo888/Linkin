@@ -11,6 +11,7 @@ from backend.core.execution_path import (
     is_complex_task,
     is_minecraft_heavy_task,
     needs_opc_context,
+    resolve_company_template,
     resolve_execution_path,
 )
 
@@ -34,7 +35,7 @@ def _resolve_template(
 ) -> str | None:
     if path != "company":
         return None
-    requested = (company_template or "quick_task").strip() or "quick_task"
+    requested = resolve_company_template(query, company_template)
     state: dict[str, Any] = {
         "query": query,
         "execution_strategy": strategy,
@@ -133,7 +134,7 @@ def _collect_reason_codes(
     except Exception:
         pass
 
-    if needs_opc_context(text) and path == "opc":
+    if needs_opc_context(text) and path == "company":
         codes.append("opc_keyword")
 
     if path == "minecraft_ops":

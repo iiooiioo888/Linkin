@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ChatMessage, ChatSession, RoutingPreview, TaskOptions, TaskProgress } from './types';
+import { usesIndustrialStages } from './types';
 import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, streamAuditor, TaskWebSocket } from './api/client';
 import type { ChatBillingFootnote } from './api/client';
 import { formatChatBillingFootnote, requestBillingRefresh } from './lib/billingUi';
@@ -451,7 +452,7 @@ export default function App() {
         };
       }
 
-      // ── 統一模式：簡單／minecraft_ops 走 SSE；公司／OPC 建任務 ──
+      // ── 簡單／minecraft_ops 走 SSE；指揮鏈（含工業）建任務 ──
       if (workQuery.trim() !== query.trim()) {
         routingPreview = await resolveRoutingPreviewForSend({
           query: workQuery,
@@ -667,7 +668,7 @@ export default function App() {
           }));
 
           // OPC 任务自动打开右侧面板
-          if (progress.resolved_path === 'opc' && progress.opc_state) {
+          if (usesIndustrialStages(progress) && progress.opc_state) {
             setRightPanelTask(progress);
           }
 
@@ -686,7 +687,7 @@ export default function App() {
                   : m,
               ),
             }));
-            if (progress.resolved_path === 'opc') {
+            if (usesIndustrialStages(progress)) {
               setRightPanelTask(progress);
             }
             wsClient?.close();
@@ -1015,7 +1016,7 @@ export default function App() {
   // OPC 任務保留右側六級診斷面板；公司／簡單任務進詳情整頁
   const openTaskOrPanel = useCallback(
     (task: TaskProgress) => {
-      if (task.resolved_path === 'opc') {
+      if (usesIndustrialStages(task)) {
         setRightPanelTask(task);
         return;
       }

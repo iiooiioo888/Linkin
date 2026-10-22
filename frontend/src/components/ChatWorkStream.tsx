@@ -11,6 +11,7 @@ import MarkdownBody from './media/MarkdownBody';
 import { StatusColumnBoard } from './StatusColumnBoard';
 import { L0BiasHint } from './L0BiasHint';
 import { jumpToGrillTree } from '../lib/rahoUi';
+import { usesIndustrialStages } from '../types';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, ITEM_STATUS_META, roleLabel } from './TaskPanel';
 import { eventClock } from '../lib/taskTiming';
 
@@ -38,9 +39,9 @@ function eventText(ev: TaskEvent): string {
 
 export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: ChatWorkStreamProps) {
   const running = task.status === 'running' || task.status === 'pending';
-  const isCompany = task.resolved_path === 'company';
-  const isOPC = task.resolved_path === 'opc';
-  const phases = isOPC ? OPC_PHASES : isCompany ? COMPANY_PHASES : STANDARD_PHASES;
+  const industrial = usesIndustrialStages(task);
+  const isCompany = task.resolved_path === 'company' || task.resolved_path === 'opc';
+  const phases = industrial ? OPC_PHASES : isCompany ? COMPANY_PHASES : STANDARD_PHASES;
   const phaseLabel =
     phases.find((p) => p.key === task.phase)?.label ?? (task.phase || '待命');
   const parsedDraft = splitThink(draft || task.answer || '');
@@ -48,7 +49,7 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
   const liveThink = (thinking || parsedDraft.thinking).trim();
   const items = useMemo(() => flattenItems(task), [task]);
   const recentEvents = [...(task.events ?? [])].slice(-12).reverse();
-  const pathLabel = isOPC ? 'OPC' : isCompany ? '公司協作' : '反思閉環';
+  const pathLabel = industrial || isCompany ? '指揮鏈' : '反思閉環';
 
   return (
     <aside className="apple-canvas hidden min-h-0 w-[300px] shrink-0 flex-col overflow-y-auto border-l border-white/[0.08] p-4 lg:flex xl:w-[340px]">

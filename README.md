@@ -58,16 +58,16 @@
 
 | 能力 | 做什麼 |
 |------|--------|
-| **統一管線** | 每則查詢先注入記憶、OPC 上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 在 `simple`、`company`、`opc`、`minecraft_ops` 中選一條 |
-| **反思閉環** | 簡單路徑做多維評分與改進迴圈。公司路徑預設定稿；Minecraft 輕量路徑評估一次 |
-| **RAHO 公司運行時** | L5 用戶 → L4 審計 → L3 戰術 → L2 執行；L1 憲兵審查；L0 記憶注入。**85** 內建席，可再自定義 |
-| **Grill-Me** | 對話裡的公司路徑先經 `/raho/grill/*` 鎖需求，再建立任務 |
+| **統一管線** | 每則查詢先注入記憶、感測上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 在 `simple`、`company`、`minecraft_ops` 中選一條 |
+| **反思閉環** | 簡單路徑做多維評分與改進迴圈。指揮鏈預設定稿；Minecraft 輕量路徑評估一次 |
+| **指揮鏈** | 公司運行時與 OPC 是同一條：L5 用戶 → L4 審計 → L3 戰術 → L2 執行；L1 憲兵；L0 記憶與感測。工業查詢用 `industrial_ops`，步驟是感知 → 預處理 → 分析 → 診斷 → 決策 → 執行。**85** 席 |
+| **Grill-Me** | 對話裡的指揮鏈先經 `/raho/grill/*` 鎖需求，再建立任務 |
 | **監控控制台** | 對話、控制台、靈境、Minecraft、實驗室。Linear 風 dense UI，桌面三欄約一屏高 |
 | **行動版** | 768px 以下改底部 Tab 與 safe-area；桌面 ≥1440 維持三欄 |
 | **整合召回** | MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil。只在明確召回時省 token，不接受自動 webhook |
 | **積分與計費 v6** | 虛擬積分錢包（不是第三方支付）。個人／共享／貢獻／故障多池，Docker 按時計費，方案牌價，阿里雲成本唯讀對帳 |
 | **AI Hub** | 探針、熔斷、目錄；多 API 路由與模型池鎖定 |
-| **OPC 工業** | 獨立微服務。寫入必經護欄。感知到執行共六級 |
+| **OPC** | 指揮鏈的工業執行與 OPC UA 微服務。寫入必經護欄 |
 | **Minecraft MCP** | MineMCP JSON-RPC 與靈境鐵律。角色只經 tool_registry |
 
 ---
@@ -82,7 +82,7 @@
 
 | 順序 | 條件 | 路徑 |
 |------|------|------|
-| 1 | 工業關鍵詞（感測、閥門、OPC、PLC…） | `opc` |
+| 1 | 工業關鍵詞（感測、閥門、OPC、PLC…） | `company`，模板 `industrial_ops` |
 | 2 | 靈境複雜任務 | `company` |
 | 3 | Minecraft 建造、敘事、多步 | `company` |
 | 4 | Minecraft 單步控制 | `minecraft_ops` |
@@ -91,7 +91,7 @@
 
 ### 圖上怎麼走
 
-每條進圖的查詢都先走完前置鏈，再分叉。路徑 `opc` 在圖上與 `simple` 同一個出口。
+每條進圖的查詢都先走完前置鏈，再分叉。工業查詢進 `run_company`，執行的是同一條指揮鏈的感知到執行。
 
 ```mermaid
 flowchart TD
@@ -100,9 +100,9 @@ flowchart TD
     OPC --> LK[靈境上下文]
     LK --> RC[整合召回]
     RC --> ROUTE{route_by_complexity}
-    ROUTE -->|company| RUN[run_company]
+    ROUTE -->|company，含工業| RUN[run_company]
     ROUTE -->|minecraft_ops| MC[run_minecraft_ops]
-    ROUTE -->|simple 或 opc| GEN[單次生成]
+    ROUTE -->|simple| GEN[單次生成]
     RUN --> GATE{公司後反思}
     GATE -->|預設 off| DEC[決定最終回答]
     GATE -->|evaluate 或 full| LEN[長度守門]
@@ -120,38 +120,37 @@ flowchart TD
 
 公司運行時失敗且沒有足夠產出時，直接存檔結束。有部分產出則改走評估。
 
-### 四條路的收尾
+### 三條路的收尾
 
 | 路徑 | 生成之後 |
 |------|----------|
 | `simple` | 長度守門後做多維評估。未達標、迭代未用盡、且分數仍有提升時，反思並改進 |
 | `minecraft_ops` | 輕量 ReAct 加 MineMCP。評估一次後定稿；只有超長才回到反思 |
-| `company` | RAHO 指揮鏈。`EVOL_POST_COMPANY_REFLECT` 預設 `off`，成功後進入決定最終回答與最終長度守門。`evaluate` 只評一次；`full` 進入完整迴圈。超長仍回到反思 |
-| `opc` | 任務 API 跑六級（感知 → 預處理 → 分析 → 診斷 → 決策 → 執行），彙整後進入任務側反思迴圈。主圖只在前置鏈注入感知摘要 |
+| `company` | 指揮鏈。一般任務走席位分工。工業任務（`industrial_ops`）走感知 → 預處理 → 分析 → 診斷 → 決策 → 執行，寫入經護欄。`EVOL_POST_COMPANY_REFLECT` 預設 `off`。超長仍回到反思 |
 
-Grill-Me 在圖的外面。對話送出公司路徑時，前端先叫 `/raho/grill/*`，鎖住簡報後才 `POST /tasks`。
+Grill-Me 在圖的外面。對話送出指揮鏈時，前端先叫 `/raho/grill/*`，鎖住簡報後才 `POST /tasks`。
 
 ### 請求從哪裡進來
 
 | 入口 | 實際分派 |
 |------|----------|
-| 對話 `#/chat` | 先取路由預覽。公司路徑先 Grill。`company` 與 `opc` 建任務並用 WebSocket。`simple` 與 `minecraft_ops` 走 SSE。預覽逾時 1.5 秒則改走 SSE |
+| 對話 `#/chat` | 先取路由預覽。指揮鏈先 Grill，再 `POST /tasks` 與 WebSocket。`simple` 與 `minecraft_ops` 走 SSE。預覽逾時 1.5 秒則改走 SSE |
 | 公司頁 | 直接 `POST /tasks`，策略固定 `company`，然後打開任務 |
-| `POST /chat/stream` | 路徑 `company` 走公司 SSE；`minecraft_ops` 走編譯圖；其餘走簡單串流（含圖上的 `opc`） |
-| `POST /tasks` | `opc` 跑六級，`company` 跑 RAHO，其餘走對應的手抄前置與收尾 |
-| `POST /chat` | `evoloop_graph.ainvoke`。`opc` 在這裡是單次生成 |
+| `POST /chat/stream` | 指揮鏈走公司 SSE（工業模板跑感知到執行）；`minecraft_ops` 走編譯圖；其餘走簡單串流 |
+| `POST /tasks` | 指揮鏈：`industrial_ops` 跑感知到執行，其他模板跑席位分工。其餘走對應的手抄前置與收尾 |
+| `POST /chat` | `evoloop_graph.ainvoke`。工業查詢在 `run_company` 裡跑同一條鏈 |
 
 ### 分層
 
 | 層 | 路徑 | 職責 |
 |----|------|------|
 | 圖與 LLM | `backend/core/` | LangGraph、`resolve_execution_path`、LiteLLM、評估 |
-| 公司 | `backend/company/` | RAHO、85 席、工作項 DAG、預算 |
+| 指揮鏈 | `backend/company/` | RAHO、85 席、工作項 DAG、預算；工業步驟在 `backend/core/industrial_chain.py` |
 | 靈境 | `backend/linkin/` | 憲法、16 席、Minecraft 護欄與輕量 ops |
 | 整合 | `backend/integrations/` | 六個整合客戶端與 `/integrations` |
 | 計費 | `backend/billing/` | 積分池 v6、Docker 計量、共享池路由 |
 | 前端 | `frontend/` | React 19 控制台。視覺 Token 見 [DESIGN.md](DESIGN.md) |
-| OPC | `opc_service/` | OPC UA 與六級節點，寫入經 `guard.py` |
+| OPC 微服務 | `opc_service/` | OPC UA。指揮鏈的工業步驟呼叫這裡，寫入經 `guard.py` |
 
 詳圖：[docs/architecture/overview.md](docs/architecture/overview.md) · 六級細節：[docs/architecture/opc-six-stage.md](docs/architecture/opc-six-stage.md)
 

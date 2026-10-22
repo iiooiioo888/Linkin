@@ -160,7 +160,11 @@ def run_company(state: StateInput) -> dict[str, Any]:
             query = str(lock["locked_brief"])
         elif isinstance(lock.get("ticket"), dict):
             query = json.dumps(lock["ticket"], ensure_ascii=False)
-    template_name = state.get("company_template", "quick_task")
+    from backend.core.execution_path import resolve_company_template
+
+    template_name = resolve_company_template(
+        query, state.get("company_template", "quick_task")
+    )
 
     try:
         from backend.linkin.pipeline import (
@@ -168,9 +172,10 @@ def run_company(state: StateInput) -> dict[str, Any]:
             resolve_linkin_company_template,
         )
 
-        linkin_template = resolve_linkin_company_template(state)
-        if linkin_template:
-            template_name = linkin_template
+        if template_name == "quick_task":
+            linkin_template = resolve_linkin_company_template(state)
+            if linkin_template:
+                template_name = linkin_template
         query = prefix_query_with_linkin(query, state)
     except Exception as exc:
         logger.debug("靈境公司前綴略過：%s", exc)
@@ -181,6 +186,43 @@ def run_company(state: StateInput) -> dict[str, Any]:
         query = prefix_query_with_recall(query, state)
     except Exception as exc:
         logger.debug("整合召回公司前綴略過：%s", exc)
+
+    if template_name == "industrial_ops":
+        from backend.core.industrial_chain import run_industrial_chain
+        from backend.core.post_company_reflect import post_company_reflect_mode
+
+        industrial_state = {
+            "query": query,
+            "session_id": state.get("session_id", ""),
+        }
+        try:
+            try:
+                loop = asyncio.get_running_loop()
+                industrial_state = asyncio.run_coroutine_threadsafe(
+                    run_industrial_chain(industrial_state), loop
+                ).result(timeout=300)
+            except RuntimeError:
+                industrial_state = asyncio.run(run_industrial_chain(industrial_state))
+        except Exception as exc:
+            logger.error("指揮鏈工業執行失敗：%s", exc)
+            return {
+                "final_answer": f"指揮鏈工業執行失敗：{exc}",
+                "current_answer": "",
+                "company_result": {"success": False, "error": str(exc)},
+                "iteration": 0,
+            }
+        answer = str(industrial_state.get("current_answer") or "")
+        return {
+            "current_answer": answer,
+            "company_result": {
+                "success": True,
+                "final_output": answer,
+                "industrial_chain": True,
+            },
+            "iteration": 0,
+            "resolved_execution_path": "company",
+            "post_company_reflect_mode": post_company_reflect_mode(),
+        }
 
     # 選擇組織架構模板
     config = BUILTIN_TEMPLATES.get(template_name)
