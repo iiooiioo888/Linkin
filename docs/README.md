@@ -45,7 +45,7 @@
 
 ### 公司 · 角色
 
-- [角色介紹](company/roles.md) — **82 席＋16 靈境＋8 模板**
+- [角色介紹](company/roles.md) — **80 席＋16 靈境＋8 模板**
 - [量化行情工具](company/quant-tools.md) — 行情、回測、組合、資金流
 
 ### 靈境·Linkin

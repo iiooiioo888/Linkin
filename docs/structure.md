@@ -9,7 +9,7 @@
 
 | 類 | 做什麼 | 落在哪 | 實驗室 |
 |----|--------|--------|--------|
-| **核心的開發組件** | 前置注入、選路、簡單路徑的生成／評估／反思；任務經理分析與 82 席；提示詞、架構圖、精簡、A/B、臨時容器 | `backend/core/`、`backend/company/`（量化工具見下一類）、`backend/billing/`、`backend/prompts/`、對話與控制台 | 提示詞、架構、精簡、容器、A/B |
+| **核心的開發組件** | 前置注入、選路、簡單路徑的生成／評估／反思；任務經理分析與 80 席；提示詞、架構圖、精簡、A/B、臨時容器 | `backend/core/`、`backend/company/`（量化工具見下一類）、`backend/billing/`、`backend/prompts/`、對話與控制台 | 提示詞、架構、精簡、容器、A/B |
 | **minecraft組件** | 憲法、16 席子角色、世界模組、MineMCP 寫入護欄、`minecraft_ops` | `backend/linkin/`、`backend/modules/`、`backend/tools/`、Minecraft 畫面 | 側欄進入 `#/modules/minecraft` |
 | **價格分析探針組件** | 廠商延遲與報價探針；策略庫與策略圖 | `backend/hub/`、`backend/company/quant_*.py`、Hub 監控（基礎設施 → AI Hub） | 策略庫、策略圖、價格探針 |
 | **整合** | 依功能再分：召回、採集、工業接線、Agent 工作流、設計、技能。見下一節 | `backend/memory/`、`backend/integrations/`、`.agents/skills/`、`opc_service/` | `LAB_INTEGRATE_SECTIONS` |
@@ -74,7 +74,7 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `main.py` | REST／SSE／WebSocket 入口 |
 | `auth/` | 登入閘門 |
 | `core/` | 核心的開發組件：圖、節點、`call_llm`、評估、模型池、路由 |
-| `company/` | 核心的開發組件：任務經理、82 席、工作項、預算。量化工具屬價格分析探針組件 |
+| `company/` | 核心的開發組件：任務經理、80 席、工作項、預算。量化工具屬價格分析探針組件 |
 | `linkin/` | minecraft組件：憲法、實體、Minecraft **業務**護欄、16 席子角色種子 |
 | `modules/` | minecraft組件：可插拔世界模組目錄（`GET /modules`）；Minecraft 為內建模組 |
 | `tools/` | minecraft組件：MineMCP／運維等**底層**橋接（角色勿直連） |
@@ -123,8 +123,8 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | 路徑 | 職責 |
 |------|------|
 | `orchestrator.py` · `work_item.py` · `state.py` | 協調、工作項 DAG、狀態機 |
-| `roles.py` · `role_catalog.py` · `role_memory.py` | 82 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
-| `raho/` | 憲兵審查、環境注入，以及仍供執行期使用的內部協議 |
+| `roles.py` · `role_catalog.py` · `role_memory.py` | 80 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
+| `raho/` | 執行期內部協議（記憶注入與交付檢查），不再佔名冊席位 |
 | `budget.py` · `rate_card.py` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
 | `seat_io.py` | 席位投遞 I/O 軌跡（prompt／system／response 全文＋來源分解）；前端席位監察頁資料源，契約見 [api/reference.md](api/reference.md) |
 | `decomposer.py` · `react_loop.py` · `tools.py` | 拆解、ReAct、工具 |
@@ -173,7 +173,7 @@ python backend/scripts/test_llm_connection.py
 
 | 數字 | 含義 | 來源 |
 |------|------|------|
-| **82** | 公司 `STANDARD_ROLES` | `backend/company/roles.py` |
+| **80** | 公司 `STANDARD_ROLES` | `backend/company/roles.py` |
 | **16** | 靈境子角色（4 總監 × 總監+執行者+審查員+記錄員） | `backend/linkin/roles.py` |
 | **8** | `BUILTIN_TEMPLATES` 組織模板 | `backend/company/roles.py` |
 

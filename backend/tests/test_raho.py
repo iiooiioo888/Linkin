@@ -292,6 +292,8 @@ class TestRahoIdentity:
         assert RoleType.TACTICAL_COMMANDER not in STANDARD_ROLES
         assert RoleType.ATOMIC_EXECUTOR not in STANDARD_ROLES
         assert RoleType.REQUIREMENT_AUDITOR not in STANDARD_ROLES
+        assert RoleType.CONSTITUTIONAL_INSPECTOR not in STANDARD_ROLES
+        assert RoleType.ENVIRONMENT_KERNEL not in STANDARD_ROLES
         l2 = raho_identity("atomic_executor")
         assert l2["grill_targets"] == ["tactical_commander"]
         assert l2["escalate_targets"] == [

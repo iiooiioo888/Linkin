@@ -214,7 +214,7 @@ function RecallWorkbench({ enabled }: { enabled: boolean }) {
           <p className="text-[11px] text-[var(--console-sub)]">MemOS ＋ OpenViking ＋ WeKnora → 注入片段（不經 LLM）</p>
         </div>
         <button type="button" className="text-[11px] text-[var(--console-accent)]" onClick={jumpToL0Kernel}>
-          開啟 L0 核心 →
+          開啟記憶 →
         </button>
       </div>
       <ErrorBar message={error} />
@@ -559,7 +559,7 @@ export default function IntegrationsPanel() {
     const meta = INTEGRATION_META[name as IntegrationName];
     return (
       <p className="text-[11px] text-[var(--console-sub)]">
-        {meta?.hint || '此整合經「召回試跑」編排'}；亦可於 L0 核心面板查看注入結果。
+        {meta?.hint || '此整合經「召回試跑」編排'}；亦可於記憶面板查看注入結果。
       </p>
     );
   };

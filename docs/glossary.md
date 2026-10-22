@@ -14,10 +14,8 @@
 | **反思閉環** | 生成 → 多維評估 →（低分）反思 → 改進 → 再評估 |
 | **公司運行時** | 複雜任務的多代理人協調（協調器＋角色＋預算＋工作項 DAG） |
 | **任務經理** | 分析任務、拆工作項、做最終裁決的席位（`manager`） |
-| **憲兵審查官** | 獨立驗收席（`constitutional_inspector`） |
-| **環境與記憶核心** | 注入記憶與態勢，不執行任務（`environment_kernel`） |
 | **Reviewer／Synthesizer** | 公司流程末端：審查與整合最終交付 |
-| **STANDARD_ROLES（82）** | 公司內建角色目錄；詳見 [角色介紹](company/roles.md) |
+| **STANDARD_ROLES（80）** | 公司內建角色目錄；詳見 [角色介紹](company/roles.md) |
 | **靈境子角色（16）** | 4 總監 ×（總監＋執行者＋審查員＋記錄員）；見 [角色介紹](company/roles.md) |
 | **BUILTIN_TEMPLATES（8）** | 內建組織模板；見 [角色介紹](company/roles.md) |
 | **LiteLLM／`call_llm`** | 唯一允許的 LLM 出口（`backend.core.llm.call_llm`） |

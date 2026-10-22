@@ -645,7 +645,7 @@ export default function ContextPanel({
                   Peek
                 </button>
                 <button type="button" className={btnCls} onClick={jumpToL0Kernel}>
-                  L0 核心
+                  記憶
                 </button>
                 <button type="button" className={btnCls} onClick={() => jumpToIntegrations()}>
                   外部整合

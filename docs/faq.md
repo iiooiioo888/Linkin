@@ -22,7 +22,7 @@ pytest backend/tests/ --basetemp=.pytest_tmp
 
 ## 監控「記憶」分頁是空的？
 
-已改名為 **L0 核心**（舊網址 `#/monitor/console/memory` 仍會導向）。向量庫預設讀 Chroma `evo_memory`。尚未跑過成功對話、或 Chroma 未啟動時會是空的。
+入口是 **記憶**（舊網址 `#/monitor/console/memory` 仍會導向）。向量庫預設讀 Chroma `evo_memory`。尚未跑過成功對話、或 Chroma 未啟動時會是空的。
 
 ```powershell
 python -m backend.scripts.seed_demo_content
@@ -40,19 +40,19 @@ python -m backend.scripts.seed_demo_content
 
 | 數字 | 含義 |
 |------|------|
-| **82** | 公司 `STANDARD_ROLES` |
+| **80** | 公司 `STANDARD_ROLES` |
 | **16** | 靈境子角色（4 總監 × 總監+執行者+審查員+記錄員） |
 
 詳見 [目錄地圖](structure.md) · [公司運行時](architecture/company-runtime.md)。
 
 ## RAHO 是什麼？可以關掉嗎？
 
-遞歸對抗分層：複雜任務先經用戶 Grill-Me 鎖定需求，再拆戰役／原子任務，由獨立憲兵驗收。預設開啟。
+遞歸對抗分層：複雜任務由任務經理分析後交給席位，再經 Reviewer 驗收。預設開啟。
 
 - `EVOL_RAHO_ENABLED=false` — 關閉整套  
 - `EVOL_RAHO_USER_GRILL=false` — 只關 L5 審計  
 
-規劃／憲兵預設走規則，不額外呼叫 LLM（`EVOL_RAHO_*_LLM`）。
+規劃預設走規則，不額外呼叫 LLM（`EVOL_RAHO_*_LLM`）。
 
 ## OpenRouter 目錄多久更新一次？
 

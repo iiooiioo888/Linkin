@@ -1,13 +1,13 @@
 # 角色介紹
 
 > 來源：`backend/company/roles.py`（`STANDARD_ROLES`）＋`backend/linkin/roles.py`（靈境子角色種子）
-> 對齊日期：2026-10-22 · 內建 **82** 席＋靈境 **16** 席＋模板 **8**
+> 對齊日期：2026-10-22 · 內建 **80** 席＋靈境 **16** 席＋模板 **8**
 
 ## 先分清楚三種「角色」
 
 | 種類 | 數量 | 程式來源 | 用途 |
 |------|------|----------|------|
-| **公司 STANDARD_ROLES** | 82 | `backend/company/roles.py` | 複雜任務由任務經理調度的代理人席位 |
+| **公司 STANDARD_ROLES** | 80 | `backend/company/roles.py` | 複雜任務由任務經理調度的代理人席位 |
 | **靈境子角色** | 16 | `backend/linkin/roles.py` → `role_catalog` | 建築／敘事／NPC／道具四部門 |
 | **組織模板 BUILTIN_TEMPLATES** | 8 | 同 `roles.py` | 預組團隊（非獨立角色） |
 
@@ -26,7 +26,7 @@
 組織： L0 任務經理 → L1 Leads → L2 Domain Leads → L3 Executors → L4 Support
 ```
 
-## 層級一覽（82 席）
+## 層級一覽（80 席）
 
 | 組織 Level | 名稱 | 席數 |
 |------------|------|------|
@@ -34,7 +34,7 @@
 | 1 | 技術領導層 | 10 |
 | 2 | 領域領導層 | 4 |
 | 3 | 執行層 | 54 |
-| 4 | 支援角色 | 13 |
+| 4 | 支援角色 | 11 |
 
 ## Level 0：最高決策層（1）
 
@@ -125,15 +125,13 @@
 | `ui_designer` | UI 設計師 | UI 設計 | `routine` | 設計頁面視覺佈局與線框圖（wireframe）；產出 UI 元件設計稿與互動原型 |
 | `ux_researcher` | UX 研究員 | 產品 | `routine` | 規劃可用性測試與訪談大綱；整理痛點、任務成功率與改進假設 |
 
-## Level 4：支援角色（13）
+## Level 4：支援角色（11）
 
 | ID | 名稱 | 分類 | 預算層 | 主要職責 |
 |----|------|------|--------|----------|
 | `analyst` | 分析師 | 資料 | `routine` | 研究、分析與收集資料；提供數據驅動的見解與建議 |
-| `constitutional_inspector` | 憲兵審查官 | 審查 | `reasoning` | 按序執行四維度壓力測試；獨立驗收，未簽核的產出不得被下游引用 |
 | `content_writer` | 內容撰寫 | 文件 | `summary` | 撰寫對外文案、報告敘事與摘要；統一語氣與讀者對象 |
 | `coordinator` | 協調者 | 管理 | `routine` | 跨角色溝通，解決協作瓶頸；處理工作項阻塞，協調解除依賴 |
-| `environment_kernel` | 環境與記憶核心 | 記憶／知識庫 | `summary` | 軌跡壓縮、知識檢索與態勢偏置；不執行具體任務 |
 | `knowledge_mgr` | 知識庫管理員 | 記憶／知識庫 | `summary` | 維護 runbook、FAQ 與術語表；把完成的工作項沉澱成可重用知識 |
 | `legal` | 合規審查 | 合規 | `reasoning` | 檢查個資、授權與敏感內容；標示資料出境與留存風險 |
 | `memory_curator` | 記憶庫策展 | 記憶／知識庫 | `routine` | 整理向量記憶、去重與過期策略；檢查檢索命中是否與任務相關 |
@@ -148,13 +146,13 @@
 | 模板 ID | 名稱 | 適用 | 核心角色 |
 |--------|------|------|----------|
 | `page_dev` | 頁面開發團隊 | 頁面／Mobile 前後端＋測試 | `architect`、`backend_dev`、`backend_lead`、`css_dev`、`frontend_lead`、`js_dev`、`manager`、`synthesizer` 等 12 席 |
-| `fullstack_app` | 全端開發團隊 | 全端開發＋審查 | `backend_dev`、`backend_lead`、`constitutional_inspector`、`css_dev`、`frontend_lead`、`js_dev`、`manager`、`reviewer` 等 11 席 |
-| `research_report` | 研究報告團隊 | 研究調查與報告 | `analyst`、`constitutional_inspector`、`content_writer`、`manager`、`researcher`、`reviewer`、`synthesizer` |
+| `fullstack_app` | 全端開發團隊 | 全端開發＋審查 | `backend_dev`、`backend_lead`、`css_dev`、`frontend_lead`、`js_dev`、`manager`、`reviewer` 等 10 席 |
+| `research_report` | 研究報告團隊 | 研究調查與報告 | `analyst`、`content_writer`、`manager`、`researcher`、`reviewer`、`synthesizer` |
 | `quick_task` | 快速任務團隊 | 單一任務、成本最低 | `developer`、`manager` |
-| `full_company` | EvoLoop 完整公司 | 全席啟用 | `accessibility_eng`、`ai_lead`、`analyst`、`api_engineer`、`architect`、`backend_dev`、`backend_lead`、`billing_ops` 等 82 席 |
-| `quant_desk` | 量化研究桌 | 行情／回測／組合 | `analyst`、`constitutional_inspector`、`finance_lead`、`manager`、`market_data_eng`、`portfolio_mgr`、`quant_analyst`、`researcher` 等 12 席 |
-| `industrial_ops` | 工業運維團隊 | OPC／PLC／IoT | `constitutional_inspector`、`industrial_lead`、`iot_engineer`、`manager`、`opc_engineer`、`plc_engineer`、`reviewer`、`security_eng` 等 10 席 |
-| `story_studio` | 故事工作室 | 敘事／世界觀／可調 MCP | `constitutional_inspector`、`content_writer`、`copy_editor`、`creative_lead`、`manager`、`narrative_editor`、`reviewer`、`story_writer` 等 10 席 |
+| `full_company` | EvoLoop 完整公司 | 全席啟用 | `accessibility_eng`、`ai_lead`、`analyst`、`api_engineer`、`architect`、`backend_dev`、`backend_lead`、`billing_ops` 等 80 席 |
+| `quant_desk` | 量化研究桌 | 行情／回測／組合 | `analyst`、`finance_lead`、`manager`、`market_data_eng`、`portfolio_mgr`、`quant_analyst`、`researcher` 等 11 席 |
+| `industrial_ops` | 工業運維團隊 | OPC／PLC／IoT | `industrial_lead`、`iot_engineer`、`manager`、`opc_engineer`、`plc_engineer`、`reviewer`、`security_eng` 等 9 席 |
+| `story_studio` | 故事工作室 | 敘事／世界觀／可調 MCP | `content_writer`、`copy_editor`、`creative_lead`、`manager`、`narrative_editor`、`reviewer`、`story_writer` 等 9 席 |
 
 > Minecraft 建造／靈境任務在預設 `quick_task` 時會改走 `story_studio`，以免只有 `developer` 卻無權放方塊。
 

@@ -1,22 +1,14 @@
 /**
- * SeatRoster — 左欄席位名冊：獨立審查、環境核心，以及其餘投遞席。
+ * SeatRoster — 左欄席位名冊。
  * 每席顯示投遞次數、累計花費、最近時間與降級／錯誤警示。
  */
-import { INSPECT_CHAIN, KERNEL_CHAIN, LANE_LABELS, RAHO_LAYERS } from '../../lib/rahoUi';
-import type { RahoDirectoryEntry } from '../../types';
 import { fmtUsd, fmtWhen } from '../../lib/agentUi';
+import { RAHO_LAYERS } from '../../lib/rahoUi';
 import type { SeatAgg } from './seatModel';
 
-const LANES: Array<{ lane: string; chain: readonly number[] }> = [
-  { lane: 'inspect', chain: INSPECT_CHAIN },
-  { lane: 'kernel', chain: KERNEL_CHAIN },
-];
-
-const KNOWN_LAYERS: readonly number[] = [1, 0];
-
-function layerMeta(layer: number | null): RahoDirectoryEntry | null {
-  if (layer == null) return null;
-  return RAHO_LAYERS[layer] ?? null;
+function layerShort(layer: number | null): string {
+  if (layer == null || layer === 0 || layer === 1) return '';
+  return RAHO_LAYERS[layer]?.short ?? '';
 }
 
 function SeatRow({
@@ -43,9 +35,11 @@ function SeatRow({
       }`}
     >
       <div className="flex min-w-0 items-center gap-1.5">
-        <span className="shrink-0 font-mono text-[9.5px] text-[var(--apple-tertiary)]">
-          {layerMeta(agg.layer)?.short ?? '未歸層'}
-        </span>
+        {layerShort(agg.layer) ? (
+          <span className="shrink-0 font-mono text-[9.5px] text-[var(--apple-tertiary)]">
+            {layerShort(agg.layer)}
+          </span>
+        ) : null}
         <span className="min-w-0 flex-1 truncate text-[11.5px] font-medium text-[var(--apple-label)]">
           {agg.role_label}
         </span>
@@ -86,19 +80,6 @@ export default function SeatRoster({
   onSelectRole: (role: string) => void;
   onClearRole: () => void;
 }) {
-  const byLayer = new Map<number, SeatAgg[]>();
-  const orphans: SeatAgg[] = [];
-  for (const agg of aggs) {
-    const layer = agg.layer;
-    if (layer != null && KNOWN_LAYERS.includes(layer)) {
-      const bucket = byLayer.get(layer);
-      if (bucket) bucket.push(agg);
-      else byLayer.set(layer, [agg]);
-    } else {
-      orphans.push(agg);
-    }
-  }
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--apple-hairline)] px-2.5 py-2">
@@ -134,48 +115,16 @@ export default function SeatRoster({
           )
         ) : (
           <>
-            {LANES.map(({ lane, chain }) => {
-              const seats = chain.flatMap((layer) => byLayer.get(layer) ?? []);
-              if (seats.length === 0) return null;
-              return (
-                <section key={lane} className="mb-3 last:mb-0">
-                  <h3 className="px-1.5 pb-1 text-[9.5px] font-medium uppercase tracking-wide text-[var(--apple-tertiary)]">
-                    {LANE_LABELS[lane] || lane}
-                    <span className="ml-1 font-mono normal-case">{seats.length}</span>
-                  </h3>
-                  <div className="flex flex-col gap-[3px]">
-                    {chain.flatMap((layer) =>
-                      (byLayer.get(layer) ?? []).map((agg) => (
-                        <SeatRow
-                          key={agg.role}
-                          agg={agg}
-                          active={activeRole === agg.role}
-                          onSelect={onSelectRole}
-                        />
-                      )),
-                    )}
-                  </div>
-                </section>
-              );
-            })}
-            {orphans.length > 0 && (
-              <section className="mb-3 last:mb-0">
-                <h3 className="px-1.5 pb-1 text-[9.5px] font-medium uppercase tracking-wide text-[var(--apple-tertiary)]">
-                  未歸層
-                  <span className="ml-1 font-mono normal-case">{orphans.length}</span>
-                </h3>
-                <div className="flex flex-col gap-[3px]">
-                  {orphans.map((agg) => (
-                    <SeatRow
-                      key={agg.role}
-                      agg={agg}
-                      active={activeRole === agg.role}
-                      onSelect={onSelectRole}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
+            <div className="flex flex-col gap-[3px]">
+              {aggs.map((agg) => (
+                <SeatRow
+                  key={agg.role}
+                  agg={agg}
+                  active={activeRole === agg.role}
+                  onSelect={onSelectRole}
+                />
+              ))}
+            </div>
           </>
         )}
       </div>
