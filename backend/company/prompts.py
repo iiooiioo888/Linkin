@@ -16,49 +16,43 @@ from typing import Any
 # ═══════════════════════════════════════════════════════════════
 
 MANAGER_DECOMPOSE_SYSTEM = (
-    "你是一位任務經理。先分析任務，再把目標分解為可獨立執行的子任務。"
-    "你需要充分利用團隊的層級結構，最大化並發執行效率。"
-    "了解每個角色的專業領域，根據任務類型自動指派最合適的執行者。"
+    "你是一位任務經理。你收到的是已經過權限過濾與相關性篩選的上下文包，不是全量目錄。"
+    "只依包內候選做可行性初審、WBS、角色匹配與預算草案。"
+    "未登記的單價寫「未登記」，不要編造人天、雲主機台數或 token 單價。"
+    "這份輸出是草案，不能當成已經下達的任務。"
 )
 
-MANAGER_DECOMPOSE = """請將以下目標分解為可執行的子工作項，並規劃並發執行策略。
+MANAGER_DECOMPOSE = """請依下面的上下文包做初審，並產出 WBS 草案。
 
-【公司目標】
-{goal}
-
-【組織架構與可用角色】
-{org_chart}
-
-【角色能力說明】
-{role_descriptions}
-
-【預算限制】
-任務預算上限：$ {task_budget}
-可用模型層級：{active_tier}
+{context_pack}
 
 【分解原則】
-1. 充分發揮團隊層級結構，利用不同角色的專業能力
-2. 最大化並發執行：無依賴的工作項應放在同一階段並行
-3. 典型的前端頁面開發依賴鏈：
-   - Phase 1（並行）：UI Designer 設計線框圖 + Backend Dev 開發 API + Architect 設計架構
-   - Phase 2（並行，依賴 Phase 1）：CSS Dev 實作樣式 + JS Dev 實作互動邏輯
-   - Phase 3（依賴 Phase 2）：Tester 撰寫測試
-   - Phase 4：Tech Lead 審查 → Synthesizer 整合
-4. 每個工作項應獨立、可驗證、有明確交付物
-5. 標註依賴關係時，注意：depends_on 應指向**必須先完成**的工作項索引
-6. 控制在 4-10 個子工作項
+1. 只指派候選角色，assignee 只能是：{valid_roles}
+2. 技能、MCP、工具只使用包內列出的項目，並寫進對應子任務描述
+3. 無依賴的工作項放在同一階段。每個工作項要可驗收
+4. depends_on 指向必須先完成的工作項索引，從 0 開始
+5. 控制在 4-10 個子工作項。任務預算上限 $ {task_budget}；目前壓力 {active_tier}
+6. 預算數字只能源自上面的口徑。人天單價未登記時，labor_note 寫用了哪些角色，不要填金額
 
 只輸出 JSON，不要輸出任何其他文字：
 {{
-  "execution_plan": "<簡述並發執行策略>",
+  "feasibility": "go|narrow|stop",
+  "execution_plan": "<併發策略與範圍取捨>",
+  "budget_draft": {{
+    "model_usd": <數字或 null>,
+    "cloud_usd": <數字或 null>,
+    "labor_note": "<角色與未登記的人力口徑>",
+    "assumptions": ["<假設>"]
+  }},
+  "risks": ["<風險>"],
   "subtasks": [
     {{
       "title": "<工作項標題>",
-      "description": "<詳細描述，包含具體交付物要求>",
+      "description": "<交付物；若用到技能或工具請點名>",
       "assignee": "{valid_roles}",
-      "depends_on": [<依賴的工作項索引，從 0 開始，無依賴則為空陣列>],
-      "complexity": "<low/medium/high>",
-      "phase": <執行階段編號，從 1 開始>
+      "depends_on": [],
+      "complexity": "low|medium|high",
+      "phase": 1
     }}
   ]
 }}"""
