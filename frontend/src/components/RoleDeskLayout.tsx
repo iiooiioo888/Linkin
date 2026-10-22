@@ -3,7 +3,7 @@
  * 色彩沿用控制台既有語彙，只改結構。
  */
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
-import type { AgentEvent, AgentWorkItem, GrillTreeNode, L0Snapshot, RoleAgent } from '../types';
+import type { AgentEvent, AgentWorkItem, L0Snapshot, RoleAgent } from '../types';
 import {
   blankMetrics,
   fmtUsd,
@@ -17,21 +17,9 @@ import {
 import { EVENT_LABELS, roleLabel } from './TaskPanel';
 import {
   agentRahoLabel,
-  COMMAND_CHAIN,
-  directionGlyph,
-  edgesForRole,
-  grillTargetLabel,
-  INSPECT_CHAIN,
-  jumpLayer,
   jumpToL0Kernel,
-  jumpToRoleDesk,
-  KERNEL_CHAIN,
-  kindLabel,
-  nodeRoleLabel,
   orgLevelCaption,
   RAHO_LAYERS,
-  rahoTone,
-  statusLabel,
 } from '../lib/rahoUi';
 import { agentResourceGauges, buildActivityHeatmap } from '../lib/monitorData';
 import { ActivityHeatmap, ResourceGauges, SkillTags } from './ui/monitor';
@@ -697,159 +685,6 @@ export function EventTimelineBlock({ events }: { events: AgentEvent[] }) {
   );
 }
 
-export function RahoChainBlock({ agent, onOpenGrill }: { agent: RoleAgent; onOpenGrill?: () => void }) {
-  const current = agent.raho_layer ?? 2;
-  const targets = agent.grill_targets ?? [];
-  const labels = agent.grill_target_labels ?? targets.map(grillTargetLabel);
-  const escalate = agent.escalate_targets ?? [];
-  const escalateLabels = agent.escalate_target_labels ?? escalate.map(grillTargetLabel);
-  const submit = agent.submit_targets ?? [];
-  const submitLabels = agent.submit_target_labels ?? submit.map(grillTargetLabel);
-  const related = edgesForRole(agent.id);
-  const lanes: Array<{ key: string; title: string; layers: readonly number[] }> = [
-    { key: 'command', title: '指揮', layers: COMMAND_CHAIN },
-    { key: 'inspect', title: '審查', layers: INSPECT_CHAIN },
-    { key: 'kernel', title: '核心', layers: KERNEL_CHAIN },
-  ];
-  return (
-    <div className="rd-sec">
-      <div className="rd-tt">
-        質詢鏈
-        {onOpenGrill ? (
-          <button type="button" className="rd-link" onClick={onOpenGrill}>
-            對照樹
-          </button>
-        ) : null}
-      </div>
-      <div className="raho-desk-lanes">
-        {lanes.map((lane) => (
-          <div key={lane.key} className="raho-desk-lane">
-            <span className="raho-desk-lane-h">{lane.title}</span>
-            <div className="raho-desk-chain">
-              {lane.layers.map((layer) => {
-                const meta = RAHO_LAYERS[layer];
-                const active = layer === current;
-                const clickable = Boolean(meta.role_id && meta.role_id !== 'user');
-                return (
-                  <button
-                    key={layer}
-                    type="button"
-                    className={`raho-desk-chip${active ? ' on' : ''}${layer === 0 ? ' is-l0' : ''}${layer === 1 ? ' is-l1' : ''}`}
-                    disabled={!clickable}
-                    onClick={() => clickable && jumpLayer(layer, meta.role_id)}
-                  >
-                    {meta.short}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-      {targets.length > 0 ? (
-        <p className="mt-2 text-[10px] text-[var(--console-sub)]">
-          可質詢{' '}
-          {targets.map((id, idx) => (
-            <button
-              key={id}
-              type="button"
-              className="raho-legend-edge"
-              onClick={() => jumpToRoleDesk(id)}
-            >
-              {labels[idx] || grillTargetLabel(id)}
-              {idx < targets.length - 1 ? '、' : ''}
-            </button>
-          ))}
-        </p>
-      ) : null}
-      {submit.length > 0 ? (
-        <p className="mt-1 text-[10px] text-[var(--console-sub)]">
-          交付{' '}
-          {submit.map((id, idx) => (
-            <button
-              key={id}
-              type="button"
-              className="raho-legend-edge"
-              onClick={() => jumpToRoleDesk(id)}
-            >
-              {submitLabels[idx] || grillTargetLabel(id)}
-              {idx < submit.length - 1 ? '、' : ''}
-            </button>
-          ))}
-        </p>
-      ) : null}
-      {escalate.length > 0 && escalate.some((id) => !targets.includes(id)) ? (
-        <p className="mt-1 text-[10px] text-[var(--console-sub)]">
-          可上呈{' '}
-          {escalate
-            .filter((id) => !targets.includes(id))
-            .map((id, idx, arr) => (
-              <button
-                key={id}
-                type="button"
-                className="raho-legend-edge"
-                onClick={() => jumpToRoleDesk(id)}
-              >
-                {escalateLabels[escalate.indexOf(id)] || grillTargetLabel(id)}
-                {idx < arr.length - 1 ? '、' : ''}
-              </button>
-            ))}
-        </p>
-      ) : null}
-      {related.length > 0 ? (
-        <ul className="raho-desk-edges">
-          {related
-            .filter((edge) => edge.direction !== 'inject')
-            .slice(0, 5)
-            .map((edge) => (
-              <li key={`${edge.from_role}-${edge.to_role}-${edge.kind}-${edge.label}`}>
-                {directionGlyph(edge.direction)} {edge.label}
-              </li>
-            ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
-export function GrillFeedBlock({
-  nodes,
-  onOpenGrill,
-}: {
-  nodes: GrillTreeNode[];
-  onOpenGrill?: () => void;
-}) {
-  return (
-    <div className="rd-sec">
-      <div className="rd-tt">此角色質詢</div>
-      {nodes.length === 0 ? (
-        <p className="py-1 text-[11px] text-[var(--console-sub)]">尚無與此角色相關的質詢</p>
-      ) : (
-        <div className="rd-ev">
-          {nodes.slice(0, 6).map((node) => (
-            <button
-              key={node.node_id}
-              type="button"
-              className="rd-ev-row raho-feed-row"
-              onClick={() => onOpenGrill?.()}
-            >
-              <span className="rd-ev-dot" style={{ background: rahoTone(node.status) }} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[10.5px] text-[var(--console-sub)]">
-                  {nodeRoleLabel(node, 'from')} → {nodeRoleLabel(node, 'to')}
-                </div>
-                <div className="truncate text-[10px] text-[#EBEBF5]">{node.summary}</div>
-                <div className="apple-data text-[8.5px] text-[var(--console-sub)]">
-                  {kindLabel(node.kind_label || node.kind)} · {statusLabel(node.status)}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function L0ContextBlock({ snapshot }: { snapshot?: L0Snapshot | null }) {
   const radar = snapshot?.radar;
@@ -883,9 +718,7 @@ export function RoleRightPanel({
   onFilter,
   onOpen,
   onOpenItem,
-  grillNodes,
   l0,
-  onOpenGrill,
 }: {
   agent: RoleAgent;
   agents: RoleAgent[];
@@ -893,15 +726,11 @@ export function RoleRightPanel({
   onFilter: (key: WorkItemColumnKey) => void;
   onOpen: (id: string) => void;
   onOpenItem?: (item: AgentWorkItem) => void;
-  grillNodes?: GrillTreeNode[];
   l0?: L0Snapshot | null;
-  onOpenGrill?: () => void;
 }) {
   return (
     <aside className="rd-rp">
-      <RahoChainBlock agent={agent} onOpenGrill={onOpenGrill} />
       <L0ContextBlock snapshot={l0} />
-      <GrillFeedBlock nodes={grillNodes ?? []} onOpenGrill={onOpenGrill} />
       <OrgReportTree agent={agent} agents={agents} onOpen={onOpen} />
       <TaskStatusBlock agent={agent} filter={filter} onFilter={onFilter} onOpenItem={onOpenItem} />
       <TokenUsageBlock agent={agent} />

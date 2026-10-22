@@ -1,19 +1,18 @@
 /**
- * SeatRoster — 左欄席位名冊：按 RAHO lane（指揮鏈／獨立審查／環境核心）分組，
+ * SeatRoster — 左欄席位名冊：獨立審查、環境核心，以及其餘投遞席。
  * 每席顯示投遞次數、累計花費、最近時間與降級／錯誤警示。
  */
-import { COMMAND_CHAIN, INSPECT_CHAIN, KERNEL_CHAIN, LANE_LABELS, RAHO_LAYERS } from '../../lib/rahoUi';
+import { INSPECT_CHAIN, KERNEL_CHAIN, LANE_LABELS, RAHO_LAYERS } from '../../lib/rahoUi';
 import type { RahoDirectoryEntry } from '../../types';
 import { fmtUsd, fmtWhen } from '../../lib/agentUi';
 import type { SeatAgg } from './seatModel';
 
 const LANES: Array<{ lane: string; chain: readonly number[] }> = [
-  { lane: 'command', chain: COMMAND_CHAIN },
   { lane: 'inspect', chain: INSPECT_CHAIN },
   { lane: 'kernel', chain: KERNEL_CHAIN },
 ];
 
-const KNOWN_LAYERS: readonly number[] = [5, 4, 3, 2, 1, 0];
+const KNOWN_LAYERS: readonly number[] = [1, 0];
 
 function layerMeta(layer: number | null): RahoDirectoryEntry | null {
   if (layer == null) return null;

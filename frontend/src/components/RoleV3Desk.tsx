@@ -28,7 +28,6 @@ import {
   workItemPriority,
 } from '../lib/monitorData';
 import { ITEM_STATUS_META } from './TaskPanel';
-import GrillTreePanel from './GrillTreePanel';
 import { StatusColumnBoard } from './StatusColumnBoard';
 import {
   ActivityHeatmap,
@@ -60,7 +59,6 @@ import {
 import {
   L0ContextBlock,
   OrgReportTree,
-  RahoChainBlock,
   roleInitials,
 } from './RoleDeskLayout';
 import { RoleBudgetSummary } from './RoleBudgetSummary';
@@ -74,8 +72,7 @@ const KANBAN_COLUMNS = [
 const LEFT_SECTIONS = [
   { id: 'role-overview', label: '概覽' },
   { id: 'role-execution', label: '執行' },
-  { id: 'role-grill', label: '角色' },
-  { id: 'role-system', label: '系統' },
+  { id: 'role-system', label: '組織' },
 ];
 
 function isLive(agent: RoleAgent): boolean {
@@ -144,11 +141,11 @@ export interface RoleV3DeskProps {
 export default function RoleV3Desk({
   agent,
   agents,
-  rahoSnap,
+  rahoSnap: _rahoSnap,
   grillNodes: _grillNodes,
   l0,
   onSelectAgent,
-  onOpenGrill,
+  onOpenGrill: _onOpenGrill,
 }: RoleV3DeskProps) {
   const { t } = useTranslation();
   const isMobileLite = useIsMobileLiteShell();
@@ -190,9 +187,8 @@ export default function RoleV3Desk({
   }, [agents]);
 
   const quickActions = [
-    { label: '質詢樹', onClick: onOpenGrill },
     { label: '任務列表', href: `#/monitor/agents/${encodeURIComponent(agent.id)}` },
-    { label: 'L0 核心', href: '#/monitor/memory' },
+    { label: '環境核心', href: '#/monitor/memory' },
     { label: '系統總覽', href: '#/monitor/metrics' },
   ];
 
@@ -407,22 +403,6 @@ export default function RoleV3Desk({
             </div>
           </section>
 
-          <section id="role-grill" className={`${consoleLayout.sectionAnchor} mt-3`}>
-            <ConsoleCard>
-              <ConsoleCardHeader>質詢鏈</ConsoleCardHeader>
-              <div className="p-2">
-                <GrillTreePanel
-                  embedded
-                  compact
-                  disablePoll
-                  snap={rahoSnap}
-                  focusRoleId={agent.id}
-                  onSelectRole={(id) => onSelectAgent(id)}
-                />
-              </div>
-            </ConsoleCard>
-          </section>
-
           <section id="role-system" className={`${consoleLayout.sectionAnchor} mt-3 pb-4`}>
             <ConsoleCard>
               <ConsoleCardHeader>組織回報鏈</ConsoleCardHeader>
@@ -452,7 +432,7 @@ export default function RoleV3Desk({
             <ConsoleSnippetList title="角色屬性">
               <div className="space-y-1 px-2 pb-2 text-[10px]">
                 <div className={consoleLayout.snippetRow}>
-                  <span>RAHO</span>
+                  <span>席位</span>
                   <span className="text-[var(--console-accent)]">{agentRahoLabel(agent)}</span>
                 </div>
                 <div className={consoleLayout.snippetRow}>
@@ -535,13 +515,11 @@ export default function RoleV3Desk({
               </div>
             </ConsoleSnippetList>
 
-            <RahoChainBlock agent={agent} onOpenGrill={onOpenGrill} />
             <L0ContextBlock snapshot={l0} />
 
             <ConsoleSnippetList title="快速操作">
               <div className="grid grid-cols-2 gap-2 p-2">
-                {quickActions.map((action) =>
-                  action.href ? (
+                {quickActions.map((action) => (
                     <a
                       key={action.label}
                       href={action.href}
@@ -549,17 +527,7 @@ export default function RoleV3Desk({
                     >
                       {action.label}
                     </a>
-                  ) : (
-                    <button
-                      key={action.label}
-                      type="button"
-                      onClick={action.onClick}
-                      className="rounded-md border border-[var(--console-line)] bg-[var(--console-card-elevated)] px-2 py-2 text-center text-[10px] font-medium text-[var(--console-sub)] transition-colors hover:border-[color-mix(in_srgb,var(--console-accent)_35%,transparent)] hover:text-[var(--console-ink)]"
-                    >
-                      {action.label}
-                    </button>
-                  ),
-                )}
+                ))}
               </div>
             </ConsoleSnippetList>
           </div>

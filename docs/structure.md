@@ -96,7 +96,7 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | 路徑 | 職責 |
 |------|------|
 | `orchestrator.py` · `work_item.py` · `state.py` | 協調、工作項 DAG、狀態機 |
-| `roles.py` · `role_catalog.py` · `role_memory.py` | 85 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
+| `roles.py` · `role_catalog.py` · `role_memory.py` | 82 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
 | `raho/` | RAHO L5–L1 |
 | `budget.py` · `rate_card.py` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
 | `seat_io.py` | 席位投遞 I/O 軌跡（prompt／system／response 全文＋來源分解）；前端席位監察頁資料源，契約見 [api/reference.md](api/reference.md) |
@@ -146,7 +146,7 @@ python backend/scripts/test_llm_connection.py
 
 | 數字 | 含義 | 來源 |
 |------|------|------|
-| **85** | 公司 `STANDARD_ROLES`（含 RAHO 脊柱） | `backend/company/roles.py` |
+| **82** | 公司 `STANDARD_ROLES` | `backend/company/roles.py` |
 | **16** | 靈境子角色（4 總監 × 總監+執行者+審查員+記錄員） | `backend/linkin/roles.py` |
 | **8** | `BUILTIN_TEMPLATES` 組織模板 | `backend/company/roles.py` |
 

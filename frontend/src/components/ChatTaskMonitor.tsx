@@ -13,12 +13,9 @@ import {
   wsColumnKey,
   wsTokens,
 } from '../lib/chatWorkspace';
-import { ticketOf } from './taskdetail/narrow';
-import { DIMENSION_META, ticketStatusLabel } from './taskdetail/labels';
 import { usesIndustrialStages } from '../types';
 import { COMPANY_PHASES, OPC_PHASES, STANDARD_PHASES, roleLabel } from './TaskPanel';
 import { MonitorSection } from './ChatMonitorCards';
-import { L0BiasHint } from './L0BiasHint';
 import IntegrationsStrip from './IntegrationsStrip';
 import { formatDurationCompact, taskEta } from '../lib/taskTiming';
 import { buttonEnabled, inferRuntimeState } from '../lib/taskStateMatrix';
@@ -42,11 +39,6 @@ function fmtUsd(n: number): string {
   return `$${n.toFixed(2)}`;
 }
 
-function scoreOf(raw: unknown): number | null {
-  const n = typeof raw === 'number' ? raw : Number(raw);
-  return Number.isFinite(n) ? n : null;
-}
-
 export default function ChatTaskMonitor({
   task,
   pending,
@@ -63,7 +55,6 @@ export default function ChatTaskMonitor({
   const billing = useMonitorStore((s) => s.billing);
 
   const nodes = useMemo(() => flattenWsNodes(task), [task]);
-  const ticket = ticketOf(task);
   const phases =
     usesIndustrialStages(task) ? OPC_PHASES : task.resolved_path === 'company' ? COMPANY_PHASES : STANDARD_PHASES;
   const phaseLabel = phases.find((p) => p.key === task.phase)?.label ?? (task.phase || '待命');
@@ -114,8 +105,6 @@ export default function ChatTaskMonitor({
   const dockerServices = (docker?.per_service ?? billing?.per_service ?? [])
     .filter((s) => (s.source || 'docker') !== 'aliyun')
     .slice(0, 4);
-  const scores = ticket?.dimension_scores ?? {};
-  const trail = Array.isArray(ticket?.audit_trail) ? ticket.audit_trail : [];
   const blockers = pending.filter((p) => !p.resolved);
   const runtimeState = inferRuntimeState({
     status: task.status,
@@ -216,59 +205,6 @@ export default function ChatTaskMonitor({
           <p className="mt-2 text-[10px] leading-relaxed text-[var(--console-sub)]">
             MemOS／Viking／WeKnora 服務 L0 注入；Yao／Ouroboros／OpenPencil 為顯式動作。點晶片開啟面板。
           </p>
-        </MonitorSection>
-
-        <MonitorSection title="需求審計門票" hint={ticket ? ticketStatusLabel(ticket.status) : '尚無門票'} defaultCollapsed>
-          <L0BiasHint snapshot={task.raho?.l0} compact />
-          {blockers[0] && (
-            <p className="mb-2 rounded-lg border border-[color-mix(in_srgb,var(--console-amber)_30%,transparent)] bg-[color-mix(in_srgb,var(--console-amber)_10%,transparent)] px-2.5 py-2 text-[11px] leading-relaxed text-[var(--console-amber)]">
-              待裁決：{blockers[0].question}
-            </p>
-          )}
-          {ticket ? (
-            <>
-              {ticket.clarified_goal && typeof ticket.clarified_goal === 'object' && (
-                <p className="mb-2 text-[11px] leading-relaxed text-[var(--console-sub)]">
-                  {String(
-                    (ticket.clarified_goal as { core_action?: string }).core_action ||
-                      (ticket.clarified_goal as { quantified_success?: string }).quantified_success ||
-                      '',
-                  )}
-                </p>
-              )}
-              <div className="space-y-1.5">
-                {DIMENSION_META.map((dim) => {
-                  const n = scoreOf(scores[dim.key]);
-                  if (n == null) return null;
-                  return (
-                    <div key={dim.key}>
-                      <div className="mb-0.5 flex justify-between text-[10px] text-[var(--console-sub)]">
-                        <span>{dim.label}</span>
-                        <span>{Math.round(n)}</span>
-                      </div>
-                      <div className="h-1 overflow-hidden rounded-full bg-white/10">
-                        <i
-                          className="block h-full rounded-full bg-[var(--console-accent)]"
-                          style={{ width: `${Math.min(100, n)}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {trail.length > 0 && (
-                <ol className="mt-2 space-y-1 border-t border-white/[0.06] pt-2">
-                  {trail.slice(-3).map((row, i) => (
-                    <li key={`${i}-${row.slice(0, 12)}`} className="text-[10px] leading-relaxed text-[var(--console-sub)]">
-                      {row}
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </>
-          ) : (
-            <p className="ws-empty">尚未核發需求審計門票</p>
-          )}
         </MonitorSection>
 
         <MonitorSection title="AI 計費" hint={model || '模型用量'} defaultCollapsed>

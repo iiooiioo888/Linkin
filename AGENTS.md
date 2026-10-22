@@ -5,7 +5,7 @@
 Linkin 基於 EvoLoop：具備自我反思閉環的**統一模式** AI 系統。核心為 **LangGraph 統一管線**。每則查詢先注入記憶、OPC 上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 選路（`route_by_complexity` 是圖上的條件邊）：
 
 - **simple**：單次生成，接著多維評估與反思改進
-- **company（含工業查詢）**：任務經理分析任務，產出里程碑與成敗標準，再拆給席位執行。工業查詢用模板 `industrial_ops`，感測讀數注入目標；寫入經 `opc_service/guard.py`。不再走 L5→L4→L3→L2 指揮鏈，對話也不再先 Grill。成功後預設定稿，公司後反思由 `EVOL_POST_COMPANY_REFLECT` 決定
+- **company（含工業查詢）**：任務經理分析任務，產出里程碑與成敗標準，再拆給席位執行。工業查詢用模板 `industrial_ops`，感測讀數注入目標；寫入經 `opc_service/guard.py`。成功後預設定稿，公司後反思由 `EVOL_POST_COMPANY_REFLECT` 決定
 - **minecraft_ops**：單步 Minecraft 控制，輕量 ReAct + MCP，評估一次後定稿
 
 不再區分「標準／公司／OPC」三種產品模式。工業查詢進入公司運行時，由任務經理分析。優先序與入口分派見根目錄 README「運作邏輯」。
@@ -17,7 +17,7 @@ Linkin 基於 EvoLoop：具備自我反思閉環的**統一模式** AI 系統。
 | 模組 | 路徑 | 職責 |
 | --- | --- | --- |
 | 圖定義 | `backend/core/` | LangGraph 反思閉環、LiteLLM（`llm.py`）、多 API 路由（`api_router.py`）、模型池鎖定、EvoLoopState |
-| 公司運行時 | `backend/company/` | 協調器、任務經理、**85** 席角色、工作項 DAG、預算、Prompt；席位表見 `docs/company/roles.md` |
+| 公司運行時 | `backend/company/` | 協調器、任務經理、**82** 席角色、工作項 DAG、預算、Prompt；席位表見 `docs/company/roles.md` |
 | 靈境 | `backend/linkin/` | 憲法、實體、**16** 席子角色、Minecraft 業務護欄；見同文「靈境子角色」 |
 | 世界模組 | `backend/modules/` | 可插拔目錄與閘道（`GET /modules`、`/{id}/api/*`）；Minecraft 為第一個模組 |
 | Minecraft MCP | `backend/tools/` + `backend/linkin/minecraft.py` | MineMCP JSON-RPC、鐵律、審計；角色經 tool_registry |

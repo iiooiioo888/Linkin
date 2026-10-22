@@ -594,11 +594,10 @@ def test_agent_monitor_ingests_auditor_sessions(tmp_path, monkeypatch):
     monkeypatch.setattr(task_manager, "tasks", {})
     STORE.user_sessions.clear()
 
-    started = auditor_start("我想做一個能幫我自動管粉絲的 AI。")
+    auditor_start("我想做一個能幫我自動管粉絲的 AI。")
     data = collect_agent_monitor()
-    auditor = next(a for a in data["agents"] if a["id"] == "requirement_auditor")
-    assert auditor["status"] == "busy"
-    assert auditor["work_items"]
-    assert auditor["work_items"][0]["kind"] == "requirement_audit"
-    assert started["session_id"] in auditor["work_items"][0]["id"]
+    ids = {a["id"] for a in data["agents"]}
+    assert "requirement_auditor" not in ids
+    assert "tactical_commander" not in ids
+    assert "atomic_executor" not in ids
     STORE.user_sessions.clear()

@@ -1,7 +1,7 @@
 # 系統架構與運作流程（全面·2026-09）
 
 > 對齊日期：**2026-09-12** · 倉庫產品名：**靈境·Linkin**（EvoLoop 運行時）  
-> 本文為生產環境對齊的**單篇全景**：部署拓撲、分層、LangGraph 統一管線、RAHO、計費 v6／共享池掘礦、對話生命週期、前端殼。  
+> 本文為生產環境對齊的**單篇全景**：部署拓撲、分層、LangGraph 統一管線、公司運行時、計費 v6／共享池掘礦、對話生命週期、前端殼。  
 > 細部專題仍見同目錄其他文件；本文不重複 API 金鑰或密鑰。
 
 ---
@@ -98,7 +98,7 @@ flowchart TB
     end
 
     subgraph L4["L4 · 領域運行時"]
-        Company["company/<br/>orchestrator · RAHO · 85 席"]
+        Company["company/<br/>orchestrator · 任務經理 · 82 席"]
         Linkin["linkin/<br/>憲法 · 16 席 · Minecraft 護欄"]
         OPCG["opc_service/<br/>6 級閉環 · guard"]
     end
@@ -141,7 +141,7 @@ flowchart TB
 | 閘道 | `backend/auth/`、`backend/billing/middleware.py` | 登入閘門；請求級 `billing_user_id`／任務預扣 |
 | API | `backend/main.py`、`hub/`、`modules/` | HTTP 入口；Hub 為旁路 OpenAI 相容 |
 | 核心圖 | `backend/core/` | LangGraph 編譯圖、評估、反思、路由 |
-| 公司 | `backend/company/` | 多代理人、RAHO、預算、量化工具 |
+| 公司 | `backend/company/` | 多代理人、任務經理、預算、量化工具 |
 | 靈境 | `backend/linkin/` | 世界觀 RAG、Minecraft 業務護欄 |
 | 計費 v6 | `backend/billing/` | 多池積分、共享池路由、貢獻者獎勵 |
 | 資料 | Chroma、Redis、SQLite | 記憶、任務狀態、帳本 |
@@ -211,7 +211,7 @@ flowchart TD
 
 ## 4. 任務經理（分析 → 席位 → 審查 → 整合）
 
-複雜任務進入公司運行時後，由任務經理分析，再交給席位，經 Reviewer／Synthesizer 收斂。產品路徑不再走 L5→L4→L3→L2 指揮鏈，對話也不再先 Grill。
+複雜任務進入公司運行時後，由任務經理分析，再交給席位，經 Reviewer／Synthesizer 收斂。
 
 ```mermaid
 flowchart TD
@@ -344,7 +344,7 @@ sequenceDiagram
     G->>G: OPC / Linkin / Recall 增強
     G->>G: route_by_complexity
     alt 公司路徑
-        G->>G: run_company (RAHO)
+        G->>G: run_company（任務經理）
     else 簡單路徑
         G->>LLM: generate_initial_answer
     end
@@ -367,7 +367,7 @@ sequenceDiagram
 | 閘門 | `auth/gate.py` | 生產勿設 `LINKIN_AUTH_DISABLED=1` |
 | 預扣 | `pools_service.reserve_for_task` | 任務級 `task_id` 綁定 |
 | 圖執行 | `core/graph.py` | 公司 SSE 可走 `_company_stream` 旁路 |
-| 計量 | `billing/metering.py` | LLM tokens、RAHO 層、量化呼叫 |
+| 計量 | `billing/metering.py` | LLM tokens、公司席位、量化呼叫 |
 | 存檔 | `services/archiver.py` | JSONL 對話與 `/tasks` 共用管線 |
 
 ---
@@ -433,7 +433,7 @@ flowchart LR
 | 模組 | 路徑 | 職責 |
 |------|------|------|
 | 圖定義 | `backend/core/` | LangGraph、`call_llm`、評估、路由 |
-| 公司運行時 | `backend/company/` | 協調器、RAHO、**85** 席、預算 |
+| 公司運行時 | `backend/company/` | 協調器、任務經理、**82** 席、預算 |
 | 靈境 | `backend/linkin/` | 憲法、**16** 席、Minecraft 護欄 |
 | 世界模組 | `backend/modules/` | `GET /modules`、`/{id}/api/*` |
 | Minecraft MCP | `backend/tools/` + `linkin/minecraft.py` | JSON-RPC、鐵律、審計 |
@@ -490,7 +490,7 @@ flowchart LR
 | 共享池掘礦 | [shared-pool-mining.md](shared-pool-mining.md) | Key 生命週期、路由（貢獻者優先於 `platform_default`）、settle、Failover、Token Plan |
 | 積分池生命週期 | [credit-pools-lifecycle.md](credit-pools-lifecycle.md) | monthly_grant／purchased／contribution_*、預扣分級、鎖倉轉換、fault_pool、Docker／BSS |
 | OPC 六級閉環 | [opc-six-stage.md](opc-six-stage.md) | S1→A2、主圖 `enhance_with_opc_context`、WriteGuard、超時降級 |
-| RAHO / Grill-Me | [raho-grill-detail.md](raho-grill-detail.md) | L5 鎖定迴圈、L4–L2 作戰鏈、L1 收斂、事件與預算 |
+| 公司運行時 | [company-runtime.md](company-runtime.md) | 任務經理分析、席位執行、審查與整合 |
 
 ---
 

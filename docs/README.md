@@ -31,7 +31,7 @@
 - [共享池掘礦狀態機](architecture/shared-pool-mining.md) — Key 生命週期、路由、settle、Failover
 - [積分池生命週期](architecture/credit-pools-lifecycle.md) — 多池、預扣、鎖倉、fault_pool、Docker／BSS
 - [OPC 六級工業閉環](architecture/opc-six-stage.md) — S1→A2、WriteGuard、超時降級
-- [RAHO / Grill-Me 細節](architecture/raho-grill-detail.md) — L5 鎖定、L4–L2、L1 收斂
+- [任務分析](architecture/raho-grill-detail.md) — 任務經理由公司運行時分析
 - [反思閉環](architecture/reflection-loop.md) — 評分 → 反思 → 改進
 - [公司運行時](architecture/company-runtime.md) — RAHO、角色、預算
 - [OPC 工業整合](architecture/opc-integration.md) — 6 級閉環、護欄
@@ -45,7 +45,7 @@
 
 ### 公司 · 角色
 
-- [角色介紹](company/roles.md) — **85 席＋16 靈境＋8 模板**（職責／層級／RAHO 脊柱）
+- [角色介紹](company/roles.md) — **82 席＋16 靈境＋8 模板**
 - [量化行情工具](company/quant-tools.md) — 行情、回測、組合、資金流
 
 ### 靈境·Linkin

@@ -54,8 +54,6 @@ interface ChatViewProps {
   onOpenTask: (messageId: string) => void;
   onOpenTrace?: (taskId: string) => void;
   onSuggest: (text: string, company: boolean) => void;
-  onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
-  onBattlePick?: (messageId: string, choice: string) => void;
   onDecisionPending?: (hasPending: boolean) => void;
   onDecisionResolved?: (decisionId?: string) => void;
   onTaskStatePatch?: (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => void;
@@ -76,8 +74,6 @@ export default function ChatView({
   onOpenTask,
   onOpenTrace,
   onSuggest,
-  onGrillAnswer,
-  onBattlePick,
   onDecisionPending,
   onDecisionResolved,
   onTaskStatePatch,
@@ -120,10 +116,6 @@ export default function ChatView({
   }, [live?.taskState, runningMsg?.taskState, hydrated]);
   const pending = task?.raho?.pending_decisions ?? [];
   const running = task?.status === 'running' || task?.status === 'pending';
-  const grilling = messages.some((m) => Boolean(m.grill && !m.grill.locked && !m.grill.terminated));
-  const waitingBattle = messages.some(
-    (m) => m.battle?.status === 'ESCALATE_TO_USER' && m.battle.waiting_for_user_decision,
-  );
   const [monitorPinned, setMonitorPinned] = useState(false);
   const taskFailed = task?.status === 'failed' || task?.status === 'interrupted';
   const needsFullMonitor = Boolean(
@@ -317,8 +309,6 @@ export default function ChatView({
       onOpenContext={(tid) => openContextDetail(tid)}
       onSuggest={onSuggest}
       sending={sending}
-      onGrillAnswer={onGrillAnswer}
-      onBattlePick={onBattlePick}
       onTaskStatePatch={onTaskStatePatch}
       hideTaskCard={showMonitor}
     />
@@ -326,7 +316,7 @@ export default function ChatView({
 
   const composer = (
     <InputBar
-      disabled={sending || grilling || waitingBattle}
+      disabled={sending}
       onSend={onSend}
       onContextCommand={(mode) => {
         // 對話頁 Context／Peek 一律綁定本會話解析結果，禁止選其他對話

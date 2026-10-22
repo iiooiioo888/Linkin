@@ -61,7 +61,7 @@ flowchart TD
 | 向量資料庫 | ChromaDB | 記憶存儲與相似檢索 |
 | 快取 | Redis | 任務持久化 · 會話狀態 |
 | 工業協議 | OPC UA (asyncua) | 工業數據讀寫與訂閱 |
-| 靈境世界觀 | `backend/linkin/` | 憲法、工具鐵律、RAG 四庫；**16** 席靈境子角色（另：公司 `STANDARD_ROLES` **85** 席） |
+| 靈境世界觀 | `backend/linkin/` | 憲法、工具鐵律、RAG 四庫；**16** 席靈境子角色（另：公司 `STANDARD_ROLES` **82** 席） |
 | 前端 | React 19 + Vite + TypeScript | IDE 風格 UI · Tailwind CSS v4 |
 | 測試 | pytest + pytest-asyncio | Mock 隔離 LLM／Chroma／OPC |
 | 部署 | Docker Compose | Backend、Frontend、Redis、Chroma、OPC、Nginx |
@@ -94,7 +94,7 @@ Linkin/
 │   │   ├── llm.py               #     call_llm（唯一 LLM 出口）
 │   │   ├── provider_pool.py     #     模型池鎖定
 │   │   └── evaluation.py        #     多維評估
-│   ├── company/                 #   多代理人 + raho/ + 量化（85 席）
+│   ├── company/                 #   多代理人 + 任務經理 + 量化（82 席）
 │   ├── linkin/                  #   靈境／Minecraft 護欄（16 席子角色）
 │   ├── modules/                 #   可插拔世界模組目錄與閘道（GET /modules、/{id}/api/*）
 │   ├── tools/ · hub/ · memory/ · services/

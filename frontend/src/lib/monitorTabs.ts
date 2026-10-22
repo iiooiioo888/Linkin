@@ -91,7 +91,7 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
   {
     id: 'roles',
     label: '角色',
-    items: [{ key: 'agents', icon: '◈', label: '角色', hint: '質詢鏈與角色工作台合一' }],
+    items: [{ key: 'agents', icon: '◈', label: '角色', hint: '角色工作台' }],
   },
   {
     id: 'audit',

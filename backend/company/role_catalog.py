@@ -1027,10 +1027,7 @@ def _role_presets() -> list[dict[str, Any]]:
         RoleType.PORTFOLIO_MGR,
         RoleType.ROUTER_ENG,
         RoleType.CUSTOMER_SUCCESS,
-        RoleType.REQUIREMENT_AUDITOR,
-        RoleType.TACTICAL_COMMANDER,
         RoleType.CONSTITUTIONAL_INSPECTOR,
-        RoleType.ATOMIC_EXECUTOR,
         RoleType.ENVIRONMENT_KERNEL,
     ):
         snap = _builtin_snapshot(role)

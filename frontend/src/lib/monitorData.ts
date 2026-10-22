@@ -266,22 +266,21 @@ export function buildAgentSparkSeries(agent: RoleAgent): number[] {
   return buckets;
 }
 
-const RAHO_PIPELINE = [
-  { id: 'audit', label: '需求審計', layer: 4 },
-  { id: 'command', label: '戰術指揮', layer: 3 },
-  { id: 'execute', label: '專注執行', layer: 2 },
-  { id: 'review', label: '獨立審查', layer: 1 },
-  { id: 'synth', label: '整合輸出', layer: 0 },
+const ROLE_PIPELINE = [
+  { id: 'analyze', label: '任務分析' },
+  { id: 'split', label: '工作拆解' },
+  { id: 'execute', label: '席位執行' },
+  { id: 'review', label: '審查' },
+  { id: 'synth', label: '整合' },
 ] as const;
 
-/** 角色指揮鏈管線節點（含耗時） */
+/** 角色管線節點（含耗時） */
 export function buildRolePipelineNodes(agent: RoleAgent): RolePipelineNode[] {
-  const layer = agent.raho_layer ?? 2;
-  const activeIdx = RAHO_PIPELINE.findIndex((s) => s.layer === layer);
-  const idx = activeIdx >= 0 ? activeIdx : 2;
   const m = agent.metrics;
   const busy = agent.executing > 0 || agent.status === 'busy';
-  return RAHO_PIPELINE.map((stage, i) => ({
+  const finished = !busy && (agent.done ?? 0) > 0;
+  const idx = busy ? 2 : finished ? 4 : 0;
+  return ROLE_PIPELINE.map((stage, i) => ({
     id: stage.id,
     label: stage.label,
     state: i < idx ? 'done' : i === idx ? (busy ? 'active' : 'pending') : 'pending',

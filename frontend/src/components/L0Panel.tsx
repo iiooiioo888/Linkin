@@ -1,13 +1,13 @@
 /**
  * L0 環境與記憶核心：記憶瀏覽器／知識圖譜／態勢雷達。
- * 與質詢樹、角色名冊共用同一套指揮／審查／核心身分。
+ * 環境與記憶：軌跡、知識與態勢。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchL0Kernel } from '../api/client';
 import type { L0Snapshot } from '../types';
 import MemoryPanel from './MemoryPanel';
 import LcSpiderChart from './charts/LcSpiderChart';
-import { jumpToGrillTree, jumpToIntegrations, jumpToContextMonitor, RAHO_LAYERS } from '../lib/rahoUi';
+import { jumpToIntegrations, jumpToContextMonitor, RAHO_LAYERS } from '../lib/rahoUi';
 import { openChatContextDetail } from '../lib/contextUi';
 import IntegrationsStrip from './IntegrationsStrip';
 
@@ -176,9 +176,6 @@ export default function L0Panel({
               ))}
             </ol>
           )}
-          <button type="button" className="l0-link" onClick={() => jumpToGrillTree()}>
-            對照質詢
-          </button>
         </div>
       )}
 

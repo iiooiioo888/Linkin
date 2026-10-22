@@ -53,7 +53,7 @@
 
 
 
-角色數字：**85**＝公司 `STANDARD_ROLES`；**16**＝靈境子角色。勿混用。  
+角色數字：**82**＝公司 `STANDARD_ROLES`；**16**＝靈境子角色。勿混用。  
 詳表：[角色介紹](../docs/company/roles.md) · [structure.md](../docs/structure.md)。
 
 

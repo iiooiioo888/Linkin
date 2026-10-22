@@ -60,7 +60,7 @@
 |------|--------|
 | **統一管線** | 每則查詢先注入記憶、感測上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 在 `simple`、`company`、`minecraft_ops` 中選一條 |
 | **反思閉環** | 簡單路徑做多維評分與改進迴圈。公司路徑預設定稿；Minecraft 輕量路徑評估一次 |
-| **任務經理** | 公司任務由任務經理分析：產出里程碑、成敗標準與依賴，再拆給席位執行。工業查詢同樣進公司，預設模板 `industrial_ops`，感測讀數注入目標；寫入仍經護欄。**85** 席 |
+| **任務經理** | 公司任務由任務經理分析：產出里程碑、成敗標準與依賴，再拆給席位執行。工業查詢同樣進公司，預設模板 `industrial_ops`，感測讀數注入目標；寫入仍經護欄。**82** 席 |
 | **監控控制台** | 對話、控制台、靈境、Minecraft、實驗室。Linear 風 dense UI，桌面三欄約一屏高 |
 | **行動版** | 768px 以下改底部 Tab 與 safe-area；桌面 ≥1440 維持三欄 |
 | **整合召回** | MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil。只在明確召回時省 token，不接受自動 webhook |
@@ -142,7 +142,7 @@ flowchart TD
 | 層 | 路徑 | 職責 |
 |----|------|------|
 | 圖與 LLM | `backend/core/` | LangGraph、`resolve_execution_path`、LiteLLM、評估 |
-| 公司運行時 | `backend/company/` | 任務經理、85 席、工作項 DAG、預算 |
+| 公司運行時 | `backend/company/` | 任務經理、82 席、工作項 DAG、預算 |
 | 靈境 | `backend/linkin/` | 憲法、16 席、Minecraft 護欄與輕量 ops |
 | 整合 | `backend/integrations/` | 六個整合客戶端與 `/integrations` |
 | 計費 | `backend/billing/` | 積分池 v6、Docker 計量、共享池路由 |
@@ -173,7 +173,7 @@ Linkin/
 └── docker-compose.yml
 ```
 
-角色數字：公司 **85** 席，靈境子角色 **16** 席。對照表在 [角色介紹](docs/company/roles.md)。
+角色數字：公司 **82** 席，靈境子角色 **16** 席。對照表在 [角色介紹](docs/company/roles.md)。
 
 ---
 
@@ -309,7 +309,7 @@ python -m backend.scripts.sync_agent_skills
 | [目錄地圖](docs/structure.md) | 套件與路徑 |
 | [架構總覽](docs/architecture/overview.md) | 統一管線與資料流 |
 | [公司運行時](docs/architecture/company-runtime.md) | RAHO、角色、預算 |
-| [角色介紹](docs/company/roles.md) | 85 席與 16 席靈境子角色 |
+| [角色介紹](docs/company/roles.md) | 82 席與 16 席靈境子角色 |
 | [AI Hub 設計](docs/AI_HUB_DETAILED_DESIGN.md) | Hub 契約 |
 | [靈境世界觀](docs/linkin/worldview.md) | 世界觀 |
 | [Minecraft MCP](docs/linkin/minecraft-mcp.md) | 遊戲橋接 |

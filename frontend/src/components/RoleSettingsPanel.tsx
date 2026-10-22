@@ -422,7 +422,7 @@ export default function RoleSettingsPanel({
       <section id="rs-identity" className="rs-sec">
         <div className="rs-sec-h">
           <h3 className="rs-sec-t">身分／組織</h3>
-          <span className="rs-sec-hint">質詢層走指揮／審查／核心三條線；組織職級只管公司匯報鏈</span>
+          <span className="rs-sec-hint">組織職級是公司匯報鏈</span>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           <Field label="顯示名稱">
@@ -441,7 +441,7 @@ export default function RoleSettingsPanel({
               {draft.enabled ? '已啟用 · 可被指派' : '已停用 · 分解時排除'}
             </button>
           </Field>
-          <Field label="質詢層">
+          <Field label="顯示層">
             <input className={inputCls} value={agentRahoLabel(agent)} readOnly />
           </Field>
           <Field label="組織職級">

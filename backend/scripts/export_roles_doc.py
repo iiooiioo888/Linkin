@@ -33,7 +33,7 @@ def main() -> None:
         "| 種類 | 數量 | 程式來源 | 用途 |",
         "|------|------|----------|------|",
         (f"| **公司 STANDARD_ROLES** | {n} | `backend/company/roles.py` | "
-        "複雜任務／RAHO 調度的代理人席位 |"),
+        "複雜任務由任務經理調度的代理人席位 |"),
         ("| **靈境子角色** | 16 | `backend/linkin/roles.py` → `role_catalog` | "
         "建築／敘事／NPC／道具四部門 |"),
         (f"| **組織模板 BUILTIN_TEMPLATES** | {nt} | 同 `roles.py` | "
@@ -44,22 +44,17 @@ def main() -> None:
         ("詳見 [公司運行時](../architecture/company-runtime.md) · "
         "[術語表](../glossary.md)。"),
         "",
-        "## 組織職級 vs RAHO 指揮鏈",
+        "## 組織職級",
         "",
-        "兩套編號**不要混用**：",
+        "任務分析由任務經理負責，再交給後續席位。",
         "",
         "| 維度 | 含義 |",
         "|------|------|",
         ("| **組織職級 Level 0–4** | `RoleDefinition.level`："
-        "數字越小越高層（Manager=0） |"),
-        ("| **RAHO L5–L0** | 指揮／審查協議層："
-        "用戶→審計→戰術→原子執行；獨立憲兵；環境核心注入 |"),
+        "數字越小越高層（任務經理=0） |"),
         "",
         "```",
-        "組織： L0 Manager → L1 Leads → L2 Domain Leads → L3 Executors → L4 Support",
-        "RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行",
-        "       └─ 獨立 L1 憲兵（不隸屬 L3）",
-        "       └─ L0 環境與記憶核心（滲透各層，不參與質詢）",
+        "組織： L0 任務經理 → L1 Leads → L2 Domain Leads → L3 Executors → L4 Support",
         "```",
         "",
     ]
@@ -80,29 +75,8 @@ def main() -> None:
         )
     lines.append("")
 
-    raho = [
-        ("requirement_auditor", "RAHO L4", "戰役／需求審計，語意鎖定與高層 DAG"),
-        ("tactical_commander", "RAHO L3", "原子拆解、孵化 L2、Grill SOP"),
-        ("atomic_executor", "RAHO L2", "專注單一 KPI，任務結束回收"),
-        ("constitutional_inspector", "RAHO L1", "獨立四維驗收與簽核"),
-        ("environment_kernel", "RAHO L0", "環境與記憶注入各層"),
-    ]
     lines += [
-        "## RAHO 脊柱（必讀）",
-        "",
-        "這五席是遞歸對抗分層的固定脊柱，與一般「部門員工」不同：",
-        "",
-        "| ID | 中文名 | RAHO | 一句話 |",
-        "|----|--------|------|--------|",
-    ]
-    by_id = {rd.role_type.value: rd for rd in STANDARD_ROLES.values()}
-    for rid, raho_l, blurb in raho:
-        rd = by_id[rid]
-        lines.append(f"| `{rid}` | {rd.name} | {raho_l} | {blurb} |")
-    lines += [
-        "",
-        ("完整協議見 "
-        "[company-runtime.md](../architecture/company-runtime.md#raho遞歸對抗分層)。"),
+        "見 [公司運行時](../architecture/company-runtime.md)。",
         "",
     ]
 

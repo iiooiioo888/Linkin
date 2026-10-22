@@ -8,8 +8,6 @@ import { isRunningTaskStatus, isTerminalTaskStatus } from '../lib/chatWorkspace'
 import { ReflectionRadar } from './ReflectionCharts';
 import MarkdownBody from './media/MarkdownBody';
 import TaskPanel from './TaskPanel';
-import GrillUserCard from './GrillUserCard';
-import BattlePlanCard from './BattlePlanCard';
 import ErrorState from './ui/ErrorState';
 import TurnBillingReceipt from './chat/TurnBillingReceipt';
 import { RoutingPreviewChips } from './ui/monitor';
@@ -22,8 +20,6 @@ interface MessageBubbleProps {
   onOpenTrace?: (taskId: string) => void;
   /** 開啟對話底部詳細區 Context（綁定該訊息任務） */
   onOpenContext?: (taskId: string) => void;
-  onGrillAnswer?: (messageId: string, answer: string, forceLock?: boolean) => void;
-  onBattlePick?: (messageId: string, choice: string) => void;
   onTaskStatePatch?: (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => void;
   variant?: 'default' | 'workspace';
 }
@@ -43,8 +39,6 @@ export default function MessageBubble({
   onOpenTask,
   onOpenTrace,
   onOpenContext,
-  onGrillAnswer,
-  onBattlePick,
   onTaskStatePatch,
   variant = 'default',
 }: MessageBubbleProps) {
@@ -129,26 +123,7 @@ export default function MessageBubble({
         </div>
       )}
 
-      {message.grill && (
-        <div className="w-full max-w-[min(100%,720px)]">
-          <GrillUserCard
-            grill={message.grill}
-            disabled={message.streaming}
-            onAnswer={(answer, force) => onGrillAnswer?.(message.id, answer, force)}
-          />
-        </div>
-      )}
-
-      {message.battle && (
-        <div className="w-full max-w-[min(100%,720px)]">
-          <BattlePlanCard
-            battle={message.battle}
-            onPickAlternative={(choice) => onBattlePick?.(message.id, choice)}
-          />
-        </div>
-      )}
-
-      {(thinking || visible || (message.streaming && !message.taskState)) && !message.grill && (
+      {(thinking || visible || (message.streaming && !message.taskState)) && (
         workspace ? (
           <div className={`ws-msg ${isUser ? 'is-user' : 'is-agent'}`}>
             <div

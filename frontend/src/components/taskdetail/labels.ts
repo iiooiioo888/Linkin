@@ -54,7 +54,7 @@ export function ticketStatusLabel(status?: string | null): string {
   return TICKET_STATUS_LABEL[status] || status;
 }
 
-/** 門票欄位中文名（五維評分見 GrillUserCard 同一套措辭）。 */
+/** 任務欄位中文名。 */
 export const DIMENSION_META: Array<{ key: 'specificity' | 'boundary' | 'constraints' | 'risk' | 'success'; label: string; note: string }> = [
   { key: 'specificity', label: '目標具體性', note: '主語＋謂語＋受詞＋量化結果' },
   { key: 'boundary', label: '邊界清晰度', note: '做什麼與絕對不做什麼' },

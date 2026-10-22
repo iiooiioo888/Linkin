@@ -289,10 +289,9 @@ class TestRahoIdentity:
         assert inspector["independent"] is True
         assert inspector["reports_to"] is None
         assert inspector["lane"] == "inspect"
-        commander = STANDARD_ROLES[RoleType.TACTICAL_COMMANDER]
-        assert commander.reporting_to == RoleType.REQUIREMENT_AUDITOR
-        executor = STANDARD_ROLES[RoleType.ATOMIC_EXECUTOR]
-        assert executor.reporting_to == RoleType.TACTICAL_COMMANDER
+        assert RoleType.TACTICAL_COMMANDER not in STANDARD_ROLES
+        assert RoleType.ATOMIC_EXECUTOR not in STANDARD_ROLES
+        assert RoleType.REQUIREMENT_AUDITOR not in STANDARD_ROLES
         l2 = raho_identity("atomic_executor")
         assert l2["grill_targets"] == ["tactical_commander"]
         assert l2["escalate_targets"] == [

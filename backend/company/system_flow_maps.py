@@ -150,7 +150,7 @@ def langgraph_pipeline_ir() -> dict[str, Any]:
         _node("linkin_ctx", "enhance_linkin", "service", lane="ingress"),
         _node("recall_ctx", "enhance_recall", "service", lane="ingress"),
         _node("route", "route_by_complexity", "api", lane="route"),
-        _node("company", "run_company", "service", lane="exec", detail="85 席·任務經理"),
+        _node("company", "run_company", "service", lane="exec", detail="82 席·任務經理"),
         _node("simple", "generate_initial", "service", lane="exec", detail="單次 LLM"),
         _node("enforce", "enforce_length", "api", lane="loop"),
         _node("evaluate", "evaluate_answer", "service", lane="loop"),
