@@ -150,7 +150,7 @@ flowchart TB
 
 ## 3. LangGraph 統一管線
 
-所有任務進入**同一條管線**；不再區分「標準／公司／OPC」產品模式。選路實作是 `resolve_execution_path`。公司指揮鏈與 OPC 是同一條：工業查詢進入 `run_company`，模板 `industrial_ops`，步驟為感知到執行。
+所有任務進入**同一條管線**；不再區分「標準／公司／OPC」產品模式。選路實作是 `resolve_execution_path`。工業查詢進入 `run_company`，模板 `industrial_ops`，由任務經理分析。
 
 ```mermaid
 flowchart TD
@@ -160,7 +160,7 @@ flowchart TD
     LINKIN_CTX --> RECALL[enhance_with_recall_context<br/>Recall 橋接]
     RECALL --> ROUTE{route_by_complexity}
 
-    ROUTE -->|company，含工業| RC[run_company<br/>指揮鏈]
+    ROUTE -->|company，含工業| RC[run_company<br/>任務經理分析]
     ROUTE -->|minecraft_ops| MC[run_minecraft_ops<br/>輕量 ReAct]
     ROUTE -->|simple| GEN[generate_initial_answer<br/>單次 LLM]
 
@@ -209,45 +209,24 @@ flowchart TD
 
 ---
 
-## 4. RAHO 指揮鏈（L5 → L4 → L3 → L2 → L1 → Review → Synth）
+## 4. 任務經理（分析 → 席位 → 審查 → 整合）
 
-複雜任務進入公司運行時後，RAHO（遞歸對抗分層組織）與 Reviewer／Synthesizer 構成完整交付鏈。
+複雜任務進入公司運行時後，由任務經理分析，再交給席位，經 Reviewer／Synthesizer 收斂。產品路徑不再走 L5→L4→L3→L2 指揮鏈，對話也不再先 Grill。
 
 ```mermaid
 flowchart TD
-    L5["L5 · 用戶 Grill-Me<br/>需求語意鎖定"]
-    L4["L4 · 需求審計官<br/>戰役 DAG · 里程碑"]
-    L3["L3 · 戰術指揮官<br/>原子作戰地圖 · L2 孵化"]
-    L2["L2 · 原子執行者<br/>專注執行 · [GRILL]/[ESCALATE]"]
-    L1["L1 · 憲兵審查官<br/>InspectorGate · 簽核"]
+    MGR["任務經理<br/>里程碑 · 成敗標準 · 依賴"]
+    SEATS["席位執行"]
     REV["Reviewer<br/>執行-審查迴圈"]
     SYN["Synthesizer<br/>多工作項整合"]
-    MGR["Manager<br/>最終審查"]
-    EVAL2["外部反思閉環<br/>evaluate → reflect → improve"]
+    FINAL["任務經理<br/>最終審查"]
 
-    L5 -->|置信度 &gt; 0.90| L4
-    L4 --> L3
-    L3 --> L2
-    L2 --> L1
-    L1 -->|APPROVED| REV
-    L1 -->|REWORK| L2
-    L1 -->|ESCALATE| L3
+    MGR --> SEATS
+    SEATS --> REV
     REV -->|通過| SYN
-    REV -->|Rework| L2
-    SYN --> MGR
-    MGR --> EVAL2
+    REV -->|退回| SEATS
+    SYN --> FINAL
 ```
-
-| 層級 | 代號 | 職責 |
-|------|------|------|
-| L5 | Grill-Me | 用戶需求鎖定；可關：`EVOL_RAHO_USER_GRILL=false` |
-| L4 | 需求審計／元規劃 | 戰役 DAG、成敗標準 |
-| L3 | 戰術指揮 | 原子拆解、預算、工具白名單 |
-| L2 | 原子執行 | &lt;200 Token 專注席；熱馬桶圈上交 |
-| L1 | 憲兵 | **獨立**於執行鏈的驗收／簽核 |
-| L0 | 環境與記憶核心 | 注入每一層（圖中未單列節點） |
-| — | Reviewer | 工作項審查閘 |
-| — | Synthesizer | 整合交付物 |
 
 完整席位與模板見 [公司運行時](company-runtime.md)、[角色介紹](../company/roles.md)。
 

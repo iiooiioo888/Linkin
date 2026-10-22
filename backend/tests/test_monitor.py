@@ -160,7 +160,7 @@ def test_agent_monitor_catalog_when_empty(tmp_path, monkeypatch):
     assert data["summary"]["roles_busy"] == 0
     assert data["summary"]["work_items_open"] == 0
     manager = next(a for a in data["agents"] if a["id"] == "manager")
-    assert manager["name"] == "專案經理"
+    assert manager["name"] == "任務經理"
     assert manager["status"] == "idle"
     assert manager["level"] == 0
     assert manager["work_items"] == []
@@ -362,7 +362,7 @@ def test_monitor_agents_http_endpoint(tmp_path, monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert body["summary"]["roles_total"] >= 16
-    assert any(a["id"] == "manager" and a["name"] == "專案經理" for a in body["agents"])
+    assert any(a["id"] == "manager" and a["name"] == "任務經理" for a in body["agents"])
     assert "work_items" in body["agents"][0]
 
 

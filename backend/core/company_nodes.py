@@ -38,6 +38,15 @@ _needs_opc_context = _execution_path.needs_opc_context
 # ─── OPC 上下文增強節點 ──────────────────────────────────────
 
 
+def with_opc_summary(query: str, summary: str) -> str:
+    """把 OPC 讀數摘要附在目標後面，供任務經理分析。寫入仍走護欄。"""
+    text = (summary or "").strip()
+    base = query or ""
+    if not text or text in base:
+        return base
+    return f"{base.rstrip()}\n\n{text}"
+
+
 def _opc_context(
     status: str,
     *,
@@ -145,7 +154,7 @@ def run_minecraft_ops(state: StateInput) -> dict[str, Any]:
 
 
 def run_company(state: StateInput) -> dict[str, Any]:
-    """執行公司運行時：多角色分工完成目標。
+    """執行公司運行時：任務經理分析後，由席位完成目標。
 
     成功時將公司產出設為 current_answer，交由 evaluate_answer
     進入反思迭代迴圈（與簡單任務共用同一評估/反思/改進管線）；
@@ -187,44 +196,11 @@ def run_company(state: StateInput) -> dict[str, Any]:
     except Exception as exc:
         logger.debug("整合召回公司前綴略過：%s", exc)
 
-    if template_name == "industrial_ops":
-        from backend.core.industrial_chain import run_industrial_chain
-        from backend.core.post_company_reflect import post_company_reflect_mode
+    opc = state.get("opc_context") or {}
+    if isinstance(opc, dict):
+        query = with_opc_summary(query, str(opc.get("summary") or ""))
 
-        industrial_state = {
-            "query": query,
-            "session_id": state.get("session_id", ""),
-        }
-        try:
-            try:
-                loop = asyncio.get_running_loop()
-                industrial_state = asyncio.run_coroutine_threadsafe(
-                    run_industrial_chain(industrial_state), loop
-                ).result(timeout=300)
-            except RuntimeError:
-                industrial_state = asyncio.run(run_industrial_chain(industrial_state))
-        except Exception as exc:
-            logger.error("指揮鏈工業執行失敗：%s", exc)
-            return {
-                "final_answer": f"指揮鏈工業執行失敗：{exc}",
-                "current_answer": "",
-                "company_result": {"success": False, "error": str(exc)},
-                "iteration": 0,
-            }
-        answer = str(industrial_state.get("current_answer") or "")
-        return {
-            "current_answer": answer,
-            "company_result": {
-                "success": True,
-                "final_output": answer,
-                "industrial_chain": True,
-            },
-            "iteration": 0,
-            "resolved_execution_path": "company",
-            "post_company_reflect_mode": post_company_reflect_mode(),
-        }
-
-    # 選擇組織架構模板
+    # 選擇組織架構模板。工業查詢用 industrial_ops 席位，仍由任務經理分析。
     config = BUILTIN_TEMPLATES.get(template_name)
     if config is None:
         logger.warning("未知模板 %s，使用 quick_task", template_name)

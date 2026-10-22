@@ -95,7 +95,8 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.locator('.rd-header .rd-acts').getByRole('button', { name: '新增' })).toHaveCount(0);
     await expect(page.getByText('組織回報鏈')).toBeVisible();
     await expect(page.getByRole('heading', { name: /質詢鏈與任用/ })).toBeVisible();
-    await expect(page.locator('.raho-org-h', { hasText: '指揮鏈' })).toBeVisible();
+    await expect(page.locator('.raho-org-h', { hasText: '獨立審查' })).toBeVisible();
+    await expect(page.locator('.raho-org-h', { hasText: '指揮鏈' })).toHaveCount(0);
     await expect(page.locator('.rd-tree .rd-tree-lvl').first()).toHaveText(/L\d/);
     await expect(page.locator('.rd-onode.cur')).toBeVisible();
     await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
@@ -108,7 +109,7 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('.rd-header .rd-acts').getByRole('button', { name: '質詢' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /工作台/ })).toBeVisible();
-    await expect(page.getByText(/角色即質詢節點|指揮鏈|點層級/)).toBeVisible({
+    await expect(page.getByText(/角色即質詢節點|獨立審查|點層級/)).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();

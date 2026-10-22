@@ -1,15 +1,13 @@
 /**
  * CompanyView — 公司運行時整頁（#/company）。
  *
- * 主內容區整頁鋪開：交辦、指揮鏈 L5→L2、獨立審查 L1、環境核心 L0、
- * 其餘席位按分類鋪成樓層，以及進行中的公司任務。
+ * 主內容區整頁鋪開：交辦、席位樓層，以及進行中的公司任務。
  * 資料只讀既有 GET /monitor/agents。交辦不在此頁建任務，
- * 而是交給對話的同一條發送路徑（審計與執行都留在對話裡）。
+ * 而是交給對話的同一條發送路徑，由任務經理分析後執行。
  */
 import { useEffect, useMemo, useState } from 'react';
 import { fetchAgentMonitor } from '../../api/client';
 import { AGENT_STATUS_META, CATEGORY_LABEL } from '../../lib/agentUi';
-import { COMMAND_CHAIN, KERNEL_CHAIN, LANE_LABELS, RAHO_LAYERS } from '../../lib/rahoUi';
 import { COMPANY_TEMPLATES, type AgentCompanyTask, type AgentMonitorData, type CompanyTemplate, type RoleAgent } from '../../types';
 import ErrorState from '../ui/ErrorState';
 import './company.css';
@@ -50,21 +48,10 @@ interface LiveTask extends AgentCompanyTask {
 
 interface CompanyViewProps {
   onOpenRole: (roleId: string) => void;
-  /** 交辦走對話同一條發送路徑（審計、執行都留在對話裡）。 */
+  /** 交辦走對話同一條發送路徑，由任務經理分析並執行。 */
   onLaunch: (brief: string, template: CompanyTemplate) => void;
   onOpenTask: (taskId: string) => void;
   onOpenRaho: () => void;
-}
-
-function spineIdSet(): Set<string> {
-  return new Set(Object.values(RAHO_LAYERS).map((layer) => layer.role_id));
-}
-
-function findSeat(agents: RoleAgent[], roleId: string, layer: number): RoleAgent | undefined {
-  return (
-    agents.find((agent) => agent.id === roleId) ??
-    agents.find((agent) => agent.raho_spine && agent.raho_layer === layer)
-  );
 }
 
 function seatDotClass(status: string | undefined): string {
@@ -149,14 +136,12 @@ export default function CompanyView({ onOpenRole, onLaunch, onOpenTask, onOpenRa
   }, [nonce]);
 
   const agents = data?.agents ?? [];
-  const spineIds = useMemo(() => spineIdSet(), []);
   const query = floorQuery.trim().toLowerCase();
   const tasks = useMemo(() => collectTasks(agents), [agents]);
 
   const departments = useMemo(() => {
     const groups = new Map<string, RoleAgent[]>();
     for (const agent of agents) {
-      if (spineIds.has(agent.id)) continue;
       if (floorFilter === 'live' && !isLive(agent)) continue;
       if (floorFilter === 'alert' && !isAlert(agent)) continue;
       if (!matchesQuery(agent, query)) continue;
@@ -177,7 +162,7 @@ export default function CompanyView({ onOpenRole, onLaunch, onOpenTask, onOpenRa
       const labelB = CATEGORY_LABEL[b[0]] ?? b[0];
       return labelA.localeCompare(labelB, 'zh-Hant');
     });
-  }, [agents, floorFilter, query, spineIds]);
+  }, [agents, floorFilter, query]);
 
   const summary = data?.summary;
 
@@ -196,7 +181,7 @@ export default function CompanyView({ onOpenRole, onLaunch, onOpenTask, onOpenRa
             <p className="company-kicker">公司運行時</p>
             <h1 className="company-title">公司</h1>
             <p className="company-lead">
-              在這裡看指揮鏈與席位。要交辦時寫下目標，會回到對話：需要時先問清範圍，再在同一則訊息裡執行。
+              在這裡看席位。要交辦時寫下目標，會回到對話，由任務經理分析後執行。
             </p>
             <div className="company-actions">
               <button type="button" className="rd-btn" onClick={() => setNonce((n) => n + 1)}>
@@ -221,7 +206,7 @@ export default function CompanyView({ onOpenRole, onLaunch, onOpenTask, onOpenRa
           <section className="company-panel" aria-label="交辦">
             <div className="company-panel__head">
               <h2 className="company-panel__title">交辦</h2>
-              <span className="company-panel__hint">寫下目標後回到對話，在同一則訊息裡問清並執行</span>
+              <span className="company-panel__hint">寫下目標後回到對話，由任務經理分析並執行</span>
             </div>
             <div className="company-dispatch">
               <label className="block">
@@ -276,41 +261,10 @@ export default function CompanyView({ onOpenRole, onLaunch, onOpenTask, onOpenRa
           {error && data ? <p className="company-error">名冊更新失敗：{error}</p> : null}
           {loading && !data ? <p className="company-empty">正在讀取公司名冊…</p> : null}
 
-          <section className="company-panel" aria-label="指揮鏈">
-            <div className="company-panel__head">
-              <h2 className="company-panel__title">指揮鏈</h2>
-              <span className="company-panel__hint">{LANE_LABELS.command} L5 → L2 · {LANE_LABELS.inspect}與{LANE_LABELS.kernel}不在匯報鏈上</span>
-            </div>
-            <div className="company-spine">
-              {COMMAND_CHAIN.map((layerNo) => (
-                <SeatCard
-                  key={layerNo}
-                  layerNo={layerNo}
-                  agent={findSeat(agents, RAHO_LAYERS[layerNo].role_id, layerNo)}
-                  rosterLoaded={Boolean(data)}
-                  dim={query.length > 0 && !chainMatches(RAHO_LAYERS[layerNo], findSeat(agents, RAHO_LAYERS[layerNo].role_id, layerNo), query)}
-                  onOpenRole={onOpenRole}
-                />
-              ))}
-            </div>
-            <div className="company-side">
-              {[1, ...KERNEL_CHAIN].map((layerNo) => (
-                <SeatCard
-                  key={layerNo}
-                  layerNo={layerNo}
-                  agent={findSeat(agents, RAHO_LAYERS[layerNo].role_id, layerNo)}
-                  rosterLoaded={Boolean(data)}
-                  dim={query.length > 0 && !chainMatches(RAHO_LAYERS[layerNo], findSeat(agents, RAHO_LAYERS[layerNo].role_id, layerNo), query)}
-                  onOpenRole={onOpenRole}
-                />
-              ))}
-            </div>
-          </section>
-
           <section className="company-panel" aria-label="席位樓層">
             <div className="company-panel__head">
               <h2 className="company-panel__title">席位</h2>
-              <span className="company-panel__hint">指揮鏈六席在上方，這裡是其餘編制</span>
+              <span className="company-panel__hint">任務經理由這裡的席位執行</span>
             </div>
             <div className="company-filters">
               <input
@@ -400,58 +354,5 @@ function Metric({ label, value }: { label: string; value: number }) {
       <div className="company-metric__value">{value}</div>
       <div className="company-metric__label">{label}</div>
     </div>
-  );
-}
-
-function chainMatches(
-  layer: (typeof RAHO_LAYERS)[number],
-  agent: RoleAgent | undefined,
-  query: string,
-): boolean {
-  const blob = [layer.short, layer.full, layer.title, layer.lane_label, agent?.name ?? ''].join(' ').toLowerCase();
-  return blob.includes(query);
-}
-
-function SeatCard({
-  layerNo,
-  agent,
-  rosterLoaded,
-  dim,
-  onOpenRole,
-}: {
-  layerNo: number;
-  agent: RoleAgent | undefined;
-  rosterLoaded: boolean;
-  dim: boolean;
-  onOpenRole: (roleId: string) => void;
-}) {
-  const layer = RAHO_LAYERS[layerNo];
-  const clickable = Boolean(agent && agent.id !== 'user');
-  const status = agent
-    ? AGENT_STATUS_META[agent.status]?.label ?? agent.status
-    : layerNo === 5
-      ? '交辦起點'
-      : rosterLoaded
-        ? '待命'
-        : '名冊未載入';
-  const work = agent?.current_item?.title;
-  return (
-    <button
-      type="button"
-      className={`company-seat${agent?.status === 'busy' ? ' is-live' : ''}${dim ? ' is-dim' : ''}${clickable ? '' : ' is-static'}`}
-      onClick={() => {
-        if (agent && clickable) onOpenRole(agent.id);
-      }}
-    >
-      <span className="company-seat__short">{layer.short}</span>
-      <span className="company-seat__title">{layer.title}</span>
-      <span className="company-seat__meta">
-        <span className={seatDotClass(agent?.status)} aria-hidden style={{ display: 'inline-block', marginRight: 6 }} />
-        {agent?.name && agent.name !== layer.title ? `${agent.name} · ` : ''}
-        {status}
-        {agent && agent.queue + agent.executing > 0 ? ` · 隊列 ${agent.queue} · 執行 ${agent.executing}` : ''}
-      </span>
-      {work ? <span className="company-seat__work">{work}</span> : null}
-    </button>
   );
 }

@@ -14,7 +14,7 @@
 
 統一管線流程：
   記憶檢索 → OPC 上下文增強（自動） → 靈境 RAG 增強（自動） → 複雜度路由
-    ├─ 指揮鏈（含工業／OPC）→ industrial_ops 走感知到執行；其餘走席位分工
+    ├─ 公司（含工業）→ 任務經理分析後席位分工；感測讀數注入目標，寫入經護欄
     ├─ Minecraft 單步 → 輕量 ReAct
     └─ 簡單任務 → 單次 LLM 生成
   → 依路徑定稿或反思 → 存檔
@@ -38,7 +38,7 @@ from backend.company.orchestrator import CompanyOrchestrator
 from backend.company.precomputed_planner import normalize_precomputed
 from backend.company.roles import BUILTIN_TEMPLATES
 from backend.core import nodes
-from backend.core.company_nodes import enhance_with_opc_context
+from backend.core.company_nodes import enhance_with_opc_context, with_opc_summary
 from backend.core.execution_path import resolve_execution_path
 from backend.core.graph import reflection_should_continue
 from backend.core.post_company_reflect import post_company_reflect_mode, task_finish_reflect_mode
@@ -727,9 +727,7 @@ class TaskManager:
         logger.info("任務 %s 解析執行路徑：%s（策略：%s）", record.task_id, record.resolved_path, record.strategy)
 
         try:
-            if record.resolved_path == "company" and record.template == "industrial_ops":
-                await self._run_opc_task(record)
-            elif record.resolved_path == "company":
+            if record.resolved_path == "company":
                 await self._run_company_task(record)
             elif path == "minecraft_ops":
                 await self._run_minecraft_ops_task(record)
@@ -1248,9 +1246,6 @@ class TaskManager:
         from backend.core.execution_path import resolve_company_template
 
         record.template = resolve_company_template(record.query, record.template)
-        if record.template == "industrial_ops":
-            await self._run_opc_task(record)
-            return
         config = BUILTIN_TEMPLATES.get(record.template)
         if config is None:
             config = BUILTIN_TEMPLATES["quick_task"]
@@ -1267,6 +1262,13 @@ class TaskManager:
             company_query = prefix_query_with_linkin(record.query, linkin_state)
         except Exception:
             company_query = record.query
+
+        try:
+            opc_state = await enhance_with_opc_context({"query": company_query})
+            opc_summary = str((opc_state.get("opc_context") or {}).get("summary") or "")
+            company_query = with_opc_summary(company_query, opc_summary)
+        except Exception:
+            logger.debug("公司任務 OPC 摘要略過", exc_info=True)
 
         orchestrator = CompanyOrchestrator(config)
         self._attach_company_listener(record, orchestrator)
@@ -1349,98 +1351,6 @@ class TaskManager:
             self._sync_length_gate_from_state(record, state)
         if record.status != "cancelled" and not record.cancel_requested:
             record.status = "completed"
-            self._set_phase(record, "done")
-        self._finish(record)
-
-    # ── OPC 6 級閉環執行 ──
-
-    async def _run_opc_task(self, record: TaskRecord) -> None:
-        """指揮鏈的工業執行：感知→預處理→分析→診斷→決策→執行。
-
-        與公司席位是同一條鏈。路徑標籤維持 company，模板為 industrial_ops。
-        """
-        from backend.core.industrial_chain import run_industrial_chain
-
-        tracer = TraceLogger(record.task_id)
-        state: dict[str, Any] = {
-            "query": record.query,
-            "session_id": record.task_id,
-        }
-        record.resolved_path = "company"
-        if not record.template or record.template == "quick_task":
-            record.template = "industrial_ops"
-
-        def _snapshot(phase: str, current: dict[str, Any]) -> dict[str, Any] | None:
-            if phase == "sense_opc":
-                return {
-                    "readings": current.get("opc_readings", {}),
-                    "tag_count": len(current.get("opc_readings", {})),
-                }
-            if phase == "preprocess_opc":
-                return {
-                    "quality_report": current.get("opc_quality_report", {}),
-                    "clean_count": len(current.get("opc_readings_clean", {})),
-                }
-            if phase == "analyze_opc":
-                return current.get("opc_analysis", {})
-            if phase == "diagnose_opc":
-                return current.get("opc_diagnosis", {})
-            if phase == "decide_opc":
-                return {
-                    "decisions": current.get("opc_decisions", []),
-                    "summary": current.get("opc_decision_summary", ""),
-                }
-            if phase == "act_opc":
-                actions = current.get("opc_actions", [])
-                return {
-                    "actions": actions,
-                    "action_count": len(actions),
-                    "success_count": sum(1 for action in actions if action.get("success")),
-                }
-            return None
-
-        async def _on_phase(phase: str, current: dict[str, Any]) -> bool:
-            self._set_phase(record, phase)
-            tracer.log_phase_change(phase)
-            key = phase.removesuffix("_opc")
-            snap = _snapshot(phase, current)
-            if snap is not None:
-                record.opc_state[key] = snap
-            self._persist(record)
-            if self._check_cancelled(record):
-                self._finish(record)
-                return False
-            return True
-
-        try:
-            state = await run_industrial_chain(state, on_phase=_on_phase)
-            if state.get("cancelled"):
-                return
-
-            state["iteration"] = 0
-            state["score"] = 0.0
-            try:
-                await self._run_reflection_loop(record, state, tracer)
-            except Exception as exc:
-                logger.warning("任務 %s 評估迴圈失敗（保留 OPC 產出）：%s", record.task_id, exc)
-
-            record.answer = str(
-                state.get("final_answer") or state.get("current_answer") or ""
-            )
-            record.score = state.get("score")
-            record.iteration = state.get("iteration", 0)
-            if record.status != "cancelled" and not record.cancel_requested:
-                record.status = "completed"
-
-        except Exception as exc:
-            logger.error("OPC 任務 %s 執行失敗：%s", record.task_id, exc)
-            record.status = "failed"
-            record.error = str(exc)
-            tracer.log_error(str(exc), phase=record.phase, recoverable=False)
-
-        if record.status == "cancelled":
-            self._set_phase(record, "cancelled")
-        else:
             self._set_phase(record, "done")
         self._finish(record)
 

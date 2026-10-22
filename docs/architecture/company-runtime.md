@@ -1,18 +1,18 @@
 # 公司運行時
 
-複雜任務自動觸發多代理人公司運行時，並疊加 **RAHO 遞歸對抗分層**：**L5 用戶 Grill-Me → L4 戰役 DAG → L3 原子拆解 → L2 專注執行 → L1 憲兵審查（雙向 Grill／簽核）→ Reviewer 審查 → Synthesizer 整合**。
+複雜任務自動觸發多代理人公司運行時。**任務經理由這裡分析**：產出里程碑、成敗標準與依賴，再拆給席位，經 Reviewer 與 Synthesizer 收斂。不再用 L5→L4→L3→L2 指揮鏈分析任務。
 
 ## 觸發條件
 
 完整優先序在 `resolve_execution_path`（見 [README 運作邏輯](../../README.md#運作邏輯)）。會進公司運行時的情況：
 
 - 執行策略顯式設為 `company`
-- auto 下的工業關鍵詞（感測、閥門、OPC、PLC…），模板升為 `industrial_ops`，執行感知到執行
+- auto 下的工業關鍵詞（感測、閥門、OPC、PLC…），模板升為 `industrial_ops`，仍由任務經理分析；感測讀數注入目標
 - auto 下的靈境複雜任務，或 Minecraft 建造／敘事／多步
 - auto 下 cost_speed 把該複雜度對到 `company`
 - 前面都未命中時：查詢長度達到門檻（基準 200 字，可被路由回饋調整），或含開發、設計、構建、實現、系統、架構、重構、deploy、build、implement 等關鍵詞
 
-單步 Minecraft 控制走 `minecraft_ops`。對話裡的指揮鏈會先走 Grill-Me；公司頁直接建立策略為 `company` 的任務。OPC 與這條指揮鏈是同一個東西。
+單步 Minecraft 控制走 `minecraft_ops`。公司頁回到對話，用同一條發送路徑建立策略為 `company` 的任務。工業寫入仍經 `opc_service/guard.py`。
 
 ## 角色體系
 

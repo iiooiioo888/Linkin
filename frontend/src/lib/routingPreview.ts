@@ -63,7 +63,7 @@ export async function resolveRoutingPreviewForSend(params: {
   }
 }
 
-/** 任務 API 路徑（非 SSE 簡單／minecraft_ops 串流）。opc 是舊標籤，與 company 同一條指揮鏈。 */
+/** 任務 API 路徑（非 SSE 簡單／minecraft_ops 串流）。opc 是舊標籤，與 company 同一條公司任務。 */
 export function usesTaskWorkspace(
   strategy: RoutingPreviewMode,
   preview: RoutingPreview | null | undefined,
@@ -74,15 +74,13 @@ export function usesTaskWorkspace(
   return path === 'company' || path === 'opc';
 }
 
-/** 僅公司路徑進入需求審計官 Grill（對齊後端 should_grill_user）。 */
+/** 指揮鏈入口已移除。任務由任務經理在公司任務裡分析，對話不再先 Grill。 */
 export function shouldRunGrill(
-  strategy: RoutingPreviewMode,
-  preview: RoutingPreview | null | undefined,
-  skipGrill?: boolean,
+  _strategy: RoutingPreviewMode,
+  _preview: RoutingPreview | null | undefined,
+  _skipGrill?: boolean,
 ): boolean {
-  if (skipGrill || strategy === 'simple') return false;
-  if (strategy === 'company') return true;
-  return preview?.path === 'company';
+  return false;
 }
 
 export function parseRoutingPreview(data: Record<string, unknown>): RoutingPreview | null {

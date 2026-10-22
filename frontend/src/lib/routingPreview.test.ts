@@ -47,9 +47,9 @@ describe('routingPreview helpers', () => {
     expect(usesTaskWorkspace('auto', { ...companyPreview, path: 'minecraft_ops' })).toBe(false);
   });
 
-  it('shouldRunGrill only for company path', () => {
-    expect(shouldRunGrill('auto', companyPreview)).toBe(true);
-    expect(shouldRunGrill('auto', { ...companyPreview, path: 'simple' })).toBe(false);
+  it('shouldRunGrill stays off after the command chain is removed', () => {
+    expect(shouldRunGrill('auto', companyPreview)).toBe(false);
+    expect(shouldRunGrill('company', companyPreview)).toBe(false);
     expect(shouldRunGrill('simple', companyPreview)).toBe(false);
   });
 });

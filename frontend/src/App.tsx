@@ -466,7 +466,7 @@ export default function App() {
         };
       }
 
-      // ── 簡單／minecraft_ops 走 SSE；指揮鏈（含工業）建任務 ──
+      // ── 簡單／minecraft_ops 走 SSE；公司任務（含工業）建任務，由任務經理分析 ──
       if (workQuery.trim() !== query.trim()) {
         routingPreview = await resolveRoutingPreviewForSend({
           query: workQuery,

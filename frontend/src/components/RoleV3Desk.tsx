@@ -354,7 +354,7 @@ export default function RoleV3Desk({
             )}
 
             <ConsoleCard>
-              <ConsoleCardHeader>指揮鏈管線 · 節點耗時</ConsoleCardHeader>
+              <ConsoleCardHeader>任務管線 · 節點耗時</ConsoleCardHeader>
               <div className="p-3">
                 <PipelineTimeline nodes={pipelineNodes} />
               </div>

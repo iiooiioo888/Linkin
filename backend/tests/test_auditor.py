@@ -222,9 +222,9 @@ class TestGateway:
         assert failed["terminated"] is True
 
     def test_should_grill_company_forced(self):
-        assert should_grill_user("隨便", "company") is True
+        assert should_grill_user("隨便", "company") is False
         assert should_grill_user("你好", "simple") is False
-        assert should_grill_user("開發一個完整登入系統", "auto") is True
+        assert should_grill_user("開發一個完整登入系統", "auto") is False
 
     def test_process_user_request_terminates_over_auth(self):
         auditor = RequirementAuditor()

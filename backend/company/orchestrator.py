@@ -34,12 +34,6 @@ from backend.company.docker_tools import (
     execute_docker_tool,
 )
 from backend.company.events import CompanyEvent, EventBus
-from backend.company.precomputed_planner import (
-    campaign_snapshot,
-    commander_snapshot,
-    normalize_precomputed,
-    precomputed_usable,
-)
 from backend.company.prompts import PromptConfig
 from backend.company.role_catalog import resolve_runtime
 from backend.company.role_memory import get_role_memory
@@ -229,11 +223,11 @@ class CompanyOrchestrator:
         self.work_items = WorkItemManager()
         self.decomposer.work_items = self.work_items
 
-        # LLM 軌跡上下文：主協程階段（戰役規劃/拆解/整合/終審）逐段標註
+        # LLM 軌跡上下文：任務經理分析，再拆解、整合、終審
         from backend.core import llm_trace
 
-        llm_trace.trace_phase.set("campaign_plan")
-        llm_trace.trace_role.set("requirement_auditor")
+        llm_trace.trace_phase.set("task_analysis")
+        llm_trace.trace_role.set("manager")
         llm_trace.trace_item_id.set("")
 
         self._log(
@@ -280,182 +274,40 @@ class CompanyOrchestrator:
                 "pressure": round(self.budget.budget_pressure, 2),
             }, degraded=True, level=logging.WARNING)
 
-        precomputed = normalize_precomputed(precomputed_planner)
+        if ticket or precomputed_planner:
+            self._log(
+                "command_chain_skipped",
+                {"reason": "task_manager_analyzes"},
+                level=logging.INFO,
+            )
 
-        # ── 階段 1a：L4 需求審計官譯製戰役 DAG ──
-        self._log("phase", {"phase": "campaign_plan", "module": "RahoPlanner"})
-        self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "campaign_plan"})
-        try:
-            from backend.company.raho.planner import CampaignMap, plan_campaign
-            from backend.company.raho.protocol import RahoLayer, raho_enabled
-            from backend.company.raho.store import STORE as _RAHO_STORE
-
-            snap_campaign = campaign_snapshot(precomputed)
-            if raho_enabled() and snap_campaign:
-                campaign = CampaignMap.from_dict(snap_campaign, goal)
-                self._campaign = campaign.to_dict()
-                if self._run_id:
-                    _RAHO_STORE.set_campaign(self._run_id, self._campaign, goal)
-                    _RAHO_STORE.add_node(
-                        self._run_id,
-                        from_layer=int(RahoLayer.L4_AUDITOR),
-                        to_layer=int(RahoLayer.L3_COMMANDER),
-                        kind="campaign",
-                        summary=campaign.brief(240),
-                        status="resolved",
-                        payload=self._campaign,
-                        goal=goal,
-                        from_role="requirement_auditor",
-                        to_role="tactical_commander",
-                    )
-                self.events.emit(CompanyEvent.CAMPAIGN_PLANNED, {
-                    "node_count": len(campaign.nodes),
-                    "source": campaign.source,
-                    "campaign": self._campaign,
-                })
-                self._log("campaign_planned", {
-                    "node_count": len(campaign.nodes),
-                    "source": campaign.source,
-                })
-                self._log(
-                    "planner_reused",
-                    {"layer": "L4", "aspect": "campaign", "node_count": len(campaign.nodes)},
-                    level=logging.INFO,
-                )
-            elif raho_enabled():
-                campaign = await asyncio.to_thread(plan_campaign, goal)
-                self._campaign = campaign.to_dict()
-                if self._run_id:
-                    _RAHO_STORE.set_campaign(self._run_id, self._campaign, goal)
-                    _RAHO_STORE.add_node(
-                        self._run_id,
-                        from_layer=int(RahoLayer.L4_AUDITOR),
-                        to_layer=int(RahoLayer.L3_COMMANDER),
-                        kind="campaign",
-                        summary=campaign.brief(240),
-                        status="resolved",
-                        payload=self._campaign,
-                        goal=goal,
-                        from_role="requirement_auditor",
-                        to_role="tactical_commander",
-                    )
-                self.events.emit(CompanyEvent.CAMPAIGN_PLANNED, {
-                    "node_count": len(campaign.nodes),
-                    "source": campaign.source,
-                    "campaign": self._campaign,
-                })
-                self._log("campaign_planned", {
-                    "node_count": len(campaign.nodes),
-                    "source": campaign.source,
-                })
-                self._log(
-                    "planner_computed",
-                    {"layer": "L4", "aspect": "campaign", "node_count": len(campaign.nodes)},
-                    level=logging.INFO,
-                )
-        except Exception:
-            logger.debug("L4 戰役規劃略過", exc_info=True)
-
-        # ── 階段 1b：L3 戰術指揮官把 L4 門票拆成原子作戰地圖 ──
+        # ── 任務經理分析並拆成工作項 ──
+        self._log("phase", {"phase": "task_analysis", "module": "TaskManager"})
+        self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "task_analysis"})
         llm_trace.trace_phase.set("decompose")
         llm_trace.trace_role.set("manager")
-        self._log("phase", {"phase": "decompose", "module": "TacticalCommander"})
+        self._log("phase", {"phase": "decompose", "module": "TaskManager"})
         self.events.emit(CompanyEvent.PHASE_CHANGE, {"phase": "decompose"})
-        work_items: list = []
-        decompose_meta = {"strategy": "commander", "execution_plan": ""}
-        try:
-            from backend.company.raho.commander import command_from_ticket
-            from backend.company.raho.protocol import raho_enabled
-            from backend.services.commander import extract_ticket
-
-            l4_ticket = ticket if isinstance(ticket, dict) else None
-            if l4_ticket is None:
-                l4_ticket = extract_ticket(goal)
-            snap_commander = commander_snapshot(precomputed)
-            pack: dict[str, Any] | None = None
-            if raho_enabled() and l4_ticket and snap_commander and precomputed_usable(precomputed):
-                pack = snap_commander
-                self._log(
-                    "planner_reused",
-                    {"layer": "L3", "aspect": "commander", "status": pack.get("status")},
-                    level=logging.INFO,
-                )
-            elif raho_enabled() and l4_ticket:
-                pack = await asyncio.to_thread(command_from_ticket, l4_ticket)
-                self._log(
-                    "planner_computed",
-                    {"layer": "L3", "aspect": "commander", "status": pack.get("status")},
-                    level=logging.INFO,
-                )
-            if pack is not None:
-                self._commander = pack
-                if pack.get("status") == "REJECT_TO_L4":
-                    defects = "；".join(pack.get("defects") or ["門票檢查未過"])
-                    return {
-                        **self._error_result(f"L3 退回 L4：{defects}"),
-                        "status": "REJECT_TO_L4",
-                        "commander": pack,
-                    }
-                if pack.get("status") == "ESCALATE_TO_USER":
-                    return {
-                        **self._error_result(f"L3 上交用戶：{pack.get('reason') or '不可行'}"),
-                        "status": "ESCALATE_TO_USER",
-                        "commander": pack,
-                    }
-                if pack.get("status") == "PLAN_READY" and pack.get("battle_plan"):
-                    self._battle_plan = pack["battle_plan"]
-                    work_items = self._build_from_battle_plan(self._battle_plan)
-                    decompose_meta = {
-                        "strategy": "commander",
-                        "execution_plan": pack.get("battle_plan_yaml") or pack["battle_plan"].get("plan_id", ""),
-                    }
-                    settings = (self._battle_plan.get("global_settings") or {})
-                    try:
-                        workers = int(settings.get("max_parallel_workers") or 0)
-                        if workers > 0:
-                            self._max_parallel = workers
-                            self._worker_semaphore = asyncio.Semaphore(workers)
-                    except (TypeError, ValueError):
-                        pass
-                    self.events.emit(CompanyEvent.BATTLE_PLANNED, {
-                        "plan_id": self._battle_plan.get("plan_id"),
-                        "node_count": len(self._battle_plan.get("dag_nodes") or []),
-                        "rush_mode": bool(pack.get("rush_mode")),
-                    })
-        except Exception:
-            logger.debug("L3 戰術拆解略過，回退 TaskDecomposer", exc_info=True)
-
-        if not work_items:
-            decompose_result = await self.decomposer.decompose(goal)
-            if not decompose_result.subtasks:
-                return self._error_result("任務分解失敗，無法產生工作項")
-            work_items = self.decomposer.build_work_items(
-                decompose_result,
-                created_by=RoleType.MANAGER,
-            )
-            decompose_meta = {
-                "strategy": decompose_result.strategy.value,
+        decompose_result = await self.decomposer.decompose(goal)
+        if not decompose_result.subtasks:
+            return self._error_result("任務分解失敗，無法產生工作項")
+        work_items = self.decomposer.build_work_items(
+            decompose_result,
+            created_by=RoleType.MANAGER,
+        )
+        decompose_meta = {
+            "strategy": decompose_result.strategy.value,
+            "execution_plan": decompose_result.execution_plan,
+        }
+        self._log(
+            "task_analyzed",
+            {
+                "analyst": "manager",
+                "subtask_count": len(work_items),
                 "execution_plan": decompose_result.execution_plan,
-            }
-            try:
-                from backend.company.raho.atomic_pool import assemble as assemble_atomic
-                from backend.company.raho.protocol import raho_enabled
-
-                if raho_enabled():
-                    for _item in work_items:
-                        assemble_atomic(_item)
-            except Exception:
-                logger.debug("原子角色組裝略過", exc_info=True)
-
-        try:
-            from backend.company.raho.protocol import raho_enabled
-
-            if raho_enabled() and self._campaign:
-                from backend.company.raho.planner import CampaignMap, tag_work_items
-
-                tag_work_items(work_items, CampaignMap.from_dict(self._campaign, goal))
-        except Exception:
-            logger.debug("戰役節點掛載略過", exc_info=True)
+            },
+            level=logging.INFO,
+        )
         self._log("decompose_done", {
             "subtask_count": len(work_items),
             "strategy": decompose_meta["strategy"],

@@ -25,8 +25,8 @@ _FLOW_CATALOG: tuple[dict[str, Any], ...] = (
     },
     {
         "id": "raho",
-        "title": "RAHO 指揮鏈",
-        "blurb": "L5 Grill-Me → L4 審計 → L3 戰術 → L2 執行 → L1 憲兵 → Reviewer → Synthesizer。",
+        "title": "任務經理",
+        "blurb": "任務經理分析 → 席位執行 → Reviewer → Synthesizer。",
         "diagram_type": "workflow",
     },
     {
@@ -150,7 +150,7 @@ def langgraph_pipeline_ir() -> dict[str, Any]:
         _node("linkin_ctx", "enhance_linkin", "service", lane="ingress"),
         _node("recall_ctx", "enhance_recall", "service", lane="ingress"),
         _node("route", "route_by_complexity", "api", lane="route"),
-        _node("company", "run_company", "service", lane="exec", detail="85 席·RAHO"),
+        _node("company", "run_company", "service", lane="exec", detail="85 席·任務經理"),
         _node("simple", "generate_initial", "service", lane="exec", detail="單次 LLM"),
         _node("enforce", "enforce_length", "api", lane="loop"),
         _node("evaluate", "evaluate_answer", "service", lane="loop"),
@@ -184,30 +184,26 @@ def langgraph_pipeline_ir() -> dict[str, Any]:
 
 
 def raho_spine_ir() -> dict[str, Any]:
-    """RAHO 指揮鏈 + 獨立審查 + 收斂合成。"""
+    """任務經理分析，席位執行，再審查與整合。"""
     lanes = [
-        {"id": "command", "label": "指揮鏈"},
+        {"id": "command", "label": "任務經理"},
         {"id": "inspect", "label": "獨立審查"},
         {"id": "out", "label": "交付"},
     ]
     nodes = [
-        _node("l5", "L5 Grill-Me", "frontend", lane="command", detail="語意鎖定"),
-        _node("l4", "L4 需求審計", "api", lane="command", detail="戰役 DAG"),
-        _node("l3", "L3 戰術指揮", "service", lane="command", detail="原子拆解"),
-        _node("l2", "L2 執行", "service", lane="command", detail="ReAct tool"),
+        _node("manager", "任務經理", "api", lane="command", detail="里程碑與成敗標準"),
+        _node("seats", "席位執行", "service", lane="command", detail="工作項"),
         _node("l1", "L1 憲兵", "security", lane="inspect", detail="InspectorGate"),
         _node("review", "Reviewer", "service", lane="out", detail="品質驗收"),
         _node("synth", "Synthesizer", "api", lane="out", detail="最終合成"),
     ]
     edges = [
-        _edge("l5", "l4", "[GRILL]"),
-        _edge("l4", "l3"),
-        _edge("l3", "l2"),
-        _edge("l2", "l1"),
+        _edge("manager", "seats"),
+        _edge("seats", "l1"),
         _edge("l1", "review"),
         _edge("review", "synth"),
     ]
-    return _ir("RAHO 指揮鏈", "workflow", nodes, edges, lanes=lanes, extra_meta={"view": "raho"})
+    return _ir("任務經理", "workflow", nodes, edges, lanes=lanes, extra_meta={"view": "raho"})
 
 
 def shared_pool_mining_ir() -> dict[str, Any]:

@@ -2,7 +2,7 @@
 
 # 靈境·Linkin
 
-**靈境·Linkin 運行時 — 具反思閉環的統一 AI 管線、多代理人指揮鏈與監控控制台**
+**靈境·Linkin 運行時 — 具反思閉環的統一 AI 管線、任務經理與監控控制台**
 
 反思閉環、RAHO 公司運行時、OPC 工業整合與 Minecraft 輕量操作共用同一條前置鏈。`resolve_execution_path` 依策略與內容選路，LangGraph、SSE 與任務 API 用同一份判斷。
 
@@ -59,15 +59,14 @@
 | 能力 | 做什麼 |
 |------|--------|
 | **統一管線** | 每則查詢先注入記憶、感測上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 在 `simple`、`company`、`minecraft_ops` 中選一條 |
-| **反思閉環** | 簡單路徑做多維評分與改進迴圈。指揮鏈預設定稿；Minecraft 輕量路徑評估一次 |
-| **指揮鏈** | 公司運行時與 OPC 是同一條：L5 用戶 → L4 審計 → L3 戰術 → L2 執行；L1 憲兵；L0 記憶與感測。工業查詢用 `industrial_ops`，步驟是感知 → 預處理 → 分析 → 診斷 → 決策 → 執行。**85** 席 |
-| **Grill-Me** | 對話裡的指揮鏈先經 `/raho/grill/*` 鎖需求，再建立任務 |
+| **反思閉環** | 簡單路徑做多維評分與改進迴圈。公司路徑預設定稿；Minecraft 輕量路徑評估一次 |
+| **任務經理** | 公司任務由任務經理分析：產出里程碑、成敗標準與依賴，再拆給席位執行。工業查詢同樣進公司，預設模板 `industrial_ops`，感測讀數注入目標；寫入仍經護欄。**85** 席 |
 | **監控控制台** | 對話、控制台、靈境、Minecraft、實驗室。Linear 風 dense UI，桌面三欄約一屏高 |
 | **行動版** | 768px 以下改底部 Tab 與 safe-area；桌面 ≥1440 維持三欄 |
 | **整合召回** | MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil。只在明確召回時省 token，不接受自動 webhook |
 | **積分與計費 v6** | 虛擬積分錢包（不是第三方支付）。個人／共享／貢獻／故障多池，Docker 按時計費，方案牌價，阿里雲成本唯讀對帳 |
 | **AI Hub** | 探針、熔斷、目錄；多 API 路由與模型池鎖定 |
-| **OPC** | 指揮鏈的工業執行與 OPC UA 微服務。寫入必經護欄 |
+| **OPC** | OPC UA 微服務。公司任務可讀感測摘要；寫入必經護欄 |
 | **Minecraft MCP** | MineMCP JSON-RPC 與靈境鐵律。角色只經 tool_registry |
 
 ---
@@ -82,7 +81,7 @@
 
 | 順序 | 條件 | 路徑 |
 |------|------|------|
-| 1 | 工業關鍵詞（感測、閥門、OPC、PLC…） | `company`，模板 `industrial_ops` |
+| 1 | 工業關鍵詞（感測、閥門、OPC、PLC…） | `company`，預設模板 `industrial_ops`，由任務經理分析 |
 | 2 | 靈境複雜任務 | `company` |
 | 3 | Minecraft 建造、敘事、多步 | `company` |
 | 4 | Minecraft 單步控制 | `minecraft_ops` |
@@ -91,7 +90,7 @@
 
 ### 圖上怎麼走
 
-每條進圖的查詢都先走完前置鏈，再分叉。工業查詢進 `run_company`，執行的是同一條指揮鏈的感知到執行。
+每條進圖的查詢都先走完前置鏈，再分叉。工業查詢進 `run_company`，由任務經理分析；前置鏈裡的 OPC 上下文只提供讀數。
 
 ```mermaid
 flowchart TD
@@ -100,7 +99,7 @@ flowchart TD
     OPC --> LK[靈境上下文]
     LK --> RC[整合召回]
     RC --> ROUTE{route_by_complexity}
-    ROUTE -->|company，含工業| RUN[run_company]
+    ROUTE -->|company，含工業| RUN[run_company<br/>任務經理分析]
     ROUTE -->|minecraft_ops| MC[run_minecraft_ops]
     ROUTE -->|simple| GEN[單次生成]
     RUN --> GATE{公司後反思}
@@ -126,31 +125,29 @@ flowchart TD
 |------|----------|
 | `simple` | 長度守門後做多維評估。未達標、迭代未用盡、且分數仍有提升時，反思並改進 |
 | `minecraft_ops` | 輕量 ReAct 加 MineMCP。評估一次後定稿；只有超長才回到反思 |
-| `company` | 指揮鏈。一般任務走席位分工。工業任務（`industrial_ops`）走感知 → 預處理 → 分析 → 診斷 → 決策 → 執行，寫入經護欄。`EVOL_POST_COMPANY_REFLECT` 預設 `off`。超長仍回到反思 |
-
-Grill-Me 在圖的外面。對話送出指揮鏈時，前端先叫 `/raho/grill/*`，鎖住簡報後才 `POST /tasks`。
+| `company` | 任務經理分析後席位分工。工業模板 `industrial_ops` 用工業席位，感測讀數附在目標上，寫入經護欄。`EVOL_POST_COMPANY_REFLECT` 預設 `off`。超長仍回到反思 |
 
 ### 請求從哪裡進來
 
 | 入口 | 實際分派 |
 |------|----------|
-| 對話 `#/chat` | 先取路由預覽。指揮鏈先 Grill，再 `POST /tasks` 與 WebSocket。`simple` 與 `minecraft_ops` 走 SSE。預覽逾時 1.5 秒則改走 SSE |
-| 公司頁 | 直接 `POST /tasks`，策略固定 `company`，然後打開任務 |
-| `POST /chat/stream` | 指揮鏈走公司 SSE（工業模板跑感知到執行）；`minecraft_ops` 走編譯圖；其餘走簡單串流 |
-| `POST /tasks` | 指揮鏈：`industrial_ops` 跑感知到執行，其他模板跑席位分工。其餘走對應的手抄前置與收尾 |
-| `POST /chat` | `evoloop_graph.ainvoke`。工業查詢在 `run_company` 裡跑同一條鏈 |
+| 對話 `#/chat` | 先取路由預覽。公司路徑直接 `POST /tasks` 與 WebSocket，由任務經理分析。`simple` 與 `minecraft_ops` 走 SSE。預覽逾時 1.5 秒則改走 SSE |
+| 公司頁 | 回到對話，策略固定 `company`，同一條發送路徑建立任務 |
+| `POST /chat/stream` | 公司路徑走公司 SSE（任務經理分析）；`minecraft_ops` 走編譯圖；其餘走簡單串流 |
+| `POST /tasks` | 公司路徑由任務經理分析後席位分工。其餘走對應的手抄前置與收尾 |
+| `POST /chat` | `evoloop_graph.ainvoke`。工業查詢在 `run_company` 裡由任務經理分析 |
 
 ### 分層
 
 | 層 | 路徑 | 職責 |
 |----|------|------|
 | 圖與 LLM | `backend/core/` | LangGraph、`resolve_execution_path`、LiteLLM、評估 |
-| 指揮鏈 | `backend/company/` | RAHO、85 席、工作項 DAG、預算；工業步驟在 `backend/core/industrial_chain.py` |
+| 公司運行時 | `backend/company/` | 任務經理、85 席、工作項 DAG、預算 |
 | 靈境 | `backend/linkin/` | 憲法、16 席、Minecraft 護欄與輕量 ops |
 | 整合 | `backend/integrations/` | 六個整合客戶端與 `/integrations` |
 | 計費 | `backend/billing/` | 積分池 v6、Docker 計量、共享池路由 |
 | 前端 | `frontend/` | React 19 控制台。視覺 Token 見 [DESIGN.md](DESIGN.md) |
-| OPC 微服務 | `opc_service/` | OPC UA。指揮鏈的工業步驟呼叫這裡，寫入經 `guard.py` |
+| OPC 微服務 | `opc_service/` | OPC UA。公司任務讀取感測摘要，寫入經 `guard.py` |
 
 詳圖：[docs/architecture/overview.md](docs/architecture/overview.md) · 六級細節：[docs/architecture/opc-six-stage.md](docs/architecture/opc-six-stage.md)
 

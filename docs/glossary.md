@@ -25,7 +25,7 @@
 | **LiteLLM／`call_llm`** | 唯一允許的 LLM 出口（`backend.core.llm.call_llm`） |
 | **模型池鎖定** | 僅依已存 API／端點開放可用模型並 clamp |
 | **AI Hub** | 探針／熔斷／目錄；契約見 `AI_HUB_DETAILED_DESIGN.md`（路徑勿搬） |
-| **OPC／指揮鏈工業步驟** | 與公司指揮鏈同一條。模板 `industrial_ops`：sense → preprocess → analyze → diagnose → decide → act。寫入經護欄 |
+| **OPC** | 工業查詢進入公司運行時，由任務經理分析。模板 `industrial_ops`。主圖注入感測摘要；寫入經護欄。微服務自身仍有 sense → act |
 | **護欄（guard）** | OPC 寫入白名單／邊界；Minecraft 寫入允許清單與體積上限 |
 | **MineMCP** | Minecraft JSON-RPC 橋；角色經 tool_registry，禁止直連 |
 | **憲法／worldview** | 靈境世界觀最高裁決依據（`backend/linkin/`） |

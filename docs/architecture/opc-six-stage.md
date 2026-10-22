@@ -3,7 +3,7 @@
 > 對齊日期：**2026-09-12** · 套件：`opc_service/`  
 > 程式入口：`opc_service/graph.py`、`guard.py`、`sense`…`act` 各級節點
 
-OPC 與公司指揮鏈是同一條。工業查詢走 `company` 與模板 `industrial_ops`，步驟就是下面的感知到執行（`backend/core/industrial_chain.py`）。`opc_service` 提供讀寫與護欄；主圖在前置鏈注入感知摘要。
+工業查詢走 `company` 與模板 `industrial_ops`，由任務經理分析，不在產品路徑上跑下面這條六級。`opc_service` 仍提供讀寫、護欄，以及這份微服務自己的六級圖；主圖在前置鏈注入感知摘要。寫入必經 `guard.py`。
 
 ---
 

@@ -49,7 +49,7 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
   const liveThink = (thinking || parsedDraft.thinking).trim();
   const items = useMemo(() => flattenItems(task), [task]);
   const recentEvents = [...(task.events ?? [])].slice(-12).reverse();
-  const pathLabel = industrial || isCompany ? '指揮鏈' : '反思閉環';
+  const pathLabel = industrial || isCompany ? '公司' : '反思閉環';
 
   return (
     <aside className="apple-canvas hidden min-h-0 w-[300px] shrink-0 flex-col overflow-y-auto border-l border-white/[0.08] p-4 lg:flex xl:w-[340px]">

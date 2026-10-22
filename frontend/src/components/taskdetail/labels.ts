@@ -27,8 +27,8 @@ export const STRATEGY_LABEL: Record<string, string> = {
 
 export const PATH_META: Record<string, { label: string; icon: string; tone: string }> = {
   simple: { label: '反思閉環', icon: '⚙', tone: 'var(--apple-blue-soft)' },
-  company: { label: '指揮鏈', icon: '🏢', tone: 'var(--apple-green)' },
-  opc: { label: '指揮鏈', icon: '🏭', tone: 'var(--apple-orange)' },
+  company: { label: '公司', icon: '🏢', tone: 'var(--apple-green)' },
+  opc: { label: '公司', icon: '🏭', tone: 'var(--apple-orange)' },
   minecraft_ops: { label: 'Minecraft 輕量操作', icon: '⛏', tone: 'var(--console-accent)' },
   '': { label: '尚未路由', icon: '·', tone: 'var(--apple-tertiary)' },
 };

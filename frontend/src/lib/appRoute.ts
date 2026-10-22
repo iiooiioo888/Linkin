@@ -15,7 +15,7 @@
  *   #/traces | #/traces/{taskId}
  *   #/task/{taskId}                 任務詳情整頁（需求分析與一切分析產物）
  *   #/raho | #/raho/{runId|taskId}  公司運行時席位 I/O 監察整頁
- *   #/company                      公司運行時整頁（指揮鏈、席位、交辦）
+ *   #/company                      公司運行時整頁（席位、交辦）
  */
 import type { MonitorTab, ViewKey } from '../components/AppShell';
 import { markGrillReveal, setPendingDeskTab } from './agentUi';

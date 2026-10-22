@@ -14,20 +14,16 @@
 監控中心可覆寫 Prompt／預算／工具；持久化於 `EVOL_ROLE_CATALOG_PATH`（預設 `backend/data/role_catalog.json`）。
 詳見 [公司運行時](../architecture/company-runtime.md) · [術語表](../glossary.md)。
 
-## 組織職級 vs RAHO 指揮鏈
+## 組織職級
 
-兩套編號**不要混用**：
+任務分析由 **任務經理**（Level 0）負責，再交給後續席位。產品路徑不再走 L5→L4→L3→L2 指揮鏈。
 
 | 維度 | 含義 |
 |------|------|
-| **組織職級 Level 0–4** | `RoleDefinition.level`：數字越小越高層（Manager=0） |
-| **RAHO L5–L0** | 指揮／審查協議層：用戶→審計→戰術→原子執行；獨立憲兵；環境核心注入 |
+| **組織職級 Level 0–4** | `RoleDefinition.level`：數字越小越高層（任務經理=0） |
 
 ```
-組織： L0 Manager → L1 Leads → L2 Domain Leads → L3 Executors → L4 Support
-RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
-       └─ 獨立 L1 憲兵（不隸屬 L3）
-       └─ L0 環境與記憶核心（滲透各層，不參與質詢）
+組織： L0 任務經理 → L1 Leads → L2 Domain Leads → L3 Executors → L4 Support
 ```
 
 ## 層級一覽（85 席）
@@ -40,25 +36,25 @@ RAHO： L5 用戶 → L4 需求審計 → L3 戰術指揮 → L2 原子執行
 | 3 | 執行層 | 55 |
 | 4 | 支援角色 | 14 |
 
-## RAHO 脊柱（必讀）
+## 仍在名冊裡的舊脊柱席
 
-這五席是遞歸對抗分層的固定脊柱，與一般「部門員工」不同：
+這五席還在 85 席裡，但**不再分析任務**。分析由任務經理做。
 
-| ID | 中文名 | RAHO | 一句話 |
-|----|--------|------|--------|
-| `requirement_auditor` | 需求審計官 | RAHO L4 | 戰役／需求審計，語意鎖定與高層 DAG |
-| `tactical_commander` | 戰術指揮官 | RAHO L3 | 原子拆解、孵化 L2、Grill SOP |
-| `atomic_executor` | 原子執行者 | RAHO L2 | 專注單一 KPI，任務結束回收 |
-| `constitutional_inspector` | 憲兵審查官 | RAHO L1 | 獨立四維驗收與簽核 |
-| `environment_kernel` | 環境與記憶核心 | RAHO L0 | 環境與記憶注入各層 |
+| ID | 中文名 | 一句話 |
+|----|--------|--------|
+| `requirement_auditor` | 需求審計官 | 舊需求審計席，對話不再先走這裡 |
+| `tactical_commander` | 戰術指揮官 | 舊戰術拆解席，任務拆解改由任務經理 |
+| `atomic_executor` | 原子執行者 | 可被指派的執行席 |
+| `constitutional_inspector` | 憲兵審查官 | 獨立驗收 |
+| `environment_kernel` | 環境與記憶核心 | 環境與記憶注入 |
 
-完整協議見 [company-runtime.md](../architecture/company-runtime.md#raho遞歸對抗分層)。
+見 [公司運行時](../architecture/company-runtime.md)。
 
 ## Level 0：最高決策層（1）
 
 | ID | 名稱 | 分類 | 預算層 | 主要職責 |
 |----|------|------|--------|----------|
-| `manager` | 專案經理 | 管理 | `reasoning` | 接收使用者目標，經 decomposer 分解為原子工作項 DAG（含依賴拓撲與並發分組）；根據角色能力與層級指派工作項給合適的執行者 |
+| `manager` | 任務經理 | 管理 | `reasoning` | 分析使用者任務，產出里程碑與成敗標準；再經 decomposer 分解為原子工作項 DAG，並指派執行者 |
 
 ## Level 1：技術領導層（10）
 

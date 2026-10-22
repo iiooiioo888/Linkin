@@ -24,10 +24,11 @@ from backend.services.commander import SYSTEM_PROMPT as COMMANDER_SYSTEM_PROMPT
 
 ROLE_MANAGER = RoleDefinition(
     role_type=RoleType.MANAGER,
-    name="專案經理",
+    name="任務經理",
     level=0,
     reporting_to=None,
     responsibilities=[
+        "分析使用者任務，產出里程碑、成敗標準與依賴，再交給後續席位執行",
         "接收使用者目標，經 decomposer 分解為原子工作項 DAG（含依賴拓撲與並發分組）",
         "根據角色能力與層級指派工作項給合適的執行者",
         "追蹤工作進度，處理阻塞與依賴；預算超限與迭代耗盡時降級或認賠",
@@ -61,7 +62,8 @@ ROLE_MANAGER = RoleDefinition(
     default_tier=BudgetTier.REASONING,
     max_parallel_work=5,
     system_prompt=(
-        "你是一位經驗豐富的專案經理，擅長將複雜目標分解為可執行的任務、"
+        "你是一位任務經理。你自己分析任務，產出里程碑與成敗標準，再把工作拆給團隊。"
+        "擅長將複雜目標分解為可執行的任務、"
         "分配給合適的團隊成員，並追蹤進度。你注重效率與品質的平衡，"
         "在預算範圍內做出最佳決策。你了解每個角色的專業領域，"
         "能根據任務類型自動指派最合適的執行者。"

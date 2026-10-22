@@ -1,7 +1,7 @@
 # RAHO / Grill-Me 細節
 
 > 對齊日期：**2026-09-12** · 套件：`backend/company/raho/`、`backend/services/auditor.py`  
-> 協議：`backend/company/raho/protocol.py`（三條線：指揮鏈／獨立審查／環境核心）
+> 產品路徑已改由任務經理分析。下面是舊協議資料，不再作為任務入口。
 
 RAHO（Recursive Adversarial Hierarchical Organization）在複雜任務中疊加於公司運行時：**L5 語意鎖定 → L4 戰役 → L3 原子拆解 → L2 執行 → L1 憲兵 → Reviewer → Synthesizer**。本專圖展開 Grill／Escalate 與預算邊界。
 

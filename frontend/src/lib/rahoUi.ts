@@ -1,6 +1,6 @@
 /**
  * RAHO 層級／角色統一顯示（與 backend/company/raho/protocol.py 對齊）。
- * 三條線：指揮鏈 L5→L4→L3→L2、獨立審查 L1、環境核心 L0。
+ * 任務由任務經理分析。名冊仍可標獨立審查與環境核心。
  * 質詢樹、角色名冊、工作台必須走這份資料，禁止各面板自寫 L0–L5 名稱。
  */
 import type { GrillTree, GrillTreeNode, RahoDirectoryEntry, RahoGrillEdge, RoleAgent } from '../types';
@@ -13,7 +13,7 @@ export const KERNEL_CHAIN = [0] as const;
 
 export const LANE_LABELS: Record<string, string> = {
   kernel: '環境核心',
-  command: '指揮鏈',
+  command: '席位',
   inspect: '獨立審查',
 };
 
@@ -71,7 +71,7 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
     short: 'L2 執行',
     full: 'L2 原子執行者',
     lane: 'command',
-    lane_label: '指揮鏈',
+    lane_label: '席位',
     grill_targets: ['tactical_commander'],
     grill_target_labels: ['L3 戰術指揮官'],
     escalate_targets: ['tactical_commander', 'requirement_auditor', 'user'],
@@ -88,7 +88,7 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
     short: 'L3 指揮',
     full: 'L3 戰術指揮官',
     lane: 'command',
-    lane_label: '指揮鏈',
+    lane_label: '席位',
     grill_targets: ['requirement_auditor'],
     grill_target_labels: ['L4 需求審計官'],
     escalate_targets: ['requirement_auditor', 'user'],
@@ -105,7 +105,7 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
     short: 'L4 審計',
     full: 'L4 需求審計官',
     lane: 'command',
-    lane_label: '指揮鏈',
+    lane_label: '席位',
     grill_targets: ['user'],
     grill_target_labels: ['L5 用戶'],
     escalate_targets: ['user'],
@@ -122,7 +122,7 @@ export const RAHO_LAYERS: Record<number, RahoDirectoryEntry> = {
     short: 'L5 用戶',
     full: 'L5 用戶',
     lane: 'command',
-    lane_label: '指揮鏈',
+    lane_label: '席位',
     grill_targets: [],
     escalate_targets: [],
     submit_targets: ['requirement_auditor'],
@@ -239,7 +239,7 @@ export function rahoLayerLabel(layer?: number | null, short = false): string {
 }
 
 export function rahoRoleLabel(roleId?: string | null, layer?: number | null): string {
-  if (roleId === 'manager') return 'L4 專案經理';
+  if (roleId === 'manager') return '任務經理';
   if (roleId === 'reviewer') return 'L1 審查者';
   const resolved = rahoLayerOf(roleId, layer);
   return rahoLayerLabel(resolved);
@@ -266,7 +266,7 @@ export function directionGlyph(direction?: string | null): string {
 
 export function laneLabel(lane?: string | null): string {
   const key = lane || '';
-  return LANE_LABELS[key] || key || '指揮鏈';
+  return LANE_LABELS[key] || key || '席位';
 }
 
 export function statusLabel(status?: string | null): string {

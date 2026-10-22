@@ -1,11 +1,10 @@
 /**
- * GrillTreePanel — 遞歸質詢樹：指揮鏈 / 獨立審查 / L0 三條線。
+ * GrillTreePanel — 質詢樹：獨立審查與環境核心。任務分析由任務經理負責。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchRahoTree } from '../api/client';
 import type { GrillTree, GrillTreeNode, L0Snapshot, RahoGrillEdge, RahoPendingDecision, RahoSnapshot } from '../types';
 import {
-  COMMAND_CHAIN,
   DIRECTION_LABELS,
   GRILL_EDGES,
   INSPECT_CHAIN,
@@ -94,22 +93,6 @@ function OrgMap({
         <span className="raho-org-hint">滲透 L1–L5，不參與質詢</span>
       </div>
       <div className="raho-org-cols">
-        <div className="raho-org-col">
-          <div className="raho-org-h">指揮鏈</div>
-          <ol className="raho-org-list">
-            {COMMAND_CHAIN.map((layer) => (
-              <li key={layer}>
-                <LayerChip
-                  layer={layer}
-                  directory={directory}
-                  trees={trees}
-                  onSelectRole={onSelectRole}
-                  activeRoleId={activeRoleId}
-                />
-              </li>
-            ))}
-          </ol>
-        </div>
         <div className="raho-org-col is-inspect">
           <div className="raho-org-h">獨立審查</div>
           <ol className="raho-org-list">
@@ -348,7 +331,7 @@ export default function GrillTreePanel({
           <div>
             <h2 className="text-[15px] font-semibold text-[var(--console-ink)]">遞歸質詢樹</h2>
             <p className="mt-1 text-[12px] text-[var(--console-sub)]">
-              指揮鏈 L5→L4→L3→L2；L1 獨立驗收；L0 滲透。點層級或邊即可跳到對應角色／核心。
+              任務由任務經理分析。這裡是獨立審查與環境核心。點層級或邊即可跳到對應角色。
             </p>
           </div>
           <button type="button" className="rd-btn text-[11px] text-[var(--console-accent)]" onClick={() => void reload()}>
@@ -457,7 +440,7 @@ export default function GrillTreePanel({
 
       {embedded ? null : (
         <p className="mt-6 text-center text-[11px] text-[var(--console-sub)]">
-          指揮鏈點層級開工作台；L1 開憲兵；L0 開環境與記憶核心。
+          點層級開工作台。L1 開憲兵；L0 開環境與記憶核心。
         </p>
       )}
     </div>
