@@ -150,3 +150,27 @@ def test_frontend_peel_unlocks_same_secret():
     assert g._digest(gate_id) == "".join(g._U)
     assert g._digest(gate_secret) == "".join(g._S)
     assert g._digest(compact) == "".join(g._S1)
+
+
+class _StubRequest:
+    def __init__(self, headers: dict[str, str], peer: str) -> None:
+        from types import SimpleNamespace
+
+        self.headers = headers
+        self.client = SimpleNamespace(host=peer)
+
+
+def test_client_identity_ignores_spoofed_headers_from_public_peer():
+    """直接連進來的公網對端：偽造 XFF／X-Real-IP 不得改變身分。"""
+    from backend.main import _client_identity
+
+    req = _StubRequest({"x-forwarded-for": "1.2.3.4", "x-real-ip": "5.6.7.8"}, "203.0.113.9")
+    assert _client_identity(req) == "203.0.113.9"
+
+
+def test_client_identity_takes_last_hop_behind_private_proxy():
+    """反向代理（內網對端）用附加模式：客戶端塞的假值在最前，最後一跳才是真實來源。"""
+    from backend.main import _client_identity
+
+    req = _StubRequest({"x-forwarded-for": "9.9.9.9, 203.0.113.9"}, "172.18.0.5")
+    assert _client_identity(req) == "203.0.113.9"

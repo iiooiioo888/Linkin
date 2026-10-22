@@ -6,6 +6,7 @@
 """
 
 import asyncio
+import ipaddress
 import json as json_mod
 import logging
 import os
@@ -442,9 +443,49 @@ class GateLoginBody(BaseModel):
     password: str = ""
 
 
+# 只認這些網段是「本機反向代理」；其餘一律視為外部直連。
+_TRUSTED_PROXY_NETS = tuple(
+    ipaddress.ip_network(cidr)
+    for cidr in (
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "127.0.0.0/8",
+        "::1/128",
+        "fc00::/7",
+        "fe80::/10",
+    )
+)
+
+
+def _is_local_peer(peer: str) -> bool:
+    try:
+        addr = ipaddress.ip_address(peer)
+    except ValueError:
+        return False
+    return any(addr in net for net in _TRUSTED_PROXY_NETS if net.version == addr.version)
+
+
 def _client_identity(request: Request) -> str:
-    forwarded = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
-    return forwarded or (request.client.host if request.client else "")
+    """真實來源 IP：只有對端是內網／本機（反向代理）時才信任轉發標頭。
+
+    nginx 以 $remote_addr 覆寫 X-Real-IP，X-Forwarded-For 則是附加模式
+    （$proxy_add_x_forwarded_for），客戶端塞的假值會留在前面，最後一跳才是真實來源。
+    直接連進來的公網對端一律忽略標頭，避免用假 XFF 繞過登入失敗次數限制。
+    """
+    peer = request.client.host if request.client else ""
+    if peer and _is_local_peer(peer):
+        real = (request.headers.get("x-real-ip") or "").strip()
+        if real:
+            return real
+        hops = [
+            hop.strip()
+            for hop in (request.headers.get("x-forwarded-for") or "").split(",")
+            if hop.strip()
+        ]
+        if hops:
+            return hops[-1]
+    return peer
 
 
 def _set_gate_cookie(response: JSONResponse, token: str) -> None:
@@ -1691,7 +1732,8 @@ async def create_task(req: TaskRequest):
     uid = current_billing_user()
     if billing_enabled() and uid:
         try:
-            billing_meta = begin_billed_task(
+            billing_meta = await asyncio.to_thread(
+                begin_billed_task,
                 uid,
                 task_id=record.task_id,
                 baseline_tokens=max(500, len(req.query) // 2),

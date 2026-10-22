@@ -439,13 +439,14 @@ class TaskManager:
         record.query = resolve_task_effective_query(query, record.options)
         self.tasks[task_id] = record
         self._persist(record)
-        # 簡單淘汰：超出上限時刪除最舊的已完成任務
+        # 簡單淘汰：超出上限時刪除最舊的已結束任務（取消／中斷也算，否則永遠清不掉）
         if len(self.tasks) > MAX_TASKS:
             finished = [
                 t for t in self.tasks.values()
-                if t.status in ("completed", "failed")
+                if t.status in ("completed", "failed", "cancelled", "interrupted")
             ]
-            for t in sorted(finished, key=lambda x: x.created_at)[:10]:
+            overflow = len(self.tasks) - MAX_TASKS
+            for t in sorted(finished, key=lambda x: x.created_at)[:overflow]:
                 self.tasks.pop(t.task_id, None)
         return record
 
@@ -695,14 +696,28 @@ class TaskManager:
 
     async def _run_unified_task(self, record: TaskRecord) -> None:
         """統一模式任務執行入口：解析路徑後分派到對應子流程。"""
-        from backend.billing.context import billing_user_id
+        from backend.billing.context import billing_enabled, billing_task_id, billing_user_id
         from backend.tenant.context import tenant_user_id
 
         tenant_token = tenant_user_id.set(record.user_id or "")
         billing_token = billing_user_id.set(record.user_id or billing_user_id.get())
+        # 任務建單時已預扣（record.options["billing"]）；執行期綁定 task_id，
+        # 讓 meter_llm 把用量記在這張單，而不是每呼叫一次再扣一次錢。
+        reserved = (record.options or {}).get("billing")
+        billed = bool(reserved) and billing_enabled()
+        task_token = billing_task_id.set(record.task_id) if billed else None
         try:
             await self._run_unified_task_inner(record)
         finally:
+            if billed:
+                try:
+                    from backend.billing.task_lifecycle import complete_billed_task
+
+                    await asyncio.to_thread(complete_billed_task, record.task_id)
+                except Exception:
+                    logger.warning("任務 %s 結算失敗，預扣未退還", record.task_id, exc_info=True)
+            if task_token is not None:
+                billing_task_id.reset(task_token)
             tenant_user_id.reset(tenant_token)
             billing_user_id.reset(billing_token)
 
@@ -1255,7 +1270,7 @@ class TaskManager:
             "company_template": record.template or "quick_task",
         }
         try:
-            linkin_state.update(enhance_with_linkin_context(linkin_state))
+            linkin_state.update(await asyncio.to_thread(enhance_with_linkin_context, linkin_state))
             linkin_template = resolve_linkin_company_template(linkin_state)
             if linkin_template:
                 config = BUILTIN_TEMPLATES.get(linkin_template) or config

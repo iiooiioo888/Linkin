@@ -157,7 +157,10 @@ def too_many_failures(identity: str) -> bool:
     now = time.time()
     key = _fail_key(identity)
     hits = [t for t in _failures.get(key, []) if now - t < _FAIL_WINDOW_SEC]
-    _failures[key] = hits
+    if hits:
+        _failures[key] = hits
+    else:
+        _failures.pop(key, None)
     return len(hits) >= _FAIL_LIMIT
 
 
