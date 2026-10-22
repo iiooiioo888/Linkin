@@ -174,7 +174,8 @@ def execute_named_tool(
         return result
     if name == mcp.EXECUTE_COMMAND:
         params = prepare_command(args)
-        result = mcp.execute_command(params["command"], role=role)
+        # 鐵律層已校驗（含二次確認）；confirmed 需貫通到橋接層兜底護欄，否則會被誤攔。
+        result = mcp.execute_command(params["command"], confirmed=bool(params.get("confirmed")), role=role)
         result["params"] = params
         result["sensitive"] = is_sensitive_admin(params["command"])
         return result

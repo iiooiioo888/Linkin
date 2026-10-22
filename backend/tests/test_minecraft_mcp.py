@@ -354,3 +354,95 @@ def test_route_minecraft_query_to_ops():
     from backend.core.company_nodes import route_by_complexity
 
     assert route_by_complexity({"query": "在坐标(100, 64, 200)处放置一个钻石块"}) == "run_minecraft_ops"
+
+# ── 橋接層兜底護欄（defense-in-depth）──
+# 第一道護欄在鐵律層（prepare_*）；以下驗證繞過鐵律層直連橋接層時，
+# fill 體積上限、命令鏈、敏感指令二次確認仍然生效（含乾跑與 live）。
+
+
+def test_raw_fill_backstop_rejects_oversize_in_dry_run(monkeypatch, tmp_path):
+    """繞過鐵律層直連橋接層：乾跑也應被 fill 體積上限攔截。"""
+    monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "false")
+    monkeypatch.setenv("EVOL_MC_MCP_TOKEN", "")
+    monkeypatch.setenv("EVOL_MC_MCP_AUDIT_PATH", str(tmp_path / "audit.jsonl"))
+    result = mcp.fill_block(0, 65, 0, 200, 65, 200, "STONE")
+    assert result["ok"] is False
+    assert result["code"] == "block_limit"
+    assert result["block_count"] == 201 * 201
+    assert result["max_blocks"] == 5000
+    rows = mcp.recent_audit(5)
+    assert rows and rows[-1]["ok"] is False
+
+
+def test_raw_fill_backstop_blocks_before_http(monkeypatch, tmp_path):
+    """live 模式：超限 fill 應在發出任何 HTTP 請求之前被攔截。"""
+    monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "true")
+    monkeypatch.setenv("EVOL_MC_MCP_TOKEN", "secret-token")
+    monkeypatch.setenv("EVOL_MC_MCP_AUDIT_PATH", str(tmp_path / "audit.jsonl"))
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("不應該發出 HTTP 請求")
+
+    monkeypatch.setattr(httpx, "Client", _boom)
+    result = mcp.fill_block(0, 0, 0, 100, 50, 100, "STONE")
+    assert result["ok"] is False
+    assert result["code"] == "block_limit"
+
+
+def test_raw_fill_within_limit_passes(monkeypatch, tmp_path):
+    """上限內的 fill 不受兜底護欄影響，乾跑照常通過。"""
+    monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "false")
+    monkeypatch.setenv("EVOL_MC_MCP_AUDIT_PATH", str(tmp_path / "audit.jsonl"))
+    result = mcp.fill_block(0, 65, 0, 10, 65, 10, "STONE")  # 121 方塊
+    assert result["ok"] is True
+    assert result["dry_run"] is True
+
+
+def test_raw_fill_backstop_respects_env_limit(monkeypatch, tmp_path):
+    """EVOL_MC_MCP_MAX_FILL 應被兜底護欄遵守。"""
+    monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "false")
+    monkeypatch.setenv("EVOL_MC_MCP_MAX_FILL", "50")
+    monkeypatch.setenv("EVOL_MC_MCP_AUDIT_PATH", str(tmp_path / "audit.jsonl"))
+    result = mcp.fill_block(0, 65, 0, 10, 65, 10, "STONE")  # 121 > 50
+    assert result["ok"] is False
+    assert result["code"] == "block_limit"
+    assert result["max_blocks"] == 50
+
+
+def test_raw_execute_command_backstop(monkeypatch, tmp_path):
+    """繞過鐵律層直連橋接層：敏感指令與命令鏈仍應被攔截。"""
+    monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "false")
+    monkeypatch.setenv("EVOL_MC_MCP_AUDIT_PATH", str(tmp_path / "audit.jsonl"))
+
+    denied = mcp.execute_command("stop")
+    assert denied["ok"] is False
+    assert denied["code"] == "needs_confirmation"
+
+    chained = mcp.execute_command("time set day && stop")
+    assert chained["ok"] is False
+    assert chained["code"] == "command_chain"
+
+    allowed = mcp.execute_command("stop", confirmed=True)
+    assert allowed["ok"] is True
+    assert allowed["dry_run"] is True
+    # confirmed 旗標僅供本地護欄判斷，不傳給遠端 MineMCP
+    assert "confirmed" not in allowed["arguments"]
+
+    normal = mcp.execute_command("time set day")
+    assert normal["ok"] is True
+
+
+def test_guarded_path_passes_confirmed_to_bridge(monkeypatch):
+    """鐵律層校驗通過後，confirmed 應傳入橋接層（否則會被兜底護欄誤攔）。"""
+    captured: dict[str, object] = {}
+
+    def _fake(command, *, confirmed=False, role=None, client=None):
+        captured["command"] = command
+        captured["confirmed"] = confirmed
+        return {"ok": True, "dry_run": True}
+
+    monkeypatch.setattr(mcp, "execute_command", _fake)
+    result = execute_named_tool("execute_command", {"command": "kick Steve", "confirmed": True})
+    assert captured["confirmed"] is True
+    assert result["ok"] is True
+
