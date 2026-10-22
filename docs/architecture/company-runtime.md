@@ -16,16 +16,16 @@
 
 ## 角色體系
 
-內建 `STANDARD_ROLES` 共 **82** 席（組織職級 0–4，另有憲兵審查官與環境與記憶核心）。監控中心可覆寫角色設定，或透過 `role_catalog` 新增自定義角色。
+內建 `STANDARD_ROLES` 共 **80** 席（組織職級 0–4）。監控中心可覆寫角色設定，或透過 `role_catalog` 新增自定義角色。
 
 **完整席位表（職責／分類／模板／靈境 16 席）→ [角色介紹](../company/roles.md)。** 改內建角色後請執行 `python -m backend.scripts.export_roles_doc` 同步該文件。
 
 ```
-Level 0: Manager（1）           — 目標分解、最終審查
+Level 0: Manager（1）           — 任務分析、最終審查
 Level 1: Lead（10）             — 技術／架構／資安／產品／財務／工業／創意／平台／AI／成長
-Level 2: Domain Lead（5）       — 前端／後端／測試／資料主管、戰術指揮官
-Level 3: Executor（55）         — 具體任務執行（含 OPC／RAG／GitHub Ops／Hub、原子執行者等）
-Level 4: Support（14）          — 審查、整合、Prompt、法務、記憶策展、知識庫、需求審計官、憲兵、L0 核心
+Level 2: Domain Lead（4）       — 前端／後端／測試／資料主管
+Level 3: Executor（54）         — 具體任務執行（含 OPC／RAG／GitHub Ops／Hub）
+Level 4: Support（11）          — 審查、整合、Prompt、法務、記憶策展、知識庫
 ```
 
 角色設定（Prompt、偏好模型、預算、工具）持久化於 `EVOL_ROLE_CATALOG_PATH`（預設 `backend/data/role_catalog.json`）。偏好模型一律經 `clamp_model` 鎖在當前 API 可用池內。
@@ -58,10 +58,6 @@ Level 4: Support（14）          — 審查、整合、Prompt、法務、記憶
   ▼
 席位執行（並行池，Semaphore 限流）
   ▼
-憲兵審查官獨立驗收
-  ├─ 通過 → 寫入共享記憶，下游才可引用
-  └─ 退回 → 重做（計入迭代）
-  ▼
 Reviewer 審查
   ├─ 通過 → Done
   └─ 不通過 → Rework（最多 N 輪）
@@ -72,11 +68,6 @@ Synthesizer 整合
   ▼
 外部反思迴圈（評估 → 反思 → 改進）
 ```
-
-## 審查與環境
-
-- **憲兵審查官**（`backend/company/raho/inspector.py`）：四維度依序測試（結構合規 → 語義完整 → 事實一致 → 極限邊界）。簽核條目寫入黑板（`backend/company/raho/blackboard.py`）。未經簽核的數據不得被下游引用。
-- **環境與記憶核心**（`backend/company/raho/l0.py`）：把記憶、知識與態勢注入任務上下文，不執行交付。
 
 ## 工作項狀態機
 

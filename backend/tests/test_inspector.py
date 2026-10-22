@@ -379,9 +379,7 @@ class TestOrchestratorGate:
     def test_reviewer_maps_to_l1(self):
         assert role_to_raho_layer(RoleType.REVIEWER) == RahoLayer.L1_GRILL
         assert role_to_raho_layer(RoleType.CONSTITUTIONAL_INSPECTOR) == RahoLayer.L1_GRILL
-        role = STANDARD_ROLES[RoleType.CONSTITUTIONAL_INSPECTOR]
-        assert role.reporting_to is None
-        assert "雙向" in "".join(role.responsibilities)
+        assert RoleType.CONSTITUTIONAL_INSPECTOR not in STANDARD_ROLES
 
     @pytest.mark.asyncio
     async def test_run_l1_inspect_escalates_missing_source(self):

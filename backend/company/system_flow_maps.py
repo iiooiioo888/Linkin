@@ -150,7 +150,7 @@ def langgraph_pipeline_ir() -> dict[str, Any]:
         _node("linkin_ctx", "enhance_linkin", "service", lane="ingress"),
         _node("recall_ctx", "enhance_recall", "service", lane="ingress"),
         _node("route", "route_by_complexity", "api", lane="route"),
-        _node("company", "run_company", "service", lane="exec", detail="82 席·任務經理"),
+        _node("company", "run_company", "service", lane="exec", detail="80 席·任務經理"),
         _node("simple", "generate_initial", "service", lane="exec", detail="單次 LLM"),
         _node("enforce", "enforce_length", "api", lane="loop"),
         _node("evaluate", "evaluate_answer", "service", lane="loop"),
@@ -187,20 +187,17 @@ def raho_spine_ir() -> dict[str, Any]:
     """任務經理分析，席位執行，再審查與整合。"""
     lanes = [
         {"id": "command", "label": "任務經理"},
-        {"id": "inspect", "label": "獨立審查"},
         {"id": "out", "label": "交付"},
     ]
     nodes = [
         _node("manager", "任務經理", "api", lane="command", detail="里程碑與成敗標準"),
         _node("seats", "席位執行", "service", lane="command", detail="工作項"),
-        _node("l1", "L1 憲兵", "security", lane="inspect", detail="InspectorGate"),
         _node("review", "Reviewer", "service", lane="out", detail="品質驗收"),
         _node("synth", "Synthesizer", "api", lane="out", detail="最終合成"),
     ]
     edges = [
         _edge("manager", "seats"),
-        _edge("seats", "l1"),
-        _edge("l1", "review"),
+        _edge("seats", "review"),
         _edge("review", "synth"),
     ]
     return _ir("任務經理", "workflow", nodes, edges, lanes=lanes, extra_meta={"view": "raho"})
