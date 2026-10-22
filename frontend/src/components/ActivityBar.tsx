@@ -197,7 +197,7 @@ function MobileBottomBar({
   const onMonitor = activeView === 'monitor' || activeView === 'traces' || activeView === 'task' || activeView === 'raho';
   const companyActive = activity === 'company';
   const tasksActive =
-    onMonitor && (monitorTab === 'tasks' || monitorTab === 'pipeline' || activeView === 'traces');
+    onMonitor && (monitorTab === 'tasks' || activeView === 'traces');
   const usageActive = onMonitor && monitorTab === 'models';
 
   return (

@@ -98,7 +98,7 @@ export function mapPhaseToPipelineIndex(phase?: string | null): number | null {
   return null;
 }
 
-/** DAG 節點 id（與 PipelineDag STAGES 對齊；公司執行與改進迴圈有獨立節點）。 */
+/** 階段對到節點 id。公司執行與改進迴圈有獨立節點。 */
 export function mapPhaseToDagNodeId(phase?: string | null): string | null {
   if (!phase) return null;
   const p = phase.toLowerCase();

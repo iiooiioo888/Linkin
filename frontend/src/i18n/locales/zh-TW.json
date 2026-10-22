@@ -18,7 +18,6 @@
   "monitor": {
     "live": "即時",
     "agents": "角色",
-    "pipeline": "管線",
     "metrics": "運行指標",
     "opc": "運行指標",
     "lab": "實驗室",

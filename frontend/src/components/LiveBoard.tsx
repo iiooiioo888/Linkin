@@ -9,12 +9,11 @@ import {
   type AnimLiveFeed,
   budgetPct,
   buildReportLines,
-  mapPhaseToPipelineIndex,
   pickActiveAgents,
   pickBusyAgents,
 } from '../lib/animLive';
 import { isLabLink, labSections, LAB_NAV_GROUPS, type LabNavEntry, type LabSubTab } from '../lib/labTabs';
-import { filterAgentsByDesk, PIPELINE_STAGES, requestRoleSettingsDesk } from '../lib/agentUi';
+import { filterAgentsByDesk, requestRoleSettingsDesk } from '../lib/agentUi';
 import {
   buildActivityHeatmap,
   buildSparkSeries24,
@@ -47,7 +46,6 @@ import {
   MonitorL0StatusChip,
   MonitorStatusStrip,
   MonitorWarnBar,
-  PipelineTimeline,
   ResourceGauges,
   StackBar,
   TaskDistributionMatrix,
@@ -336,49 +334,6 @@ function LiveBoardDetailsToggle({
       </button>
       {open ? <div className="mon-live-details__body">{children}</div> : null}
     </div>
-  );
-}
-
-function PipelineCard({
-  feed,
-  backgroundPhase,
-  dock,
-  onOpen,
-}: {
-  feed: AnimLiveFeed;
-  backgroundPhase?: string | null;
-  dock?: boolean;
-  onOpen?: () => void;
-}) {
-  const phase = feed.streamPhase || feed.taskPhase || backgroundPhase || null;
-  const liveIdx = mapPhaseToPipelineIndex(phase);
-  const nodes = PIPELINE_STAGES.map((n, i) => ({
-    id: n.id,
-    label: n.label,
-    state: liveIdx == null
-      ? ('pending' as const)
-      : i < liveIdx
-        ? ('done' as const)
-        : i === liveIdx
-          ? ('active' as const)
-          : ('pending' as const),
-    timingMs: liveIdx != null && i === liveIdx && feed.live ? 120 : liveIdx != null && i < liveIdx ? 80 + i * 40 : null,
-  }));
-
-  return (
-    <MonitorPanel
-      title="管線"
-      accessory={
-        <>
-          <MonitorStatusDot tone={liveIdx != null ? 'info' : 'idle'} label={phase ? String(phase) : '待命'} />
-          {onOpen ? <MonitorLinkButton onClick={onOpen} /> : null}
-        </>
-      }
-    >
-      <div className={dock ? 'py-1' : 'py-2'}>
-        <PipelineTimeline nodes={nodes} />
-      </div>
-    </MonitorPanel>
   );
 }
 
@@ -851,7 +806,6 @@ function TaskStackPanel({
 function CenterMain({
   feed,
   consoleFeed,
-  backgroundPhase,
   taskMatrix,
   statusStack,
   capacityFull,
@@ -866,7 +820,6 @@ function CenterMain({
 }: {
   feed: AnimLiveFeed;
   consoleFeed: AnimLiveFeed;
-  backgroundPhase?: string | null;
   taskMatrix: ReturnType<typeof buildTaskDistributionMatrix>;
   statusStack: ReturnType<typeof buildStatusStack>;
   capacityFull: boolean;
@@ -912,9 +865,6 @@ function CenterMain({
             onOpenAgent={onOpenAgent}
             onOpenTab={onOpenTab}
           />
-          <div className="mon-span-2">
-            <PipelineCard feed={feed} backgroundPhase={backgroundPhase} dock onOpen={() => onOpenTab?.('pipeline')} />
-          </div>
           <BudgetCard feed={feed} dock onOpen={() => onOpenTab?.('models')} />
           <SystemMetricsCard feed={feed} onOpen={() => onOpenTab?.('metrics')} />
           <div className="mon-span-2">
@@ -929,7 +879,6 @@ function CenterMain({
         </div>
       ) : (
         <>
-          <PipelineCard feed={feed} backgroundPhase={backgroundPhase} onOpen={() => onOpenTab?.('pipeline')} />
           {!liteShell ? (
             <MonitorPanel title="任務分佈矩陣">
               <TaskDistributionMatrix matrix={taskMatrix} demo={taskMatrix.every((r) => r.every((c) => c.count === 0))} />
@@ -994,7 +943,6 @@ function RightRailContent({
 
 export default function LiveBoard({
   feed,
-  backgroundPhase,
   l0Snapshot = null,
   density = 'page',
   liteShell = false,
@@ -1004,7 +952,6 @@ export default function LiveBoard({
   onOpenAgent,
 }: {
   feed: AnimLiveFeed;
-  backgroundPhase?: string | null;
   l0Snapshot?: L0Snapshot | null;
   density?: LiveBoardDensity;
   liteShell?: boolean;
@@ -1119,7 +1066,6 @@ export default function LiveBoard({
     <CenterMain
       feed={feed}
       consoleFeed={consoleFeed}
-      backgroundPhase={backgroundPhase}
       taskMatrix={taskMatrix}
       statusStack={statusStack}
       capacityFull={capacityFull}
