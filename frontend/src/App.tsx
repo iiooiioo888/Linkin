@@ -4,7 +4,7 @@
  * 使用 AppShell 作为根布局，整合会话管理、聊天视图、
  * 控制面版视图、OPC 右侧诊断面板。
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ChatMessage, ChatSession, RoutingPreview, TaskOptions, TaskProgress } from './types';
 import { cancelTask, createTask, fetchConfig, fetchMemories, fetchTask, planBattle, resumeTask, sendChatStream, streamAuditor, TaskWebSocket } from './api/client';
@@ -18,6 +18,7 @@ import {
   parseAppRoute,
   routesEqual,
   syncAppRouteHash,
+  type AppRoute,
 } from './lib/appRoute';
 import { isLinkinStudioAgent, requestRoleGrillDesk } from './lib/agentUi';
 import { battleBlocked, battleFromPlanner, hasReusablePlanner } from './lib/plannerReuse';
@@ -103,6 +104,19 @@ export default function App() {
   });
   const [memoryCount, setMemoryCount] = useState(0);
   const [decisionPending, setDecisionPending] = useState(false);
+  /** 點進任務／席位頁之前的表面；返回時回到這裡，而不是固定列表。 */
+  const taskReturnRef = useRef<AppRoute | null>(null);
+  const rahoReturnRef = useRef<AppRoute | null>(null);
+  const surfaceRef = useRef<AppRoute | null>(null);
+  surfaceRef.current = {
+    view: activeView,
+    monitorTab,
+    focusAgentId,
+    focusTaskId,
+    traceTaskId,
+    rahoFocus,
+    labSubTab,
+  };
 
   // ── LLM 配置 ──
   const [llmConfigured, setLlmConfigured] = useState<boolean | null>(null);
@@ -1002,14 +1016,41 @@ export default function App() {
     }
   }, []);
 
+  const rememberSurface = useCallback((target: 'task' | 'raho') => {
+    const here = surfaceRef.current;
+    if (!here || here.view === target) return;
+    if (target === 'task') taskReturnRef.current = here;
+    else rahoReturnRef.current = here;
+  }, []);
+
+  const restoreSurface = useCallback(
+    (origin: AppRoute | null, leaving: AppRoute['view'], fallback: Partial<AppRoute>) => {
+      if (origin && origin.view !== leaving) {
+        navigateRoute(origin);
+        return;
+      }
+      navigateRoute(fallback);
+    },
+    [navigateRoute],
+  );
+
+  const openTaskById = useCallback(
+    (taskId: string) => {
+      if (!taskId) return;
+      rememberSurface('task');
+      navigateRoute({ view: 'task', focusTaskId: taskId });
+    },
+    [navigateRoute, rememberSurface],
+  );
+
   const openTaskDetail = useCallback(
     (task: TaskProgress) => {
       if (!task?.task_id) return;
       setTaskDetail(task);
       setTaskDetailError(null);
-      navigateRoute({ view: 'task', focusTaskId: task.task_id });
+      openTaskById(task.task_id);
     },
-    [navigateRoute],
+    [openTaskById],
   );
 
   // OPC 任務保留右側六級診斷面板；公司／簡單任務進詳情整頁
@@ -1026,9 +1067,10 @@ export default function App() {
 
   const handleOpenRaho = useCallback(
     (focus: string) => {
+      rememberSurface('raho');
       navigateRoute({ view: 'raho', rahoFocus: focus || null });
     },
-    [navigateRoute],
+    [navigateRoute, rememberSurface],
   );
 
   useEffect(() => {
@@ -1334,7 +1376,11 @@ export default function App() {
             onRefresh={() => {
               if (focusTaskId) void loadTaskDetail(focusTaskId);
             }}
-            onBack={() => navigateRoute({ view: 'monitor', monitorTab: 'tasks' })}
+            onBack={() => {
+              const origin = taskReturnRef.current;
+              taskReturnRef.current = null;
+              restoreSurface(origin, 'task', { view: 'monitor', monitorTab: 'tasks', focusTaskId: null });
+            }}
             onOpenTrace={handleOpenTrace}
             onOpenRaho={handleOpenRaho}
             onCancel={handleTaskCancel}
@@ -1346,16 +1392,30 @@ export default function App() {
           <RahoOpsView
             focus={rahoFocus}
             onFocusChange={(focus) => navigateRoute({ view: 'raho', rahoFocus: focus })}
-            onOpenTask={(taskId) => navigateRoute({ view: 'task', focusTaskId: taskId })}
-            onBack={() => navigateRoute({ view: 'monitor', monitorTab: 'agents' })}
+            onOpenTask={openTaskById}
+            onBack={() => {
+              const origin = rahoReturnRef.current;
+              rahoReturnRef.current = null;
+              restoreSurface(origin, 'raho', { view: 'monitor', monitorTab: 'agents', focusAgentId: null });
+            }}
           />
         )}
 
         {activeView === 'company' && (
           <CompanyView
             onOpenRole={(roleId) => handleFocusAgent(roleId)}
-            onOpenTask={(taskId) => navigateRoute({ view: 'task', focusTaskId: taskId })}
-            onOpenRaho={() => navigateRoute({ view: 'raho', rahoFocus: null })}
+            onLaunch={(brief, template) => {
+              void sendQuery(brief, { executionStrategy: 'company', companyTemplate: template });
+              navigateRoute({
+                view: 'chat',
+                focusAgentId: null,
+                focusTaskId: null,
+                traceTaskId: null,
+                rahoFocus: null,
+              });
+            }}
+            onOpenTask={openTaskById}
+            onOpenRaho={() => handleOpenRaho('')}
           />
         )}
       </AppShell>

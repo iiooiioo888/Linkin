@@ -3,10 +3,11 @@
  *
  * 主內容區整頁鋪開：交辦、指揮鏈 L5→L2、獨立審查 L1、環境核心 L0、
  * 其餘席位按分類鋪成樓層，以及進行中的公司任務。
- * 資料只讀既有 GET /monitor/agents；啟動走 POST /tasks（execution_strategy=company）。
+ * 資料只讀既有 GET /monitor/agents。交辦不在此頁建任務，
+ * 而是交給對話的同一條發送路徑（審計與執行都留在對話裡）。
  */
 import { useEffect, useMemo, useState } from 'react';
-import { createTask, fetchAgentMonitor } from '../../api/client';
+import { fetchAgentMonitor } from '../../api/client';
 import { AGENT_STATUS_META, CATEGORY_LABEL } from '../../lib/agentUi';
 import { COMMAND_CHAIN, KERNEL_CHAIN, LANE_LABELS, RAHO_LAYERS } from '../../lib/rahoUi';
 import { COMPANY_TEMPLATES, type AgentCompanyTask, type AgentMonitorData, type CompanyTemplate, type RoleAgent } from '../../types';
@@ -49,6 +50,8 @@ interface LiveTask extends AgentCompanyTask {
 
 interface CompanyViewProps {
   onOpenRole: (roleId: string) => void;
+  /** 交辦走對話同一條發送路徑（審計、執行都留在對話裡）。 */
+  onLaunch: (brief: string, template: CompanyTemplate) => void;
   onOpenTask: (taskId: string) => void;
   onOpenRaho: () => void;
 }
@@ -112,15 +115,13 @@ function collectTasks(agents: RoleAgent[]): LiveTask[] {
   return [...map.values()].sort((a, b) => rank(a.status) - rank(b.status) || a.query.localeCompare(b.query, 'zh-Hant'));
 }
 
-export default function CompanyView({ onOpenRole, onOpenTask, onOpenRaho }: CompanyViewProps) {
+export default function CompanyView({ onOpenRole, onLaunch, onOpenTask, onOpenRaho }: CompanyViewProps) {
   const [data, setData] = useState<AgentMonitorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   const [brief, setBrief] = useState('');
   const [template, setTemplate] = useState<CompanyTemplate>('quick_task');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [floorQuery, setFloorQuery] = useState('');
   const [floorFilter, setFloorFilter] = useState<FloorFilter>('all');
 
@@ -180,20 +181,11 @@ export default function CompanyView({ onOpenRole, onOpenTask, onOpenRaho }: Comp
 
   const summary = data?.summary;
 
-  const launch = async () => {
+  const launch = () => {
     const text = brief.trim();
-    if (!text || submitting) return;
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      const created = await createTask(text, 'company', template);
-      setBrief('');
-      onOpenTask(created.task_id);
-    } catch (err) {
-      setSubmitError((err as Error).message || '啟動公司失敗');
-    } finally {
-      setSubmitting(false);
-    }
+    if (!text) return;
+    setBrief('');
+    onLaunch(text, template);
   };
 
   return (
@@ -204,7 +196,7 @@ export default function CompanyView({ onOpenRole, onOpenTask, onOpenRaho }: Comp
             <p className="company-kicker">公司運行時</p>
             <h1 className="company-title">公司</h1>
             <p className="company-lead">
-              一件事從這裡交給指揮鏈：你提出目標，需求審計拆清範圍，戰術指揮排工作項，原子執行者動手。憲兵獨立審查，環境核心把記憶注入每一層。
+              在這裡看指揮鏈與席位。要交辦時寫下目標，會回到對話：需要時先問清範圍，再在同一則訊息裡執行。
             </p>
             <div className="company-actions">
               <button type="button" className="rd-btn" onClick={() => setNonce((n) => n + 1)}>
@@ -229,7 +221,7 @@ export default function CompanyView({ onOpenRole, onOpenTask, onOpenRaho }: Comp
           <section className="company-panel" aria-label="交辦">
             <div className="company-panel__head">
               <h2 className="company-panel__title">交辦</h2>
-              <span className="company-panel__hint">交給公司運行時，完成後進入任務整頁</span>
+              <span className="company-panel__hint">寫下目標後回到對話，在同一則訊息裡問清並執行</span>
             </div>
             <div className="company-dispatch">
               <label className="block">
@@ -271,12 +263,11 @@ export default function CompanyView({ onOpenRole, onOpenTask, onOpenRaho }: Comp
               </div>
             </div>
             <div className="company-dispatch__foot">
-              <button type="button" className="company-submit" disabled={!brief.trim() || submitting} onClick={() => void launch()}>
-                {submitting ? '啟動中…' : '啟動公司'}
+              <button type="button" className="company-submit" disabled={!brief.trim()} onClick={launch}>
+                交辦到對話
               </button>
               <span className="company-panel__hint">Ctrl + Enter 送出</span>
             </div>
-            {submitError ? <p className="company-error">{submitError}</p> : null}
           </section>
 
           {error && !data ? (
@@ -384,7 +375,7 @@ export default function CompanyView({ onOpenRole, onOpenTask, onOpenRaho }: Comp
             {!data ? (
               <p className="company-empty">名冊載入後，進行中的公司任務會列在這裡。</p>
             ) : tasks.length === 0 ? (
-              <p className="company-empty">目前沒有掛在席位上的公司任務。上方交辦後，任務會出現在這裡。</p>
+              <p className="company-empty">目前沒有掛在席位上的公司任務。交辦到對話之後，進行中的任務會出現在這裡。</p>
             ) : (
               <div className="company-tasks">
                 {tasks.map((task) => (
