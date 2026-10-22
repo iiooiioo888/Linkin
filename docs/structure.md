@@ -1,17 +1,32 @@
 # 專案目錄地圖
 
 > **詳文單一來源**：改目錄或新增套件時，先更新本文，再同步根 `README.md`／`docs/architecture/overview.md` 的精簡樹。  
-> 對齊日期：2026-09-09 · 測試收錄約 **639**（`pytest --collect-only -q`）
+> 對齊日期：2026-10-22
 
-## 一眼看懂
+## 組件分類
+
+系統分成七類。新套件先歸進其中一類，再寫進下面的目錄表。選路只有三條：`simple`、`company`、`minecraft_ops`。工業查詢走 `company`。
+
+| 類 | 做什麼 | 落在哪 |
+|----|--------|--------|
+| **管線** | 前置注入、選路、簡單路徑的生成／評估／反思 | `backend/core/`（`execution_path.py`、`graph.py`、`nodes.py`、`llm.py`） |
+| **公司** | 任務經理分析，82 席執行，工作項 DAG、預算；憲兵審查與環境核心在這一類裡 | `backend/company/` |
+| **靈境** | 憲法、16 席子角色、世界模組、Minecraft 寫入護欄 | `backend/linkin/`、`backend/modules/`、`backend/tools/` |
+| **工業** | 感測讀數注入公司任務；寫入經護欄。微服務自身仍有 sense → act | `opc_service/`，讀數由 `backend/core/` 注入 |
+| **模型與計費** | 唯一 LLM 出口、模型池、Hub、積分池 | `backend/core/llm.py`、`backend/hub/`、`backend/billing/` |
+| **記憶與整合** | 向量記憶、六個整合客戶端、技能 | `backend/memory/`、`backend/integrations/`、`.agents/skills/` |
+| **控制台** | 對話、控制台、世界模組畫面、實驗室 | `frontend/` |
+
+控制台左側再分成：總覽、執行、角色、審計、計費、系統。定義在 `frontend/src/lib/monitorTabs.ts` 的 `CONSOLE_NAV_GROUPS`。世界模組（目前 Minecraft）用自己的導覽，不進控制台分組。
 
 ```
-請求 → backend/main.py (FastAPI)
-     → backend/core/graph.py (LangGraph)
-         ├─ 簡單 → nodes（生成／評估／反思）
-         ├─ 複雜 → company/ + raho/
-         └─ 工業 → opc_service 上下文 + 6 級閉環
-前端 frontend/ 只觀測與配置；寫世界／OPC 仍走護欄。
+請求 → backend/main.py
+     → 前置：記憶、OPC 讀數、靈境、整合召回
+     → resolve_execution_path
+         ├─ simple          → 生成／評估／反思
+         ├─ company         → 任務經理分析 → 席位（含工業模板）
+         └─ minecraft_ops   → 輕量 ReAct + MineMCP
+寫世界／OPC 仍走護欄。
 ```
 
 ## 根目錄
@@ -48,13 +63,15 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 |------|------|
 | `main.py` | REST／SSE／WebSocket 入口 |
 | `auth/` | 登入閘門 |
-| `core/` | 圖、節點、`call_llm`、評估、模型池、路由 |
-| `company/` | 多代理人協調、`raho/`、角色目錄、量化工具 |
-| `linkin/` | 靈境憲法、實體、Minecraft **業務**護欄、16 席子角色種子 |
-| `modules/` | 可插拔世界／整合模組目錄（`GET /modules`）；Minecraft 為內建模組 |
-| `tools/` | MineMCP／運維等**底層**橋接（角色勿直連） |
-| `hub/` | AI Hub（探針／熔斷／目錄）；契約：`AI_HUB_DETAILED_DESIGN.md` |
-| `memory/` | 向量記憶（Chroma 等） |
+| `core/` | 管線類：圖、節點、`call_llm`、評估、模型池、路由 |
+| `company/` | 公司類：任務經理、82 席、工作項、預算、量化工具 |
+| `linkin/` | 靈境類：憲法、實體、Minecraft **業務**護欄、16 席子角色種子 |
+| `modules/` | 靈境類：可插拔世界模組目錄（`GET /modules`）；Minecraft 為內建模組 |
+| `tools/` | 靈境類：MineMCP／運維等**底層**橋接（角色勿直連） |
+| `hub/` | 模型與計費類：AI Hub（探針／熔斷／目錄）；契約：`AI_HUB_DETAILED_DESIGN.md` |
+| `billing/` | 模型與計費類：積分池 v6、Docker 計量 |
+| `memory/` | 記憶與整合類：向量記憶（Chroma 等） |
+| `integrations/` | 記憶與整合類：MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil |
 | `services/` | 任務、軌跡、監控、llm_ops、雲控制台、實驗室… |
 | `environment/` | 環境探測／執行環境輔助 |
 | `middleware/` | FastAPI 中介層 |
@@ -89,7 +106,7 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `llm_ops.py` | 模型目錄爬取／運維 |
 | `cloud_console.py` · `docker_manager.py` · `aliyun_bss.py` | 雲／Docker／帳單 |
 | `opc_monitor.py` · `optimization_monitor.py` | OPC 與優化指標 |
-| `lab_tools.py` · `commander.py` · `auditor.py` | 實驗室、指揮、審計 |
+| `lab_tools.py` | 實驗室工具 |
 
 ### backend/company/（關鍵）
 
@@ -97,7 +114,7 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 |------|------|
 | `orchestrator.py` · `work_item.py` · `state.py` | 協調、工作項 DAG、狀態機 |
 | `roles.py` · `role_catalog.py` · `role_memory.py` | 82 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
-| `raho/` | RAHO L5–L1 |
+| `raho/` | 憲兵審查、環境注入，以及仍供執行期使用的內部協議 |
 | `budget.py` · `rate_card.py` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
 | `seat_io.py` | 席位投遞 I/O 軌跡（prompt／system／response 全文＋來源分解）；前端席位監察頁資料源，契約見 [api/reference.md](api/reference.md) |
 | `decomposer.py` · `react_loop.py` · `tools.py` | 拆解、ReAct、工具 |

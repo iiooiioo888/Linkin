@@ -21,7 +21,7 @@
 
 - [新人導覽](onboarding.md) — 閱讀順序、第一個 PR
 - [目錄地圖](structure.md) — **套件／路徑單一來源**（改目錄先改此文）
-- [術語表](glossary.md) — RAHO、L0–L5、角色數字、埠號速查
+- [術語表](glossary.md) — 組件分類、角色數字、埠號速查
 
 ### 架構
 
@@ -33,7 +33,7 @@
 - [OPC 六級工業閉環](architecture/opc-six-stage.md) — S1→A2、WriteGuard、超時降級
 - [任務分析](architecture/raho-grill-detail.md) — 任務經理由公司運行時分析
 - [反思閉環](architecture/reflection-loop.md) — 評分 → 反思 → 改進
-- [公司運行時](architecture/company-runtime.md) — RAHO、角色、預算
+- [公司運行時](architecture/company-runtime.md) — 任務經理、席位、預算
 - [OPC 工業整合](architecture/opc-integration.md) — 6 級閉環、護欄
 - [優化路線圖](architecture/optimization-roadmap.md) — 已落地優化項
 - [AI Hub 詳細設計](AI_HUB_DETAILED_DESIGN.md) — 探針／熔斷／目錄契約（路徑固定，測試會讀取）

@@ -137,19 +137,21 @@ flowchart TD
 | `POST /tasks` | 公司路徑由任務經理分析後席位分工。其餘走對應的手抄前置與收尾 |
 | `POST /chat` | `evoloop_graph.ainvoke`。工業查詢在 `run_company` 裡由任務經理分析 |
 
-### 分層
+### 組件分類
 
-| 層 | 路徑 | 職責 |
-|----|------|------|
-| 圖與 LLM | `backend/core/` | LangGraph、`resolve_execution_path`、LiteLLM、評估 |
-| 公司運行時 | `backend/company/` | 任務經理、82 席、工作項 DAG、預算 |
-| 靈境 | `backend/linkin/` | 憲法、16 席、Minecraft 護欄與輕量 ops |
-| 整合 | `backend/integrations/` | 六個整合客戶端與 `/integrations` |
-| 計費 | `backend/billing/` | 積分池 v6、Docker 計量、共享池路由 |
-| 前端 | `frontend/` | React 19 控制台。視覺 Token 見 [DESIGN.md](DESIGN.md) |
-| OPC 微服務 | `opc_service/` | OPC UA。公司任務讀取感測摘要，寫入經 `guard.py` |
+七類的路徑與控制台分組以 [目錄地圖](docs/structure.md#組件分類) 為準。
 
-詳圖：[docs/architecture/overview.md](docs/architecture/overview.md) · 六級細節：[docs/architecture/opc-six-stage.md](docs/architecture/opc-six-stage.md)
+| 類 | 落在哪 |
+|----|--------|
+| 管線 | `backend/core/` |
+| 公司 | `backend/company/` |
+| 靈境 | `backend/linkin/`、`backend/modules/`、`backend/tools/` |
+| 工業 | `opc_service/`（讀數注入公司任務，寫入經 `guard.py`） |
+| 模型與計費 | `backend/core/llm.py`、`backend/hub/`、`backend/billing/` |
+| 記憶與整合 | `backend/memory/`、`backend/integrations/` |
+| 控制台 | `frontend/`。視覺 Token 見 [DESIGN.md](DESIGN.md) |
+
+詳圖：[docs/architecture/overview.md](docs/architecture/overview.md) · 微服務 sense → act：[docs/architecture/opc-six-stage.md](docs/architecture/opc-six-stage.md)
 
 ---
 

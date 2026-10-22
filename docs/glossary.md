@@ -7,6 +7,7 @@
 | **Linkin／靈境** | 本倉庫產品名；世界觀＋監控中心掛在 EvoLoop 運行時上 |
 | **EvoLoop** | 上游／運行時核心：LangGraph 統一管線（反思／公司／OPC） |
 | **統一模式** | 不再分「標準／公司／OPC」三套產品；由複雜度路由選路 |
+| **組件分類** | 管線、公司、靈境、工業、模型與計費、記憶與整合、控制台。見 [目錄地圖](structure.md#組件分類) |
 | **`resolve_execution_path`** | 選路唯一實作：`simple`／`company`／`opc`／`minecraft_ops`。Task、SSE、圖共用 |
 | **`route_by_complexity`** | 圖的條件邊：`company`（含工業）→ `run_company`，`minecraft_ops` → `run_minecraft_ops`，`simple` → 單次生成 |
 | **反思閉環** | 生成 → 多維評估 →（低分）反思 → 改進 → 再評估 |
