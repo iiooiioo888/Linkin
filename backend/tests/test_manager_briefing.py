@@ -1,18 +1,16 @@
-"""任務經理拆解前提示詞要帶上資源、角色上下文、技能與 MCP。"""
+"""任務經理上下文包：目錄可查，送給模型的只有相關候選。"""
 
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
 
 import pytest
 
 from backend.company.manager_briefing import (
-    collect_manager_briefing,
-    format_mcp_brief,
-    format_resource_brief,
-    format_role_brief,
-    format_skill_brief,
+    TOP_ROLES,
+    assemble_manager_context,
+    query_role_cards,
+    select_relevant,
 )
 from backend.company.prompts import MANAGER_DECOMPOSE
 from backend.company.roles import BUILTIN_TEMPLATES
@@ -24,162 +22,136 @@ def _budget():
     return BudgetManager(BUILTIN_TEMPLATES["quick_task"].budget)
 
 
-def test_resource_brief_includes_limits_and_host():
-    text = format_resource_brief(
-        _budget(),
-        {
-            "available": True,
-            "cpu_percent": 12.5,
-            "cpu_count": 4,
-            "mem_percent": 40.0,
-            "mem_available": 3 * 1024 ** 3,
-            "mem_total": 8 * 1024 ** 3,
-            "disk_percent": 55.0,
-            "disk_free": 20 * 1024 ** 3,
-        },
-    )
-    assert "任務上限" in text
-    assert "CPU 12.5%" in text
-    assert "記憶體 40.0%" in text
-    assert "磁碟 55.0%" in text
+def test_select_relevant_keeps_overlap_and_counts_omitted():
+    cards = [
+        {"id": "ui_designer", "search": "登入頁面 視覺", "line": "ui"},
+        {"id": "plc_engineer", "search": "plc 連鎖", "line": "plc"},
+    ]
+    chosen, omitted = select_relevant("請做登入頁面", cards, limit=1)
+    assert [card["id"] for card in chosen] == ["ui_designer"]
+    assert omitted == 1
+    assert chosen[0]["low_relevance"] is False
 
 
-def test_resource_brief_when_host_unavailable():
-    text = format_resource_brief(_budget(), {"available": False, "error": "psutil 未安裝"})
-    assert "主機讀數不可用" in text
-    assert "psutil 未安裝" in text
+def test_select_relevant_fallback_is_capped():
+    cards = [{"id": f"role-{index}", "search": "無關", "line": str(index)} for index in range(20)]
+    chosen, omitted = select_relevant("zzzz", cards, limit=3)
+    assert len(chosen) == 3
+    assert omitted == 17
+    assert all(card["low_relevance"] for card in chosen)
 
 
-def test_role_brief_uses_runtime_context_and_skips_disabled(monkeypatch):
+def test_role_cards_drop_disabled_and_system_prompt(monkeypatch):
     config = BUILTIN_TEMPLATES["quick_task"]
-    role_ids = [role.value for role in config.roles]
+    first = next(iter(config.roles)).value
 
     def fake_runtime(role_id: str):
-        if role_id == role_ids[0]:
-            return {"enabled": False, "name": "停用席"}
+        if role_id == first:
+            return {"enabled": False, "name": "停用", "system_prompt": "SECRET-PROMPT"}
         return {
             "enabled": True,
-            "name": f"名稱-{role_id}",
-            "system_prompt": "你負責把交付物寫成可驗收的規格。",
-            "preferred_model": "gpt-test",
+            "name": role_id,
+            "system_prompt": "SECRET-PROMPT-DO-NOT-LEAK",
         }
 
     monkeypatch.setattr("backend.company.role_catalog.resolve_runtime", fake_runtime)
-    text = format_role_brief(config)
-    assert role_ids[0] in text
-    assert "已停用、不可指派" in text
-    assert "你負責把交付物寫成可驗收的規格" in text
-    assert "偏好模型：gpt-test" in text
-    assert f"- {role_ids[1]}｜名稱-{role_ids[1]}" in text
+    cards = query_role_cards(config)
+    blob = "\n".join(card["line"] + card["search"] for card in cards)
+    assert first not in {card["id"] for card in cards}
+    assert "SECRET-PROMPT" not in blob
+    assert "人天單價未登記" in cards[0]["line"]
 
 
-def test_skill_and_mcp_briefs_list_enabled_only_and_hide_secrets():
-    skills = [
-        SimpleNamespace(
-            id="agent-reach",
-            name="Agent Reach",
-            enabled=True,
-            roles=["crawler"],
-            skill_type="cli-stub",
-            trigger="需要讀公開網頁時",
-            description="",
-            content="FULL-SECRET-BODY",
-        ),
-        SimpleNamespace(
-            id="off",
-            name="關閉技能",
-            enabled=False,
-            roles=[],
-            skill_type="custom",
-            trigger="",
-            description="",
-            content="",
-        ),
-    ]
-    skill_text = format_skill_brief(skills)
-    assert "agent-reach" in skill_text
-    assert "需要讀公開網頁時" in skill_text
-    assert "關閉技能" not in skill_text
-    assert "FULL-SECRET-BODY" not in skill_text
-
-    servers = [
-        SimpleNamespace(
-            id="local",
-            name="本地 MCP",
-            enabled=True,
-            transport="stdio",
-            readonly=True,
-            allowed_tools=["search"],
-            command="curl https://secret.example/token",
-            url="https://secret.example",
-            env={"API_KEY": "hidden"},
-            headers={"Authorization": "Bearer hidden"},
-        ),
-        SimpleNamespace(
-            id="paused",
-            name="停用 MCP",
-            enabled=False,
-            transport="http",
-            readonly=True,
-            allowed_tools=[],
-        ),
-    ]
-    tools = [SimpleNamespace(name="web_search", description="搜尋公開網頁")]
-    mcp_text = format_mcp_brief(servers, tools)
-    assert "本地 MCP" in mcp_text
-    assert "search" in mcp_text
-    assert "web_search" in mcp_text
-    assert "停用 MCP" not in mcp_text
-    assert "secret.example" not in mcp_text
-    assert "hidden" not in mcp_text
-    assert "Bearer" not in mcp_text
-
-
-def test_collect_manager_briefing_assembles_sections(monkeypatch):
+def test_context_pack_filters_by_task_and_hides_secrets(monkeypatch):
     monkeypatch.setattr(
         "backend.company.manager_briefing.read_host_resources",
         lambda: {"available": False, "error": "測試"},
     )
     monkeypatch.setattr(
-        "backend.company.manager_briefing.format_role_brief",
-        lambda config: "角色：developer",
+        "backend.company.manager_briefing.query_role_cards",
+        lambda config: [
+            {"id": "ui_designer", "search": "登入頁面 視覺", "line": "ui_designer｜視覺"},
+            {"id": "plc_engineer", "search": "plc 連鎖", "line": "plc_engineer｜產線"},
+        ],
     )
     monkeypatch.setattr(
-        "backend.company.skills.skills_store.enabled_for",
-        lambda role: [],
+        "backend.company.manager_briefing.query_skill_cards",
+        lambda skills: [
+            {
+                "id": "page-skill",
+                "roles": (),
+                "search": "登入頁面",
+                "line": "page-skill｜做頁面",
+            },
+            {
+                "id": "plc-skill",
+                "roles": ("plc_engineer",),
+                "search": "plc",
+                "line": "plc-skill｜產線技能",
+            },
+        ],
     )
     monkeypatch.setattr(
-        "backend.company.mcp_clients.mcp_registry.list",
-        lambda: [],
+        "backend.company.manager_briefing.query_mcp_cards",
+        lambda servers: [
+            {"id": "pages", "search": "登入頁面", "line": "pages｜頁面 MCP"},
+            {"id": "plant", "search": "plc", "line": "plant｜產線 MCP"},
+        ],
     )
     monkeypatch.setattr(
-        "backend.company.tools.tool_registry.list_tools",
-        lambda: [SimpleNamespace(name="web_search", description="搜尋")],
+        "backend.company.manager_briefing.query_tool_cards",
+        lambda tools: [
+            {
+                "id": "layout_tool",
+                "allowed_roles": ["ui_designer"],
+                "search": "登入頁面",
+                "line": "layout_tool｜佈局",
+            },
+            {
+                "id": "valve_tool",
+                "allowed_roles": ["plc_engineer"],
+                "search": "登入頁面",
+                "line": "valve_tool｜閥門",
+            },
+        ],
     )
-    brief = collect_manager_briefing(BUILTIN_TEMPLATES["quick_task"], _budget())
-    assert "主機讀數不可用" in brief["resources"]
-    assert brief["roles"] == "角色：developer"
-    assert "沒有啟用的技能" in brief["skills"]
-    assert "web_search" in brief["mcp_tools"]
+    pack = assemble_manager_context("做一個登入頁面", BUILTIN_TEMPLATES["quick_task"], _budget())
+    text = pack["text"]
+    assert "ui_designer｜視覺" in text
+    assert "page-skill｜做頁面" in text
+    assert "pages｜頁面 MCP" in text
+    assert "layout_tool｜佈局" in text
+    assert "plc_engineer｜產線" not in text
+    assert "plc-skill" not in text
+    assert "valve_tool" not in text
+    assert "SECRET" not in text
+    assert pack["omitted"]["roles"] == 1
+    assert pack["valid_roles"] == "ui_designer"
     rendered = MANAGER_DECOMPOSE.format(
-        goal="做一頁",
-        resources=brief["resources"],
-        org_chart="org",
-        role_descriptions=brief["roles"],
-        skills=brief["skills"],
-        mcp_tools=brief["mcp_tools"],
+        context_pack=text,
+        valid_roles=pack["valid_roles"],
         task_budget=2,
         active_tier=0,
-        valid_roles="developer",
     )
-    assert "【系統可用資源】" in rendered
-    assert "【可用技能】" in rendered
-    assert "【可用 MCP 與工具】" in rendered
-    assert "角色：developer" in rendered
+    assert "【候選角色】" in rendered
+    assert "feasibility" in rendered
+    assert "不能當成已經下達" in rendered or "草案" in MANAGER_DECOMPOSE or "labor_note" in rendered
+
+
+def test_full_template_pack_stays_within_top_n(monkeypatch):
+    monkeypatch.setattr(
+        "backend.company.manager_briefing.read_host_resources",
+        lambda: {"available": False, "error": "測試"},
+    )
+    pack = assemble_manager_context("zzzz-no-overlap", BUILTIN_TEMPLATES["full_company"], _budget())
+    assert len(pack["role_ids"]) <= TOP_ROLES
+    assert pack["omitted"]["roles"] > 0
+    assert pack["low_relevance"] is True
+    assert "未送出" in pack["text"]
 
 
 @pytest.mark.asyncio
-async def test_llm_decompose_submits_briefing(monkeypatch):
+async def test_llm_decompose_submits_context_pack_only(monkeypatch):
     from backend.company.decomposer import TaskDecomposer
 
     captured: dict[str, str] = {}
@@ -188,11 +160,14 @@ async def test_llm_decompose_submits_briefing(monkeypatch):
         captured["prompt"] = prompt
         captured["system"] = system or ""
         return json.dumps({
-            "execution_plan": "先分析",
+            "feasibility": "go",
+            "execution_plan": "先做頁面",
+            "budget_draft": {"model_usd": 0.1, "cloud_usd": None, "labor_note": "ui", "assumptions": ["無人天單價"]},
+            "risks": ["範圍可能擴大"],
             "subtasks": [{
-                "title": "分析",
-                "description": "規格",
-                "assignee": "developer",
+                "title": "頁面",
+                "description": "用 page-skill",
+                "assignee": "ui_designer",
                 "depends_on": [],
                 "complexity": "low",
                 "phase": 1,
@@ -201,20 +176,23 @@ async def test_llm_decompose_submits_briefing(monkeypatch):
 
     monkeypatch.setattr("backend.company.decomposer.call_llm", fake_call)
     monkeypatch.setattr(
-        "backend.company.manager_briefing.collect_manager_briefing",
-        lambda config, budget: {
-            "resources": "CPU 3%",
-            "roles": "developer 上下文：寫規格",
-            "skills": "技能：agent-reach",
-            "mcp_tools": "MCP：mine",
+        "backend.company.manager_briefing.assemble_manager_context",
+        lambda goal, config, budget: {
+            "text": "【候選角色】\nui_designer｜視覺\nSECRET-SHOULD-NOT-BE-ADDED-BY-DECOMPOSER",
+            "valid_roles": "ui_designer",
+            "omitted": {"roles": 70, "skills": 3, "mcp": 1, "tools": 4},
+            "role_ids": ["ui_designer"],
+            "low_relevance": False,
         },
     )
-    config = BUILTIN_TEMPLATES["quick_task"]
-    decomposer = TaskDecomposer(config, _budget())
-    result = await decomposer._llm_decompose("建立登入頁")
-    assert result.subtasks[0]["assignee"] == "developer"
-    assert "CPU 3%" in captured["prompt"]
-    assert "developer 上下文：寫規格" in captured["prompt"]
-    assert "技能：agent-reach" in captured["prompt"]
-    assert "MCP：mine" in captured["prompt"]
-    assert "可用資源" in captured["system"]
+    decomposer = TaskDecomposer(BUILTIN_TEMPLATES["quick_task"], _budget())
+    result = await decomposer._llm_decompose("做登入頁面")
+    assert result.subtasks[0]["assignee"] == "ui_designer"
+    assert result.meta["draft"] is True
+    assert result.meta["feasibility"] == "go"
+    assert result.meta["budget_draft"]["labor_note"] == "ui"
+    assert result.meta["context_omitted"]["roles"] == 70
+    assert "【候選角色】" in captured["prompt"]
+    assert "ui_designer" in captured["prompt"]
+    assert "全量目錄" in captured["system"]
+    assert "組織架構與可用角色" not in captured["prompt"]
