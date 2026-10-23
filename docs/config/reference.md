@@ -10,12 +10,14 @@
 
 ### 登入閘門
 
-倉庫只存 HMAC 摘要，不放來源明文。
+來源值只放環境變數。未設定帳號與密語時，登入一律拒絕。
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
-| `LINKIN_GATE_ID` | — | 覆寫閘門帳號 |
-| `LINKIN_GATE_SECRET` | — | 覆寫閘門密語 |
+| `LINKIN_GATE_ID` | 必填 | 閘門帳號 |
+| `LINKIN_GATE_SECRET` | 必填 | 閘門密語 |
+| `LINKIN_COOKIE_SECURE` | 依請求是否為 HTTPS | `1` 強制 Secure Cookie；本機 HTTP 不要設 |
+| `LINKIN_ENABLE_DOCS` | 關閉 | `1` 才掛 `/docs`，且仍要先登入 |
 | `LINKIN_AUTH_DISABLED` | `0` | `1` 關閉閘門 |
 | `LINKIN_AUTH_FORCE` | `0` | `1` 即使 pytest 也強制開啟 |
 
@@ -112,7 +114,8 @@
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis 連線 |
+| `REDIS_URL` | — | Redis 連線。Compose 會要求 `REDIS_PASSWORD`，URL 需帶同一組密碼 |
+| `REDIS_PASSWORD` | 必填（Compose） | Redis `requirepass`。使用 URL 安全字元 |
 
 ### 狀態存儲
 
@@ -125,7 +128,8 @@
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
-| `OPC_SIM_ENABLED` | `false` | 啟用模擬 OPC 伺服器 |
+| `OPC_INTERNAL_TOKEN` | 必填（Compose） | 後端呼叫 OPC 讀寫時帶的內部權杖。未設定時 OPC 拒絕健康檢查以外的路由 |
+| `OPC_SIM_ENABLED` | `false` | 啟用模擬 OPC 伺服器。正式 Compose 維持關閉 |
 | `OPC_WRITE_WHITELIST` | — | 寫入白名單（逗號分隔） |
 | `OPC_STAGE_TIMEOUT` | `30` | 每級超時（秒） |
 | `OPC_ACT_HUMAN_CONFIRM` | `false` | 執行級人工確認 |
@@ -184,7 +188,11 @@ EVOL_PASS_THRESHOLD=8
 EVOL_MAX_ITERATIONS=3
 
 # Redis
-REDIS_URL=redis://localhost:6379/0
+REDIS_PASSWORD=replace-with-a-long-random-string
+REDIS_URL=redis://:replace-with-a-long-random-string@localhost:6379/0
+OPC_INTERNAL_TOKEN=replace-with-another-random-string
+LINKIN_GATE_ID=your-gate-id
+LINKIN_GATE_SECRET=your-gate-secret
 
 # ChromaDB
 CHROMA_HOST=localhost
