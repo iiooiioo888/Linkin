@@ -17,14 +17,14 @@
 2. **手動**：`python -m backend.scripts.sync_agent_skills`
 3. **API / UI**：`POST /skills/sync-agent-packs` 或控制台「同步 Agent 包」
 
-驗證路徑：前端 `/#/monitor/skills` → 技能分頁應顯示 ~105 條 managed 技能（來源欄位、類型標籤）。`agent-reach`、`just-scrape`、`agent-browser` 類型為需 CLI，預設停用。頁面頂部「CLI 運行時」與下列命令只檢查本機 PATH，不安裝：
+驗證路徑：前端 `/#/monitor/skills` → 技能分頁應顯示 managed 技能（來源欄位、類型標籤）。`agent-reach`、`just-scrape`、`agent-browser` 類型為需 CLI，預設停用。`cli-anything` 同樣是需 CLI，新匯入時預設啟用。頁面頂部「CLI 運行時」與下列命令只檢查本機 PATH，不安裝：
 
 ```bash
 python -m backend.scripts.cli_runtimes
 python -m backend.scripts.cli_runtimes --json
 ```
 
-API：`GET /skills/cli-runtimes`。
+API：`GET /skills/cli-runtimes`。CLI-Anything 目錄：`GET /skills/cli-hub`（`action=list|search|info|installed`）。`install`、`update`、`uninstall`、`launch` 會回 `reason=privilege`，不執行。
 
 ## MediaCrawler 多平台採集（mediacrawler）
 
@@ -62,6 +62,28 @@ agent-reach doctor
 
 零配置渠道：網頁（Jina Reader）、YouTube、GitHub、RSS、Exa 搜尋、V2EX、B站基礎搜尋。Twitter、Reddit、小紅書、Facebook、Instagram、LinkedIn、Boss直聘、雪球、小宇宙需使用者另行授權，見上游 `docs/install.md`。
 
+## CLI-Anything（cli-anything）
+
+上游：[HKUDS/CLI-Anything](https://github.com/HKUDS/CLI-Anything)（技能在 `.agents/skills/cli-anything/`，套件 `cli-anything-hub`，授權 MIT）。它是軟體命令列的目錄與安裝器。Linkin 只查目錄。
+
+| 入口 | 說明 |
+|------|------|
+| 技能目錄 | `.agents/skills/cli-anything/SKILL.md` |
+| 控制台 | 實驗室「Agent 工作流 → CLI-Anything」或 `/#/monitor/skills/cli-anything`。新匯入預設啟用 |
+| 目錄 | 技能頁「CLI 運行時」下方的 CLI-Anything 目錄，可搜尋並點名稱看說明 |
+| 對話 | 啟用後席位用工具 `cli_hub`，`action` 為 `list`、`search`、`info`、`installed` |
+| API | `GET /skills/cli-hub` |
+| CLI | `cli-hub list` · `cli-hub search <字>` · `cli-hub info <name>` |
+
+安裝 hub（已列入 `requirements.txt`）：
+
+```bash
+pip install cli-anything-hub==0.4.1
+cli-hub --help
+```
+
+個別軟體的 harness 要使用者確認後，才在本機執行 `cli-hub install <name>`。Linkin 不代為安裝、不啟動。
+
 ## Token 用量看板（token-dashboard）
 
 上游：[fuyi-git/token-dashboard](https://github.com/fuyi-git/token-dashboard)（vendored 於 `.agents/skills/token-dashboard/`）。
@@ -86,6 +108,7 @@ agent-reach doctor
 | [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) | 1 | 無（CLI） | 使用 `just-scrape` CLI + `SGAI_API_KEY` |
 | [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | 1 | 無（CLI） | 使用 `agent-browser` CLI（`npm i -g agent-browser`） |
 | [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) | 1 | 無（CLI） | `agent-reach` 路由；讀取走 yt-dlp、gh、Jina、mcporter 等上游工具 |
+| [HKUDS/CLI-Anything](https://github.com/HKUDS/CLI-Anything) | 1 | 無（CLI） | `cli-hub` 目錄；Linkin 只查 list／search／info |
 
 ### 命名衝突
 

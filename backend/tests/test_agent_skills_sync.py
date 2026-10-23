@@ -72,6 +72,7 @@ class TestClassifySkillType:
         assert classify_skill_type("agent-browser", {}) == "cli-stub"
         assert classify_skill_type("agent-reach", {}) == "cli-stub"
         assert classify_skill_type("just-scrape", {}) == "cli-stub"
+        assert classify_skill_type("cli-anything", {}) == "cli-stub"
 
     def test_agent_pack_default(self):
         assert classify_skill_type("code-review", {"description": "review"}) == "agent-pack"
@@ -197,3 +198,42 @@ class TestAgentSkillsSync:
         assert report.skills_skipped >= 1
         assert store.get("demo-skill").content == "user content"
         assert store.get("demo-skill").managed is False
+
+    def test_cli_anything_starts_enabled_and_keeps_later_choice(self, tmp_path):
+        root = tmp_path / ".agents" / "skills" / "cli-anything"
+        root.mkdir(parents=True)
+        (root / "SKILL.md").write_text(
+            "---\nname: cli-anything\ndescription: hub\n---\n\nUse cli-hub list.\n",
+            encoding="utf-8",
+        )
+        lock = tmp_path / "skills-lock.json"
+        lock.write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "skills": {
+                        "cli-anything": {
+                            "source": "HKUDS/CLI-Anything",
+                            "computedHash": "abc",
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        manifest = tmp_path / "agent_mcp_manifest.json"
+        manifest.write_text(json.dumps({"servers": []}), encoding="utf-8")
+        store = SkillsStore(path=tmp_path / "skills.json")
+        registry = McpRegistry(path=tmp_path / "mcp_servers.json")
+        kwargs = {
+            "skills_root": root.parent,
+            "lock_path": lock,
+            "mcp_manifest_path": manifest,
+            "sync_mcp": False,
+        }
+        sync_agent_skills(store, registry, **kwargs)
+        assert store.get("cli-anything").enabled is True
+        assert store.get("cli-anything").skill_type == "cli-stub"
+        store.set_enabled("cli-anything", False)
+        sync_agent_skills(store, registry, **kwargs)
+        assert store.get("cli-anything").enabled is False

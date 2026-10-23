@@ -2495,6 +2495,54 @@ export async function fetchCliRuntimes(): Promise<CliRuntimeStatus[]> {
   return data.runtimes ?? [];
 }
 
+export interface CliHubNameGroup {
+  category: string;
+  count: number;
+  names: string[];
+}
+
+export interface CliHubItem {
+  name: string;
+  display_name?: string;
+  category?: string;
+  description?: string;
+  source?: string;
+  version?: string;
+  homepage?: string;
+  installed?: boolean;
+}
+
+export interface CliHubView {
+  ok: boolean;
+  hub_installed: boolean;
+  hub_path?: string;
+  version?: string;
+  action: string;
+  items: CliHubItem[];
+  categories: CliHubNameGroup[];
+  total: number;
+  shown: number;
+  note: string;
+  detail?: string;
+  reason?: string;
+}
+
+export async function fetchCliHub(params: {
+  action?: string;
+  query?: string;
+  name?: string;
+  full?: boolean;
+}): Promise<CliHubView> {
+  const search = new URLSearchParams();
+  if (params.action) search.set('action', params.action);
+  if (params.query) search.set('q', params.query);
+  if (params.name) search.set('name', params.name);
+  if (params.full) search.set('full', '1');
+  const resp = await fetch(apiUrl(`/skills/cli-hub?${search.toString()}`));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json() as Promise<CliHubView>;
+}
+
 export async function syncAgentSkillPacks(): Promise<AgentSkillsSyncReport> {
   const resp = await fetch(apiUrl('/skills/sync-agent-packs'), { method: 'POST' });
   if (!resp.ok) throw new Error(await readApiError(resp));

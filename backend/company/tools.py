@@ -465,6 +465,23 @@ def _register_builtin_tools() -> None:
         readonly=True,
     )
 
+    def _cli_hub_tool(action: str = "list", query: str = "", name: str = "") -> dict[str, Any]:
+        from backend.company.cli_anything import query_cli_hub
+
+        return query_cli_hub(action, query=query, name=name)
+
+    tool_registry.register(
+        name="cli_hub",
+        description="查詢 CLI-Anything 公開目錄（list、search、info、installed）。安裝或啟動個別軟體需要另行確認。",
+        parameters={
+            "action": {"type": "string", "description": "list、search、info 或 installed"},
+            "query": {"type": "string", "description": "search 的關鍵字"},
+            "name": {"type": "string", "description": "info 的 CLI 名稱"},
+        },
+        execute=_cli_hub_tool,
+        readonly=True,
+    )
+
     from backend.company.quant_tools import register_company_tools as _register_quant
     from backend.linkin.minecraft import register_company_tools as _register_mc
 

@@ -3027,6 +3027,23 @@ async def list_skill_cli_runtimes():
     return {"runtimes": await asyncio.to_thread(probe_all)}
 
 
+@app.get("/skills/cli-hub")
+async def list_cli_hub_catalog(action: str = "list", q: str = "", name: str = "", full: int = 0):
+    """查 CLI-Anything 目錄。full=1 時列出每個分類的全部名稱。不安裝、不啟動。"""
+    from backend.company.cli_anything import query_cli_hub
+
+    per_category = 0 if full else 8
+    limit = 40 if action.strip().lower() == "search" else 24
+    return await asyncio.to_thread(
+        query_cli_hub,
+        action,
+        q,
+        name,
+        limit=limit,
+        per_category=per_category,
+    )
+
+
 @app.get("/skills/preview")
 async def preview_skill_prompt(role: str | None = None):
     """預覽某角色實際會被注入的技能區塊（除錯用）。"""
