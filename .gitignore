@@ -172,6 +172,9 @@ backend/data/company_runs/run_*.jsonl
 # Runtime routing telemetry (not seed assets)
 backend/data/routing_feedback.json
 
+# 公開資料摘要（掃描後產生，不進倉庫）
+backend/data/horizon/
+
 # Skills / MCP runtime catalogs (seeded from .agents/skills/ on boot)
 backend/data/skills.json
 backend/data/mcp_servers.json
