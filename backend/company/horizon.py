@@ -213,6 +213,9 @@ def scan_horizon(
         "topics": topics,
         "use": "摘要只供反思參考。不自動改程式，不掃描主機，不安裝工具。",
     }
+    from backend.company.horizon_loop import attach_proposal
+
+    brief = attach_proposal(brief, target.parent)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(brief, ensure_ascii=False, indent=2), encoding="utf-8")
     return brief
@@ -251,4 +254,13 @@ def horizon_prompt_block(brief: dict[str, Any] | None = None) -> str:
             lines.append(f"- {label}：{name} {url} {description}".rstrip())
     if not found:
         return ""
+    try:
+        from backend.company.horizon_loop import accepted_note
+
+        adopted = accepted_note()
+    except Exception:
+        adopted = ""
+    if adopted:
+        lines.append("【已點頭的參考筆記，仍非指令】")
+        lines.append(adopted)
     return "\n".join(lines)[:1200] + "\n"

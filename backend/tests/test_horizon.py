@@ -148,3 +148,84 @@ def test_horizon_routes_do_not_scan_on_read(tmp_path, monkeypatch):
         assert resp.status_code == 200
         assert resp.json()["ok"] is False
         assert not Path(tmp_path / "missing.json").exists()
+
+
+def _sample_brief() -> dict:
+    return {
+        "ok": True,
+        "topics": [
+            {
+                "id": "tools",
+                "label": "工具",
+                "status": "ok",
+                "source": "gh",
+                "hits": [
+                    {
+                        "name": "langchain-ai/langgraph",
+                        "url": "https://github.com/langchain-ai/langgraph",
+                        "description": "agent runtime",
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_scan_stops_for_confirmation_before_write(tmp_path, monkeypatch):
+    monkeypatch.setenv("EVOL_HORIZON_PATH", str(tmp_path / "latest.json"))
+    from backend.company.horizon import horizon_prompt_block
+    from backend.company.horizon_loop import attach_proposal, decide_proposal, rollback_proposal
+
+    attached = attach_proposal(_sample_brief(), tmp_path)
+    proposal = attached["proposal"]
+    assert proposal["status"] == "awaiting_confirmation"
+    assert proposal["stop"]["reason"] == "completed"
+    assert proposal["frozen"] == [
+        "permissions",
+        "security_policy",
+        "core_goals",
+        "constitution",
+        "tool_grants",
+    ]
+    assert not (tmp_path / "accepted.json").exists()
+    assert "已點頭" not in horizon_prompt_block(_sample_brief())
+
+    ok, message = decide_proposal(tmp_path, proposal["id"], "approve")
+    assert ok is True
+    assert "維持不動" in message
+    assert "已點頭" in horizon_prompt_block(_sample_brief())
+
+    ok, message = rollback_proposal(tmp_path, proposal["id"])
+    assert ok is True
+    assert "已點頭" not in horizon_prompt_block(_sample_brief())
+
+
+def test_reject_and_frozen_surface_do_not_write(tmp_path):
+    from backend.company.horizon_loop import attach_proposal, decide_proposal
+
+    waiting = attach_proposal(_sample_brief(), tmp_path)
+    ok, message = decide_proposal(tmp_path, waiting["proposal_id"], "reject")
+    assert ok is True
+    assert "不會寫入" in message
+    assert not (tmp_path / "accepted.json").exists()
+
+    frozen = attach_proposal(_sample_brief(), tmp_path, kind="permissions")
+    assert frozen["proposal"]["status"] == "stopped"
+    assert frozen["proposal"]["stop"]["reason"] == "privilege"
+    assert frozen["proposal"]["metrics"]["safety_violations"] == 1
+    ok, message = decide_proposal(tmp_path, frozen["proposal_id"], "approve")
+    assert ok is False
+    assert not (tmp_path / "accepted.json").exists()
+
+
+def test_empty_scan_stops_at_retry_limit(tmp_path):
+    from backend.company.horizon_loop import attach_proposal
+
+    brief = {
+        "ok": False,
+        "topics": [{"id": "security", "label": "網絡安全", "status": "unavailable", "source": "none", "hits": []}],
+    }
+    attached = attach_proposal(brief, tmp_path)
+    assert attached["proposal"]["status"] == "stopped"
+    assert attached["proposal"]["stop"]["reason"] == "retry_limit"
+    assert attached["proposal"]["metrics"]["automation_rate"] == 0.0

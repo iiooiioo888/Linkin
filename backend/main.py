@@ -3046,6 +3046,41 @@ async def horizon_scan():
     return await asyncio.to_thread(scan_horizon)
 
 
+class HorizonDecision(BaseModel):
+    action: str = ""
+    note: str = ""
+
+
+def _horizon_root():
+    from backend.company.horizon import horizon_path
+
+    return horizon_path().parent
+
+
+@app.post("/horizon/proposals/{proposal_id}/decide")
+async def horizon_decide(proposal_id: str, body: HorizonDecision):
+    """點頭才寫入參考筆記。凍結面不能通過。"""
+    from backend.company.horizon_loop import decide_proposal
+
+    ok, message = await asyncio.to_thread(
+        decide_proposal, _horizon_root(), proposal_id, body.action.strip(), body.note
+    )
+    if not ok:
+        raise HTTPException(status_code=409, detail=message)
+    return {"ok": True, "message": message}
+
+
+@app.post("/horizon/proposals/{proposal_id}/rollback")
+async def horizon_rollback(proposal_id: str):
+    """撤銷已寫入的參考筆記。"""
+    from backend.company.horizon_loop import rollback_proposal
+
+    ok, message = await asyncio.to_thread(rollback_proposal, _horizon_root(), proposal_id)
+    if not ok:
+        raise HTTPException(status_code=409, detail=message)
+    return {"ok": True, "message": message}
+
+
 @app.get("/skills/preview")
 async def preview_skill_prompt(role: str | None = None):
     """預覽某角色實際會被注入的技能區塊（除錯用）。"""
