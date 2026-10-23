@@ -274,6 +274,14 @@ export interface TaskProgress {
       amount_usd?: number | null;
       subject?: string;
     }>;
+    seat_overrides?: Array<{ role_id?: string; applied?: boolean; reason?: string }>;
+    new_seats?: Array<{ name?: string; id?: string; system_prompt?: string; tools_allowed?: string[] }>;
+    new_seats_created?: Array<{ id?: string; name?: string }>;
+    field_writes?: Array<{ tag?: string; value?: number | string | null }>;
+    field_writes_result?: {
+      status?: string;
+      failures?: Array<{ tag?: string; message?: string }>;
+    };
   } | null;
   /** 統一模式：執行策略（auto / simple / company） */
   strategy: 'auto' | 'simple' | 'company';

@@ -44,6 +44,7 @@ from backend.company.state import (
     CompanyConfig,
     CompanyRunState,
     WorkItemStatus,
+    assignee_token,
 )
 from backend.company.tools import tool_registry
 from backend.company.work_item import WorkItemManager
@@ -651,7 +652,7 @@ class CompanyOrchestrator:
                     "id": item.id,
                     "title": item.title,
                     "description": item.description,
-                    "assignee": item.assignee.value if item.assignee else None,
+                    "assignee": assignee_token(item.assignee),
                     "status": item.status.value,
                     "tier": item.tier,
                     "priority": getattr(item, "priority", 0),
@@ -1079,7 +1080,7 @@ class CompanyOrchestrator:
 
         self.work_items.transition(item.id, WorkItemStatus.EXECUTING)
         self.events.emit(CompanyEvent.WORK_ITEM_START, {
-            "item_id": item.id, "title": item.title, "assignee": item.assignee.value if item.assignee else None,
+            "item_id": item.id, "title": item.title, "assignee": assignee_token(item.assignee),
         })
 
         # 取得角色定義
@@ -1601,7 +1602,7 @@ class CompanyOrchestrator:
                         title=item.title,
                         description=item.description,
                         issues=issues,
-                        assignee=item.assignee.value if item.assignee else "",
+                        assignee=assignee_token(item.assignee) or "",
                         superior="tactical_commander",
                         allowed_tools=self._allowed_tools_for(item),
                         on_user_pending=lambda p: self._emit_user_pending(

@@ -438,6 +438,15 @@ class RoleDefinition:
         return other in self.can_delegate_to
 
 
+def assignee_token(assignee: RoleType | str | None) -> str | None:
+    """內建席位用列舉值，自訂席用目錄 id。"""
+    if assignee is None:
+        return None
+    if isinstance(assignee, RoleType):
+        return assignee.value
+    return str(assignee)
+
+
 # ═══════════════════════════════════════════════════════════════
 # 工作項
 # ═══════════════════════════════════════════════════════════════
@@ -450,7 +459,7 @@ class WorkItem:
     title: str = ""
     description: str = ""
     status: WorkItemStatus = WorkItemStatus.PLANNING
-    assignee: RoleType | None = None             # 負責角色
+    assignee: RoleType | str | None = None        # 內建席位或目錄自訂 id
     created_by: RoleType | None = None            # 創建者
     depends_on: list[str] = field(default_factory=list)  # 依賴的工作項 ID
     artifacts: dict[str, Any] = field(default_factory=dict)  # 產出物
@@ -674,7 +683,7 @@ class CompanyRunState:
                     "id": item.id,
                     "title": item.title,
                     "status": item.status.value,
-                    "assignee": item.assignee.value if item.assignee else None,
+                    "assignee": assignee_token(item.assignee),
                     "depends_on": item.depends_on,
                     "tier": item.tier.value,
                     "actual_cost": item.actual_cost,

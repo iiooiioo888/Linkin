@@ -597,7 +597,7 @@ export async function decideBudget(
     body: JSON.stringify({ action, note }),
   });
   if (!resp.ok) {
-    let detail = `預算確認失敗（HTTP ${resp.status}）`;
+    let detail = `確認失敗（HTTP ${resp.status}）`;
     try {
       const body = await resp.json();
       if (body?.detail) detail = String(body.detail);
@@ -607,6 +607,58 @@ export async function decideBudget(
     throw new Error(detail);
   }
   return resp.json();
+}
+
+async function taskPost(path: string, body: unknown, fallback: string): Promise<Record<string, unknown>> {
+  const resp = await fetch(apiUrl(path), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    let detail = fallback;
+    try {
+      const payload = await resp.json();
+      if (payload?.detail) detail = String(payload.detail);
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  return resp.json();
+}
+
+/** 點頭前改新席位草稿與現場寫入。 */
+export function updateConfirmationDraft(
+  taskId: string,
+  body: { new_seats?: Array<Record<string, unknown>>; field_writes?: Array<Record<string, unknown>> },
+) {
+  return taskPost(`/tasks/${encodeURIComponent(taskId)}/confirmation-draft`, body, '確認內容更新失敗');
+}
+
+/** 已存在席位的提示詞或工具權限立刻寫進目錄。 */
+export function applySeatOverride(
+  taskId: string,
+  body: { role_id: string; system_prompt?: string; tools_allowed?: string[] },
+) {
+  return taskPost(`/tasks/${encodeURIComponent(taskId)}/seat-overrides`, body, '席位目錄更新失敗');
+}
+
+/** 開工後重試現場寫入。 */
+export function retryFieldWrites(
+  taskId: string,
+  field_writes?: Array<Record<string, unknown>>,
+) {
+  return taskPost(`/tasks/${encodeURIComponent(taskId)}/field-writes`, { field_writes }, '現場寫入重試失敗');
+}
+
+/** 敘事顯式寫入實體。 */
+export function commitNarrative(
+  taskId: string,
+  kind: 'npc' | 'quest' | 'item',
+  entity: { name: string },
+) {
+  return taskPost(`/tasks/${encodeURIComponent(taskId)}/narrative/commit`, { kind, entity }, '實體寫入失敗');
 }
 
 /** 建立後台任務（統一模式），回傳 task_id。 */
