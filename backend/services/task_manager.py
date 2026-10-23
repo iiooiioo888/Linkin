@@ -606,7 +606,8 @@ class TaskManager:
             return False, "預算草案尚未就緒"
         plan["status"] = "locked"
         plan["confirmation"] = {"action": "approve", "at": time.time(), "note": note}
-        ledger = plan.get("ledger") if isinstance(plan.get("ledger"), dict) else {}
+        raw_ledger = plan.get("ledger")
+        ledger: dict[str, Any] = dict(raw_ledger) if isinstance(raw_ledger, dict) else {}
         ledger["frozen"] = True
         plan["ledger"] = ledger
         record.budget_plan = plan
