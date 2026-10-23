@@ -54,6 +54,15 @@ CLI_RUNTIMES: tuple[CliRuntime, ...] = (
         install="npm install -g agent-browser",
         group="採集",
     ),
+    CliRuntime(
+        id="cli-anything",
+        skill_id="cli-anything",
+        binary="cli-hub",
+        title="CLI-Anything",
+        summary="軟體的 agent 命令列目錄。這裡只查 list、search、info，不安裝個別 harness。",
+        install="pip install cli-anything-hub==0.4.1",
+        group="Agent 工作流",
+    ),
 )
 
 _BY_ID = {item.id: item for item in CLI_RUNTIMES}
@@ -61,6 +70,16 @@ _BY_ID = {item.id: item for item in CLI_RUNTIMES}
 
 def get_runtime(runtime_id: str) -> CliRuntime | None:
     return _BY_ID.get(runtime_id)
+
+
+def default_which(name: str) -> str | None:
+    """cli-hub 裝在解釋器 scripts 時，PATH 未必看得到。"""
+    found = shutil.which(name)
+    if found or name != "cli-hub":
+        return found
+    from backend.company.cli_anything import resolve_cli_hub_binary
+
+    return resolve_cli_hub_binary() or None
 
 
 def probe_runtime(
@@ -71,7 +90,7 @@ def probe_runtime(
     timeout: float = 8,
 ) -> dict[str, Any]:
     """回報命令是否在 PATH。找到時才跑固定的 --help，不接受外部參數。"""
-    finder = which or shutil.which
+    finder = which or default_which
     runner = run or subprocess.run
     path = finder(spec.binary) or ""
     row: dict[str, Any] = {

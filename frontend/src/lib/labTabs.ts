@@ -171,6 +171,7 @@ export const LAB_INTEGRATE_SECTIONS: LabNavSection[] = [
     items: [
       link('yao', '▣', 'Yao', '任務板', '#/monitor/integrations/yao'),
       link('ouroboros', '⟳', 'Ouroboros', '訪談閘門', '#/monitor/integrations/ouroboros'),
+      link('cli-anything', '⌨', 'CLI-Anything', '軟體命令列目錄', '#/monitor/skills/cli-anything'),
     ],
   },
   {

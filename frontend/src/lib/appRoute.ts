@@ -6,7 +6,7 @@
  *   #/monitor | #/monitor/tasks | #/monitor/tasks/{taskId}
  *   #/monitor/agents/{agentId}
  *   #/monitor/lab | #/monitor/lab/{prompt|archify|ponytail|runner|ab|quant|maps|firecrawl|mcp}
- *   #/monitor/skills | #/monitor/skills/{skillId}   技能深鏈（採集的 Agent Reach 等）
+ *   #/monitor/skills | #/monitor/skills/{skillId}   技能深鏈（Agent Reach、CLI-Anything 等）
  *   #/monitor/integrations | #/monitor/integrations/{memos|openviking|weknora|yao|ouroboros|openpencil}
  *   #/monitor/credits | #/monitor/billing | #/monitor/wallet — 舊深鏈正規化至 models（AI 用量）
  *   #/monitor/context | #/monitor/context/{taskId}

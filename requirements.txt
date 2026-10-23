@@ -23,4 +23,6 @@ asyncua>=1.1
 docker>=7.0.0
 psutil>=6.0
 cryptography>=43.0
+# CLI-Anything hub（https://github.com/HKUDS/CLI-Anything）。Linkin 只查目錄。
+cli-anything-hub==0.4.1
 # Node：frontend/package.json 的 archify（file:../vendor/archify，上游 https://github.com/tt-a1i/archify）
