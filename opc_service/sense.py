@@ -15,6 +15,7 @@ from typing import Any
 
 import httpx
 
+from opc_service.internal_auth import client_headers
 from opc_service.prompts import DEFAULT_SENSE_TAGS
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ async def _read_opc_tags(tag_names: list[str]) -> dict[str, dict]:
             resp = await client.post(
                 f"{OPC_SERVICE_URL}/opc/read",
                 json={"tag_names": tag_names},
+                headers=client_headers(),
             )
             resp.raise_for_status()
             data = resp.json()

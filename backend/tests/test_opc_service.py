@@ -139,12 +139,18 @@ def test_health_endpoint(test_app):
     assert "opc_connected" in data
 
 
-def test_read_endpoint_returns_error_when_disconnected(test_app):
+def _opc_auth(monkeypatch) -> dict[str, str]:
+    monkeypatch.setenv("OPC_INTERNAL_TOKEN", "opc-test-token")
+    return {"X-OPC-Internal": "opc-test-token"}
+
+
+def test_read_endpoint_returns_error_when_disconnected(test_app, monkeypatch):
     """未連線 OPC 時，讀取端點回傳錯誤（不崩潰）。"""
     client = TestClient(test_app)
     resp = client.post(
         "/opc/read",
         json={"tag_names": ["Temperature"]},
+        headers=_opc_auth(monkeypatch),
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -153,8 +159,19 @@ def test_read_endpoint_returns_error_when_disconnected(test_app):
     assert data.get("error") is not None or len(data["tags"]) == 0
 
 
+def test_write_requires_internal_token(test_app, monkeypatch):
+    monkeypatch.setenv("OPC_INTERNAL_TOKEN", "opc-test-token")
+    client = TestClient(test_app)
+    resp = client.post(
+        "/opc/write",
+        json={"entries": [{"tag_name": "Temperature", "value": 1.0}], "reason": "測試"},
+    )
+    assert resp.status_code == 401
+
+
 def test_write_endpoint_with_guard(test_app, monkeypatch):
     """寫入端點：安全護欄拒絕不合規的寫入。"""
+    headers = _opc_auth(monkeypatch)
     monkeypatch.setenv("OPC_WRITE_WHITELIST", "Temperature")
     from opc_service.config import OPCSettings
 
@@ -166,6 +183,7 @@ def test_write_endpoint_with_guard(test_app, monkeypatch):
     client = TestClient(test_app)
     resp = client.post(
         "/opc/write",
+        headers=headers,
         json={
             "entries": [
                 {"tag_name": "FlowRate", "value": 50.0}

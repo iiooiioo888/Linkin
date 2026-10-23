@@ -10,6 +10,8 @@ from typing import Any
 
 import httpx
 
+from opc_service.internal_auth import client_headers
+
 logger = logging.getLogger(__name__)
 
 # OPC 微服务基础 URL（可通过环境变量覆盖）
@@ -35,6 +37,7 @@ async def _write_opc_tags(
             resp = await client.post(
                 f"{OPC_SERVICE_URL}/opc/write",
                 json={"entries": entries, "reason": reason},
+                headers=client_headers(),
             )
             resp.raise_for_status()
             data = resp.json()
