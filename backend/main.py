@@ -3027,6 +3027,25 @@ async def list_skill_cli_runtimes():
     return {"runtimes": await asyncio.to_thread(probe_all)}
 
 
+@app.get("/horizon/latest")
+async def horizon_latest():
+    """上一份公開資料摘要。沒有掃過就回空。"""
+    from backend.company.horizon import load_latest
+
+    brief = load_latest()
+    if not brief:
+        return {"ok": False, "topics": [], "note": "尚未掃描"}
+    return brief
+
+
+@app.post("/horizon/scan")
+async def horizon_scan():
+    """依固定主題讀公開倉庫。不接受網址，不改程式。"""
+    from backend.company.horizon import scan_horizon
+
+    return await asyncio.to_thread(scan_horizon)
+
+
 @app.get("/skills/preview")
 async def preview_skill_prompt(role: str | None = None):
     """預覽某角色實際會被注入的技能區塊（除錯用）。"""

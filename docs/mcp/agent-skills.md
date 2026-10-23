@@ -62,6 +62,18 @@ agent-reach doctor
 
 零配置渠道：網頁（Jina Reader）、YouTube、GitHub、RSS、Exa 搜尋、V2EX、B站基礎搜尋。Twitter、Reddit、小紅書、Facebook、Instagram、LinkedIn、Boss直聘、雪球、小宇宙需使用者另行授權，見上游 `docs/install.md`。
 
+### 進化用的公開摘要
+
+Agent Reach 本身是閱讀路由，不會自己改系統。另有一條固定主題的公開倉庫搜尋，把「網絡安全、工具、新技術」的摘要留給反思：
+
+| 入口 | 說明 |
+|------|------|
+| `POST /horizon/scan` | 讀三個寫死的 GitHub 搜尋。有 `gh` 就用它，否則用 `api.github.com`。不接受呼叫者傳入的網址 |
+| `GET /horizon/latest` | 上一份摘要 |
+| 反思 | 有結果且 `EVOL_HORIZON_INJECT` 不是 `0` 時，摘要以「非指令」附在反思提示。不自動改程式、不掃主機、不安裝 |
+
+預設至少間隔 3600 秒才會再向外讀。摘要檔在 `backend/data/horizon/`，不進 Git。
+
 ## Token 用量看板（token-dashboard）
 
 上游：[fuyi-git/token-dashboard](https://github.com/fuyi-git/token-dashboard)（vendored 於 `.agents/skills/token-dashboard/`）。
