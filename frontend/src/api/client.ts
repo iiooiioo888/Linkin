@@ -346,6 +346,22 @@ export async function refreshLlmModels(): Promise<LlmOpsData> {
   return resp.json();
 }
 
+export async function fetchLabPrefs(): Promise<{ mcp_tools: Record<string, boolean>; settings_user: string }> {
+  const resp = await fetch(apiUrl('/config/lab'));
+  if (!resp.ok) throw new Error(`讀取實驗室設定失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function saveLabPrefs(mcpTools: Record<string, boolean>): Promise<{ mcp_tools: Record<string, boolean> }> {
+  const resp = await fetch(apiUrl('/config/lab'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mcp_tools: mcpTools }),
+  });
+  if (!resp.ok) throw new Error(`儲存實驗室設定失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
 export async function updateLlmOpsPrefs(refreshIntervalSec: number): Promise<LlmOpsData> {
   const resp = await fetch(apiUrl('/config/ops'), {
     method: 'PUT',

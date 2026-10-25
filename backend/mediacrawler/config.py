@@ -127,19 +127,36 @@ def _read_runtime_config(path: Path) -> dict[str, Any]:
 def _write_runtime_config(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+
+
+def _cookie_store_path(env: MediaCrawlerEnvConfig | None = None) -> Path:
+    """已登入只讀寫該帳號的 cookie；未綁定租戶沿用平台 runtime.json。"""
+    from backend.core.user_settings import active_settings_user, user_settings_dir
+
+    uid = active_settings_user()
+    if uid:
+        return user_settings_dir(uid) / "mediacrawler.json"
+    cfg = env or load_env_config()
+    return cfg.runtime_config_path
 
 
 def get_stored_cookie(env: MediaCrawlerEnvConfig | None = None) -> str:
-    cfg = env or load_env_config()
-    data = _read_runtime_config(cfg.runtime_config_path)
+    data = _read_runtime_config(_cookie_store_path(env))
     return str(data.get("cookie") or "").strip()
 
 
 def set_stored_cookie(cookie: str, env: MediaCrawlerEnvConfig | None = None) -> None:
-    cfg = env or load_env_config()
-    data = _read_runtime_config(cfg.runtime_config_path)
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
+    path = _cookie_store_path(env)
+    data = _read_runtime_config(path)
     data["cookie"] = (cookie or "").strip()
-    _write_runtime_config(cfg.runtime_config_path, data)
+    _write_runtime_config(path, data)
 
 
 def mask_secret(value: str, visible: int = 4) -> str:

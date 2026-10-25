@@ -368,8 +368,8 @@ def _register_builtin_tools() -> None:
 
     # 記憶查詢工具
     def _memory_query(query: str, k: int = 3) -> str:
-        from backend.memory.vector_store import VectorMemoryStore
-        store = VectorMemoryStore()
+        from backend.memory.tenant_store import vector_store_for_request
+        store = vector_store_for_request()
         results = store.search_similar(query, k=k)
         if not results:
             return "（無相關記憶）"

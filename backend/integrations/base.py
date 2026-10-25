@@ -14,7 +14,7 @@ import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -95,25 +95,50 @@ class ResilientHttpClient:
     trail: Callable[[dict], None] | None = None
     clock: Callable[[], float] = time.monotonic
 
+    def effective_config(self) -> IntegrationConfig:
+        """平台連線加上目前登入帳號的覆寫。未登入則用建構時的設定。"""
+        from backend.core.user_settings import active_settings_user, integration_overlay
+
+        uid = active_settings_user()
+        if not uid:
+            return self.config
+        overlay = integration_overlay(uid, self.config.name)
+        if not overlay:
+            return self.config
+        enabled = self.config.enabled if "enabled" not in overlay else bool(overlay.get("enabled"))
+        base_url = str(overlay.get("base_url") or "").strip() or self.config.base_url
+        if "api_key" in overlay:
+            api_key = str(overlay.get("api_key") or "")
+        else:
+            api_key = self.config.api_key
+        return replace(
+            self.config,
+            base_url=base_url,
+            enabled=enabled,
+            api_key=api_key,
+        )
+
     @property
     def enabled(self) -> bool:
-        return self.config.enabled
+        return self.effective_config().enabled
 
-    def _headers(self) -> dict[str, str]:
-        headers = {"Content-Type": "application/json", **self.config.extra_headers}
-        if self.config.api_key:
-            headers.setdefault("Authorization", f"Token {self.config.api_key}")
+    def _headers(self, cfg: IntegrationConfig | None = None) -> dict[str, str]:
+        current = cfg or self.effective_config()
+        headers = {"Content-Type": "application/json", **current.extra_headers}
+        if current.api_key:
+            headers.setdefault("Authorization", f"Token {current.api_key}")
         return headers
 
     def request(self, method: str, path: str, payload: dict | None = None) -> IntegrationResponse:
-        name = self.config.name
-        if not self.config.enabled:
+        cfg = self.effective_config()
+        name = cfg.name
+        if not cfg.enabled:
             return self._finish(False, None, ERR_INTEGRATION_DISABLED, f"integration:{name}:disabled", 0.0, method, path)
-        url = f"{self.config.base_url.rstrip('/')}/{path.lstrip('/')}"
+        url = f"{cfg.base_url.rstrip('/')}/{path.lstrip('/')}"
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
         started = self.clock()
         try:
-            status, raw = self.transport(method, url, self._headers(), body, self.config.timeout_seconds)
+            status, raw = self.transport(method, url, self._headers(cfg), body, cfg.timeout_seconds)
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             latency = (self.clock() - started) * 1000
             logger.warning("整合 %s 不可達（fail-open）：%s", name, exc)

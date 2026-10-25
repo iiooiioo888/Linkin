@@ -10,12 +10,14 @@ import type {
   SystemFlowEntry,
 } from '../api/client';
 import {
+  fetchLabPrefs,
   labArchifyGenerate,
   labArchifySystemFlows,
   labFirecrawlScrape,
   labFirecrawlSearch,
   labOptimizePrompt,
   labPonytailReview,
+  saveLabPrefs,
 } from '../api/client';
 import { isLabLink, LAB_TABS, labGroupForTab, labSectionForTab, type LabSubTab } from '../lib/labTabs';
 import { activityNavPath } from '../lib/monitorTabs';
@@ -117,6 +119,37 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
   const [reviewError, setReviewError] = useState<string | null>(null);
 
   const [tools, setTools] = useState(MCP_TOOLS);
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchLabPrefs()
+      .then((prefs) => {
+        if (cancelled) return;
+        setTools((prev) =>
+          prev.map((tool) =>
+            Object.prototype.hasOwnProperty.call(prefs.mcp_tools, tool.id)
+              ? { ...tool, enabled: Boolean(prefs.mcp_tools[tool.id]) }
+              : tool,
+          ),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setToolStatus('讀取此帳號的實驗室開關失敗');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const persistTools = (next: typeof MCP_TOOLS) => {
+    setTools(next);
+    setToolStatus('儲存中…');
+    const payload = Object.fromEntries(next.map((tool) => [tool.id, tool.enabled]));
+    void saveLabPrefs(payload)
+      .then(() => setToolStatus('已儲存到此帳號'))
+      .catch((err: Error) => setToolStatus(err.message));
+  };
 
   const winner = useMemo(() => {
     const scoreA = AB_SERIES.reduce((s, r) => s + r.a, 0) / AB_SERIES.length;
@@ -557,9 +590,10 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
         {tab === 'mcp' && (
           <div className="mx-auto max-w-2xl space-y-3">
             <p className="text-[11px] text-[var(--console-sub)]">
-              開關按功能排列：工業接線、召回、採集、容器。Minecraft 放置、填充與指令在
+              開關按功能排列，並儲存到目前登入帳號。Minecraft 放置、填充與指令在
               「{activityNavPath('minecraft')}」。
             </p>
+            {toolStatus ? <p className="text-[11px] text-[var(--console-accent)]">{toolStatus}</p> : null}
             {MCP_FUNCTIONS.map((fn) => (
               <section key={fn} className="space-y-2">
                 <h3 className="text-[11px] font-semibold tracking-wide text-[var(--console-faint)]">{fn}</h3>
@@ -574,9 +608,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                         type="checkbox"
                         checked={t.enabled}
                         onChange={() =>
-                          setTools((prev) =>
-                            prev.map((x) => (x.id === t.id ? { ...x, enabled: !x.enabled } : x)),
-                          )
+                          persistTools(tools.map((x) => (x.id === t.id ? { ...x, enabled: !x.enabled } : x)))
                         }
                         className="h-4 w-4 accent-[var(--console-accent)]"
                       />

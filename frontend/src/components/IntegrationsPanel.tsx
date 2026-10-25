@@ -16,6 +16,7 @@ import {
   openpencilGenerate,
   openpencilListProjects,
   runIntegrationRecall,
+  saveIntegrationSettings,
   toggleIntegration,
   yaoCreateTask,
   yaoListTasks,
@@ -93,6 +94,8 @@ function IntegrationCard({
   focused,
   forceOpen,
   onToggle,
+  onSaved,
+  onError,
   children,
 }: {
   item: IntegrationStatus;
@@ -100,11 +103,20 @@ function IntegrationCard({
   focused?: boolean;
   forceOpen?: boolean;
   onToggle: (enabled: boolean) => void;
+  onSaved: (message: string) => void;
+  onError: (message: string) => void;
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState(Boolean(forceOpen));
+  const [baseUrl, setBaseUrl] = useState(item.base_url || '');
+  const [apiKey, setApiKey] = useState('');
+  const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLElement>(null);
   const meta = metaOf(item.name);
+
+  useEffect(() => {
+    setBaseUrl(item.base_url || '');
+  }, [item.base_url]);
 
   useEffect(() => {
     if (forceOpen) setOpen(true);
@@ -163,6 +175,43 @@ function IntegrationCard({
           />
         </label>
       </div>
+      <form
+        className="mt-3 grid gap-2 border-t border-white/[0.06] pt-3 sm:grid-cols-[1fr_1fr_auto]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setSaving(true);
+          void saveIntegrationSettings(item.name, {
+            base_url: baseUrl.trim(),
+            api_key: apiKey.trim() || undefined,
+          })
+            .then(() => {
+              setApiKey('');
+              onSaved(`${item.display_name || item.name} 連線已儲存到此帳號`);
+            })
+            .catch((err: Error) => onError(err.message))
+            .finally(() => setSaving(false));
+        }}
+      >
+        <input
+          className={inputCls}
+          value={baseUrl}
+          onChange={(event) => setBaseUrl(event.target.value)}
+          placeholder="服務網址"
+          aria-label={`${item.display_name || item.name} 網址`}
+        />
+        <input
+          className={inputCls}
+          type="password"
+          value={apiKey}
+          onChange={(event) => setApiKey(event.target.value)}
+          placeholder={item.has_api_key ? `金鑰已設定 ${item.api_key_masked || ''}（留空不改）` : 'API 金鑰（選填）'}
+          aria-label={`${item.display_name || item.name} 金鑰`}
+          autoComplete="off"
+        />
+        <button type="submit" className={btnPrimaryCls} disabled={saving || busy}>
+          {saving ? '儲存中…' : '儲存連線'}
+        </button>
+      </form>
       {item.enabled ? (
         <div className="mt-3 border-t border-white/[0.06] pt-3">
           <button type="button" className={btnCls} onClick={() => setOpen((v) => !v)}>
@@ -572,7 +621,7 @@ export default function IntegrationsPanel() {
           <div>
             <h2>外部整合運行時</h2>
             <p>
-              MemOS · OpenViking · WeKnora · Yao · Ouroboros · OpenPencil。預設關閉；啟用與動作皆為顯式，fail-open
+              MemOS · OpenViking · WeKnora · Yao · Ouroboros · OpenPencil。預設關閉；啟用、網址與金鑰只寫入目前登入帳號。fail-open
               不阻斷主任務。深鏈：
               <code className="ml-1 text-[10px] text-[var(--console-sub)]">#/monitor/integrations/memos</code>
             </p>
@@ -627,6 +676,15 @@ export default function IntegrationsPanel() {
                   focused={focus === item.name}
                   forceOpen={focus === item.name && item.enabled}
                   onToggle={(enabled) => void onToggle(item.name, enabled)}
+                  onSaved={(text) => {
+                    setError(null);
+                    setMessage(text);
+                    void load();
+                  }}
+                  onError={(text) => {
+                    setMessage(null);
+                    setError(text);
+                  }}
                 >
                   {actionBody(item.name)}
                 </IntegrationCard>
