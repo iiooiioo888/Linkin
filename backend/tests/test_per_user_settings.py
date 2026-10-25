@@ -250,6 +250,56 @@ def test_logged_in_without_overlay_does_not_inherit_platform_integration(monkeyp
     assert toggled.api_key == ""
     assert toggled.base_url == ""
     assert platform_key not in str(toggled)
+
+    with TestClient(app) as client:
+        saved = client.put(
+            "/integrations/memos/settings",
+            headers=_override("alice"),
+            json={
+                "enabled": True,
+                "base_url": "http://alice-memos.internal",
+                "api_key": "memos-ALICE-OWN-4242",
+            },
+        )
+        assert saved.status_code == 200, saved.text
+        assert "memos-ALICE-OWN-4242" not in saved.text
+        assert platform_key not in saved.text
+        assert "7777" not in saved.text
+        alice = client.get("/integrations", headers=_override("alice"))
+        url_only = client.put(
+            "/integrations/memos/settings",
+            headers=_override("erin"),
+            json={"enabled": True, "base_url": "http://erin-memos.internal"},
+        )
+        assert url_only.status_code == 200, url_only.text
+        erin = client.get("/integrations", headers=_override("erin"))
+        still_bare = client.get("/integrations", headers=_override("carol"))
+    alice_memos = next(row for row in alice.json()["integrations"] if row["name"] == "memos")
+    erin_memos = next(row for row in erin.json()["integrations"] if row["name"] == "memos")
+    carol_memos = next(row for row in still_bare.json()["integrations"] if row["name"] == "memos")
+    assert alice_memos["has_api_key"] is True
+    assert alice_memos["api_key_masked"] == "memo...4242"
+    assert alice_memos["base_url"] == "http://alice-memos.internal"
+    assert platform_key not in alice.text
+    assert "7777" not in alice.text
+    assert platform_url not in alice.text
+    assert erin_memos["has_api_key"] is False
+    assert erin_memos["api_key_masked"] == ""
+    assert erin_memos["base_url"] == "http://erin-memos.internal"
+    assert platform_key not in erin.text
+    assert "7777" not in erin.text
+    assert platform_url not in erin.text
+    assert carol_memos["has_api_key"] is False
+    assert carol_memos["api_key_masked"] == ""
+    assert carol_memos["base_url"] == ""
+    token = tenant_user_id.set("alice")
+    try:
+        own = get_registry()["memos"].http.effective_config()
+    finally:
+        tenant_user_id.reset(token)
+    assert own.api_key == "memos-ALICE-OWN-4242"
+    assert own.base_url == "http://alice-memos.internal"
+    assert platform_key not in str(own)
     reset_registry()
 
 
