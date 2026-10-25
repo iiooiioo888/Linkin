@@ -247,7 +247,7 @@ def save_lab_tool_prefs(tools: dict[str, Any], user_id: str | None = None) -> di
     for key in LAB_TOOL_IDS:
         if key in tools:
             cleaned[key] = bool(tools[key])
-    payload = {"mcp_tools": cleaned}
+    payload: dict[str, Any] = {"mcp_tools": cleaned}
     if uid:
         payload["owner_user_id"] = uid
         write_json(uid, "lab.json", payload)
