@@ -13,13 +13,13 @@
 | 表面 | 已登入 | 未綁定租戶（腳本、背景） |
 | --- | --- | --- |
 | API 金鑰、路由、模型勾選、目錄刷新間隔 | `EVOL_USER_SETTINGS_DIR/<user_id>/llm_config.json` | 仍是 `llm_config.json` + 環境變數 |
-| 外部整合啟用／網址／金鑰 | `<user_id>/integrations.json` | 環境變數；無租戶時切換只活在程序內 |
+| 外部整合啟用／網址／金鑰 | `<user_id>/integrations.json`；已登入但尚無自存檔時視為未配置，不繼承平台金鑰與網址 | 環境變數；無租戶時切換只活在程序內 |
 | 實驗室 MCP 開關 | `<user_id>/lab.json` | `user_settings/_platform/lab.json` |
 | 公司後反思覆寫 | `<user_id>/reflect.json` | `cost_speed.json`（路由表本身仍是平台檔） |
 | 向量記憶／JSON 記憶 | 帳號自己的 collection 與檔 | 原 `evo_memory`／`EVOL_MEMORY_STORE_PATH` |
 | 採集 Cookie | `<user_id>/mediacrawler.json` | 原 `runtime.json` |
 
-已登入的 API 設定**不繼承**平台金鑰、其他帳號的端點或 `OPENAI_API_KEY`。
+已登入的 API 設定**不繼承**平台金鑰、其他帳號的端點或 `OPENAI_API_KEY`。整合也一樣：已登入且該帳號還沒有自存 overlay 時，`GET /integrations` 不回平台脫敏金鑰、`has_api_key` 為假、網址為空。
 成本路由（公司／個人路徑）仍讀平台 `cost_speed.json`；只有「公司後反思」模式可以按帳號覆寫，而且環境變數 `EVOL_POST_COMPANY_REFLECT` 仍優先於所有帳號。
 
 Hub、雲端、檢查點、資料庫連接池、Minecraft 伺服器是這台服務的基礎設施，不是帳號秘密，維持共用。

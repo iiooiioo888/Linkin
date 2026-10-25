@@ -96,7 +96,12 @@ class ResilientHttpClient:
     clock: Callable[[], float] = time.monotonic
 
     def effective_config(self) -> IntegrationConfig:
-        """平台連線加上目前登入帳號的覆寫。未登入則用建構時的設定。"""
+        """未登入用建構時的平台設定。已登入只採用該帳號自存的覆寫。
+
+        已登入但還沒有自存 overlay 時視為未配置：不繼承平台
+        ``api_key``、``base_url``、``extra_headers``，也不沿用平台的啟用狀態。
+        有自存時，缺的網址或金鑰留空，同樣不回補平台秘密。
+        """
         from backend.core.user_settings import active_settings_user, integration_overlay
 
         uid = active_settings_user()
@@ -104,19 +109,34 @@ class ResilientHttpClient:
             return self.config
         overlay = integration_overlay(uid, self.config.name)
         if not overlay:
-            return self.config
-        enabled = self.config.enabled if "enabled" not in overlay else bool(overlay.get("enabled"))
-        base_url = str(overlay.get("base_url") or "").strip() or self.config.base_url
-        if "api_key" in overlay:
-            api_key = str(overlay.get("api_key") or "")
-        else:
-            api_key = self.config.api_key
+            return replace(
+                self.config,
+                base_url="",
+                enabled=False,
+                api_key="",
+                extra_headers={},
+            )
+        enabled = bool(overlay.get("enabled")) if "enabled" in overlay else False
+        base_url = str(overlay.get("base_url") or "").strip()
+        api_key = str(overlay.get("api_key") or "") if "api_key" in overlay else ""
         return replace(
             self.config,
             base_url=base_url,
             enabled=enabled,
             api_key=api_key,
+            extra_headers=self._headers_for_user_key(api_key),
         )
+
+    def _headers_for_user_key(self, api_key: str) -> dict[str, str]:
+        """平台若把金鑰放在 header（如 WeKnora），只換上這個帳號自己的金鑰。"""
+        if not api_key or not self.config.extra_headers:
+            return {}
+        secret_names = {"authorization", "x-api-key", "api-key"}
+        rewritten: dict[str, str] = {}
+        for key, value in self.config.extra_headers.items():
+            if str(key).lower() in secret_names or value == self.config.api_key:
+                rewritten[str(key)] = api_key
+        return rewritten
 
     @property
     def enabled(self) -> bool:

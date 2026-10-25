@@ -167,6 +167,92 @@ def test_integration_toggle_and_key_are_per_user():
     reset_registry()
 
 
+def test_logged_in_without_overlay_does_not_inherit_platform_integration(monkeypatch):
+    """已登入且沒有自存 overlay 時，不得沿用平台金鑰、網址或啟用狀態。"""
+    from backend.integrations.api import get_registry, reset_registry
+    from backend.integrations.base import IntegrationConfig, ResilientHttpClient
+
+    platform_key = "memos-PLATFORM-SECRET-7777"
+    platform_url = "http://platform-memos.internal"
+    weknora_key = "weknora-PLATFORM-SECRET"
+    monkeypatch.setenv("LINKIN_MEMOS_ENABLED", "true")
+    monkeypatch.setenv("LINKIN_MEMOS_BASE_URL", platform_url)
+    monkeypatch.setenv("LINKIN_MEMOS_API_KEY", platform_key)
+    monkeypatch.setenv("LINKIN_WEKNORA_ENABLED", "true")
+    monkeypatch.setenv("LINKIN_WEKNORA_BASE_URL", "http://platform-weknora.internal")
+    monkeypatch.setenv("LINKIN_WEKNORA_API_KEY", weknora_key)
+
+    seen: dict[str, object] = {}
+
+    def transport(method, url, headers, body, timeout):
+        seen["url"] = url
+        seen["headers"] = dict(headers)
+        return 200, b"{}"
+
+    direct = ResilientHttpClient(
+        IntegrationConfig(
+            name="weknora",
+            base_url="http://platform-weknora.internal",
+            enabled=True,
+            api_key="",
+            extra_headers={"X-API-Key": weknora_key},
+        ),
+        transport=transport,
+    )
+    token = tenant_user_id.set("carol")
+    try:
+        effective = direct.effective_config()
+        response = direct.get("health")
+    finally:
+        tenant_user_id.reset(token)
+    assert effective.api_key == ""
+    assert effective.base_url == ""
+    assert effective.enabled is False
+    assert effective.extra_headers == {}
+    assert weknora_key not in str(effective)
+    assert response.ok is False
+    assert seen == {}
+    anonymous = direct.effective_config()
+    assert anonymous.extra_headers.get("X-API-Key") == weknora_key
+    assert anonymous.base_url == "http://platform-weknora.internal"
+
+    reset_registry()
+    for client in get_registry().values():
+        client.http.transport = lambda *_a, **_k: (200, b'{"ok":true}')
+    with TestClient(app) as client:
+        logged_in = client.get("/integrations", headers=_override("carol"))
+    assert logged_in.status_code == 200
+    body = logged_in.json()["integrations"]
+    text = logged_in.text
+    memos = next(row for row in body if row["name"] == "memos")
+    weknora = next(row for row in body if row["name"] == "weknora")
+    assert memos["enabled"] is False
+    assert memos["base_url"] == ""
+    assert memos["has_api_key"] is False
+    assert memos["api_key_masked"] == ""
+    assert weknora["has_api_key"] is False
+    assert weknora["base_url"] == ""
+    assert platform_key not in text
+    assert "7777" not in text
+    assert weknora_key not in text
+    assert platform_url not in text
+    assert "platform-weknora" not in text
+
+    from backend.core.user_settings import set_integration_fields
+
+    set_integration_fields("carol", "memos", enabled=True)
+    token = tenant_user_id.set("carol")
+    try:
+        toggled = get_registry()["memos"].http.effective_config()
+    finally:
+        tenant_user_id.reset(token)
+    assert toggled.enabled is True
+    assert toggled.api_key == ""
+    assert toggled.base_url == ""
+    assert platform_key not in str(toggled)
+    reset_registry()
+
+
 def test_lab_memory_cookie_and_reflect_are_per_user():
     from backend.memory.json_store import JsonMemoryStore
     from backend.memory.tenant_store import collection_name_for
