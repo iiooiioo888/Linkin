@@ -36,10 +36,10 @@ def metrics() -> str:
 def write_request(body: WriteBody) -> dict[str, Any]:
     payload = {"node_id": body.node_id, "value": body.value}
     try:
-        claims = verify_token(body.guardrail_token)
+        claims = verify_token(body.guardrail_token, tenant_id=body.tenant_id)
     except (ValueError, RuntimeError) as exc:
         return {"ok": False, "error_code": "guardrail_denied", "detail": str(exc)}
-    if claims.get("tool") not in {"opc_write", "opc.write"} or claims.get("tenant_id") != body.tenant_id:
+    if claims.get("tool") not in {"opc_write", "opc.write"}:
         return {"ok": False, "error_code": "guardrail_denied", "detail": "簽章與寫入不符"}
     if claims.get("args_hash") != args_hash(payload):
         return {"ok": False, "error_code": "guardrail_denied", "detail": "簽章與參數不符"}

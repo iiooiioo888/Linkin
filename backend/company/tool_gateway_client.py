@@ -98,7 +98,7 @@ def invoke_registered(registry: Any, request: Any, role: str | None, catalog_all
             args,
             _ctx(),
             adapters=_adapters(registry, request, role, catalog_allowed),
-            execute=execute_new_path(mode),
+            execute=execute_new_path(mode, tool),
         )
     except Exception as exc:
         new = {
@@ -169,7 +169,7 @@ async def sense_opc_for_context(state: dict[str, Any]) -> dict[str, Any]:
             {"node_ids": list((legacy.get("opc_readings") or {}).keys())},
             _ctx(),
             adapters=_read_adapters(legacy),
-            execute=execute_new_path(mode),
+            execute=execute_new_path(mode, "opc_read"),
         )
     except Exception as exc:
         new = {

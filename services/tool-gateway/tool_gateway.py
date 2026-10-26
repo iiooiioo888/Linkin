@@ -50,7 +50,10 @@ def should_sample(tool: str, rng: Callable[[], float] | None = None) -> bool:
     return roll < sample_rate()
 
 
-def execute_new_path(mode: str) -> bool:
+def execute_new_path(mode: str, tool: str = "") -> bool:
+    """shadow／enabled 下敏感工具一律不執行適配器，只做護欄 dry-run。"""
+    if tool and is_sensitive(tool) and mode in {"shadow", "enabled"}:
+        return False
     if mode == "disabled":
         return True
     if mode == "enabled":

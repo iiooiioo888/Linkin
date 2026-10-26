@@ -128,22 +128,48 @@ def approve_decision(
     row = STORE.get(decision_id)
     if row is None or row["tenant_id"] != tenant_id:
         raise KeyError("找不到決策")
+    # 已審批過：回傳新簽章決策，勿把 confirm id 當執行憑證
+    superseded = row.get("superseded_by")
+    if superseded:
+        newer = STORE.get(superseded)
+        if newer is not None:
+            return newer
     if row["verdict"] == GuardrailVerdict.allow.value and row.get("token"):
         return row
     if not approved:
         row["verdict"] = GuardrailVerdict.deny.value
         row["reason"] = "人工拒絕"
         row["token"] = ""
-    else:
-        row["verdict"] = GuardrailVerdict.allow.value
-        row["reason"] = f"{approver} 已放行"
-        row["token"] = issue_token(
-            _claims(decision_id, row["tool"], {"args_hash": row["args_hash"]}, tenant_id, trace_id, hashed=True)
-        )
-    row["trace_id"] = trace_id
-    STORE.save(row)
-    _event("guardrail.decision", row)
-    return row
+        row["trace_id"] = trace_id
+        STORE.save(row)
+        _event("guardrail.decision", row)
+        return row
+
+    # 審批通過：發新 decision_id 再簽章，不可複用 check 的 confirm
+    old_id = decision_id
+    new_id = "gd_" + uuid.uuid4().hex[:12]
+    new_row = {
+        "decision_id": new_id,
+        "prior_decision_id": old_id,
+        "tool": row["tool"],
+        "args_hash": row["args_hash"],
+        "verdict": GuardrailVerdict.allow.value,
+        "reason": f"{approver} 已放行",
+        "tenant_id": tenant_id,
+        "trace_id": trace_id,
+        "policy_version": POLICY_VERSION,
+        "token": "",
+    }
+    new_row["token"] = issue_token(
+        _claims(new_id, row["tool"], {"args_hash": row["args_hash"]}, tenant_id, trace_id, hashed=True)
+    )
+    marked = dict(row)
+    marked["superseded_by"] = new_id
+    marked["token"] = ""
+    STORE.save(marked)
+    STORE.save(new_row)
+    _event("guardrail.decision", new_row)
+    return new_row
 
 
 def _claims(
@@ -155,6 +181,8 @@ def _claims(
     *,
     hashed: bool = False,
 ) -> dict[str, Any]:
+    from linkin_core.contracts.signatures import key_id, new_nonce
+
     return {
         "decision_id": decision_id,
         "verdict": GuardrailVerdict.allow.value,
@@ -165,4 +193,6 @@ def _claims(
         "args_hash": args["args_hash"] if hashed else args_hash(args),
         "exp": int(time.time()) + 600,
         "schema_version": SCHEMA_VERSION,
+        "kid": key_id(),
+        "nonce": new_nonce(),
     }

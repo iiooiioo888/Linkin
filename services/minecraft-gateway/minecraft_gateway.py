@@ -38,10 +38,10 @@ def metrics() -> str:
 def action(body: ActionBody) -> dict[str, Any]:
     if minecraft_requires_guardrail(body.action) or is_sensitive(body.action):
         try:
-            claims = verify_token(body.guardrail_token)
+            claims = verify_token(body.guardrail_token, tenant_id=body.tenant_id)
         except (ValueError, RuntimeError) as exc:
             return {"ok": False, "error_code": "guardrail_denied", "detail": str(exc)}
-        if claims.get("tool") != body.action or claims.get("tenant_id") != body.tenant_id:
+        if claims.get("tool") != body.action:
             return {"ok": False, "error_code": "guardrail_denied", "detail": "簽章與動作不符"}
         if claims.get("args_hash") != args_hash(body.args):
             return {"ok": False, "error_code": "guardrail_denied", "detail": "簽章與參數不符"}
