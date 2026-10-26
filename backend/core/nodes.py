@@ -14,7 +14,6 @@ from backend.core.llm import call_llm, parse_json_response
 from backend.core.pipeline_trace import log_node
 from backend.core.stage_router import resolve_stage_model
 from backend.core.state import StateInput
-from backend.memory.vector_store import VectorMemoryStore
 from backend.prompts import templates
 from backend.prompts.templates import truncate
 from backend.services.archiver import save_session_archive, save_session_archive_sync
@@ -88,8 +87,17 @@ def finalize_task_answer(state: StateInput) -> dict:
     merged.update(enforce_final_length(interim))
     return merged
 
-# Phase 2：使用 ChromaDB 向量記憶庫
-_memory_store = VectorMemoryStore()
+# Phase 2：使用 ChromaDB 向量記憶庫。已登入時轉到該帳號的 collection。
+class _TenantMemoryProxy:
+    """屬性轉發到目前租戶的記憶庫；測試可整顆 patch 掉。"""
+
+    def __getattr__(self, name: str):
+        from backend.memory.tenant_store import vector_store_for_request
+
+        return getattr(vector_store_for_request(), name)
+
+
+_memory_store = _TenantMemoryProxy()
 
 
 def _compress_history_turn(content: str, max_chars: int = 80) -> str:

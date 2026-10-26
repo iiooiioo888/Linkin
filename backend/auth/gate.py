@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
 import secrets
 import time
+from pathlib import Path
 from typing import Any
 
 AUTH_COOKIE = "evoloop_gate"
@@ -170,12 +172,56 @@ def clear_failures(identity: str) -> None:
     _failures.pop(_fail_key(identity), None)
 
 
+def _extra_accounts() -> list[tuple[str, str]]:
+    """選用的多帳號清單（``LINKIN_GATE_ACCOUNTS`` 為 JSON 陣列或檔案路徑）。
+
+    每一項 ``{"username", "secret"}``。未設定時仍只接受單一閘門帳密。
+    """
+    raw = os.getenv("LINKIN_GATE_ACCOUNTS", "").strip()
+    if not raw:
+        return []
+    try:
+        if raw.startswith("["):
+            data = json.loads(raw)
+        else:
+            path = Path(raw)
+            if not path.is_file():
+                return []
+            data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    rows: list[tuple[str, str]] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        account = str(item.get("username") or "").strip()
+        account_secret = str(item.get("secret") or "")
+        if account and account_secret:
+            rows.append((account, account_secret))
+    return rows
+
+
+def _pair_matches(username: str, secret: str, expect_user: str, expect_secret: str) -> bool:
+    user = (username or "").strip()
+    user_ok = hmac.compare_digest(_digest(user), _digest(expect_user))
+    if not user_ok:
+        user_ok = hmac.compare_digest(_digest(user.lower()), _digest(expect_user.lower()))
+    secret_ok = hmac.compare_digest(_digest(secret or ""), _digest(expect_secret))
+    return bool(user_ok and secret_ok)
+
+
 def issue_login(username: str, secret: str, identity: str = "") -> str | None:
     """校驗通過則回傳會話 token，否則 None。"""
     if too_many_failures(identity):
         return None
     user = (username or "").strip()
     secret = secret or ""
+    for account, account_secret in _extra_accounts():
+        if _pair_matches(user, secret, account, account_secret):
+            clear_failures(identity)
+            return create_session(account)
     user_ok = hmac.compare_digest(_digest(user), _expected_user())
     if not user_ok:
         user_ok = hmac.compare_digest(_digest(user.lower()), _expected_user())
