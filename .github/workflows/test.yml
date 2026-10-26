@@ -53,12 +53,12 @@ jobs:
       - name: Lint check (Ruff)
         run: |
           pip install ruff
-          ruff check backend/ opc_service/
+          ruff check backend/ opc_service/ linkin_core/
 
       - name: Type check (Mypy)
         run: |
           pip install mypy
-          mypy backend/ opc_service/
+          mypy backend/ opc_service/ linkin_core/
 
       - name: Determine test scope
         id: scope
@@ -77,7 +77,7 @@ jobs:
 
       - name: Run backend tests
         if: steps.scope.outputs.target == 'backend' || steps.scope.outputs.target == 'all'
-        run: pytest backend/tests/ -v
+        run: pytest backend/tests/ linkin_core/tests/ -v
 
       - name: Run OPC service tests
         if: steps.scope.outputs.target == 'opc'
