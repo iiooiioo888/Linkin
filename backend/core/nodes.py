@@ -333,6 +333,14 @@ def reflect(state: StateInput) -> dict:
             reflection_hints = (reflection_hints or "") + grill_notes + "\n"
     except Exception:
         pass
+    try:
+        from backend.company.horizon import horizon_prompt_block
+
+        horizon_notes = horizon_prompt_block()
+        if horizon_notes:
+            reflection_hints = (reflection_hints or "") + horizon_notes
+    except Exception:
+        pass
 
     # 分層反思：根據分數選擇反思深度
     if score < 5.0:
