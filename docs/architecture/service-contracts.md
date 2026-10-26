@@ -88,4 +88,4 @@ NATS JetStream。每則含 `schema_version`、`trace_id`、`tenant_id`。
 
 `deploy/k8s/linkin/`。內網 Ingress 類名 `nginx-internal`，主機 `linkin.internal`。Istio STRICT 與 KEDA 檔案要等 CRD 再套用。
 
-階段 1 才把 OPC、Minecraft 與工具呼叫改走 `tool-gateway` 與 `guardrail-service`。
+階段 1 把工具呼叫收進 `services/tool-gateway` 與 `services/guardrail-service`。預設 `TOOL_DUAL_RUN=shadow`：舊結果回傳，普通工具抽樣 10%，敏感工具 100%。`guardrail.decision` 用 `LINKIN_GUARDRAIL_HMAC_KEY` 簽名；沒有金鑰時敏感動作拒絕。OPC 寫入埠是 `opc_service/write_port.py`（對應 8081），沒有有效簽章就拒絕。切到 `disabled` 後只走新路徑。

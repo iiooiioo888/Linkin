@@ -46,6 +46,7 @@
 | `backend/` | FastAPI + LangGraph 主程式 | 見 [backend/README.md](../backend/README.md) |
 | `linkin_core/` | 服務化契約（OpenAPI／AsyncAPI）。階段 0 不取代單體 | 見 [服務契約](architecture/service-contracts.md) |
 | `deploy/k8s/linkin/` | 內網 12 服務骨架 | 映像尚未發布 |
+| `services/` | `tool-gateway`、`guardrail-service`、`minecraft-gateway` | 階段 1。K8s 映像仍是佔位 |
 | `opc_service/` | OPC UA 微服務與護欄 | 整合類。見 [opc_service/README.md](../opc_service/README.md) |
 | `frontend/` | React 19 監控中心 | 見 [frontend/README.md](../frontend/README.md) |
 | `docs/` | **知識庫（詳文唯一來源）** | 本目錄 |

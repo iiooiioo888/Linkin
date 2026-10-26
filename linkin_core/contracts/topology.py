@@ -34,6 +34,10 @@ SYNC_CHAINS: dict[str, tuple[str, ...]] = {
     "chat_simple": ("api-gateway", "route-service", "reflection-service"),
     "task_accept": ("api-gateway", "company-orchestrator"),
     "tool_invoke": ("seat-executor", "tool-gateway", "guardrail-service"),
+    "opc_read": ("context-service", "tool-gateway", "opc-service"),
+    "opc_write": ("tool-gateway", "guardrail-service", "opc-service"),
+    "minecraft_sensitive": ("tool-gateway", "guardrail-service", "minecraft-gateway"),
+    "minecraft_plain": ("tool-gateway", "minecraft-gateway"),
     "opc_write_accept": ("guardrail-service", "opc-service"),
 }
 
@@ -49,7 +53,7 @@ ALLOW: tuple[tuple[str, str, int], ...] = (
     ("api-gateway", "redis", 6379),
     ("route-service", "context-service", 8080),
     ("context-service", "memory-service", 8080),
-    ("context-service", "opc-service", 8080),
+    ("context-service", "tool-gateway", 8080),
     ("memory-service", "chroma", 8000),
     ("company-orchestrator", "postgres", 5432),
     ("company-orchestrator", "nats", 4222),
@@ -58,8 +62,12 @@ ALLOW: tuple[tuple[str, str, int], ...] = (
     ("seat-executor", "tool-gateway", 8080),
     ("seat-executor", "nats", 4222),
     ("tool-gateway", "guardrail-service", 8080),
+    ("tool-gateway", "opc-service", 8080),
+    ("tool-gateway", "minecraft-gateway", 8080),
+    ("tool-gateway", "nats", 4222),
     ("guardrail-service", "opc-service", 8081),
     ("guardrail-service", "minecraft-gateway", 8080),
+    ("guardrail-service", "nats", 4222),
 )
 
 OTLP_PORT = 4317

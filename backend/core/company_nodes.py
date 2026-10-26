@@ -77,9 +77,9 @@ async def enhance_with_opc_context(state: StateInput) -> dict[str, Any]:
         return _opc_context("not_required")
 
     try:
-        from opc_service.sense import sense_opc
+        from backend.company.tool_gateway_client import sense_opc_for_context
 
-        result = await sense_opc(dict(state))
+        result = await sense_opc_for_context(dict(state))
     except Exception as exc:
         reason = str(exc)
         logger.warning("OPC 上下文增強失敗：%s", exc)
