@@ -1,7 +1,7 @@
 # 專案目錄地圖
 
 > **詳文單一來源**：改目錄或新增套件時，先更新本文，再同步根 `README.md`／`docs/architecture/overview.md` 的精簡樹。  
-> 對齊日期：2026-10-22
+> 對齊日期：2026-10-26
 
 ## 組件分類
 
@@ -9,7 +9,7 @@
 
 | 類 | 做什麼 | 落在哪 | 實驗室 |
 |----|--------|--------|--------|
-| **核心的開發組件** | 前置注入、選路、簡單路徑的生成／評估／反思；任務經理分析與 80 席；提示詞、架構圖、精簡、A/B、臨時容器 | `backend/core/`、`backend/company/`（量化工具見下一類）、`backend/billing/`、`backend/prompts/`、對話與控制台 | 提示詞、架構、精簡、容器、A/B |
+| **核心的開發組件** | 前置注入、選路、簡單路徑的生成／評估／反思；任務經理分析與 80 席；提示詞、架構圖、精簡、A/B、臨時容器。服務化契約在 `linkin_core/`，運行時仍是單體 | `backend/core/`、`backend/company/`（量化工具見下一類）、`backend/billing/`、`backend/prompts/`、`linkin_core/`、對話與控制台 | 提示詞、架構、精簡、容器、A/B |
 | **minecraft組件** | 憲法、16 席子角色、世界模組、MineMCP 寫入護欄、`minecraft_ops` | `backend/linkin/`、`backend/modules/`、`backend/tools/`、Minecraft 畫面 | 側欄進入 `#/modules/minecraft` |
 | **價格分析探針組件** | 廠商延遲與報價探針；策略庫與策略圖 | `backend/hub/`、`backend/company/quant_*.py`、Hub 監控（基礎設施 → AI Hub） | 策略庫、策略圖、價格探針 |
 | **整合** | 依功能再分：召回、採集、工業接線、Agent 工作流、設計、技能。見下一節 | `backend/memory/`、`backend/integrations/`、`.agents/skills/`、`opc_service/` | `LAB_INTEGRATE_SECTIONS` |
@@ -44,6 +44,9 @@
 | 路徑 | 職責 | 備註 |
 |------|------|------|
 | `backend/` | FastAPI + LangGraph 主程式 | 見 [backend/README.md](../backend/README.md) |
+| `linkin_core/` | 服務化契約（OpenAPI／AsyncAPI）。階段 0 不取代單體 | 見 [服務契約](architecture/service-contracts.md) |
+| `deploy/k8s/linkin/` | 內網 12 服務骨架 | 映像尚未發布 |
+| `services/` | `tool-gateway`、`guardrail-service`、`minecraft-gateway` | 階段 1。K8s 映像仍是佔位 |
 | `opc_service/` | OPC UA 微服務與護欄 | 整合類。見 [opc_service/README.md](../opc_service/README.md) |
 | `frontend/` | React 19 監控中心 | 見 [frontend/README.md](../frontend/README.md) |
 | `docs/` | **知識庫（詳文唯一來源）** | 本目錄 |

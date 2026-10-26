@@ -27,6 +27,14 @@ def post_company_reflect_mode() -> str:
     if env_raw is not None and env_raw.strip() != "":
         return _normalize_mode(env_raw)
     try:
+        from backend.core.user_settings import reflect_override
+
+        user_mode = reflect_override()
+        if user_mode:
+            return user_mode
+    except Exception:
+        pass
+    try:
         from backend.core.cost_speed_router import post_company_reflect_config_value
 
         return post_company_reflect_config_value()
@@ -59,6 +67,14 @@ def post_company_reflect_resolution() -> dict[str, str]:
     env_raw = os.getenv("EVOL_POST_COMPANY_REFLECT")
     if env_raw is not None and env_raw.strip() != "":
         return {"effective": _normalize_mode(env_raw), "source": "env"}
+    try:
+        from backend.core.user_settings import reflect_override
+
+        user_mode = reflect_override()
+        if user_mode:
+            return {"effective": user_mode, "source": "user"}
+    except Exception:
+        pass
     try:
         from backend.core.cost_speed_router import post_company_reflect_config_value
 

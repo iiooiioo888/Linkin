@@ -14,10 +14,30 @@ DEFAULT_STORE_PATH = (
 
 
 class JsonMemoryStore:
-    """以 JSON 檔案儲存的簡易記憶庫。"""
+    """以 JSON 檔案儲存的簡易記憶庫。
 
-    def __init__(self, path: str | Path = DEFAULT_STORE_PATH):
-        self.path = Path(path)
+    未指定路徑時：已登入帳號寫入自己的 ``memory_store.json``，
+    否則用 ``EVOL_MEMORY_STORE_PATH`` 或預設檔。
+    """
+
+    def __init__(self, path: str | Path | None = None):
+        self._path_arg = Path(path) if path else None
+
+    @property
+    def path(self) -> Path:
+        if self._path_arg is not None:
+            return self._path_arg
+        import os
+
+        from backend.core.user_settings import active_settings_user, user_settings_dir
+
+        uid = active_settings_user()
+        if uid:
+            return user_settings_dir(uid) / "memory_store.json"
+        override = os.getenv("EVOL_MEMORY_STORE_PATH", "").strip()
+        if override:
+            return Path(override)
+        return DEFAULT_STORE_PATH
 
     def add_memory(self, text: str, metadata: dict | None = None) -> None:
         """新增一筆記憶（文字 + 後設資料）。"""

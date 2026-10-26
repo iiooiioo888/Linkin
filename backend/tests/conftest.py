@@ -18,6 +18,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = PROJECT_ROOT / "backend"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+for _service in ("services/guardrail-service", "services/tool-gateway", "services/minecraft-gateway"):
+    _service_path = str(PROJECT_ROOT / _service)
+    if _service_path not in sys.path:
+        sys.path.insert(0, _service_path)
 
 _EMPTY_ROUTING_FEEDBACK = {
     "records": [],
@@ -117,6 +121,7 @@ def _isolate_minecraft_mcp(tmp_path, monkeypatch):
 def _isolate_llm_config_and_ops(tmp_path, monkeypatch):
     """隔離 LLM 配置檔，並關閉模型目錄背景迴圈。"""
     monkeypatch.setenv("EVOL_CONFIG_DIR", str(tmp_path / "llm_cfg"))
+    monkeypatch.setenv("EVOL_USER_SETTINGS_DIR", str(tmp_path / "user_settings"))
     monkeypatch.setenv("EVOL_LLM_OPS_ENABLED", "false")
     # save_runtime_config 會寫入 process env；必須每測試清空以免污染 clamp_model
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -125,14 +130,17 @@ def _isolate_llm_config_and_ops(tmp_path, monkeypatch):
     from backend.core.api_router import reset_router_state
     from backend.core.llm_config import reset_runtime_config
     from backend.core.provider_pool import reset_pool_health
+    from backend.memory.tenant_store import reset_tenant_memory_stores
 
     reset_runtime_config()
     reset_router_state()
     reset_pool_health()
+    reset_tenant_memory_stores()
     yield
     reset_runtime_config()
     reset_router_state()
     reset_pool_health()
+    reset_tenant_memory_stores()
 
 
 @pytest.fixture(autouse=True)

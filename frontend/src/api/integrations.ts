@@ -20,6 +20,9 @@ export interface IntegrationStatus {
   docs_url: string;
   enabled: boolean;
   base_url: string;
+  has_api_key?: boolean;
+  api_key_masked?: string;
+  settings_user?: string;
   health?: {
     ok?: boolean;
     enabled?: boolean;
@@ -90,6 +93,18 @@ export async function toggleIntegration(name: string, enabled: boolean): Promise
     body: JSON.stringify({ enabled }),
   });
   return readJson(resp, '切換整合失敗');
+}
+
+export async function saveIntegrationSettings(
+  name: string,
+  body: { enabled?: boolean; base_url?: string; api_key?: string; clear_api_key?: boolean },
+): Promise<IntegrationStatus & { ok?: boolean; error_code?: string }> {
+  const resp = await fetch(apiUrl(`/integrations/${encodeURIComponent(name)}/settings`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return readJson(resp, '儲存整合設定失敗');
 }
 
 export async function runIntegrationRecall(body: {

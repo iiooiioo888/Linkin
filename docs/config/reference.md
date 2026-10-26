@@ -29,7 +29,13 @@
 | `EVOL_MODEL` | 未設時：無端點為 `gpt-5.6-luna`，有端點則該供應商模型池首項 | 預設模型（會被模型池 clamp） |
 | `EVOL_EMBED_MODEL` | `text-embedding-3-small` | 嵌入模型（用於記憶檢索和語義快取） |
 
-多組 API 請用控制台「配置 → API 路由」（或頂欄齒輪）或 `POST /config/routes` 寫入 `llm_config.json` 的 `api_routes`，不必再靠單一環境變數切換供應商。
+多組 API 請用控制台「配置 → API 路由」（或頂欄齒輪）或 `POST /config/routes` 寫入**目前登入帳號**的設定。未登入的腳本仍讀 `EVOL_CONFIG_DIR/llm_config.json`。遷移與隔離說明見 [per-user-settings.md](../migration/per-user-settings.md)。
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `EVOL_USER_SETTINGS_DIR` | `backend/data/user_settings` | 每帳號設定目錄 |
+| `EVOL_SETTINGS_LEGACY_OWNER` | 先 `LINKIN_GATE_ID`，否則 `deploy_admin` | 既有全域 `llm_config.json` 複製給哪一個帳號（不刪除來源） |
+| `LINKIN_GATE_ACCOUNTS` | — | 選用。JSON 陣列或檔案路徑，多帳號 `{"username","secret"}`，與單一閘門並存 |
 
 ### 模型池運維
 

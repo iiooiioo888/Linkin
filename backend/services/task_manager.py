@@ -604,6 +604,14 @@ class TaskManager:
             return False, "action 只能是 approve 或 reject"
         if not plan or plan.get("status") != "pending_user":
             return False, "預算草案尚未就緒"
+        from backend.company.milestone_actions import commit_field_writes, create_confirmed_seats
+
+        try:
+            create_confirmed_seats(plan)
+        except ValueError as exc:
+            return False, str(exc)
+        field_result = commit_field_writes(list(plan.get("field_writes") or []))
+        plan["field_writes_result"] = field_result
         plan["status"] = "locked"
         plan["confirmation"] = {"action": "approve", "at": time.time(), "note": note}
         raw_ledger = plan.get("ledger")
@@ -617,6 +625,8 @@ class TaskManager:
         record.status = "pending"
         self._persist(record)
         self.start_task(record)
+        if field_result.get("status") == "blocked":
+            return True, "已確認並下達。現場寫入未執行，任務維持開工"
         return True, "已確認並下達"
 
     def update_budget_lines(self, task_id: str, lines: list[dict[str, Any]]) -> tuple[bool, str]:
@@ -635,6 +645,92 @@ class TaskManager:
         self._add_event(record, "budget_lines_updated", {"version": plan.get("version")})
         self._persist(record)
         return True, "已更新分項"
+
+    def update_confirmation_draft(
+        self,
+        task_id: str,
+        *,
+        new_seats: list[dict[str, Any]] | None = None,
+        field_writes: list[dict[str, Any]] | None = None,
+    ) -> tuple[bool, str]:
+        """點頭前改新席位草稿與現場寫入。不寫目錄，不改世界觀。"""
+        from backend.company.execution_gate import expire_budget_if_needed
+        from backend.company.milestone_actions import replace_confirmation_draft
+
+        record = self.get_task(task_id)
+        if record is None:
+            return False, "任務不存在"
+        if expire_budget_if_needed(record):
+            self._persist(record)
+            return False, "確認已逾時"
+        plan = record.budget_plan if isinstance(record.budget_plan, dict) else None
+        if not plan or plan.get("status") != "pending_user":
+            return False, "目前不能改確認內容"
+        replace_confirmation_draft(plan, new_seats=new_seats, field_writes=field_writes)
+        self._add_event(record, "confirmation_draft_updated", {"version": plan.get("version")})
+        self._persist(record)
+        return True, "已更新確認內容"
+
+    def apply_seat_override(
+        self,
+        task_id: str,
+        role_id: str,
+        *,
+        system_prompt: str | None = None,
+        tools_allowed: list[str] | None = None,
+    ) -> tuple[bool, str]:
+        """已存在席位的提示詞與工具權限立刻寫進目錄。"""
+        from backend.company.milestone_actions import apply_existing_override
+
+        record = self.get_task(task_id)
+        if record is None:
+            return False, "任務不存在"
+        try:
+            apply_existing_override(role_id, system_prompt=system_prompt, tools_allowed=tools_allowed)
+        except KeyError as exc:
+            return False, str(exc)
+        except ValueError as exc:
+            return False, str(exc)
+        self._add_event(record, "seat_override_applied", {"role_id": role_id})
+        self._persist(record)
+        return True, "已寫入席位目錄"
+
+    def retry_field_writes(self, task_id: str, writes: list[dict[str, Any]] | None = None) -> tuple[bool, str]:
+        """開工後若檢查沒過，可改數值再檢查。仍是整批通過才寫。"""
+        from backend.company.milestone_actions import (
+            commit_field_writes,
+            replace_confirmation_draft,
+        )
+
+        record = self.get_task(task_id)
+        if record is None:
+            return False, "任務不存在"
+        plan = record.budget_plan if isinstance(record.budget_plan, dict) else None
+        if not plan or plan.get("status") != "locked":
+            return False, "任務尚未確認"
+        if writes is not None:
+            replace_confirmation_draft(plan, field_writes=writes)
+        result = commit_field_writes(list(plan.get("field_writes") or []))
+        plan["field_writes_result"] = result
+        self._add_event(record, "field_writes_retried", {"status": result.get("status")})
+        self._persist(record)
+        if result.get("status") == "blocked":
+            return True, "現場寫入未執行"
+        return True, "現場寫入已通過檢查"
+
+    def commit_narrative(self, task_id: str, kind: str, entity: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
+        from backend.company.milestone_actions import commit_narrative_entity
+
+        record = self.get_task(task_id)
+        if record is None:
+            return False, "任務不存在", {}
+        try:
+            stored = commit_narrative_entity(kind, entity)
+        except ValueError as exc:
+            return False, str(exc), {}
+        self._add_event(record, "narrative_committed", {"kind": stored.get("kind"), "id": (stored.get("entity") or {}).get("id")})
+        self._persist(record)
+        return True, "已寫入實體", stored
 
     def _reserve_execution_billing(self, record: TaskRecord) -> None:
         """批准後才預扣執行費。確認前的餘額預檢不走這裡。"""

@@ -19,6 +19,7 @@ import { MonitorSection } from './ChatMonitorCards';
 import IntegrationsStrip from './IntegrationsStrip';
 import { formatDurationCompact, taskEta } from '../lib/taskTiming';
 import { buttonEnabled, inferRuntimeState } from '../lib/taskStateMatrix';
+import { runtimeStateLabel } from '../lib/runtimeStateLabel';
 
 interface ChatTaskMonitorProps {
   task: TaskProgress;
@@ -122,7 +123,7 @@ export default function ChatTaskMonitor({
       <div className="ws-side-h">
         <div>
           <p className="ws-side-k">任務監控</p>
-          <p className="ws-side-t">{phaseLabel}</p>
+          <p className="ws-side-t">{runtimeStateLabel(runtimeState) || phaseLabel}</p>
         </div>
         <div className="ws-side-acts">
           {canPause && running && (

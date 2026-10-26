@@ -48,14 +48,26 @@ def test_env_overrides_config(cost_speed_file, monkeypatch):
 
 
 def test_put_get_post_company_reflect_api(cost_speed_file):
+    from backend.tenant.context import tenant_user_id
+
     client = TestClient(app)
     got = client.get("/config/cost-speed/post-company-reflect")
     assert got.status_code == 200
     assert got.json()["config"] == "evaluate"
     put = client.put("/config/cost-speed/post-company-reflect", json={"mode": "full"})
     assert put.status_code == 200
-    assert put.json()["config"] == "full"
-    assert post_company_reflect_mode() == "full"
+    body = put.json()
+    assert body["effective"] == "full"
+    assert body["user_override"] == "full"
+    assert body["config"] == "evaluate"
+    assert body["source"] == "user"
+    token = tenant_user_id.set("dev")
+    try:
+        assert post_company_reflect_mode() == "full"
+    finally:
+        tenant_user_id.reset(token)
+    assert post_company_reflect_mode() == "evaluate"
+    assert json.loads(cost_speed_file.read_text(encoding="utf-8"))["post_company_reflect"] == "evaluate"
 
 
 def test_task_finished_simple_reflect_mode_not_applicable(monkeypatch):

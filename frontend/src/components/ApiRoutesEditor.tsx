@@ -399,6 +399,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
 
   return (
     <div className={`space-y-4 ${className}`}>
+      <p className="text-[11px] text-[var(--console-sub)]">金鑰、端點與模型勾選只保存在目前登入帳號。</p>
       <div className={`grid grid-cols-1 gap-3 ${compact || hideList ? '' : 'md:grid-cols-2'}`}>
         <label className="block">
           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-[var(--console-sub)]">
