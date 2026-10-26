@@ -267,11 +267,16 @@ async def _lifespan(_app: FastAPI):
             pass
 
 
+# FASTAPI-OPENAPI-001：公開部署預設關掉互動文件，避免未登入就能讀到全部路由。
+_docs_on = os.getenv("LINKIN_ENABLE_DOCS", "").strip().lower() in {"1", "true", "yes"}
 app = FastAPI(
     title="靈境·Linkin — Evoloop 運行時",
     description="靈境·Linkin 世界觀控制面 + EvoLoop 反思闭环 / 多代理人公司运行时",
     version="0.1.0",
     lifespan=_lifespan,
+    docs_url="/docs" if _docs_on else None,
+    redoc_url="/redoc" if _docs_on else None,
+    openapi_url="/openapi.json" if _docs_on else None,
 )
 
 # CORS 配置：僅允許受信任的來源
@@ -487,7 +492,20 @@ def _client_identity(request: Request) -> str:
     return forwarded or (request.client.host if request.client else "")
 
 
-def _set_gate_cookie(response: JSONResponse, token: str) -> None:
+def _cookie_secure(request: Request) -> bool:
+    """FASTAPI-SESS-001：只有 HTTPS 才加 Secure。本機 HTTP 不加，否則瀏覽器會丟掉登入 Cookie。"""
+    flag = os.getenv("LINKIN_COOKIE_SECURE", "").strip().lower()
+    if flag in {"1", "true", "yes"}:
+        return True
+    if flag in {"0", "false", "no"}:
+        return False
+    forwarded = (request.headers.get("x-forwarded-proto") or request.url.scheme or "")
+    proto = forwarded.split(",")[0].strip().lower()
+    return proto == "https"
+
+
+def _set_gate_cookie(response: JSONResponse, token: str, request: Request) -> None:
+    # REACT-AUTH-001：權杖只放 HttpOnly Cookie，不進 JSON，腳本讀不到。
     response.set_cookie(
         key=AUTH_COOKIE,
         value=token,
@@ -495,7 +513,17 @@ def _set_gate_cookie(response: JSONResponse, token: str) -> None:
         httponly=True,
         samesite="lax",
         path="/",
-        secure=False,
+        secure=_cookie_secure(request),
+    )
+
+
+def _clear_gate_cookie(response: JSONResponse, request: Request) -> None:
+    response.delete_cookie(
+        AUTH_COOKIE,
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=_cookie_secure(request),
     )
 
 
@@ -504,14 +532,14 @@ async def auth_login(body: GateLoginBody, request: Request):
     token = issue_login(body.username, body.password, identity=_client_identity(request))
     if not token:
         raise HTTPException(status_code=401, detail="帳號或密碼不正確")
-    resp = JSONResponse({"ok": True, "user": body.username.strip(), "token": token})
-    _set_gate_cookie(resp, token)
+    resp = JSONResponse({"ok": True, "user": body.username.strip()})
+    _set_gate_cookie(resp, token, request)
     return resp
 
 
 @app.get("/auth/me")
 async def auth_me(request: Request):
-    token = extract_token(request.headers, request.cookies, request.query_params)
+    token = extract_token(request.headers, request.cookies)
     user = session_user(token)
     if not user:
         raise HTTPException(status_code=401, detail="未登入或會話已失效")
@@ -520,10 +548,10 @@ async def auth_me(request: Request):
 
 @app.post("/auth/logout")
 async def auth_logout(request: Request):
-    token = extract_token(request.headers, request.cookies, request.query_params)
+    token = extract_token(request.headers, request.cookies)
     clear_session(token)
     resp = JSONResponse({"ok": True})
-    resp.delete_cookie(AUTH_COOKIE, path="/")
+    _clear_gate_cookie(resp, request)
     return resp
 
 

@@ -14,7 +14,7 @@ from backend.tenant.context import tenant_user_id
 @asynccontextmanager
 async def websocket_tenant_scope(websocket: Any) -> AsyncIterator[str]:
     """從 WS cookie／header 解析 gate 使用者並綁定 tenant／billing contextvars。"""
-    token = extract_token(websocket.headers, websocket.cookies, websocket.query_params)
+    token = extract_token(websocket.headers, websocket.cookies)
     user = session_user(token)
     if not user and not gate_enabled():
         user = default_anonymous_user()

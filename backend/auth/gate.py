@@ -1,11 +1,11 @@
-"""應用閘門：以 HMAC 摘要比對簽發會話，來源值不進倉庫。
+"""應用閘門：以 HMAC 摘要比對簽發會話。
 
 環境變數：
-- LINKIN_GATE_ID / LINKIN_GATE_SECRET：覆寫預設摘要對（部署或測試用）
+- LINKIN_GATE_ID / LINKIN_GATE_SECRET：必填。未設定時登入一律拒絕（FASTAPI-AUTH-001）
 - LINKIN_AUTH_DISABLED=1：關閉閘門
 - LINKIN_AUTH_FORCE=1：即使在 pytest 中也強制開啟
 
-靜態站本機核對見 frontend/src/lib/gateDigest.ts（片段須同步）。
+來源值只放在環境變數。前端包不存放可還原的登入秘密（REACT-CONFIG-001）。
 """
 
 from __future__ import annotations
@@ -27,28 +27,6 @@ _FAIL_LIMIT = 8
 
 _PEPPER = bytes([0x6C, 0x6B, 0x6E, 0x2E, 0x67, 0x61, 0x74, 0x65])
 
-# 預設身分摘要（四段拼接，避免整串出現在單一常數）。
-# 產生時請用檔案腳本呼叫 HMAC，勿在殼層一行指令展開 $。
-_U = (
-    "1f4ac7b757bc42f0",
-    "2bafcc236d647a3a",
-    "9a11ea1ab69bf25d",
-    "77ad23899d26590d",
-)
-_S = (
-    "9a9e35eac9af48e1",
-    "4efc7d0d21cbd2ff",
-    "e7cc4ec72c0241b3",
-    "8bd13f69e5463467",
-)
-# 單 $ 變體摘要（$$ 在 GitHub／殼層常被吃成一顆）。
-_S1 = (
-    "d426fee8d6ae4a89",
-    "8e30531cbf34787e",
-    "00732398331a21f4",
-    "5c2728cda013187a",
-)
-
 _sessions: dict[str, dict[str, Any]] = {}
 _failures: dict[str, list[float]] = {}
 
@@ -57,18 +35,18 @@ def _digest(value: str) -> str:
     return hmac.new(_PEPPER, value.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
-def _expected_user() -> str:
+def _expected_user() -> str | None:
     override = os.getenv("LINKIN_GATE_ID", "").strip()
-    if override:
-        return _digest(override)
-    return "".join(_U)
+    if not override:
+        return None
+    return _digest(override)
 
 
-def _expected_secret() -> str:
+def _expected_secret() -> str | None:
     override = os.getenv("LINKIN_GATE_SECRET", "").strip()
-    if override:
-        return _digest(override)
-    return "".join(_S)
+    if not override:
+        return None
+    return _digest(override)
 
 
 def gate_enabled() -> bool:
@@ -117,7 +95,8 @@ def clear_session(token: str | None) -> None:
         _sessions.pop(token, None)
 
 
-def extract_token(headers: Any, cookies: Any, query: Any = None) -> str | None:
+def extract_token(headers: Any, cookies: Any) -> str | None:
+    """只接受標頭或 Cookie。查詢字串裡的權杖會進代理日誌（FASTAPI-AUTH-002）。"""
     header_val = ""
     if headers is not None:
         try:
@@ -134,20 +113,13 @@ def extract_token(headers: Any, cookies: Any, query: Any = None) -> str | None:
             cookie_val = ""
     if cookie_val:
         return cookie_val
-    if query is not None:
-        try:
-            q = (query.get("gate") or "").strip()
-        except Exception:
-            q = ""
-        if q:
-            return q
     return None
 
 
 def ws_authorized(websocket: Any) -> bool:
     if not gate_enabled():
         return True
-    token = extract_token(websocket.headers, websocket.cookies, websocket.query_params)
+    token = extract_token(websocket.headers, websocket.cookies)
     return verify_token(token)
 
 
@@ -213,22 +185,25 @@ def _pair_matches(username: str, secret: str, expect_user: str, expect_secret: s
 
 
 def issue_login(username: str, secret: str, identity: str = "") -> str | None:
-    """校驗通過則回傳會話 token，否則 None。"""
+    """校驗通過則回傳會話 token，否則 None。未設定環境身分時拒絕。"""
     if too_many_failures(identity):
+        return None
+    expected_user = _expected_user()
+    expected_secret = _expected_secret()
+    if not expected_user or not expected_secret:
+        record_failure(identity)
         return None
     user = (username or "").strip()
     secret = secret or ""
+    # 多帳號（master 的 LINEIN_GATE_ACCOUNTS）優先，再比對單一閘門帳密。
     for account, account_secret in _extra_accounts():
         if _pair_matches(user, secret, account, account_secret):
             clear_failures(identity)
             return create_session(account)
-    user_ok = hmac.compare_digest(_digest(user), _expected_user())
+    user_ok = hmac.compare_digest(_digest(user), expected_user)
     if not user_ok:
-        user_ok = hmac.compare_digest(_digest(user.lower()), _expected_user())
-    secret_digest = _digest(secret)
-    secret_ok = hmac.compare_digest(secret_digest, _expected_secret())
-    if not secret_ok and not os.getenv("LINKIN_GATE_SECRET", "").strip():
-        secret_ok = hmac.compare_digest(secret_digest, "".join(_S1))
+        user_ok = hmac.compare_digest(_digest(user.lower()), expected_user)
+    secret_ok = hmac.compare_digest(_digest(secret), expected_secret)
     if not (user_ok and secret_ok):
         record_failure(identity)
         return None

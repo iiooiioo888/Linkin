@@ -245,7 +245,7 @@ def test_contributor_api_early_unlock(billing_store, monkeypatch):
 
     with TestClient(app) as client:
         login = client.post("/auth/login", json={"username": "api_early", "password": "api_early_secret"})
-        headers = {"X-Linkin-Gate": login.json()["token"]}
+        headers = {"X-Linkin-Gate": login.cookies["evoloop_gate"]}
         status = client.get("/billing/contributor/contribution/status", headers=headers)
         iid = status.json()["installments"][0]["installment_id"]
         resp = client.post(

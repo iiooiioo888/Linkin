@@ -24,6 +24,8 @@ services:
   opc_service:
     volumes:
       - ./opc_service:/app/opc_service
+    environment:
+      - OPC_SIM_ENABLED=true
     command: ["uvicorn", "opc_service.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
 
   # 開發版前端：vite dev server + HMR（預設啟動；埠與本機一致 3001）
