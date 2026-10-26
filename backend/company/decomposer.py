@@ -25,6 +25,7 @@ from enum import Enum
 from typing import Any
 
 from backend.company.budget import BudgetManager, CostTracker
+from backend.company.milestone_actions import catalog_role_ids, resolve_assignee
 from backend.company.prompts import (
     PromptConfig,
 )
@@ -224,10 +225,7 @@ class TaskDecomposer:
 
         for i, task in enumerate(result.subtasks):
             role_str = task.get("assignee", "developer")
-            try:
-                assignee = RoleType(role_str)
-            except ValueError:
-                assignee = RoleType.DEVELOPER
+            assignee = resolve_assignee(str(role_str or "developer"))
 
             complexity = task.get("complexity", "medium")
             tier_map = {
@@ -482,7 +480,7 @@ class TaskDecomposer:
             return self._rule_decompose(goal)
 
         # 過濾：只保留團隊中存在的角色
-        available_roles = set(rt.value for rt in self.config.roles)
+        available_roles = set(rt.value for rt in self.config.roles) | catalog_role_ids()
         subtasks = []
         for task in matched_template:
             role = task.get("assignee", "")

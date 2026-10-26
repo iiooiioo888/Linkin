@@ -438,6 +438,26 @@ class BudgetLinesRequest(BaseModel):
     lines: list[dict[str, Any]] = []
 
 
+class ConfirmationDraftRequest(BaseModel):
+    new_seats: list[dict[str, Any]] | None = None
+    field_writes: list[dict[str, Any]] | None = None
+
+
+class SeatOverrideRequest(BaseModel):
+    role_id: str
+    system_prompt: str | None = None
+    tools_allowed: list[str] | None = None
+
+
+class FieldWriteRetryRequest(BaseModel):
+    field_writes: list[dict[str, Any]] | None = None
+
+
+class NarrativeCommitRequest(BaseModel):
+    kind: str
+    entity: dict[str, Any] = {}
+
+
 class FeedbackRequest(BaseModel):
     session_id: str
     signal: str  # thumbs_up | thumbs_down | copy | edit
@@ -1833,6 +1853,53 @@ async def budget_lines(task_id: str, body: BudgetLinesRequest):
         raise HTTPException(status_code=400, detail=message)
     record = task_manager.get_task(task_id)
     return {"success": True, "message": message, "budget_plan": record.budget_plan if record else None}
+
+
+@app.post("/tasks/{task_id}/confirmation-draft")
+async def confirmation_draft(task_id: str, body: ConfirmationDraftRequest):
+    """點頭前改新席位草稿與現場寫入。不寫席位目錄，不改世界觀。"""
+    ok, message = task_manager.update_confirmation_draft(
+        task_id,
+        new_seats=body.new_seats,
+        field_writes=body.field_writes,
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    record = task_manager.get_task(task_id)
+    return {"success": True, "message": message, "budget_plan": record.budget_plan if record else None}
+
+
+@app.post("/tasks/{task_id}/seat-overrides")
+async def seat_overrides(task_id: str, body: SeatOverrideRequest):
+    """已存在席位的提示詞與工具權限立刻寫進目錄。"""
+    ok, message = task_manager.apply_seat_override(
+        task_id,
+        body.role_id,
+        system_prompt=body.system_prompt,
+        tools_allowed=body.tools_allowed,
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    return {"success": True, "message": message}
+
+
+@app.post("/tasks/{task_id}/field-writes")
+async def field_writes(task_id: str, body: FieldWriteRetryRequest):
+    """開工後重試現場寫入。整批通過檢查才寫。"""
+    ok, message = task_manager.retry_field_writes(task_id, body.field_writes)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    record = task_manager.get_task(task_id)
+    return {"success": True, "message": message, "budget_plan": record.budget_plan if record else None}
+
+
+@app.post("/tasks/{task_id}/narrative/commit")
+async def narrative_commit(task_id: str, body: NarrativeCommitRequest):
+    """敘事顯式寫入實體。世界觀維持只讀。"""
+    ok, message, stored = task_manager.commit_narrative(task_id, body.kind, body.entity)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    return {"success": True, "message": message, "stored": stored}
 
 
 @app.post("/tasks/{task_id}/cancel")

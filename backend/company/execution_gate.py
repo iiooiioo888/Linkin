@@ -99,7 +99,7 @@ async def compose_budget_draft(record: Any) -> dict[str, Any]:
     except Exception as exc:
         meta = {"error": str(exc), "feasibility": "narrow"}
     now = time.time()
-    return {
+    plan = {
         "status": "pending_user",
         "version": 1,
         "feasibility": meta.get("feasibility") or ("go" if subtasks else "narrow"),
@@ -117,6 +117,9 @@ async def compose_budget_draft(record: Any) -> dict[str, Any]:
         "deadline": now + CONFIRM_TTL_SEC if CONFIRM_TTL_SEC > 0 else None,
         "note": str(meta.get("error") or ""),
     }
+    from backend.company.milestone_actions import absorb_analysis
+
+    return absorb_analysis(plan, meta)
 
 
 def replace_budget_lines(plan: dict[str, Any], lines: list[dict[str, Any]]) -> dict[str, Any]:
