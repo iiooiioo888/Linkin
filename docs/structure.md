@@ -21,9 +21,9 @@
 | 功能 | 做什麼 | 落在哪 |
 |------|--------|--------|
 | **召回** | 向量記憶與 Token 節省注入：MemOS、OpenViking、WeKnora | `backend/memory/`、`backend/integrations/memos.py`、`openviking.py`、`weknora.py` |
-| **採集** | 網頁轉 Markdown、社媒公開採集、Agent Reach 即時閱讀與搜尋 | 實驗室「爬蟲」；MediaCrawler 與 [Agent Reach](https://github.com/Panniantong/Agent-Reach)（`.agents/skills/agent-reach/`）。Agent Reach、just-scrape、agent-browser 要本機 CLI，用 `python -m backend.scripts.cli_runtimes` 檢查 |
+| **採集** | 網頁轉 Markdown、社媒公開採集、Agent Reach 即時閱讀與搜尋 | 實驗室「爬蟲」；MediaCrawler 與 [Agent Reach](https://github.com/Panniantong/Agent-Reach)（`.agents/skills/agent-reach/`）。Agent Reach、just-scrape、agent-browser、cli-hub 要本機 CLI，用 `python -m backend.scripts.cli_runtimes` 檢查 |
 | **工業接線** | OPC 讀寫。寫入經護欄。實驗室 MCP 頁把 OPC 開關放在這一組 | `opc_service/` |
-| **Agent 工作流** | 任務板與訪談閘門：Yao、Ouroboros | `backend/integrations/yao.py`、`ouroboros.py` |
+| **Agent 工作流** | 任務板、訪談閘門，以及 CLI-Anything 的軟體命令列目錄 | `backend/integrations/yao.py`、`ouroboros.py`、`backend/company/cli_anything.py` |
 | **設計** | Design-as-Code，須顯式觸發：OpenPencil | `backend/integrations/openpencil.py` |
 | **技能** | Agent skills | `.agents/skills/`、`#/monitor/skills` |
 

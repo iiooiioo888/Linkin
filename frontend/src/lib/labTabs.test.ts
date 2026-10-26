@@ -44,6 +44,10 @@ describe('lab component groups', () => {
       ?.items.find((item) => item.key === 'agent-reach');
     expect(reach && isLabLink(reach) ? reach.href : '').toBe('#/monitor/skills/agent-reach');
     expect(group?.sections?.find((section) => section.id === 'wire')?.items.map((item) => item.key)).toEqual(['mcp']);
+    const agent = group?.sections?.find((section) => section.id === 'agent');
+    expect(agent?.items.map((item) => item.key)).toEqual(['yao', 'ouroboros', 'cli-anything']);
+    const hub = agent?.items.find((item) => item.key === 'cli-anything');
+    expect(hub && isLabLink(hub) ? hub.href : '').toBe('#/monitor/skills/cli-anything');
   });
 
   it('links minecraft and the price probe out of the lab', () => {

@@ -30,7 +30,8 @@ AGENTS_SKILLS_DIR = Path(".agents/skills")
 SKILLS_LOCK_PATH = Path("skills-lock.json")
 MCP_MANIFEST_PATH = Path("backend/data/agent_mcp_manifest.json")
 
-_CLI_STUB_IDS = frozenset({"agent-browser", "agent-reach", "just-scrape"})
+_CLI_STUB_IDS = frozenset({"agent-browser", "agent-reach", "cli-anything", "just-scrape"})
+_DEFAULT_ENABLED_IDS = frozenset({"cli-anything"})
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 _FM_LINE_RE = re.compile(r"^([a-zA-Z0-9_-]+):\s*(.*)$")
 
@@ -209,7 +210,7 @@ def build_skill_record(
         )
     elif skill_type == "cli-stub":
         content = (
-            "【Linkin 提示】此技能依賴外部 CLI（agent-reach、just-scrape 或 agent-browser），不是 MCP。"
+            "【Linkin 提示】此技能依賴外部 CLI（agent-reach、just-scrape、agent-browser 或 cli-hub），不是 MCP。"
             " 先執行 `python -m backend.scripts.cli_runtimes` 確認命令已在 PATH；"
             " 未安裝時只注入方法論，不代為安裝、不讀取本機 Cookie 或金鑰。\n\n"
             + content
@@ -260,7 +261,7 @@ def sync_agent_skills(
                 skill_type=row["skill_type"],
                 source_path=row["source_path"],
                 content_hash=row["content_hash"],
-                default_enabled=False,
+                default_enabled=row["skill_id"] in _DEFAULT_ENABLED_IDS,
                 skill_budget=row["skill_budget"],
             )
         except ValueError as exc:
