@@ -44,7 +44,9 @@ export default function OpsPanel() {
         <ConsoleLeftRail>
           <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-4">
             <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">基礎設施</h1>
-            <p className="mt-1 text-[10px] text-[var(--console-faint)]">Hub · 雲端 · 檢查點 · 連接池</p>
+            <p className="mt-1 text-[10px] text-[var(--console-faint)]">
+              Hub · 雲端 · 檢查點 · 連接池。目錄間隔在 API 路由，依帳號保存。
+            </p>
           </div>
           <ConsoleColumnScroll className="!px-0 !py-0">
             <ConsoleRailNav

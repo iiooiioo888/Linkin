@@ -205,7 +205,7 @@ def test_contributor_api_keys_health(billing_store, monkeypatch):
 
     with TestClient(app) as client:
         login = client.post("/auth/login", json={"username": "contrib_p2", "password": "secret_p2"})
-        headers = {"X-Linkin-Gate": login.json()["token"]}
+        headers = {"X-Linkin-Gate": login.cookies["evoloop_gate"]}
         bind = client.post(
             "/billing/contributor/bind-key",
             headers=headers,
@@ -254,7 +254,7 @@ def test_tos_rejects_unsupported_vendor(billing_store, monkeypatch):
 
     with TestClient(app) as client:
         login = client.post("/auth/login", json={"username": "tos_user", "password": "tos_secret"})
-        headers = {"X-Linkin-Gate": login.json()["token"]}
+        headers = {"X-Linkin-Gate": login.cookies["evoloop_gate"]}
         bad = client.post(
             "/billing/contributor/bind-key",
             headers=headers,
@@ -349,7 +349,7 @@ def test_admin_seed_contribution_api(billing_store, monkeypatch):
 
     with TestClient(app) as client:
         login = client.post("/auth/login", json={"username": "seed_admin", "password": "seed_secret"})
-        headers = {"X-Linkin-Gate": login.json()["token"], "X-Billing-Admin": ""}
+        headers = {"X-Linkin-Gate": login.cookies["evoloop_gate"], "X-Billing-Admin": ""}
         billing_store.ensure_account("seed_target", "free")
         resp = client.post(
             "/admin/billing/contribution/seed",

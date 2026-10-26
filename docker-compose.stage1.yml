@@ -1,0 +1,30 @@
+# 階段 1 的三個入口。金鑰由環境提供，不寫預設值。
+services:
+  guardrail-service:
+    build:
+      context: .
+      dockerfile: services/guardrail-service/Dockerfile
+    environment:
+      LINKIN_GUARDRAIL_HMAC_KEY: ${LINKIN_GUARDRAIL_HMAC_KEY:?}
+    ports:
+      - "127.0.0.1:8091:8080"
+  tool-gateway:
+    build:
+      context: .
+      dockerfile: services/tool-gateway/Dockerfile
+    environment:
+      LINKIN_GUARDRAIL_HMAC_KEY: ${LINKIN_GUARDRAIL_HMAC_KEY:?}
+      TOOL_DUAL_RUN: shadow
+      TOOL_DUAL_RUN_SAMPLE_RATE: "0.1"
+    ports:
+      - "127.0.0.1:8092:8080"
+    depends_on:
+      - guardrail-service
+  minecraft-gateway:
+    build:
+      context: .
+      dockerfile: services/minecraft-gateway/Dockerfile
+    environment:
+      LINKIN_GUARDRAIL_HMAC_KEY: ${LINKIN_GUARDRAIL_HMAC_KEY:?}
+    ports:
+      - "127.0.0.1:8093:8080"

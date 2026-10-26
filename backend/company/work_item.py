@@ -16,6 +16,7 @@ from backend.company.state import (
     RoleType,
     WorkItem,
     WorkItemStatus,
+    assignee_token,
 )
 
 logger = logging.getLogger(__name__)
@@ -140,7 +141,7 @@ class WorkItemManager:
         self,
         title: str,
         description: str = "",
-        assignee: RoleType | None = None,
+        assignee: RoleType | str | None = None,
         created_by: RoleType | None = None,
         depends_on: list[str] | None = None,
         tier: BudgetTier = BudgetTier.ROUTINE,
@@ -157,14 +158,14 @@ class WorkItemManager:
             priority=priority,
         )
         self._items[item.id] = item
-        logger.info("工作項建立：%s [%s] → %s", item.id, item.title, item.assignee.value if item.assignee else "未指派")
+        logger.info("工作項建立：%s [%s] → %s", item.id, item.title, assignee_token(item.assignee) or "未指派")
         return item
 
     def decompose(
         self,
         parent_goal: str,
         subtasks: list[dict[str, Any]],
-        assignee: RoleType | None = None,
+        assignee: RoleType | str | None = None,
         created_by: RoleType | None = None,
     ) -> list[WorkItem]:
         """將目標分解為多個子工作項。
@@ -356,7 +357,7 @@ class WorkItemManager:
                 "id": item.id,
                 "title": item.title,
                 "description": item.description[:300],
-                "assignee": item.assignee.value if item.assignee else None,
+                "assignee": assignee_token(item.assignee),
                 "depends_on": item.depends_on,
                 "tier": item.tier.value,
                 "actual_cost": round(item.actual_cost, 4),

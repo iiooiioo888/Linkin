@@ -120,6 +120,14 @@ async def _lifespan(_app: FastAPI):
     from backend.core.opc_degrade import reset_opc_health
 
     reset_opc_health()
+    try:
+        from backend.core.user_settings import migrate_legacy_user_settings
+
+        migrated = await asyncio.to_thread(migrate_legacy_user_settings)
+        if migrated.get("llm_copied") or migrated.get("cookie_copied"):
+            logger.info("遺留設定已複製到帳號 %s（來源檔保留）", migrated.get("owner"))
+    except Exception as exc:
+        logger.warning("遺留設定遷移失敗（不刪除來源）：%s", exc)
     # 重啟回灌：從 Redis 載回任務記錄，修復任務列表／管線重啟後清空
     try:
         await asyncio.to_thread(task_manager.rehydrate)
@@ -259,11 +267,16 @@ async def _lifespan(_app: FastAPI):
             pass
 
 
+# FASTAPI-OPENAPI-001：公開部署預設關掉互動文件，避免未登入就能讀到全部路由。
+_docs_on = os.getenv("LINKIN_ENABLE_DOCS", "").strip().lower() in {"1", "true", "yes"}
 app = FastAPI(
     title="靈境·Linkin — Evoloop 運行時",
     description="靈境·Linkin 世界觀控制面 + EvoLoop 反思闭环 / 多代理人公司运行时",
     version="0.1.0",
     lifespan=_lifespan,
+    docs_url="/docs" if _docs_on else None,
+    redoc_url="/redoc" if _docs_on else None,
+    openapi_url="/openapi.json" if _docs_on else None,
 )
 
 # CORS 配置：僅允許受信任的來源
@@ -308,6 +321,9 @@ register_modules(app)
 from backend.integrations.api import register_integrations
 
 register_integrations(app)
+from backend.core.account_settings_api import register_account_settings
+
+register_account_settings(app)
 from backend.company.runtime_api import register_runtime_api
 
 register_runtime_api(app)
@@ -427,6 +443,26 @@ class BudgetLinesRequest(BaseModel):
     lines: list[dict[str, Any]] = []
 
 
+class ConfirmationDraftRequest(BaseModel):
+    new_seats: list[dict[str, Any]] | None = None
+    field_writes: list[dict[str, Any]] | None = None
+
+
+class SeatOverrideRequest(BaseModel):
+    role_id: str
+    system_prompt: str | None = None
+    tools_allowed: list[str] | None = None
+
+
+class FieldWriteRetryRequest(BaseModel):
+    field_writes: list[dict[str, Any]] | None = None
+
+
+class NarrativeCommitRequest(BaseModel):
+    kind: str
+    entity: dict[str, Any] = {}
+
+
 class FeedbackRequest(BaseModel):
     session_id: str
     signal: str  # thumbs_up | thumbs_down | copy | edit
@@ -456,7 +492,20 @@ def _client_identity(request: Request) -> str:
     return forwarded or (request.client.host if request.client else "")
 
 
-def _set_gate_cookie(response: JSONResponse, token: str) -> None:
+def _cookie_secure(request: Request) -> bool:
+    """FASTAPI-SESS-001：只有 HTTPS 才加 Secure。本機 HTTP 不加，否則瀏覽器會丟掉登入 Cookie。"""
+    flag = os.getenv("LINKIN_COOKIE_SECURE", "").strip().lower()
+    if flag in {"1", "true", "yes"}:
+        return True
+    if flag in {"0", "false", "no"}:
+        return False
+    forwarded = (request.headers.get("x-forwarded-proto") or request.url.scheme or "")
+    proto = forwarded.split(",")[0].strip().lower()
+    return proto == "https"
+
+
+def _set_gate_cookie(response: JSONResponse, token: str, request: Request) -> None:
+    # REACT-AUTH-001：權杖只放 HttpOnly Cookie，不進 JSON，腳本讀不到。
     response.set_cookie(
         key=AUTH_COOKIE,
         value=token,
@@ -464,7 +513,17 @@ def _set_gate_cookie(response: JSONResponse, token: str) -> None:
         httponly=True,
         samesite="lax",
         path="/",
-        secure=False,
+        secure=_cookie_secure(request),
+    )
+
+
+def _clear_gate_cookie(response: JSONResponse, request: Request) -> None:
+    response.delete_cookie(
+        AUTH_COOKIE,
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=_cookie_secure(request),
     )
 
 
@@ -473,14 +532,14 @@ async def auth_login(body: GateLoginBody, request: Request):
     token = issue_login(body.username, body.password, identity=_client_identity(request))
     if not token:
         raise HTTPException(status_code=401, detail="帳號或密碼不正確")
-    resp = JSONResponse({"ok": True, "user": body.username.strip(), "token": token})
-    _set_gate_cookie(resp, token)
+    resp = JSONResponse({"ok": True, "user": body.username.strip()})
+    _set_gate_cookie(resp, token, request)
     return resp
 
 
 @app.get("/auth/me")
 async def auth_me(request: Request):
-    token = extract_token(request.headers, request.cookies, request.query_params)
+    token = extract_token(request.headers, request.cookies)
     user = session_user(token)
     if not user:
         raise HTTPException(status_code=401, detail="未登入或會話已失效")
@@ -489,10 +548,10 @@ async def auth_me(request: Request):
 
 @app.post("/auth/logout")
 async def auth_logout(request: Request):
-    token = extract_token(request.headers, request.cookies, request.query_params)
+    token = extract_token(request.headers, request.cookies)
     clear_session(token)
     resp = JSONResponse({"ok": True})
-    resp.delete_cookie(AUTH_COOKIE, path="/")
+    _clear_gate_cookie(resp, request)
     return resp
 
 
@@ -767,21 +826,29 @@ def raho_scorecard() -> dict[str, Any]:
 
 @app.get("/config")
 async def get_config():
-    """回傳当前 LLM 配置（金鑰脱敏）與可用模型池。"""
+    """回傳当前 LLM 配置（金鑰脱敏）與可用模型池。只含目前登入帳號。"""
+    from backend.core.user_settings import active_settings_user
+
     cfg = get_runtime_config()
     pool = public_pool(cfg)
+    uid = active_settings_user() or ""
     return {
         "configured": bool(cfg.get("api_key")),
         "api_key": masked_key(cfg.get("api_key", "")),
         "api_base": cfg.get("api_base", ""),
         "model": cfg.get("model", "") or pool.get("model", ""),
         **pool,
+        "settings_user": uid,
+        "settings_isolated": bool(uid),
     }
 
 
 @app.post("/config")
 async def update_config(req: LlmConfigRequest):
-    """動態更新 LLM 配置（即時生效並持久化），隨後刷新可用模型池。"""
+    """動態更新目前帳號的 LLM 配置（即時生效並持久化），隨後刷新可用模型池。"""
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     save_runtime_config(api_key=req.api_key, api_base=req.api_base, model=req.model)
     if req.route_strategy:
         set_route_strategy(req.route_strategy)
@@ -805,7 +872,10 @@ async def get_config_routes():
 
 @app.put("/config/routes")
 async def replace_config_routes(body: ApiRoutesReplaceBody):
-    """整批覆寫 API 路由。"""
+    """整批覆寫目前帳號的 API 路由。"""
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     save_routes(
         [r.model_dump() for r in body.api_routes],
         strategy=body.route_strategy,
@@ -820,7 +890,10 @@ async def replace_config_routes(body: ApiRoutesReplaceBody):
 
 @app.post("/config/routes")
 async def upsert_config_route(body: ApiRouteBody):
-    """新增或更新一條 API 路由。"""
+    """新增或更新目前帳號的一條 API 路由。"""
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     route = upsert_route(body.model_dump())
     try:
         refresh_route_catalog(route["id"], reason="save")
@@ -831,6 +904,9 @@ async def upsert_config_route(body: ApiRouteBody):
 
 @app.delete("/config/routes/{route_id}")
 async def delete_config_route(route_id: str):
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     delete_route(route_id)
     return public_router_state()
 
@@ -858,6 +934,9 @@ async def test_config_route(route_id: str):
 
 @app.put("/config/strategy")
 async def update_route_strategy(body: RouteStrategyBody):
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     strategy = set_route_strategy(body.route_strategy)
     if body.default_route_id:
         from backend.core.llm_config import merge_runtime_config
@@ -891,7 +970,10 @@ async def reload_cost_speed_config():
 
 @app.put("/config/ops")
 async def update_llm_ops(body: LlmOpsPrefsBody):
-    """更新模型目錄定時檢查間隔（秒）。"""
+    """更新目前帳號的模型目錄定時檢查間隔（秒）。"""
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     return set_refresh_interval(body.refresh_interval_sec)
 
 
@@ -1801,6 +1883,53 @@ async def budget_lines(task_id: str, body: BudgetLinesRequest):
     return {"success": True, "message": message, "budget_plan": record.budget_plan if record else None}
 
 
+@app.post("/tasks/{task_id}/confirmation-draft")
+async def confirmation_draft(task_id: str, body: ConfirmationDraftRequest):
+    """點頭前改新席位草稿與現場寫入。不寫席位目錄，不改世界觀。"""
+    ok, message = task_manager.update_confirmation_draft(
+        task_id,
+        new_seats=body.new_seats,
+        field_writes=body.field_writes,
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    record = task_manager.get_task(task_id)
+    return {"success": True, "message": message, "budget_plan": record.budget_plan if record else None}
+
+
+@app.post("/tasks/{task_id}/seat-overrides")
+async def seat_overrides(task_id: str, body: SeatOverrideRequest):
+    """已存在席位的提示詞與工具權限立刻寫進目錄。"""
+    ok, message = task_manager.apply_seat_override(
+        task_id,
+        body.role_id,
+        system_prompt=body.system_prompt,
+        tools_allowed=body.tools_allowed,
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    return {"success": True, "message": message}
+
+
+@app.post("/tasks/{task_id}/field-writes")
+async def field_writes(task_id: str, body: FieldWriteRetryRequest):
+    """開工後重試現場寫入。整批通過檢查才寫。"""
+    ok, message = task_manager.retry_field_writes(task_id, body.field_writes)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    record = task_manager.get_task(task_id)
+    return {"success": True, "message": message, "budget_plan": record.budget_plan if record else None}
+
+
+@app.post("/tasks/{task_id}/narrative/commit")
+async def narrative_commit(task_id: str, body: NarrativeCommitRequest):
+    """敘事顯式寫入實體。世界觀維持只讀。"""
+    ok, message, stored = task_manager.commit_narrative(task_id, body.kind, body.entity)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    return {"success": True, "message": message, "stored": stored}
+
+
 @app.post("/tasks/{task_id}/cancel")
 async def cancel_task(task_id: str):
     """請求取消執行中的任務。
@@ -2037,7 +2166,11 @@ async def monitor_hub_websocket(websocket: WebSocket):
 
 from backend.memory.vector_store import VectorMemoryStore
 
-_memory_store_api = VectorMemoryStore()
+
+def _request_memory_store() -> VectorMemoryStore:
+    from backend.memory.tenant_store import vector_store_for_request
+
+    return vector_store_for_request()
 
 
 def _json_memories() -> list[dict]:
@@ -2064,7 +2197,7 @@ async def list_memories(limit: int = 100, offset: int = 0):
     """列出記憶庫中的記憶（分頁，按建立時間降序）。"""
     chroma_error = ""
     try:
-        all_memories = await asyncio.to_thread(_memory_store_api.all)
+        all_memories = await asyncio.to_thread(_request_memory_store().all)
     except Exception as exc:
         logger.warning("記憶庫讀取失敗：%s", exc)
         chroma_error = str(exc)
@@ -2085,11 +2218,15 @@ async def list_memories(limit: int = 100, offset: int = 0):
 
 @app.delete("/memories/{memory_id}")
 async def delete_memory(memory_id: str):
-    """刪除單條記憶。"""
+    """刪除目前帳號的單條記憶。"""
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     try:
-        collection = await asyncio.to_thread(_memory_store_api._get_collection)
+        store = _request_memory_store()
+        collection = await asyncio.to_thread(store._get_collection)
         collection.delete(ids=[memory_id])
-        _memory_store_api.invalidate_cache()
+        store.invalidate_cache()
         return {"deleted": True, "id": memory_id}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"刪除失敗：{exc}") from exc
@@ -2097,10 +2234,13 @@ async def delete_memory(memory_id: str):
 
 @app.post("/memories/cleanup")
 async def cleanup_memories(max_age_days: int = 30, min_score: float | None = None):
-    """清理過期或低品質記憶。"""
+    """清理目前帳號的過期或低品質記憶。"""
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     try:
         deleted = await asyncio.to_thread(
-            _memory_store_api.cleanup, max_age_days, min_score
+            _request_memory_store().cleanup, max_age_days, min_score
         )
         return {"deleted_count": deleted}
     except Exception as exc:
@@ -3042,6 +3182,60 @@ async def list_cli_hub_catalog(action: str = "list", q: str = "", name: str = ""
         limit=limit,
         per_category=per_category,
     )
+
+
+@app.get("/horizon/latest")
+async def horizon_latest():
+    """上一份公開資料摘要。沒有掃過就回空。"""
+    from backend.company.horizon import load_latest
+
+    brief = load_latest()
+    if not brief:
+        return {"ok": False, "topics": [], "note": "尚未掃描"}
+    return brief
+
+
+@app.post("/horizon/scan")
+async def horizon_scan():
+    """依固定主題讀公開倉庫。不接受網址，不改程式。"""
+    from backend.company.horizon import scan_horizon
+
+    return await asyncio.to_thread(scan_horizon)
+
+
+class HorizonDecision(BaseModel):
+    action: str = ""
+    note: str = ""
+
+
+def _horizon_root():
+    from backend.company.horizon import horizon_path
+
+    return horizon_path().parent
+
+
+@app.post("/horizon/proposals/{proposal_id}/decide")
+async def horizon_decide(proposal_id: str, body: HorizonDecision):
+    """點頭才寫入參考筆記。凍結面不能通過。"""
+    from backend.company.horizon_loop import decide_proposal
+
+    ok, message = await asyncio.to_thread(
+        decide_proposal, _horizon_root(), proposal_id, body.action.strip(), body.note
+    )
+    if not ok:
+        raise HTTPException(status_code=409, detail=message)
+    return {"ok": True, "message": message}
+
+
+@app.post("/horizon/proposals/{proposal_id}/rollback")
+async def horizon_rollback(proposal_id: str):
+    """撤銷已寫入的參考筆記。"""
+    from backend.company.horizon_loop import rollback_proposal
+
+    ok, message = await asyncio.to_thread(rollback_proposal, _horizon_root(), proposal_id)
+    if not ok:
+        raise HTTPException(status_code=409, detail=message)
+    return {"ok": True, "message": message}
 
 
 @app.get("/skills/preview")

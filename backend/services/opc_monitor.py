@@ -18,6 +18,7 @@ from backend.services.dashboard import collect_opc_audit
 from backend.services.task_manager import task_manager
 from opc_service.client.nodes import short_tag_name
 from opc_service.config import settings
+from opc_service.internal_auth import client_headers
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +191,7 @@ def _recent_opc_tasks(limit: int = 8) -> list[dict[str, Any]]:
 
 
 def _fetch_opc_live_once(url: str) -> dict[str, Any]:
-    with httpx.Client(timeout=LIVE_TIMEOUT) as client:
+    with httpx.Client(timeout=LIVE_TIMEOUT, headers=client_headers()) as client:
         health_resp = client.get(f"{url}/opc/health")
         health_resp.raise_for_status()
         health = health_resp.json()

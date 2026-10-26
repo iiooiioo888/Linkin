@@ -133,7 +133,7 @@ function SituationFocusCard({
             <span className="mon-focus-metric__value font-mono tabular-nums">{running}</span>
           </div>
           <div className="mon-focus-metric">
-            <span className="mon-focus-metric__label">角色</span>
+            <span className="mon-focus-metric__label">席位</span>
             <span className="mon-focus-metric__value font-mono tabular-nums">{feed.agents.length}</span>
           </div>
           <div className="mon-focus-metric">
@@ -240,7 +240,7 @@ function AnomaliesFocusCard({
         )}
         {onOpenAlerts ? (
           <button type="button" className="mon-focus-link" onClick={onOpenAlerts}>
-            開啟監控模式
+            開啟警報
           </button>
         ) : null}
       </div>
@@ -363,8 +363,8 @@ function CompanyCard({
             tone={tone}
             label={active.length ? `${active.length} 執行` : busy.length ? `${busy.length} 佇列` : '空閒'}
           />
-          {onOpen ? <MonitorLinkButton onClick={onOpen} label="角色／質詢" /> : null}
-          {onOpenTab ? <MonitorLinkButton onClick={() => onOpenTab('memory')} label="L0" /> : null}
+          {onOpen ? <MonitorLinkButton onClick={onOpen} label="席位" /> : null}
+          {onOpenTab ? <MonitorLinkButton onClick={() => onOpenTab('memory')} label="世界" /> : null}
           {onOpenTab ? <MonitorLinkButton onClick={() => onOpenTab('integrations')} label="整合" /> : null}
         </>
       }
@@ -373,7 +373,7 @@ function CompanyCard({
     >
       {busy.length === 0 ? (
         <div className="py-4 text-center">
-          <p className="text-[12px] text-[var(--console-faint)]">無忙碌角色</p>
+          <p className="text-[12px] text-[var(--console-faint)]">無忙碌席位</p>
           {feed.agents.some((a) => a.preferred_model || a.preferred_provider) ? (
             <p className="mt-1 text-[11px] text-[var(--console-sub)]">
               {feed.agents.filter((a) => a.preferred_model || a.preferred_provider).length} 席已指定模型
@@ -739,7 +739,7 @@ function OverviewKpiRow({ feed }: { feed: AnimLiveFeed }) {
         { label: '快取命中', value: `${hitPct}%`, accent: true },
         { label: '成功率', value: `${successRate}%` },
         { label: '執行中', value: String(feed.runningTasks) },
-        { label: '角色', value: String(feed.agents.length) },
+        { label: '席位', value: String(feed.agents.length) },
         { label: 'Trace', value: String(opt?.trace.trace_count ?? 0) },
         { label: 'API', value: String(feed.llmOps?.api_routes?.length ?? 0) },
       ].map((kpi) => (

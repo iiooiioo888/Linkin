@@ -280,7 +280,7 @@ function FileActivityPane({ rows }: { rows: ContextFileActivity[] }) {
 
 function AgentNetworkPane({ nodes }: { nodes: ContextAgentNode[] }) {
   if (!nodes.length) {
-    return <p className="text-[11px] text-[var(--console-sub)]">尚無席位／角色呼叫紀錄。</p>;
+    return <p className="text-[11px] text-[var(--console-sub)]">尚無席位呼叫紀錄。</p>;
   }
   const maxTok = Math.max(1, ...nodes.map((n) => (n.tokens_in || 0) + (n.tokens_out || 0)));
   return (

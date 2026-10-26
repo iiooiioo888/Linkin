@@ -73,7 +73,7 @@ export default function MemoryPanel({ onClose }: MemoryPanelProps) {
       {/* 標題列 */}
       <div className="flex items-center justify-between border-b border-gray-800 p-3">
         <h3 className="text-sm font-medium text-gray-200">
-          🧠 記憶庫 <span className="text-xs text-gray-500">（{total} 條）</span>
+          🧠 記憶庫 <span className="text-xs text-gray-500">（此帳號 {total} 條）</span>
         </h3>
         <div className="flex items-center gap-2">
           <button

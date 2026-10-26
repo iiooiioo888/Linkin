@@ -88,6 +88,8 @@
 | 5 | 已開啟 cost_speed | 依複雜度設定為 `company` 或 `simple` |
 | 6 | 公司關鍵詞，或長度達到門檻 | `company`，否則 `simple` |
 
+服務化契約把第 6 步拆成 `company_keyword` 與 `length`，並預留 12 個內網服務。運行時仍是上面這張表。清單見 [服務契約](docs/architecture/service-contracts.md)。
+
 ### 圖上怎麼走
 
 每條進圖的查詢都先走完前置鏈，再分叉。工業查詢進 `run_company`，由任務經理分析；前置鏈裡的 OPC 上下文只提供讀數。
@@ -143,7 +145,7 @@ flowchart TD
 
 | 類 | 落在哪 |
 |----|--------|
-| 核心的開發組件 | `backend/core/`、`backend/company/`、`backend/billing/`。實驗室：提示詞、架構、精簡、容器、A/B |
+| 核心的開發組件 | `backend/core/`、`backend/company/`、`backend/billing/`、`linkin_core/`（契約）。實驗室：提示詞、架構、精簡、容器、A/B |
 | minecraft組件 | `backend/linkin/`、`backend/modules/`、`backend/tools/`。畫面在 `#/modules/minecraft` |
 | 價格分析探針組件 | `backend/hub/`、`backend/company/quant_*.py`。實驗室：策略庫、策略圖、價格探針 |
 | 整合 | 再按召回、採集、工業接線、Agent 工作流、設計、技能。見 [目錄地圖](docs/structure.md#整合的功能) |

@@ -201,9 +201,9 @@ def _vector_hits(query: str) -> list[KnowledgeEntity]:
     if not (query or "").strip():
         return []
     try:
-        from backend.memory.vector_store import VectorMemoryStore
+        from backend.memory.tenant_store import vector_store_for_request
 
-        store = VectorMemoryStore()
+        store = vector_store_for_request()
         rows = store.search_similar(query, k=3) or []
     except Exception:
         return []
