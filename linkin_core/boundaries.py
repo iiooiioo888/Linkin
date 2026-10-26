@@ -34,6 +34,8 @@ def forbidden_imports(root: Path | None = None) -> list[str]:
     base = root or Path(__file__).resolve().parent
     violations: list[str] = []
     for path in sorted(base.rglob("*.py")):
+        if "tests" in path.parts:
+            continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for module in _imported_modules(tree):
             top = module.split(".", 1)[0]

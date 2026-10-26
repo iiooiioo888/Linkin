@@ -53,7 +53,7 @@ jobs:
       - name: Lint check (Ruff)
         run: |
           pip install ruff
-          ruff check backend/ opc_service/ linkin_core/
+          ruff check backend/ opc_service/ linkin_core/ services/
 
       - name: Type check (Mypy)
         run: |

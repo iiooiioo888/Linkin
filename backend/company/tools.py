@@ -244,6 +244,13 @@ class ToolRegistry:
                 error=f"角色目錄未授權工具 {request.tool}",
             )
 
+        from backend.company.tool_gateway_client import invoke_registered, legacy_only
+
+        if legacy_only.get():
+            return self._execute_local(tool, request, role)
+        return invoke_registered(self, request, role, catalog_allowed)
+
+    def _execute_local(self, tool: ToolDefinition, request: ToolCallRequest, role: str | None) -> ToolCallResult:
         try:
             result = tool.execute(**request.args)
             _maybe_bill_tool(request.tool, role=role, args=request.args)

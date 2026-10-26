@@ -18,6 +18,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = PROJECT_ROOT / "backend"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+for _service in ("services/guardrail-service", "services/tool-gateway", "services/minecraft-gateway"):
+    _service_path = str(PROJECT_ROOT / _service)
+    if _service_path not in sys.path:
+        sys.path.insert(0, _service_path)
 
 _EMPTY_ROUTING_FEEDBACK = {
     "records": [],
