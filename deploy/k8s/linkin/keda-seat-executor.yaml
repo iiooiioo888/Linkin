@@ -1,0 +1,22 @@
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: seat-executor
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: seat-executor
+    app.kubernetes.io/part-of: linkin
+spec:
+  scaleTargetRef:
+    name: seat-executor
+  minReplicaCount: 1
+  maxReplicaCount: 8
+  triggers:
+    - type: nats-jetstream
+      metadata:
+        natsServerMonitoringEndpoint: "nats.linkin.svc.cluster.local:8222"
+        account: $G
+        stream: linkin
+        consumer: seat-executor
+        lagThreshold: "10"

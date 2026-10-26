@@ -1,0 +1,24 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: linkin-internal
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: linkin-internal
+    app.kubernetes.io/part-of: linkin
+  annotations:
+    linkin.io/exposure: intranet
+spec:
+  ingressClassName: nginx-internal
+  rules:
+    - host: linkin.internal
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080

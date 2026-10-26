@@ -1,0 +1,8 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: linkin
+  labels:
+    app.kubernetes.io/part-of: linkin
+    linkin.io/exposure: intranet
