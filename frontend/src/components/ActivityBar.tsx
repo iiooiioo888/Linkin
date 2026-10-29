@@ -1,26 +1,31 @@
 /**
- * ActivityBar — 對話 / 觀測 / 已註冊世界模組 / 實驗室。
- * 桌面：左側垂直欄；行動端：底部 Tab 列（Chat / Tasks / 用量 + 更多）。
+ * ActivityBar — Agent Desk 頂層活動。
+ * 桌面：左側垂直欄（工作／觀測／計算／供給／資產／世界／設定）
+ * 行動：底部 Tab（工作／觀測／更多）；更多內含計算／供給／資產／世界／設定
  */
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CONSOLE_CHROME_TABS, type ActivityKey } from '../lib/monitorTabs';
+import {
+  DESK_ACTIVITIES,
+  normalizeDeskActivity,
+  type ActivityKey,
+  type DeskActivityKey,
+} from '../lib/monitorTabs';
+import { MOBILE_MORE_ACTIVITIES, MOBILE_PRIMARY_ACTIVITIES } from '../lib/mobileShell';
 import type { MonitorTab, ViewKey } from './AppShell';
-import { useWorldModules, type ModuleIconKey } from '../lib/worldModules';
 
 interface ActivityBarProps {
   activity: ActivityKey;
   activeView?: ViewKey;
   monitorTab?: MonitorTab;
   onActivityChange: (activity: ActivityKey) => void;
-  /** 桌面左欄 vs 行動底欄 */
   placement?: 'sidebar' | 'bottom';
   onMobileTasks?: () => void;
   onMobileUsage?: () => void;
   onMobileConsoleTab?: (tab: MonitorTab) => void;
 }
 
-function ChatIcon({ active }: { active: boolean }) {
+function WorkIcon({ active }: { active: boolean }) {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
       <path
@@ -34,21 +39,69 @@ function ChatIcon({ active }: { active: boolean }) {
   );
 }
 
-function TasksIcon() {
+function ObserveIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
-      <rect x="3" y="3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-      <rect x="10" y="3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-      <rect x="3" y="10" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M11 12h4M11 14.5h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <rect x="2" y="3" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M6 15h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   );
 }
 
-function UsageIcon() {
+function ComputeIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
       <path d="M3 14V8M7.5 14V5M12 14V10M16.5 14V3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SupplyIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path
+        d="M4.5 12.5a3.5 3.5 0 010-7 4.2 4.2 0 018.1-1.2A3.2 3.2 0 0114.5 12.5H4.5z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function AssetsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <rect x="3" y="4" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M6 8h6M6 11h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function WorldIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path
+        d="M9 2.4l6.2 3.2v6.8L9 15.6 2.8 12.4V5.6L9 2.4z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      <path d="M9 2.4v13.2M2.8 5.6L9 8.8l6.2-3.2" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <circle cx="9" cy="9" r="2.2" stroke="currentColor" strokeWidth="1.3" />
+      <path
+        d="M9 2.5v2M9 13.5v2M2.5 9h2M13.5 9h2M4.2 4.2l1.4 1.4M12.4 12.4l1.4 1.4M13.8 4.2l-1.4 1.4M5.6 12.4l-1.4 1.4"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -63,69 +116,28 @@ function MoreIcon() {
   );
 }
 
-function CompanyIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
-      <path d="M3 15.5V7.2L9 3.5l6 3.7v8.3" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-      <path d="M7 15.5V10.5h4v5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-    </svg>
-  );
+function deskIcon(key: DeskActivityKey, active: boolean): ReactNode {
+  switch (key) {
+    case 'work':
+      return <WorkIcon active={active} />;
+    case 'observe':
+      return <ObserveIcon />;
+    case 'compute':
+      return <ComputeIcon />;
+    case 'supply':
+      return <SupplyIcon />;
+    case 'assets':
+      return <AssetsIcon />;
+    case 'world':
+      return <WorldIcon />;
+    case 'settings':
+      return <SettingsIcon />;
+    default:
+      return <ObserveIcon />;
+  }
 }
 
-function ConsoleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
-      <rect x="2" y="3" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M6 15h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function LabIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
-      <path
-        d="M6 2.5h6M7.5 2.5v4.2L3.8 14.2A1.4 1.4 0 005 16h8a1.4 1.4 0 001.2-1.8L10.5 6.7V2.5"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinejoin="round"
-      />
-      <path d="M7.2 10.5h3.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function MinecraftIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
-      <path
-        d="M9 2.4l6.2 3.2v6.8L9 15.6 2.8 12.4V5.6L9 2.4z"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinejoin="round"
-      />
-      <path d="M9 2.4v13.2M2.8 5.6L9 8.8l6.2-3.2" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  );
-}
-
-function GenericModuleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
-      <rect x="3" y="3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-      <rect x="10" y="3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-      <rect x="3" y="10" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-      <rect x="10" y="10" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
-    </svg>
-  );
-}
-
-function moduleIcon(icon: ModuleIconKey): ReactNode {
-  if (icon === 'minecraft') return <MinecraftIcon />;
-  return <GenericModuleIcon />;
-}
-
-type BarItem = { key: ActivityKey; label: string; icon: (active: boolean) => ReactNode };
+type BarItem = { key: DeskActivityKey; label: string; icon: (active: boolean) => ReactNode };
 
 function ActivityButtons({
   items,
@@ -139,11 +151,12 @@ function ActivityButtons({
   placement: 'sidebar' | 'bottom';
 }) {
   const isBottom = placement === 'bottom';
+  const current = normalizeDeskActivity(activity);
 
   return (
     <>
       {items.map((item) => {
-        const active = activity === item.key;
+        const active = current === item.key;
         return (
           <button
             key={item.key}
@@ -175,13 +188,7 @@ function ActivityButtons({
 
 function MobileBottomBar({
   activity,
-  activeView = 'chat',
-  monitorTab = 'live',
   onActivityChange,
-  onMobileTasks,
-  onMobileUsage,
-  onMobileConsoleTab,
-  overflowItems,
 }: {
   activity: ActivityKey;
   activeView?: ViewKey;
@@ -190,60 +197,44 @@ function MobileBottomBar({
   onMobileTasks?: () => void;
   onMobileUsage?: () => void;
   onMobileConsoleTab?: (tab: MonitorTab) => void;
-  overflowItems: BarItem[];
 }) {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
-  const onMonitor = activeView === 'monitor' || activeView === 'traces' || activeView === 'task' || activeView === 'raho';
-  const companyActive = activity === 'company';
-  const tasksActive =
-    onMonitor && (monitorTab === 'tasks' || activeView === 'traces');
-  const usageActive = onMonitor && monitorTab === 'models';
+  const current = normalizeDeskActivity(activity) as DeskActivityKey;
+  const moreActive = (MOBILE_MORE_ACTIVITIES as readonly string[]).includes(current);
+
+  const labelFor = (key: DeskActivityKey) => {
+    const row = DESK_ACTIVITIES.find((a) => a.key === key);
+    return t(`nav.${key}`, { defaultValue: row?.label ?? key });
+  };
 
   return (
     <>
       <nav className="activity-bar-bottom md:hidden" aria-label="主活動">
-        <button
-          type="button"
-          onClick={() => onActivityChange('chat')}
-          className={`activity-tab-bottom touch-manipulation ${activity === 'chat' ? 'is-active' : ''}`}
-          aria-current={activity === 'chat' ? 'page' : undefined}
-        >
-          <span className="activity-tab-bottom__icon"><ChatIcon active={activity === 'chat'} /></span>
-          <span className="activity-tab-bottom__label">{t('nav.chat')}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onActivityChange('company')}
-          className={`activity-tab-bottom touch-manipulation ${companyActive ? 'is-active' : ''}`}
-          aria-current={companyActive ? 'page' : undefined}
-        >
-          <span className="activity-tab-bottom__icon"><CompanyIcon /></span>
-          <span className="activity-tab-bottom__label">{t('nav.company')}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onMobileTasks?.()}
-          className={`activity-tab-bottom touch-manipulation ${tasksActive ? 'is-active' : ''}`}
-        >
-          <span className="activity-tab-bottom__icon"><TasksIcon /></span>
-          <span className="activity-tab-bottom__label">{t('nav.tasks')}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onMobileUsage?.()}
-          className={`activity-tab-bottom touch-manipulation ${usageActive ? 'is-active' : ''}`}
-        >
-          <span className="activity-tab-bottom__icon"><UsageIcon /></span>
-          <span className="activity-tab-bottom__label">{t('nav.usage')}</span>
-        </button>
+        {MOBILE_PRIMARY_ACTIVITIES.map((key) => {
+          const active = current === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onActivityChange(key)}
+              className={`activity-tab-bottom touch-manipulation ${active ? 'is-active' : ''}`}
+              aria-current={active ? 'page' : undefined}
+            >
+              <span className="activity-tab-bottom__icon">{deskIcon(key, active)}</span>
+              <span className="activity-tab-bottom__label">{labelFor(key)}</span>
+            </button>
+          );
+        })}
         <button
           type="button"
           onClick={() => setMoreOpen((v) => !v)}
-          className={`activity-tab-bottom touch-manipulation ${moreOpen ? 'is-active' : ''}`}
+          className={`activity-tab-bottom touch-manipulation ${moreOpen || moreActive ? 'is-active' : ''}`}
           aria-expanded={moreOpen}
         >
-          <span className="activity-tab-bottom__icon"><MoreIcon /></span>
+          <span className="activity-tab-bottom__icon">
+            <MoreIcon />
+          </span>
           <span className="activity-tab-bottom__label">{t('monitor.more')}</span>
         </button>
       </nav>
@@ -262,39 +253,23 @@ function MobileBottomBar({
             <p className="border-b border-[var(--console-line)] px-4 py-2 text-[12px] leading-relaxed text-[var(--console-faint)]">
               {t('mobileShell.moreNote')}
             </p>
-            <div className="mobile-more-console-nav border-b border-[var(--console-line)] px-3 py-2">
-              <p className="mb-2 text-[12px] text-[var(--console-sub)]">
-                觀測
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {CONSOLE_CHROME_TABS.map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => {
-                      onMobileConsoleTab?.(tab.key);
-                      setMoreOpen(false);
-                    }}
-                    className="rounded-lg border border-[var(--console-line)] px-2.5 py-1.5 text-[11px] text-[var(--console-sub)] hover:border-[var(--console-accent)] hover:text-[var(--console-ink)]"
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
             <div className="grid grid-cols-2 gap-1 p-2">
-              {overflowItems.map((item) => (
+              {MOBILE_MORE_ACTIVITIES.map((key) => (
                 <button
-                  key={item.key}
+                  key={key}
                   type="button"
                   onClick={() => {
-                    onActivityChange(item.key);
+                    onActivityChange(key);
                     setMoreOpen(false);
                   }}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[12px] text-[var(--console-sub)] hover:bg-[var(--console-card)] hover:text-[var(--console-ink)]"
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[12px] ${
+                    current === key
+                      ? 'bg-[var(--console-card)] text-[var(--console-ink)]'
+                      : 'text-[var(--console-sub)] hover:bg-[var(--console-card)] hover:text-[var(--console-ink)]'
+                  }`}
                 >
-                  <span className="shrink-0 opacity-80">{item.icon(activity === item.key)}</span>
-                  {item.label}
+                  <span className="shrink-0 opacity-80">{deskIcon(key, current === key)}</span>
+                  {labelFor(key)}
                 </button>
               ))}
             </div>
@@ -316,21 +291,13 @@ export default function ActivityBar({
   onMobileConsoleTab,
 }: ActivityBarProps) {
   const { t } = useTranslation();
-  const modules = useWorldModules();
-  const items: BarItem[] = [
-    { key: 'chat', label: t('nav.chat'), icon: (on) => <ChatIcon active={on} /> },
-    { key: 'company', label: t('nav.company'), icon: () => <CompanyIcon /> },
-    { key: 'console', label: t('nav.console'), icon: () => <ConsoleIcon /> },
-    ...modules.map((spec) => ({
-      key: spec.id,
-      label: spec.id === 'minecraft' ? t('nav.minecraft') : spec.title,
-      icon: () => moduleIcon(spec.icon),
-    })),
-    { key: 'lab', label: t('nav.lab'), icon: () => <LabIcon /> },
-  ];
+  const items: BarItem[] = DESK_ACTIVITIES.map((a) => ({
+    key: a.key,
+    label: t(`nav.${a.key}`, { defaultValue: a.label }),
+    icon: (on) => deskIcon(a.key, on),
+  }));
 
   if (placement === 'bottom') {
-    const overflowItems = items.filter((i) => i.key !== 'chat' && i.key !== 'company');
     return (
       <MobileBottomBar
         activity={activity}
@@ -340,16 +307,12 @@ export default function ActivityBar({
         onMobileTasks={onMobileTasks}
         onMobileUsage={onMobileUsage}
         onMobileConsoleTab={onMobileConsoleTab}
-        overflowItems={overflowItems}
       />
     );
   }
 
   return (
-    <nav
-      className="activity-rail hidden md:flex"
-      aria-label="主活動"
-    >
+    <nav className="activity-rail hidden md:flex" aria-label="主活動">
       <ActivityButtons
         items={items}
         activity={activity}

@@ -20,6 +20,8 @@ import LiveBoard from './LiveBoard';
 import ErrorState from './ui/ErrorState';
 import { MobileLiteGate } from './ui/MobileLiteGate';
 import { PanelShell } from './ui/ConsoleLayout';
+import EmptyPlanePanel from './ui/EmptyPlanePanel';
+import { isPhase1ShellTab } from '../lib/monitorTabs';
 
 const AgentsMonitorPanel = lazy(() => import('./AgentsMonitorPanel'));
 const TasksMonitorPanel = lazy(() => import('./TasksMonitorPanel'));
@@ -263,6 +265,7 @@ export default function MonitorView({
             <SkillsMcpPanel />
           </MobileLiteGate>
         )}
+        {isPhase1ShellTab(tab) && <EmptyPlanePanel tab={tab} />}
         </div>
       </Suspense>
     </div>
