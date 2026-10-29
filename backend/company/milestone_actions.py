@@ -171,8 +171,12 @@ def commit_field_writes(
     accepted: list[dict[str, Any]] = []
     for row in writes:
         tag = str(row.get("tag") or row.get("tag_name") or "").strip()
+        raw_val = row.get("value")
+        if raw_val is None:
+            failures.append({"tag": tag, "message": "數值無法檢查"})
+            continue
         try:
-            value = float(row.get("value"))
+            value = float(raw_val)
         except (TypeError, ValueError):
             failures.append({"tag": tag, "message": "數值無法檢查"})
             continue

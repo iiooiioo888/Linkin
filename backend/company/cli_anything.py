@@ -156,7 +156,7 @@ def query_cli_hub(
                 for item in raw_rows
                 if isinstance(item, dict) and _NAME_RE.fullmatch(str(item.get("name") or ""))
             ]
-            items.sort(key=lambda item: (item["category"].lower(), item["name"].lower()))
+            items.sort(key=lambda item: (str(item.get("category") or "").lower(), str(item.get("name") or "").lower()))
             row.update(
                 ok=True,
                 items=items[:cap],

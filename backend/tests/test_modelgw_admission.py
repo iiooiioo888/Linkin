@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from backend.modelgw.admission import AdmissionPolicy, AdmitDecision, admit
@@ -20,17 +22,34 @@ from backend.modelgw.registry import InMemoryRegistry, ModelRecord, ModelStatus
 from backend.modelgw.service import ModelGWService
 
 
-def _ready(**kwargs) -> ModelRecord:
-    base = {
-        "model_id": "m1",
-        "revision": "rev1",
-        "status": ModelStatus.READY,
-        "license": "Apache-2.0",
-        "trust_remote_code": False,
-        "gated": False,
-    }
-    base.update(kwargs)
-    return ModelRecord(**base)
+def _ready(**kwargs: Any) -> ModelRecord:
+    model_id = str(kwargs.pop("model_id", "m1"))
+    status = kwargs.pop("status", ModelStatus.READY)
+    if not isinstance(status, ModelStatus):
+        status = ModelStatus(str(status))
+    extras_raw = kwargs.pop("extras", {})
+    extras: dict[str, Any] = dict(extras_raw) if isinstance(extras_raw, dict) else {}
+    return ModelRecord(
+        model_id=model_id,
+        revision=str(kwargs.pop("revision", "rev1")),
+        endpoint=str(kwargs.pop("endpoint", "")),
+        runtime=str(kwargs.pop("runtime", "cloud")),
+        provider=str(kwargs.pop("provider", "cloud")),
+        gpu_type=str(kwargs.pop("gpu_type", "")),
+        lease_id=str(kwargs.pop("lease_id", "")),
+        replicas=int(kwargs.pop("replicas", 1)),
+        created_at=float(kwargs.pop("created_at", 0.0)),
+        last_used_at=float(kwargs.pop("last_used_at", 0.0)),
+        ttl=kwargs.pop("ttl", None),
+        status=status,
+        license=str(kwargs.pop("license", "Apache-2.0")),
+        trust_remote_code=bool(kwargs.pop("trust_remote_code", False)),
+        gated=bool(kwargs.pop("gated", False)),
+        gated_approved=bool(kwargs.pop("gated_approved", False)),
+        checksum=kwargs.pop("checksum", None),
+        plane=str(kwargs.pop("plane", "cloud")),
+        extras=extras,
+    )
 
 
 def test_mgw_r1_missing_model_zero_upstream() -> None:
@@ -55,8 +74,12 @@ def test_mgw_r2_provisioning_zero_upstream() -> None:
     )
     calls: list[str] = []
     svc = ModelGWService(registry=reg)
+    def llm_warm(**k: Any) -> str:
+        calls.append("x")
+        return "ok"
+
     with pytest.raises(ModelGWError) as ei:
-        svc.invoke_chat("warming", [{"role": "user", "content": "hi"}], lambda **k: calls.append("x") or "ok")
+        svc.invoke_chat("warming", [{"role": "user", "content": "hi"}], llm_warm)
     assert ei.value.code == CODE_PROVISIONING
     assert ei.value.http_hint == 503
     assert calls == []
@@ -73,8 +96,12 @@ def test_mgw_r3_trust_remote_code_denied() -> None:
 
     svc = ModelGWService(registry=reg)
     calls: list[str] = []
+    def llm_deny(**k: Any) -> str:
+        calls.append("x")
+        return "ok"
+
     with pytest.raises(ModelGWError) as ei:
-        svc.invoke_chat("m1", [{"role": "user", "content": "hi"}], lambda **k: calls.append("x") or "ok")
+        svc.invoke_chat("m1", [{"role": "user", "content": "hi"}], llm_deny)
     assert ei.value.code == CODE_ADMISSION
     assert calls == []
 

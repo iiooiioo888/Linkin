@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import Any
 
 from backend.modelgw.circuit import CircuitBreaker, CircuitRegistry
 from backend.modelgw.probe import FAIL_PENALTY_MS, probe_once
@@ -11,17 +12,33 @@ from backend.modelgw.registry import InMemoryRegistry, ModelRecord, ModelStatus,
 from backend.modelgw.service import ModelGWService
 
 
-def _rec(model_id: str, plane: str = "cloud", **kw) -> ModelRecord:
-    base = {
-        "model_id": model_id,
-        "revision": "r1",
-        "status": ModelStatus.READY,
-        "license": "Apache-2.0",
-        "trust_remote_code": False,
-        "plane": plane,
-    }
-    base.update(kw)
-    return ModelRecord(**base)
+def _rec(model_id: str, plane: str = "cloud", **kw: Any) -> ModelRecord:
+    status = kw.pop("status", ModelStatus.READY)
+    if not isinstance(status, ModelStatus):
+        status = ModelStatus(str(status))
+    extras_raw = kw.pop("extras", {})
+    extras: dict[str, Any] = dict(extras_raw) if isinstance(extras_raw, dict) else {}
+    return ModelRecord(
+        model_id=model_id,
+        revision=str(kw.pop("revision", "r1")),
+        endpoint=str(kw.pop("endpoint", "")),
+        runtime=str(kw.pop("runtime", "cloud")),
+        provider=str(kw.pop("provider", "cloud")),
+        gpu_type=str(kw.pop("gpu_type", "")),
+        lease_id=str(kw.pop("lease_id", "")),
+        replicas=int(kw.pop("replicas", 1)),
+        created_at=float(kw.pop("created_at", 0.0)),
+        last_used_at=float(kw.pop("last_used_at", 0.0)),
+        ttl=kw.pop("ttl", None),
+        status=status,
+        license=str(kw.pop("license", "Apache-2.0")),
+        trust_remote_code=bool(kw.pop("trust_remote_code", False)),
+        gated=bool(kw.pop("gated", False)),
+        gated_approved=bool(kw.pop("gated_approved", False)),
+        checksum=kw.pop("checksum", None),
+        plane=str(kw.pop("plane")) if "plane" in kw else plane,
+        extras=extras,
+    )
 
 
 def test_mgw_r4_ready_closed_invokes() -> None:
@@ -98,7 +115,9 @@ def test_json_seed_loader() -> None:
     rows = load_json_seed(path)
     reg = InMemoryRegistry(rows)
     assert "local-qwen-7b" in reg.ready_ids()
-    assert reg.get("warming-llama").status == ModelStatus.PROVISIONING
+    warming = reg.get("warming-llama")
+    assert warming is not None
+    assert warming.status == ModelStatus.PROVISIONING
 
 
 def test_circuit_trips_on_fail_ratio() -> None:

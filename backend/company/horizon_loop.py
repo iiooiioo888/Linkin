@@ -40,12 +40,14 @@ def classify_surface(kind: str) -> str:
 
 def _hits(brief: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     rows: list[tuple[str, dict[str, Any]]] = []
-    topics = brief.get("topics") if isinstance(brief.get("topics"), list) else []
+    raw_topics = brief.get("topics")
+    topics: list[Any] = raw_topics if isinstance(raw_topics, list) else []
     for topic in topics:
         if not isinstance(topic, dict):
             continue
         label = str(topic.get("label") or topic.get("id") or "主題")
-        hits = topic.get("hits") if isinstance(topic.get("hits"), list) else []
+        raw_hits = topic.get("hits")
+        hits: list[Any] = raw_hits if isinstance(raw_hits, list) else []
         for hit in hits[:3]:
             if isinstance(hit, dict):
                 rows.append((label, hit))
@@ -62,7 +64,8 @@ def _note(brief: dict[str, Any]) -> str:
 
 
 def _metrics(brief: dict[str, Any], *, violations: int) -> dict[str, Any]:
-    topics = brief.get("topics") if isinstance(brief.get("topics"), list) else []
+    raw_topics = brief.get("topics")
+    topics: list[Any] = raw_topics if isinstance(raw_topics, list) else []
     total = len(topics) or 1
     ok = sum(1 for topic in topics if isinstance(topic, dict) and topic.get("status") == "ok")
     return {

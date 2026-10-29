@@ -1,15 +1,17 @@
-"""ModelGW FastAPI 掛載面（WIRE PR）。
+"""ModelGW FastAPI 掛載面（WIRE PR + P1/#130 回調）。
 
 路徑前綴 ``/modelgw``：
 - GET  /modelgw/healthz
 - GET  /modelgw/registry
 - POST /modelgw/v1/admit
 - POST /modelgw/v1/chat/completions
+- POST /modelgw/internal/v1/deploy-callback  （HMAC＋冪等；不掛 AuthGate）
 
 HTTP 映射（Core §8.1）：
 - PROVISIONING → 503 + code=PROVISIONING（可選 Retry-After）
 - UNSUPPORTED_MODEL／ADMISSION_REJECTED／MODEL_NOT_READY → 400 + body code
-拒用 202／409／425。不改 Hub 公開行為、不讀 HUB_CATALOG。
+拒用 202／409／425（admit）；回調冪等衝突用 409。
+不改 Hub 公開行為、不讀 HUB_CATALOG。
 """
 
 from __future__ import annotations
@@ -47,6 +49,19 @@ def _bad_request(detail: str) -> JSONResponse:
             "type": "https://modelgw.example.com/errors/BAD_REQUEST",
             "title": "Bad Request",
             "code": "BAD_REQUEST",
+            "detail": detail,
+        },
+        media_type="application/problem+json",
+    )
+
+
+def _callback_error_response(code: str, detail: str, status: int) -> JSONResponse:
+    return JSONResponse(
+        status_code=status,
+        content={
+            "type": f"https://modelgw.example.com/errors/{code}",
+            "title": code,
+            "code": code,
             "detail": detail,
         },
         media_type="application/problem+json",
@@ -92,17 +107,25 @@ async def admit_endpoint(request: Request) -> JSONResponse:
     model_id = str(body.get("model_id") or body.get("model") or "").strip()
     if not model_id:
         return _bad_request("缺少 model_id")
+    # P5 預留：tenant_id 可傳、本波不強制（Registry.get 仍用預設空租戶）
+    _tenant = str(body.get("tenant_id") if body.get("tenant_id") is not None else "")
     try:
-        result = get_service().admit_or_raise(model_id)
-        status_val = None
+        result = get_service().admit_or_raise(model_id, tenant_id=_tenant)
+        status_val: str | None = None
         rec = getattr(result, "record", None)
         if rec is not None:
             st = getattr(rec, "status", None)
-            status_val = st.value if hasattr(st, "value") else st
+            if st is None:
+                status_val = None
+            elif hasattr(st, "value"):
+                status_val = getattr(st, "value", None)
+            else:
+                status_val = str(st) if st is not None else None
         return JSONResponse(
             content={
                 "decision": "ALLOW",
                 "model_id": model_id,
+                "tenant_id": _tenant,
                 "code": None,
                 "record_status": status_val,
             }
@@ -147,7 +170,7 @@ async def chat_completions(request: Request) -> JSONResponse:
         )
     except ModelGWError as exc:
         return problem_response(exc)
-    except Exception as exc:  # 上游／LiteLLM 錯誤
+    except Exception as exc:
         return JSONResponse(
             status_code=502,
             content={
@@ -178,6 +201,61 @@ async def chat_completions(request: Request) -> JSONResponse:
             },
         }
     )
+
+
+@modelgw_router.post("/internal/v1/deploy-callback")
+async def deploy_callback(request: Request) -> JSONResponse:
+    """部署完成回調（internal）：HMAC 必填＋Idempotency-Key；寫 READY／FAILED／TERMINATING。
+
+    不掛用戶 AuthGate；不做 Bearer。公網 443 本波不做（由部署面限制）。
+    """
+    from backend.modelgw.callback import CallbackError, process_deploy_callback
+    from backend.modelgw.sql_registry import SqliteRegistry
+
+    raw = await request.body()
+    try:
+        import json as _json
+
+        body = _json.loads(raw.decode("utf-8") if raw else b"{}")
+    except Exception:
+        return _bad_request("JSON 無法解析")
+    if not isinstance(body, dict):
+        return _bad_request("Body 必須為 JSON 物件")
+
+    svc = get_service()
+    reg = svc.registry
+    if not isinstance(reg, SqliteRegistry):
+        return _callback_error_response(
+            "REGISTRY_NOT_PERSISTENT",
+            "部署回調需要 SQL Registry（設 MODELGW_DATABASE_URL／MODELGW_REGISTRY_BACKEND=sql）",
+            503,
+        )
+
+    idem = request.headers.get("Idempotency-Key") or request.headers.get("idempotency-key")
+    sig = request.headers.get("X-ModelGW-Signature") or request.headers.get(
+        "x-modelgw-signature"
+    )
+    ts = request.headers.get("X-ModelGW-Timestamp") or request.headers.get(
+        "x-modelgw-timestamp"
+    )
+    nonce = request.headers.get("X-ModelGW-Nonce") or request.headers.get(
+        "x-modelgw-nonce"
+    )
+
+    try:
+        result = process_deploy_callback(
+            reg,
+            body,
+            idempotency_key=str(idem or ""),
+            body_bytes=raw,
+            signature_header=sig,
+            timestamp=ts,
+            nonce=nonce,
+        )
+    except CallbackError as exc:
+        return _callback_error_response(exc.code, exc.detail, exc.http_status)
+
+    return JSONResponse(content=result)
 
 
 def register_modelgw(app) -> None:
