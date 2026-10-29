@@ -2,7 +2,7 @@
   "nav": {
     "chat": "對話",
     "company": "公司",
-    "console": "控制台",
+    "console": "觀測",
     "linkin": "Minecraft",
     "minecraft": "Minecraft",
     "modules": "模組",
@@ -10,7 +10,7 @@
     "observe": "觀測",
     "system": "系統",
     "lab": "實驗室",
-    "monitor": "控制台",
+    "monitor": "觀測",
     "traces": "軌跡",
     "tasks": "任務",
     "usage": "用量"
@@ -114,11 +114,11 @@
     "desktopHint": "完整控制與密集監控台建議在桌面（≥768px）使用；此處仍可查看摘要或展開簡化面板。",
     "showFullPanel": "在此裝置顯示完整面板",
     "advancedNav": "進階",
-    "moreNote": "控制台、模組與實驗室 — 密集管理介面建議用桌面開啟。",
+    "moreNote": "觀測、模組與實驗室 — 密集管理介面建議用桌面開啟。",
     "usageSummary": "AI 用量與近期紀錄",
     "tasksSummary": "任務佇列與進度",
     "skillsSummary": "技能與 MCP 管理編輯建議在桌面操作。",
-    "billingAdminSummary": "定價、政策與 Fault Pool 管理需桌面控制台。",
+    "billingAdminSummary": "定價、政策與 Fault Pool 管理需桌面觀測。",
     "alertModeDesktop": "全螢幕警報請在桌面使用。"
   },
   "errors": {
