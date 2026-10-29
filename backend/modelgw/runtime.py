@@ -57,7 +57,7 @@ def _load_seed_records():
     except FileNotFoundError:
         logger.warning("ModelGW seed 不存在：%s（空 Registry）", path)
         return []
-    except Exception as exc:  # noqa: BLE001 — 啟動時降級為空表
+    except Exception as exc:  # 啟動時降級為空表
         logger.warning("ModelGW seed 載入失敗（%s）：%s", path, exc)
         return []
 

@@ -147,7 +147,7 @@ async def chat_completions(request: Request) -> JSONResponse:
         )
     except ModelGWError as exc:
         return problem_response(exc)
-    except Exception as exc:  # noqa: BLE001 — 上游／LiteLLM 錯誤
+    except Exception as exc:  # 上游／LiteLLM 錯誤
         return JSONResponse(
             status_code=502,
             content={
