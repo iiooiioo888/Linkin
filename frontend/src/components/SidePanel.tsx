@@ -25,6 +25,7 @@ import {
   type ConsoleNavItem,
   type ConsoleNavKey,
 } from '../lib/monitorTabs';
+import PlaneBadge, { planeKindForActivity } from './ui/PlaneBadge';
 import { MINECRAFT_NAV_DEFAULT_OPEN_GROUP_IDS, rosterKindForTab } from '../lib/worldModules';
 import { partitionNavGroupsForMobileLite } from '../lib/mobileShell';
 import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
@@ -51,6 +52,7 @@ interface SidePanelProps {
   onTraceTaskChange: (id: string | null) => void;
   labSubTab: LabSubTab;
   onLabSubTabChange: (tab: LabSubTab) => void;
+  onViewChange?: (view: ViewKey) => void;
 }
 
 function formatRelative(ts: number): string {
@@ -633,6 +635,7 @@ function MonitorSidebar({
   onLabSubTabChange,
   traceTaskId,
   onTraceTaskChange,
+  onViewChange,
 }: {
   activeView: ViewKey;
   monitorTab: MonitorTab;
@@ -646,11 +649,12 @@ function MonitorSidebar({
   onLabSubTabChange: (tab: LabSubTab) => void;
   traceTaskId: string | null;
   onTraceTaskChange: (id: string | null) => void;
+  onViewChange?: (view: ViewKey) => void;
 }) {
   const { t } = useTranslation();
   const isMobileLite = useIsMobileLiteShell();
   const activity = resolveActivity(activeView, monitorTab);
-  const onLab = activity === 'lab';
+  const onLab = activity === 'settings' && monitorTab === 'lab';
   const allNavGroups = navGroupsForActivity(activity);
   const { primary: primaryNavGroups, advanced: advancedNavGroups } = useMemo(
     () =>
@@ -660,7 +664,7 @@ function MonitorSidebar({
     [allNavGroups, isMobileLite, activity],
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const isMinecraftNav = activity === 'minecraft';
+  const isMinecraftNav = activity === 'world';
   const [mcNavOpen, setMcNavOpen] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const group of allNavGroups) {
@@ -675,7 +679,14 @@ function MonitorSidebar({
   const onTasksTab = activeView === 'monitor' && monitorTab === 'tasks';
   const onLlmTab = activeView === 'monitor' && monitorTab === 'llm';
   const onTraces = activeView === 'traces';
-  const currentKey: ConsoleNavKey = onTraces ? 'traces' : monitorTab;
+  const currentKey: ConsoleNavKey =
+    activeView === 'chat'
+      ? 'chat'
+      : activeView === 'company'
+        ? 'company'
+        : onTraces
+          ? 'traces'
+          : monitorTab;
 
   useEffect(() => {
     if (!isMinecraftNav) return;
@@ -687,11 +698,21 @@ function MonitorSidebar({
   }, [allNavGroups, currentKey, isMinecraftNav]);
 
   const pick = (key: ConsoleNavKey) => {
+    if (key === 'chat') {
+      onViewChange?.('chat');
+      onClose();
+      return;
+    }
+    if (key === 'company') {
+      onViewChange?.('company');
+      onClose();
+      return;
+    }
     if (key === 'traces') {
       onTraceTaskChange(traceTaskId);
       return;
     }
-    onMonitorTabChange(key);
+    onMonitorTabChange(key as MonitorTab);
     const keepAgent = key === 'agents' || key === 'memory' || rosterKindForTab(key) === 'agents';
     if (!keepAgent && focusAgentId) onFocusAgent(null);
     if (key !== 'tasks' && focusTaskId) onFocusTask(null);
@@ -737,9 +758,13 @@ function MonitorSidebar({
       );
     }
 
+    const plane = group.plane ?? planeKindForActivity(activity);
     return (
       <div key={group.id}>
-        <div className="sp-group">{groupLabel}</div>
+        <div className="sp-group flex items-center gap-1.5">
+          <span>{groupLabel}</span>
+          {plane ? <PlaneBadge kind={plane} /> : null}
+        </div>
         {list}
       </div>
     );
@@ -818,6 +843,7 @@ export default function SidePanel({
   onTraceTaskChange,
   labSubTab,
   onLabSubTabChange,
+  onViewChange,
 }: SidePanelProps) {
   return (
     <>
@@ -841,16 +867,11 @@ export default function SidePanel({
           </button>
         </div>
 
-        {activeView === 'chat' && (
-          <SessionList
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onSelectSession={onSelectSession}
-            onNewSession={onNewSession}
-            onDeleteSession={onDeleteSession}
-          />
-        )}
-        {(activeView === 'monitor' || activeView === 'traces') && (
+        {(activeView === 'monitor' ||
+          activeView === 'traces' ||
+          activeView === 'chat' ||
+          activeView === 'task' ||
+          activeView === 'raho') && (
           <MonitorSidebar
             activeView={activeView}
             monitorTab={monitorTab}
@@ -864,6 +885,16 @@ export default function SidePanel({
             onLabSubTabChange={onLabSubTabChange}
             traceTaskId={traceTaskId}
             onTraceTaskChange={onTraceTaskChange}
+            onViewChange={onViewChange}
+          />
+        )}
+        {activeView === 'chat' && (
+          <SessionList
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={onSelectSession}
+            onNewSession={onNewSession}
+            onDeleteSession={onDeleteSession}
           />
         )}
       </aside>

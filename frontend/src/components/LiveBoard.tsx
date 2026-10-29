@@ -1,5 +1,5 @@
 /**
- * LiveBoard — EvoLoop 主監控總覽（monitor dashboard v3）。
+ * LiveBoard — Agent Desk 觀測總覽（monitor dashboard v3）。
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';

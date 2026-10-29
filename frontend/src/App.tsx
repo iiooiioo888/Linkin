@@ -1,5 +1,5 @@
 /**
- * EvoLoop 主应用 — IDE 风格单页布局。
+ * Linkin Agent Desk — IDE 风格单页布局。
  *
  * 使用 AppShell 作为根布局，整合会话管理、聊天视图、
  * 控制面版视图、OPC 右侧诊断面板。

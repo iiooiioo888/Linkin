@@ -1,8 +1,8 @@
 /**
- * AppShell — IDE 风格布局容器。
+ * AppShell — Agent Desk 布局容器。
  *
  * 布局：TopBar → [ActivityBar | SidePanel | MainContent | RightPanel] → 狀態膠囊
- * 活動：對話 / 控制台（EvoLoop）/ 世界模組（Minecraft…）/ 實驗室
+ * 活動：工作／觀測／計算／供給／資產／世界／設定（色票 A＝v3 金暗）
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -13,11 +13,12 @@ import type { LabSubTab } from '../lib/labTabs';
 import {
   defaultTabForActivity,
   isConsoleTab,
-  isCoreActivity,
+  isDeskActivity,
+  normalizeDeskActivity,
   resolveActivity,
   type ActivityKey,
 } from '../lib/monitorTabs';
-import { getWorldModule, pagesOfModule } from '../lib/worldModules';
+import { pagesOfModule } from '../lib/worldModules';
 import ActivityBar from './ActivityBar';
 import RightPanel from './RightPanel';
 import SidePanel from './SidePanel';
@@ -151,7 +152,7 @@ export default function AppShell({
     // 否則會把它們帶進來的 monitorTab 預設值寫回控制台記憶
     if (activeView === 'company') return;
     if (activeView === 'traces' || activeView === 'task' || activeView === 'raho') {
-      lastTabByActivity.current.console = lastTabByActivity.current.console ?? 'live';
+      lastTabByActivity.current.work = lastTabByActivity.current.work ?? 'tasks';
       return;
     }
     lastTabByActivity.current[activity] = monitorTab;
@@ -161,41 +162,45 @@ export default function AppShell({
 
   const handleActivityChange = useCallback(
     (next: ActivityKey) => {
-      if (next === 'company') {
-        setSidebarOpen(false);
-        if (activity !== 'company') onViewChange('company');
-        return;
-      }
+      const target = normalizeDeskActivity(next);
       if (isDesktop) setSidebarOpen(true);
-      if (next === activity) return;
-      if (next === 'chat') {
+
+      // 舊別名／模組 id 正規化後與當前相同則不跳
+      if (target === activity && next !== 'company' && next !== 'chat') return;
+
+      if (target === 'work') {
+        // 工作預設進對話；若記憶在任務／審批等則還原 monitor 分頁
+        const remembered = lastTabByActivity.current.work;
+        if (remembered === 'tasks' || remembered === 'approvals') {
+          onMonitorTabChange(remembered);
+          return;
+        }
         onViewChange('chat');
         return;
       }
-      if (next === 'lab') {
-        onMonitorTabChange('lab');
-        return;
-      }
-      if (!isCoreActivity(next) && getWorldModule(next)) {
-        const remembered = lastTabByActivity.current[next];
-        const pages = pagesOfModule(next);
+
+      if (target === 'world') {
+        const remembered = lastTabByActivity.current.world;
+        const pages = pagesOfModule('minecraft');
         onMonitorTabChange(
-          remembered && pages.includes(remembered) ? remembered : defaultTabForActivity(next),
+          remembered && pages.includes(remembered) ? remembered : defaultTabForActivity('world'),
         );
         return;
       }
-      const remembered = lastTabByActivity.current.console;
-      if (isConsoleTab(remembered)) {
-        onMonitorTabChange(remembered!);
+
+      if (isDeskActivity(target)) {
+        const remembered = lastTabByActivity.current[target];
+        if (remembered && (isConsoleTab(remembered) || remembered === 'lab' || remembered === 'exec' || remembered === 'quota' || remembered === 'health' || remembered === 'approvals')) {
+          onMonitorTabChange(remembered);
+          return;
+        }
+        onMonitorTabChange(defaultTabForActivity(target));
         return;
       }
-      if (isConsoleTab(monitorTab) && activeView !== 'chat') {
-        onViewChange('monitor');
-        return;
-      }
-      onMonitorTabChange(defaultTabForActivity('console'));
+
+      onMonitorTabChange(defaultTabForActivity('observe'));
     },
-    [activity, activeView, isDesktop, monitorTab, onMonitorTabChange, onViewChange],
+    [activity, isDesktop, onMonitorTabChange, onViewChange],
   );
 
   return (
@@ -253,6 +258,7 @@ export default function AppShell({
           onTraceTaskChange={onTraceTaskChange}
           labSubTab={labSubTab}
           onLabSubTabChange={onLabSubTabChange}
+          onViewChange={onViewChange}
         />
         )}
 
@@ -286,6 +292,7 @@ export default function AppShell({
             onViewChange('monitor');
             onMonitorTabChange(tab);
           }}
+
         />
       )}
 
