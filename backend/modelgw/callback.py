@@ -200,7 +200,8 @@ def body_to_record(body: dict[str, Any], *, target: ModelStatus) -> ModelRecord:
         )
     if not revision:
         revision = "unknown"
-    extras = body.get("extras") if isinstance(body.get("extras"), dict) else {}
+    raw_extras = body.get("extras")
+    extras: dict[str, Any] = dict(raw_extras) if isinstance(raw_extras, dict) else {}
     err_code = body.get("error_code")
     err_detail = body.get("error_detail")
     if err_code or err_detail:

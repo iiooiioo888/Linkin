@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -25,8 +27,8 @@ from backend.modelgw.sql_registry import SqliteRegistry, parse_database_url
 HMAC_KEY = "test-modelgw-callback-key-not-guardrail"
 
 
-def _rec(model_id: str, status=ModelStatus.READY, **kw) -> ModelRecord:
-    base = {
+def _rec(model_id: str, status: ModelStatus = ModelStatus.READY, **kw: Any) -> ModelRecord:
+    fields: dict[str, Any] = {
         "model_id": model_id,
         "revision": "r1",
         "status": status,
@@ -34,11 +36,33 @@ def _rec(model_id: str, status=ModelStatus.READY, **kw) -> ModelRecord:
         "trust_remote_code": False,
         "plane": "cloud",
     }
-    base.update(kw)
-    return ModelRecord(**base)
+    fields.update(kw)
+    return ModelRecord(
+        model_id=str(fields["model_id"]),
+        revision=str(fields["revision"]),
+        endpoint=str(fields.get("endpoint") or ""),
+        runtime=str(fields.get("runtime") or "cloud"),
+        provider=str(fields.get("provider") or "cloud"),
+        gpu_type=str(fields.get("gpu_type") or ""),
+        lease_id=str(fields.get("lease_id") or ""),
+        replicas=int(fields.get("replicas") or 1),
+        created_at=float(fields.get("created_at") or 0.0),
+        last_used_at=float(fields.get("last_used_at") or 0.0),
+        ttl=fields.get("ttl"),
+        status=fields["status"] if isinstance(fields["status"], ModelStatus) else ModelStatus(str(fields["status"])),
+        license=str(fields.get("license") or "Apache-2.0"),
+        trust_remote_code=bool(fields.get("trust_remote_code", False)),
+        gated=bool(fields.get("gated", False)),
+        gated_approved=bool(fields.get("gated_approved", False)),
+        checksum=fields.get("checksum"),
+        plane=str(fields.get("plane") or "cloud"),
+        extras=dict(fields["extras"]) if isinstance(fields.get("extras"), dict) else {},
+    )
 
 
-def _signed_headers(body: dict, key: str = HMAC_KEY, idem: str = "idem-1") -> dict[str, str]:
+def _signed_headers(
+    body: dict, key: str = HMAC_KEY, idem: str = "idem-1"
+) -> tuple[dict[str, str], bytes]:
     raw = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     return {
         "Content-Type": "application/json",
@@ -53,7 +77,7 @@ def db_path(tmp_path: Path) -> str:
 
 
 @pytest.fixture()
-def sql_reg(db_path: str) -> SqliteRegistry:
+def sql_reg(db_path: str) -> Generator[SqliteRegistry, None, None]:
     reg = SqliteRegistry(db_path)
     yield reg
     reg.close()
@@ -279,8 +303,9 @@ class TestA5TenantSchema:
         assert sql_reg.get_for_tenant("", "t-model") is not None
         assert sql_reg.get_for_tenant("tenant-a", "t-model") is not None
         # Protocol get 用預設空租戶
-        assert sql_reg.get("t-model") is not None
-        assert sql_reg.get("t-model").revision == "r1"
+        got = sql_reg.get("t-model")
+        assert got is not None
+        assert got.revision == "r1"
 
 
 class TestA6ZeroCrossWire:
@@ -314,7 +339,9 @@ class TestA8ReadWriteSeparation:
         ModelGWService(registry=sql_reg).admit_or_raise("ro")
         assert sql_reg.row_version("ro") == before
         # last_used_at 熱寫本波不做
-        assert sql_reg.get("ro").last_used_at == 0.0
+        ro = sql_reg.get("ro")
+        assert ro is not None
+        assert ro.last_used_at == 0.0
 
 
 class TestSeedDoesNotOverwriteCallback:
@@ -326,7 +353,9 @@ class TestSeedDoesNotOverwriteCallback:
             [_rec("local-qwen-7b", revision="from-seed"), _rec("new-one")]
         )
         assert n == 1
-        assert sql_reg.get("local-qwen-7b").revision == "from-callback"
+        seeded = sql_reg.get("local-qwen-7b")
+        assert seeded is not None
+        assert seeded.revision == "from-callback"
         assert sql_reg.get("new-one") is not None
 
 

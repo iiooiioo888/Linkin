@@ -111,11 +111,16 @@ async def admit_endpoint(request: Request) -> JSONResponse:
     _tenant = str(body.get("tenant_id") if body.get("tenant_id") is not None else "")
     try:
         result = get_service().admit_or_raise(model_id, tenant_id=_tenant)
-        status_val = None
+        status_val: str | None = None
         rec = getattr(result, "record", None)
         if rec is not None:
             st = getattr(rec, "status", None)
-            status_val = st.value if hasattr(st, "value") else st
+            if st is None:
+                status_val = None
+            elif hasattr(st, "value"):
+                status_val = getattr(st, "value", None)
+            else:
+                status_val = str(st) if st is not None else None
         return JSONResponse(
             content={
                 "decision": "ALLOW",

@@ -241,7 +241,8 @@ def horizon_prompt_block(brief: dict[str, Any] | None = None) -> str:
         if not isinstance(topic, dict):
             continue
         label = str(topic.get("label") or topic.get("id") or "主題")
-        hits = topic.get("hits") if isinstance(topic.get("hits"), list) else []
+        raw_hits = topic.get("hits")
+        hits: list[Any] = raw_hits if isinstance(raw_hits, list) else []
         for hit in hits[:3]:
             if not isinstance(hit, dict):
                 continue
