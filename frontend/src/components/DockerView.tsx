@@ -655,7 +655,7 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
 
         {sortedContainers.length === 0 && (
           <div className="rounded-lg border border-gray-800 bg-gray-900/60 p-4">
-            <p className="text-sm text-gray-300">未發現 EvoLoop 容器</p>
+            <p className="text-sm text-gray-300">未發現 Linkin 容器</p>
             <p className="mt-1 text-xs text-gray-500">
               請確認 Docker Compose 已啟動且後端已掛載 docker.sock
             </p>

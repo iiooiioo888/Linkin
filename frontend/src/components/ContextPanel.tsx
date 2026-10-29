@@ -4,7 +4,7 @@
  * 表面：
  * - 主：對話底部詳細區 embed（ChatBottomPanel Context 分頁）／任務詳情 td-context
  *   → **鎖死當前對話任務**，禁止切換其他對話／全域軌跡
- * - 次：控制台 #/monitor/context[/{taskId}] 完整鏡像（可選任務）
+ * - 次：觀測 #/monitor/context[/{taskId}] 完整鏡像（可選任務）
  * - Stats／Composition／Trend／Browser／Events／File／Network／Token＆Timing
  * - 不渲染審計分數槽（C-UI-001）
  *
@@ -487,7 +487,7 @@ export default function ContextPanel({
    */
   embed?: boolean;
 }) {
-  /** embed：永遠跟 prop；控制台：可本地改選 */
+  /** embed：永遠跟 prop；觀測：可本地改選 */
   const locked = embed === true;
   const [taskId, setTaskId] = useState<string | null>(() =>
     locked ? taskIdProp ?? null : taskIdProp ?? parseContextTaskId(),
@@ -540,7 +540,7 @@ export default function ContextPanel({
         return;
       }
       setData(insight);
-      // 僅控制台允許跟隨 API 解析出的預設任務；embed 絕不跳轉其他對話
+      // 僅觀測允許跟隨 API 解析出的預設任務；embed 絕不跳轉其他對話
       if (!locked && insight.task_id && insight.task_id !== taskId) setTaskId(insight.task_id);
       if (insight.selected_step != null && step == null) setStep(insight.selected_step);
     } catch (err) {
@@ -604,13 +604,13 @@ export default function ContextPanel({
       <header className={embed ? 'ctx-embed-hero' : 'integ-hero'}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2>{embed ? 'Context' : 'Context · 控制台鏡像'}</h2>
+            <h2>{embed ? 'Context' : 'Context · 資產鏡像'}</h2>
             <p>
               {embed
                 ? '本對話專屬。這裡只顯示這次用到的資料，無任務選擇器。'
                 : (
                   <>
-                    控制台完整鏡像（主表面在對話底部詳細區）。靈感來自{' '}
+                    觀測完整鏡像（資產層只存與取；主表面在對話底部詳細區）。靈感來自{' '}
                     <a
                       href="https://github.com/bowenliang123/dsh-context"
                       target="_blank"

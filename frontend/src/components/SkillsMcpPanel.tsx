@@ -1124,7 +1124,7 @@ function VizPluginsSection() {
                   /context peek
                 </button>
                 <button type="button" className={btnCls} onClick={() => jumpToContextMonitor()}>
-                  控制台鏡像
+                  資產鏡像
                 </button>
                 {p.docs_url ? (
                   <a

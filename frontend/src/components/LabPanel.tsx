@@ -94,7 +94,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
 
   // Firecrawl
   const [fcUrl, setFcUrl] = useState('https://docs.firecrawl.dev');
-  const [fcQuery, setFcQuery] = useState('EvoLoop AI agent');
+  const [fcQuery, setFcQuery] = useState('Linkin AI agent');
   const [fcScrape, setFcScrape] = useState<FirecrawlScrapeResult | null>(null);
   const [fcSearchMarkdown, setFcSearchMarkdown] = useState('');
   const [fcLoading, setFcLoading] = useState(false);
