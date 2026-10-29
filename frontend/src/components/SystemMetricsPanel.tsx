@@ -1,7 +1,7 @@
 /**
  * SystemMetricsPanel — 系統總覽（OCD 三欄 · 非工業 OPC）。
  *
- * 彙總反思閉環、快取、路由、Trace、任務運行時等 EvoLoop 自身指標。
+ * 彙總反思閉環、快取、路由、Trace、任務運行時等 Linkin 自身指標。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchOptimizationMonitor } from '../api/client';
@@ -246,7 +246,7 @@ export default function SystemMetricsPanel() {
         <ConsoleLeftRail>
           <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-4">
             <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">系統總覽</h1>
-            <p className="mt-1 text-[10px] text-[var(--console-faint)]">EvoLoop 運行時</p>
+            <p className="mt-1 text-[10px] text-[var(--console-faint)]">Linkin 運行時</p>
           </div>
           <ConsoleColumnScroll className="!px-0 !py-0">
             <ConsoleRailNav

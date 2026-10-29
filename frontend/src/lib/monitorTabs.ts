@@ -2,12 +2,12 @@
  * 監控中心分頁定義（單一資料源）。
  *
  * 左側：
- *   ActivityBar（對話 / 控制台 / 已註冊世界模組 / 實驗室）
+ *   ActivityBar（對話 / 觀測 / 已註冊世界模組 / 實驗室）
  *   → SidePanel 分組功能
  *   → 上下文清單（會話／名冊／軌跡）
  *
- * 對話／控制台／實驗室 = EvoLoop（總覽／執行／審計／計費／系統）
- * 世界模組（目前 Minecraft）= 世界觀／Admin／內容／建築／橋接；不進控制台
+ * 對話／觀測／實驗室 = Linkin Agent Desk（總覽／執行／審計／計費／系統）
+ * 世界模組（目前 Minecraft）= 世界觀／Admin／內容／建築／橋接；不進觀測
  */
 import type { MonitorTab } from '../components/AppShell';
 import {
@@ -96,14 +96,14 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     label: '審計',
     items: [
       { key: 'feedback', icon: '♥', label: '用戶反饋', hint: '評分與審計留痕' },
-      { key: 'metrics', icon: '◇', label: '系統總覽', hint: '快取／反思／優化' },
+      { key: 'metrics', icon: '◇', label: '系統總覽', hint: '快取／反思／優化 · Cloud Core' },
     ],
   },
   {
     id: 'billing',
     label: '計費',
     items: [
-      { key: 'models', icon: '◉', label: 'AI 用量', hint: 'Token 延遲與模型成本' },
+      { key: 'models', icon: '◉', label: 'AI 用量', hint: 'Token 延遲與模型成本 · AI-Core' },
     ],
   },
   {
@@ -111,11 +111,11 @@ export const CONSOLE_NAV_GROUPS: MonitorNavGroup[] = [
     label: '系統',
     items: [
       { key: 'llm', icon: '⊞', label: 'API 路由', hint: '金鑰、目錄、分發' },
-      { key: 'memory', icon: '◌', label: '記憶', hint: '記憶／知識／態勢雷達' },
-      { key: 'context', icon: '◫', label: 'Context', hint: '控制台鏡像；主表面在對話詳細區' },
+      { key: 'memory', icon: '◌', label: '記憶', hint: '記憶／知識／態勢雷達 · 資產層只存與取' },
+      { key: 'context', icon: '◫', label: 'Context', hint: '資產層只存與取；主表面在對話詳細區' },
       { key: 'integrations', icon: '⧉', label: '外部整合', hint: '召回／Agent 工作流／設計' },
       { key: 'skills', icon: '⚡', label: '技能與 MCP', hint: '技能庫／MCP／dsh-context 可視化' },
-      { key: 'ops', icon: '⚙', label: '基礎設施', hint: 'Hub／檢查點／連線池' },
+      { key: 'ops', icon: '⚙', label: '基礎設施', hint: 'Hub／檢查點／連線池 · Cloud Core' },
     ],
   },
 ];
@@ -164,7 +164,7 @@ export const MONITOR_MORE_TABS: MonitorTabItem[] = [
   LAB_TAB,
 ];
 
-/** 僅控制台別名。世界模組頁別名在 worldModules.MODULE_PAGE_ALIASES。 */
+/** 僅觀測別名。世界模組頁別名在 worldModules.MODULE_PAGE_ALIASES。 */
 export const CONSOLE_TAB_ALIASES: Record<string, MonitorTab> = {
   overview: 'live',
   balancer: 'live',
@@ -310,7 +310,7 @@ export function activityTitle(activity: ActivityKey): string {
   if (activity === 'chat') return '對話';
   if (activity === 'company') return '公司';
   if (activity === 'lab') return '實驗室';
-  if (activity === 'console') return '控制台';
+  if (activity === 'console') return '觀測';
   const spec = getWorldModule(normalizeActivityAlias(activity) ?? activity);
   return spec?.title ?? '模組';
 }

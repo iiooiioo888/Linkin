@@ -1,5 +1,5 @@
 /**
- * ActivityBar — 對話 / 控制台 / 已註冊世界模組 / 實驗室。
+ * ActivityBar — 對話 / 觀測 / 已註冊世界模組 / 實驗室。
  * 桌面：左側垂直欄；行動端：底部 Tab 列（Chat / Tasks / 用量 + 更多）。
  */
 import { useState, type ReactNode } from 'react';
@@ -264,7 +264,7 @@ function MobileBottomBar({
             </p>
             <div className="mobile-more-console-nav border-b border-[var(--console-line)] px-3 py-2">
               <p className="mb-2 text-[12px] text-[var(--console-sub)]">
-                控制台
+                觀測
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {CONSOLE_CHROME_TABS.map((tab) => (

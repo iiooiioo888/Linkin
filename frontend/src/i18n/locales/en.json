@@ -2,7 +2,7 @@
   "nav": {
     "chat": "Chat",
     "company": "Company",
-    "console": "Console",
+    "console": "Observe",
     "linkin": "Minecraft",
     "minecraft": "Minecraft",
     "modules": "Modules",
@@ -10,7 +10,7 @@
     "observe": "Observe",
     "system": "System",
     "lab": "Lab",
-    "monitor": "Console",
+    "monitor": "Observe",
     "traces": "Traces",
     "tasks": "Tasks",
     "usage": "Usage"
@@ -114,7 +114,7 @@
     "desktopHint": "Full controls and dense monitors work best on desktop (≥768px). You can still open a simplified view here.",
     "showFullPanel": "Show full panel on this device",
     "advancedNav": "Advanced",
-    "moreNote": "Console, modules, and lab — dense admin panels open best on desktop.",
+    "moreNote": "Observe, modules, and lab — dense admin panels open best on desktop.",
     "usageSummary": "Usage balance and recent activity",
     "tasksSummary": "Task queue and progress",
     "skillsSummary": "Skills & MCP admin editing is easier on desktop.",

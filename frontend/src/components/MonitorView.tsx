@@ -232,7 +232,7 @@ export default function MonitorView({
               <div className="shrink-0 border-b border-white/[0.06] bg-[color-mix(in_srgb,var(--console-card)_80%,transparent)] px-6 py-3">
                 <p className="text-[12px] text-[var(--console-sub)]">
                   Context 主表面在<strong className="mx-1 text-[var(--console-ink)]">對話底部詳細區</strong>
-                  （輸入 <code className="text-[11px] text-[var(--console-accent)]">/context</code>）。此處為控制台完整鏡像。
+                  （輸入 <code className="text-[11px] text-[var(--console-accent)]">/context</code>）。此處為觀測完整鏡像（資產層只存與取）。
                 </p>
                 <button
                   type="button"
