@@ -8,7 +8,7 @@
 | 變數 | 預設 | 說明 |
 | :--- | :--- | :--- |
 | `MODELGW_WIRE_MODE` | `off` | `off`：不介入 `call_llm`。`shadow`：準入並打 log，不阻擋。`enforce`：硬閘（未 READY／O18 拒則拋 `ModelGWError`）。 |
-| `MODELGW_REGISTRY_SEED` | `backend/modelgw/seeds/demo_registry.json` | InMemory Registry JSON seed（不上 Postgres）。 |
+| `MODELGW_REGISTRY_SEED` | `backend/modelgw/seeds/demo_registry.json` | Registry JSON seed（冷啟動／fixture；見 [modelgw-registry.md](./modelgw-registry.md)）。 |
 | `MODELGW_RETRY_AFTER` | `30` | `PROVISIONING` → HTTP 503 時的 `Retry-After` 秒數。 |
 
 別名：`enforce` 亦可寫 `on`／`true`／`1`；`shadow` 亦可寫 `observe`／`log`。
@@ -21,6 +21,7 @@
 - `GET /modelgw/registry`
 - `POST /modelgw/v1/admit` — body `{ "model_id": "..." }`
 - `POST /modelgw/v1/chat/completions` — OpenAI 風格薄包裝
+- `POST /modelgw/internal/v1/deploy-callback` — 部署完成回調（HMAC＋冪等；見 registry 文檔）
 
 錯誤映射（Core §8.1）：
 

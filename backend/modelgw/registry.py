@@ -1,4 +1,4 @@
-"""動態 Model Registry（InMemory + JSON seed；不上 Postgres）。"""
+"""動態 Model Registry（Protocol + InMemory；SQL 見 sql_registry）。"""
 
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ class Registry(Protocol):
 
 
 class InMemoryRegistry:
-    """PR1 記憶體實作；介面凍結供日後換持久化。"""
+    """記憶體實作：pytest／無 DSN／顯式 MODELGW_REGISTRY_BACKEND=memory。"""
 
     def __init__(self, seed: list[ModelRecord] | None = None) -> None:
         self._items: dict[str, ModelRecord] = {}

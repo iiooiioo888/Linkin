@@ -8,6 +8,10 @@
   - enforce：``call_llm`` 前硬閘；PROVISIONING／拒絕依庫層 http_hint 拋出
 - ``MODELGW_REGISTRY_SEED``：JSON seed 路徑（預設 ``seeds/demo_registry.json``）
 - ``MODELGW_RETRY_AFTER``：PROVISIONING 回應的 Retry-After 秒數（預設 30）
+- ``MODELGW_REGISTRY_BACKEND``：``memory``（預設）｜``sql``／``sqlite``／``db``
+- ``MODELGW_DATABASE_URL``：有值且 backend≠memory 時用 SQL Registry
+  （例 ``sqlite:////opt/linkin/data/modelgw.sqlite3``；Postgres 本波未掛驅動）
+- ``MODELGW_CALLBACK_HMAC_KEY``：部署回調 HMAC（獨立；勿輪換用戶側／guardrail 金鑰）
 
 不讀 HUB_CATALOG、不 import hub.circuit。
 """
@@ -18,7 +22,7 @@ import logging
 import os
 from pathlib import Path
 
-from backend.modelgw.registry import InMemoryRegistry, load_json_seed
+from backend.modelgw.registry import InMemoryRegistry, Registry, load_json_seed
 from backend.modelgw.service import ModelGWService
 
 logger = logging.getLogger(__name__)
@@ -29,6 +33,7 @@ _service: ModelGWService | None = None
 _TRUE = {"1", "true", "yes", "on"}
 _ENFORCE = _TRUE | {"enforce", "hard"}
 _SHADOW = {"shadow", "observe", "log", "dry-run", "dryrun"}
+_SQL_BACKENDS = {"sql", "sqlite", "db", "postgres", "postgresql"}
 
 
 def wire_mode() -> str:
@@ -50,6 +55,19 @@ def retry_after_seconds() -> str:
     return str(n)
 
 
+def registry_backend() -> str:
+    """回傳 memory｜sql。"""
+    raw = (os.getenv("MODELGW_REGISTRY_BACKEND") or "").strip().lower()
+    dsn = (os.getenv("MODELGW_DATABASE_URL") or "").strip()
+    if raw in {"memory", "mem", "inmemory"}:
+        return "memory"
+    if raw in _SQL_BACKENDS:
+        return "sql"
+    if dsn:
+        return "sql"
+    return "memory"
+
+
 def _load_seed_records():
     path = (os.getenv("MODELGW_REGISTRY_SEED") or "").strip() or str(_DEFAULT_SEED)
     try:
@@ -57,16 +75,39 @@ def _load_seed_records():
     except FileNotFoundError:
         logger.warning("ModelGW seed 不存在：%s（空 Registry）", path)
         return []
-    except Exception as exc:  # 啟動時降級為空表
+    except Exception as exc:
         logger.warning("ModelGW seed 載入失敗（%s）：%s", path, exc)
         return []
+
+
+def build_registry() -> Registry:
+    """依環境建立 Registry；seed＝冷啟動／fixture（空列才灌）。"""
+    backend = registry_backend()
+    seeds = _load_seed_records()
+    if backend == "memory":
+        return InMemoryRegistry(seed=seeds)
+
+    dsn = (os.getenv("MODELGW_DATABASE_URL") or "").strip()
+    if not dsn:
+        logger.warning(
+            "MODELGW_REGISTRY_BACKEND=sql 但未設 MODELGW_DATABASE_URL；回退 InMemory"
+        )
+        return InMemoryRegistry(seed=seeds)
+
+    from backend.modelgw.sql_registry import build_sql_registry
+
+    reg = build_sql_registry(dsn)
+    inserted = reg.seed_if_empty(seeds)
+    if inserted:
+        logger.info("ModelGW SQL Registry 冷灌 seed %s 列", inserted)
+    return reg
 
 
 def get_service() -> ModelGWService:
     """懶載入單例；測試可用 ``reset_service`` 替換。"""
     global _service
     if _service is None:
-        _service = ModelGWService(registry=InMemoryRegistry(seed=_load_seed_records()))
+        _service = ModelGWService(registry=build_registry())
     return _service
 
 

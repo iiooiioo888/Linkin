@@ -40,8 +40,8 @@ class ModelGWService:
         self.policy = policy or AdmissionPolicy()
         self.metrics: dict[str, dict[str, Any]] = metrics if metrics is not None else {}
 
-    def admit_or_raise(self, model_id: str):
-        result = admit(model_id, self.registry, self.policy)
+    def admit_or_raise(self, model_id: str, *, tenant_id: str = ""):
+        result = admit(model_id, self.registry, self.policy, tenant_id=tenant_id)
         if result.decision == AdmitDecision.PROVISIONING:
             raise ModelGWError(
                 CODE_PROVISIONING,

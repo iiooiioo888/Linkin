@@ -113,8 +113,14 @@ def admit(
     model_id: str,
     registry: Registry,
     policy: AdmissionPolicy | None = None,
+    *,
+    tenant_id: str = "",
 ) -> AdmitResult:
-    """路由熱路徑準入：missing → UNSUPPORTED；部署中 → PROVISIONING；FAILED → NOT_READY；再 O18。"""
+    """路由熱路徑準入：missing → UNSUPPORTED；部署中 → PROVISIONING；FAILED → NOT_READY；再 O18。
+
+    tenant_id：P5 預留（預設 ""）；本波 Protocol.get(model_id) 不變，服務層以空租戶解析。
+    """
+    _ = tenant_id  # 預留；SQL Registry 以 default_tenant="" 對齊
     pol = policy or _DEFAULT_POLICY
     record = registry.get(model_id)
     if record is None:
