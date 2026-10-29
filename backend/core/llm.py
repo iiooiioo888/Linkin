@@ -377,6 +377,17 @@ def _call_llm_core(
     多 API 路由時依 route_id / 模型歸屬選擇憑證；max_tokens / temperature
     可經 kwargs 傳入（角色 Token 限制）。主路由失敗且有備援路由時會跨 API 切換。
     """
+    # ModelGW 可降級掛載（MODELGW_WIRE_MODE=off|shadow|enforce，預設 off）
+    try:
+        from backend.modelgw.runtime import precheck_model
+
+        gate_model = model
+        if not gate_model:
+            gate_model = _llm_params().get("model")
+        precheck_model(gate_model)
+    except ImportError:
+        pass
+
     extras = role_failover_models or kwargs.pop("role_failover_models", None) or []
     extras = [str(item).strip() for item in extras if str(item).strip()]
     hops = _build_call_hops(route_id, model, extras)
