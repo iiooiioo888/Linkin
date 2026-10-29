@@ -313,6 +313,9 @@ app.add_middleware(
 
 # AI Hub 旁路面：/api/v1/*（Nginx 剝除 /api 時另掛 /v1/*）
 register_hub(app)
+from backend.modelgw.api import register_modelgw
+
+register_modelgw(app)
 register_linkin(app)
 from backend.ephemeral_containers.api import register_ephemeral_containers
 
