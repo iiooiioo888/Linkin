@@ -64,15 +64,17 @@ class ModelGWService:
         model_id: str,
         *,
         extras: Sequence[str] | None = None,
+        tenant_id: str = "",
     ):
         """準入主模型後產出 Failover 計畫（Open 跳過）。"""
-        self.admit_or_raise(model_id)
+        self.admit_or_raise(model_id, tenant_id=tenant_id)
         return plan_route(
             model_id,
             self.registry,
             self.circuits,
             extras=extras,
             policy=self.policy,
+            tenant_id=tenant_id,
         )
 
     def invoke_chat(
@@ -82,9 +84,10 @@ class ModelGWService:
         llm: Callable[..., str],
         *,
         extras: Sequence[str] | None = None,
+        tenant_id: str = "",
     ) -> InvokeResult:
         """完整熱路徑：準入 → 選路 → 呼叫（mock／注入 llm）。"""
-        plan = self.route(model_id, extras=extras)
+        plan = self.route(model_id, extras=extras, tenant_id=tenant_id)
         text, used, hops = invoke_with_failover(
             llm,
             messages,

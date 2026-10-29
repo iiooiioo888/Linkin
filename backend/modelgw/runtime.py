@@ -117,12 +117,14 @@ def reset_service(service: ModelGWService | None = None) -> None:
     _service = service
 
 
-def precheck_model(model_id: str | None) -> None:
+def precheck_model(model_id: str | None, *, tenant_id: str = "") -> None:
     """給 ``call_llm`` 用的可降級準入閘。
 
     - off：直接返回
-    - shadow：準入失敗只記 log
+    - shadow：準入失敗只記 log（帶 tenant_id）
     - enforce：拋 ModelGWError（由呼叫端／HTTP 層映射）
+
+    tenant_id 可選；``call_llm``／WIRE 無可靠來源時維持 ``""``（不從 AuthGate 猜）。
     """
     if not model_id or not str(model_id).strip():
         return
@@ -131,14 +133,16 @@ def precheck_model(model_id: str | None) -> None:
         return
     from backend.modelgw.errors import ModelGWError
 
+    tid = tenant_id if tenant_id is not None else ""
     try:
-        get_service().admit_or_raise(str(model_id).strip())
+        get_service().admit_or_raise(str(model_id).strip(), tenant_id=tid)
     except ModelGWError as exc:
         if mode == "shadow":
             logger.info(
-                "MODELGW shadow admit blocked-would-be code=%s model=%s detail=%s",
+                "MODELGW shadow admit blocked-would-be code=%s model=%s tenant_id=%s detail=%s",
                 exc.code,
                 model_id,
+                tid,
                 exc.detail,
             )
             return

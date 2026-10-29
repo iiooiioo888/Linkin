@@ -65,13 +65,17 @@ def plan_route(
     *,
     extras: Sequence[str] | None = None,
     policy: AdmissionPolicy | None = None,
+    tenant_id: str = "",
 ) -> RoutePlan:
-    """僅納入準入通過且電路未 OPEN 的候選；主模型 OPEN 則跳過並 Failover。"""
+    """僅納入準入通過且電路未 OPEN 的候選；主模型 OPEN 則跳過並 Failover。
+
+    每 hop 使用同一 tenant_id（呼叫方傳入值貫穿）。
+    """
     raw = build_failover_chain(primary, registry, extras=extras)
     admitted: list[str] = []
     skipped_open: list[str] = []
     for mid in raw:
-        result = admit(mid, registry, policy)
+        result = admit(mid, registry, policy, tenant_id=tenant_id)
         if not result.allowed:
             continue
         if circuits.is_open(mid):
