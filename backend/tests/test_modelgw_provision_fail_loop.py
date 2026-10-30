@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -75,7 +76,7 @@ def _cb(
 
 
 @pytest.fixture()
-def sql_reg(tmp_path) -> SqliteRegistry:
+def sql_reg(tmp_path) -> Generator[SqliteRegistry, None, None]:
     reg = SqliteRegistry(str(tmp_path / "p3.sqlite3"))
     yield reg
     reg.close()
@@ -299,8 +300,46 @@ class TestRace1AndRetry1:
             assert_status_transition("FAILED", "READY")
         assert ei.value.code == "STATUS_TRANSITION_DENIED"
 
-    def test_assert_failed_to_provisioning_ok(self) -> None:
-        assert_status_transition("FAILED", "PROVISIONING")
+    def test_assert_failed_to_provisioning_requires_reprovision(self) -> None:
+        # G-P3-RETRY1-GATE：無 outcome=reprovision → 409
+        with pytest.raises(CallbackConflict) as ei:
+            assert_status_transition("FAILED", "PROVISIONING")
+        assert ei.value.code == "STATUS_TRANSITION_DENIED"
+        with pytest.raises(CallbackConflict) as ei2:
+            assert_status_transition("FAILED", "PROVISIONING", outcome="success")
+        assert ei2.value.code == "STATUS_TRANSITION_DENIED"
+
+    def test_assert_failed_to_provisioning_ok_with_reprovision(self) -> None:
+        assert_status_transition("FAILED", "PROVISIONING", outcome="reprovision")
+
+    def test_c10_gate_status_only_from_failed_denied(self, sql_reg: SqliteRegistry) -> None:
+        """僅顯式 status=PROVISIONING（無 outcome=reprovision）不得自清 fail_reason。"""
+        sql_reg.upsert(
+            _rec(
+                "gate-m",
+                status=ModelStatus.FAILED,
+                extras={
+                    EXTRA_STARTED: 1.0,
+                    EXTRA_FAIL_REASON: FAIL_REASON_TIMEOUT,
+                    EXTRA_COMPENSATE: COMPENSATE_OK,
+                },
+            )
+        )
+        body = {
+            "tenant_id": "",
+            "model_id": "gate-m",
+            "status": "PROVISIONING",
+            "revision": "r1",
+        }
+        with pytest.raises(CallbackConflict) as ei:
+            _cb(sql_reg, body, idem="gate-status-only-1")
+        assert ei.value.code == "STATUS_TRANSITION_DENIED"
+        assert ei.value.http_status == 409
+        got = sql_reg.get("gate-m")
+        assert got is not None
+        assert got.status == ModelStatus.FAILED
+        assert got.extras.get(EXTRA_FAIL_REASON) == FAIL_REASON_TIMEOUT
+        assert got.extras.get(EXTRA_COMPENSATE) == COMPENSATE_OK
 
 
 class TestCallbackSetsClock:

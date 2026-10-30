@@ -139,15 +139,21 @@ def verify_signature(
             )
 
 
-def assert_status_transition(old_status: str, new_status: str) -> None:
+def assert_status_transition(
+    old_status: str,
+    new_status: str,
+    *,
+    outcome: str = "",
+) -> None:
     """狀態單調＋同態 LWW；非法 → CallbackConflict 409。
 
     P3/#132：
     - FAILED→READY（含超時後遲來 success）＝409 STATUS_TRANSITION_DENIED（G-P3-RACE1）
-    - FAILED→PROVISIONING* 僅手動 outcome=reprovision（G-P3-RETRY1）
+    - FAILED→PROVISIONING* **硬要求** outcome=reprovision（G-P3-RETRY1-GATE）
     """
     old = (old_status or "").upper()
     new = (new_status or "").upper()
+    oc = (outcome or "").strip().lower()
     if old == new:
         return
     if old in _PROVISIONING_VALUES and new in _PROVISIONING_VALUES:
@@ -160,9 +166,15 @@ def assert_status_transition(old_status: str, new_status: str) -> None:
         return
     if old == ModelStatus.READY.value and new == ModelStatus.TERMINATING.value:
         return
-    # G-P3-RETRY1：FAILED → PROVISIONING*（僅 callback outcome=reprovision 會走到這）
+    # G-P3-RETRY1-GATE：FAILED → PROVISIONING* 僅 outcome=reprovision
     if old == ModelStatus.FAILED.value and new in _PROVISIONING_VALUES:
-        return
+        if oc == "reprovision":
+            return
+        raise CallbackConflict(
+            f"不允許的狀態轉換：{old} → {new}（需 outcome=reprovision）",
+            code="STATUS_TRANSITION_DENIED",
+            http_status=409,
+        )
     # 拒絕 READY→PROVISIONING*、TERMINATING→READY、FAILED→READY 等（含 RACE1）
     raise CallbackConflict(
         f"不允許的狀態轉換：{old} → {new}",
@@ -357,6 +369,7 @@ def process_deploy_callback(
         record=record,
         response_snapshot=snapshot,
         allow_create=True,
+        outcome=outcome,
     )
 
 

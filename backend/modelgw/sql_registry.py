@@ -219,6 +219,7 @@ class SqliteRegistry:
         record: ModelRecord,
         response_snapshot: dict[str, Any],
         allow_create: bool = True,
+        outcome: str = "",
     ) -> dict[str, Any]:
         """交易內：冪等檢查 → 狀態單調 → upsert model → 寫 callback 日誌。
 
@@ -273,7 +274,9 @@ class SqliteRegistry:
                         if isinstance(record.status, ModelStatus)
                         else str(record.status)
                     )
-                    assert_status_transition(old_status, new_status)
+                    assert_status_transition(
+                        old_status, new_status, outcome=outcome
+                    )
                     new_version = int(row["row_version"]) + 1
 
                 params = self._record_params(tid, record)
