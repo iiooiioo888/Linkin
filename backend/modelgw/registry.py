@@ -113,6 +113,10 @@ class InMemoryRegistry:
     def all(self) -> list[ModelRecord]:
         return list(self._items.values())
 
+    def all_with_tenant(self) -> list[tuple[str, ModelRecord]]:
+        """單平面：tenant_id 固定 ""。"""
+        return [("", r) for r in self._items.values()]
+
     def clear(self) -> None:
         self._items.clear()
 

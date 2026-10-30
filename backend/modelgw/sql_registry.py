@@ -168,6 +168,15 @@ class SqliteRegistry:
             rows = cur.fetchall()
         return [self._row_to_record(r) for r in rows]
 
+    def all_with_tenant(self) -> list[tuple[str, ModelRecord]]:
+        """P3 poller：全表 (tenant_id, record)；預設 tenant_id=""。"""
+        with self._lock:
+            cur = self._conn.execute(
+                "SELECT * FROM modelgw_models ORDER BY tenant_id, model_id"
+            )
+            rows = cur.fetchall()
+        return [(str(r["tenant_id"]), self._row_to_record(r)) for r in rows]
+
     def row_version(self, model_id: str, *, tenant_id: str | None = None) -> int | None:
         tid = self._tenant(tenant_id)
         with self._lock:
@@ -210,6 +219,7 @@ class SqliteRegistry:
         record: ModelRecord,
         response_snapshot: dict[str, Any],
         allow_create: bool = True,
+        outcome: str = "",
     ) -> dict[str, Any]:
         """交易內：冪等檢查 → 狀態單調 → upsert model → 寫 callback 日誌。
 
@@ -264,7 +274,9 @@ class SqliteRegistry:
                         if isinstance(record.status, ModelStatus)
                         else str(record.status)
                     )
-                    assert_status_transition(old_status, new_status)
+                    assert_status_transition(
+                        old_status, new_status, outcome=outcome
+                    )
                     new_version = int(row["row_version"]) + 1
 
                 params = self._record_params(tid, record)
