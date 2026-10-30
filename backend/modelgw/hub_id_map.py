@@ -54,7 +54,8 @@ def _load_from_env() -> dict[str, str | None] | None:
         logger.warning("MODELGW_HUB_ID_MAP 須為物件")
         return {}
     # 允許 {"map": {...}} 或直接 {...}
-    payload = data.get("map") if "map" in data and isinstance(data.get("map"), dict) else data
+    nested = data.get("map")
+    payload: dict[str, Any] = nested if isinstance(nested, dict) else data
     out: dict[str, str | None] = {}
     for key, val in payload.items():
         if str(key).startswith("_"):
@@ -76,7 +77,8 @@ def _load_from_file() -> dict[str, str | None]:
         return {}
     if not isinstance(data, dict):
         return {}
-    payload = data.get("map") if isinstance(data.get("map"), dict) else data
+    nested = data.get("map")
+    payload: dict[str, Any] = nested if isinstance(nested, dict) else data
     out: dict[str, str | None] = {}
     for key, val in payload.items():
         if str(key).startswith("_"):
