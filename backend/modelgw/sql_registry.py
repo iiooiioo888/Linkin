@@ -168,6 +168,15 @@ class SqliteRegistry:
             rows = cur.fetchall()
         return [self._row_to_record(r) for r in rows]
 
+    def all_with_tenant(self) -> list[tuple[str, ModelRecord]]:
+        """P3 poller：全表 (tenant_id, record)；預設 tenant_id=""。"""
+        with self._lock:
+            cur = self._conn.execute(
+                "SELECT * FROM modelgw_models ORDER BY tenant_id, model_id"
+            )
+            rows = cur.fetchall()
+        return [(str(r["tenant_id"]), self._row_to_record(r)) for r in rows]
+
     def row_version(self, model_id: str, *, tenant_id: str | None = None) -> int | None:
         tid = self._tenant(tenant_id)
         with self._lock:

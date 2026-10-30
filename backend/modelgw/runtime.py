@@ -13,6 +13,8 @@
   （例 ``sqlite:////opt/linkin/data/modelgw.sqlite3``；Postgres 本波未掛驅動）
 - ``MODELGW_CALLBACK_HMAC_KEY``：部署回調 HMAC（獨立；勿輪換用戶側／guardrail 金鑰）
 - ``MODELGW_HUB_ID_MAP``／``MODELGW_HUB_ID_MAP_PATH``：Hub↔Registry 顯式映射（見 hub_id_map.py）
+- ``MODELGW_PROVISION_TIMEOUT_SEC``：PROVISIONING* 超時秒數（預設 600；clamp 60..3600）
+- ``MODELGW_PROVISION_POLL_SEC``：超時 poller 間隔（預設 30）
 
 不讀 HUB_CATALOG、不 import hub.circuit。
 P4-S1：path=via｜bypass 觀測 log＋計數；不切 enforce 預設。

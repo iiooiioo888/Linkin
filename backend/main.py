@@ -232,12 +232,26 @@ async def _lifespan(_app: FastAPI):
                 logger.warning("已取消任務清理失敗：%s", exc)
 
     cleanup_task = asyncio.create_task(_cancelled_task_cleanup_loop())
+    # ModelGW P3/#132：PROVISIONING* 超時 poller（同進程；shadow；不切 enforce）
+    modelgw_provision_task = None
+    try:
+        from backend.modelgw.provision_controller import start_provision_poller
+
+        modelgw_provision_task = start_provision_poller()
+    except Exception as exc:
+        logger.warning("ModelGW provision poller 啟動失敗：%s", exc)
     ect_worker_stop = None
     if ephemeral_containers_enabled():
         ect_worker_stop = container_task_worker
     try:
         yield
     finally:
+        if modelgw_provision_task is not None:
+            modelgw_provision_task.cancel()
+            try:
+                await modelgw_provision_task
+            except asyncio.CancelledError:
+                pass
         if ect_worker_stop is not None:
             await ect_worker_stop.stop()
         cleanup_task.cancel()
