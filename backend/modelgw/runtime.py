@@ -12,15 +12,21 @@
 - ``MODELGW_DATABASE_URL``：有值且 backend≠memory 時用 SQL Registry
   （例 ``sqlite:////opt/linkin/data/modelgw.sqlite3``；Postgres 本波未掛驅動）
 - ``MODELGW_CALLBACK_HMAC_KEY``：部署回調 HMAC（獨立；勿輪換用戶側／guardrail 金鑰）
+- ``MODELGW_HUB_ID_MAP``／``MODELGW_HUB_ID_MAP_PATH``：Hub↔Registry 顯式映射（見 hub_id_map.py）
 
 不讀 HUB_CATALOG、不 import hub.circuit。
+P4-S1：path=via｜bypass 觀測 log＋計數；不切 enforce 預設。
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import threading
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
+from typing import Iterator
 
 from backend.modelgw.registry import InMemoryRegistry, Registry, load_json_seed
 from backend.modelgw.service import ModelGWService
@@ -34,6 +40,16 @@ _TRUE = {"1", "true", "yes", "on"}
 _ENFORCE = _TRUE | {"enforce", "hard"}
 _SHADOW = {"shadow", "observe", "log", "dry-run", "dryrun"}
 _SQL_BACKENDS = {"sql", "sqlite", "db", "postgres", "postgresql"}
+
+# P4-S1 觀測：經 ModelGW precheck＝via；WIRE=off＝bypass
+_path_lock = threading.Lock()
+_path_counts: dict[str, int] = {
+    "via": 0,
+    "bypass": 0,
+    "would_block": 0,
+}
+
+_entry_ctx: ContextVar[str] = ContextVar("modelgw_wire_entry", default="call_llm")
 
 
 def wire_mode() -> str:
@@ -68,6 +84,38 @@ def registry_backend() -> str:
     return "memory"
 
 
+def current_entry() -> str:
+    return _entry_ctx.get() or "call_llm"
+
+
+@contextmanager
+def entry_scope(entry: str) -> Iterator[None]:
+    """標註呼叫來源（hub｜stream｜call_llm…），供 path 觀測 log。"""
+    token = _entry_ctx.set((entry or "call_llm").strip() or "call_llm")
+    try:
+        yield
+    finally:
+        _entry_ctx.reset(token)
+
+
+def path_counts() -> dict[str, int]:
+    """回傳 via／bypass／would_block 計數快照（測試／觀測 API）。"""
+    with _path_lock:
+        return dict(_path_counts)
+
+
+def reset_path_counts() -> None:
+    """測試用：清零 path 計數。"""
+    with _path_lock:
+        for key in _path_counts:
+            _path_counts[key] = 0
+
+
+def _bump(path: str) -> None:
+    with _path_lock:
+        _path_counts[path] = _path_counts.get(path, 0) + 1
+
+
 def _load_seed_records():
     path = (os.getenv("MODELGW_REGISTRY_SEED") or "").strip() or str(_DEFAULT_SEED)
     try:
@@ -86,7 +134,6 @@ def build_registry() -> Registry:
     seeds = _load_seed_records()
     if backend == "memory":
         return InMemoryRegistry(seed=seeds)
-
     dsn = (os.getenv("MODELGW_DATABASE_URL") or "").strip()
     if not dsn:
         logger.warning(
@@ -117,33 +164,81 @@ def reset_service(service: ModelGWService | None = None) -> None:
     _service = service
 
 
-def precheck_model(model_id: str | None, *, tenant_id: str = "") -> None:
-    """給 ``call_llm`` 用的可降級準入閘。
+def precheck_model(
+    model_id: str | None,
+    *,
+    tenant_id: str = "",
+    entry: str | None = None,
+) -> None:
+    """給 ``call_llm``／``call_llm_stream`` 用的可降級準入閘。
 
-    - off：直接返回
-    - shadow：準入失敗只記 log（帶 tenant_id）
+    - off：記 ``MODELGW path=bypass``，直接返回
+    - shadow：準入失敗只記 log（帶 tenant_id／entry）；``path=via``
     - enforce：拋 ModelGWError（由呼叫端／HTTP 層映射）
 
+    Hub 靜態 ID 若在映射表且未填 → ``UNSUPPORTED_MODEL`` 形狀（S1 shadow 只 log）。
     tenant_id 可選；``call_llm``／WIRE 無可靠來源時維持 ``""``（不從 AuthGate 猜）。
     """
     if not model_id or not str(model_id).strip():
         return
+    mid = str(model_id).strip()
+    ent = (entry or current_entry() or "call_llm").strip() or "call_llm"
     mode = wire_mode()
     if mode == "off":
+        _bump("bypass")
+        logger.info("MODELGW path=bypass entry=%s model=%s", ent, mid)
         return
-    from backend.modelgw.errors import ModelGWError
+
+    from backend.modelgw.errors import CODE_UNSUPPORTED, ModelGWError
+    from backend.modelgw.hub_id_map import resolve_hub_model_id
 
     tid = tenant_id if tenant_id is not None else ""
-    try:
-        get_service().admit_or_raise(str(model_id).strip(), tenant_id=tid)
-    except ModelGWError as exc:
+    admit_model, unmapped = resolve_hub_model_id(mid)
+    if unmapped:
+        _bump("via")
+        _bump("would_block")
+        detail = f"hub id unmapped: {mid}"
         if mode == "shadow":
             logger.info(
-                "MODELGW shadow admit blocked-would-be code=%s model=%s tenant_id=%s detail=%s",
+                "MODELGW shadow admit blocked-would-be path=via entry=%s "
+                "code=%s model=%s admit_model= tenant_id=%s detail=%s",
+                ent,
+                CODE_UNSUPPORTED,
+                mid,
+                tid,
+                detail,
+            )
+            return
+        raise ModelGWError(
+            CODE_UNSUPPORTED,
+            detail,
+            reason="HUB_ID_UNMAPPED",
+            http_hint=400,
+        )
+
+    gate = admit_model or mid
+    _bump("via")
+    try:
+        get_service().admit_or_raise(gate, tenant_id=tid)
+    except ModelGWError as exc:
+        _bump("would_block")
+        if mode == "shadow":
+            logger.info(
+                "MODELGW shadow admit blocked-would-be path=via entry=%s "
+                "code=%s model=%s admit_model=%s tenant_id=%s detail=%s",
+                ent,
                 exc.code,
-                model_id,
+                mid,
+                gate,
                 tid,
                 exc.detail,
             )
             return
         raise
+    logger.debug(
+        "MODELGW path=via entry=%s model=%s admit_model=%s tenant_id=%s",
+        ent,
+        mid,
+        gate,
+        tid,
+    )

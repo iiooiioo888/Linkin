@@ -107,7 +107,7 @@ def test_call_llm_shadow_allows_but_logs(monkeypatch, gw, caplog) -> None:
     with caplog.at_level(logging.INFO, logger="backend.modelgw.runtime"):
         out = _call_llm_core("hi", model="no-such")
     assert out == "shadow-ok"
-    assert any("MODELGW shadow" in r.message for r in caplog.records)
+    assert any("shadow admit blocked-would-be" in r.message for r in caplog.records)
 
 
 def test_call_llm_enforce_allows_ready(monkeypatch, gw) -> None:
@@ -123,3 +123,178 @@ def test_call_llm_enforce_allows_ready(monkeypatch, gw) -> None:
     from backend.core.llm import _call_llm_core
 
     assert _call_llm_core("hi", model="ready-a") == "ready-ok"
+
+
+# --- P4-S1：stream precheck／path 觀測／Hub ID map ---
+
+
+def test_call_llm_stream_shadow_precheck_logs(monkeypatch, gw, caplog) -> None:
+    monkeypatch.setenv("MODELGW_WIRE_MODE", "shadow")
+    from backend.modelgw.runtime import path_counts, reset_path_counts
+
+    reset_path_counts()
+
+    def fake_completion(**kwargs):
+        class _Delta:
+            content = "x"
+            reasoning_content = None
+
+        class _Choice:
+            delta = _Delta()
+
+        class _Chunk:
+            choices = [_Choice()]
+
+        return [_Chunk()]
+
+    monkeypatch.setattr("backend.core.llm.completion", fake_completion)
+    monkeypatch.setattr(
+        "backend.core.llm._resolve_call_target",
+        lambda *a, **k: None,
+    )
+    monkeypatch.setattr(
+        "backend.core.llm._llm_params",
+        lambda *a, **k: {"model": "no-such", "api_base": None},
+    )
+    monkeypatch.setattr("backend.core.llm.clamp_model", lambda m, **k: m or "no-such")
+    monkeypatch.setattr("backend.core.llm._ensure_provider_prefix", lambda m: m)
+    monkeypatch.setattr("backend.core.llm._openrouter_extra", lambda *a, **k: {})
+    monkeypatch.setattr("backend.billing.metering.precheck_llm", lambda *a, **k: None)
+    monkeypatch.setattr("backend.billing.metering.meter_llm", lambda *a, **k: None)
+
+    from backend.core.llm import call_llm_stream
+
+    with caplog.at_level(logging.INFO, logger="backend.modelgw.runtime"):
+        out = "".join(call_llm_stream("hi", model="no-such"))
+    assert out == "x"
+    assert any("path=via" in r.message and "entry=stream" in r.message for r in caplog.records)
+    assert any("shadow admit blocked-would-be" in r.message for r in caplog.records)
+    assert path_counts()["via"] >= 1
+    assert path_counts()["would_block"] >= 1
+
+
+def test_call_llm_stream_off_bypass_log(monkeypatch, gw, caplog) -> None:
+    monkeypatch.setenv("MODELGW_WIRE_MODE", "off")
+    from backend.modelgw.runtime import path_counts, reset_path_counts
+
+    reset_path_counts()
+
+    def fake_completion(**kwargs):
+        class _Delta:
+            content = "y"
+            reasoning_content = None
+
+        class _Choice:
+            delta = _Delta()
+
+        class _Chunk:
+            choices = [_Choice()]
+
+        return [_Chunk()]
+
+    monkeypatch.setattr("backend.core.llm.completion", fake_completion)
+    monkeypatch.setattr("backend.core.llm._resolve_call_target", lambda *a, **k: None)
+    monkeypatch.setattr(
+        "backend.core.llm._llm_params",
+        lambda *a, **k: {"model": "no-such", "api_base": None},
+    )
+    monkeypatch.setattr("backend.core.llm.clamp_model", lambda m, **k: m or "no-such")
+    monkeypatch.setattr("backend.core.llm._ensure_provider_prefix", lambda m: m)
+    monkeypatch.setattr("backend.core.llm._openrouter_extra", lambda *a, **k: {})
+    monkeypatch.setattr("backend.billing.metering.precheck_llm", lambda *a, **k: None)
+    monkeypatch.setattr("backend.billing.metering.meter_llm", lambda *a, **k: None)
+
+    from backend.core.llm import call_llm_stream
+
+    with caplog.at_level(logging.INFO, logger="backend.modelgw.runtime"):
+        out = "".join(call_llm_stream("hi", model="no-such"))
+    assert out == "y"
+    assert any("MODELGW path=bypass" in r.message and "entry=stream" in r.message for r in caplog.records)
+    assert path_counts()["bypass"] >= 1
+
+
+def test_call_llm_stream_enforce_blocks_unsupported(monkeypatch, gw) -> None:
+    monkeypatch.setenv("MODELGW_WIRE_MODE", "enforce")
+    from backend.core.llm import call_llm_stream
+
+    with pytest.raises(ModelGWError) as ei:
+        list(call_llm_stream("hi", model="no-such"))
+    assert ei.value.code == CODE_UNSUPPORTED
+
+
+def test_hub_id_map_unmapped_shadow_shape(monkeypatch, gw, caplog) -> None:
+    monkeypatch.setenv("MODELGW_WIRE_MODE", "shadow")
+    monkeypatch.setenv(
+        "MODELGW_HUB_ID_MAP",
+        '{"gpt-5.6-sol": "", "gemini-3.1-pro": "TBD"}',
+    )
+    from backend.modelgw.hub_id_map import reset_hub_id_map_cache
+    from backend.modelgw.runtime import path_counts, precheck_model, reset_path_counts
+
+    reset_hub_id_map_cache()
+    reset_path_counts()
+    with caplog.at_level(logging.INFO, logger="backend.modelgw.runtime"):
+        precheck_model("gpt-5.6-sol", entry="hub")
+    assert any(
+        "code=UNSUPPORTED_MODEL" in r.message and "entry=hub" in r.message
+        for r in caplog.records
+    )
+    assert path_counts()["would_block"] >= 1
+
+
+def test_hub_id_map_unmapped_enforce_raises(monkeypatch, gw) -> None:
+    monkeypatch.setenv("MODELGW_WIRE_MODE", "enforce")
+    monkeypatch.setenv("MODELGW_HUB_ID_MAP", '{"gpt-5.6-sol": ""}')
+    from backend.modelgw.hub_id_map import reset_hub_id_map_cache
+    from backend.modelgw.runtime import precheck_model
+
+    reset_hub_id_map_cache()
+    with pytest.raises(ModelGWError) as ei:
+        precheck_model("gpt-5.6-sol", entry="hub")
+    assert ei.value.code == CODE_UNSUPPORTED
+
+
+def test_hub_id_map_mapped_uses_registry_id(monkeypatch, gw) -> None:
+    monkeypatch.setenv("MODELGW_WIRE_MODE", "enforce")
+    monkeypatch.setenv("MODELGW_HUB_ID_MAP", '{"gpt-5.6-sol": "ready-a"}')
+    from backend.modelgw.hub_id_map import reset_hub_id_map_cache
+    from backend.modelgw.runtime import precheck_model
+
+    reset_hub_id_map_cache()
+    precheck_model("gpt-5.6-sol", entry="hub")  # ready-a 在 gw fixture
+
+
+def test_hub_id_map_passthrough_non_hub_key(monkeypatch, gw) -> None:
+    monkeypatch.setenv("MODELGW_WIRE_MODE", "enforce")
+    monkeypatch.setenv("MODELGW_HUB_ID_MAP", '{"gpt-5.6-sol": ""}')
+    from backend.modelgw.hub_id_map import reset_hub_id_map_cache
+    from backend.modelgw.runtime import precheck_model
+
+    reset_hub_id_map_cache()
+    precheck_model("ready-a")  # 非表鍵 → 原樣 admit
+
+
+def test_entry_scope_hub_on_call_llm(monkeypatch, gw, caplog) -> None:
+    monkeypatch.setenv("MODELGW_WIRE_MODE", "shadow")
+    monkeypatch.setattr(
+        "backend.core.llm._build_call_hops",
+        lambda *a, **k: [(None, "no-such")],
+    )
+    monkeypatch.setattr(
+        "backend.core.llm._call_llm_on_route",
+        lambda *a, **k: "ok",
+    )
+    from backend.core.llm import _call_llm_core
+    from backend.modelgw.runtime import entry_scope, reset_path_counts
+
+    reset_path_counts()
+    with caplog.at_level(logging.INFO, logger="backend.modelgw.runtime"):
+        with entry_scope("hub"):
+            assert _call_llm_core("hi", model="no-such") == "ok"
+    assert any("entry=hub" in r.message and "path=via" in r.message for r in caplog.records)
+
+
+def test_wire_mode_default_unchanged_off(monkeypatch) -> None:
+    """C6：不改 WIRE 預設碼值。"""
+    monkeypatch.delenv("MODELGW_WIRE_MODE", raising=False)
+    assert wire_mode() == "off"
