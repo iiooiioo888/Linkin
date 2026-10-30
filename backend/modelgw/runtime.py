@@ -23,10 +23,10 @@ from __future__ import annotations
 import logging
 import os
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Iterator
 
 from backend.modelgw.registry import InMemoryRegistry, Registry, load_json_seed
 from backend.modelgw.service import ModelGWService

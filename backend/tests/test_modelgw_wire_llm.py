@@ -288,9 +288,8 @@ def test_entry_scope_hub_on_call_llm(monkeypatch, gw, caplog) -> None:
     from backend.modelgw.runtime import entry_scope, reset_path_counts
 
     reset_path_counts()
-    with caplog.at_level(logging.INFO, logger="backend.modelgw.runtime"):
-        with entry_scope("hub"):
-            assert _call_llm_core("hi", model="no-such") == "ok"
+    with caplog.at_level(logging.INFO, logger="backend.modelgw.runtime"), entry_scope("hub"):
+        assert _call_llm_core("hi", model="no-such") == "ok"
     assert any("entry=hub" in r.message and "path=via" in r.message for r in caplog.records)
 
 
