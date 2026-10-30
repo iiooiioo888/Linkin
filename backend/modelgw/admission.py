@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 from backend.modelgw.errors import (
     CODE_ADMISSION,
@@ -109,6 +110,22 @@ class AdmissionPolicy:
 _DEFAULT_POLICY = AdmissionPolicy()
 
 
+def lookup_record(
+    registry: Registry,
+    model_id: str,
+    *,
+    tenant_id: str = "",
+) -> ModelRecord | None:
+    """集中 duck-type：有 ``get_for_tenant`` 則用；否則回退 ``get``（Protocol 凍結）。
+
+    缺列不回落其他 tenant／``""``（由 registry 實作保證；本 helper 不做二次查詢）。
+    """
+    getter: Any = getattr(registry, "get_for_tenant", None)
+    if callable(getter):
+        return getter(tenant_id, model_id)
+    return registry.get(model_id)
+
+
 def admit(
     model_id: str,
     registry: Registry,
@@ -118,11 +135,10 @@ def admit(
 ) -> AdmitResult:
     """路由熱路徑準入：missing → UNSUPPORTED；部署中 → PROVISIONING；FAILED → NOT_READY；再 O18。
 
-    tenant_id：P5 預留（預設 ""）；本波 Protocol.get(model_id) 不變，服務層以空租戶解析。
+    tenant_id：可選、預設 ""。有 get_for_tenant 則按租戶讀；缺列＝UNSUPPORTED，禁止回落。
     """
-    _ = tenant_id  # 預留；SQL Registry 以 default_tenant="" 對齊
     pol = policy or _DEFAULT_POLICY
-    record = registry.get(model_id)
+    record = lookup_record(registry, model_id, tenant_id=tenant_id)
     if record is None:
         return AdmitResult.reject(CODE_UNSUPPORTED)
 
@@ -150,11 +166,13 @@ def filter_admitted(
     model_ids: Iterable[str],
     registry: Registry,
     policy: AdmissionPolicy | None = None,
+    *,
+    tenant_id: str = "",
 ) -> list[str]:
     """回傳通過準入的 model_id 列表（順序保留）。"""
     out: list[str] = []
     for mid in model_ids:
-        r = admit(mid, registry, policy)
+        r = admit(mid, registry, policy, tenant_id=tenant_id)
         if r.allowed:
             out.append(mid)
     return out

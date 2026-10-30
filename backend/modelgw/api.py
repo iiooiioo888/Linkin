@@ -107,7 +107,7 @@ async def admit_endpoint(request: Request) -> JSONResponse:
     model_id = str(body.get("model_id") or body.get("model") or "").strip()
     if not model_id:
         return _bad_request("缺少 model_id")
-    # P5 預留：tenant_id 可傳、本波不強制（Registry.get 仍用預設空租戶）
+    # tenant_id 可選＋預設 ""；admit 實際走 get_for_tenant（缺列不回落）
     _tenant = str(body.get("tenant_id") if body.get("tenant_id") is not None else "")
     try:
         result = get_service().admit_or_raise(model_id, tenant_id=_tenant)
@@ -149,6 +149,8 @@ async def chat_completions(request: Request) -> JSONResponse:
 
     extras_raw = body.get("failover_models") or body.get("extras") or []
     extras = [str(x).strip() for x in extras_raw if str(x).strip()] if isinstance(extras_raw, list) else []
+    # tenant_id 可選＋預設 ""（與 admit 同形；不從 AuthGate／header 猜）
+    _tenant = str(body.get("tenant_id") if body.get("tenant_id") is not None else "")
 
     def llm_for_invoke(*, prompt: str, model: str, messages: list | None = None, **kwargs: Any) -> str:
         from backend.core.llm import call_llm
@@ -167,6 +169,7 @@ async def chat_completions(request: Request) -> JSONResponse:
             [m for m in messages if isinstance(m, dict)],
             llm_for_invoke,
             extras=extras,
+            tenant_id=_tenant,
         )
     except ModelGWError as exc:
         return problem_response(exc)
@@ -198,6 +201,7 @@ async def chat_completions(request: Request) -> JSONResponse:
                 "failover_hops": result.failover_hops,
                 "skipped_open": result.skipped_open,
                 "wire_mode": wire_mode(),
+                "tenant_id": _tenant,
             },
         }
     )

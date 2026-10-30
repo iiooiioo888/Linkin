@@ -96,6 +96,11 @@ class InMemoryRegistry:
     def get(self, model_id: str) -> ModelRecord | None:
         return self._items.get(model_id)
 
+    def get_for_tenant(self, tenant_id: str, model_id: str) -> ModelRecord | None:
+        """單平面：無租戶維度，語意等同 get（忽略 tenant_id）。隔離契約測走 SQL。"""
+        _ = tenant_id
+        return self.get(model_id)
+
     def upsert(self, record: ModelRecord) -> None:
         self._items[record.model_id] = record
 
