@@ -52,8 +52,15 @@ def _record_circuit(model: str, failed: bool, duration_s: float) -> None:
 
 
 def _llm_probe(prompt: str, system: str | None, model: str, **kwargs: Any) -> str:
+    """Hub 上游唯一入口：經 call_llm（ModelGW precheck）；entry=hub 觀測。"""
     runtime.upstream_calls.append({"model": model, "prompt": prompt[:80]})
-    return call_llm(prompt, system=system, model=model, **kwargs)
+    try:
+        from backend.modelgw.runtime import entry_scope
+
+        with entry_scope("hub"):
+            return call_llm(prompt, system=system, model=model, **kwargs)
+    except ImportError:
+        return call_llm(prompt, system=system, model=model, **kwargs)
 
 
 def parse_failover_config(raw: str | None) -> dict[str, Any]:

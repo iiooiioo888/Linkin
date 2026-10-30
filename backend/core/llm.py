@@ -378,13 +378,14 @@ def _call_llm_core(
     可經 kwargs 傳入（角色 Token 限制）。主路由失敗且有備援路由時會跨 API 切換。
     """
     # ModelGW 可降級掛載（MODELGW_WIRE_MODE=off|shadow|enforce，預設 off）
+    entry = kwargs.pop("modelgw_entry", None)
     try:
         from backend.modelgw.runtime import precheck_model
 
         gate_model = model
         if not gate_model:
             gate_model = _llm_params().get("model")
-        precheck_model(gate_model)
+        precheck_model(gate_model, entry=entry)
     except ImportError:
         pass
 
@@ -589,7 +590,20 @@ def call_llm_stream(
     """呼叫 LLM 並串流回傳回應片段（生成器）。
 
     與 call_llm 相同的重試邏輯，但逐塊 yield 文字。
+    P4-S1：掛 ModelGW ``precheck_model``（entry=stream；shadow 只觀測）。
     """
+    # ModelGW 可降級掛載（對齊 _call_llm_core；ImportError 可降級）
+    entry = kwargs.pop("modelgw_entry", None) or "stream"
+    try:
+        from backend.modelgw.runtime import precheck_model
+
+        gate_model = model
+        if not gate_model:
+            gate_model = _llm_params().get("model")
+        precheck_model(gate_model, entry=entry)
+    except ImportError:
+        pass
+
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
