@@ -20,6 +20,7 @@ from backend.hub.service import (
     create_agent_task,
     get_agent_task,
 )
+from backend.modelgw.errors import CODE_PROVISIONING, ModelGWError
 
 hub_router = APIRouter(prefix="/api/v1", tags=["ai-hub"])
 compat_router = APIRouter(prefix="/v1", tags=["ai-hub-nginx-compat"])
@@ -40,6 +41,26 @@ def problem_response(exc: HubError) -> JSONResponse:
         media_type="application/problem+json",
         headers=exc.headers,
     )
+
+
+def modelgw_problem_response(exc: ModelGWError) -> JSONResponse:
+    """P4-S2／C5：熱路徑以 ModelGW body code 為準（Q9）；不發明 Hub 目錄錯碼。"""
+    from backend.modelgw.runtime import retry_after_seconds
+
+    status = int(exc.http_hint or 400)
+    if exc.code == CODE_PROVISIONING:
+        status = 503
+    headers: dict[str, str] = {}
+    if status == 503 and exc.code == CODE_PROVISIONING:
+        headers["Retry-After"] = retry_after_seconds()
+    return JSONResponse(
+        status_code=status,
+        content=exc.to_problem(),
+        media_type="application/problem+json",
+        headers=headers,
+    )
+
+
 
 
 def _check_content_type(request: Request) -> None:
@@ -106,6 +127,8 @@ async def _chat_impl(
             "X-RateLimit-Remaining": "47",
         }
         return JSONResponse(content=payload, headers=headers)
+    except ModelGWError as exc:
+        return modelgw_problem_response(exc)
     except HubError as exc:
         return problem_response(exc)
 
@@ -153,6 +176,8 @@ async def _create_task_impl(
             status_code = 202
             body_out["status"] = "queued"
         return JSONResponse(status_code=status_code, content=body_out)
+    except ModelGWError as exc:
+        return modelgw_problem_response(exc)
     except HubError as exc:
         return problem_response(exc)
 
@@ -180,6 +205,8 @@ async def _get_task_impl(
         if task.error_code:
             payload["error"] = {"code": task.error_code, "detail": task.error_detail}
         return JSONResponse(content=payload)
+    except ModelGWError as exc:
+        return modelgw_problem_response(exc)
     except HubError as exc:
         return problem_response(exc)
 

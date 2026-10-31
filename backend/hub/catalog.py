@@ -127,7 +127,11 @@ def is_forbidden_model_string(value: str) -> bool:
 
 
 def validate_model_id(model: str | None) -> str | None:
-    """回傳模型 ID；非法則拋 ValueError（code 由上層轉成 UNSUPPORTED_MODEL）。"""
+    """回傳模型 ID；非法則拋 ValueError（code 由上層轉成 UNSUPPORTED_MODEL）。
+
+    G-GATE1：本函＝Hub **B 層產品目錄濾鏡**；**不是** ModelGW 準入權威。
+    「能不能叫上游」只認 ``backend.modelgw.runtime.precheck_model``（WIRE=enforce）。
+    """
     if model is None or model == "":
         return None
     if is_forbidden_model_string(model) or model not in HUB_CATALOG:

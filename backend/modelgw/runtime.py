@@ -18,6 +18,7 @@
 
 不讀 HUB_CATALOG、不 import hub.circuit。
 P4-S1：path=via｜bypass 觀測 log＋計數；不切 enforce 預設。
+P4-S2／G-GATE1：本模組 precheck＝唯一「能不能叫」權威；Hub validate_model_id 僅 B 濾鏡，不得繞過本閘。
 """
 
 from __future__ import annotations
