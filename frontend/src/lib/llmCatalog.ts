@@ -1,3 +1,4 @@
+import { isSunsetHubId } from './sunsetHubIds';
 import type { LlmCatalogModel } from '../types';
 
 export const TOKEN_PLAN_LABEL = '阿里雲 Token Plan';
@@ -38,7 +39,7 @@ export function modelsForRoute(
   for (const group of groups) {
     if (group.route_id !== routeId) continue;
     for (const mid of group.models) {
-      if (!mid || seen.has(mid)) continue;
+      if (!mid || seen.has(mid) || isSunsetHubId(mid)) continue;
       seen.add(mid);
       out.push(mid);
     }
