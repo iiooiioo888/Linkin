@@ -24,6 +24,7 @@ from backend.hub.catalog import (
     RACE_PAIR,
     provider_of,
 )
+from backend.modelgw.errors import ModelGWError
 
 CONNECT_TIMEOUT_S = 25.0
 READ_TIMEOUT_S = 120.0
@@ -215,6 +216,14 @@ def invoke_with_failover(
                 if on_result:
                     on_result(model, False, time.monotonic() - t0)
                 return text, model, hops
+            except ModelGWError as exc:
+                # P4-S2／C5：準入拒不是上游故障——不退避重試；切下一候選；
+                # 全鏈皆拒時仍拋 ModelGWError（保留 code／http_hint），勿吞成 503。
+                last_err = exc
+                if on_result:
+                    on_result(model, True, time.monotonic() - t0)
+                hops += 1
+                break
             except Exception as exc:
                 last_err = exc
                 status = getattr(exc, "status_code", None)
@@ -232,6 +241,8 @@ def invoke_with_failover(
                     continue
                 hops += 1
                 break
+    if isinstance(last_err, ModelGWError):
+        raise last_err
     timeout_like = last_err is not None and (
         isinstance(last_err, (TimeoutError, CircuitOpenError))
         or "timeout" in str(last_err).lower()
