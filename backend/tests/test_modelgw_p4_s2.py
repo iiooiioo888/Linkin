@@ -86,10 +86,11 @@ def test_s2_c4_call_llm_provisioning_no_upstream_leak(monkeypatch, gw) -> None:
         "backend.core.llm._build_call_hops",
         lambda *a, **k: [(None, "warming")],
     )
-    monkeypatch.setattr(
-        "backend.core.llm._call_llm_on_route",
-        lambda *a, **k: leaks.append("upstream") or "x",
-    )
+    def _track_upstream(*a, **k):
+        leaks.append("upstream")
+        return "x"
+
+    monkeypatch.setattr("backend.core.llm._call_llm_on_route", _track_upstream)
     from backend.core.llm import _call_llm_core
 
     with pytest.raises(ModelGWError) as ei:
@@ -106,10 +107,11 @@ def test_s2_c4_call_llm_admission_rejected_no_upstream_leak(monkeypatch, gw) -> 
         "backend.core.llm._build_call_hops",
         lambda *a, **k: [(None, "trc-bad")],
     )
-    monkeypatch.setattr(
-        "backend.core.llm._call_llm_on_route",
-        lambda *a, **k: leaks.append("upstream") or "x",
-    )
+    def _track_upstream(*a, **k):
+        leaks.append("upstream")
+        return "x"
+
+    monkeypatch.setattr("backend.core.llm._call_llm_on_route", _track_upstream)
     from backend.core.llm import _call_llm_core
 
     with pytest.raises(ModelGWError) as ei:
@@ -194,10 +196,12 @@ def test_s2_c4_hub_failover_preserves_modelgw_error(monkeypatch, gw) -> None:
         "backend.core.llm._build_call_hops",
         lambda *a, **k: [(None, a[1] if len(a) > 1 else k.get("model"))],
     )
-    monkeypatch.setattr(
-        "backend.core.llm._call_llm_on_route",
-        lambda *a, **k: leaks.append(str(k.get("model") or a[2] if len(a) > 2 else "?")) or "x",
-    )
+    def _track_upstream(*a, **k):
+        mid = k.get("model") or (a[2] if len(a) > 2 else "?")
+        leaks.append(str(mid))
+        return "x"
+
+    monkeypatch.setattr("backend.core.llm._call_llm_on_route", _track_upstream)
 
     from backend.hub.router import HubUpstreamError, invoke_with_failover
 
@@ -242,12 +246,12 @@ def test_s2_c5_hub_api_maps_modelgw_problem(monkeypatch, gw) -> None:
     resp = modelgw_problem_response(E(CODE_UNSUPPORTED, "x", http_hint=400))
     assert resp.status_code == 400
     assert resp.body  # type: ignore[attr-defined]
-    body = json.loads(resp.body.decode())
+    body = json.loads(bytes(resp.body).decode())
     assert body["code"] == CODE_UNSUPPORTED
 
     resp2 = modelgw_problem_response(E(CODE_PROVISIONING, "warming", http_hint=503))
     assert resp2.status_code == 503
-    body2 = json.loads(resp2.body.decode())
+    body2 = json.loads(bytes(resp2.body).decode())
     assert body2["code"] == CODE_PROVISIONING
     assert "Retry-After" in resp2.headers
 
