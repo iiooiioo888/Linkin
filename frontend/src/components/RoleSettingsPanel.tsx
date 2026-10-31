@@ -16,6 +16,12 @@ import {
 } from '../lib/agentUi';
 import { modelsForRoute } from '../lib/llmCatalog';
 import { agentRahoLabel } from '../lib/rahoUi';
+import {
+  SUNSET_BLOCK_MESSAGE,
+  collectSunsetModelRefs,
+  filterSelectableHubIds,
+  isSunsetHubId,
+} from '../lib/sunsetHubIds';
 import { navPathForTab } from '../lib/monitorTabs';
 import PromptEditor from './PromptEditor';
 
@@ -306,9 +312,11 @@ export default function RoleSettingsPanel({
 }: RoleSettingsPanelProps) {
   const [draft, setDraft] = useState<RoleSettingsDraft>(() => draftFromAgent(agent));
   const [section, setSection] = useState<RoleSettingsSection>(initialSection);
+  const [sunsetSaveError, setSunsetSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(draftFromAgent(agent));
+    setSunsetSaveError(null);
   }, [agent]);
 
   useEffect(() => {
@@ -389,7 +397,19 @@ export default function RoleSettingsPanel({
             <button
               type="button"
               disabled={saving || !dirty}
-              onClick={() => void onSave(draft)}
+              onClick={() => {
+                const hits = collectSunsetModelRefs({
+                  preferred_model: draft.preferred_model,
+                  failover_models: draft.failoverText.split(',').map((s) => s.trim()).filter(Boolean),
+                });
+                if (hits.length > 0) {
+                  setSunsetSaveError(`${SUNSET_BLOCK_MESSAGE}（${hits.join(', ')}）`);
+                  goSection('model');
+                  return;
+                }
+                setSunsetSaveError(null);
+                void onSave(draft);
+              }}
               className="rs-act rs-act--primary"
             >
               {saving ? '儲存中…' : '儲存設定'}
@@ -605,27 +625,41 @@ export default function RoleSettingsPanel({
             <select
               className={inputCls}
               value={draft.preferred_model}
-              onChange={(e) => setDraft({ ...draft, preferred_model: e.target.value })}
+              onChange={(e) => {
+                setSunsetSaveError(null);
+                setDraft({ ...draft, preferred_model: e.target.value });
+              }}
             >
               <option value="">該 API 預設模型</option>
+              {isSunsetHubId(draft.preferred_model) ? (
+                <option value={draft.preferred_model} disabled>
+                  {draft.preferred_model}（已 sunset，請改選）
+                </option>
+              ) : null}
               {(catalog?.models_by_provider ?? []).length > 0
                 ? (catalog?.models_by_provider ?? [])
                     .filter((g) => !draft.preferred_provider || g.route_id === draft.preferred_provider)
                     .map((g) => (
                       <optgroup key={g.route_id} label={routeDisplayName(g) || g.name}>
-                        {g.models.map((id) => (
+                        {filterSelectableHubIds(g.models).map((id) => (
                           <option key={`${g.route_id}-${id}`} value={id}>
                             {rateOptionLabel(id, catalog?.model_rate_cards)}
                           </option>
                         ))}
                       </optgroup>
                     ))
-                : (catalog?.allowed_models ?? []).map((id) => (
+                : filterSelectableHubIds(catalog?.allowed_models ?? []).map((id) => (
                     <option key={id} value={id}>
                       {rateOptionLabel(id, catalog?.model_rate_cards)}
                     </option>
                   ))}
             </select>
+            {isSunsetHubId(draft.preferred_model) || sunsetSaveError ? (
+              <p className="mt-1 text-[11px] text-amber-300/90">
+                {sunsetSaveError ||
+                  '此角色仍存有 sunset Hub 鍵；請改選可用模型後儲存（隱藏≠清庫）。'}
+              </p>
+            ) : null}
           </Field>
           {selectedRate ? (
             <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2">
@@ -658,7 +692,7 @@ export default function RoleSettingsPanel({
           <Field label="故障轉移模型" hint="逗號分隔，主模型失敗後依序切換">
             <input
               className={inputCls}
-              placeholder="gemini-3.1-pro, deepseek-v4-flash"
+              placeholder="可用模型 id（勿填 sunset 九鍵）"
               value={draft.failoverText}
               onChange={(e) => setDraft({ ...draft, failoverText: e.target.value })}
             />
@@ -961,7 +995,10 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
   const [reportingTo, setReportingTo] = useState(cloneFrom?.reporting_to ?? '');
   const [tier, setTier] = useState(cloneFrom?.default_tier || 'routine');
   const [description, setDescription] = useState(cloneFrom?.description ?? '');
-  const [model, setModel] = useState(cloneFrom?.preferred_model ?? '');
+  const [model, setModel] = useState(() => {
+    const m = cloneFrom?.preferred_model ?? '';
+    return isSunsetHubId(m) ? '' : m;
+  });
   const [provider, setProvider] = useState(cloneFrom?.preferred_provider ?? '');
   const [maxOutput, setMaxOutput] = useState(cloneFrom?.max_output_tokens ?? 4096);
   const [contextWindow, setContextWindow] = useState(cloneFrom?.context_window ?? 0);
@@ -1103,7 +1140,9 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
               <option value="">模型：該 API 預設</option>
               {(catalog?.models_by_provider ?? [])
                 .filter((g) => !provider || g.route_id === provider)
-                .flatMap((g) => g.models.map((mid) => ({ group: g.name, mid })))
+                .flatMap((g) =>
+                  filterSelectableHubIds(g.models).map((mid) => ({ group: g.name, mid })),
+                )
                 .map((row) => (
                   <option key={`${row.group}-${row.mid}`} value={row.mid}>
                     {rateOptionLabel(row.mid, catalog?.model_rate_cards)}
@@ -1207,6 +1246,9 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
               setBusy(true);
               setError(null);
               try {
+                if (isSunsetHubId(model)) {
+                  throw new Error(SUNSET_BLOCK_MESSAGE);
+                }
                 await onCreate({
                   id: id.trim() || name.trim(),
                   name: name.trim(),

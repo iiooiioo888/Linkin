@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchHubMonitor } from '../api/client';
 import { HUB_FALLBACK_MODELS, HUB_FALLBACK_ROUTING } from '../lib/monitorFallbacks';
+import { markSunsetHubModelsUnavailable } from '../lib/sunsetHubIds';
 import type { HubMonitorData } from '../types';
 import {
   ConsoleCard,
@@ -81,7 +82,9 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
   const hitPct = Math.round((cache?.hit_rate ?? 0) * 100);
   const targetPct = Math.round((cache?.target_hit_rate ?? 0.4) * 100);
   const budget = data?.budgets[0];
-  const models = data?.models && data.models.length > 0 ? data.models : HUB_FALLBACK_MODELS;
+  const models = markSunsetHubModelsUnavailable(
+    data?.models && data.models.length > 0 ? data.models : HUB_FALLBACK_MODELS,
+  );
   const routing = data?.routing ?? HUB_FALLBACK_ROUTING;
   const spentPct =
     budget && budget.daily_limit_usd > 0
@@ -96,7 +99,7 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
             title="AI Hub 編排監控"
             description={
               data?.routing?.pool_lock?.lock_message
-                || 'GPT-5.6 Sol 旗艦 · Gemini 3.1 Pro 多模態 · 禁止 Anthropic / Claude'
+                || '多模型編排監控 · sunset Hub 鍵已標不可用 · 禁止 Anthropic / Claude'
             }
             actions={
               <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
