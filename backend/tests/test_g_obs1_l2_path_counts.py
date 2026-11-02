@@ -162,7 +162,7 @@ def test_loopback_allowed_without_token(monkeypatch):
     class _R:
         def __init__(self, host: str):
             self.client = _C(host)
-            self.headers = {}
+            self.headers: dict[str, str] = {}
 
     assert _is_path_counts_client_allowed(_R("127.0.0.1")) is True
     assert _is_path_counts_client_allowed(_R("::1")) is True
@@ -178,7 +178,7 @@ def test_public_ip_forbidden_without_token(monkeypatch):
     class _R:
         def __init__(self, host: str):
             self.client = _C(host)
-            self.headers = {}
+            self.headers: dict[str, str] = {}
 
     assert _is_path_counts_client_allowed(_R("8.8.8.8")) is False
 
@@ -194,7 +194,7 @@ def test_private_requires_flag_or_token(monkeypatch):
     class _R:
         def __init__(self, host: str, token: str | None = None):
             self.client = _C(host)
-            self.headers = {}
+            self.headers: dict[str, str] = {}
             if token:
                 self.headers["X-ModelGW-Internal-Token"] = token
 
