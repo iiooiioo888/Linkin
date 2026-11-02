@@ -1,4 +1,4 @@
-"""ModelGW FastAPI 掛載面（WIRE PR + P1/#130 回調）。
+"""ModelGW FastAPI 掛載面（WIRE PR + P1/#130 回調 + G-OBS1 L2 讀點）。
 
 路徑前綴 ``/modelgw``：
 - GET  /modelgw/healthz
@@ -6,6 +6,7 @@
 - POST /modelgw/v1/admit
 - POST /modelgw/v1/chat/completions
 - POST /modelgw/internal/v1/deploy-callback  （HMAC＋冪等；不掛 AuthGate）
+- GET  /api/internal/modelgw/path-counts     （G-OBS1 L2；loopback／token；禁 reset）
 
 HTTP 映射（Core §8.1）：
 - PROVISIONING → 503 + code=PROVISIONING（可選 Retry-After）
@@ -16,15 +17,27 @@ HTTP 映射（Core §8.1）：
 
 from __future__ import annotations
 
+import hmac
+import ipaddress
+import os
 from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from backend.modelgw.errors import CODE_PROVISIONING, ModelGWError
-from backend.modelgw.runtime import get_service, retry_after_seconds, wire_mode
+from backend.modelgw.runtime import (
+    get_service,
+    path_counts_snapshot,
+    retry_after_seconds,
+    wire_mode,
+)
 
 modelgw_router = APIRouter(prefix="/modelgw", tags=["modelgw"])
+# G-OBS1 L2：受控內部讀點（與 /modelgw 並列；非 hub /metrics）
+internal_modelgw_router = APIRouter(
+    prefix="/api/internal/modelgw", tags=["modelgw-internal"]
+)
 
 
 def problem_response(exc: ModelGWError) -> JSONResponse:
@@ -262,6 +275,84 @@ async def deploy_callback(request: Request) -> JSONResponse:
     return JSONResponse(content=result)
 
 
+def _path_counts_token() -> str:
+    return (os.getenv("MODELGW_PATH_COUNTS_TOKEN") or "").strip()
+
+
+def _client_host(request: Request) -> str:
+    """直連 peer；**不**信任 X-Forwarded-For（防偽造繞過 loopback 閘）。"""
+    if request.client and request.client.host:
+        return str(request.client.host)
+    return ""
+
+
+def _token_ok(request: Request) -> bool:
+    expected = _path_counts_token()
+    if not expected:
+        return False
+    got = (
+        request.headers.get("X-ModelGW-Internal-Token")
+        or request.headers.get("x-modelgw-internal-token")
+        or ""
+    ).strip()
+    if not got:
+        return False
+    return hmac.compare_digest(got, expected)
+
+
+def _allow_private() -> bool:
+    raw = (os.getenv("MODELGW_PATH_COUNTS_ALLOW_PRIVATE") or "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _is_path_counts_client_allowed(request: Request) -> bool:
+    """受控內部讀點閘：預設僅 loopback；可選 private；token 可提升。
+
+    - loopback → 允許
+    - RFC1918／link-local private → 僅當 ALLOW_PRIVATE=1 **或** token 正確
+    - 其餘（含非 IP／公網）→ 必須 token；無 token 設定則 fail-closed
+    - **禁止**無防護公網裸洩
+    """
+    host = _client_host(request)
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        # ASGI TestClient 等非 IP host：僅 token
+        return _token_ok(request)
+
+    if addr.is_loopback:
+        return True
+    if addr.is_private or addr.is_link_local:
+        return bool(_allow_private() or _token_ok(request))
+    # 公網／其他：必須 token
+    return _token_ok(request)
+
+
+@internal_modelgw_router.get("/path-counts")
+async def internal_path_counts(request: Request) -> JSONResponse:
+    """G-OBS1 L2 受控內部讀點：進程內 path_counts 快照。
+
+    語義＝自本進程啟動起；**不**呼叫 ``reset_path_counts``；
+    **≠** hub ``GET /metrics``。多 worker 無匯總時 ``multi_worker_incomplete=true``。
+    """
+    if not _is_path_counts_client_allowed(request):
+        return JSONResponse(
+            status_code=403,
+            content={
+                "type": "https://modelgw.example.com/errors/PATH_COUNTS_FORBIDDEN",
+                "title": "Forbidden",
+                "code": "PATH_COUNTS_FORBIDDEN",
+                "detail": "path-counts 僅 loopback／受控內網／token；禁公網裸洩",
+            },
+            media_type="application/problem+json",
+        )
+    # 刻意不呼叫 reset_path_counts
+    body = path_counts_snapshot()
+    body["hub_metrics_is_not_path_counts"] = True
+    return JSONResponse(content=body)
+
+
 def register_modelgw(app) -> None:
     """掛到 FastAPI app；不改 Hub 路由。"""
     app.include_router(modelgw_router)
+    app.include_router(internal_modelgw_router)

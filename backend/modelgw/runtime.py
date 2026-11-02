@@ -26,9 +26,11 @@ from __future__ import annotations
 import logging
 import os
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.modelgw.registry import InMemoryRegistry, Registry, load_json_seed
@@ -44,13 +46,16 @@ _ENFORCE = _TRUE | {"enforce", "hard"}
 _SHADOW = {"shadow", "observe", "log", "dry-run", "dryrun"}
 _SQL_BACKENDS = {"sql", "sqlite", "db", "postgres", "postgresql"}
 
-# P4-S1 觀測：經 ModelGW precheck＝via；WIRE=off＝bypass
+# P4-S1／G-OBS1 L2 觀測：經 ModelGW precheck＝via；WIRE=off＝bypass
+# 進程內計數；重啟歸零。趨勢靠結構化 log（g_obs1_path_event=1）聚合，非交易 DB。
 _path_lock = threading.Lock()
 _path_counts: dict[str, int] = {
     "via": 0,
     "bypass": 0,
     "would_block": 0,
 }
+_PROCESS_STARTED_MONO = time.monotonic()
+_PROCESS_STARTED_AT = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 _entry_ctx: ContextVar[str] = ContextVar("modelgw_wire_entry", default="call_llm")
 
@@ -107,16 +112,68 @@ def path_counts() -> dict[str, int]:
         return dict(_path_counts)
 
 
+def process_started_at() -> str:
+    """本進程啟動時刻（UTC ISO8601 Z）；供內部讀點。"""
+    return _PROCESS_STARTED_AT
+
+
+def workers_hint() -> int:
+    """從常見 env 推 workers 提示（非權威；runbook 仍須明示）。"""
+    for key in ("MODELGW_WORKERS_HINT", "WEB_CONCURRENCY", "UVICORN_WORKERS"):
+        raw = (os.getenv(key) or "").strip()
+        if not raw:
+            continue
+        try:
+            n = int(raw)
+        except ValueError:
+            continue
+        if n >= 1:
+            return n
+    return 1
+
+
+def path_counts_snapshot() -> dict:
+    """內部讀點用完整快照（自進程啟動起；不呼叫 reset）。
+
+    語義：via／bypass／would_block 為本 PID 記憶體計數。
+    ``multi_worker_incomplete=true`` 當 workers_hint>1（無跨 worker 匯總）。
+    """
+    counts = path_counts()
+    hint = workers_hint()
+    return {
+        "via": int(counts.get("via", 0)),
+        "bypass": int(counts.get("bypass", 0)),
+        "would_block": int(counts.get("would_block", 0)),
+        "pid": os.getpid(),
+        "started_at": process_started_at(),
+        "wire_mode": wire_mode(),
+        "scope": "since_process_start",
+        "multi_worker_incomplete": hint > 1,
+        "workers_hint": hint,
+        "uptime_sec": round(time.monotonic() - _PROCESS_STARTED_MONO, 3),
+    }
+
+
 def reset_path_counts() -> None:
-    """測試用：清零 path 計數。"""
+    """測試用：清零 path 計數。產線讀點／runbook **禁止**呼叫。"""
     with _path_lock:
         for key in _path_counts:
             _path_counts[key] = 0
 
 
 def _bump(path: str) -> None:
+    """遞增計數並打可 grep 結構化 log（G-OBS1 L2 C1）。"""
     with _path_lock:
         _path_counts[path] = _path_counts.get(path, 0) + 1
+        total = _path_counts[path]
+    # 可重建趨勢：journalctl / grep 'g_obs1_path_event=1'
+    logger.info(
+        "MODELGW g_obs1_path_event=1 path=%s count=%s pid=%s wire_mode=%s",
+        path,
+        total,
+        os.getpid(),
+        wire_mode(),
+    )
 
 
 def _load_seed_records():
@@ -238,7 +295,8 @@ def precheck_model(
             )
             return
         raise
-    logger.debug(
+    # 成功 via 的趨勢由 _bump 的 g_obs1_path_event 承接；此列保留人讀欄位
+    logger.info(
         "MODELGW path=via entry=%s model=%s admit_model=%s tenant_id=%s",
         ent,
         mid,
