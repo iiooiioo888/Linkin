@@ -34,3 +34,17 @@
 - 不改 Hub 公開 API 行為
 - 純庫 `admit`／`service` 契約不變
 - 反思 DAG／UI／部署／合併不在本 PR
+
+## 雙閘時序（G-GATE1）
+
+Hub 與 ModelGW 是**兩道正交閘**，不可合併成單一電路狀態：
+
+| 層 | 角色 |
+| :--- | :--- |
+| Hub `validate_model_id`／目錄 | **B 層產品濾鏡**（可長期保留） |
+| ModelGW `precheck_model`（WIRE=enforce） | **唯一「能不能叫」準入權威** |
+
+**運維一句：** Hub 拒 ≠ ModelGW 拒；ModelGW 拒才是準入權威結果。
+
+Hub 目錄綠 **不得** 繞過 ModelGW admit。正式手冊：[contracts/g-gate1-dual-gate.md](./contracts/g-gate1-dual-gate.md)。  
+本節為宣導落地；`wire_change=none`（不因本文件切 WIRE）。

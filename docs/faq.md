@@ -83,3 +83,22 @@ Pages 僅靜態前端預覽；登入閘門可在無後端時本機核對。聊�
 - Docker Compose dev（HMR）：宿主／容器皆 **3001**
 
 舊文件若寫 5173 已過時。後端仍是 **8000**，OPC **8001**，MineMCP 預設 **3000**。速查：[glossary.md](glossary.md)。
+
+## Hub 拒跟 ModelGW 拒差在哪？（G-GATE1）
+
+Hub `validate_model_id` 是 **B 層產品目錄濾鏡**（模型是否在 Hub 產品合約內）。  
+ModelGW `precheck_model`（WIRE=enforce）是 **唯一「能不能叫上游」準入權威**。  
+**Hub 拒 ≠ ModelGW 拒**；ModelGW 拒才是準入權威結果。詳見 [雙閘時序手冊](contracts/g-gate1-dual-gate.md)。
+
+## 誰才是「能不能叫」的準入權威？
+
+**只有 ModelGW**（`precheck_model`／admit，在 `MODELGW_WIRE_MODE=enforce` 下）。  
+Hub 目錄與電路可長期保留，但是產品濾鏡／運維視圖，**不能**替代準入權威。
+
+## enforce 下 Hub 目錄綠，能不能繞過 ModelGW？
+
+**不能。** 目錄綠只代表產品側允許該模型 ID 出現；真正能不能叫上游仍以 ModelGW admit 為準。不得把雙閘合併成單一燈號。
+
+## G-GATE1 文件落地會改 WIRE 或閘邏輯嗎？
+
+**不會。** G-GATE1 本波＝對人宣導／docs；`wire_change=none`；不合並不部署。見 [modelgw-wire.md 雙閘小節](modelgw-wire.md#雙閘時序g-gate1)。
