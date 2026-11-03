@@ -424,7 +424,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
             <div className="apple-card__body apple-card__body--static apple-chart h-[180px]">
               <LcLineChart
                 height={180}
-                series={[{ id: 'close', name: '收盤', color: '#34C759', points: closePoints }]}
+                series={[{ id: 'close', name: '收盤', color: 'var(--console-green)', points: closePoints }]}
               />
             </div>
           ) : (
@@ -462,7 +462,7 @@ export default function StrategyCatalogPanel({ embedded = false }: { embedded?: 
         ) : (
           <p className="text-[11px] text-[var(--console-sub)]">勾選可回測策略，交給量化研究桌角色引用。</p>
         )}
-        <p className="mt-4 text-[10px] leading-relaxed text-[#48484A]">
+        <p className="mt-4 text-[10px] leading-relaxed text-[var(--console-faint)]">
           已勾選 {selectedCount} / {wiredVisible.length} 可回測引擎。目錄項僅供對照 stock-quant 策略庫。
         </p>
         <a href="#/monitor/lab/maps" className="mt-3 block text-[11px] text-[var(--console-accent)]">

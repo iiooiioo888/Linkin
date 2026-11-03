@@ -401,7 +401,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
       <p className="text-[11px] text-[var(--console-sub)]">金鑰、端點與模型勾選只保存在目前登入帳號。</p>
       <div className={`grid grid-cols-1 gap-3 ${compact || hideList ? '' : 'md:grid-cols-2'}`}>
         <label className="block">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-[var(--console-sub)]">
+          <span className="mb-1 block text-[10px] font-semibold text-[var(--console-sub)]">
             全域分發策略
           </span>
           <select
@@ -438,7 +438,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
         </p>
       ) : (
       <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--console-sub)]">已配置的 API</p>
+        <p className="text-[10px] font-semibold text-[var(--console-sub)]">已配置的 API</p>
         {routes.length === 0 ? (
           <p className="rounded-xl border border-dashed border-white/[0.08] px-3 py-6 text-center text-sm text-[var(--console-sub)]">
             尚未加入 API。請在下方選擇供應商並填入金鑰。
@@ -520,7 +520,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
       )}
 
       <div className="rounded-xl border border-white/[0.08] p-3">
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--console-sub)]">
+        <p className="mb-3 text-[10px] font-semibold text-[var(--console-sub)]">
           {editingId ? `編輯 ${editingId}` : '新增 API'}
         </p>
         <label className="mb-1 block text-[11px] text-[var(--console-sub)]">供應商</label>
@@ -614,7 +614,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
                 全選
               </button>
             </div>
-            <div className="max-h-36 overflow-y-auto rounded-xl border border-white/[0.08] bg-[#0D0D0F] p-2">
+            <div className="max-h-36 overflow-y-auto rounded-xl border border-white/[0.08] bg-[var(--console-bg)] p-2">
               <div className="flex flex-wrap gap-1.5">
                 {editingModels.slice(0, 80).map((id) => {
                   const on = draft.allowedModels.includes(id);

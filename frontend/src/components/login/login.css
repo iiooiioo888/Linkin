@@ -53,11 +53,8 @@
   max-width: 380px;
   border: 1px solid var(--login-line);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--login-card) 94%, transparent);
-  backdrop-filter: blur(12px);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--login-accent) 12%, transparent),
-    0 24px 64px rgba(0, 0, 0, 0.55);
+  background: var(--login-card);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
   padding: 0 0 20px;
   overflow: hidden;
 }
@@ -66,18 +63,10 @@
   content: '';
   position: absolute;
   top: 0;
-  left: 12%;
-  right: 12%;
+  left: 0;
+  right: 0;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--login-accent-hi) 30%,
-    var(--login-accent) 50%,
-    var(--login-accent-hi) 70%,
-    transparent
-  );
-  box-shadow: 0 0 12px color-mix(in srgb, var(--login-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--login-accent) 35%, var(--login-line));
   pointer-events: none;
 }
 
@@ -105,7 +94,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--login-green);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--login-green) 70%, transparent);
+  box-shadow: none;
 }
 
 .login-status__core {

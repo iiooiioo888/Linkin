@@ -276,7 +276,7 @@ function LayoutCanvas({
       </div>
       <div
         ref={containerRef}
-        className="relative min-h-[280px] flex-1 touch-none overflow-hidden rounded-xl border border-[#c9a961]/25 bg-[#0a0a0c]"
+        className="relative min-h-[280px] flex-1 touch-none overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_25%,transparent)] bg-[var(--console-bg)]"
         onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -329,7 +329,7 @@ function LayoutCanvas({
             </span>
           </div>
         ) : null}
-        <div className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/50 px-2 py-1 text-[9px] text-[#8a8f98]">
+        <div className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/50 px-2 py-1 text-[9px] text-[var(--console-faint)]">
           XZ 俯視{data.region ? ` · ${data.region}` : ''}
           {(data.players?.length ?? 0) > 0 ? ` · 在線 ${data.players!.length}` : ''}
           · {data.note}

@@ -193,7 +193,7 @@ export default function LlmOpsPanel() {
                 </div>
                 <div className="overflow-x-auto rounded-lg border border-[var(--console-line)]">
                   <table className="w-full text-left text-[12px]">
-                    <thead className="bg-[var(--console-card-elevated)] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
+                    <thead className="bg-[var(--console-card-elevated)] text-[10px] text-[var(--console-faint)]">
                       <tr>
                         <th className="px-3 py-2 font-medium">模型 ID</th>
                         <th className="px-3 py-2 font-medium">名稱</th>

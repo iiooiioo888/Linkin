@@ -363,20 +363,15 @@
   transition: border-color 0.12s ease, background 0.12s ease;
 }
 
-.mon-task-card::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  bottom: 6px;
-  left: 0;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  background: var(--console-dim);
+.mon-task-card--p1 {
+  border-color: color-mix(in srgb, var(--console-danger) 45%, var(--console-line));
 }
-
-.mon-task-card--p1::before { background: var(--console-danger); }
-.mon-task-card--p2::before { background: var(--console-accent); }
-.mon-task-card--p3::before { background: var(--console-dim); }
+.mon-task-card--p2 {
+  border-color: color-mix(in srgb, var(--console-accent) 40%, var(--console-line));
+}
+.mon-task-card--p3 {
+  border-color: var(--console-line);
+}
 
 .mon-task-card:hover {
   border-color: var(--console-line-hi);
@@ -1335,9 +1330,9 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 16px;
-  border: 1px solid color-mix(in srgb, #c9a961 35%, transparent);
-  background: color-mix(in srgb, #c9a961 8%, var(--console-card, #12141a));
-  color: #c9a961;
+  border: 1px solid color-mix(in srgb, var(--console-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--console-accent) 8%, var(--console-card));
+  color: var(--console-accent);
 }
 
 .mon-routing-chip--cost {
@@ -1376,7 +1371,7 @@
   --at-ink: #e6e6ea;
   --at-sub: #9a9aa4;
   --at-faint: #6e6e78;
-  --at-accent: #c9a961;
+  --at-accent: var(--console-accent);
   --at-accent-dk: #6e5a32;
   display: flex;
   flex: 0 0 auto;

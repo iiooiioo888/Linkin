@@ -53,7 +53,7 @@ export default function HubPanel({ embedded = false }: { embedded?: boolean }) {
               className={`rounded-md border px-2.5 py-1 text-[11px] transition-colors ${
                 active
                   ? 'border-[var(--console-blue)]/50 bg-[var(--console-blue)]/15 console-status-blue'
-                  : 'border-white/[0.08] text-[var(--console-sub)] hover:text-[#d0d6e0]'
+                  : 'border-white/[0.08] text-[var(--console-sub)] hover:text-[var(--console-sub)]'
               }`}
             >
               {item.label}

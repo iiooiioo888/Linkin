@@ -169,15 +169,15 @@ export default function ServerMapPanel() {
       )}
 
       {!displayUrl ? (
-        <div className="flex min-h-[50dvh] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-[#c9a961]/30 bg-[var(--console-card)] p-8 text-center">
-          <p className="mb-2 text-sm font-medium text-[#c9a961]">尚未設定地圖 URL</p>
+        <div className="flex min-h-[50dvh] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-[color-mix(in_srgb,var(--console-accent)_30%,transparent)] bg-[var(--console-card)] p-8 text-center">
+          <p className="mb-2 text-sm font-medium text-[var(--console-accent)]">尚未設定地圖 URL</p>
           <a
             href="#/modules/minecraft/layout-preview"
-            className="mb-4 inline-block rounded-xl border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[11px] text-[#c9a961] hover:bg-[#c9a961]/20"
+            className="mb-4 inline-block rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[11px] text-[var(--console-accent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_20%,transparent)]"
           >
             本地布局預覽（無需 Dynmap）
           </a>
-          <ol className="max-w-md space-y-2 text-left text-[11px] text-[#8a8f98]">
+          <ol className="max-w-md space-y-2 text-left text-[11px] text-[var(--console-faint)]">
             <li>1. 在伺服器安裝 Dynmap、BlueMap 或 Squaremap 並確認網頁地圖可公開存取。</li>
             <li>2. 打開「{navPathForTab('plugin-hub')}」，啟用地圖插件並填入公開 URL。</li>
             <li>3. 點「探測 URL」確認連線，再「設為預設地圖」。</li>
@@ -187,7 +187,7 @@ export default function ServerMapPanel() {
             <button
               type="button"
               onClick={useLastUrl}
-              className="mt-4 rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961]"
+              className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)]"
             >
               使用上次成功 URL
             </button>
@@ -204,7 +204,7 @@ export default function ServerMapPanel() {
             src={displayUrl}
             onLoad={onIframeLoad}
             onError={onIframeError}
-            className="h-full min-h-[50dvh] w-full border-0 bg-[#0a0a0a]"
+            className="h-full min-h-[50dvh] w-full border-0 bg-[var(--console-bg)]"
             allow="fullscreen"
             referrerPolicy="no-referrer"
           />

@@ -238,7 +238,7 @@ export default function InputBar({
                 onClick={() => setExecutionStrategy(s.key)}
                 className={`flex w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] ${
                   executionStrategy === s.key
-                    ? 'bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] text-[#64B5FF]'
+                    ? 'bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] text-[var(--console-blue)]'
                     : 'text-[var(--console-sub)] hover:bg-white/[0.04]'
                 }`}
               >

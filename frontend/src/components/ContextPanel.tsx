@@ -68,7 +68,7 @@ const KIND_FILTERS: ContextEventKind[] = ['inject', 'compact', 'prune', 'switch'
 const FILE_FILTERS: Array<FilePurpose | 'all'> = ['all', 'read', 'written', 'searched', 'images'];
 
 const btnCls =
-  'rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2.5 py-1 text-[11px] text-[#8a8f98] hover:text-[var(--console-ink)] disabled:opacity-40';
+  'rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2.5 py-1 text-[11px] text-[var(--console-faint)] hover:text-[var(--console-ink)] disabled:opacity-40';
 const cardCls = 'rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3';
 
 function CompositionBar({

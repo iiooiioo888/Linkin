@@ -172,13 +172,7 @@ export default function MessageBubble({
                 </div>
               ) : (
                 message.streaming && !thinking && (
-                  <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--console-sub)]">
-                    <span className="inline-flex gap-1">
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--console-sub)]" />
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--console-sub)] [animation-delay:120ms]" />
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--console-sub)] [animation-delay:240ms]" />
-                    </span>
-                  </div>
+                  <div className="py-1 text-[13px] text-[var(--console-faint)]">正在生成…</div>
                 )
               )}
             </div>
@@ -188,7 +182,7 @@ export default function MessageBubble({
       )}
 
       {hasActions && !workspace && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[11px] text-[#48484A] opacity-70 transition-opacity group-hover:opacity-100">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[11px] text-[var(--console-faint)] opacity-70 transition-opacity group-hover:opacity-100">
           <span>{formatTime(message.timestamp)}</span>
           {message.meta?.score != null && (
             <span className="text-[var(--console-green)]">{message.meta.score.toFixed(1)}</span>
@@ -222,7 +216,7 @@ export default function MessageBubble({
       )}
 
       {isUser && !workspace && (
-        <span className="px-0.5 text-[10px] text-[#48484A] opacity-0 transition-opacity group-hover:opacity-70">
+        <span className="px-0.5 text-[10px] text-[var(--console-faint)] opacity-0 transition-opacity group-hover:opacity-70">
           {formatTime(message.timestamp)}
         </span>
       )}

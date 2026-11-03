@@ -193,8 +193,8 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-[#62666d]">{label}</span>
-      {hint && <span className="ml-2 text-[10px] text-[#8a8f98]">{hint}</span>}
+      <span className="text-[10px] font-semibold text-[var(--console-faint)]">{label}</span>
+      {hint && <span className="ml-2 text-[10px] text-[var(--console-faint)]">{hint}</span>}
       <div className="mt-1">{children}</div>
     </label>
   );
@@ -454,7 +454,7 @@ export default function RoleSettingsPanel({
               onClick={() => setDraft({ ...draft, enabled: !draft.enabled })}
               className={`rounded-md border px-3 py-1.5 text-[12px] ${
                 draft.enabled
-                  ? 'border-[#4cc38a]/40 bg-[#4cc38a]/10 text-[#4cc38a]'
+                  ? 'border-[color-mix(in_srgb,var(--console-green)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-green)_10%,transparent)] text-[var(--console-green)]'
                   : 'border-red-500/30 bg-red-500/10 text-red-300'
               }`}
             >
@@ -663,12 +663,12 @@ export default function RoleSettingsPanel({
           </Field>
           {selectedRate ? (
             <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wider text-[#62666d]">價目 USD / 1M tokens</p>
+              <p className="text-[10px] text-[var(--console-faint)]">價目 USD / 1M tokens</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {(selectedRate.items ?? []).map((item) => (
                   <span
                     key={item.id}
-                    className="rounded-md bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-[#d0d6e0]"
+                    className="rounded-md bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-[var(--console-sub)]"
                   >
                     {item.label} {fmtRate(item.usd_per_1m, item.unit)}
                   </span>
@@ -821,7 +821,7 @@ export default function RoleSettingsPanel({
               ['allow_tool_use', '允許工具', draft.allow_tool_use],
               ['auto_escalate', '失敗自動升級', draft.auto_escalate],
             ].map(([key, label, checked]) => (
-              <label key={String(key)} className="flex items-center gap-2 text-[12px] text-[#d0d6e0]">
+              <label key={String(key)} className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
                 <input
                   type="checkbox"
                   checked={Boolean(checked)}
@@ -921,7 +921,7 @@ export default function RoleSettingsPanel({
           </div>
 
           <div className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
-            <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#8a8f98]">SLA／告警</h4>
+            <h4 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">SLA／告警</h4>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Field label="SLA 延遲 ms" hint="0=不檢查">
                 <input
@@ -933,7 +933,7 @@ export default function RoleSettingsPanel({
                 />
               </Field>
               <div className="flex flex-wrap content-end gap-3">
-                <label className="flex items-center gap-2 text-[12px] text-[#d0d6e0]">
+                <label className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
                   <input
                     type="checkbox"
                     checked={draft.alert_on_error}
@@ -941,7 +941,7 @@ export default function RoleSettingsPanel({
                   />
                   錯誤時告警
                 </label>
-                <label className="flex items-center gap-2 text-[12px] text-[#d0d6e0]">
+                <label className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
                   <input
                     type="checkbox"
                     checked={draft.alert_on_budget}
@@ -949,7 +949,7 @@ export default function RoleSettingsPanel({
                   />
                   預算告警
                 </label>
-                <label className="flex items-center gap-2 text-[12px] text-[#d0d6e0]">
+                <label className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
                   <input
                     type="checkbox"
                     checked={draft.alert_on_sla}
@@ -957,7 +957,7 @@ export default function RoleSettingsPanel({
                   />
                   SLA 逾時告警
                 </label>
-                <label className="flex items-center gap-2 text-[12px] text-[#d0d6e0]">
+                <label className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
                   <input
                     type="checkbox"
                     checked={draft.always_require_review}
@@ -1035,14 +1035,14 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto apple-card p-4">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold">{cloneFrom ? `複製「${cloneFrom.name}」` : '新增自定義角色'}</h3>
-          <button type="button" className="text-[12px] text-[#8a8f98]" onClick={onClose}>
+          <button type="button" className="text-[12px] text-[var(--console-faint)]" onClick={onClose}>
             關閉
           </button>
         </div>
         {error && <p className="mb-2 text-[12px] text-red-300">{error}</p>}
         {presets.length > 0 && !cloneFrom && (
           <div className="mb-3">
-            <p className="mb-1 text-[10px] uppercase tracking-wider text-[#62666d]">快速模板</p>
+            <p className="mb-1 text-[10px] text-[var(--console-faint)]">快速模板</p>
             <div className="flex flex-wrap gap-1">
               {presets.map((p) => (
                 <button
@@ -1053,7 +1053,7 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
                   className={`rounded border px-2 py-1 text-[11px] ${
                     presetId === p.id
                       ? 'border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] text-[var(--console-accent)]'
-                      : 'border-white/[0.08] text-[#8a8f98]'
+                      : 'border-white/[0.08] text-[var(--console-faint)]'
                   }`}
                 >
                   {p.name}
@@ -1215,19 +1215,19 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
               value={priority}
               onChange={(e) => setPriority(Number(e.target.value) || 3)}
             />
-            <label className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
+            <label className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
               <input type="checkbox" checked={requireReview} onChange={(e) => setRequireReview(e.target.checked)} />
               一律送審查
             </label>
-            <label className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
+            <label className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
               <input type="checkbox" checked={onCall} onChange={(e) => setOnCall(e.target.checked)} />
               值班
             </label>
-            <label className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
+            <label className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
               <input type="checkbox" checked={humanApproval} onChange={(e) => setHumanApproval(e.target.checked)} />
               需人工核准
             </label>
-            <label className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
+            <label className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
               <input type="checkbox" checked={mainlandOnly} onChange={(e) => setMainlandOnly(e.target.checked)} />
               僅國內模型
             </label>
@@ -1235,7 +1235,7 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
           <input className={inputCls} placeholder="標籤，逗號分隔" value={tags} onChange={(e) => setTags(e.target.value)} />
         </div>
         <div className="mt-3 flex justify-end gap-2">
-          <button type="button" className="rounded border border-white/[0.08] px-3 py-1.5 text-[12px] text-[#8a8f98]" onClick={onClose}>
+          <button type="button" className="rounded border border-white/[0.08] px-3 py-1.5 text-[12px] text-[var(--console-faint)]" onClick={onClose}>
             取消
           </button>
           <button

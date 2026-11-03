@@ -231,7 +231,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
               <p className="mb-2 text-[11px] text-[var(--console-sub)]">工具（可多選；寫入 OPC 禁止）</p>
               <div className="space-y-1">
                 {TOOL_OPTIONS.map((opt) => (
-                  <label key={opt.id} className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
+                  <label key={opt.id} className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
                     <input
                       type="checkbox"
                       checked={tools.includes(opt.id)}
@@ -268,7 +268,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
 
           {catalog && (
             <div className="mt-4">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+              <p className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">
                 模型目錄（灰字＝目前 API 不可用）
               </p>
               <ul className="space-y-1">
@@ -279,7 +279,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
                       m.available_in_pool === false ? 'opacity-40' : ''
                     }`}
                   >
-                    <span className="text-[#d0d6e0]">{m.id}</span>
+                    <span className="text-[var(--console-sub)]">{m.id}</span>
                     <span className="max-w-[220px] truncate text-right text-[var(--console-faint)]" title={hubPriceLine(m)}>
                       {hubPriceLine(m)}
                     </span>
@@ -334,7 +334,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
               {agentTask.result.tool_traces.map((t, i) => (
                 <pre
                   key={`${t.tool}-${i}`}
-                  className="mb-1 overflow-x-auto text-[11px] text-[#d0d6e0]"
+                  className="mb-1 overflow-x-auto text-[11px] text-[var(--console-sub)]"
                 >
                   {t.tool} · {t.http_status} · {t.latency_ms}ms
                   {'\n'}
@@ -346,7 +346,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
 
           <div className="min-h-[160px] flex-1 apple-card apple-card--tight !p-0 p-4">
             {content ? (
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#d0d6e0]">{content}</p>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--console-sub)]">{content}</p>
             ) : (
               <p className="text-xs text-[var(--console-faint)]">
                 結果會顯示於此。Agent 會依工具呼叫 StocksX / LittleCrawler / StoryForge / PysdnOPC

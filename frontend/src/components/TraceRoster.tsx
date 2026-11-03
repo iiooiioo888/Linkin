@@ -46,7 +46,7 @@ export default function TraceRoster({ selectedTaskId, onPick }: TraceRosterProps
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 space-y-2 border-b border-white/[0.06] px-3 pb-3 pt-2">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">
+          <p className="text-[10px] font-bold text-[var(--console-sub)]">
             {traces.length} 筆軌跡
           </p>
           <button

@@ -70,10 +70,10 @@ export default function TopBar({
           </button>
         ) : null}
 
-        <span className="brand-mark shrink-0 text-[13px] text-[var(--console-ink)] sm:text-[15px]">
-          <span className="console-status-accent">靈境</span>
+        <span className="brand-mark shrink-0 text-[14px] text-[var(--console-ink)] sm:text-[15px]">
+          <span className="brand-mark__name">靈境</span>
           <span className="brand-mark__dot">·</span>
-          <span className="hidden min-[400px]:inline">Linkin</span>
+          <span className="hidden min-[400px]:inline font-medium tracking-tight">Linkin</span>
         </span>
 
         {!(activity === 'work' && activeView === 'chat') ? (

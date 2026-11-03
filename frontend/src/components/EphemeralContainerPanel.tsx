@@ -195,7 +195,7 @@ export default function EphemeralContainerPanel() {
         {taskId && (
           <p className="font-mono text-[11px] text-[var(--console-sub)]">task: {taskId}</p>
         )}
-        {status && <p className="text-[12px] text-[#34C759]">狀態：{status}</p>}
+        {status && <p className="text-[12px] text-[var(--console-green)]">狀態：{status}</p>}
         {error && <p className="text-[12px] text-[var(--console-danger)]">{error}</p>}
       </section>
       <section className="apple-card flex min-h-[320px] flex-col">
@@ -204,7 +204,7 @@ export default function EphemeralContainerPanel() {
         </div>
         <pre
           ref={logRef}
-          className="flex-1 overflow-auto p-4 font-mono text-[11px] leading-relaxed text-[#D1D1D6]"
+          className="flex-1 overflow-auto p-4 font-mono text-[11px] leading-relaxed text-[var(--console-sub)]"
         >
           {logs || '（等待輸出）'}
         </pre>

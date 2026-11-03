@@ -260,7 +260,7 @@ function CliHubCatalog() {
         <div className="max-h-72 space-y-2 overflow-auto">
           {(view?.categories ?? []).map((group) => (
             <div key={group.category}>
-              <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--console-faint)]">
+              <p className="mb-1 text-[10px] text-[var(--console-faint)]">
                 {group.category} · {group.count}
               </p>
               <div className="flex flex-wrap gap-1">
@@ -330,7 +330,7 @@ function CliRuntimeStrip() {
   return (
     <section className={`${cardCls} mb-4`}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--console-sub)]">CLI 運行時</h3>
+        <h3 className="text-[11px] font-semibold text-[var(--console-sub)]">CLI 運行時</h3>
         <button type="button" className={btnCls} onClick={() => void load()}>重新檢查</button>
       </div>
       <p className="mb-3 text-[11px] text-[var(--console-sub)]">
@@ -581,7 +581,7 @@ function SkillsSection() {
 
       {editing && (
         <section className={`${cardCls} mb-4`}>
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--console-sub)]">
+          <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-sub)]">
             {form.id ? `編輯技能 · ${form.id}` : '新增技能'}
           </h3>
           <div className="grid gap-2 lg:grid-cols-2">
@@ -894,7 +894,7 @@ function McpSection() {
 
       {editing && (
         <section className={`${cardCls} mb-4`}>
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--console-sub)]">
+          <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-sub)]">
             {form.id ? `編輯連線 · ${form.id}` : '新增 MCP Server'}
           </h3>
           <div className="grid gap-2 lg:grid-cols-2">
@@ -960,7 +960,7 @@ function McpSection() {
 
       {callBox && (
         <section className={`${cardCls} mb-4`}>
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--console-sub)]">
+          <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-sub)]">
             手動呼叫 · {callBox.server} / {callBox.tool}
           </h3>
           <label className="text-[10px] text-[var(--console-sub)]">參數（JSON）

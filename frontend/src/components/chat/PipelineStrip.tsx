@@ -30,7 +30,7 @@ export default function PipelineStrip({ task, onPinMonitor, pinned }: PipelineSt
       data-testid="chat-pipeline-strip"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--console-accent)]">
+        <p className="text-[10px] font-semibold text-[var(--console-accent)]">
           {t('chat.pipelineRunning')}
         </p>
         {onPinMonitor && (

@@ -88,7 +88,7 @@ function SessionList({
   return (
     <>
       <div className="border-b border-white/[0.06] p-2.5">
-        <p className="mb-2 px-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">對話</p>
+        <p className="mb-2 px-0.5 text-[10px] font-bold text-[var(--console-sub)]">對話</p>
         <button
           onClick={onNewSession}
           className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-[var(--console-ink)] transition-colors hover:bg-white/[0.06]"
@@ -138,7 +138,7 @@ function SessionList({
           </div>
         ))}
       </div>
-      <div className="border-t border-white/[0.06] px-3 py-2 text-[10px] text-[#48484A]">
+      <div className="border-t border-white/[0.06] px-3 py-2 text-[10px] text-[var(--console-faint)]">
         本機儲存
       </div>
     </>
@@ -359,7 +359,7 @@ function ApiRouteRoster() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 space-y-1.5 border-b border-white/[0.06] px-3 pb-3 pt-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">已配置的 API</p>
+          <p className="text-[10px] font-bold text-[var(--console-sub)]">已配置的 API</p>
           <button
             type="button"
             onClick={() => dispatchNewApiRoute()}
@@ -419,12 +419,12 @@ function ApiRouteRoster() {
 }
 
 const TASK_STATUS_DOT: Record<string, string> = {
-  pending: 'bg-[#FF9500]',
+  pending: 'bg-[var(--console-amber)]',
   running: 'bg-[var(--console-accent)] animate-pulse',
-  completed: 'bg-[#34C759]',
+  completed: 'bg-[var(--console-green)]',
   failed: 'bg-[var(--console-danger)]',
   cancelled: 'bg-[var(--console-sub)]',
-  interrupted: 'bg-[#FF9500]',
+  interrupted: 'bg-[var(--console-amber)]',
 };
 
 const EMPTY_TASKS: TaskSummary[] = [];
@@ -515,7 +515,7 @@ function TaskRoster({
                   }}
                   className="ar-rg"
                 >
-                  <span className="inline-block w-2 font-mono text-[#48484A]">{open ? '▾' : '▸'}</span>
+                  <span className="inline-block w-2 font-mono text-[var(--console-faint)]">{open ? '▾' : '▸'}</span>
                   <span>{row.label}</span>
                   <span className="ml-auto font-mono text-[10px] text-[var(--console-sub)]">{row.count}</span>
                 </button>

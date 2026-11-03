@@ -47,7 +47,7 @@ export default function SettingsModal({
 
         <div className="grid shrink-0 grid-cols-3 gap-px border-b border-white/[0.06] bg-white/[0.06]">
           <div className="bg-[var(--console-card)] px-3 py-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-accent)]">1 配置</p>
+            <p className="text-[10px] font-bold text-[var(--console-accent)]">1 配置</p>
             <p className="text-[11px] text-[var(--console-sub)]">千問／DeepSeek／Kimi／OpenRouter</p>
           </div>
           <button
@@ -58,7 +58,7 @@ export default function SettingsModal({
               onGoAgents?.();
             }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">2 角色</p>
+            <p className="text-[10px] font-bold text-[var(--console-sub)]">2 角色</p>
             <p className="text-[11px] text-[var(--console-sub)]">模型與 Token</p>
           </button>
           <button
@@ -66,7 +66,7 @@ export default function SettingsModal({
             className="bg-[var(--console-card)] px-3 py-2 text-left hover:bg-white/[0.03]"
             onClick={() => onGoUsage?.()}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">3 計費</p>
+            <p className="text-[10px] font-bold text-[var(--console-sub)]">3 計費</p>
             <p className="text-[11px] text-[var(--console-sub)]">AI 用量與基礎設施</p>
           </button>
         </div>

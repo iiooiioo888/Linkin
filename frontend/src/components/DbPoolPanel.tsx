@@ -131,13 +131,13 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="rounded-md bg-[#34C759] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-[var(--console-green)] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
             {refreshing ? '處理中...' : '♻️ 刷新連接池'}
           </button>
           <button
             onClick={handleHealthCheck}
-            className="rounded-md bg-[#5856D6] px-3 py-2 text-xs font-medium text-white"
+            className="rounded-md bg-[var(--console-purple)] px-3 py-2 text-xs font-medium text-white"
           >
             🏥 健康檢查
           </button>
@@ -146,7 +146,7 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
         {/* 連接列表 */}
         {stats && stats.connections.length > 0 && (
           <div className="flex-1 overflow-hidden">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+            <h2 className="mb-2 text-xs font-semibold text-[var(--console-faint)]">
               連接詳情
             </h2>
             <div className="rounded-lg border border-white/[0.08] bg-[var(--console-card)]">
@@ -169,7 +169,7 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
                       className="border-t border-white/[0.08] hover:bg-[var(--console-card)]"
                     >
                       <td className="px-3 py-2 font-mono console-status-blue">{conn.id}</td>
-                      <td className="max-w-[200px] truncate px-3 py-2 text-[#d0d6e0]">
+                      <td className="max-w-[200px] truncate px-3 py-2 text-[var(--console-sub)]">
                         {conn.db_path}
                       </td>
                       <td className="px-3 py-2">
@@ -183,8 +183,8 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
                           {conn.is_active ? '● 活躍' : '○ 已關閉'}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-[#d0d6e0]">{conn.query_count}</td>
-                      <td className="px-3 py-2 text-[#d0d6e0]">{conn.avg_latency_ms} ms</td>
+                      <td className="px-3 py-2 text-[var(--console-sub)]">{conn.query_count}</td>
+                      <td className="px-3 py-2 text-[var(--console-sub)]">{conn.avg_latency_ms} ms</td>
                       <td className="max-w-[150px] truncate px-3 py-2 text-[var(--console-sub)]">
                         {formatTime(conn.last_used_at)}
                       </td>
@@ -233,7 +233,7 @@ export default function DbPoolPanel({ embedded = false }: { embedded?: boolean }
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className={consoleLayout.kpiCard}>
-      <div className="text-[10px] uppercase tracking-wider text-[var(--console-faint)]">{label}</div>
+      <div className="text-[10px] text-[var(--console-faint)]">{label}</div>
       <div className="mt-1 text-lg font-semibold text-[var(--console-ink)]">{value}</div>
     </div>
   );

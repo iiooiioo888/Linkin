@@ -32,11 +32,11 @@ export class PanelErrorBoundary extends Component<Props, State> {
           role="alert"
         >
           <h3 className="text-sm font-semibold text-red-300">{this.props.title ?? '此面板發生錯誤'}</h3>
-          <p className="mt-2 text-[11px] leading-relaxed text-[#8a8f98]">{error.message}</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-[var(--console-faint)]">{error.message}</p>
           <button
             type="button"
             onClick={this.reset}
-            className="mt-3 rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961] hover:bg-[#c9a961]/15"
+            className="mt-3 rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)]"
           >
             重試
           </button>

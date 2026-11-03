@@ -34,12 +34,12 @@ interface TasksMonitorPanelProps {
 type StatusFilter = TaskColumnKey;
 
 const STATUS_META: Record<string, { label: string; cls: string; dot: string }> = {
-  pending: { label: '隊列', cls: 'text-[#FF9500]', dot: 'bg-[#FF9500]' },
+  pending: { label: '隊列', cls: 'text-[var(--console-amber)]', dot: 'bg-[var(--console-amber)]' },
   running: { label: '執行中', cls: 'text-[var(--console-accent)]', dot: 'bg-[var(--console-accent)]' },
-  completed: { label: '已完成', cls: 'text-[#34C759]', dot: 'bg-[#34C759]' },
+  completed: { label: '已完成', cls: 'text-[var(--console-green)]', dot: 'bg-[var(--console-green)]' },
   failed: { label: '失敗', cls: 'text-[var(--console-danger)]', dot: 'bg-[var(--console-danger)]' },
   cancelled: { label: '已取消', cls: 'text-[var(--console-sub)]', dot: 'bg-[var(--console-sub)]' },
-  interrupted: { label: '中斷', cls: 'text-[#FF9500]', dot: 'bg-[#FF9500]' },
+  interrupted: { label: '中斷', cls: 'text-[var(--console-amber)]', dot: 'bg-[var(--console-amber)]' },
 };
 
 const PATH_META: Record<string, { icon: string; label: string }> = {
@@ -321,7 +321,7 @@ export default function TasksMonitorPanel({
         {/* 右：詳情 */}
         {focusTaskId && (
           <div className="hidden min-h-0 min-w-0 flex-1 flex-col overflow-y-auto border-l border-white/[0.06] lg:flex">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.06] bg-[#0d0d0f]/95 px-6 py-3 backdrop-blur">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.06] bg-[var(--console-bg)]/95 px-6 py-3 backdrop-blur">
               <p className="truncate text-[12px] font-medium text-[var(--console-ink)]">
                 {detail?.query ?? focusTaskId.slice(0, 8)}
               </p>
@@ -372,7 +372,7 @@ export default function TasksMonitorPanel({
 
       {/* 行動端詳情（全屏疊層） */}
       {focusTaskId && detail && (
-        <div className="fixed inset-0 z-30 flex flex-col bg-[#0d0d0f] lg:hidden">
+        <div className="fixed inset-0 z-30 flex flex-col bg-[var(--console-bg)] lg:hidden">
           <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
             <p className="truncate text-[13px] font-medium">任務詳情</p>
             <button

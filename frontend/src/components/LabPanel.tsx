@@ -316,7 +316,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
         {tabMeta?.upstream && (
           <div className="mx-auto mb-4 flex max-w-5xl items-center gap-2">
             <UpstreamLink name={tabMeta.upstream.name} url={tabMeta.upstream.url} />
-            <span className="text-[10px] text-[#48484A]">
+            <span className="text-[10px] text-[var(--console-faint)]">
               {tab === 'quant' ? '角色 tool_call 引用' : tab === 'maps' ? 'Archify 可視化 · 角色可引用' : '後端 API · LLM 經 call_llm'}
             </span>
           </div>
@@ -360,7 +360,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
               <section className="apple-card">
                 <div className="apple-card__head">
                   <h2 className="apple-title">優化後</h2>
-                  <span className="text-[10px] font-bold text-[#34C759]">LLM</span>
+                  <span className="text-[10px] font-bold text-[var(--console-green)]">LLM</span>
                 </div>
                 <div className="apple-card__body apple-card__body--static !pt-0">
                   <PromptEditor
@@ -393,7 +393,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                   type="button"
                   disabled={fcLoading}
                   onClick={() => void runFirecrawlScrape()}
-                  className="rounded-full bg-[#FF9500] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-50"
+                  className="rounded-full bg-[var(--console-amber)] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-50"
                 >
                   Scrape
                 </button>
@@ -473,7 +473,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                     }}
                     className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${
                       archFlowView === flow.id && !archCustomIr
-                        ? 'border-[#c9a961]/60 bg-[#c9a961]/15 text-[var(--console-ink)]'
+                        ? 'border-[color-mix(in_srgb,var(--console-accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] text-[var(--console-ink)]'
                         : 'border-white/10 text-[var(--console-sub)] hover:border-white/20 hover:text-[var(--console-ink)]'
                     }`}
                   >
@@ -507,7 +507,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                   type="button"
                   disabled={archLoading}
                   onClick={() => void runArchifyGenerate()}
-                  className="rounded-full bg-[#5856D6] px-4 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
+                  className="rounded-full bg-[var(--console-purple)] px-4 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
                 >
                   {archLoading ? '生成中…' : '生成架構圖'}
                 </button>
@@ -547,7 +547,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                 type="button"
                 disabled={reviewLoading}
                 onClick={() => void runPonytailReview()}
-                className="ml-auto rounded-full bg-[#34C759] px-4 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
+                className="ml-auto rounded-full bg-[var(--console-green)] px-4 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
               >
                 {reviewLoading ? '審查中…' : 'Ponytail 審查'}
               </button>
@@ -558,7 +558,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                 <p className="text-[13px] font-bold text-[var(--console-ink)]">{reviewResult.review.summary}</p>
                 {reviewResult.review.delete_list && reviewResult.review.delete_list.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-danger)]">可刪除</p>
+                    <p className="text-[10px] font-bold text-[var(--console-danger)]">可刪除</p>
                     <ul className="mt-1 list-inside list-disc text-[12px] text-[var(--console-sub)]">
                       {reviewResult.review.delete_list.map((item) => (
                         <li key={item}>{item}</li>
@@ -568,7 +568,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                 )}
                 {reviewResult.review.keep_list && reviewResult.review.keep_list.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#34C759]">必須保留</p>
+                    <p className="text-[10px] font-bold text-[var(--console-green)]">必須保留</p>
                     <ul className="mt-1 list-inside list-disc text-[12px] text-[var(--console-sub)]">
                       {reviewResult.review.keep_list.map((item) => (
                         <li key={item}>{item}</li>
@@ -620,7 +620,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
                         className="rounded-full px-2 py-0.5 text-[10px] font-bold"
                         style={{
                           color:
-                            t.risk === 'high' ? '#FF3B30' : t.risk === 'mid' ? '#FF9500' : '#34C759',
+                            t.risk === 'high' ? 'var(--console-danger)' : t.risk === 'mid' ? 'var(--console-amber)' : 'var(--console-green)',
                           background:
                             t.risk === 'high'
                               ? 'rgba(255,59,48,0.12)'
@@ -672,7 +672,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
               </div>
               <div>
                 <p className="text-[11px] text-[var(--console-sub)]">B 均分</p>
-                <p className="apple-data text-[18px] text-[#34C759]">{winner.scoreB.toFixed(2)}</p>
+                <p className="apple-data text-[18px] text-[var(--console-green)]">{winner.scoreB.toFixed(2)}</p>
               </div>
             </section>
           </div>
