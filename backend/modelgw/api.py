@@ -6,7 +6,7 @@
 - POST /modelgw/v1/admit
 - POST /modelgw/v1/chat/completions
 - POST /modelgw/internal/v1/deploy-callback  （HMAC＋冪等；不掛 AuthGate）
-- GET  /api/internal/modelgw/path-counts     （G-OBS1 L2；loopback／token；禁 reset）
+- GET  /api/internal/modelgw/path-counts     （G-OBS1 L2；loopback／反代必 token；禁 reset）
 
 HTTP 映射（Core §8.1）：
 - PROVISIONING → 503 + code=PROVISIONING（可選 Retry-After）
@@ -305,14 +305,37 @@ def _allow_private() -> bool:
     return raw in {"1", "true", "yes", "on"}
 
 
+def _proxy_forward_signal(request: Request) -> bool:
+    """是否帶反代痕跡（僅當「經反代」信號；**不**用頭內容當真實客戶端 IP）。"""
+    xff = (
+        request.headers.get("X-Forwarded-For")
+        or request.headers.get("x-forwarded-for")
+        or ""
+    ).strip()
+    xri = (
+        request.headers.get("X-Real-IP")
+        or request.headers.get("x-real-ip")
+        or ""
+    ).strip()
+    return bool(xff or xri)
+
+
 def _is_path_counts_client_allowed(request: Request) -> bool:
     """受控內部讀點閘：預設僅 loopback；可選 private；token 可提升。
 
-    - loopback → 允許
-    - RFC1918／link-local private → 僅當 ALLOW_PRIVATE=1 **或** token 正確
-    - 其餘（含非 IP／公網）→ 必須 token；無 token 設定則 fail-closed
-    - **禁止**無防護公網裸洩
+    - **若**帶反代痕跡（``X-Forwarded-For`` 或 ``X-Real-IP`` 任一非空）→
+      **必須** token（即使 peer 為 loopback）；否則 fail-closed。
+      頭內容**不**當真實客戶端 IP 用來放行（只當經反代信號）。
+    - **否則**（直連無反代頭）：
+      - loopback → 允許
+      - RFC1918／link-local private → 僅當 ALLOW_PRIVATE=1 **或** token 正確
+      - 其餘（含非 IP／公網）→ 必須 token；無 token 設定則 fail-closed
+    - **禁止**無防護公網裸洩（含「peer=loopback 但經 nginx」裸洩）
     """
+    # 經反代：peer 常為 127.0.0.1；不可再靠 loopback 放行
+    if _proxy_forward_signal(request):
+        return _token_ok(request)
+
     host = _client_host(request)
     try:
         addr = ipaddress.ip_address(host)
