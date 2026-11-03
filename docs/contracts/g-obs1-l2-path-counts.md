@@ -16,7 +16,7 @@
 | # | 條件 | 落地 |
 | :--- | :--- | :--- |
 | C1 | 持久化或等價 log 聚合 | `runtime._bump` → `g_obs1_path_event=1`；`backend/scripts/aggregate_g_obs1_path_counts.py` |
-| C2 | 可匯出／內部讀點 | `GET /api/internal/modelgw/path-counts`（loopback／token；禁 reset；≠ hub `/metrics`） |
+| C2 | 可匯出／內部讀點 | `GET /api/internal/modelgw/path-counts`（AuthGate `_OPEN_EXACT` 放行＋L2 loopback／token 閘；禁 reset；≠ hub `/metrics`） |
 | C3 | 多 worker 或單 worker 明示 | runbook §7；快照 `multi_worker_incomplete` |
 | C4 | 正式 runbook | `docs/ops/g-obs1-path-counts-runbook.md` |
 
@@ -26,6 +26,7 @@
 | :--- | :--- |
 | `backend/modelgw/runtime.py` | `_path_counts`／`path_counts`／`path_counts_snapshot`／`_bump`／`reset_path_counts`（測試 only） |
 | `backend/modelgw/api.py` | `internal_path_counts`／`_is_path_counts_client_allowed` |
+| `backend/middleware/auth_gate.py` | `_OPEN_EXACT` 含 path-counts（會話閘放行；L2 閘仍生效） |
 | `docs/ops/g-obs1-path-counts-runbook.md` | 指標／讀法／告警／rollback／L1／單 worker |
 
 ## 旗標

@@ -39,6 +39,7 @@ GET /api/internal/modelgw/path-counts
 - **預設：** 僅 **loopback**（`127.0.0.1`／`::1`）可讀。  
 - **可選：** `MODELGW_PATH_COUNTS_ALLOW_PRIVATE=1` 放行 RFC1918；或設 `MODELGW_PATH_COUNTS_TOKEN`＋請求頭 `X-ModelGW-Internal-Token`。  
 - **公網無 token：必須 403**（禁裸洩）。  
+- **AuthGate：** `_OPEN_EXACT` 放行本 path（避免會話閘 401）；安全性仍靠 `_is_path_counts_client_allowed`（L2 閘仍生效）。  
 - **不**信任 `X-Forwarded-For` 做放行（防偽造）。  
 - 回應含：`via`／`bypass`／`would_block`／`pid`／`started_at`／`wire_mode`／`scope`／`multi_worker_incomplete`／`workers_hint`。  
 - **禁止**在讀點內呼叫 `reset_path_counts`。  
