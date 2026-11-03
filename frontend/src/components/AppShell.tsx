@@ -18,7 +18,7 @@ import {
   resolveActivity,
   type ActivityKey,
 } from '../lib/monitorTabs';
-import { pagesOfModule } from '../lib/worldModules';
+import { listWorldModules, moduleIdForTab, pagesOfModule } from '../lib/worldModules';
 import ActivityBar from './ActivityBar';
 import RightPanel from './RightPanel';
 import SidePanel from './SidePanel';
@@ -181,7 +181,12 @@ export default function AppShell({
 
       if (target === 'world') {
         const remembered = lastTabByActivity.current.world;
-        const pages = pagesOfModule('minecraft');
+        // Phase1.1：勿硬編 minecraft；依記憶分頁所屬模組或清單首項
+        const moduleId =
+          (remembered ? moduleIdForTab(String(remembered)) : null) ??
+          listWorldModules()[0]?.id ??
+          null;
+        const pages = moduleId ? pagesOfModule(moduleId) : [];
         onMonitorTabChange(
           remembered && pages.includes(remembered) ? remembered : defaultTabForActivity('world'),
         );
@@ -276,23 +281,8 @@ export default function AppShell({
       {!isDesktop && (
         <ActivityBar
           activity={activity}
-          activeView={activeView}
-          monitorTab={monitorTab}
           onActivityChange={handleActivityChange}
           placement="bottom"
-          onMobileTasks={() => {
-            onViewChange('monitor');
-            onMonitorTabChange('tasks');
-          }}
-          onMobileUsage={() => {
-            onViewChange('monitor');
-            onMonitorTabChange('models');
-          }}
-          onMobileConsoleTab={(tab) => {
-            onViewChange('monitor');
-            onMonitorTabChange(tab);
-          }}
-
         />
       )}
 

@@ -11,6 +11,7 @@ import {
 } from '../lib/monitorTabs';
 import { labSubTabLabel, type LabSubTab } from '../lib/labTabs';
 import { useIsMobile } from '../hooks/useMediaQuery';
+import PlaneBadge, { planeKindForActivity } from './ui/PlaneBadge';
 import type { MonitorTab, ViewKey } from './AppShell';
 
 interface TopBarProps {
@@ -52,6 +53,7 @@ export default function TopBar({
           : activityTitle(activity) || t('nav.observe', { defaultValue: '觀測' });
 
   const showMobileSessionNav = isMobile && activeView === 'chat';
+  const plane = planeKindForActivity(activity);
 
   return (
     <header className="app-topbar flex shrink-0 items-center gap-2 border-b apple-chrome px-4">
@@ -81,6 +83,8 @@ export default function TopBar({
         ) : (
           <span className="min-w-0 truncate text-[12px] text-[var(--console-faint)] md:hidden">· {viewLabel}</span>
         )}
+        {/* Phase1.1：手機主畫面可見平面徽章（側欄 off-canvas 時仍可見） */}
+        {plane ? <PlaneBadge kind={plane} className="shrink-0" /> : null}
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5">
