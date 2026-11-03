@@ -110,3 +110,31 @@ def test_openapi_is_not_anonymous(gated_app):
         assert client.get("/openapi.json").status_code in {401, 404}
         assert client.get("/docs").status_code in {401, 404}
         assert client.get("/redoc").status_code in {401, 404}
+
+
+def test_path_counts_not_blocked_by_authgate(gated_app, monkeypatch):
+    """AuthGate 放行 path-counts；無會話不得 401，交由 L2 閘回 403／200。"""
+    monkeypatch.delenv("MODELGW_PATH_COUNTS_TOKEN", raising=False)
+    monkeypatch.delenv("MODELGW_PATH_COUNTS_ALLOW_PRIVATE", raising=False)
+    with TestClient(gated_app) as client:
+        # 未登入：不得被 AuthGate 擋成 401；TestClient host 非 IP → L2 需 token → 403
+        resp = client.get("/api/internal/modelgw/path-counts")
+        assert resp.status_code == 403, resp.text
+        assert resp.json().get("code") == "PATH_COUNTS_FORBIDDEN"
+
+
+def test_path_counts_allowed_with_internal_token_without_session(gated_app, monkeypatch):
+    """允許客戶端（正確內部 token）可過 AuthGate 抵達 handler → 200。"""
+    monkeypatch.setenv("MODELGW_PATH_COUNTS_TOKEN", "secret-l2-authgate")
+    with TestClient(gated_app) as client:
+        denied = client.get("/api/internal/modelgw/path-counts")
+        assert denied.status_code == 403
+        ok = client.get(
+            "/api/internal/modelgw/path-counts",
+            headers={"X-ModelGW-Internal-Token": "secret-l2-authgate"},
+        )
+        assert ok.status_code == 200, ok.text
+        body = ok.json()
+        assert "via" in body and "would_block" in body and "bypass" in body
+        assert body.get("hub_metrics_is_not_path_counts") is True
+

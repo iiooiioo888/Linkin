@@ -18,6 +18,8 @@ _OPEN_EXACT = {
     "/auth/logout",
     # 對外 MCP server：自帶 Bearer EVOL_MCP_SERVER_TOKEN 驗證（fail-closed）
     "/mcp-server",
+    # G-OBS1 L2：AuthGate 放行後仍由 handler 的 loopback／token 閘守（禁公網裸洩）
+    "/api/internal/modelgw/path-counts",
 }
 
 
