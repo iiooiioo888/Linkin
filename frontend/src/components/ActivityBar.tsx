@@ -12,17 +12,12 @@ import {
   type DeskActivityKey,
 } from '../lib/monitorTabs';
 import { MOBILE_MORE_ACTIVITIES, MOBILE_PRIMARY_ACTIVITIES } from '../lib/mobileShell';
-import type { MonitorTab, ViewKey } from './AppShell';
+import PlaneBadge, { planeKindForActivity } from './ui/PlaneBadge';
 
 interface ActivityBarProps {
   activity: ActivityKey;
-  activeView?: ViewKey;
-  monitorTab?: MonitorTab;
   onActivityChange: (activity: ActivityKey) => void;
   placement?: 'sidebar' | 'bottom';
-  onMobileTasks?: () => void;
-  onMobileUsage?: () => void;
-  onMobileConsoleTab?: (tab: MonitorTab) => void;
 }
 
 function WorkIcon({ active }: { active: boolean }) {
@@ -191,12 +186,7 @@ function MobileBottomBar({
   onActivityChange,
 }: {
   activity: ActivityKey;
-  activeView?: ViewKey;
-  monitorTab?: MonitorTab;
   onActivityChange: (activity: ActivityKey) => void;
-  onMobileTasks?: () => void;
-  onMobileUsage?: () => void;
-  onMobileConsoleTab?: (tab: MonitorTab) => void;
 }) {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -254,24 +244,28 @@ function MobileBottomBar({
               {t('mobileShell.moreNote')}
             </p>
             <div className="grid grid-cols-2 gap-1 p-2">
-              {MOBILE_MORE_ACTIVITIES.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    onActivityChange(key);
-                    setMoreOpen(false);
-                  }}
-                  className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[12px] ${
-                    current === key
-                      ? 'bg-[var(--console-card)] text-[var(--console-ink)]'
-                      : 'text-[var(--console-sub)] hover:bg-[var(--console-card)] hover:text-[var(--console-ink)]'
-                  }`}
-                >
-                  <span className="shrink-0 opacity-80">{deskIcon(key, current === key)}</span>
-                  {labelFor(key)}
-                </button>
-              ))}
+              {MOBILE_MORE_ACTIVITIES.map((key) => {
+                const plane = planeKindForActivity(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      onActivityChange(key);
+                      setMoreOpen(false);
+                    }}
+                    className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[12px] ${
+                      current === key
+                        ? 'bg-[var(--console-card)] text-[var(--console-ink)]'
+                        : 'text-[var(--console-sub)] hover:bg-[var(--console-card)] hover:text-[var(--console-ink)]'
+                    }`}
+                  >
+                    <span className="shrink-0 opacity-80">{deskIcon(key, current === key)}</span>
+                    <span className="min-w-0 flex-1 truncate">{labelFor(key)}</span>
+                    {plane ? <PlaneBadge kind={plane} className="shrink-0" /> : null}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </>
@@ -282,13 +276,8 @@ function MobileBottomBar({
 
 export default function ActivityBar({
   activity,
-  activeView,
-  monitorTab,
   onActivityChange,
   placement = 'sidebar',
-  onMobileTasks,
-  onMobileUsage,
-  onMobileConsoleTab,
 }: ActivityBarProps) {
   const { t } = useTranslation();
   const items: BarItem[] = DESK_ACTIVITIES.map((a) => ({
@@ -301,12 +290,7 @@ export default function ActivityBar({
     return (
       <MobileBottomBar
         activity={activity}
-        activeView={activeView}
-        monitorTab={monitorTab}
         onActivityChange={onActivityChange}
-        onMobileTasks={onMobileTasks}
-        onMobileUsage={onMobileUsage}
-        onMobileConsoleTab={onMobileConsoleTab}
       />
     );
   }
