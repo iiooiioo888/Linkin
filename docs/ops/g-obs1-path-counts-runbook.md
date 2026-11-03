@@ -36,19 +36,28 @@
 GET /api/internal/modelgw/path-counts
 ```
 
-- **預設：** 僅 **loopback**（`127.0.0.1`／`::1`）可讀。  
+- **預設（直連、無反代頭）：** 僅 **loopback**（`127.0.0.1`／`::1`）可讀。  
 - **可選：** `MODELGW_PATH_COUNTS_ALLOW_PRIVATE=1` 放行 RFC1918；或設 `MODELGW_PATH_COUNTS_TOKEN`＋請求頭 `X-ModelGW-Internal-Token`。  
 - **公網無 token：必須 403**（禁裸洩）。  
+- **經反代（硬）：** 若請求帶 `X-Forwarded-For` 或 `X-Real-IP`（任一非空）→ **必須**正確 token（即使 uvicorn peer＝loopback）；否則 403 `PATH_COUNTS_FORBIDDEN`。防「nginx 同機反代 → peer=127.0.0.1 → 公網裸 200」。  
 - **AuthGate：** `_OPEN_EXACT` 放行本 path（避免會話閘 401）；安全性仍靠 `_is_path_counts_client_allowed`（L2 閘仍生效）。  
-- **不**信任 `X-Forwarded-For` 做放行（防偽造）。  
+- **不**用 `X-Forwarded-For`／`X-Real-IP` **內容**當真實客戶端 IP 來放行（只當「經反代」信號）。  
+- **nginx 入口：** 通用 `location /api/` 會剝 `/api` → AuthGate 全路徑不命中 → 401。倉庫以精確 `location = /api/internal/modelgw/path-counts` 保路徑（見 `frontend/nginx.conf`／`docs/ops/snippets/nginx-path-counts-preserve.example.conf`）。**改 live nginx 另授**（本 runbook ≠ 授權）。  
 - 回應含：`via`／`bypass`／`would_block`／`pid`／`started_at`／`wire_mode`／`scope`／`multi_worker_incomplete`／`workers_hint`。  
 - **禁止**在讀點內呼叫 `reset_path_counts`。  
 - hub `GET /metrics` **≠** 本讀點；勿混用。
 
-本機例：
+本機直連例（無反代頭；loopback）：
 
 ```bash
 curl -sS http://127.0.0.1:8000/api/internal/modelgw/path-counts
+```
+
+經 nginx／帶反代頭時須 token（例；需已設 `MODELGW_PATH_COUNTS_TOKEN`）：
+
+```bash
+curl -sS -H "X-ModelGW-Internal-Token: $MODELGW_PATH_COUNTS_TOKEN" \
+  http://127.0.0.1/api/internal/modelgw/path-counts
 ```
 
 ### 2.2 Log 聚合（C1；重啟不丟趨勢）
@@ -131,7 +140,7 @@ python backend/scripts/aggregate_g_obs1_path_counts.py /tmp/g-obs1-24h.log
 
 ## 8. 不做／禁
 
-合並／部署／改 WIRE／HMAC／sql／TOOL_DUAL／nginx／.env／關 L1／路徑 A／Fusion／LangGraph 宿主替換／無防護公網 metrics／讀點內 reset。
+合並／部署／改 WIRE／HMAC／sql／TOOL_DUAL／改產線 live nginx（未另授）／.env／關 L1／路徑 A／Fusion／LangGraph 宿主替換／無防護公網 metrics／讀點內 reset／只開 `_OPEN_EXACT` 剝前綴 path。
 
 ---
 

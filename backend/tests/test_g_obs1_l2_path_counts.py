@@ -168,6 +168,96 @@ def test_loopback_allowed_without_token(monkeypatch):
     assert _is_path_counts_client_allowed(_R("::1")) is True
 
 
+def test_loopback_with_xff_requires_token(monkeypatch):
+    """經反代：peer loopback + X-Forwarded-For、無 token → 禁（防裸洩）。"""
+    monkeypatch.delenv("MODELGW_PATH_COUNTS_TOKEN", raising=False)
+    monkeypatch.delenv("MODELGW_PATH_COUNTS_ALLOW_PRIVATE", raising=False)
+
+    class _C:
+        def __init__(self, host: str):
+            self.host = host
+
+    class _R:
+        def __init__(self, host: str, headers: dict[str, str] | None = None):
+            self.client = _C(host)
+            self.headers = headers or {}
+
+    assert (
+        _is_path_counts_client_allowed(
+            _R("127.0.0.1", {"X-Forwarded-For": "203.0.113.9"})
+        )
+        is False
+    )
+    assert (
+        _is_path_counts_client_allowed(
+            _R("127.0.0.1", {"X-Real-IP": "203.0.113.9"})
+        )
+        is False
+    )
+
+
+def test_loopback_with_xff_ok_with_token(monkeypatch):
+    """經反代：peer loopback + XFF + 正確 token → 允許。"""
+    monkeypatch.setenv("MODELGW_PATH_COUNTS_TOKEN", "secret-l2")
+
+    class _C:
+        def __init__(self, host: str):
+            self.host = host
+
+    class _R:
+        def __init__(self, host: str, headers: dict[str, str] | None = None):
+            self.client = _C(host)
+            self.headers = headers or {}
+
+    assert (
+        _is_path_counts_client_allowed(
+            _R(
+                "127.0.0.1",
+                {
+                    "X-Forwarded-For": "203.0.113.9",
+                    "X-ModelGW-Internal-Token": "secret-l2",
+                },
+            )
+        )
+        is True
+    )
+    # 錯 token 仍禁
+    assert (
+        _is_path_counts_client_allowed(
+            _R(
+                "127.0.0.1",
+                {
+                    "X-Forwarded-For": "203.0.113.9",
+                    "X-ModelGW-Internal-Token": "wrong",
+                },
+            )
+        )
+        is False
+    )
+
+
+def test_xff_content_not_used_as_client_ip(monkeypatch):
+    """XFF 內容不得當真實客戶端 IP 放行：公網 peer 無 token 仍禁（即使 XFF 寫 loopback）。"""
+    monkeypatch.delenv("MODELGW_PATH_COUNTS_TOKEN", raising=False)
+
+    class _C:
+        def __init__(self, host: str):
+            self.host = host
+
+    class _R:
+        def __init__(self, host: str, headers: dict[str, str] | None = None):
+            self.client = _C(host)
+            self.headers = headers or {}
+
+    # 有反代頭 → 走 token 路徑；無 token → False（不因 XFF=127.0.0.1 放行）
+    assert (
+        _is_path_counts_client_allowed(
+            _R("8.8.8.8", {"X-Forwarded-For": "127.0.0.1"})
+        )
+        is False
+    )
+
+
 def test_public_ip_forbidden_without_token(monkeypatch):
     monkeypatch.delenv("MODELGW_PATH_COUNTS_TOKEN", raising=False)
 
@@ -248,6 +338,9 @@ def test_runbook_exists_with_required_sections():
         "/api/internal/modelgw/path-counts",
         "g_obs1_path_event=1",
         "不得自動關 L1",
+        "X-Forwarded-For",
+        "X-ModelGW-Internal-Token",
+        "nginx-path-counts-preserve.example.conf",
     ]
     for needle in required:
         assert needle in text, f"missing section/keyword: {needle}"
@@ -261,3 +354,23 @@ def test_contract_doc_flags():
     assert "wire_change=none" in text
     assert "l1_continue=true" in text
     assert "path_counts_ne_closed=true" in text
+    assert "does_not_modify_nginx_live=true" in text
+    assert "_proxy_forward_signal" in text
+    assert "反代必 token" in text or "反代" in text
+
+
+def test_nginx_preserve_path_in_repo():
+    nginx = REPO / "frontend" / "nginx.conf"
+    assert nginx.is_file()
+    ntext = nginx.read_text(encoding="utf-8")
+    assert "location = /api/internal/modelgw/path-counts" in ntext
+    assert "proxy_pass http://backend:8000/api/internal/modelgw/path-counts" in ntext
+    # exact block must appear before generic /api/ strip（勿匹配 /api/v1/）
+    assert ntext.index("location = /api/internal/modelgw/path-counts") < ntext.index(
+        "location /api/ {"
+    )
+    snippet = REPO / "docs" / "ops" / "snippets" / "nginx-path-counts-preserve.example.conf"
+    assert snippet.is_file()
+    stext = snippet.read_text(encoding="utf-8")
+    assert "does_not_modify_nginx_live=true" in stext
+    assert "127.0.0.1:8000" in stext
