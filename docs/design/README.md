@@ -20,9 +20,9 @@
 
 [`login-opc-v3.html`](login-opc-v3.html) — gold/dark 登入卡、分層 OPC 金字塔標誌（L4 金鑽 / L3 藍三角 / L2 青點 + 紅探詢鑽）、角色網路動態背景。實作對應 `frontend/src/components/LoginGate.tsx`、`frontend/src/components/login/`。
 
-## LinkinL 四層執行架構
+## LinkinL 行銷頁 · 四層執行架構
 
-[`linkinl-four-layers.html`](linkinl-four-layers.html) — **LinkinL**（本地執行版）設計參考：graphite `#07080A`、語意 accent `#C6FF3D`、0px 圓角、1px 細線、72px 執行時間軸。敘事為 **四層執行架構**（L04 AI 執行 → L03 預算 → L02 共識 → L01 組件），含 **0x02** 四層堆疊招牌圖、Hero 執行 DAG、預算量表與共識帳本、OSS 整合磚。Token 僅作用於本頁，不修改根 `DESIGN.md` 或主控台 `index.css`。
+[`linkinl-four-layers.html`](linkinl-four-layers.html) — **LinkinL**（本地執行版）自包含行銷／設計頁，標題 **可證明的多 Agent 編排引擎**（繁中、`lang="zh-Hant"`、Noto Sans TC）。視覺：graphite `#07080A`、accent `#C6FF3D`、**0px** 圓角、**1px** `--bd` hairline、**72px** 左側 rail。區塊 **0x00–0x0A**（HEADER / HERO trace-stage · PAIN / **0x02 PRODUCT** 四層堆疊 / ENGINE 預算·共識分離 / EVIDENCE Chart.js / INTEGRATIONS OSS 磚 / COMPARE / TRUST / VOICES / PRICING / FAQ+TERMINAL），含 GSAP ScrollTrigger、Lenis、Hero **RE-RUN** 管線動畫。Token 僅作用於本頁，不修改根 `DESIGN.md` 或 `frontend/src/index.css`。
 
 ## 相關入口
 
