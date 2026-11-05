@@ -109,6 +109,18 @@ def _isolate_role_catalog(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_media_vault(tmp_path, monkeypatch):
+    """Media Vault DB／媒體目錄寫入暫存。"""
+    monkeypatch.setenv("MEDIA_VAULT_DATABASE_URL", f"sqlite:///{tmp_path / 'media_vault.sqlite3'}")
+    monkeypatch.setenv("MEDIA_VAULT_MEDIA_ROOT", str(tmp_path / "media_vault_media"))
+    from backend.media_vault import db as media_vault_db
+
+    media_vault_db.reset_media_vault_db()
+    yield
+    media_vault_db.reset_media_vault_db()
+
+
+@pytest.fixture(autouse=True)
 def _isolate_minecraft_mcp(tmp_path, monkeypatch):
     """所有測試共用：Minecraft MCP 預設乾跑，審計寫入暫存。"""
     monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "false")
