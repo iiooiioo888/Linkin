@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from backend.mediacrawler.collect import dispatch_tool
 from backend.mediacrawler.service import (
     get_job_detail,
     get_job_results,
@@ -37,6 +38,25 @@ class CrawlJobBody(BaseModel):
     max_notes: int = Field(default=20, ge=1, le=500)
     dry_run: bool = False
     cookie: str = ""
+
+
+class CollectToolBody(BaseModel):
+    tool: str
+    query: str = ""
+    creator_id: str = ""
+    limit: int | None = None
+    platform: str = ""
+    source_url: str = ""
+    asset_url: str = ""
+    dry_run: bool = True
+
+
+@router.post("/collect")
+def mediacrawler_collect(body: CollectToolBody) -> dict[str, Any]:
+    try:
+        return dispatch_tool(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/status")
