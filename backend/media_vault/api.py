@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from backend.media_vault import db as vault_db
 from backend.media_vault.config import load_config
 from backend.media_vault.ingest import ingest_job_results
+from backend.media_vault.control import control_overview
 from backend.media_vault.monitor import monitor_summary
 
 router = APIRouter(prefix="/media-vault", tags=["media-vault"])
@@ -132,11 +133,15 @@ def get_monitor_summary() -> dict[str, Any]:
     return monitor_summary()
 
 
-@router.post("/ingest/replay")
-def replay_ingest(body: ReplayIngestBody) -> dict[str, Any]:
+@router.get("/control/overview")
+def get_control_overview() -> dict[str, Any]:
+    return control_overview()
+
+
+def _replay_job(job_id: str) -> dict[str, Any]:
     from backend.mediacrawler.jobs import get_job_manager
 
-    job = get_job_manager().get_job(body.job_id)
+    job = get_job_manager().get_job(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="任務不存在")
     req = job.request if isinstance(job.request, dict) else {}
@@ -149,6 +154,17 @@ def replay_ingest(body: ReplayIngestBody) -> dict[str, Any]:
         compliance_basis="public",
     )
     return {"job_id": job.job_id, **stats}
+
+
+@router.post("/ingest/replay")
+def replay_ingest(
+    body: ReplayIngestBody | None = None,
+    job_id: str | None = Query(None, alias="job_id"),
+) -> dict[str, Any]:
+    resolved = (job_id or (body.job_id if body else "") or "").strip()
+    if not resolved:
+        raise HTTPException(status_code=422, detail="job_id 必填")
+    return _replay_job(resolved)
 
 
 def register_media_vault(app) -> None:

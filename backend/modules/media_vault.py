@@ -33,13 +33,20 @@ def build_media_vault_spec() -> ModuleSpec:
         version="1.0.0",
         kind="integration",
         icon="generic",
-        default_page="gallery",
+        default_page="control",
         enabled=True,
         api_prefix=_PREFIX,
         capabilities=(
             ModuleCapability(
+                id="control",
+                title="控制",
+                description="MediaCrawler 採集與入庫",
+                api_prefix=_PREFIX,
+                routes=("/control/overview", "/ingest/replay"),
+            ),
+            ModuleCapability(
                 id="gallery",
-                title="展示",
+                title="图库",
                 description="瀏覽與篩選採集圖片",
                 api_prefix=_PREFIX,
                 routes=("/images", "/files/{asset_id}"),
@@ -58,9 +65,16 @@ def build_media_vault_spec() -> ModuleSpec:
                 label="採集媒資",
                 items=(
                     ModuleNavItem(
+                        key="control",
+                        icon="⎈",
+                        label="控制",
+                        hint="採集任務與入庫",
+                        capability="control",
+                    ),
+                    ModuleNavItem(
                         key="gallery",
                         icon="▦",
-                        label="展示",
+                        label="图库",
                         hint="篩選、網格與燈箱",
                         capability="gallery",
                     ),
@@ -74,6 +88,7 @@ def build_media_vault_spec() -> ModuleSpec:
                 ),
             ),
         ),
+        page_aliases=(("展示", "gallery"),),
         health=media_vault_health,
     )
 

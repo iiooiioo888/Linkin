@@ -79,6 +79,27 @@ def test_ingest_creates_thumbs_and_lists(vault_env):
     assert file_resp.headers["content-type"].startswith("image/")
 
 
+def test_control_overview(vault_env):
+    client = TestClient(app)
+    resp = client.get("/media-vault/control/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "vault" in data and "mediacrawler" in data
+    assert "total_posts" in data["vault"]
+
+
+def test_replay_ingest_query_param(vault_env, mediacrawler_env):
+    from backend.mediacrawler.config import CrawlJobRequest
+    from backend.mediacrawler.jobs import get_job_manager
+
+    mgr = get_job_manager()
+    job = mgr.submit(CrawlJobRequest(platform="xhs", crawl_type="search", keywords="tea", dry_run=True))
+    client = TestClient(app)
+    resp = client.post(f"/media-vault/ingest/replay?job_id={job.job_id}")
+    assert resp.status_code == 200
+    assert resp.json()["job_id"] == job.job_id
+
+
 def test_monitor_summary(vault_env):
     ingest_job_results("b2", vault_env["media"].parent / "empty", platform="dy")
     client = TestClient(app)
