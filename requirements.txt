@@ -22,6 +22,7 @@ nbtlib>=2.0.4
 asyncua>=1.1
 docker>=7.0.0
 psutil>=6.0
+Pillow>=11.0
 cryptography>=43.0
 # CLI-Anything hub（https://github.com/HKUDS/CLI-Anything）。Linkin 只查目錄。
 cli-anything-hub==0.4.1

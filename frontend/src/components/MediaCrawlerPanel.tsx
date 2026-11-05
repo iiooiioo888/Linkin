@@ -13,6 +13,7 @@ import {
   type MediaCrawlerJobRecord,
   type MediaCrawlerStatus,
 } from '../api/client';
+import { replayMediaVaultIngest } from '../lib/mediaVaultApi';
 import { consoleLayout } from './ui/ConsoleLayout';
 
 const inputCls =
@@ -71,7 +72,17 @@ const EMPTY_FORM = {
   dry_run: true,
 };
 
-export default function MediaCrawlerPanel() {
+export type MediaCrawlerPanelProps = {
+  embedded?: boolean;
+  onOpenGallery?: (batchId: string) => void;
+  onOpenMonitor?: (batchId: string) => void;
+};
+
+export default function MediaCrawlerPanel({
+  embedded = false,
+  onOpenGallery,
+  onOpenMonitor,
+}: MediaCrawlerPanelProps = {}) {
   const [status, setStatus] = useState<MediaCrawlerStatus | null>(null);
   const [jobs, setJobs] = useState<MediaCrawlerJobRecord[]>([]);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -168,14 +179,34 @@ export default function MediaCrawlerPanel() {
     }
   };
 
+  const onReplayIngest = async (jobId: string) => {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await replayMediaVaultIngest(jobId);
+      setMessage(`入庫完成：${res.ingested} 筆${res.errors.length ? `（${res.errors.length} 個警告）` : ''}`);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <section className={`${cardCls} mb-4`} data-testid="mediacrawler-panel">
+    <section className={`${embedded ? '' : cardCls} ${embedded ? '' : 'mb-4'}`} data-testid="mediacrawler-panel">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="text-[13px] font-semibold text-[var(--console-ink)]">MediaCrawler 採集</h3>
-          <p className="mt-0.5 text-[10px] text-[var(--console-faint)]">
-            多平台公開社媒資料採集（Playwright 子進程編排）
-          </p>
+          {!embedded ? (
+            <>
+              <h3 className="text-[13px] font-semibold text-[var(--console-ink)]">MediaCrawler 採集</h3>
+              <p className="mt-0.5 text-[10px] text-[var(--console-faint)]">
+                多平台公開社媒資料採集（Playwright 子進程編排）
+              </p>
+            </>
+          ) : (
+            <p className="text-[11px] font-semibold text-[var(--console-sub)]">採集任務</p>
+          )}
         </div>
         {status ? (
           <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${tierTone(status.tier, cookieReady)}`}>
@@ -310,7 +341,36 @@ export default function MediaCrawlerPanel() {
                     <td className="px-2 py-1">{String((job.request as { platform?: string }).platform || '—')}</td>
                     <td className={`px-2 py-1 ${statusTone(job.status)}`}>{job.status}</td>
                     <td className="px-2 py-1">
-                      <button type="button" className="text-[var(--console-blue)]" onClick={() => setSelectedJobId(job.job_id)}>詳情</button>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" className="text-[var(--console-blue)]" onClick={() => setSelectedJobId(job.job_id)}>
+                          詳情
+                        </button>
+                        {job.status === 'completed' ? (
+                          <button
+                            type="button"
+                            className="text-emerald-400"
+                            disabled={busy}
+                            data-testid="mediacrawler-replay-ingest"
+                            onClick={() => void onReplayIngest(job.job_id)}
+                          >
+                            入庫
+                          </button>
+                        ) : null}
+                        {onOpenGallery ? (
+                          <button
+                            type="button"
+                            className="text-[var(--console-accent)]"
+                            onClick={() => onOpenGallery(job.job_id)}
+                          >
+                            在图库查看
+                          </button>
+                        ) : null}
+                        {onOpenMonitor ? (
+                          <button type="button" className="text-[var(--console-sub)]" onClick={() => onOpenMonitor(job.job_id)}>
+                            監控
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}

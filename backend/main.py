@@ -348,6 +348,9 @@ register_billing(app)
 from backend.mediacrawler import register_mediacrawler
 
 register_mediacrawler(app)
+from backend.media_vault import register_media_vault
+
+register_media_vault(app)
 
 
 @app.exception_handler(InsufficientCreditsError)

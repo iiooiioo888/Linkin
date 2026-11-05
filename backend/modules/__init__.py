@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 from backend.modules.api import register_module_routes
+from backend.modules.media_vault import register_media_vault_module
 from backend.modules.minecraft import register_minecraft_module
 from backend.modules.plugins_api import register_plugin_routes
 from backend.modules.registry import get_module, list_modules, register_module, reset_registry
@@ -22,6 +23,8 @@ from backend.modules.registry import get_module, list_modules, register_module, 
 def register_builtin_modules() -> None:
     if get_module("minecraft") is None:
         register_minecraft_module()
+    if get_module("media-vault") is None:
+        register_media_vault_module()
 
 
 def register_modules(app) -> None:
