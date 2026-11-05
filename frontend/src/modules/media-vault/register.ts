@@ -2,7 +2,9 @@ import { registerModulePages } from '../pageRegistry';
 
 export function registerMediaVaultModule(): void {
   registerModulePages('media-vault', {
-    gallery: () => import('./MediaVaultShell'),
-    monitor: () => import('./MediaVaultShell'),
+    control: () => import('./MediaVaultHub'),
+    gallery: () => import('./MediaVaultHub'),
+    monitor: () => import('./MediaVaultHub'),
+    '*': () => import('./MediaVaultHub'),
   });
 }

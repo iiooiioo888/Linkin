@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import LcBarChart from '../../components/charts/LcBarChart';
 import LcLineChart from '../../components/charts/LcLineChart';
+import { consoleLayout } from '../../lib/consoleLayout';
 import { fetchMediaVaultMonitorSummary, type MediaVaultMonitorSummary } from '../../lib/mediaVaultApi';
 
 type Props = {
@@ -68,15 +69,14 @@ export default function MonitorPanel({ focusBatchId, onOpenGalleryBatch }: Props
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4" data-testid="media-vault-monitor">
-      <header>
-        <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">採集監控</h1>
-        {focusBatchId ? (
-          <p className="text-[11px] text-[var(--console-sub)]">聚焦批次：{focusBatchId}</p>
-        ) : null}
-      </header>
+      {focusBatchId ? (
+        <p className="text-[11px] text-[var(--console-sub)]">
+          聚焦批次：<span className="font-mono text-[var(--console-ink)]">{focusBatchId}</span>
+        </p>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="今日入庫" value={String(data.today_ingested)} />
+        <StatCard label="今日入庫" value={String(data.today_ingested)} testId="media-vault-stat-today" />
         <StatCard label="總貼文" value={String(data.total_posts)} />
         <StatCard
           label="任務成功率"
@@ -86,7 +86,7 @@ export default function MonitorPanel({ focusBatchId, onOpenGalleryBatch }: Props
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-lg border border-[var(--console-line)] p-3">
+        <section className={`${consoleLayout.insetCard} p-3`}>
           <h2 className="mb-2 text-[12px] font-medium text-[var(--console-ink)]">24h 入庫速率</h2>
           {ingestSeries.length ? (
             <LcLineChart series={ingestSeries} height={200} />
@@ -94,7 +94,7 @@ export default function MonitorPanel({ focusBatchId, onOpenGalleryBatch }: Props
             <p className="text-[11px] text-[var(--console-sub)]">尚無資料</p>
           )}
         </section>
-        <section className="rounded-lg border border-[var(--console-line)] p-3">
+        <section className={`${consoleLayout.insetCard} p-3`}>
           <h2 className="mb-2 text-[12px] font-medium text-[var(--console-ink)]">合規分布</h2>
           {complianceCategories.length ? (
             <LcBarChart categories={complianceCategories} groups={complianceGroups} height={200} />
@@ -174,9 +174,9 @@ export default function MonitorPanel({ focusBatchId, onOpenGalleryBatch }: Props
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
-    <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-sidebar)] p-3">
+    <div className={`${consoleLayout.insetCard} p-3`} data-testid={testId}>
       <p className="text-[10px] uppercase tracking-wide text-[var(--console-sub)]">{label}</p>
       <p className="text-[20px] font-semibold text-[var(--console-ink)]">{value}</p>
     </div>

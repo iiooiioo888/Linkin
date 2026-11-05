@@ -115,3 +115,27 @@ export async function fetchMediaVaultMonitorSummary(): Promise<MediaVaultMonitor
   if (!resp.ok) throw new Error(await resp.text());
   return resp.json() as Promise<MediaVaultMonitorSummary>;
 }
+
+export type MediaVaultControlOverview = {
+  vault: {
+    today_ingested: number;
+    total_posts: number;
+    success_rate: number | null;
+    media_root: string;
+  };
+  mediacrawler: Record<string, unknown>;
+};
+
+export async function fetchMediaVaultControlOverview(): Promise<MediaVaultControlOverview> {
+  const resp = await fetch(apiUrl('/media-vault/control/overview'));
+  if (!resp.ok) throw new Error(await resp.text());
+  return resp.json() as Promise<MediaVaultControlOverview>;
+}
+
+export async function replayMediaVaultIngest(jobId: string): Promise<{ job_id: string; ingested: number; errors: string[] }> {
+  const resp = await fetch(apiUrl(`/media-vault/ingest/replay?job_id=${encodeURIComponent(jobId)}`), {
+    method: 'POST',
+  });
+  if (!resp.ok) throw new Error(await resp.text());
+  return resp.json() as Promise<{ job_id: string; ingested: number; errors: string[] }>;
+}

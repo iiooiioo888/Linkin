@@ -81,11 +81,11 @@ export default function GalleryPanel({ initialBatchId, onOpenMonitor }: Props) {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4" data-testid="media-vault-gallery">
-      <header className="flex flex-wrap items-end gap-3 border-b border-[var(--console-line)] pb-3">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-testid="media-vault-gallery">
+      <header className="sticky top-0 z-10 flex flex-wrap items-end gap-3 border-b border-[var(--console-line)] bg-[var(--console-canvas)] px-4 py-3 backdrop-blur-sm">
         <div>
-          <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">採集展示</h1>
-          <p className="text-[11px] text-[var(--console-sub)]">共 {total} 筆 · Media Vault</p>
+          <p className="text-[12px] font-medium text-[var(--console-ink)]">图库</p>
+          <p className="text-[11px] text-[var(--console-sub)]">共 {loading ? '…' : total} 筆</p>
         </div>
         <div className="flex flex-1 flex-wrap gap-2 text-[11px]">
           <input
@@ -136,7 +136,7 @@ export default function GalleryPanel({ initialBatchId, onOpenMonitor }: Props) {
         </div>
       </header>
 
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1 px-4 pt-3">
         {PLATFORMS.map((p) => (
           <button
             key={p}
@@ -153,10 +153,25 @@ export default function GalleryPanel({ initialBatchId, onOpenMonitor }: Props) {
         ))}
       </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-2">
       {loading ? (
-        <p className="text-[12px] text-[var(--console-sub)]">載入中…</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" data-testid="media-vault-gallery-skeleton">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div
+              key={i}
+              className="aspect-square animate-pulse rounded-lg border border-[var(--console-line)] bg-[var(--console-sidebar)]"
+            />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-16 text-center" data-testid="media-vault-gallery-empty">
+          <p className="text-[13px] font-medium text-[var(--console-ink)]">尚无媒资</p>
+          <p className="max-w-sm text-[11px] text-[var(--console-sub)]">
+            在「控制」页启动 MediaCrawler 任务，完成后点击「入庫」，或在此调整筛选条件。
+          </p>
+        </div>
       ) : (
-        <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid auto-rows-max grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" data-testid="media-vault-gallery-grid">
           {items.map((post) => (
             <button
               key={post.id}
@@ -200,6 +215,7 @@ export default function GalleryPanel({ initialBatchId, onOpenMonitor }: Props) {
           ))}
         </div>
       )}
+      </div>
 
       {lightbox ? (
         <div
