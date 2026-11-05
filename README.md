@@ -258,7 +258,7 @@ python -m backend.scripts.seed_demo_content
 
 上表 **104** 項。Anthropic 與 OpenAI 都有 `pdf`、`skill-creator`，本倉庫分別名為 `anthropic-pdf` / `openai-pdf` 與 `anthropic-skill-creator` / `openai-skill-creator`。
 
-另外內嵌、不計入上表的兩項：`mediacrawler`（多平台採集）、`token-dashboard`（Token 用量看板）。目錄合計 **106**。設定與入口見 [docs/mcp/agent-skills.md](docs/mcp/agent-skills.md)。
+另外內嵌、不計入上表的三項：`mediacrawler`（多平台採集）、`token-dashboard`（Token 用量看板）、`media-collect`（跨平台採集主技能，契約見 `.agents/skills/media-collect/references/TOOLS.md`，藍圖 [docs/integrations/crawl-skill-mcp.md](docs/integrations/crawl-skill-mcp.md)）。目錄合計 **107**。設定與入口見 [docs/mcp/agent-skills.md](docs/mcp/agent-skills.md)。
 
 ### 安裝
 
