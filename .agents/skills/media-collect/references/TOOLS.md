@@ -1,6 +1,6 @@
-# 工具契約（尚未實作）
+# 工具契約
 
-名稱是主技能 `media-collect` 的呼叫契約，不是已註冊的 MCP。實作留待後續 PR。禁止在呼叫中帶 Cookie、帳密或 session。
+名稱對應 `POST /mediacrawler/collect` 的 `tool`。不是獨立 MCP。禁止帶 Cookie、帳密或 session。抖音／小紅書搜尋提交既有 MediaCrawler 任務（預設 `dry_run: true`）。TikTok、Instagram、X 回 `status: gap`。`download_media` 不抓 URL，只交 Media Vault ingest。
 
 | 名稱 | 參數 | 平台 | 合規 |
 | --- | --- | --- | --- |
