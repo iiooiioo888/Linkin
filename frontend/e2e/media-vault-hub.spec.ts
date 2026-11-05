@@ -24,9 +24,17 @@ test.describe('Media Vault Hub', () => {
     await expect(page.getByTestId('media-vault-gallery')).toBeVisible({ timeout: 10_000 });
 
     await expect(page.getByTestId('media-vault-related-repos')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Linkin/ })).toHaveAttribute(
+    await expect(page.getByRole('link', { name: /Linkin（本 runtime）/ })).toHaveAttribute(
       'href',
       'https://github.com/iiooiioo888/Linkin',
+    );
+    await expect(page.getByRole('link', { name: /LinkinL/ })).toHaveAttribute(
+      'href',
+      'https://github.com/iiooiioo888/LinkinL',
+    );
+    await expect(page.getByRole('link', { name: /线上站点/ })).toHaveAttribute(
+      'href',
+      'https://iiooiioo888.github.io/LinkinL/',
     );
   });
 });

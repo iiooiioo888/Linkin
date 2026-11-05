@@ -1,5 +1,9 @@
 # docs/design — 視覺與設計相關說明
 
+## 行销站点（LinkinL）
+
+**Canonical 对外行销与 GitHub Pages 演示**在独立仓库 [LinkinL](https://github.com/iiooiioo888/LinkinL)（[线上](https://iiooiioo888.github.io/LinkinL/)）。本 repo 的 `docs/design/*.html` 仅作设计参考与 token 实验，**不要**在此复制完整行销站点 HTML；需要更新 landing 时请改 LinkinL。
+
 ## 根目錄 `DESIGN.md` 是什麼？
 
 根目錄的 [`DESIGN.md`](../../DESIGN.md) 是 **Linear 風格前端視覺 Token**（顏色、字級、間距），供 `design.md` 工具鏈與 UI 對齊使用。
