@@ -2,6 +2,8 @@
 
 三面板共用同一套媒資儲存（SQLite 元資料 + 本機目錄），執行期互不依賴。
 
+**對外行销／演示**以 [LinkinL](https://github.com/iiooiioo888/LinkinL) 為準（[GitHub Pages](https://iiooiioo888.github.io/LinkinL/)）；本 repo 只保留 runtime 與 Hub，不重複維護完整行销 HTML。
+
 ## 一体化导航
 
 ```
@@ -64,10 +66,26 @@ MediaCrawler job ──completed──► ingest.py ──► media_vault.sqlite
 - **Hub（默认控制）**：`#/modules/media-vault`
 - **图库 / 监控**：`#/modules/media-vault/gallery`、`#/modules/media-vault/monitor`（Hub 内可切换）
 
-Hub 页脚「相关仓库」：Linkin、MediaCrawler 上游、Immich / PhotoPrism 文档（可选外部图库）。
+Hub 页脚「相关仓库」：Linkin、**LinkinL**（行销站）、MediaCrawler 上游、Immich / PhotoPrism 文档（可选外部图库）。
 
-Immich 作為可選外部圖庫；未設定時不影響測試與本地展示。
+Immich 作為可選外部圖庫；未設定時不影響測試與本地展示。同步邏輯見 `backend/media_vault/sync_immich.py`（stub，僅在設定 env 後啟用）。
+
+### Immich（可選 Compose profile）
+
+CI 與預設 `docker compose up` **不必**啟動 Immich。若要在本機接外部圖庫，可自建 overlay（示例片段，按需併入 `docker-compose.yml` 或私有 overlay）：
+
+```yaml
+# profile: media-vault-immich（可選，勿納入 CI 必填）
+services:
+  backend:
+    profiles: ["media-vault-immich"]
+    environment:
+      - IMMICH_BASE_URL=${IMMICH_BASE_URL:-http://host.docker.internal:2283}
+      - IMMICH_API_KEY=${IMMICH_API_KEY:-}
+```
+
+未設定 `IMMICH_BASE_URL` / `IMMICH_API_KEY` 時，Hub 与 pytest 行为与 PR #163 一致。
 
 ## Grafana（PostgreSQL）
 
-將 DB 遷移至 Postgres 後，可使用 [`media-vault-grafana.sql`](./media-vault-grafana.sql) 建立等價檢視。
+將 DB 遷移至 Postgres 後，監控面板可改查 SQL 檢視：執行 [`media-vault-grafana.sql`](./media-vault-grafana.sql)（同目录）建立与 SQLite 监控 API 等价的 `media_vault_*` 视图，再接入 Grafana Postgres 数据源。
