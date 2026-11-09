@@ -1,0 +1,148 @@
+# Local Video Studio overlay（M0 骨架）
+#
+# 不改動預設 docker-compose.yml。用法：
+#   docker compose -f docker-compose.local-video-studio.yml --profile local-video-studio up -d
+#
+# ComfyUI 獨立跑在工作站（COMFYUI_URL），不進本檔。
+# 正式整合進主 backend 時，health 也可直接打主服務：
+#   GET http://127.0.0.1:8000/local-video-studio/health
+
+services:
+  lvs-postgres:
+    image: postgres:16
+    profiles: ["local-video-studio"]
+    container_name: linkin-lvs-postgres
+    environment:
+      POSTGRES_USER: ${LVS_POSTGRES_USER:-studio}
+      POSTGRES_PASSWORD: ${LVS_POSTGRES_PASSWORD:-studio}
+      POSTGRES_DB: ${LVS_POSTGRES_DB:-studio}
+    volumes:
+      - lvs_pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    networks: [lvs_net]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LVS_POSTGRES_USER:-studio}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  lvs-redis:
+    image: redis:7-alpine
+    profiles: ["local-video-studio"]
+    container_name: linkin-lvs-redis
+    ports:
+      - "127.0.0.1:6380:6379"
+    networks: [lvs_net]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # M0：與主 backend 同映像，僅暴露 studio health；M1+ 再拆獨立進程／worker
+  lvs-api:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    profiles: ["local-video-studio"]
+    container_name: linkin-lvs-api
+    env_file: .env
+    environment:
+      - LVS_ENABLED=true
+      - LVS_CLOUD_ENABLED=${LVS_CLOUD_ENABLED:-false}
+      - CLOUD_ENABLED=${LVS_CLOUD_ENABLED:-false}
+      - LVS_APP_ENV=${LVS_APP_ENV:-dev}
+      - LVS_DATABASE_URL=${LVS_DATABASE_URL:-postgresql+psycopg://studio:studio@lvs-postgres:5432/studio}
+      - LVS_REDIS_URL=${LVS_REDIS_URL:-redis://lvs-redis:6379/0}
+      - LVS_STORAGE_BASE=${LVS_STORAGE_BASE:-/mnt/ai-media}
+      - LINKIN_AUTH_DISABLED=${LVS_AUTH_DISABLED:-1}
+      - EVOL_LLM_OPS_ENABLED=false
+      - REDIS_URL=${LVS_REDIS_URL:-redis://lvs-redis:6379/0}
+      - REDIS_PASSWORD=${LVS_REDIS_PASSWORD:-}
+      - OPC_INTERNAL_TOKEN=${OPC_INTERNAL_TOKEN:-lvs-dev-token}
+    ports:
+      - "127.0.0.1:8010:8000"
+    volumes:
+      - ${LVS_STORAGE_HOST:-./data/lvs-media}:/mnt/ai-media
+      - lvs_api_data:/app/data
+    depends_on:
+      lvs-postgres:
+        condition: service_healthy
+      lvs-redis:
+        condition: service_healthy
+    networks: [lvs_net]
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/local-video-studio/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  lvs-web:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    profiles: ["local-video-studio"]
+    container_name: linkin-lvs-web
+    ports:
+      - "127.0.0.1:3010:80"
+    environment:
+      - VITE_API_BASE=http://127.0.0.1:8010
+    depends_on:
+      - lvs-api
+    networks: [lvs_net]
+    restart: unless-stopped
+
+  # M0 stub：與 api 同映像，之後改 compose_worker 命令
+  lvs-worker-light:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    profiles: ["local-video-studio"]
+    container_name: linkin-lvs-worker-light
+    env_file: .env
+    environment:
+      - LVS_ENABLED=true
+      - LVS_CLOUD_ENABLED=${LVS_CLOUD_ENABLED:-false}
+      - CLOUD_ENABLED=${LVS_CLOUD_ENABLED:-false}
+      - LVS_DATABASE_URL=${LVS_DATABASE_URL:-postgresql+psycopg://studio:studio@lvs-postgres:5432/studio}
+      - LVS_REDIS_URL=${LVS_REDIS_URL:-redis://lvs-redis:6379/0}
+      - LVS_STORAGE_BASE=${LVS_STORAGE_BASE:-/mnt/ai-media}
+      - LINKIN_AUTH_DISABLED=${LVS_AUTH_DISABLED:-1}
+      - EVOL_LLM_OPS_ENABLED=false
+      - REDIS_URL=${LVS_REDIS_URL:-redis://lvs-redis:6379/0}
+      - REDIS_PASSWORD=${LVS_REDIS_PASSWORD:-}
+      - OPC_INTERNAL_TOKEN=${OPC_INTERNAL_TOKEN:-lvs-dev-token}
+    command:
+      [
+        "python",
+        "-c",
+        "import time; print('lvs-worker-light M0 stub idle'); time.sleep(3600)",
+      ]
+    volumes:
+      - ${LVS_STORAGE_HOST:-./data/lvs-media}:/mnt/ai-media
+    depends_on:
+      lvs-postgres:
+        condition: service_healthy
+      lvs-redis:
+        condition: service_healthy
+    networks: [lvs_net]
+    restart: unless-stopped
+
+volumes:
+  lvs_pgdata:
+  lvs_api_data:
+
+networks:
+  lvs_net:
+    name: linkin_lvs_net

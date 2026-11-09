@@ -24,7 +24,7 @@
 | **採集** | 網頁轉 Markdown、社媒公開採集、Agent Reach 即時閱讀與搜尋 | 實驗室「爬蟲」；**采集媒体库**見 [media-vault.md](integrations/media-vault.md)（`#/modules/media-vault`）；MediaCrawler 與 [Agent Reach](https://github.com/Panniantong/Agent-Reach)（`.agents/skills/agent-reach/`）。Agent Reach、just-scrape、agent-browser、cli-hub 要本機 CLI，用 `python -m backend.scripts.cli_runtimes` 檢查 |
 | **工業接線** | OPC 讀寫。寫入經護欄。實驗室 MCP 頁把 OPC 開關放在這一組 | `opc_service/` |
 | **Agent 工作流** | 任務板、訪談閘門，以及 CLI-Anything 的軟體命令列目錄 | `backend/integrations/yao.py`、`ouroboros.py`、`backend/company/cli_anything.py` |
-| **設計** | Design-as-Code，須顯式觸發：OpenPencil | `backend/integrations/openpencil.py` |
+| **設計** | Design-as-Code（OpenPencil）；**Local Video Studio** 本機優先影片工作室（M0 骨架） | `backend/integrations/openpencil.py`；[local-video-studio.md](integrations/local-video-studio.md)（`backend/local_video_studio/`、`#/modules/local-video-studio`） |
 | **技能** | Agent skills | `.agents/skills/`、`#/monitor/skills` |
 
 控制台左側（總覽、執行、角色、審計、計費、系統）是核心的開發組件裡的導覽，定義在 `frontend/src/lib/monitorTabs.ts` 的 `CONSOLE_NAV_GROUPS`。Minecraft 世界模組用自己的導覽。實驗室四類的單一來源是 `frontend/src/lib/labTabs.ts` 的 `LAB_NAV_GROUPS`。
@@ -85,6 +85,8 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `billing/` | 核心的開發組件：積分池 v6、Docker 計量 |
 | `memory/` | 整合：向量記憶（Chroma 等） |
 | `integrations/` | 整合：MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil |
+| `mediacrawler/` · `media_vault/` | 整合／採集：社媒採集與媒資庫 |
+| `local_video_studio/` | 整合／設計：Local Video Studio（見根 `PROJECT_SPEC.md`；M0 health） |
 | `services/` | 任務、軌跡、監控、llm_ops、雲控制台、實驗室。跨四類，不單獨成類 |
 | `environment/` | 環境探測／執行環境輔助 |
 | `middleware/` | FastAPI 中介層 |

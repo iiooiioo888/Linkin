@@ -27,7 +27,7 @@ def _clean_registry():
 def test_register_and_list_minecraft():
     register_builtin_modules()
     ids = [item.id for item in list_modules()]
-    assert ids == ["minecraft"]
+    assert ids == ["minecraft", "media-vault", "local-video-studio"]
     spec = get_module("minecraft")
     assert spec is not None
     assert spec.default_page == "monitor"
@@ -36,6 +36,10 @@ def test_register_and_list_minecraft():
     assert cap_ids == {"worldview", "content", "admin", "building", "bridge", "monitor", "plugins"}
     pages = {item.key for group in spec.nav_groups for item in group.items}
     assert {"monitor", "world", "admin", "building", "minecraft", "studio", "narrative"} <= pages
+    studio = get_module("local-video-studio")
+    assert studio is not None
+    assert studio.api_prefix == "/local-video-studio"
+    assert studio.health_snapshot()["ok"] is True
 
 
 def test_reserved_id_rejected():
@@ -56,7 +60,12 @@ def test_custom_module_appears_in_catalog():
             ),
         )
     )
-    assert [item.id for item in list_modules()] == ["minecraft", "demo-world"]
+    assert [item.id for item in list_modules()] == [
+        "minecraft",
+        "media-vault",
+        "local-video-studio",
+        "demo-world",
+    ]
 
 
 def test_modules_http_catalog(monkeypatch, tmp_path):
@@ -71,13 +80,16 @@ def test_modules_http_catalog(monkeypatch, tmp_path):
         listed = client.get("/modules")
         assert listed.status_code == 200
         body = listed.json()
-        assert body["count"] == 1
-        assert body["modules"][0]["id"] == "minecraft"
-        nav_groups = body["modules"][0]["nav_groups"]
+        assert body["count"] == 3
+        by_id = {m["id"]: m for m in body["modules"]}
+        assert set(by_id) == {"minecraft", "media-vault", "local-video-studio"}
+        mc = by_id["minecraft"]
+        nav_groups = mc["nav_groups"]
         assert nav_groups[0]["id"] == "players_group"
         assert nav_groups[0]["items"][0]["key"] == "player_presence"
         monitor_group = next(g for g in nav_groups if g["id"] == "monitor")
         assert monitor_group["items"][0]["key"] == "monitor"
+        assert by_id["local-video-studio"]["api_prefix"] == "/local-video-studio"
 
         detail = client.get("/modules/minecraft")
         assert detail.status_code == 200

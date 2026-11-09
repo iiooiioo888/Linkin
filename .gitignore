@@ -253,3 +253,4 @@ backend/data/billing.sqlite3
 backend/data/hub_data.sqlite3
 backend/data/linkin/map_plans.json
 backend/data/linkin/minecraft_plugin_settings.json
+backend/data/local_video_studio.sqlite3
