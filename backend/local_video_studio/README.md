@@ -1,6 +1,8 @@
 # Local Video Studio（`local-video-studio`）
 
-本機優先的私有化 AI 影片生成模組。完整規格見 [`PROJECT_SPEC.md`](../../PROJECT_SPEC.md)；整合說明見 [`docs/integrations/local-video-studio.md`](../../docs/integrations/local-video-studio.md)；運維見 [`docs/integrations/OPERATIONS.md`](../../docs/integrations/OPERATIONS.md)。
+本機優先的私有化 AI 影片生成模組。完整規格見 [`PROJECT_SPEC.md`](../../PROJECT_SPEC.md)；功能矩陣見 [`FEATURES_AND_TOOLS.md`](../../FEATURES_AND_TOOLS.md)；整合說明見 [`docs/integrations/local-video-studio.md`](../../docs/integrations/local-video-studio.md)；backlog 見 [`docs/backlog/`](../../docs/backlog/README.md)；運維見 [`docs/integrations/OPERATIONS.md`](../../docs/integrations/OPERATIONS.md)。
+
+**OpenAPI**：主應用啟動後開啟 `/docs`（Swagger）或 `/redoc`；LVS 前綴 `/local-video-studio` 與 `/local-video-studio/api/v1/*`（`X-API-Key`）。人類可讀端點表見 backlog [P0-13](../../docs/backlog/P0-13-API-文档同步.md)（`docs/API.md` 仍待補）。
 
 ## 里程碑
 

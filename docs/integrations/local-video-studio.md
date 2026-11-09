@@ -1,6 +1,6 @@
 # Local Video Studio（本機優先影片工作室）
 
-私有化 AI 影片生成流水線模組（代號 `local-video-studio`）。**完整規格**見倉庫根目錄 [`PROJECT_SPEC.md`](../../PROJECT_SPEC.md)（里程碑 M0–M7）。**運維／真實 Comfy** 見 [`OPERATIONS.md`](./OPERATIONS.md)。
+私有化 AI 影片生成流水線模組（代號 `local-video-studio`）。**完整規格**見倉庫根目錄 [`PROJECT_SPEC.md`](../../PROJECT_SPEC.md)（里程碑 M0–M7）。**功能矩陣／工具選型**見 [`FEATURES_AND_TOOLS.md`](../../FEATURES_AND_TOOLS.md)（指針：[features-and-tools.md](./features-and-tools.md)；backlog：[docs/backlog/](../backlog/README.md)）。**運維／真實 Comfy** 見 [`OPERATIONS.md`](./OPERATIONS.md)。
 
 ## 本機優先
 
