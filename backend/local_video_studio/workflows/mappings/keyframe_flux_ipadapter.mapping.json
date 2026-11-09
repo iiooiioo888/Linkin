@@ -1,0 +1,12 @@
+{
+  "template": "keyframe_flux_ipadapter",
+  "mappings": [
+    {"param": "prompt", "node_id": "6", "input": "text"},
+    {"param": "negative_prompt", "node_id": "7", "input": "text"},
+    {"param": "seed", "node_id": "3", "input": "seed"},
+    {"param": "width", "node_id": "5", "input": "width"},
+    {"param": "height", "node_id": "5", "input": "height"},
+    {"param": "input_image_relative_path", "node_id": "10", "input": "image"},
+    {"param": "output_relative_path", "node_id": "9", "input": "filename_prefix"}
+  ]
+}

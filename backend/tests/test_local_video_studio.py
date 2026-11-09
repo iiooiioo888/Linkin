@@ -18,7 +18,7 @@ def test_local_video_studio_health_ok(monkeypatch):
     body = resp.json()
     assert body["ok"] is True
     assert body["module"] == "local-video-studio"
-    assert body["milestone"] == "M1"
+    assert body["milestone"] == "M2"
     assert body["cloud_enabled"] is False
 
 

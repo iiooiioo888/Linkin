@@ -1,19 +1,21 @@
 import { useMemo } from 'react';
 import type { ModulePageProps } from '../types';
+import JobsPage from './JobsPage';
 import ProjectDetailPage from './ProjectDetailPage';
 import ProjectsPage from './ProjectsPage';
 import ShotBoardPage from './ShotBoardPage';
 
-type Tab = 'projects' | 'detail' | 'shots';
+type Tab = 'projects' | 'detail' | 'shots' | 'jobs';
 
 const TABS: ReadonlyArray<{ key: Tab; label: string }> = [
   { key: 'projects', label: '專案' },
   { key: 'detail', label: '詳情' },
   { key: 'shots', label: '鏡頭板' },
+  { key: 'jobs', label: '任務' },
 ];
 
 function tabFromPage(page: string | undefined): Tab {
-  if (page === 'detail' || page === 'shots' || page === 'projects') return page;
+  if (page === 'detail' || page === 'shots' || page === 'projects' || page === 'jobs') return page;
   return 'projects';
 }
 
@@ -45,6 +47,7 @@ export default function StudioHub({ page }: ModulePageProps) {
       {active === 'projects' ? <ProjectsPage /> : null}
       {active === 'detail' ? <ProjectDetailPage /> : null}
       {active === 'shots' ? <ShotBoardPage /> : null}
+      {active === 'jobs' ? <JobsPage /> : null}
     </div>
   );
 }

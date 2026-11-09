@@ -5,6 +5,7 @@ export function registerLocalVideoStudioModule(): void {
     projects: () => import('./StudioHub'),
     detail: () => import('./StudioHub'),
     shots: () => import('./StudioHub'),
+    jobs: () => import('./StudioHub'),
     home: () => import('./StudioHub'),
     '*': () => import('./StudioHub'),
   });

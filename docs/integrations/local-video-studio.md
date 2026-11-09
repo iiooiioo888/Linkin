@@ -27,4 +27,4 @@ curl -s http://127.0.0.1:8000/local-video-studio/health
 # M1：建立專案 → POST .../scripts 匯入 3 鏡 → GET .../shots
 ```
 
-**M1 完成**：CRUD + 鏡頭表匯入。**M2+**（Agent／ComfyUI）未實作。
+**M0–M2 完成**：health、CRUD、Jobs + mock ComfyUI + render-agent poller。**M3+**（真實 ComfyUI）未實作。

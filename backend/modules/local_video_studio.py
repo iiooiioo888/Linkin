@@ -1,4 +1,4 @@
-"""Local Video Studio 模組目錄契約（M0：health + 空殼頁）。"""
+"""Local Video Studio 模組目錄契約（M0–M2）。"""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def local_video_studio_health() -> dict[str, Any]:
     return {
         "ok": True,
         "module": "local-video-studio",
-        "milestone": "M1",
+        "milestone": "M2",
         "cloud_enabled": cfg.cloud_enabled,
     }
 
@@ -32,7 +32,7 @@ def build_local_video_studio_spec() -> ModuleSpec:
         id="local-video-studio",
         title="Local Video Studio",
         description="本機優先 AI 影片生成（創意→鏡頭→草稿→審核→合成）",
-        version="0.1.0",
+        version="0.2.0",
         kind="integration",
         icon="generic",
         default_page="projects",
@@ -67,6 +67,13 @@ def build_local_video_studio_spec() -> ModuleSpec:
                 api_prefix=f"{_PREFIX}/api/v1",
                 routes=("/projects/{id}/shots", "/projects/{id}/scripts", "/shots/{id}"),
             ),
+            ModuleCapability(
+                id="jobs",
+                title="任務",
+                description="GenerationJob claim／complete（mock ComfyUI）",
+                api_prefix=f"{_PREFIX}/api/v1",
+                routes=("/jobs", "/jobs/{id}/claim", "/jobs/{id}/complete"),
+            ),
         ),
         nav_groups=(
             ModuleNavGroup(
@@ -93,6 +100,13 @@ def build_local_video_studio_spec() -> ModuleSpec:
                         label="鏡頭板",
                         hint="鏡頭表",
                         capability="shots",
+                    ),
+                    ModuleNavItem(
+                        key="jobs",
+                        icon="◎",
+                        label="任務",
+                        hint="Render jobs",
+                        capability="jobs",
                     ),
                 ),
             ),

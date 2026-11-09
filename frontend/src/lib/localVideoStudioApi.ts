@@ -122,3 +122,47 @@ export async function uploadLvsScript(
   );
   return parseJson(resp);
 }
+
+export type LvsJob = {
+  id: string;
+  project_id: string;
+  shot_id: string;
+  job_type: string;
+  workflow_template: string;
+  params_json: Record<string, unknown>;
+  status: string;
+  attempt: number;
+  max_attempts: number;
+  priority: number;
+  assigned_agent?: string | null;
+  error?: string | null;
+  created_at: string;
+  asset?: {
+    id: string;
+    type: string;
+    relative_path: string;
+    bytes?: number | null;
+    sha256?: string | null;
+  } | null;
+};
+
+export async function listLvsJobs(projectId?: string): Promise<LvsJob[]> {
+  const q = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+  const resp = await fetch(apiUrl(`/local-video-studio/api/v1/jobs${q}`));
+  return parseJson(resp);
+}
+
+export async function createLvsJob(body: {
+  project_id: string;
+  shot_id: string;
+  job_type: string;
+  workflow_template: string;
+  params?: Record<string, unknown>;
+}): Promise<LvsJob> {
+  const resp = await fetch(apiUrl('/local-video-studio/api/v1/jobs'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return parseJson(resp);
+}
