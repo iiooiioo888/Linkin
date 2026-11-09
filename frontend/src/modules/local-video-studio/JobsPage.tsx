@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  cancelLvsJob,
   createLvsJob,
   listLvsJobs,
   listLvsShots,
   recalledLvsProjectId,
+  retryLvsJob,
   type LvsJob,
   type LvsShot,
 } from '../../lib/localVideoStudioApi';
-
-function go(page: string): void {
-  window.location.hash = `#/modules/local-video-studio/${page}`;
-}
+import { StatusBadge, goLvs } from './ui';
 
 export default function JobsPage() {
   const projectId = recalledLvsProjectId();
@@ -23,28 +22,21 @@ export default function JobsPage() {
   const refresh = useCallback(async () => {
     if (!projectId) return;
     setError('');
-    try {
-      const [jobRows, shotRows] = await Promise.all([
-        listLvsJobs(projectId),
-        listLvsShots(projectId),
-      ]);
-      setJobs(jobRows);
-      setShots(shotRows);
-      if (!shotId && shotRows[0]) setShotId(shotRows[0].id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
+    const [jobRows, shotRows] = await Promise.all([listLvsJobs(projectId), listLvsShots(projectId)]);
+    setJobs(jobRows);
+    setShots(shotRows);
+    if (!shotId && shotRows[0]) setShotId(shotRows[0].id);
   }, [projectId, shotId]);
 
   useEffect(() => {
-    void refresh();
+    void refresh().catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, [refresh]);
 
   if (!projectId) {
     return (
       <div className="flex flex-1 items-center justify-center p-6 text-[12px] text-[var(--console-sub)]">
         尚未選擇專案。
-        <button type="button" className="ml-2 text-[var(--console-accent)] hover:underline" onClick={() => go('projects')}>
+        <button type="button" className="ml-2 text-[var(--console-accent)] hover:underline" onClick={() => goLvs('projects')}>
           回專案列表
         </button>
       </div>
@@ -77,14 +69,32 @@ export default function JobsPage() {
     }
   };
 
+  const onCancel = async (jobId: string) => {
+    try {
+      await cancelLvsJob(jobId);
+      setMessage(`已取消 ${jobId.slice(0, 8)}`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const onRetry = async (jobId: string) => {
+    try {
+      await retryLvsJob(jobId);
+      setMessage(`已重試 ${jobId.slice(0, 8)}`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4" data-testid="lvs-jobs">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-[16px] font-semibold text-[var(--console-ink)]">任務</h2>
-          <p className="text-[12px] text-[var(--console-sub)]">
-            keyframe／ltx_draft／wan5b_refine → agent（mock 或真實 ComfyUI）
-          </p>
+          <p className="text-[12px] text-[var(--console-sub)]">狀態 · attempt · 錯誤 · 取消／重試</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-[11px] text-[var(--console-sub)]">
@@ -108,7 +118,6 @@ export default function JobsPage() {
             onClick={() =>
               void enqueue('keyframe', 'keyframe_flux_ipadapter', {
                 prompt: 'cinematic keyframe',
-                negative_prompt: 'blurry',
                 seed: 42,
                 width: 1024,
                 height: 1024,
@@ -126,18 +135,15 @@ export default function JobsPage() {
             onClick={() =>
               void enqueue('draft', 'ltx_draft', {
                 prompt: 'cinematic draft clip',
-                negative_prompt: 'blurry',
                 seed: 7,
-                width: 1280,
-                height: 704,
                 frames: 121,
-                input_image_relative_path: `projects/${projectId}/keyframes/${shotId}.png`,
                 output_relative_path: `projects/${projectId}/drafts/${shotId}.mp4`,
+                input_image_relative_path: `projects/${projectId}/keyframes/${shotId}.png`,
               })
             }
             data-testid="lvs-job-create-draft"
           >
-            草稿 LTX
+            草稿
           </button>
           <button
             type="button"
@@ -145,23 +151,17 @@ export default function JobsPage() {
             onClick={() =>
               void enqueue('refine', 'wan5b_refine', {
                 prompt: 'refined cinematic clip',
-                negative_prompt: 'artifacts',
                 seed: 11,
-                width: 1280,
-                height: 704,
                 frames: 121,
-                input_image_relative_path: `projects/${projectId}/keyframes/${shotId}.png`,
                 output_relative_path: `projects/${projectId}/refines/${shotId}.mp4`,
+                input_image_relative_path: `projects/${projectId}/keyframes/${shotId}.png`,
               })
             }
             data-testid="lvs-job-create-refine"
           >
-            精修 Wan5B
+            精修
           </button>
-          <button type="button" className="text-[12px] text-[var(--console-accent)] hover:underline" onClick={() => go('review')}>
-            審核
-          </button>
-          <button type="button" className="text-[12px] text-[var(--console-accent)] hover:underline" onClick={() => go('shots')}>
+          <button type="button" className="text-[12px] text-[var(--console-accent)] hover:underline" onClick={() => goLvs('shots')}>
             鏡頭板
           </button>
         </div>
@@ -180,8 +180,10 @@ export default function JobsPage() {
             <th className="py-2 pr-2 font-medium">ID</th>
             <th className="py-2 pr-2 font-medium">類型</th>
             <th className="py-2 pr-2 font-medium">狀態</th>
+            <th className="py-2 pr-2 font-medium">Attempt</th>
             <th className="py-2 pr-2 font-medium">Agent</th>
-            <th className="py-2 font-medium">資產</th>
+            <th className="py-2 pr-2 font-medium">資產／錯誤</th>
+            <th className="py-2 font-medium">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -191,16 +193,43 @@ export default function JobsPage() {
               <td className="py-2 pr-2">
                 {job.job_type}/{job.workflow_template}
               </td>
-              <td className="py-2 pr-2">{job.status}</td>
+              <td className="py-2 pr-2">
+                <StatusBadge status={job.status} />
+              </td>
+              <td className="py-2 pr-2 font-mono">
+                {job.attempt}/{job.max_attempts}
+              </td>
               <td className="py-2 pr-2">{job.assigned_agent || '—'}</td>
-              <td className="py-2 font-mono text-[11px] text-[var(--console-sub)]">
+              <td className="py-2 pr-2 font-mono text-[11px] text-[var(--console-sub)]">
                 {job.asset?.relative_path || job.error || '—'}
+              </td>
+              <td className="py-2">
+                <div className="flex gap-2">
+                  {(job.status === 'queued' || job.status === 'running') && (
+                    <button
+                      type="button"
+                      className="text-red-400 hover:underline"
+                      onClick={() => void onCancel(job.id)}
+                    >
+                      取消
+                    </button>
+                  )}
+                  {(job.status === 'failed' || job.status === 'cancelled') && (
+                    <button
+                      type="button"
+                      className="text-[var(--console-accent)] hover:underline"
+                      onClick={() => void onRetry(job.id)}
+                    >
+                      重試
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           ))}
           {jobs.length === 0 ? (
             <tr>
-              <td colSpan={5} className="py-8 text-center text-[var(--console-sub)]">
+              <td colSpan={7} className="py-8 text-center text-[var(--console-sub)]">
                 尚無任務
               </td>
             </tr>

@@ -36,6 +36,20 @@ export type LvsShot = {
   dialogue?: string | null;
   duration_sec: number;
   status: string;
+  selected_keyframe_asset_id?: string | null;
+  selected_clip_asset_id?: string | null;
+  created_at: string;
+};
+
+export type LvsAsset = {
+  id: string;
+  project_id: string;
+  shot_id?: string | null;
+  type: string;
+  relative_path: string;
+  mime?: string | null;
+  bytes?: number | null;
+  sha256?: string | null;
   created_at: string;
 };
 
@@ -229,6 +243,89 @@ export type LvsResourceSummary = {
 export async function getLvsResources(projectId: string): Promise<LvsResourceSummary> {
   const resp = await fetch(
     apiUrl(`/local-video-studio/api/v1/projects/${encodeURIComponent(projectId)}/resources`),
+  );
+  return parseJson(resp);
+}
+
+export async function listLvsAssets(projectId: string, type?: string): Promise<LvsAsset[]> {
+  const q = type ? `?type=${encodeURIComponent(type)}` : '';
+  const resp = await fetch(
+    apiUrl(`/local-video-studio/api/v1/projects/${encodeURIComponent(projectId)}/assets${q}`),
+  );
+  return parseJson(resp);
+}
+
+export function lvsAssetMediaUrl(assetId: string): string {
+  return apiUrl(`/local-video-studio/api/v1/assets/${encodeURIComponent(assetId)}/media`);
+}
+
+export async function cancelLvsJob(jobId: string): Promise<LvsJob> {
+  const resp = await fetch(
+    apiUrl(`/local-video-studio/api/v1/jobs/${encodeURIComponent(jobId)}/cancel`),
+    { method: 'POST' },
+  );
+  return parseJson(resp);
+}
+
+export async function retryLvsJob(jobId: string): Promise<LvsJob> {
+  const resp = await fetch(
+    apiUrl(`/local-video-studio/api/v1/jobs/${encodeURIComponent(jobId)}/retry`),
+    { method: 'POST' },
+  );
+  return parseJson(resp);
+}
+
+export async function getLvsCompliance(assetId: string): Promise<{
+  id: string;
+  asset_id: string;
+  explicit_mark: boolean;
+  metadata_json: Record<string, unknown>;
+  watermark_id?: string | null;
+  created_at: string;
+}> {
+  const resp = await fetch(
+    apiUrl(`/local-video-studio/api/v1/assets/${encodeURIComponent(assetId)}/compliance`),
+  );
+  return parseJson(resp);
+}
+
+export async function uploadLvsFile(
+  projectId: string,
+  kind: 'audio' | 'subtitle' | 'ref',
+  file: File,
+): Promise<{ relative_path: string; bytes: number; kind: string; filename: string }> {
+  const body = new FormData();
+  body.append('file', file);
+  const resp = await fetch(
+    apiUrl(
+      `/local-video-studio/api/v1/projects/${encodeURIComponent(projectId)}/uploads?kind=${encodeURIComponent(kind)}`,
+    ),
+    { method: 'POST', body },
+  );
+  return parseJson(resp);
+}
+
+export async function composeLvsProjectFull(
+  projectId: string,
+  body: {
+    shot_ids: string[];
+    output_name?: string;
+    add_watermark?: boolean;
+    metadata?: Record<string, unknown>;
+  },
+): Promise<{
+  relative_path: string;
+  compliance_id: string;
+  engine: string;
+  asset: LvsAsset;
+}> {
+  const resp = await fetch(
+    apiUrl(`/local-video-studio/api/v1/projects/${encodeURIComponent(projectId)}/compose`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
   );
   return parseJson(resp);
 }

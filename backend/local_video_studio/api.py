@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from backend.local_video_studio import compose_service
@@ -279,6 +281,86 @@ def api_stamp_compliance(asset_id: str, db: Session = Depends(get_db)) -> Compli
 )
 def api_resources(project_id: str, db: Session = Depends(get_db)) -> ResourceSummary:
     return jobs_service.resource_summary(db, project_id)
+
+
+@v1.get(
+    "/assets/{asset_id}",
+    response_model=AssetOut,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_get_asset(asset_id: str, db: Session = Depends(get_db)) -> AssetOut:
+    from backend.local_video_studio.models import Asset
+
+    asset = db.get(Asset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="資產不存在")
+    out = jobs_service.asset_to_out(asset)
+    assert out is not None
+    return out
+
+
+@v1.get("/assets/{asset_id}/media", dependencies=[Depends(_require_api_key)])
+def api_asset_media(asset_id: str, db: Session = Depends(get_db)) -> FileResponse:
+    """供前端 <video>/<img> 播放；僅允許 STORAGE_BASE 內相對路徑。"""
+    from backend.local_video_studio.models import Asset
+    from backend.local_video_studio.storage import StorageError, get_storage
+
+    asset = db.get(Asset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="資產不存在")
+    try:
+        path = get_storage().resolve(asset.relative_path)
+    except StorageError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="檔案不存在於儲存根")
+    mime = asset.mime or _guess_mime(path)
+    return FileResponse(path, media_type=mime, filename=path.name)
+
+
+@v1.post(
+    "/projects/{project_id}/uploads",
+    dependencies=[Depends(_require_api_key)],
+)
+async def api_upload_project_file(
+    project_id: str,
+    kind: str = Query(pattern="^(audio|subtitle|ref)$"),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """上傳音訊／字幕／參考圖到專案目錄（相對路徑回傳）。"""
+    service.get_project_or_404(db, project_id)
+    from backend.local_video_studio.storage import get_storage
+
+    store = get_storage()
+    store.ensure_project_dirs(project_id)
+    raw_name = Path(file.filename or "upload.bin").name.replace("..", "_")
+    folder = {"audio": "audio", "subtitle": "output", "ref": "script"}[kind]
+    prefix = {"audio": "track", "subtitle": "subs", "ref": "ref"}[kind]
+    rel = f"projects/{project_id}/{folder}/{prefix}_{raw_name}"
+    data = await file.read()
+    store.write_bytes(rel, data or b"")
+    return {
+        "relative_path": rel,
+        "bytes": len(data or b""),
+        "kind": kind,
+        "filename": raw_name,
+    }
+
+
+def _guess_mime(path: Path) -> str:
+    suffix = path.suffix.lower()
+    return {
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".wav": "audio/wav",
+        ".mp3": "audio/mpeg",
+        ".srt": "application/x-subrip",
+        ".vtt": "text/vtt",
+    }.get(suffix, "application/octet-stream")
 
 
 router.include_router(v1)

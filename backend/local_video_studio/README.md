@@ -35,6 +35,16 @@ curl -s http://127.0.0.1:8000/local-video-studio/health
 | GET/POST | `/assets/{id}/compliance`／`compliance-stamp` | 合規 |
 | GET | `/projects/{id}/resources` | 資源彙總 |
 
+## 前端（SPEC §10）
+
+`#/modules/local-video-studio` → 專案／詳情／鏡頭板／任務／審核／合成／資源
+
+- 鏡頭板：scene 分組、關鍵幀縮圖、草稿／精修 `<video>`、生成與審核按鈕
+- 審核：佇列 + 播放器 + reason
+- 任務：attempt／取消／重試
+- 合成：排序、音訊／字幕上傳、合規紀錄與成片播放
+- 媒體：`GET /assets/{id}/media`；上傳：`POST /projects/{id}/uploads`
+
 ## 測試
 
 ```bash

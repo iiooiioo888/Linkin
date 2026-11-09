@@ -4,10 +4,11 @@ import ComposePanel from './ComposePanel';
 import JobsPage from './JobsPage';
 import ProjectDetailPage from './ProjectDetailPage';
 import ProjectsPage from './ProjectsPage';
+import ResourcesPage from './ResourcesPage';
 import ReviewPage from './ReviewPage';
 import ShotBoardPage from './ShotBoardPage';
 
-type Tab = 'projects' | 'detail' | 'shots' | 'jobs' | 'review' | 'compose';
+type Tab = 'projects' | 'detail' | 'shots' | 'jobs' | 'review' | 'compose' | 'resources';
 
 const TABS: ReadonlyArray<{ key: Tab; label: string }> = [
   { key: 'projects', label: '專案' },
@@ -16,6 +17,7 @@ const TABS: ReadonlyArray<{ key: Tab; label: string }> = [
   { key: 'jobs', label: '任務' },
   { key: 'review', label: '審核' },
   { key: 'compose', label: '合成' },
+  { key: 'resources', label: '資源' },
 ];
 
 function tabFromPage(page: string | undefined): Tab {
@@ -25,7 +27,8 @@ function tabFromPage(page: string | undefined): Tab {
     page === 'projects' ||
     page === 'jobs' ||
     page === 'review' ||
-    page === 'compose'
+    page === 'compose' ||
+    page === 'resources'
   ) {
     return page;
   }
@@ -37,7 +40,7 @@ export default function StudioHub({ page }: ModulePageProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="lvs-hub">
-      <nav className="flex gap-1 border-b border-[var(--console-line)] px-3 pt-2">
+      <nav className="flex flex-wrap gap-1 border-b border-[var(--console-line)] px-3 pt-2">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
@@ -63,6 +66,7 @@ export default function StudioHub({ page }: ModulePageProps) {
       {active === 'jobs' ? <JobsPage /> : null}
       {active === 'review' ? <ReviewPage /> : null}
       {active === 'compose' ? <ComposePanel /> : null}
+      {active === 'resources' ? <ResourcesPage /> : null}
     </div>
   );
 }

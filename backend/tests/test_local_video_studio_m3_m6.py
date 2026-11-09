@@ -347,3 +347,37 @@ def test_health_milestone_m6(monkeypatch):
     assert resp.status_code == 200
     assert resp.json()["milestone"] == "M6"
     assert resp.json()["cloud_enabled"] is False
+
+
+def test_asset_media_and_upload(monkeypatch, tmp_path):
+    client = _boot(monkeypatch, tmp_path, "ui-media")
+    project_id = client.post(
+        "/local-video-studio/api/v1/projects", json={"name": "media"}
+    ).json()["id"]
+    up = client.post(
+        f"/local-video-studio/api/v1/projects/{project_id}/uploads?kind=ref",
+        files={"file": ("ref.png", b"\x89PNG\r\n\x1a\n", "image/png")},
+    )
+    assert up.status_code == 200, up.text
+    assert up.json()["relative_path"].endswith("ref_ref.png")
+
+    # 寫入假成片資產後以 media 端點讀回
+    store = LocalPathStorage(tmp_path / "media")
+    rel = f"projects/{project_id}/output/final_v1.mp4"
+    store.write_bytes(rel, b"fake-mp4-bytes")
+    with session_scope() as session:
+        asset = Asset(
+            project_id=project_id,
+            type="final",
+            relative_path=rel,
+            mime="video/mp4",
+            bytes=14,
+        )
+        session.add(asset)
+        session.flush()
+        asset_id = asset.id
+
+    media = client.get(f"/local-video-studio/api/v1/assets/{asset_id}/media")
+    assert media.status_code == 200
+    assert media.content == b"fake-mp4-bytes"
+    assert "video/mp4" in media.headers.get("content-type", "")

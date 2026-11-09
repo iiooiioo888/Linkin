@@ -5,10 +5,7 @@ import {
   rememberLvsProjectId,
   type LvsProject,
 } from '../../lib/localVideoStudioApi';
-
-function go(page: string): void {
-  window.location.hash = `#/modules/local-video-studio/${page}`;
-}
+import { StatusBadge, goLvs } from './ui';
 
 export default function ProjectsPage() {
   const [items, setItems] = useState<LvsProject[]>([]);
@@ -44,7 +41,7 @@ export default function ProjectsPage() {
       setName('demo');
       setDescription('');
       await refresh();
-      go('detail');
+      goLvs('detail');
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -55,7 +52,7 @@ export default function ProjectsPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-[16px] font-semibold text-[var(--console-ink)]">專案</h2>
-          <p className="text-[12px] text-[var(--console-sub)]">M1：建立專案後可匯入鏡頭表</p>
+          <p className="text-[12px] text-[var(--console-sub)]">建立專案 → 鏡頭板／審核／合成</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-[11px] text-[var(--console-sub)]">
@@ -99,8 +96,11 @@ export default function ProjectsPage() {
           <li key={item.id} className="flex items-center justify-between gap-3 py-3">
             <div>
               <p className="text-[13px] font-medium text-[var(--console-ink)]">{item.name}</p>
-              <p className="text-[11px] text-[var(--console-sub)]">
-                {item.status} · {item.shot_count} 鏡頭 · {item.id.slice(0, 8)}
+              <p className="mt-1 flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
+                <StatusBadge status={item.status} />
+                <span>
+                  {item.shot_count} 鏡頭 · {item.id.slice(0, 8)}
+                </span>
               </p>
             </div>
             <div className="flex gap-2">
@@ -109,7 +109,7 @@ export default function ProjectsPage() {
                 className="text-[12px] text-[var(--console-accent)] hover:underline"
                 onClick={() => {
                   rememberLvsProjectId(item.id);
-                  go('detail');
+                  goLvs('detail');
                 }}
               >
                 詳情
@@ -119,7 +119,7 @@ export default function ProjectsPage() {
                 className="text-[12px] text-[var(--console-accent)] hover:underline"
                 onClick={() => {
                   rememberLvsProjectId(item.id);
-                  go('shots');
+                  goLvs('shots');
                 }}
                 data-testid={`lvs-open-shots-${item.id}`}
               >
