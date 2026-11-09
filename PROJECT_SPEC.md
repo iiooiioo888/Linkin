@@ -101,13 +101,13 @@ local-video-studio/
 │  │  │  ├─ compose.py
 │  │  │  └─ resources.py
 │  │  ├─ services/
-│  │  │  ├─ storage.py
-│  │  │  ├─ workflow_inject.py
-│  │  │  ├─ comfy_client.py
+│  │  │  ├─ storage.py          # StorageAdapter: local / nas path
+│  │  │  ├─ workflow_inject.py  # ComfyUI JSON 参数注入
+│  │  │  ├─ comfy_client.py     # /prompt /history /upload/image
 │  │  │  ├─ ffmpeg_compose.py
-│  │  │  ├─ compliance.py
+│  │  │  ├─ compliance.py       # 显式标识 + 元数据 + 水印接口
 │  │  │  ├─ resource_meter.py
-│  │  │  └─ cloud_adapters/
+│  │  │  └─ cloud_adapters/     # Phase2: vidu.py, cloud_gpu.py (stub)
 │  │  └─ workers/
 │  │     ├─ compose_worker.py
 │  │     └─ archive_worker.py
@@ -153,13 +153,6 @@ local-video-studio/
    ├─ OPERATIONS.md
    └─ COMPLIANCE.md
 ```
-
-**Linkin 整合说明**：本规格在独立仓库时用上表；落地 Linkin monorepo 时映射为：
-- `PROJECT_SPEC.md` 放仓库根目录
-- 后端 `backend/local_video_studio/`（FastAPI router 注册进 `backend.main`）
-- 前端 `frontend/src/modules/local-video-studio/` → `#/modules/local-video-studio`
-- `docker-compose.local-video-studio.yml`（不破坏现有 compose 默认）
-- `render-agent/`、`workflows/` 可放仓库根或 `backend/local_video_studio/` 旁
 
 ---
 
@@ -309,8 +302,6 @@ CREATE TABLE model_registry (
 
 统一前缀 `/api/v1`，认证 `X-API-Key`。所有错误返回 `{ "detail": "..." }`。
 
-在 Linkin 内可用前缀 `/local-video-studio/api/v1` 以免与主 API 冲突。
-
 ### 6.1 Projects
 - `POST /projects`：创建项目。body：`{name, description}`。
 - `GET /projects`：列表。
@@ -342,10 +333,31 @@ CREATE TABLE model_registry (
 ```
 
 ### 6.3 Jobs
-- `POST /jobs`：创建任务。
+- `POST /jobs`：创建任务。body：
+```json
+{
+  "project_id": "uuid",
+  "shot_id": "uuid",
+  "job_type": "keyframe|draft|refine|audio",
+  "workflow_template": "keyframe_flux_ipadapter",
+  "params": {
+    "prompt": "...",
+    "negative_prompt": "...",
+    "seed": 123,
+    "width": 1280,
+    "height": 704,
+    "frames": 121,
+    "input_image_relative_path": "projects/.../keyframes/shot_001.png",
+    "output_relative_path": "projects/.../drafts/shot_001_ltx.mp4"
+  },
+  "priority": 100,
+  "data_class": "local_only",
+  "max_attempts": 3
+}
+```
 - `GET /jobs?status=queued&assigned_agent=...`：Agent 拉取。
-- `POST /jobs/{id}/claim`：Agent 声明任务。
-- `POST /jobs/{id}/complete`：body `{status:"succeeded"|"failed", error?, asset?, resource?}`。
+- `POST /jobs/{id}/claim`：Agent 声明任务，返回完整 params。
+- `POST /jobs/{id}/complete`：body `{status:"succeeded"|"failed", error?, asset?:{relative_path,type,bytes,sha256}, resource?:{...}}`。
 - `POST /jobs/{id}/cancel`。
 - `POST /jobs/{id}/retry`。
 
@@ -355,92 +367,172 @@ CREATE TABLE model_registry (
 - `GET /projects/{id}/review-queue`。
 
 ### 6.5 Compose / Compliance
-- `POST /projects/{id}/compose`。
-- `POST /assets/{id}/compliance-stamp`。
+- `POST /projects/{id}/compose`：body `{shot_ids:[...], output_name, add_watermark:true, metadata:{...}}`。创建 compose job。
+- `POST /assets/{id}/compliance-stamp`：对成片执行显式标识 + 元数据写入，写 ComplianceRecord。
 - `GET /assets/{id}/compliance`。
 
 ### 6.6 Resources
-- `GET /projects/{id}/resources`。
-- `POST /jobs/{id}/resource`。
+- `GET /projects/{id}/resources`：汇总 gpu_minutes、attempts、discarded_count、storage_bytes。
+- `POST /jobs/{id}/resource`：Agent 上报。
 
 ---
 
 ## 7. Render Agent 与 ComfyUI 集成
 
 ### 7.1 Agent 主循环
-1. 拉 queued 任务 → claim。
-2. 校验 model_registry。
-3. `workflow_inject.inject`。
-4. 上传输入图到 ComfyUI `/upload/image`。
-5. `POST /prompt` → 轮询 `/history/{prompt_id}`。
-6. 输出落到 NAS `output_relative_path`，计算 sha256。
-7. `complete` 上报 asset + resource。
+1. `GET /jobs?status=queued&assigned_agent=null` 拉任务（或轮询 central）。
+2. `POST /jobs/{id}/claim`，拿到 workflow_template、params、mapping。
+3. 校验模型：读 `model_registry`，可选校验 sha256；若缺失则任务失败并报错。
+4. 调用 `workflow_inject.inject(template_json, params, mapping)`。
+5. 上传输入图：`POST http://127.0.0.1:8188/upload/image`（multipart，name）。
+6. 提交：`POST /prompt` body `{prompt: injected_json, client_id: agent_id}`，得到 `prompt_id`。
+7. 轮询 `GET /history/{prompt_id}`，每 2s，超时 2h；同时读 ComfyUI `/queue` 判断是否卡死。
+8. 成功后从 ComfyUI 输出目录复制/确认文件到 `output_relative_path`（NAS 挂载路径），计算 sha256、bytes。
+9. `POST /jobs/{id}/complete` 上报 asset + resource（wall_minutes、gpu_minutes 可用 nvidia-smi 采样估算）。
 
 ### 7.2 参数注入映射
-实现 `inject_params(workflow_json, params, mapping)`；缺 node/input 抛 `WorkflowMappingError`。
 
-### 7.3 必要 ComfyUI 自定义节点（文档列出，不自动安装）
-- ComfyUI-Manager、IPAdapter-plus/FaceID、ControlNet-Aux、VideoHelperSuite、可选 RIFE。
-- 模型：FLUX/SDXL、IP-Adapter、Wan 2.2 5B、LTX-Video 2B；VAE 不可混用。
+`workflows/mappings/wan5b_refine.mapping.json` 示例：
+```json
+{
+  "template": "wan5b_refine",
+  "mappings": [
+    {"param": "prompt", "node_id": "6", "input": "text"},
+    {"param": "negative_prompt", "node_id": "7", "input": "text"},
+    {"param": "seed", "node_id": "3", "input": "seed"},
+    {"param": "width", "node_id": "5", "input": "width"},
+    {"param": "height", "node_id": "5", "input": "height"},
+    {"param": "frames", "node_id": "5", "input": "length"},
+    {"param": "input_image_relative_path", "node_id": "10", "input": "image"},
+    {"param": "output_relative_path", "node_id": "20", "input": "filename_prefix"}
+  ]
+}
+```
+实现 `inject_params(workflow_json, params, mapping)`：按 node_id/input 写入；若 node 或 input 不存在，抛 `WorkflowMappingError`，任务失败并记录。
+
+### 7.3 必要 ComfyUI 自定义节点（文档中列出，不自动安装）
+- ComfyUI-Manager
+- ComfyUI-IPAdapter-plus / FaceID
+- ComfyUI-ControlNet-Aux
+- ComfyUI-VideoHelperSuite
+- 可选 RIFE / frame interpolation 节点
+- 对应模型：FLUX/SDXL、IP-Adapter 权重、Wan 2.2 5B、LTX-Video 2B、VAE 按模板指定（Wan 14B 用 `wan_2.1_vae`，5B 用 `wan2.2_vae`，不可混用）。
 
 ---
 
 ## 8. Workflow 模板规格
 
-| 模板 | 用途 | 备注 |
-|---|---|---|
-| `keyframe_flux_ipadapter` | 关键帧 | IP-Adapter 锁角色 |
-| `ltx_draft` | 5 秒草稿 | 快速验证 |
-| `wan5b_refine` | 精修 | MVP 主力 |
-| `h3_audio_optional` | 音画同步 | Phase 1.5 |
-| `compose_ffmpeg` | 合成 | worker，非 ComfyUI |
+| 模板 | 用途 | 输入 | 输出 | 备注 |
+|---|---|---|---|---|
+| `keyframe_flux_ipadapter` | 关键帧 | prompt、negative、seed、width/height、character_ref_images | PNG 到 `keyframes/` | IP-Adapter 锁定角色 |
+| `ltx_draft` | 5 秒草稿 | prompt、seed、width/height、frames=121、input_keyframe | MP4 到 `drafts/` | 快速验证运镜/构图 |
+| `wan5b_refine` | 精修 | prompt、seed、width=1280、height=704、frames=121、input_keyframe | MP4 到 `refines/` | MVP 主力精修 |
+| `h3_audio_optional` | 音画同步 | prompt、input_image、duration | MP4 到 `audio_clips/` | Phase 1.5 可选 |
+| `compose_ffmpeg` | 合成 | shot_ids、audio、subtitles、watermark | final MP4 | 由 worker 执行，非 ComfyUI |
 
-14B 非 MVP 默认。
+**注意**：14B 只作为“个别镜头冲刺”，不在 MVP 默认流程；若 32GB 卡实测 14B 720p 稳定，再加 `wan14b_refine` 模板。
 
 ---
 
 ## 9. 存储与 NAS 约定
 
-挂载点：`/mnt/ai-media`。
+**挂载点**：工作站和 NAS 容器都使用 `/mnt/ai-media`。
 
+**目录规范**：
 ```text
 /mnt/ai-media/projects/{project_id}/
-  script/ keyframes/ drafts/ refines/ audio/ output/ logs/ resources/
+  script/            shot_table_v1.json
+  keyframes/         shot_001.png
+  drafts/            shot_001_ltx.mp4
+  refines/           shot_001_wan5b.mp4
+  audio/             voice.wav, bgm.mp3, subtitles.srt
+  output/            final_v1.mp4, final_v1.metadata.json
+  logs/              job_{id}.log
+  resources/         resource_summary.json
 ```
 
-`StorageAdapter`：`resolve` / `ensure_project_dirs` / `stat` / `delete`；MVP `LocalPathStorage(base=STORAGE_BASE)`。
+**StorageAdapter 接口**：
+```python
+class StorageAdapter:
+    def resolve(self, relative_path: str) -> Path: ...
+    def ensure_project_dirs(self, project_id: str) -> None: ...
+    def stat(self, relative_path: str) -> dict: ...
+    def delete(self, relative_path: str) -> None: ...
+```
+MVP 实现 `LocalPathStorage(base="/mnt/ai-media")`；不实现对象存储。
+
+**活跃/归档分层**：MVP 不自动迁移；文档写明“当前项目在 NVMe 池，归档后由人工/脚本迁移到 HDD 阵列”。可选脚本 `scripts/archive_project.sh`。
 
 ---
 
 ## 10. Web UI 功能（MVP）
 
-ProjectsPage、ProjectDetailPage、ShotBoardPage、ReviewPage、JobsPage、ComposePanel。  
-无花哨动画；`<video controls>`；badge；optimistic + toast。
+页面：
+1. **ProjectsPage**：项目列表、创建、状态。
+2. **ProjectDetailPage**：项目概览、镜头表上传、镜头列表、资源汇总。
+3. **ShotBoardPage**：按 scene 分组卡片；每镜头显示关键帧缩略图、草稿/精修视频、状态、按钮“生成关键帧/草稿/精修/通过/驳回/重试”。
+4. **ReviewPage**：待审队列；视频播放器；通过/驳回/需重试 + reason。
+5. **JobsPage**：任务列表、状态、attempt、错误、取消/重试。
+6. **ComposePanel**：选择已通过镜头、排序、上传音频/字幕、生成成片、查看合规记录。
+
+UI 要求：不做花哨动画；视频用 `<video controls>`；状态用颜色 badge；所有操作 optimistic update + 错误 toast。
 
 ---
 
 ## 11. 合成与合规
 
-FFmpeg concat + 音频 + 字幕 + drawtext「AI 生成」+ metadata。  
-`ComplianceRecord` 必写；compose 成功前强制 `compliance.stamp()`。
+### 11.1 FFmpeg 合成
+输入：按 `shot_ids` 顺序的已通过精修片段、可选音频、可选 SRT。输出：`output/final_v1.mp4`。
+
+命令骨架：
+```bash
+ffmpeg -f concat -safe 0 -i concat.txt \
+  -i voice.wav -i bgm.mp3 \
+  -filter_complex "[0:v]drawtext=text='AI 生成':x=w-tw-24:y=h-th-24:fontsize=28:fontcolor=white@0.8:box=1:boxcolor=black@0.4[v]" \
+  -map "[v]" -map 1:a? -map 2:a? \
+  -c:v libx264 -pix_fmt yuv420p -crf 18 -preset medium \
+  -metadata ai_generated="true" \
+  -metadata ai_model="wan2.2-5b;ltx-video" \
+  -metadata ai_generation_params="seed=...;prompt_hash=..." \
+  -metadata ai_service="local-video-studio" \
+  output/final_v1.mp4
+```
+字幕用 `subtitles=subtitles.srt` 滤镜；音频混合用 `amix`。
+
+### 11.2 合规
+- 显式标识：`drawtext` 画面右下角“AI 生成”，可配置文字/位置/透明度。
+- 隐式标识：容器 metadata 写入 `ai_generated`、`ai_model`、`ai_generation_params`、`ai_service`、`created_at`。
+- 水印：定义 `WatermarkProvider` 接口；MVP 用 metadata + 显式文字；可选接入不可见水印工具作为后处理。
+- 每个成片写 `ComplianceRecord`，不可绕过：compose worker 成功前必须调用 `compliance.stamp()`。
 
 ---
 
-## 12. 调度与云端（Phase 2）
+## 12. 调度与云端（Phase 2，MVP 只留接口）
 
-MVP：RQ + Redis，Agent 轮询。`CLOUD_ENABLED=false`。云端仅 stub。
+**MVP**：RQ + Redis，单工作站 Agent 轮询。不做夜间定时。
+
+**Phase 2**：
+- `scheduler` 服务：每天 23:00 读取 `night_queue` 表，将 `cloud_allowed` 任务派发到 `cloud_adapters`。
+- `ViduAdapter`：错峰 API，按调用次数记录 `api_calls`；只允许 `data_class=cloud_allowed`。
+- `CloudGPUAdapter`：租用云 4090，同步 workflow JSON + 轻量输入，拉回输出。
+- 数据分级规则在 API 层强制：`local_only` 任务禁止进入 cloud adapter。
 
 ---
 
-## 13. 资源预算与记录
+## 13. 资源预算与记录（替代财务成本核算）
 
-记录 wall_minutes、gpu_minutes、attempts、discarded_count、storage_bytes、api_calls。  
-UI 写「资源消耗」不写「成本」。
+不做“单部影片成本”，做**资源记录**：
+- 每个 job 记录 `wall_minutes`、`gpu_minutes`（Agent 用 `nvidia-smi` 采样）、`attempts`、`discarded_count`、`storage_bytes`、`api_calls`。
+- 项目汇总页显示：本片总硬件小时、废片比（生成条数/采用条数）、归档 GB。
+- 可选字段 `electricity_note` 由用户手填，不自动算钱。
+
+**UI 文案**：不写“成本”，写“资源消耗”。
 
 ---
 
 ## 14. 配置与环境变量
 
+`.env.example`：
 ```env
 APP_ENV=dev
 API_KEY=change-me
@@ -457,55 +549,176 @@ CLOUD_ENABLED=false
 VIDU_API_KEY=
 ```
 
+工作站 systemd 或 compose 环境同理；`STORAGE_BASE` 必须是 NAS 挂载路径。
+
 ---
 
 ## 15. Docker Compose 样例
 
-见规格：`docker-compose.nas.yml`、`docker-compose.workstation.yml`。  
-Linkin：使用 `docker-compose.local-video-studio.yml`，ComfyUI 独立运行。
+**NAS `docker-compose.nas.yml`**：
+```yaml
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: studio
+      POSTGRES_PASSWORD: studio
+      POSTGRES_DB: studio
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7
+  central-api:
+    build: ./backend
+    env_file: .env
+    ports: ["8000:8000"]
+    volumes: ["/mnt/ai-media:/mnt/ai-media"]
+    depends_on: [postgres, redis]
+  web:
+    build: ./web
+    ports: ["3000:80"]
+    environment: [VITE_API_BASE=http://central-api:8000]
+  worker-light:
+    build: ./backend
+    command: python -m app.workers.compose_worker
+    env_file: .env
+    volumes: ["/mnt/ai-media:/mnt/ai-media"]
+volumes:
+  pgdata:
+```
+
+**工作站 `docker-compose.workstation.yml`**：
+```yaml
+services:
+  render-agent:
+    build: ./render-agent
+    env_file: .env
+    network_mode: host
+    volumes:
+      - /mnt/ai-media:/mnt/ai-media
+      - ./workflows:/app/workflows:ro
+    restart: unless-stopped
+```
+ComfyUI 独立运行，不在 compose 内；Agent 通过 `COMFYUI_URL` 访问。
 
 ---
 
 ## 16. 开发里程碑与任务拆分（给 Cursor 的顺序）
 
-- **M0 — 仓库骨架**：目录、README、PROJECT_SPEC.md、.env.example、docker-compose；FastAPI health；前端空页。验收：health 返回 ok，前端可打开。
-- **M1 — 项目/镜头/镜头表 CRUD**：SQLAlchemy models + Alembic；Projects/Shots API + 镜头表 JSON 导入；前端 Projects／Detail／ShotBoard 只读列表。验收：创建项目、导入 3 镜头、列表展示。
-- **M2 — Render Agent + Mock ComfyUI**：`comfy_client`、`workflow_inject`、Agent claim/complete；`tests/mock_comfyui.py`；JobsPage。验收：keyframe job 经 mock 成功入库。
-- **M3 — 真实 ComfyUI 接入**（依赖环境）：导入 workflow JSON + mapping；工作站实跑关键帧→LTX 草稿；记录 wall/gpu minutes。验收：ShotBoard「生成草稿」产出 MP4，`draft_ready`。
-- **M4 — 精修 + 审核 UI**：`wan5b_refine`；ReviewPage 播放／通过／驳回／重试；状态机联动。验收：一条镜头走完 keyframe→draft→refine→approve。
-- **M5 — 合成 + 合规**：`ffmpeg_compose`（concat／音频／字幕／drawtext／metadata）；ComplianceRecord；compose 前强制 stamp。验收：成片带「AI 生成」标识与 metadata。
-- **M6 — NAS 归档与资源汇总**：StorageAdapter 固定 `STORAGE_BASE`；资源汇总 API + UI。验收：成片在 NAS 可见，资源页有硬件分钟／废片比／GB。
-- **M7 — Phase 2 可选**：夜间队列、Vidu／CloudGPU adapter stub、n8n。**MVP 不实现**。
+**M0 — 仓库骨架（0.5 天）**
+- 建目录、README、PROJECT_SPEC.md、.env.example、docker-compose 文件。
+- 后端 FastAPI 健康检查 `/health`。
+- 前端 Vite 空页面。
+- **验收**：`docker compose up` 后 `/health` 返回 ok，前端可打开。
 
-本 PR **只做 M0**，然后停止并回报。
+**M1 — 项目/镜头/镜头表 CRUD（1–2 天）**
+- SQLAlchemy models + Alembic 初始迁移。
+- Projects/Shots API + 镜头表 JSON 导入。
+- 前端 ProjectsPage、ProjectDetailPage、ShotBoardPage 只读列表。
+- **验收**：创建项目、导入 3 镜头、列表展示。
+
+**M2 — Render Agent + Mock ComfyUI（2–3 天）**
+- 实现 `comfy_client.py`、`workflow_inject.py`、Agent claim/complete。
+- 写 `tests/mock_comfyui.py`：模拟 `/prompt`、`/history`、`/upload/image`，返回假视频文件。
+- 前端 JobsPage 展示任务状态。
+- **验收**：创建一个 keyframe job，Agent 领取，mock 返回成功，Asset 入库。
+
+**M3 — 真实 ComfyUI 接入（2–4 天，依赖环境）**
+- 导入 `keyframe_flux_ipadapter.json` 和 `ltx_draft.json`，配置 mapping。
+- 工作站实跑：关键帧 → LTX 草稿 → 视频落盘到 NAS。
+- 记录 wall_minutes/gpu_minutes。
+- **验收**：从 ShotBoard 点击“生成草稿”，真实产出 5 秒 MP4，状态变 `draft_ready`。
+
+**M4 — 精修 + 审核 UI（2–3 天）**
+- 接入 `wan5b_refine.json`。
+- ReviewPage：播放、通过/驳回/重试；Review API。
+- Shot 状态机联动：approve 后 `approved`，可进入 compose。
+- **验收**：一条镜头走完 keyframe→draft→refine→approve。
+
+**M5 — 合成 + 合规（1–2 天）**
+- `ffmpeg_compose.py`：concat、音频、字幕、drawtext、metadata。
+- ComplianceRecord 写入；compose 成功前强制 stamp。
+- **验收**：3 个已通过镜头合成 15 秒成片，画面有“AI 生成”，metadata 可读。
+
+**M6 — NAS 归档与资源汇总（1 天）**
+- StorageAdapter 固定 `/mnt/ai-media`；项目目录自动创建。
+- 资源汇总 API + UI。
+- **验收**：成片在 NAS 目录可见，资源页显示硬件分钟/废片比/GB。
+
+**M7 — Phase 2 可选**
+- 夜间队列、Vidu/CloudGPU adapter stub、n8n 对接。**MVP 不实现**。
 
 ---
 
-## 17. 测试策略
+## 17. 测试策略与验收标准
 
-单元：workflow_inject、comfy_client mock、ffmpeg、compliance。  
-集成：mock ComfyUI 全生命周期；测试可用 SQLite。  
-MVP 验收：单镜头闭环无需手工命令行；失败可重试；成片 100% 带标识；输出在 `STORAGE_BASE/projects/{id}/`；资源记录含 wall_minutes／attempts／discarded_count。
+**单元测试**：
+- `workflow_inject`：正确注入、缺 node 抛错。
+- `comfy_client`：mock `/prompt` 重试、超时。
+- `ffmpeg_compose`：生成 concat 文件、metadata 参数。
+- `compliance`：显式标识必选、metadata 必写。
+
+**集成测试**：
+- 用 mock ComfyUI 跑完整 job 生命周期。
+- SQLite 内存库跑 API CRUD。
+
+**E2E（手动）**：
+1. 创建项目 `demo`。
+2. 导入 3 镜头镜头表。
+3. 每镜头：生成关键帧 → 草稿 → 精修 → 通过。
+4. Compose 成片，检查水印/metadata。
+5. 检查 NAS 目录和资源汇总。
+
+**MVP 验收标准**：
+- 单镜头从“点击生成”到“视频出现在 ShotBoard”无需手工命令行。
+- 任务失败有错误信息、可重试、attempt 上限生效。
+- 成片 100% 带显式标识和 metadata。
+- 所有输出路径在 `/mnt/ai-media/projects/{id}/` 下。
+- 资源记录包含 wall_minutes、attempts、discarded_count。
 
 ---
 
-## 18. 给 Cursor 的首条指令
+## 18. 给 Cursor 的首条指令（可直接粘贴）
 
+```text
+You are implementing the project described in PROJECT_SPEC.md.
+
+Rules:
 1. Read PROJECT_SPEC.md fully before coding.
-2. Implement milestones in order: M0 → M1 → M2；M3+ 需人工确认 GPU／ComfyUI 环境。
-3. FastAPI + SQLAlchemy 2 + Pydantic v2；测试可用 SQLite。
-4. M2 必须有 mock ComfyUI，CI 不依赖真机。
-5. 路径相对 STORAGE_BASE。
-6. 不实现 cloud/n8n/night scheduler（仅 stub）。
-7. **Start with M0 only, then stop and report.**
+2. Implement milestones in order: M0 -> M1 -> M2. Do not implement M3+ until M2 tests pass.
+3. Use FastAPI + SQLAlchemy 2 + Pydantic v2 + PostgreSQL (SQLite allowed in tests).
+4. For M2, create a mock ComfyUI server in tests/mock_comfyui.py and make all integration tests use it. Do not require a real ComfyUI instance for CI.
+5. Every API change must update docs/API.md and add/adjust tests.
+6. Keep storage paths relative to STORAGE_BASE; never hardcode absolute paths.
+7. Do not implement cloud adapters, n8n, or night scheduler in M0-M2. Leave typed stubs only.
+8. After each milestone, output: files changed, how to run tests, and a manual verification checklist.
+9. If a requirement is ambiguous, ask one concise question before coding; otherwise choose the simplest implementation consistent with the spec.
+10. Start with M0: create repo skeleton, health endpoint, compose files, and README. Then stop and report.
+```
 
 ---
 
-## 19. Known Risks
+## 19. 风险与待确认项（写进 README 的“Known Risks”）
 
-1. 5090D 32GB 货源与保修；开箱 GPU-Z 验证。
-2. Wan 14B 稳定性；MVP 用 5B。
-3. ComfyUI 节点/模型版本漂移。
-4. NAS 小文件瓶颈；活跃在 NVMe。
-5. 合规不可绕过。
-6. 云端默认关闭。
+1. **32GB 初版 5090D 的货源与保修**：开箱必须 GPU-Z 验证；保修可能换 D v2。
+2. **Wan 14B 在 32GB 上的稳定性**：MVP 不默认使用；先测 5B。
+3. **ComfyUI 节点/模型版本漂移**：workflow JSON 必须记录版本和模型哈希；模板不可随意替换 VAE。
+4. **NAS 小文件元数据瓶颈**：活跃项目放 NVMe 池，HDD 只归档；MVP 不自动迁移。
+5. **合规标识不可绕过**：compose worker 必须在成功前写 ComplianceRecord。
+6. **云端默认关闭**：`CLOUD_ENABLED=false`；任何 cloud adapter 对 `local_only` 任务必须拒绝。
+
+---
+
+这份规格可以直接作为 Cursor 的 `PROJECT_SPEC.md`。建议你先让 Cursor 只做 **M0 + M1 + M2（mock ComfyUI）**，等任务状态机和审核 UI 跑通后，再让它接真实 ComfyUI。这样即使真实模型环境出问题，平台骨架和测试仍然可运行。
+
+---
+
+## Appendix A — Linkin monorepo 映射（落地說明）
+
+本規格原文假設獨立倉庫；落地 [iiooiioo888/Linkin](https://github.com/iiooiioo888/Linkin) 時映射為：
+
+- `PROJECT_SPEC.md` → 倉庫根目錄
+- 後端 → `backend/local_video_studio/`（FastAPI router 註冊進 `backend.main`）
+- 前端 → `frontend/src/modules/local-video-studio/` → `#/modules/local-video-studio`
+- Compose → `docker-compose.local-video-studio.yml`（不破壞現有 `docker-compose.yml` 預設）
+- 整合捷徑 → `docs/integrations/local-video-studio.md`
+- `render-agent/`、`workflows/` → 可放倉庫根或 `backend/local_video_studio/` 旁（M1+）
