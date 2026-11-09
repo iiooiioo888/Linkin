@@ -1,0 +1,50 @@
+import { useMemo } from 'react';
+import type { ModulePageProps } from '../types';
+import ProjectDetailPage from './ProjectDetailPage';
+import ProjectsPage from './ProjectsPage';
+import ShotBoardPage from './ShotBoardPage';
+
+type Tab = 'projects' | 'detail' | 'shots';
+
+const TABS: ReadonlyArray<{ key: Tab; label: string }> = [
+  { key: 'projects', label: '專案' },
+  { key: 'detail', label: '詳情' },
+  { key: 'shots', label: '鏡頭板' },
+];
+
+function tabFromPage(page: string | undefined): Tab {
+  if (page === 'detail' || page === 'shots' || page === 'projects') return page;
+  return 'projects';
+}
+
+export default function StudioHub({ page }: ModulePageProps) {
+  const active = useMemo(() => tabFromPage(page), [page]);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col" data-testid="lvs-hub">
+      <nav className="flex gap-1 border-b border-[var(--console-line)] px-3 pt-2">
+        {TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            className={`px-3 py-2 text-[12px] ${
+              active === key
+                ? 'border-b-2 border-[var(--console-accent)] text-[var(--console-ink)]'
+                : 'text-[var(--console-sub)]'
+            }`}
+            data-testid={`lvs-tab-${key}`}
+            onClick={() => {
+              window.location.hash =
+                key === 'projects' ? '#/modules/local-video-studio' : `#/modules/local-video-studio/${key}`;
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+      {active === 'projects' ? <ProjectsPage /> : null}
+      {active === 'detail' ? <ProjectDetailPage /> : null}
+      {active === 'shots' ? <ShotBoardPage /> : null}
+    </div>
+  );
+}

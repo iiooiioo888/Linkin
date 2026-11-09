@@ -121,6 +121,20 @@ def _isolate_media_vault(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_local_video_studio(tmp_path, monkeypatch):
+    """Local Video Studio DB 寫入暫存；雲端關閉。"""
+    monkeypatch.setenv("LVS_DATABASE_URL", f"sqlite:///{tmp_path / 'local_video_studio.sqlite3'}")
+    monkeypatch.setenv("LVS_CLOUD_ENABLED", "false")
+    monkeypatch.setenv("CLOUD_ENABLED", "false")
+    monkeypatch.delenv("LVS_API_KEY", raising=False)
+    from backend.local_video_studio.db import reset_db_state
+
+    reset_db_state()
+    yield
+    reset_db_state()
+
+
+@pytest.fixture(autouse=True)
 def _isolate_minecraft_mcp(tmp_path, monkeypatch):
     """所有測試共用：Minecraft MCP 預設乾跑，審計寫入暫存。"""
     monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "false")

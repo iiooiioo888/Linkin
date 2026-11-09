@@ -22,7 +22,7 @@ def local_video_studio_health() -> dict[str, Any]:
     return {
         "ok": True,
         "module": "local-video-studio",
-        "milestone": "M0",
+        "milestone": "M1",
         "cloud_enabled": cfg.cloud_enabled,
     }
 
@@ -32,26 +32,40 @@ def build_local_video_studio_spec() -> ModuleSpec:
         id="local-video-studio",
         title="Local Video Studio",
         description="本機優先 AI 影片生成（創意→鏡頭→草稿→審核→合成）",
-        version="0.0.1",
+        version="0.1.0",
         kind="integration",
         icon="generic",
-        default_page="home",
+        default_page="projects",
         enabled=True,
         api_prefix=_PREFIX,
         capabilities=(
             ModuleCapability(
                 id="health",
                 title="健康檢查",
-                description="M0 探針",
+                description="探針",
                 api_prefix=_PREFIX,
                 routes=("/health", "/api/v1/health"),
             ),
             ModuleCapability(
-                id="home",
-                title="工作室",
-                description="空殼首頁（M0）",
-                api_prefix=_PREFIX,
-                routes=("/health",),
+                id="projects",
+                title="專案",
+                description="專案列表與建立",
+                api_prefix=f"{_PREFIX}/api/v1",
+                routes=("/projects",),
+            ),
+            ModuleCapability(
+                id="detail",
+                title="專案詳情",
+                description="專案狀態與統計",
+                api_prefix=f"{_PREFIX}/api/v1",
+                routes=("/projects/{id}",),
+            ),
+            ModuleCapability(
+                id="shots",
+                title="鏡頭板",
+                description="鏡頭列表與鏡頭表匯入",
+                api_prefix=f"{_PREFIX}/api/v1",
+                routes=("/projects/{id}/shots", "/projects/{id}/scripts", "/shots/{id}"),
             ),
         ),
         nav_groups=(
@@ -60,15 +74,30 @@ def build_local_video_studio_spec() -> ModuleSpec:
                 label="影片工作室",
                 items=(
                     ModuleNavItem(
-                        key="home",
+                        key="projects",
                         icon="▶",
-                        label="工作室",
-                        hint="M0 空殼",
-                        capability="home",
+                        label="專案",
+                        hint="列表／建立",
+                        capability="projects",
+                    ),
+                    ModuleNavItem(
+                        key="detail",
+                        icon="☰",
+                        label="詳情",
+                        hint="專案狀態",
+                        capability="detail",
+                    ),
+                    ModuleNavItem(
+                        key="shots",
+                        icon="▦",
+                        label="鏡頭板",
+                        hint="鏡頭表",
+                        capability="shots",
                     ),
                 ),
             ),
         ),
+        page_aliases=(("home", "projects"),),
         health=local_video_studio_health,
     )
 

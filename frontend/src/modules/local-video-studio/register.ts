@@ -2,7 +2,10 @@ import { registerModulePages } from '../pageRegistry';
 
 export function registerLocalVideoStudioModule(): void {
   registerModulePages('local-video-studio', {
-    home: () => import('./LocalVideoStudioShell'),
-    '*': () => import('./LocalVideoStudioShell'),
+    projects: () => import('./StudioHub'),
+    detail: () => import('./StudioHub'),
+    shots: () => import('./StudioHub'),
+    home: () => import('./StudioHub'),
+    '*': () => import('./StudioHub'),
   });
 }

@@ -33,7 +33,9 @@ def load_config() -> LocalVideoStudioConfig:
         app_env=(os.getenv("LVS_APP_ENV") or os.getenv("APP_ENV") or "dev").strip(),
         api_key=(os.getenv("LVS_API_KEY") or os.getenv("API_KEY") or "").strip(),
         database_url=(
-            os.getenv("LVS_DATABASE_URL") or os.getenv("DATABASE_URL") or ""
+            os.getenv("LVS_DATABASE_URL")
+            or os.getenv("LOCAL_VIDEO_STUDIO_DATABASE_URL")
+            or ""
         ).strip(),
         redis_url=(os.getenv("LVS_REDIS_URL") or os.getenv("REDIS_URL") or "").strip(),
         storage_base=(
