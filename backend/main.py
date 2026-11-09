@@ -351,6 +351,9 @@ register_mediacrawler(app)
 from backend.media_vault import register_media_vault
 
 register_media_vault(app)
+from backend.local_video_studio import register_local_video_studio
+
+register_local_video_studio(app)
 
 
 @app.exception_handler(InsufficientCreditsError)

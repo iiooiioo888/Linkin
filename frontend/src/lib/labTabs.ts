@@ -178,7 +178,16 @@ export const LAB_INTEGRATE_SECTIONS: LabNavSection[] = [
   {
     id: 'design',
     label: '設計',
-    items: [link('openpencil', '✎', 'OpenPencil', 'Design-as-Code', '#/monitor/integrations/openpencil')],
+    items: [
+      link('openpencil', '✎', 'OpenPencil', 'Design-as-Code', '#/monitor/integrations/openpencil'),
+      link(
+        'local-video-studio',
+        '▶',
+        'Local Video Studio',
+        '本機優先影片工作室',
+        '#/modules/local-video-studio',
+      ),
+    ],
   },
   {
     id: 'skills',
