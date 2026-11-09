@@ -25,10 +25,22 @@ class LocalVideoStudioConfig:
     agent_id: str = "workstation-5090"
     cloud_enabled: bool = False
     module_enabled: bool = True
+    use_mock_comfy: bool = True
+    compliance_text: str = "AI 生成"
+    compliance_position: str = "bottom-right"
 
 
 def load_config() -> LocalVideoStudioConfig:
     """優先讀 ``LVS_*``，再回退規格中的通用鍵名（僅用於 studio overlay）。"""
+    # LVS_USE_MOCK_COMFY 優先；未設時：有顯式 COMFYUI_URL 則走真實，否則 mock
+    mock_env = os.getenv("LVS_USE_MOCK_COMFY")
+    comfy_url = (
+        os.getenv("LVS_COMFYUI_URL") or os.getenv("COMFYUI_URL") or ""
+    ).strip()
+    if mock_env is not None and str(mock_env).strip() != "":
+        use_mock = _truthy(mock_env, default=True)
+    else:
+        use_mock = not bool(comfy_url)
     return LocalVideoStudioConfig(
         app_env=(os.getenv("LVS_APP_ENV") or os.getenv("APP_ENV") or "dev").strip(),
         api_key=(os.getenv("LVS_API_KEY") or os.getenv("API_KEY") or "").strip(),
@@ -41,11 +53,7 @@ def load_config() -> LocalVideoStudioConfig:
         storage_base=(
             os.getenv("LVS_STORAGE_BASE") or os.getenv("STORAGE_BASE") or "/mnt/ai-media"
         ).strip(),
-        comfyui_url=(
-            os.getenv("LVS_COMFYUI_URL")
-            or os.getenv("COMFYUI_URL")
-            or "http://127.0.0.1:8188"
-        ).strip(),
+        comfyui_url=comfy_url or "http://127.0.0.1:8188",
         agent_id=(
             os.getenv("LVS_AGENT_ID") or os.getenv("AGENT_ID") or "workstation-5090"
         ).strip(),
@@ -54,4 +62,13 @@ def load_config() -> LocalVideoStudioConfig:
             default=False,
         ),
         module_enabled=_truthy(os.getenv("LVS_ENABLED"), default=True),
+        use_mock_comfy=use_mock,
+        compliance_text=(
+            os.getenv("LVS_COMPLIANCE_TEXT") or os.getenv("COMPLIANCE_TEXT") or "AI 生成"
+        ).strip(),
+        compliance_position=(
+            os.getenv("LVS_COMPLIANCE_POSITION")
+            or os.getenv("COMPLIANCE_POSITION")
+            or "bottom-right"
+        ).strip(),
     )

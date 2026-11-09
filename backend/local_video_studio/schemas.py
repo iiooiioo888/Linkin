@@ -148,3 +148,68 @@ class JobOut(BaseModel):
     asset: AssetOut | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ReviewCreate(BaseModel):
+    decision: str = Field(pattern="^(approve|reject|needs_retry)$")
+    reason: str | None = None
+    reviewer: str | None = "owner"
+
+
+class ReviewOut(BaseModel):
+    id: str
+    asset_id: str
+    decision: str
+    reason: str | None = None
+    reviewer: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ReviewQueueItem(BaseModel):
+    asset_id: str
+    project_id: str
+    shot_id: str | None = None
+    asset_type: str
+    relative_path: str
+    shot_status: str | None = None
+    last_decision: str | None = None
+
+
+class ComposeRequest(BaseModel):
+    shot_ids: list[str] = Field(min_length=1)
+    output_name: str = "final_v1.mp4"
+    add_watermark: bool = True
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ComposeOut(BaseModel):
+    job_id: str | None = None
+    asset: AssetOut
+    compliance_id: str
+    relative_path: str
+    engine: str
+
+
+class ResourceSummary(BaseModel):
+    project_id: str
+    gpu_minutes: float
+    wall_minutes: float
+    attempts: int
+    discarded_count: int
+    storage_bytes: int
+    api_calls: int
+    job_count: int
+    asset_count: int
+
+
+class ComplianceOut(BaseModel):
+    id: str
+    asset_id: str
+    explicit_mark: bool
+    metadata_json: dict[str, Any]
+    watermark_id: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

@@ -1,21 +1,34 @@
 import { useMemo } from 'react';
 import type { ModulePageProps } from '../types';
+import ComposePanel from './ComposePanel';
 import JobsPage from './JobsPage';
 import ProjectDetailPage from './ProjectDetailPage';
 import ProjectsPage from './ProjectsPage';
+import ReviewPage from './ReviewPage';
 import ShotBoardPage from './ShotBoardPage';
 
-type Tab = 'projects' | 'detail' | 'shots' | 'jobs';
+type Tab = 'projects' | 'detail' | 'shots' | 'jobs' | 'review' | 'compose';
 
 const TABS: ReadonlyArray<{ key: Tab; label: string }> = [
   { key: 'projects', label: '專案' },
   { key: 'detail', label: '詳情' },
   { key: 'shots', label: '鏡頭板' },
   { key: 'jobs', label: '任務' },
+  { key: 'review', label: '審核' },
+  { key: 'compose', label: '合成' },
 ];
 
 function tabFromPage(page: string | undefined): Tab {
-  if (page === 'detail' || page === 'shots' || page === 'projects' || page === 'jobs') return page;
+  if (
+    page === 'detail' ||
+    page === 'shots' ||
+    page === 'projects' ||
+    page === 'jobs' ||
+    page === 'review' ||
+    page === 'compose'
+  ) {
+    return page;
+  }
   return 'projects';
 }
 
@@ -48,6 +61,8 @@ export default function StudioHub({ page }: ModulePageProps) {
       {active === 'detail' ? <ProjectDetailPage /> : null}
       {active === 'shots' ? <ShotBoardPage /> : null}
       {active === 'jobs' ? <JobsPage /> : null}
+      {active === 'review' ? <ReviewPage /> : null}
+      {active === 'compose' ? <ComposePanel /> : null}
     </div>
   );
 }

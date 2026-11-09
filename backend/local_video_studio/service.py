@@ -66,6 +66,13 @@ def create_project(session: Session, body: ProjectCreate) -> ProjectOut:
     project = Project(name=body.name.strip(), description=body.description)
     session.add(project)
     session.flush()
+    try:
+        from backend.local_video_studio.storage import get_storage
+
+        get_storage().ensure_project_dirs(project.id)
+    except Exception:
+        # 儲存根目錄不可寫時不阻擋 CRUD（測試／CI）
+        pass
     return project_to_out(session, project)
 
 

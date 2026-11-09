@@ -166,3 +166,69 @@ export async function createLvsJob(body: {
   });
   return parseJson(resp);
 }
+
+export type LvsReviewQueueItem = {
+  asset_id: string;
+  project_id: string;
+  shot_id?: string | null;
+  asset_type: string;
+  relative_path: string;
+  shot_status?: string | null;
+  last_decision?: string | null;
+};
+
+export async function listLvsReviewQueue(projectId: string): Promise<LvsReviewQueueItem[]> {
+  const resp = await fetch(
+    apiUrl(`/local-video-studio/api/v1/projects/${encodeURIComponent(projectId)}/review-queue`),
+  );
+  return parseJson(resp);
+}
+
+export async function reviewLvsAsset(
+  assetId: string,
+  body: { decision: 'approve' | 'reject' | 'needs_retry'; reason?: string },
+): Promise<unknown> {
+  const resp = await fetch(
+    apiUrl(`/local-video-studio/api/v1/assets/${encodeURIComponent(assetId)}/review`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  return parseJson(resp);
+}
+
+export async function composeLvsProject(
+  projectId: string,
+  body: { shot_ids: string[]; output_name?: string; add_watermark?: boolean },
+): Promise<{ relative_path: string; compliance_id: string; engine: string }> {
+  const resp = await fetch(
+    apiUrl(`/local-video-studio/api/v1/projects/${encodeURIComponent(projectId)}/compose`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  return parseJson(resp);
+}
+
+export type LvsResourceSummary = {
+  project_id: string;
+  gpu_minutes: number;
+  wall_minutes: number;
+  attempts: number;
+  discarded_count: number;
+  storage_bytes: number;
+  api_calls: number;
+  job_count: number;
+  asset_count: number;
+};
+
+export async function getLvsResources(projectId: string): Promise<LvsResourceSummary> {
+  const resp = await fetch(
+    apiUrl(`/local-video-studio/api/v1/projects/${encodeURIComponent(projectId)}/resources`),
+  );
+  return parseJson(resp);
+}

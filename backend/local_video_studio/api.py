@@ -7,18 +7,27 @@ from typing import Any
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from backend.local_video_studio import compose_service
 from backend.local_video_studio import jobs as jobs_service
+from backend.local_video_studio import reviews as reviews_service
 from backend.local_video_studio import service
 from backend.local_video_studio.config import load_config
 from backend.local_video_studio.db import get_session_factory, init_db
 from backend.local_video_studio.schemas import (
     AssetOut,
+    ComplianceOut,
+    ComposeOut,
+    ComposeRequest,
     JobComplete,
     JobCreate,
     JobOut,
     ProjectCreate,
     ProjectOut,
     ProjectPatch,
+    ResourceSummary,
+    ReviewCreate,
+    ReviewOut,
+    ReviewQueueItem,
     ScriptOut,
     ScriptUpload,
     ShotCreate,
@@ -60,8 +69,9 @@ def health() -> dict[str, Any]:
     return {
         "ok": True,
         "module": "local-video-studio",
-        "milestone": "M2",
+        "milestone": "M6",
         "cloud_enabled": cfg.cloud_enabled,
+        "use_mock_comfy": cfg.use_mock_comfy,
         "app_env": cfg.app_env,
     }
 
@@ -197,6 +207,78 @@ def api_list_assets(
     db: Session = Depends(get_db),
 ) -> list[AssetOut]:
     return jobs_service.list_assets(db, project_id, asset_type=type)
+
+
+@v1.post(
+    "/assets/{asset_id}/review",
+    response_model=ReviewOut,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_review_asset(
+    asset_id: str, body: ReviewCreate, db: Session = Depends(get_db)
+) -> ReviewOut:
+    return reviews_service.create_review(db, asset_id, body)
+
+
+@v1.get(
+    "/projects/{project_id}/review-queue",
+    response_model=list[ReviewQueueItem],
+    dependencies=[Depends(_require_api_key)],
+)
+def api_review_queue(project_id: str, db: Session = Depends(get_db)) -> list[ReviewQueueItem]:
+    return reviews_service.review_queue(db, project_id)
+
+
+@v1.post(
+    "/projects/{project_id}/compose",
+    response_model=ComposeOut,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_compose(
+    project_id: str, body: ComposeRequest, db: Session = Depends(get_db)
+) -> ComposeOut:
+    return compose_service.compose_project(db, project_id, body)
+
+
+@v1.get(
+    "/assets/{asset_id}/compliance",
+    response_model=ComplianceOut,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_get_compliance(asset_id: str, db: Session = Depends(get_db)) -> ComplianceOut:
+    return compose_service.get_compliance(db, asset_id)
+
+
+@v1.post(
+    "/assets/{asset_id}/compliance-stamp",
+    response_model=ComplianceOut,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_stamp_compliance(asset_id: str, db: Session = Depends(get_db)) -> ComplianceOut:
+    from backend.local_video_studio.compliance import stamp
+    from backend.local_video_studio.models import Asset
+
+    asset = db.get(Asset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="資產不存在")
+    rec = stamp(db, asset=asset, force=True)
+    return ComplianceOut(
+        id=rec.id,
+        asset_id=rec.asset_id,
+        explicit_mark=rec.explicit_mark,
+        metadata_json=rec.metadata_json,
+        watermark_id=rec.watermark_id,
+        created_at=rec.created_at,
+    )
+
+
+@v1.get(
+    "/projects/{project_id}/resources",
+    response_model=ResourceSummary,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_resources(project_id: str, db: Session = Depends(get_db)) -> ResourceSummary:
+    return jobs_service.resource_summary(db, project_id)
 
 
 router.include_router(v1)

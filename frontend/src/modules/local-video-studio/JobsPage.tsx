@@ -51,7 +51,11 @@ export default function JobsPage() {
     );
   }
 
-  const onCreateKeyframe = async () => {
+  const enqueue = async (
+    job_type: 'keyframe' | 'draft' | 'refine',
+    workflow_template: string,
+    params: Record<string, unknown>,
+  ) => {
     setMessage('');
     setError('');
     if (!shotId) {
@@ -62,19 +66,11 @@ export default function JobsPage() {
       const job = await createLvsJob({
         project_id: projectId,
         shot_id: shotId,
-        job_type: 'keyframe',
-        workflow_template: 'keyframe_flux_ipadapter',
-        params: {
-          prompt: 'cinematic keyframe',
-          negative_prompt: 'blurry',
-          seed: 42,
-          width: 1024,
-          height: 1024,
-          input_image_relative_path: `projects/${projectId}/script/ref.png`,
-          output_relative_path: `projects/${projectId}/keyframes/${shotId}.png`,
-        },
+        job_type,
+        workflow_template,
+        params,
       });
-      setMessage(`已建立任務 ${job.id.slice(0, 8)}（queued）— 由 render-agent／測試 poller 認領`);
+      setMessage(`已建立 ${job_type} ${job.id.slice(0, 8)}（queued）`);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -86,7 +82,9 @@ export default function JobsPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-[16px] font-semibold text-[var(--console-ink)]">任務</h2>
-          <p className="text-[12px] text-[var(--console-sub)]">M2：keyframe job → agent claim → mock ComfyUI</p>
+          <p className="text-[12px] text-[var(--console-sub)]">
+            keyframe／ltx_draft／wan5b_refine → agent（mock 或真實 ComfyUI）
+          </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-[11px] text-[var(--console-sub)]">
@@ -107,10 +105,61 @@ export default function JobsPage() {
           <button
             type="button"
             className="rounded bg-[var(--console-accent)] px-3 py-1.5 text-[12px] text-white"
-            onClick={() => void onCreateKeyframe()}
+            onClick={() =>
+              void enqueue('keyframe', 'keyframe_flux_ipadapter', {
+                prompt: 'cinematic keyframe',
+                negative_prompt: 'blurry',
+                seed: 42,
+                width: 1024,
+                height: 1024,
+                input_image_relative_path: `projects/${projectId}/script/ref.png`,
+                output_relative_path: `projects/${projectId}/keyframes/${shotId}.png`,
+              })
+            }
             data-testid="lvs-job-create-keyframe"
           >
-            建立 keyframe 任務
+            關鍵幀
+          </button>
+          <button
+            type="button"
+            className="rounded border border-[var(--console-line)] px-3 py-1.5 text-[12px] text-[var(--console-ink)]"
+            onClick={() =>
+              void enqueue('draft', 'ltx_draft', {
+                prompt: 'cinematic draft clip',
+                negative_prompt: 'blurry',
+                seed: 7,
+                width: 1280,
+                height: 704,
+                frames: 121,
+                input_image_relative_path: `projects/${projectId}/keyframes/${shotId}.png`,
+                output_relative_path: `projects/${projectId}/drafts/${shotId}.mp4`,
+              })
+            }
+            data-testid="lvs-job-create-draft"
+          >
+            草稿 LTX
+          </button>
+          <button
+            type="button"
+            className="rounded border border-[var(--console-line)] px-3 py-1.5 text-[12px] text-[var(--console-ink)]"
+            onClick={() =>
+              void enqueue('refine', 'wan5b_refine', {
+                prompt: 'refined cinematic clip',
+                negative_prompt: 'artifacts',
+                seed: 11,
+                width: 1280,
+                height: 704,
+                frames: 121,
+                input_image_relative_path: `projects/${projectId}/keyframes/${shotId}.png`,
+                output_relative_path: `projects/${projectId}/refines/${shotId}.mp4`,
+              })
+            }
+            data-testid="lvs-job-create-refine"
+          >
+            精修 Wan5B
+          </button>
+          <button type="button" className="text-[12px] text-[var(--console-accent)] hover:underline" onClick={() => go('review')}>
+            審核
           </button>
           <button type="button" className="text-[12px] text-[var(--console-accent)] hover:underline" onClick={() => go('shots')}>
             鏡頭板

@@ -69,8 +69,34 @@ def run_once(
     session.flush()
 
     started = time.monotonic()
-    owns_client = comfy is None
-    client = comfy or ComfyClient(cfg.comfyui_url)
+    owns_client = False
+    mock_server = None
+    if comfy is not None:
+        client = comfy
+    elif cfg.use_mock_comfy:
+        from fastapi.testclient import TestClient
+
+        from backend.local_video_studio.mock_comfyui import create_mock_comfy_app
+
+        class _Adapter:
+            def __init__(self, app):
+                self._c = TestClient(app)
+
+            def post(self, url, **kwargs):
+                return self._c.post(url, **kwargs)
+
+            def get(self, url, **kwargs):
+                return self._c.get(url, **kwargs)
+
+            def close(self):
+                self._c.close()
+
+        mock_server = create_mock_comfy_app(output_dir=root / "_mock_comfy")
+        client = ComfyClient(cfg.comfyui_url, client=_Adapter(mock_server))
+        owns_client = True
+    else:
+        client = ComfyClient(cfg.comfyui_url)
+        owns_client = True
     try:
         template_json, mapping = _load_template(claimed.workflow_template)
         params = dict(claimed.params_json or {})
@@ -111,9 +137,19 @@ def run_once(
             raise ComfyClientError("mock/comfy 未回傳輸出檔名")
 
         raw = client.fetch_output_bytes(filename)
+        folder = {
+            "keyframe": "keyframes",
+            "draft": "drafts",
+            "refine": "refines",
+            "audio": "audio",
+        }.get(claimed.job_type, "keyframes")
+        default_name = filename if "." in filename else f"{claimed.shot_id}_{filename}"
         out_rel = params.get("output_relative_path") or (
-            f"projects/{claimed.project_id}/keyframes/{claimed.shot_id}_{filename}"
+            f"projects/{claimed.project_id}/{folder}/{default_name}"
         )
+        # mapping 可能把 output_relative_path 寫進 filename_prefix；強制落盤相對路徑
+        if isinstance(out_rel, str) and not str(out_rel).startswith("projects/"):
+            out_rel = f"projects/{claimed.project_id}/{folder}/{claimed.shot_id}_{filename}"
         size, sha = _ensure_output_path(root, str(out_rel), raw)
         wall = (time.monotonic() - started) / 60.0
 

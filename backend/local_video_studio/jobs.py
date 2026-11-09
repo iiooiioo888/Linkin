@@ -168,16 +168,17 @@ def complete_job(session: Session, job_id: str, body: JobComplete) -> JobOut:
         )
         session.add(asset)
         session.flush()
-        if job.job_type == "keyframe":
-            shot = session.get(Shot, job.shot_id)
-            if shot is not None:
+        shot = session.get(Shot, job.shot_id)
+        if shot is not None:
+            if job.job_type == "keyframe":
                 shot.selected_keyframe_asset_id = asset.id
                 shot.status = "keyframe_ready"
-        elif job.job_type == "draft":
-            shot = session.get(Shot, job.shot_id)
-            if shot is not None:
+            elif job.job_type == "draft":
                 shot.selected_clip_asset_id = asset.id
                 shot.status = "draft_ready"
+            elif job.job_type == "refine":
+                shot.selected_clip_asset_id = asset.id
+                shot.status = "refine_ready"
     else:
         job.status = "failed"
         job.error = body.error or "failed"
@@ -237,3 +238,41 @@ def list_assets(
     if asset_type:
         stmt = stmt.where(Asset.type == asset_type)
     return [asset_to_out(a) for a in session.scalars(stmt).all() if a]  # type: ignore[misc]
+
+
+def resource_summary(session: Session, project_id: str):
+    from backend.local_video_studio.schemas import ResourceSummary
+
+    if session.get(Project, project_id) is None:
+        raise HTTPException(status_code=404, detail="專案不存在")
+    from backend.local_video_studio.models import ResourceRecord
+
+    jobs = session.scalars(
+        select(GenerationJob).where(GenerationJob.project_id == project_id)
+    ).all()
+    assets = session.scalars(select(Asset).where(Asset.project_id == project_id)).all()
+    gpu = wall = discarded = api_calls = attempts = storage = 0.0
+    for job in jobs:
+        attempts += int(job.attempt or 0)
+        recs = session.scalars(
+            select(ResourceRecord).where(ResourceRecord.job_id == job.id)
+        ).all()
+        for rec in recs:
+            gpu += float(rec.gpu_minutes or 0)
+            wall += float(rec.wall_minutes or 0)
+            discarded += int(rec.discarded_count or 0)
+            api_calls += int(rec.api_calls or 0)
+            storage += float(rec.storage_bytes or 0)
+    for asset in assets:
+        storage += float(asset.bytes or 0)
+    return ResourceSummary(
+        project_id=project_id,
+        gpu_minutes=round(gpu, 4),
+        wall_minutes=round(wall, 4),
+        attempts=int(attempts),
+        discarded_count=int(discarded),
+        storage_bytes=int(storage),
+        api_calls=int(api_calls),
+        job_count=len(jobs),
+        asset_count=len(assets),
+    )

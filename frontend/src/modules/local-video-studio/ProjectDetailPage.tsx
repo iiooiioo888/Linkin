@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { getLvsProject, recalledLvsProjectId, type LvsProject } from '../../lib/localVideoStudioApi';
+import {
+  getLvsProject,
+  getLvsResources,
+  recalledLvsProjectId,
+  type LvsProject,
+  type LvsResourceSummary,
+} from '../../lib/localVideoStudioApi';
 
 function go(page: string): void {
   window.location.hash = `#/modules/local-video-studio/${page}`;
@@ -7,6 +13,7 @@ function go(page: string): void {
 
 export default function ProjectDetailPage() {
   const [project, setProject] = useState<LvsProject | null>(null);
+  const [resources, setResources] = useState<LvsResourceSummary | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -15,8 +22,11 @@ export default function ProjectDetailPage() {
       setError('尚未選擇專案，請先從專案列表進入。');
       return;
     }
-    void getLvsProject(id)
-      .then(setProject)
+    void Promise.all([getLvsProject(id), getLvsResources(id)])
+      .then(([p, r]) => {
+        setProject(p);
+        setResources(r);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
 
@@ -25,7 +35,7 @@ export default function ProjectDetailPage() {
       <header className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-[16px] font-semibold text-[var(--console-ink)]">專案詳情</h2>
-          <p className="text-[12px] text-[var(--console-sub)]">狀態與鏡頭統計（M1 唯讀＋導覽）</p>
+          <p className="text-[12px] text-[var(--console-sub)]">狀態、鏡頭與資源彙總（M6）</p>
         </div>
         <div className="flex gap-3 text-[12px]">
           <button type="button" className="text-[var(--console-accent)] hover:underline" onClick={() => go('projects')}>
@@ -33,6 +43,12 @@ export default function ProjectDetailPage() {
           </button>
           <button type="button" className="text-[var(--console-accent)] hover:underline" onClick={() => go('shots')}>
             鏡頭板
+          </button>
+          <button type="button" className="text-[var(--console-accent)] hover:underline" onClick={() => go('review')}>
+            審核
+          </button>
+          <button type="button" className="text-[var(--console-accent)] hover:underline" onClick={() => go('compose')}>
+            合成
           </button>
         </div>
       </header>
@@ -58,6 +74,30 @@ export default function ProjectDetailPage() {
         </dl>
       ) : !error ? (
         <p className="text-[12px] text-[var(--console-sub)]">載入中…</p>
+      ) : null}
+
+      {resources ? (
+        <section className="max-w-lg" data-testid="lvs-resources">
+          <h3 className="mb-2 text-[13px] font-medium text-[var(--console-ink)]">資源彙總</h3>
+          <dl className="grid grid-cols-[8rem_1fr] gap-x-3 gap-y-1 text-[12px]">
+            <dt className="text-[var(--console-sub)]">GPU 分鐘</dt>
+            <dd className="text-[var(--console-ink)]">{resources.gpu_minutes}</dd>
+            <dt className="text-[var(--console-sub)]">牆鐘分鐘</dt>
+            <dd className="text-[var(--console-ink)]">{resources.wall_minutes}</dd>
+            <dt className="text-[var(--console-sub)]">嘗試次數</dt>
+            <dd className="text-[var(--console-ink)]">{resources.attempts}</dd>
+            <dt className="text-[var(--console-sub)]">廢片數</dt>
+            <dd className="text-[var(--console-ink)]">{resources.discarded_count}</dd>
+            <dt className="text-[var(--console-sub)]">儲存</dt>
+            <dd className="text-[var(--console-ink)]">
+              {(resources.storage_bytes / (1024 * 1024)).toFixed(2)} MB
+            </dd>
+            <dt className="text-[var(--console-sub)]">任務／資產</dt>
+            <dd className="text-[var(--console-ink)]">
+              {resources.job_count} / {resources.asset_count}
+            </dd>
+          </dl>
+        </section>
       ) : null}
     </div>
   );
