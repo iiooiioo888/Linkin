@@ -84,7 +84,7 @@ export default function GalleryPanel({ initialBatchId, onOpenMonitor }: Props) {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-testid="media-vault-gallery">
       <header className="sticky top-0 z-10 flex flex-wrap items-end gap-3 border-b border-[var(--console-line)] bg-[var(--console-canvas)] px-4 py-3 backdrop-blur-sm">
         <div>
-          <p className="text-[12px] font-medium text-[var(--console-ink)]">图库</p>
+          <p className="text-[12px] font-medium text-[var(--console-ink)]">圖庫</p>
           <p className="text-[11px] text-[var(--console-sub)]">共 {loading ? '…' : total} 筆</p>
         </div>
         <div className="flex flex-1 flex-wrap gap-2 text-[11px]">
@@ -165,9 +165,9 @@ export default function GalleryPanel({ initialBatchId, onOpenMonitor }: Props) {
         </div>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-16 text-center" data-testid="media-vault-gallery-empty">
-          <p className="text-[13px] font-medium text-[var(--console-ink)]">尚无媒资</p>
+          <p className="text-[13px] font-medium text-[var(--console-ink)]">尚無媒資</p>
           <p className="max-w-sm text-[11px] text-[var(--console-sub)]">
-            在「控制」页启动 MediaCrawler 任务，完成后点击「入庫」，或在此调整筛选条件。
+            在「控制」頁啟動 MediaCrawler 任務，完成後點擊「入庫」，或在此調整篩選條件。
           </p>
         </div>
       ) : (

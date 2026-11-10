@@ -36,6 +36,7 @@ describe('lab component groups', () => {
     ]);
     expect(group?.sections?.find((section) => section.id === 'crawl')?.items.map((item) => item.label)).toEqual([
       '爬蟲',
+      '採集 · 媒體庫',
       '社媒',
       'Agent Reach',
     ]);

@@ -71,7 +71,7 @@ export interface AppShellProps {
 
   /** 监控中心子分頁 */
   monitorTab: MonitorTab;
-  onMonitorTabChange: (tab: MonitorTab) => void;
+  onMonitorTabChange: (tab: MonitorTab, worldModuleId?: string | null) => void;
   focusAgentId: string | null;
   onFocusAgent: (id: string | null) => void;
   focusTaskId: string | null;

@@ -35,7 +35,7 @@ import {
   resolveRoutingPreviewForSend,
   usesTaskWorkspace,
 } from './lib/routingPreview';
-import { hydrateWorldModules } from './lib/worldModules';
+import { hydrateWorldModules, inferWorldModuleIdForTab } from './lib/worldModules';
 import { normalizeMonitorTab } from './lib/monitorTabs';
 import { splitThink } from './lib/splitThink';
 import AppShell from './components/AppShell';
@@ -88,6 +88,7 @@ export default function App() {
   const [routeReady, setRouteReady] = useState(false);
   const [activeView, setActiveView] = useState<ViewKey>(initialRoute.activeView);
   const [monitorTab, setMonitorTab] = useState<MonitorTab>(initialRoute.monitorTab);
+  const [worldModuleId, setWorldModuleId] = useState<string | null>(initialRoute.worldModuleId);
   /** 進入監控「角色 Agent」時預選一位，主區開工作台；名冊在左側外圍 */
   const [focusAgentId, setFocusAgentId] = useState<string | null>(initialRoute.focusAgentId);
   const [focusTaskId, setFocusTaskId] = useState<string | null>(initialRoute.focusTaskId);
@@ -110,6 +111,7 @@ export default function App() {
   surfaceRef.current = {
     view: activeView,
     monitorTab,
+    worldModuleId,
     focusAgentId,
     focusTaskId,
     traceTaskId,
@@ -147,6 +149,7 @@ export default function App() {
       appRouteFromState({
         activeView,
         monitorTab,
+        worldModuleId,
         focusAgentId,
         focusTaskId,
         traceTaskId,
@@ -154,7 +157,7 @@ export default function App() {
         labSubTab,
       }),
     );
-  }, [routeReady, activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
+  }, [routeReady, activeView, monitorTab, worldModuleId, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -162,6 +165,7 @@ export default function App() {
       const current = appRouteFromState({
         activeView,
         monitorTab,
+        worldModuleId,
         focusAgentId,
         focusTaskId,
         traceTaskId,
@@ -172,6 +176,7 @@ export default function App() {
       const next = applyAppRoute(parsed);
       setActiveView(next.activeView);
       setMonitorTab(next.monitorTab);
+      setWorldModuleId(next.worldModuleId);
       setFocusAgentId(next.focusAgentId);
       setFocusTaskId(next.focusTaskId);
       setTraceTaskId(next.traceTaskId);
@@ -180,7 +185,7 @@ export default function App() {
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, [activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
+  }, [activeView, monitorTab, worldModuleId, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
 
   useEffect(() => {
     const onPeek = (ev: Event) => {
@@ -201,6 +206,14 @@ export default function App() {
       const route = appRouteFromState({
         activeView: patch.view ?? activeView,
         monitorTab: patch.monitorTab ?? monitorTab,
+        worldModuleId:
+          patch.worldModuleId !== undefined
+            ? patch.worldModuleId
+            : patch.view && patch.view !== 'monitor'
+              ? null
+              : patch.monitorTab !== undefined
+                ? inferWorldModuleIdForTab(patch.monitorTab, worldModuleId)
+                : worldModuleId,
         focusAgentId: patch.focusAgentId !== undefined ? patch.focusAgentId : focusAgentId,
         focusTaskId: patch.focusTaskId !== undefined ? patch.focusTaskId : focusTaskId,
         traceTaskId: patch.traceTaskId !== undefined ? patch.traceTaskId : traceTaskId,
@@ -210,13 +223,14 @@ export default function App() {
       const applied = applyAppRoute(route);
       setActiveView(applied.activeView);
       setMonitorTab(applied.monitorTab);
+      setWorldModuleId(applied.worldModuleId);
       setFocusAgentId(applied.focusAgentId);
       setFocusTaskId(applied.focusTaskId);
       setTraceTaskId(applied.traceTaskId);
       setRahoFocus(applied.rahoFocus);
       setLabSubTab(applied.labSubTab);
     },
-    [activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab],
+    [activeView, monitorTab, worldModuleId, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab],
   );
 
   useEffect(() => {
@@ -912,7 +926,7 @@ export default function App() {
   );
 
   const handleMonitorTabChange = useCallback(
-    (tab: MonitorTab) => {
+    (tab: MonitorTab, nextWorldModuleId?: string | null) => {
       if (tab === 'grill') {
         requestRoleGrillDesk(focusAgentId && !isLinkinStudioAgent(focusAgentId) ? focusAgentId : undefined);
       }
@@ -920,15 +934,18 @@ export default function App() {
       const keepAgent =
         (resolved === 'agents' && !isLinkinStudioAgent(focusAgentId)) ||
         (resolved === 'studio' && isLinkinStudioAgent(focusAgentId));
+      const inferredModuleId =
+        nextWorldModuleId !== undefined ? nextWorldModuleId : inferWorldModuleIdForTab(resolved, worldModuleId);
       navigateRoute({
         view: 'monitor',
         monitorTab: resolved,
+        worldModuleId: inferredModuleId,
         focusAgentId: keepAgent ? focusAgentId : null,
         focusTaskId: resolved === 'tasks' ? focusTaskId : null,
         labSubTab: resolved === 'lab' ? labSubTab : 'prompt',
       });
     },
-    [navigateRoute, focusAgentId, focusTaskId, labSubTab],
+    [navigateRoute, focusAgentId, focusTaskId, labSubTab, worldModuleId],
   );
 
   const handleLabSubTabChange = useCallback(
@@ -1109,6 +1126,7 @@ export default function App() {
             onOpenTrace={handleOpenTrace}
             messages={activeSession?.messages ?? []}
             activeTab={monitorTab}
+            worldModuleId={worldModuleId}
             onTabChange={handleMonitorTabChange}
             focusAgentId={focusAgentId}
             onFocusAgent={handleFocusAgent}

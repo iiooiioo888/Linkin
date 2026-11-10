@@ -17,7 +17,19 @@ import type { MonitorTab, ViewKey } from '../components/AppShell';
 import { markGrillReveal, setPendingDeskTab } from './agentUi';
 import { normalizeLabSubTab, type LabSubTab } from './labTabs';
 import { normalizeMonitorTab } from './monitorTabs';
-import { getWorldModule, hashPageForTab, moduleIdForTab, tabForModulePage } from './worldModules';
+import {
+  getWorldModule,
+  hashPageForTab,
+  moduleIdForTab,
+  moduleOwnsPage,
+  resolvePageForModule,
+} from './worldModules';
+
+export function resolveWorldModuleIdForRoute(route: Pick<AppRoute, 'monitorTab' | 'worldModuleId'>): string | null {
+  const { monitorTab, worldModuleId } = route;
+  if (worldModuleId && moduleOwnsPage(worldModuleId, monitorTab)) return worldModuleId;
+  return moduleIdForTab(monitorTab, worldModuleId);
+}
 
 let pendingSkillFocus: string | null = null;
 
@@ -35,6 +47,8 @@ export function takeSkillFocus(): string | null {
 export interface AppRoute {
   view: ViewKey;
   monitorTab: MonitorTab;
+  /** 世界／整合模組 id；解析與寫 hash 時用命名空間（避免 monitor 等重複鍵搶佔）。 */
+  worldModuleId: string | null;
   focusAgentId: string | null;
   focusTaskId: string | null;
   traceTaskId: string | null;
@@ -51,6 +65,7 @@ export function getDefaultRoute(): AppRoute {
   return {
     view: defaultView(),
     monitorTab: 'live',
+    worldModuleId: null,
     focusAgentId: null,
     focusTaskId: null,
     traceTaskId: null,
@@ -184,11 +199,15 @@ function parseWorldRoute(parts: string[]): AppRoute {
   // #/world/{moduleId}/{page?} 或舊 #/modules/…
   const moduleId = parts[1] ? decodeURIComponent(parts[1]) : '';
   const spec = getWorldModule(moduleId);
-  const rawPage = parts[2] ? decodeURIComponent(parts[2]) : spec?.defaultPage ?? 'world';
-  const tab = normalizeMonitorTab(tabForModulePage(rawPage) ?? rawPage);
+  if (!spec || !moduleId) {
+    return { ...getDefaultRoute(), view: 'monitor', monitorTab: 'live' };
+  }
+  const rawPage = parts[2] ? decodeURIComponent(parts[2]) : null;
+  const tab = resolvePageForModule(moduleId, rawPage) as MonitorTab;
   return {
     view: 'monitor',
-    monitorTab: spec ? tab : 'live',
+    monitorTab: tab,
+    worldModuleId: moduleId,
     focusAgentId: (tab === 'agents' || tab === 'studio') && parts[3] ? decodeURIComponent(parts[3]) : null,
     focusTaskId: null,
     traceTaskId: null,
@@ -245,9 +264,11 @@ export function parseAppRoute(hash: string): AppRoute {
     const focusRaw = parts[2] ? decodeURIComponent(parts[2]) : null;
     if (tab === 'skills' && focusRaw) rememberSkillFocus(focusRaw);
     const labSubTab = tab === 'lab' ? normalizeLabSubTab(focusRaw) : 'prompt';
+    const worldModuleId = moduleIdForTab(tab);
     return {
       view: 'monitor',
       monitorTab: tab,
+      worldModuleId,
       focusAgentId: (tab === 'agents' || tab === 'studio') && focusRaw ? focusRaw : null,
       focusTaskId:
         (tab === 'tasks' || tab === 'context') && focusRaw ? focusRaw : null,
@@ -315,7 +336,7 @@ export function buildAppRouteHash(route: AppRoute): string {
   if (route.view === 'company') return '#/work/company';
 
   if (route.view === 'monitor') {
-    const moduleId = moduleIdForTab(route.monitorTab);
+    const moduleId = resolveWorldModuleIdForRoute(route);
     if (moduleId) {
       const page = hashPageForTab(route.monitorTab, moduleId);
       if (route.monitorTab === 'studio' && route.focusAgentId) {
@@ -371,15 +392,21 @@ export function buildAppRouteHash(route: AppRoute): string {
 export function appRouteFromState(params: {
   activeView: ViewKey;
   monitorTab: MonitorTab;
+  worldModuleId?: string | null;
   focusAgentId: string | null;
   focusTaskId: string | null;
   traceTaskId: string | null;
   rahoFocus: string | null;
   labSubTab: LabSubTab;
 }): AppRoute {
+  let worldModuleId = params.worldModuleId ?? null;
+  if (worldModuleId === null && params.activeView === 'monitor') {
+    worldModuleId = moduleIdForTab(params.monitorTab);
+  }
   return {
     view: params.activeView,
     monitorTab: params.monitorTab,
+    worldModuleId,
     focusAgentId: params.focusAgentId,
     focusTaskId: params.focusTaskId,
     traceTaskId: params.traceTaskId,
@@ -399,6 +426,7 @@ export function routesEqual(a: AppRoute, b: AppRoute): boolean {
   return (
     a.view === b.view &&
     a.monitorTab === b.monitorTab &&
+    a.worldModuleId === b.worldModuleId &&
     a.focusAgentId === b.focusAgentId &&
     a.focusTaskId === b.focusTaskId &&
     a.traceTaskId === b.traceTaskId &&
@@ -410,6 +438,7 @@ export function routesEqual(a: AppRoute, b: AppRoute): boolean {
 export function applyAppRoute(route: AppRoute): {
   activeView: ViewKey;
   monitorTab: MonitorTab;
+  worldModuleId: string | null;
   focusAgentId: string | null;
   focusTaskId: string | null;
   traceTaskId: string | null;
@@ -419,6 +448,7 @@ export function applyAppRoute(route: AppRoute): {
   return {
     activeView: route.view,
     monitorTab: route.monitorTab,
+    worldModuleId: route.worldModuleId,
     focusAgentId: route.focusAgentId,
     focusTaskId: route.focusTaskId,
     traceTaskId: route.traceTaskId,
