@@ -102,6 +102,11 @@ def test_two_real_logins_do_not_share_api_keys(monkeypatch):
     from backend.auth.gate import clear_failures
 
     clear_failures("testclient")
+    # /auth/login 只發 httpOnly cookie（不回 JSON token）。同一個 TestClient 的
+    # cookie jar 會被後一次登入覆蓋，所以登入後立刻把 token 取出，改用
+    # X-Linkin-Gate 標頭明確指定身分（extract_token 優先取標頭）。
+    from backend.auth.gate import AUTH_COOKIE
+
     with TestClient(app) as client:
         denied = client.post(
             "/config",
@@ -109,11 +114,14 @@ def test_two_real_logins_do_not_share_api_keys(monkeypatch):
         )
         assert denied.status_code == 401
         login_a = client.post("/auth/login", json={"username": "alice", "password": "secret-alice"})
-        login_b = client.post("/auth/login", json={"username": "bob", "password": "secret-bob"})
         assert login_a.status_code == 200, login_a.text
+        token_a = client.cookies.get(AUTH_COOKIE)
+        login_b = client.post("/auth/login", json={"username": "bob", "password": "secret-bob"})
         assert login_b.status_code == 200, login_b.text
-        headers_a = {"X-Linkin-Gate": login_a.json()["token"]}
-        headers_b = {"X-Linkin-Gate": login_b.json()["token"]}
+        token_b = client.cookies.get(AUTH_COOKIE)
+        assert token_a and token_b and token_a != token_b
+        headers_a = {"X-Linkin-Gate": token_a}
+        headers_b = {"X-Linkin-Gate": token_b}
         saved = client.post(
             "/config",
             headers=headers_a,

@@ -39,6 +39,7 @@
 | **任務經理** | 分析任務、拆工作項、做最終裁決的席位（`manager`） |
 | **Reviewer／Synthesizer** | 公司流程末端：審查與整合最終交付 |
 | **STANDARD_ROLES（80）** | 公司內建角色目錄；詳見 [角色介紹](company/roles.md) |
+| **席位表（85）** | 80 公司席＋5 RAHO 脊柱席（L0–L4）；`build_default_seat_table()` |
 | **靈境子角色（16）** | 4 總監 ×（總監＋執行者＋審查員＋記錄員）；見 [角色介紹](company/roles.md) |
 | **BUILTIN_TEMPLATES（8）** | 內建組織模板；見 [角色介紹](company/roles.md) |
 | **LiteLLM／`call_llm`** | 唯一允許的 LLM 出口（`backend.core.llm.call_llm`） |
