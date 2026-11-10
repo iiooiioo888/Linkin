@@ -93,7 +93,7 @@ def test_http_get_task_and_trace_cross_tenant_404(monkeypatch):
     rec.user_id = "alice"
     tm.tasks["trace_t1"] = rec
     monkeypatch.setattr("backend.services.task_manager.task_manager", tm)
-    monkeypatch.setattr("backend.main.task_manager", tm)
+    monkeypatch.setattr("backend.api.routers.tasks.task_manager", tm)
 
     with TestClient(app) as client:
         ok = client.get("/tasks/trace_t1", headers=_tenant_headers("alice"))
@@ -136,7 +136,7 @@ def test_http_traces_list_scoped(monkeypatch, tmp_path):
     tm.tasks["bob_only"] = TaskRecord("bob_only", "q", "auto", "t")
     tm.tasks["bob_only"].user_id = "bob"
     monkeypatch.setattr("backend.services.task_manager.task_manager", tm)
-    monkeypatch.setattr("backend.main.task_manager", tm)
+    monkeypatch.setattr("backend.api.routers.tasks.task_manager", tm)
 
     with TestClient(app) as client:
         data = client.get("/traces", headers=_tenant_headers("alice")).json()

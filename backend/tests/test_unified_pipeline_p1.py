@@ -195,7 +195,7 @@ def _patch_llm_trio():
         return json.dumps({"score": 9.0, "strengths": "ok", "weaknesses": ""}, ensure_ascii=False)
 
     return (
-        patch("backend.main.call_llm_stream", side_effect=fake_stream),
+        patch("backend.api.routers.chat.call_llm_stream", side_effect=fake_stream),
         patch("backend.core.nodes.call_llm", side_effect=fake_eval),
         patch("backend.core.evaluation.call_llm", side_effect=fake_eval),
     )

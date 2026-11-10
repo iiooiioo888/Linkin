@@ -30,7 +30,7 @@
 控制台左側（總覽、執行、角色、審計、計費、系統）是核心的開發組件裡的導覽，定義在 `frontend/src/lib/monitorTabs.ts` 的 `CONSOLE_NAV_GROUPS`。Minecraft 世界模組用自己的導覽。實驗室四類的單一來源是 `frontend/src/lib/labTabs.ts` 的 `LAB_NAV_GROUPS`。
 
 ```
-請求 → backend/main.py
+請求 → backend/api/routers/*（main.py 只組裝 app）
      → 前置：記憶、OPC 讀數、靈境、整合召回
      → resolve_execution_path
          ├─ simple          → 生成／評估／反思
@@ -71,7 +71,8 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 
 | 路徑 | 職責 |
 |------|------|
-| `main.py` | REST／SSE／WebSocket 入口 |
+| `main.py` | app 組裝：lifespan、middleware、例外處理、`include_router`（端點不在本檔） |
+| `api/` | REST／SSE／WebSocket 路由層：`routers/*` 領域端點與請求模型、`security.py` 登入身分 helper |
 | `auth/` | 登入閘門 |
 | `core/` | 核心的開發組件：圖、節點、`call_llm`、評估、模型池、路由 |
 | `company/` | 核心的開發組件：任務經理、80 席、工作項、預算。量化工具屬價格分析探針組件 |

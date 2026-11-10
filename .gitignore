@@ -175,6 +175,8 @@ backend/data/routing_feedback.json
 # Skills / MCP runtime catalogs (seeded from .agents/skills/ on boot)
 backend/data/skills.json
 backend/data/mcp_servers.json
+# 租戶角色目錄快取（測試／執行期產生，勿提交）
+backend/data/role_catalog/
 
 # Minecraft MCP 執行期稽核（非正式種子）
 # Runtime sponge schematics (generated / imported binaries)

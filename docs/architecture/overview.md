@@ -86,7 +86,8 @@ flowchart TD
 ```
 Linkin/
 ├── backend/                     # FastAPI + LangGraph（見 backend/README.md）
-│   ├── main.py                  #   REST / SSE / WebSocket 入口
+│   ├── main.py                  #   app 組裝（lifespan／middleware／include_router）
+│   ├── api/                     #   REST / SSE / WebSocket 路由層（routers/*）
 │   ├── auth/ · middleware/ · environment/ · prompts/
 │   ├── core/                    #   圖、節點、LLM、評估、模型池
 │   │   ├── graph.py             #     build_graph()、複雜度路由

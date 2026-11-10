@@ -55,7 +55,7 @@ class TestChatStreamSimpleStrategy:
 
         lines: list[str] = []
         with (
-            patch("backend.main.call_llm_stream", side_effect=fake_stream),
+            patch("backend.api.routers.chat.call_llm_stream", side_effect=fake_stream),
             patch("backend.core.nodes.call_llm", side_effect=fake_eval),
             patch("backend.core.evaluation.call_llm", side_effect=fake_eval),
             patch("backend.core.nodes._memory_store", store),

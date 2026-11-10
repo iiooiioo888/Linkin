@@ -17,6 +17,7 @@ Linkin 基於 EvoLoop：具備自我反思閉環的**統一模式** AI 系統。
 | 模組 | 路徑 | 職責 |
 | --- | --- | --- |
 | 圖定義 | `backend/core/` | LangGraph 反思閉環、LiteLLM（`llm.py`）、多 API 路由（`api_router.py`）、模型池鎖定、EvoLoopState |
+| API 路由 | `backend/api/` | REST／SSE／WebSocket 領域路由（`routers/*`）、請求模型、登入身分 helper；`backend/main.py` 只做 app 組裝（lifespan／middleware／例外／`include_router`） |
 | 公司運行時 | `backend/company/` | 協調器、任務經理、**80** 席角色、工作項 DAG、預算、Prompt；席位表見 `docs/company/roles.md` |
 | 靈境 | `backend/linkin/` | 憲法、實體、**16** 席子角色、Minecraft 業務護欄；見同文「靈境子角色」 |
 | 世界模組 | `backend/modules/` | 可插拔目錄與閘道（`GET /modules`、`/{id}/api/*`）；Minecraft 為第一個模組 |

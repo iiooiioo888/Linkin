@@ -22,7 +22,7 @@
 
 |---------|------------|
 
-| HTTP／SSE／WS 路由 | `main.py` |
+| HTTP／SSE／WS 路由 | `api/routers/*`（`main.py` 只組裝 app） |
 
 | 反思閉環圖與節點 | `core/graph.py`、`core/nodes.py`、`core/evaluation.py` |
 

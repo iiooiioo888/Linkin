@@ -395,7 +395,7 @@ class CompanyOrchestrator:
 
         # ── 更新全局公司預算狀態（供 API 讀取）──
         try:
-            from backend.main import update_company_budget_state
+            from backend.services.company_budget import update_company_budget_state
             update_company_budget_state({
                 "api_cost": self.budget.api_cost,
                 "docker_cost": self.budget.docker_cost,

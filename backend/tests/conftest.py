@@ -223,3 +223,24 @@ def _isolate_mediacrawler_data(tmp_path, monkeypatch):
     monkeypatch.setenv("EVOL_MEDIACRAWLER_JOBS_STORE", str(mc_root / "jobs.json"))
     monkeypatch.setenv("EVOL_MEDIACRAWLER_ENABLED", "false")
     yield
+
+
+@pytest.fixture(autouse=True)
+def _isolate_raho_superior_llm(monkeypatch):
+    """RAHO 質詢升級改走離線裁決，不呼叫真實 LLM、也不真的等用戶。
+
+    1. _ask_layer 經 backend.core.llm.call_llm 呼叫真實模型；該 import 在函式內，
+       測試普遍只 patch backend.company.orchestrator.call_llm，攔不到它。沒有 API
+       金鑰時 LiteLLM 會退到很長的預設逾時。
+    2. 升級到 L5 時 wait_user_decision 會真的阻塞 EVOL_RAHO_DECISION_TTL 秒
+       （預設 60）等用戶點選。
+
+    這裡把 TTL 設為 0（立即採用第一案，語意等同用戶逾時），並把 L3/L4 裁決 stub 成
+    升級標記，讓升級鏈照常走到 L5。需要真實裁決行為的測試可自行覆寫。
+    """
+    from backend.company.raho import escalation
+
+    monkeypatch.setenv("EVOL_RAHO_DECISION_TTL", "0")
+    monkeypatch.setattr(escalation, "_call_superior", lambda system, prompt: escalation.ESCALATE_MARK)
+    yield
+
