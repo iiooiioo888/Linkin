@@ -150,9 +150,15 @@ class TestCompanyCapturesSeatIO:
     @pytest.mark.asyncio
     async def test_full_run_records_prompt_and_response(self):
         from backend.company.orchestrator import CompanyOrchestrator
+        from backend.services.task_manager import task_manager
+
+        # 有 task_id 會觸發 execution_gate.require_user_approved（預算方案須已鎖定）；
+        # 本測試要驗 task_id 有被寫進投遞軌跡，所以建立任務並把方案標為已確認。
+        record = task_manager.create_task("開發一個小功能", "company", "quick_task", options={})
+        record.budget_plan = {"status": "locked"}
 
         orchestrator = CompanyOrchestrator(BUILTIN_TEMPLATES["quick_task"])
-        orchestrator.task_id = "task-42"
+        orchestrator.task_id = record.task_id
 
         with patch.object(
             orchestrator.decomposer, "decompose", new_callable=AsyncMock, return_value=FAKE_PLAN
@@ -175,7 +181,7 @@ class TestCompanyCapturesSeatIO:
         # 這一條是本次改造的核心：過去 prompt 組裝完即丟，無從監察
         assert exec_rows[0]["prompt"]
         assert exec_rows[0]["system"]
-        assert exec_rows[0]["task_id"] == "task-42"
+        assert exec_rows[0]["task_id"] == record.task_id
         assert exec_rows[0]["item_id"]
         assert exec_rows[0]["role"] == "developer"
         assert exec_rows[0]["layer"] == 2

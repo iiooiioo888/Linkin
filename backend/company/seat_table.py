@@ -217,16 +217,63 @@ def _derive_seat(role: RoleDefinition) -> SeatSpec:
     )
 
 
+def _raho_spine_role_definitions() -> dict[RoleType, RoleDefinition]:
+    """RAHO 脊柱 5 席（L0–L4）的席位定義。
+
+    這 5 席是 RAHO 五層架構的固定席位，不屬公司 80 席角色表
+    （``STANDARD_ROLES``），因此在這裡就地建構，讓預設席位表能涵蓋它們 ——
+    否則 C-SEAT-003 的 L0 不變式在預設配置下無從驗證。
+    """
+    return {
+        RoleType.REQUIREMENT_AUDITOR: RoleDefinition(
+            role_type=RoleType.REQUIREMENT_AUDITOR,
+            name="需求審計官",
+            responsibilities=["五維鎖定需求", "簽發戰術指令門票"],
+            level=4,
+        ),
+        RoleType.TACTICAL_COMMANDER: RoleDefinition(
+            role_type=RoleType.TACTICAL_COMMANDER,
+            name="戰術指揮官",
+            responsibilities=["把戰役目標拆成原子任務", "裁決下層質詢"],
+            level=3,
+        ),
+        RoleType.ATOMIC_EXECUTOR: RoleDefinition(
+            role_type=RoleType.ATOMIC_EXECUTOR,
+            name="原子執行席",
+            responsibilities=["依 input_ref 執行單一原子任務"],
+            level=2,
+        ),
+        RoleType.CONSTITUTIONAL_INSPECTOR: RoleDefinition(
+            role_type=RoleType.CONSTITUTIONAL_INSPECTOR,
+            name="憲法檢察官",
+            responsibilities=["檢查指令是否違反憲法", "攔截越權動作"],
+            level=1,
+        ),
+        RoleType.ENVIRONMENT_KERNEL: RoleDefinition(
+            role_type=RoleType.ENVIRONMENT_KERNEL,
+            name="環境核心",
+            responsibilities=["注入環境上下文"],
+            level=0,
+        ),
+    }
+
+
 def build_default_seat_table(
     roles: Mapping[RoleType, RoleDefinition] | None = None,
     *,
     schema_version: str = SEAT_TABLE_SCHEMA_VERSION,
 ) -> SeatTable:
-    """從 STANDARD_ROLES 派生預設席位表；呼叫方可注入自訂 roles 以便測試隔離。"""
+    """從 STANDARD_ROLES 派生預設席位表；呼叫方可注入自訂 roles 以便測試隔離。
+
+    預設表另外併入 RAHO 脊柱 5 席（L0–L4），共 85 席；注入自訂 roles 時
+    只會用注入的內容，不會混入脊柱席（測試隔離用）。
+    """
     if roles is None:
         from backend.company.roles import STANDARD_ROLES
 
-        roles = STANDARD_ROLES
+        merged: dict[RoleType, RoleDefinition] = dict(STANDARD_ROLES)
+        merged.update(_raho_spine_role_definitions())
+        roles = merged
     seats = {role.role_type.value: _derive_seat(role) for role in roles.values()}
     _validate_l0_invariant(seats.values())
     return SeatTable(schema_version=schema_version, seats=seats)

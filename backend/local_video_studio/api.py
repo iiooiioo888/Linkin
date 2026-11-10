@@ -9,10 +9,9 @@ from fastapi import APIRouter, Depends, FastAPI, File, Header, HTTPException, Qu
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from backend.local_video_studio import compose_service
+from backend.local_video_studio import compose_service, service
 from backend.local_video_studio import jobs as jobs_service
 from backend.local_video_studio import reviews as reviews_service
-from backend.local_video_studio import service
 from backend.local_video_studio.config import load_config
 from backend.local_video_studio.db import get_session_factory, init_db
 from backend.local_video_studio.schemas import (

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
+
 import pytest
 
 from backend.core.align_r5_nginx_modelgw import (
@@ -26,7 +28,7 @@ from backend.core.align_r5_nginx_modelgw import (
 
 
 @pytest.fixture(autouse=True)
-def _clear_shadow() -> None:
+def _clear_shadow() -> Generator[None, None, None]:
     reset_r5_shadow_log()
     yield
     reset_r5_shadow_log()

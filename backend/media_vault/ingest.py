@@ -12,8 +12,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from backend.media_vault.config import MediaVaultConfig, load_config
 from backend.media_vault import db as vault_db
+from backend.media_vault.config import MediaVaultConfig, load_config
 from backend.media_vault.models import normalize_compliance, risk_level_from_compliance
 
 logger = logging.getLogger(__name__)
