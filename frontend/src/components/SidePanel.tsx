@@ -32,6 +32,7 @@ import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import { useMonitorStore } from '../stores/monitorStore';
 import type { MonitorTab, ViewKey } from './AppShell';
 import TraceRoster from './TraceRoster';
+import { sidePanelMonitorPick } from './sidePanelNavPick';
 
 interface SidePanelProps {
   activeView: ViewKey;
@@ -697,7 +698,7 @@ function MonitorSidebar({
     }
   }, [allNavGroups, currentKey, isMinecraftNav]);
 
-  const pick = (key: ConsoleNavKey) => {
+  const pick = (key: ConsoleNavKey, clickedWorldModuleId?: string) => {
     if (key === 'chat') {
       onViewChange?.('chat');
       onClose();
@@ -712,8 +713,8 @@ function MonitorSidebar({
       onTraceTaskChange(traceTaskId);
       return;
     }
-    const navItem = allNavGroups.flatMap((g) => g.items).find((item) => item.key === key);
-    onMonitorTabChange(key as MonitorTab, navItem?.worldModuleId ?? null);
+    const { tab, worldModuleId } = sidePanelMonitorPick(key, clickedWorldModuleId);
+    onMonitorTabChange(tab, worldModuleId);
     const keepAgent = key === 'agents' || key === 'memory' || rosterKindForTab(key) === 'agents';
     if (!keepAgent && focusAgentId) onFocusAgent(null);
     if (key !== 'tasks' && focusTaskId) onFocusTask(null);
@@ -732,10 +733,10 @@ function MonitorSidebar({
       <div className="sp-list">
         {group.items.map((item) => (
           <TabBtn
-            key={item.key}
+            key={item.worldModuleId ? `${item.worldModuleId}:${item.key}` : item.key}
             item={item}
             active={currentKey === item.key}
-            onClick={() => pick(item.key)}
+            onClick={() => pick(item.key, item.worldModuleId)}
           />
         ))}
       </div>
