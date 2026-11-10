@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -35,22 +35,22 @@ class Project(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    scripts: Mapped[list["Script"]] = relationship(
+    scripts: Mapped[list[Script]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    shots: Mapped[list["Shot"]] = relationship(
+    shots: Mapped[list[Shot]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    jobs: Mapped[list["GenerationJob"]] = relationship(
+    jobs: Mapped[list[GenerationJob]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    assets: Mapped[list["Asset"]] = relationship(
+    assets: Mapped[list[Asset]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
 
@@ -68,7 +68,7 @@ class Script(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    project: Mapped["Project"] = relationship(back_populates="scripts")
+    project: Mapped[Project] = relationship(back_populates="scripts")
 
 
 class Shot(Base):
@@ -82,16 +82,16 @@ class Shot(Base):
     scene_no: Mapped[int] = mapped_column(Integer, nullable=False)
     shot_no: Mapped[int] = mapped_column(Integer, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    dialogue: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    dialogue: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_sec: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False, default=5)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
-    selected_keyframe_asset_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
-    selected_clip_asset_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    selected_keyframe_asset_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    selected_clip_asset_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    project: Mapped["Project"] = relationship(back_populates="shots")
+    project: Mapped[Project] = relationship(back_populates="shots")
 
 
 class GenerationJob(Base):
@@ -112,16 +112,16 @@ class GenerationJob(Base):
     max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
     data_class: Mapped[str] = mapped_column(String(32), nullable=False, default="local_only")
-    assigned_agent: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
-    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    assigned_agent: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    project: Mapped["Project"] = relationship(back_populates="jobs")
-    resources: Mapped[list["ResourceRecord"]] = relationship(
+    project: Mapped[Project] = relationship(back_populates="jobs")
+    resources: Mapped[list[ResourceRecord]] = relationship(
         back_populates="job", cascade="all, delete-orphan"
     )
 
@@ -133,19 +133,19 @@ class Asset(Base):
     project_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("lvs_projects.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    shot_id: Mapped[Optional[str]] = mapped_column(
+    shot_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("lvs_shots.id", ondelete="SET NULL"), nullable=True, index=True
     )
     type: Mapped[str] = mapped_column(String(32), nullable=False)
     relative_path: Mapped[str] = mapped_column(Text, nullable=False)
-    mime: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
-    bytes: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
-    sha256: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    mime: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    project: Mapped["Project"] = relationship(back_populates="assets")
+    project: Mapped[Project] = relationship(back_populates="assets")
 
 
 class ResourceRecord(Base):
@@ -158,18 +158,18 @@ class ResourceRecord(Base):
         nullable=False,
         index=True,
     )
-    gpu_minutes: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
-    wall_minutes: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
-    attempts: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    gpu_minutes: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    wall_minutes: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
     discarded_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    storage_bytes: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    storage_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     api_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    electricity_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    electricity_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    job: Mapped["GenerationJob"] = relationship(back_populates="resources")
+    job: Mapped[GenerationJob] = relationship(back_populates="resources")
 
 
 class Review(Base):
@@ -180,7 +180,7 @@ class Review(Base):
         String(36), ForeignKey("lvs_assets.id", ondelete="CASCADE"), nullable=False, index=True
     )
     decision: Mapped[str] = mapped_column(String(32), nullable=False)
-    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewer: Mapped[str] = mapped_column(String(128), nullable=False, default="owner")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -196,7 +196,7 @@ class ComplianceRecord(Base):
     )
     explicit_mark: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    watermark_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    watermark_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

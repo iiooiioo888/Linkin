@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
+
 import pytest
 
 from backend.core.align_r1_sandbox_boundary import (
@@ -22,7 +24,7 @@ from backend.core.align_r1_sandbox_boundary import (
 
 
 @pytest.fixture(autouse=True)
-def _clear_shadow() -> None:
+def _clear_shadow() -> Generator[None, None, None]:
     reset_sandbox_shadow_log()
     yield
     reset_sandbox_shadow_log()

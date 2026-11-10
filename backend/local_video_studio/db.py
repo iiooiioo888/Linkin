@@ -32,7 +32,7 @@ def _normalize_url(raw: str) -> str:
     # 允許檔案路徑寫法：sqlite:////abs 或純路徑
     if url.startswith("sqlite:///"):
         return url
-    if url.endswith(".sqlite3") or url.endswith(".db"):
+    if url.endswith((".sqlite3", ".db")):
         path = Path(url)
         path.parent.mkdir(parents=True, exist_ok=True)
         return f"sqlite:///{path}"

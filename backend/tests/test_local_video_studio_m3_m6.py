@@ -325,9 +325,9 @@ def test_m6_storage_and_resources(monkeypatch, tmp_path):
 def test_m7_cloud_stubs_blocked(monkeypatch):
     monkeypatch.setenv("CLOUD_ENABLED", "false")
     monkeypatch.setenv("LVS_CLOUD_ENABLED", "false")
+    from backend.local_video_studio.cloud_adapters.base import CloudAdapterError
     from backend.local_video_studio.cloud_adapters.cloud_gpu import CloudGPUAdapter
     from backend.local_video_studio.cloud_adapters.vidu import ViduAdapter
-    from backend.local_video_studio.cloud_adapters.base import CloudAdapterError
 
     try:
         ViduAdapter().submit({"data_class": "cloud_allowed"})
