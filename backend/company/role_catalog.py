@@ -494,6 +494,25 @@ def _apply_overlay(base: dict[str, Any], overlay: dict[str, Any] | None) -> dict
     return merged
 
 
+def list_custom_role_ids() -> set[str]:
+    """已啟用的自定義角色 id。
+
+    與 :func:`list_role_snapshots` 不同，這裡**不含**內建角色——任務拆解時
+    內建角色以 ``CompanyConfig.roles`` 為準，只有自訂席需要從目錄補進來，
+    否則小團隊模板的席位限制會被整個 80 席目錄蓋掉。
+    """
+    found: set[str] = set()
+    for snap in list_role_snapshots():
+        if not snap.get("is_custom"):
+            continue
+        if not snap.get("enabled", True):
+            continue
+        role_id = str(snap.get("id") or "")
+        if role_id:
+            found.add(role_id)
+    return found
+
+
 def list_role_snapshots() -> list[dict[str, Any]]:
     """內建 + 自定義角色，套用設定覆蓋後依層級排序。"""
     with _lock:

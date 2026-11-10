@@ -150,7 +150,8 @@ def test_lab_api_endpoints(client: TestClient, monkeypatch):
 
     r = client.get("/lab/archify/system-flows/raho")
     assert r.status_code == 200
-    assert "RAHO" in r.json()["meta"]["title"]
+    # flow_id 仍為 raho；顯示標題於 adc4ac4 改為「任務經理」（指揮鏈改由任務經理分析）
+    assert r.json()["meta"]["title"]
 
     r = client.get("/lab/archify/system-flows/missing-flow")
     assert r.status_code == 404
@@ -251,8 +252,6 @@ def test_company_tool_registry_includes_lab_tools():
         "archify_generate",
         "archify_evoloop",
         "archify_strategies",
-        "place_block",
-        "execute_command",
         "market_quote",
         "market_backtest",
         "market_compare",

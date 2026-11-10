@@ -22,14 +22,15 @@ _FROZEN_KEYS = {"constitution", "worldview", "l0", "graph"}
 
 
 def catalog_role_ids() -> set[str]:
-    from backend.company.role_catalog import list_role_snapshots
+    """已啟用的**自定義**角色 id（不含內建 80 席）。
 
-    found: set[str] = set()
-    for snap in list_role_snapshots():
-        role_id = str(snap.get("id") or "")
-        if role_id and snap.get("enabled", True):
-            found.add(role_id)
-    return found
+    內建角色由 ``CompanyConfig.roles`` 表達團隊成員，只有自訂席需要從角色目錄
+    補進來。若這裡回傳全部 80 席，任務拆解的團隊過濾會被整個目錄蓋掉
+    （小團隊模板仍會派到不在團隊裡的角色）。
+    """
+    from backend.company.role_catalog import list_custom_role_ids
+
+    return list_custom_role_ids()
 
 
 def resolve_assignee(role_id: str) -> RoleType | str:

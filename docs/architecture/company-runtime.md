@@ -18,6 +18,8 @@
 
 內建 `STANDARD_ROLES` 共 **80** 席（組織職級 0–4）。監控中心可覆寫角色設定，或透過 `role_catalog` 新增自定義角色。
 
+席位表（`build_default_seat_table()`）在 80 席之外另含 **RAHO 脊柱 5 席**（L0 環境核心／L1 憲法檢察官／L2 原子執行席／L3 戰術指揮官／L4 需求審計官），共 **85 席**。脊柱席不屬公司角色表，但必須在席位表內，C-SEAT-003 的 L0「無工具／無插件」不變式才驗得到。
+
 **完整席位表（職責／分類／模板／靈境 16 席）→ [角色介紹](../company/roles.md)。** 改內建角色後請執行 `python -m backend.scripts.export_roles_doc` 同步該文件。
 
 ```

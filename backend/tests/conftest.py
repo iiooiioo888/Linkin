@@ -210,6 +210,45 @@ def _isolate_state_and_memory_stores(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_docker_probe(monkeypatch):
+    """停用 Docker 探測，避免測試對 /var/run/docker.sock 發真實連線。
+
+    ``DockerManager.__init__`` 會在 docker SDK 存在時 ``ping()`` 一次，且未設
+    連線逾時。CI runner 上沒有 docker daemon，該次 ping 會卡到 urllib3 預設逾時
+    （約 60 秒），使 job 撞上 workflow 的 10 分鐘上限。單例也一併重置，讓需要
+    真實 Docker 行為的測試能自行覆寫 ``DOCKER_AVAILABLE``。
+    """
+    from backend.services import docker_manager
+
+    monkeypatch.setattr(docker_manager, "DOCKER_AVAILABLE", False)
+    monkeypatch.setattr(docker_manager, "_docker_manager", None)
+    yield
+    monkeypatch.setattr(docker_manager, "_docker_manager", None)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_raho_superior_llm(monkeypatch):
+    """RAHO 質詢升級改走離線裁決，不呼叫真實 LLM、也不真的等用戶。
+
+    兩個問題都在 ``resolve_grill`` 這條路上：
+
+    1. ``_ask_layer`` 經 ``backend.core.llm.call_llm`` 呼叫真實模型。該 import 在
+       函式內，測試普遍只 patch ``backend.company.orchestrator.call_llm``，
+    攔不到它。沒有 API 金鑰時 LiteLLM 會退到很長的預設逾時。
+    2. 升級到 L5 時 ``wait_user_decision`` 會真的阻塞
+       ``EVOL_RAHO_DECISION_TTL`` 秒（預設 60）等用戶點選。
+
+    這裡把 TTL 設為 0（立即採用第一案，語意等同用戶逾時）並把 L3/L4 裁決 stub 成
+    升級標記，讓升級鏈照常走到 L5。需要真實裁決行為的測試可自行覆寫。
+    """
+    from backend.company.raho import escalation
+
+    monkeypatch.setenv("EVOL_RAHO_DECISION_TTL", "0")
+    monkeypatch.setattr(escalation, "_call_superior", lambda system, prompt: escalation.ESCALATE_MARK)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _isolate_linkin_runtime_data(tmp_path, monkeypatch):
     """靈境資料目錄與憲法路徑寫入暫存（憲法自 repo 唯讀複製）。"""
     linkin_dir = tmp_path / "linkin"
