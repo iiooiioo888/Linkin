@@ -23,7 +23,7 @@ export default function ControlPanel({ onOpenGallery, onOpenMonitor }: Props) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4" data-testid="media-vault-control">
       <header>
-        <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">采集控制</h1>
+        <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">採集控制</h1>
         <p className="text-[11px] text-[var(--console-sub)]">MediaCrawler 任務 → 媒資庫入庫</p>
       </header>
 

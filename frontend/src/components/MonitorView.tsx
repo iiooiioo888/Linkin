@@ -14,7 +14,7 @@ import { useMonitorStore } from '../stores/monitorStore';
 import type { ChatMessage, L0Snapshot, TaskProgress } from '../types';
 import type { MonitorTab } from './AppShell';
 import type { LabSubTab } from '../lib/labTabs';
-import { moduleIdForTab } from '../lib/worldModules';
+import { moduleIdForTab, inferWorldModuleIdForTab } from '../lib/worldModules';
 import ModuleWorkspace from '../modules/ModuleWorkspace';
 import LiveBoard from './LiveBoard';
 import ErrorState from './ui/ErrorState';
@@ -40,7 +40,8 @@ interface MonitorViewProps {
   onOpenTrace?: (taskId: string) => void;
   messages?: ChatMessage[];
   activeTab: MonitorTab;
-  onTabChange: (tab: MonitorTab) => void;
+  worldModuleId?: string | null;
+  onTabChange: (tab: MonitorTab, worldModuleId?: string | null) => void;
   focusAgentId: string | null;
   onFocusAgent: (id: string | null) => void;
   focusTaskId: string | null;
@@ -132,6 +133,7 @@ export default function MonitorView({
   onOpenTrace,
   messages = [],
   activeTab,
+  worldModuleId = null,
   onTabChange,
   focusAgentId,
   onFocusAgent,
@@ -142,7 +144,7 @@ export default function MonitorView({
 }: MonitorViewProps) {
   const { t } = useTranslation();
   const tab = activeTab;
-  const moduleId = moduleIdForTab(tab);
+  const moduleId = inferWorldModuleIdForTab(tab, worldModuleId) ?? moduleIdForTab(tab, worldModuleId);
   const isMobileLite = useIsMobileLiteShell();
 
   useMonitorHub(tab !== 'lab');

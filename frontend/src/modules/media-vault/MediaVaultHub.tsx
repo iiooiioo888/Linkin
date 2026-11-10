@@ -9,8 +9,8 @@ export type MediaVaultTab = 'control' | 'monitor' | 'gallery';
 
 const TABS: ReadonlyArray<{ key: MediaVaultTab; label: string }> = [
   { key: 'control', label: '控制' },
-  { key: 'monitor', label: '监控' },
-  { key: 'gallery', label: '图库' },
+  { key: 'monitor', label: '監控' },
+  { key: 'gallery', label: '圖庫' },
 ];
 
 function tabFromPage(page: string | undefined): MediaVaultTab {
@@ -22,7 +22,7 @@ function hashForTab(tab: MediaVaultTab): string {
   return tab === 'control' ? '#/modules/media-vault' : `#/modules/media-vault/${tab}`;
 }
 
-/** 采集媒体库统一入口：控制 / 监控 / 图库（面板 API 独立，仅共享导航状态）。 */
+/** 採集媒體庫統一入口：控制／監控／圖庫（面板 API 獨立，僅共享導航狀態）。 */
 export default function MediaVaultHub({ moduleId, page }: ModulePageProps) {
   const initialTab = useMemo(() => tabFromPage(page), [page]);
   const [active, setActive] = useState<MediaVaultTab>(initialTab);
@@ -59,9 +59,9 @@ export default function MediaVaultHub({ moduleId, page }: ModulePageProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="media-vault-hub">
       <header className="shrink-0 border-b border-[var(--console-line)] px-4 pt-3">
-        <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">采集 · 媒体库</h1>
-        <p className="pb-2 text-[11px] text-[var(--console-sub)]">Media Vault — 控制、监控与图库一体化</p>
-        <nav className="flex gap-1" role="tablist" aria-label="媒体库">
+        <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">採集 · 媒體庫</h1>
+        <p className="pb-2 text-[11px] text-[var(--console-sub)]">Media Vault — 控制、監控與圖庫一體化</p>
+        <nav className="flex gap-1" role="tablist" aria-label="媒體庫">
           {TABS.map(({ key, label }) => (
             <button
               key={key}

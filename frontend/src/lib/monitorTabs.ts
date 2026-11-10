@@ -40,6 +40,8 @@ export type ConsoleNavItem = {
   icon: string;
   label: string;
   hint?: string;
+  /** 世界模組導覽項所屬模組（同名 page key 如 monitor 須帶上）。 */
+  worldModuleId?: string;
 };
 
 export type MonitorNavGroupId =
@@ -255,6 +257,7 @@ function moduleNavAsGroups(id: string): MonitorNavGroup[] {
       icon: item.icon,
       label: item.label,
       hint: item.hint,
+      worldModuleId: id,
     })),
   }));
 }

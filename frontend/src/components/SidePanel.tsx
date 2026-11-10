@@ -43,7 +43,7 @@ interface SidePanelProps {
   onDeleteSession: (id: string) => void;
   onClose: () => void;
   monitorTab: MonitorTab;
-  onMonitorTabChange: (tab: MonitorTab) => void;
+  onMonitorTabChange: (tab: MonitorTab, worldModuleId?: string | null) => void;
   focusAgentId: string | null;
   onFocusAgent: (id: string | null) => void;
   focusTaskId: string | null;
@@ -644,7 +644,7 @@ function MonitorSidebar({
   onFocusAgent: (id: string | null) => void;
   focusTaskId: string | null;
   onFocusTask: (id: string | null) => void;
-  onMonitorTabChange: (tab: MonitorTab) => void;
+  onMonitorTabChange: (tab: MonitorTab, worldModuleId?: string | null) => void;
   labSubTab: LabSubTab;
   onLabSubTabChange: (tab: LabSubTab) => void;
   traceTaskId: string | null;
@@ -712,7 +712,8 @@ function MonitorSidebar({
       onTraceTaskChange(traceTaskId);
       return;
     }
-    onMonitorTabChange(key as MonitorTab);
+    const navItem = allNavGroups.flatMap((g) => g.items).find((item) => item.key === key);
+    onMonitorTabChange(key as MonitorTab, navItem?.worldModuleId ?? null);
     const keepAgent = key === 'agents' || key === 'memory' || rosterKindForTab(key) === 'agents';
     if (!keepAgent && focusAgentId) onFocusAgent(null);
     if (key !== 'tasks' && focusTaskId) onFocusTask(null);
