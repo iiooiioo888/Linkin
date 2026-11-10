@@ -51,6 +51,8 @@ API：`GET /skills/cli-runtimes`。CLI-Anything 目錄：`GET /skills/cli-hub`�
 
 與 `mediacrawler` 並存：批次採集走 MediaCrawler API；即時閱讀與搜尋走 Agent Reach。Cookie、Token 只留在執行環境的 `~/.agent-reach/`（權限 600），不要提交進倉庫。
 
+跨平台編排（名字 → 多平台 → Media Vault）用主技能 `.agents/skills/media-collect/SKILL.md`，設計見 [crawl-skill-mcp.md](../integrations/crawl-skill-mcp.md)。該技能不登入、不寫 Cookie。
+
 伺服器安裝（不要從 PyPI 裝同名套件，那不是本專案）：
 
 ```bash

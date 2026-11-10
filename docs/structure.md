@@ -21,7 +21,7 @@
 | 功能 | 做什麼 | 落在哪 |
 |------|--------|--------|
 | **召回** | 向量記憶與 Token 節省注入：MemOS、OpenViking、WeKnora | `backend/memory/`、`backend/integrations/memos.py`、`openviking.py`、`weknora.py` |
-| **採集** | 網頁轉 Markdown、社媒公開採集、Agent Reach 即時閱讀與搜尋 | 實驗室「爬蟲」；**采集媒体库**見 [media-vault.md](integrations/media-vault.md)（`#/modules/media-vault`）；MediaCrawler 與 [Agent Reach](https://github.com/Panniantong/Agent-Reach)（`.agents/skills/agent-reach/`）。Agent Reach、just-scrape、agent-browser、cli-hub 要本機 CLI，用 `python -m backend.scripts.cli_runtimes` 檢查 |
+| **採集** | 網頁轉 Markdown、社媒公開採集、Agent Reach 即時閱讀與搜尋 | 實驗室「爬蟲」；**采集媒体库**見 [media-vault.md](integrations/media-vault.md)（`#/modules/media-vault`）；跨平台 Skill／MCP 藍圖見 [crawl-skill-mcp.md](integrations/crawl-skill-mcp.md)（`.agents/skills/media-collect/`）；MediaCrawler 與 [Agent Reach](https://github.com/Panniantong/Agent-Reach)（`.agents/skills/agent-reach/`）。Agent Reach、just-scrape、agent-browser、cli-hub 要本機 CLI，用 `python -m backend.scripts.cli_runtimes` 檢查 |
 | **工業接線** | OPC 讀寫。寫入經護欄。實驗室 MCP 頁把 OPC 開關放在這一組 | `opc_service/` |
 | **Agent 工作流** | 任務板、訪談閘門，以及 CLI-Anything 的軟體命令列目錄 | `backend/integrations/yao.py`、`ouroboros.py`、`backend/company/cli_anything.py` |
 | **設計** | Design-as-Code（OpenPencil）；**Local Video Studio** 本機優先影片工作室（M0 骨架） | `backend/integrations/openpencil.py`；[local-video-studio.md](integrations/local-video-studio.md)（`backend/local_video_studio/`、`#/modules/local-video-studio`） |
