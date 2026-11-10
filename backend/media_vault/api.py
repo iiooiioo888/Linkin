@@ -11,8 +11,8 @@ from pydantic import BaseModel, Field
 
 from backend.media_vault import db as vault_db
 from backend.media_vault.config import load_config
-from backend.media_vault.ingest import ingest_job_results
 from backend.media_vault.control import control_overview
+from backend.media_vault.ingest import ingest_job_results
 from backend.media_vault.monitor import monitor_summary
 
 router = APIRouter(prefix="/media-vault", tags=["media-vault"])

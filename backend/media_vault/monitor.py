@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from backend.media_vault.config import load_config
 from backend.media_vault import db as vault_db
+from backend.media_vault.config import load_config
 
 
 def _utc_now() -> datetime:
@@ -104,7 +104,7 @@ def _ingest_buckets(conn, since_iso: str) -> list[dict[str, Any]]:
         if not ts:
             continue
         try:
-            dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+            dt = datetime.fromisoformat(str(ts))
         except ValueError:
             continue
         key = dt.replace(minute=0, second=0, microsecond=0).isoformat()

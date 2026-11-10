@@ -3,26 +3,26 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class ProjectPatch(BaseModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    status: Optional[str] = None
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    status: str | None = None
 
 
 class ProjectOut(BaseModel):
     id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     status: str
     created_at: datetime
     shot_count: int = 0
@@ -34,17 +34,17 @@ class ShotCreate(BaseModel):
     scene_no: int = Field(ge=0)
     shot_no: int = Field(ge=0)
     description: str = Field(min_length=1)
-    dialogue: Optional[str] = None
+    dialogue: str | None = None
     duration_sec: float = Field(default=5, gt=0, le=9999)
 
 
 class ShotPatch(BaseModel):
-    description: Optional[str] = Field(default=None, min_length=1)
-    dialogue: Optional[str] = None
-    duration_sec: Optional[float] = Field(default=None, gt=0, le=9999)
-    status: Optional[str] = None
-    selected_keyframe_asset_id: Optional[str] = None
-    selected_clip_asset_id: Optional[str] = None
+    description: str | None = Field(default=None, min_length=1)
+    dialogue: str | None = None
+    duration_sec: float | None = Field(default=None, gt=0, le=9999)
+    status: str | None = None
+    selected_keyframe_asset_id: str | None = None
+    selected_clip_asset_id: str | None = None
 
 
 class ShotOut(BaseModel):
@@ -53,11 +53,11 @@ class ShotOut(BaseModel):
     scene_no: int
     shot_no: int
     description: str
-    dialogue: Optional[str] = None
+    dialogue: str | None = None
     duration_sec: float
     status: str
-    selected_keyframe_asset_id: Optional[str] = None
-    selected_clip_asset_id: Optional[str] = None
+    selected_keyframe_asset_id: str | None = None
+    selected_clip_asset_id: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

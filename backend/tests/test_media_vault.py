@@ -139,31 +139,33 @@ def test_mediacrawler_completion_triggers_ingest(mediacrawler_env, vault_env, mo
         captured.append((job_id, results_dir, kwargs))
         return {"ingested": 0, "errors": []}
 
-    with patch("backend.media_vault.ingest.ingest_job_results", side_effect=_fake_ingest):
-        with patch("backend.mediacrawler.jobs.subprocess.Popen") as mock_popen:
+    with (
+        patch("backend.media_vault.ingest.ingest_job_results", side_effect=_fake_ingest),
+        patch("backend.mediacrawler.jobs.subprocess.Popen") as mock_popen,
+    ):
 
-            class FakeProc:
-                pid = 1
+        class FakeProc:
+            pid = 1
 
-                def wait(self, timeout=None):
-                    return 0
+            def wait(self, timeout=None):
+                return 0
 
-                @property
-                def returncode(self):
-                    return 0
+            @property
+            def returncode(self):
+                return 0
 
-            mock_popen.return_value = FakeProc()
-            mgr = MediaCrawlerJobManager()
-            job = mgr.submit(
-                CrawlJobRequest(platform="bili", crawl_type="search", keywords="AI", cookie="sess=1", dry_run=False)
-            )
-            import time
+        mock_popen.return_value = FakeProc()
+        mgr = MediaCrawlerJobManager()
+        job = mgr.submit(
+            CrawlJobRequest(platform="bili", crawl_type="search", keywords="AI", cookie="sess=1", dry_run=False)
+        )
+        import time
 
-            for _ in range(30):
-                refreshed = mgr.get_job(job.job_id)
-                assert refreshed is not None
-                if refreshed.status in {"completed", "failed"}:
-                    break
-                time.sleep(0.05)
-            assert mgr.get_job(job.job_id).status == "completed"
-            assert captured, "ingest should run after job completion"
+        for _ in range(30):
+            refreshed = mgr.get_job(job.job_id)
+            assert refreshed is not None
+            if refreshed.status in {"completed", "failed"}:
+                break
+            time.sleep(0.05)
+        assert mgr.get_job(job.job_id).status == "completed"
+        assert captured, "ingest should run after job completion"
