@@ -72,15 +72,15 @@ backend/
 | 前端 export 比對 | client：212/212 名稱一致；types：118/118 宣告文字一致、0 duplicate／0 missing |
 | 前後端測試 | 見 §4 |
 
-## 4. 驗收結果（重構後最終樹）
+## 4. 驗收結果（合併上游後最終樹，2026-11-11）
 
 | 檢查 | 指令 | 結果 |
 |------|------|------|
-| 後端測試 | `pytest backend/tests/` | **1291 passed / 3 failed / 1 skipped**（2 分 30 秒；3 個失敗皆為重構前既有，見 §6） |
+| 後端測試 | `pytest backend/tests/` | **1572 passed / 1 skipped / 0 failed**（2 分 39 秒；合併上游後最終樹） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（441 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（538 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
-| 前端單元測試 | `npx vitest run` | 11 files / 39 tests passed |
+| 前端單元測試 | `npx vitest run` | 17 files / 72 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
 
 執行環境：Windows 11／Python 3.13（專案 venv）／Node 24。
@@ -97,12 +97,13 @@ backend/
 | `backend/api/routers/chat.py` | 753 行 | 7 檔套件／812 行（最大 388 行）＝ 第二輪 |
 | `frontend/src/App.tsx` | 1,205 行 | **282 行** ＋ `src/hooks/` 5 檔／1,252 行 ＝ 第二輪 |
 | `frontend/src/components/RoleSettingsPanel.tsx` | 1,255 行 | **7 行 barrel** ＋ `components/role-settings/` 10 檔／1,374 行 ＝ 第二輪 |
+| `backend/main.py`（合併上游後） | — | **373 行**（新增上游 app 級註冊／docs 開關／horizon router） |
 
 ## 6. 已知限制與後續建議
 
-1. **分支落後 `origin/master` 40 個 commit**（本地另有 4 個 commit 未推）。本次重構基於本地 `master`，
-   合併上游時 `backend/api/` 與前端 client/types 套件會是主要衝突面；建議先把上游合併回本地後再重放本次 commit，
-   或先用 `git rebase --onto` 把 4 個本地 commit 疊到上游。
+1. ✅ **已解決：上游 40 個 commit 已合併**（見 §9）。`master` 已同步上游並全綠（1572 passed），
+   `refactor/project-structure` 再合併同步後的 `master`，兩條分支現在都包含上游全部變更；
+   本地原有 4 個 commit 亦保留（master 相對 origin/master 僅多這 4 個 commit 的內容）。
 2. **3 個測試失敗在重構前即存在**（已用 `git worktree` 在未改動的 `master` 上逐一重現，非本次引入，未在本次修）：
 3. Windows 開發機需自行安裝 `tzdata`（`pip install tzdata`）才會有 IANA 時區資料；否則 `routing_feedback` 相關 16 個測試會因 `ZoneInfoNotFoundError: Asia/Taipei` 失敗（CI Linux 不受影響）。建議後續在 `requirements.txt` 加 `tzdata; sys_platform == "win32"`。
 4. logger 名稱由 `backend.main` 改為 `backend.api.routers.*`（第二輪後再細分為 `chat.streaming` 等；訊息內容不變；若有 caplog 以 logger 名稱斷言的測試需注意）。
@@ -152,3 +153,40 @@ backend/
 | `tsc -p tsconfig.app.json --noEmit` | 0 error |
 | `vitest run`／`npm run build` | 39 passed／BUILD_EXIT=0 |
 | `oxlint src` | 0 errors（62 warnings；其中 4 個為本次 dependency array 照舊所致） |
+
+## 9. 第三輪：合併上游 40 個 commit（2026-11-11）
+
+### 9.1 兩段合併
+
+| 步驟 | 內容 |
+|------|------|
+| 1) `master` ← `origin/master` | 40 個 commit、462 個檔案（+56,718/−3,944）。僅 2 個衝突：`backend/main.py`（我方 billing to_thread／身分信任 vs 上游 cookie 會話＋precheck 計費）、`backend/tests/test_auth_gate.py`（上游刪除舊 gate 測試、我方新增 identity 測試）。以「上游版 + 重放本地 4 commit 語意」解衝突，`pytest` 全量 **1572 passed / 1 skipped**，ruff／mypy 全綠 → merge commit `17c38fe` |
+| 2) `refactor/project-structure` ← `master` | 5 個衝突檔：`backend/main.py`、`frontend/src/App.tsx`、`frontend/src/components/RoleSettingsPanel.tsx`、`frontend/src/api/client.ts`（modify/delete）、`frontend/src/types.ts`（modify/delete）。一律「保留重構結構、把上游 delta 移植進去」→ merge commit `fcd2c16` |
+
+### 9.2 上游 delta 移植對照
+
+| 上游變更 | 落點（重構後結構） |
+|----------|------------------|
+| auth cookie 化（login 只發 HttpOnly cookie、query token 失效、logout 清 cookie、docs 預設關閉） | `backend/api/security.py`、`routers/health_auth.py`、`main.py`（`LINKIN_ENABLE_DOCS`） |
+| 任務 6 個新端點（budget/decision、budget/lines、confirmation-draft、seat-overrides、field-writes、narrative/commit）＋公司預算確認閘 | `routers/tasks.py`、`routers/chat/company_stream.py` |
+| `/skills/cli-hub` | `routers/skills_mcp.py` |
+| horizon 4 端點 | 新增 `routers/horizon.py`＋main.py include |
+| settings 隔離／租戶記憶庫 | `routers/config.py`、`routers/memories.py` |
+| client.ts +140 行（lab prefs／budget／confirmation／seat override／field writes／narrative／CLI hub） | `api/client/{config,tasks,skills}.ts`；公開 API 212 → **223** |
+| types.ts TaskProgress 擴充（awaiting_confirmation／rejected／expired＋budget_plan） | `types/task.ts` |
+| App.tsx worldModuleId／monitor tab 推導／終止狀態 | `hooks/useAppRoute.ts`、`useWorkspaceNavigation.ts`、`useTaskProgressStream.ts`、`App.tsx`（284 行） |
+| RoleSettingsPanel sunset hub 攔截＋CSS 變數 | `components/role-settings/*` |
+
+### 9.3 第三輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1572 passed / 1 skipped / 0 failed**（2 分 39 秒） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（538 source files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run` | 17 files / 72 tests passed |
+| `npm run build` | BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（67 warnings，既有類別） |
+
+分支現狀：`master` = 上游 + 本地 4 commit；`refactor/project-structure` = 上述 + 三輪重構（4 個 commit）。
