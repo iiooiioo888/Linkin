@@ -26,7 +26,7 @@ import {
   type ConsoleNavKey,
 } from '../lib/monitorTabs';
 import PlaneBadge, { planeKindForActivity } from './ui/PlaneBadge';
-import { MINECRAFT_NAV_DEFAULT_OPEN_GROUP_IDS, rosterKindForTab } from '../lib/worldModules';
+import { rosterKindForTab } from '../lib/worldModules';
 import { partitionNavGroupsForMobileLite } from '../lib/mobileShell';
 import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import { useMonitorStore } from '../stores/monitorStore';
@@ -664,11 +664,11 @@ function MonitorSidebar({
     [allNavGroups, isMobileLite, activity],
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const isMinecraftNav = activity === 'world';
+  const isWorldNav = activity === 'world';
   const [mcNavOpen, setMcNavOpen] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const group of allNavGroups) {
-      init[group.id] = MINECRAFT_NAV_DEFAULT_OPEN_GROUP_IDS.has(group.id);
+      init[group.id] = true;
     }
     return init;
   });
@@ -689,13 +689,13 @@ function MonitorSidebar({
           : monitorTab;
 
   useEffect(() => {
-    if (!isMinecraftNav) return;
+    if (!isWorldNav) return;
     for (const group of allNavGroups) {
       if (group.items.some((item) => item.key === currentKey)) {
         setMcNavOpen((prev) => (prev[group.id] ? prev : { ...prev, [group.id]: true }));
       }
     }
-  }, [allNavGroups, currentKey, isMinecraftNav]);
+  }, [allNavGroups, currentKey, isWorldNav]);
 
   const pick = (key: ConsoleNavKey) => {
     if (key === 'chat') {
@@ -740,7 +740,7 @@ function MonitorSidebar({
       </div>
     );
 
-    if (isMinecraftNav && group.id !== 'mobile-advanced') {
+    if (isWorldNav && group.id !== 'mobile-advanced') {
       const open = mcNavOpen[group.id] ?? false;
       return (
         <details

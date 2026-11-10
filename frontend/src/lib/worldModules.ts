@@ -2,13 +2,13 @@
  * 世界／整合模組目錄（前端契約）。
  *
  * 與後端 GET /modules 對齊。啟動時 hydrate；離線或 GitHub Pages 用內建
- * Minecraft 目錄。新模組：後端 register_module + 前端 registerModulePages。
+ * 模組目錄。新模組：後端 register_module + 前端 registerModulePages。
  * 不可 import monitorTabs（避免循環依賴）。
  */
 import { useEffect, useState } from 'react';
 import { fetchModuleCatalog, type ModuleCatalogItem } from '../api/modules';
 
-export type ModuleIconKey = 'minecraft' | 'generic';
+export type ModuleIconKey = 'generic';
 
 export type ModuleRosterKind = 'agents' | 'tasks';
 
@@ -59,216 +59,18 @@ export type WorldModuleSpec = {
   pageAliases?: Record<string, string>;
 };
 
-/** 側欄分組刻意收斂（<7 組）；橋接僅保留 bridge_monitor 單一入口（minecraft 頁仍可由別名深鏈）。 */
-const MINECRAFT_NAV: ModuleNavGroup[] = [
-  {
-    id: 'field_overview',
-    label: '現場與總覽',
-    items: [
-      {
-        key: 'player_presence',
-        icon: '◎',
-        label: '玩家現場',
-        hint: '在線玩家、背包與活動訊息流',
-        capability: 'monitor',
-      },
-      {
-        key: 'ai_gm',
-        icon: '♛',
-        label: 'AI 主持人',
-        hint: '玩家事件驅動任務進度與 NPC 回應',
-        capability: 'monitor',
-      },
-      { key: 'monitor', icon: '◉', label: '監控總覽', hint: 'KPI、管線與 AI 可見事件', capability: 'monitor' },
-    ],
-  },
-  {
-    id: 'landing_monitor',
-    label: '落地監控',
-    items: [
-      { key: 'map_monitor', icon: '◇', label: '地圖落地', hint: '地圖計畫與落地狀態', capability: 'monitor' },
-      { key: 'npc_monitor', icon: '☺', label: 'NPC 落地', hint: '待落地／已落地／失敗', capability: 'monitor' },
-      { key: 'quest_item_monitor', icon: '◆', label: '任務／道具', hint: '世界意圖狀態帶', capability: 'monitor' },
-      { key: 'build_monitor', icon: '⌂', label: '建築落地', hint: 'build-brief 任務與方塊', capability: 'monitor' },
-    ],
-  },
-  {
-    id: 'content_narrative',
-    label: '內容與敘事',
-    items: [
-      { key: 'narrative', icon: '✎', label: '敘事工作區', hint: 'Phase 0–5 一鍵管線', capability: 'content' },
-      { key: 'npcs', icon: '☺', label: 'NPC', hint: '角色卡與對話', capability: 'content' },
-      { key: 'quests', icon: '⚑', label: '任務', hint: '主線／支線／日常', capability: 'content' },
-      { key: 'items', icon: '◆', label: '道具', hint: '稀有度平衡', capability: 'content' },
-    ],
-  },
-  {
-    id: 'world_maps',
-    label: '世界、地圖與插件',
-    items: [
-      { key: 'building', icon: '⌂', label: '建築', hint: 'Schematic 生成與派發', capability: 'building' },
-      { key: 'map_plan', icon: '◫', label: '地圖計畫', hint: '區域地圖生成／預覽／落地', capability: 'content' },
-      {
-        key: 'layout-preview',
-        icon: '▣',
-        label: '布局預覽',
-        hint: '原生 2D 俯視（map_plan／建築意圖／POI，無需 Dynmap）',
-        capability: 'content',
-      },
-      {
-        key: 'plugin-hub',
-        icon: '⚡',
-        label: '插件中心',
-        hint: 'Dynmap／BlueMap／Squaremap 等目錄與連線狀態',
-        capability: 'plugins',
-      },
-      {
-        key: 'server-map',
-        icon: '🗺',
-        label: '伺服器地圖',
-        hint: '內嵌網頁地圖（Dynmap／BlueMap／Squaremap）',
-        capability: 'plugins',
-      },
-    ],
-  },
-  {
-    id: 'ops_admin',
-    label: '橋接與管理',
-    items: [
-      { key: 'bridge_monitor', icon: '⇄', label: '橋接健康', hint: 'MineMCP 連線、探測與錯誤', capability: 'bridge' },
-      { key: 'world', icon: '✧', label: '世界觀', hint: '憲法與陣營', capability: 'worldview' },
-      { key: 'studio', icon: '◈', label: '工作室角色', hint: '建築／敘事班底', roster: 'agents' },
-      { key: 'admin', icon: '⌘', label: 'Admin', hint: '健康、批准、巡檢、指令', capability: 'admin' },
-    ],
-  },
-];
-
-export const BUILTIN_WORLD_MODULES: WorldModuleSpec[] = [
-  {
-    id: 'minecraft',
-    title: 'Minecraft',
-    description: '靈境世界觀、伺服器 Admin、內容工作室與 MineMCP 橋接',
-    version: '1.0.0',
-    kind: 'world',
-    icon: 'minecraft',
-    defaultPage: 'monitor',
-    enabled: true,
-    apiPrefix: '/linkin',
-    gatewayPrefix: '/modules/minecraft/api',
-    capabilities: [
-      {
-        id: 'worldview',
-        title: '世界觀',
-        description: '憲法、陣營、事件與總覽',
-        api_prefix: '/linkin',
-        routes: ['/constitution', '/overview', '/events'],
-      },
-      {
-        id: 'content',
-        title: '世界內容',
-        description: 'NPC、任務、道具',
-        api_prefix: '/linkin',
-        routes: ['/npcs', '/quests', '/items', '/narrative/workspaces'],
-      },
-      {
-        id: 'admin',
-        title: 'Admin',
-        description: '遊戲指令與伺服器運維',
-        api_prefix: '/linkin',
-        routes: ['/admin/execute', '/server/health', '/server/approvals'],
-      },
-      {
-        id: 'building',
-        title: '建築',
-        description: 'Schematic 生成、匯入與派發',
-        api_prefix: '/linkin',
-        routes: ['/buildings', '/buildings/generate', '/buildings/import'],
-      },
-      {
-        id: 'bridge',
-        title: '橋接',
-        description: 'MineMCP 狀態、探測與護欄呼叫',
-        api_prefix: '/linkin',
-        routes: ['/minecraft/status', '/minecraft/probe', '/minecraft/call'],
-      },
-      {
-        id: 'monitor',
-        title: '監控',
-        description: 'Minecraft 運維監控與 AI 可觀測性',
-        api_prefix: '/linkin',
-        routes: [
-          '/minecraft/monitor/summary',
-          '/minecraft/ai/snapshot',
-          '/minecraft/ai/events',
-          '/minecraft/ai/context',
-          '/minecraft/layout-preview',
-          '/map/plans',
-        ],
-      },
-      {
-        id: 'plugins',
-        title: '插件／地圖',
-        description: '第三方插件目錄、地圖 URL 設定與內嵌檢視',
-        api_prefix: '/linkin',
-        routes: ['/minecraft/plugins/catalog', '/minecraft/plugins/settings', '/minecraft/plugins/{id}/probe'],
-      },
-    ],
-    navGroups: MINECRAFT_NAV,
-    pageAliases: {
-      mc: 'minecraft',
-      minecraft_mcp: 'minecraft',
-      bridge: 'minecraft',
-      overview: 'monitor',
-      monitor_hub: 'monitor',
-      map: 'map_monitor',
-      studio_roles: 'studio',
-      linkin_roles: 'studio',
-      server: 'admin',
-      ops_admin: 'admin',
-      plugins: 'plugin-hub',
-      plugin_center: 'plugin-hub',
-      server_map: 'server-map',
-      dynmap: 'server-map',
-      layout_preview: 'layout-preview',
-      bridge_health: 'bridge_monitor',
-    },
-  },
-];
-
-/** Minecraft 側欄 accordion 預設展開的分組（現場與總覽）。 */
-export const MINECRAFT_NAV_DEFAULT_OPEN_GROUP_IDS: ReadonlySet<string> = new Set(['field_overview']);
-
-/** Minecraft 側欄分組數（驗收：明顯少於 7）。 */
-export function minecraftNavGroupCount(): number {
-  return MINECRAFT_NAV.length;
-}
+/** 內建模組目錄為空：media-vault／local-video-studio 由 GET /modules hydrate。 */
+export const BUILTIN_WORLD_MODULES: WorldModuleSpec[] = [];
 
 /** 舊 hash／書籤別名 → 模組頁鍵。控制台別名不放這裡。 */
-export const MODULE_PAGE_ALIASES: Record<string, string> = {
-  mc: 'minecraft',
-  minecraft_mcp: 'minecraft',
-  bridge: 'minecraft',
-  overview: 'monitor',
-  monitor_hub: 'monitor',
-  map: 'map_monitor',
-  studio_roles: 'studio',
-  linkin_roles: 'studio',
-  server: 'admin',
-  ops_admin: 'admin',
-  plugins: 'plugin-hub',
-  plugin_center: 'plugin-hub',
-  server_map: 'server-map',
-  dynmap: 'server-map',
-  layout_preview: 'layout-preview',
-  bridge_health: 'bridge_monitor',
-};
+export const MODULE_PAGE_ALIASES: Record<string, string> = {};
 
 const EXTRA_MODULES: WorldModuleSpec[] = [];
 const listeners = new Set<() => void>();
 let remoteSpecs: WorldModuleSpec[] = [];
 
-function asIcon(raw: string | undefined): ModuleIconKey {
-  return raw === 'minecraft' ? 'minecraft' : 'generic';
+function asIcon(_raw: string | undefined): ModuleIconKey {
+  return 'generic';
 }
 
 export function catalogToSpec(item: ModuleCatalogItem): WorldModuleSpec {
@@ -389,10 +191,10 @@ export function isModuleActivity(activity: string | null | undefined): boolean {
   return Boolean(activity && getWorldModule(activity));
 }
 
-/** 舊活動鍵：靈境已併入 Minecraft 模組。 */
+/** 舊活動鍵正規化（歷史別名保留為空操作）。 */
 export function normalizeActivityAlias(activity: string | null | undefined): string | null {
   if (!activity) return null;
-  if (activity === 'linkin') return 'minecraft';
+  if (activity === 'linkin' || activity === 'minecraft') return null;
   return activity;
 }
 
@@ -423,12 +225,7 @@ export function rosterKindForTab(tab: string | null | undefined): ModuleRosterKi
   return null;
 }
 
-export function isMinecraftTab(tab: string | null | undefined): boolean {
-  return moduleIdForTab(tab) === 'minecraft';
-}
-
-export function hashPageForTab(tab: string, moduleId: string): string {
-  if (moduleId === 'minecraft' && tab === 'minecraft') return 'bridge';
+export function hashPageForTab(tab: string, _moduleId: string): string {
   return tab;
 }
 

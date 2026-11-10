@@ -150,8 +150,7 @@
       "ExecutionPathName": {
         "enum": [
           "simple",
-          "company",
-          "minecraft_ops"
+          "company"
         ],
         "title": "ExecutionPathName",
         "type": "string"
@@ -306,7 +305,6 @@
       "GuardrailSubject": {
         "enum": [
           "opc.write",
-          "minecraft.action",
           "tool.invoke"
         ],
         "title": "GuardrailSubject",
@@ -320,90 +318,6 @@
         ],
         "title": "GuardrailVerdict",
         "type": "string"
-      },
-      "MinecraftActionRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "action": {
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Action",
-            "type": "string"
-          },
-          "args": {
-            "additionalProperties": true,
-            "title": "Args",
-            "type": "object"
-          },
-          "guardrail_decision_id": {
-            "anyOf": [
-              {
-                "maxLength": 64,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Guardrail Decision Id"
-          },
-          "server_id": {
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Server Id",
-            "type": "string"
-          },
-          "session_id": {
-            "maxLength": 64,
-            "minLength": 1,
-            "title": "Session Id",
-            "type": "string"
-          },
-          "tenant_id": {
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
-            "title": "Tenant Id",
-            "type": "string"
-          },
-          "trace_id": {
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
-            "title": "Trace Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "server_id",
-          "session_id",
-          "action",
-          "tenant_id",
-          "trace_id"
-        ],
-        "title": "MinecraftActionRequest",
-        "type": "object"
-      },
-      "MinecraftActionResult": {
-        "additionalProperties": false,
-        "properties": {
-          "detail": {
-            "default": "",
-            "title": "Detail",
-            "type": "string"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          },
-          "session_id": {
-            "title": "Session Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "ok",
-          "session_id"
-        ],
-        "title": "MinecraftActionResult",
-        "type": "object"
       },
       "OpcReadRequest": {
         "additionalProperties": false,
@@ -662,8 +576,6 @@
           "manual_override",
           "industrial",
           "linkin_complex",
-          "mine_multi_step",
-          "mine_single_step",
           "cost_speed",
           "company_keyword",
           "length",
@@ -979,13 +891,13 @@
                 }
               }
             },
-            "description": "人工審批 OPC 寫入或危險 Minecraft 動作"
+            "description": "人工審批 OPC 寫入等敏感動作"
           },
           "400": {
             "$ref": "#/components/responses/Error"
           }
         },
-        "summary": "人工審批 OPC 寫入或危險 Minecraft 動作",
+        "summary": "人工審批 OPC 寫入等敏感動作",
         "x-linkin-visibility": "internal"
       }
     },
@@ -1018,38 +930,6 @@
           }
         },
         "summary": "護欄檢查",
-        "x-linkin-visibility": "internal"
-      }
-    },
-    "/api/v1/minecraft/action": {
-      "post": {
-        "deprecated": false,
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MinecraftActionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MinecraftActionResult"
-                }
-              }
-            },
-            "description": "Minecraft 動作。危險動作必須帶 guardrail 決策。"
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          }
-        },
-        "summary": "Minecraft 動作。危險動作必須帶 guardrail 決策。",
         "x-linkin-visibility": "internal"
       }
     },

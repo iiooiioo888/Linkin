@@ -84,7 +84,6 @@ export const ACTIVITY_ALIASES: Record<string, DeskActivityKey> = {
   console: 'observe',
   lab: 'settings',
   company: 'work',
-  minecraft: 'world',
 };
 
 export function normalizeDeskActivity(activity: ActivityKey): DeskActivityKey | string {
@@ -379,7 +378,6 @@ export const ACTIVITY_DEFAULT_TAB: Partial<Record<ActivityKey, MonitorTab | 'tra
   lab: 'lab',
   chat: 'chat',
   company: 'company',
-  minecraft: 'monitor',
 };
 
 export function normalizeMonitorTab(tab: string | null | undefined): MonitorTab {

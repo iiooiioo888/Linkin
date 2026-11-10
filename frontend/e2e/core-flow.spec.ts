@@ -26,7 +26,6 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.getByText(/優化前|Before/)).toBeVisible({ timeout: 15_000 });
     const labNav = page.getByRole('navigation', { name: '實驗室' });
     await expect(labNav.getByText('核心的開發組件')).toBeVisible();
-    await expect(labNav.getByText('minecraft組件')).toBeVisible();
     await expect(labNav.getByText('價格分析探針組件')).toBeVisible();
     await expect(labNav.getByText('整合', { exact: true })).toBeVisible();
     await expect(labNav.getByText('召回', { exact: true })).toBeVisible();
@@ -49,9 +48,6 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.getByRole('heading', { name: '容器' })).toBeVisible();
     await labNav.getByRole('button', { name: /策略庫/ }).click();
     await expect(page).toHaveURL(/#\/monitor\/lab\/quant/);
-    await labNav.getByRole('link', { name: /Minecraft/ }).click();
-    await expect(page).toHaveURL(/#\/modules\/minecraft/);
-
     await page.goto('/#/monitor/lab');
     await page.reload();
     await expect(page.url()).toMatch(/#\/monitor\/lab/);
@@ -172,15 +168,6 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.url()).toMatch(/#\/monitor\/agents/);
   });
 
-  test('Hash 路由：#/monitor/world 可開啟 Minecraft 世界觀', async ({ page }) => {
-    await page.goto('/#/monitor/world');
-    await expect(page.getByText(/Minecraft · .*世界觀/).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/世界觀憲法|Constitution/).first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.url()).toMatch(/#\/(monitor\/world|modules\/minecraft(?:\/world)?)/);
-
-    await page.reload();
-    await expect(page.url()).toMatch(/#\/(monitor\/world|modules\/minecraft(?:\/world)?)/);
-  });
 
   test('Hash 路由：#/monitor/llm 可開啟 API 路由', async ({ page }) => {
     await page.goto('/#/monitor/llm');
@@ -199,53 +186,8 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.url()).toMatch(/#\/monitor\/llm/);
   });
 
-  test('Hash 路由：#/monitor/minecraft 可開啟 MCP 橋接', async ({ page }) => {
-    await page.goto('/#/monitor/minecraft');
-    await expect(page.getByText(/Minecraft · .*橋接/).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/Minecraft MCP/).first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.url()).toMatch(/#\/(monitor\/minecraft|modules\/minecraft\/bridge)/);
 
-    await page.reload();
-    await expect(page.url()).toMatch(/#\/(monitor\/minecraft|modules\/minecraft\/bridge)/);
-  });
 
-  test('活動欄：控制台不含世界模組，Minecraft 含世界觀與 Admin', async ({ page }) => {
-    await page.goto('/');
-    await page.getByTitle('控制台').or(page.getByTitle('Console')).click();
-    await expect(page.getByRole('button', { name: /即時|Live/ }).first()).toBeVisible();
-    await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /世界觀/ })).toHaveCount(0);
-    await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /橋接/ })).toHaveCount(0);
-    await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /Admin/ })).toHaveCount(0);
-    await expect(page.getByTitle('靈境').or(page.getByTitle('Linkin'))).toHaveCount(0);
-
-    await page.getByTitle('Minecraft').click();
-    await expect(page.getByRole('navigation', { name: 'Minecraft' }).getByRole('button', { name: /世界觀/ })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Minecraft' }).getByRole('button', { name: /Admin/ })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Minecraft' }).getByRole('button', { name: /工作室角色/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /建築/ }).first()).toBeVisible();
-    await page.getByRole('button', { name: /橋接/ }).click();
-    await expect(page.getByText(/Minecraft MCP/).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.url()).toMatch(/#\/(monitor\/minecraft|modules\/minecraft\/bridge)/);
-
-    await page.getByRole('button', { name: /Admin/ }).click();
-    await expect(page.getByText(/Minecraft Admin/).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.url()).toMatch(/#\/(monitor\/admin|modules\/minecraft\/admin)/);
-  });
-
-  test('Minecraft 工作室角色不進控制台執行-角色', async ({ page }) => {
-    await page.goto('/#/monitor/agents');
-    await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /角色/ })).toBeVisible();
-    await expect(page.locator('.ar-ri', { hasText: '建築總監' })).toHaveCount(0);
-    await expect(page.locator('.rd-header .rd-acts').getByRole('button', { name: /^新增$/ })).toHaveCount(0);
-
-    await page.goto('/#/monitor/studio');
-    await expect(page.getByText(/Minecraft · .*工作室/).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('建築總監').first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('建築執行者').first()).toBeVisible();
-    await expect(page.url()).toMatch(/#\/(monitor\/studio|modules\/minecraft\/studio)/);
-  });
 
   test('對話詳細區：/context 開啟底部 Context 面板', async ({ page }) => {
     await page.goto('/#/chat');

@@ -195,7 +195,7 @@ class DockerBillingTracker:
             svc = c.get("service", c.get("name", ""))
             if not svc or svc == "_docker_unavailable":
                 continue
-            # 只對費率表內的核心服務計費；其餘容器（WeKnora/Minecraft 等）不
+            # 只對費率表內的核心服務計費；其餘容器（WeKnora 等）不
             # 進入靈境積分計費，避免 list_containers 放寬後誤扣。
             if svc not in DOCKER_SERVICE_HOURLY_RATES:
                 continue

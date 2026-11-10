@@ -1,5 +1,5 @@
 /**
- * 實驗室子分頁。分組與系統四類對齊：核心的開發組件、minecraft組件、價格分析探針組件、整合。
+ * 實驗室子分頁。分組與系統三類對齊：核心的開發組件、價格分析探針組件、整合。
  */
 export type LabSubTab = 'prompt' | 'firecrawl' | 'archify' | 'ponytail' | 'quant' | 'maps' | 'mcp' | 'ab' | 'runner';
 
@@ -81,14 +81,6 @@ const MCP: LabTabItem = { key: 'mcp', icon: '◇', label: 'MCP', hint: 'OPC／�
 
 const AB: LabTabItem = { key: 'ab', icon: '▣', label: 'A/B', hint: '提示詞對照' };
 
-const MINECRAFT_LINK: LabLinkItem = {
-  key: 'minecraft',
-  icon: '⛏',
-  label: 'Minecraft',
-  hint: '世界模組',
-  href: '#/modules/minecraft',
-};
-
 const PRICE_PROBE_LINK: LabLinkItem = {
   key: 'price-probe',
   icon: '◉',
@@ -109,7 +101,7 @@ export const LAB_TABS: LabTabItem[] = [
   ...LAB_INTEGRATE_TABS,
 ];
 
-export type LabNavGroupId = 'core' | 'minecraft' | 'price' | 'integrate';
+export type LabNavGroupId = 'core' | 'price' | 'integrate';
 
 /** 整合類再按功能切開。其他三類沒有這個子層。 */
 export type LabNavSection = {
@@ -198,7 +190,6 @@ export const LAB_INTEGRATE_SECTIONS: LabNavSection[] = [
 
 export const LAB_NAV_GROUPS: LabNavGroup[] = [
   { id: 'core', label: '核心的開發組件', items: LAB_CORE_TABS },
-  { id: 'minecraft', label: 'minecraft組件', items: [MINECRAFT_LINK] },
   { id: 'price', label: '價格分析探針組件', items: [...LAB_PRICE_TABS, PRICE_PROBE_LINK] },
   {
     id: 'integrate',

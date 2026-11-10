@@ -32,15 +32,12 @@ class CompatibleStrategy(str, Enum):
 class ExecutionPathName(str, Enum):
     simple = "simple"
     company = "company"
-    minecraft_ops = "minecraft_ops"
 
 
 class RuleHit(str, Enum):
     manual_override = "manual_override"
     industrial = "industrial"
     linkin_complex = "linkin_complex"
-    mine_multi_step = "mine_multi_step"
-    mine_single_step = "mine_single_step"
     cost_speed = "cost_speed"
     company_keyword = "company_keyword"
     length = "length"
@@ -51,8 +48,6 @@ class RuleHit(str, Enum):
 RULE_CHAIN: tuple[RuleHit, ...] = (
     RuleHit.industrial,
     RuleHit.linkin_complex,
-    RuleHit.mine_multi_step,
-    RuleHit.mine_single_step,
     RuleHit.cost_speed,
     RuleHit.company_keyword,
     RuleHit.length,
@@ -85,7 +80,7 @@ class RouteDecision(ContractModel):
 
 
 def normalize_execution_path(path: str) -> ExecutionPathName:
-    """opc 舊名收成 company，其餘名稱必須已是三條路徑之一。"""
+    """opc 舊名收成 company，其餘名稱必須已是既有路徑之一。"""
     if path == LEGACY_PATH_OPC:
         return ExecutionPathName.company
     return ExecutionPathName(path)

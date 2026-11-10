@@ -18,7 +18,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = PROJECT_ROOT / "backend"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-for _service in ("services/guardrail-service", "services/tool-gateway", "services/minecraft-gateway"):
+for _service in ("services/guardrail-service", "services/tool-gateway"):
     _service_path = str(PROJECT_ROOT / _service)
     if _service_path not in sys.path:
         sys.path.insert(0, _service_path)
@@ -133,14 +133,6 @@ def _isolate_local_video_studio(tmp_path, monkeypatch):
     yield
     reset_db_state()
 
-
-@pytest.fixture(autouse=True)
-def _isolate_minecraft_mcp(tmp_path, monkeypatch):
-    """所有測試共用：Minecraft MCP 預設乾跑，審計寫入暫存。"""
-    monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "false")
-    monkeypatch.setenv("EVOL_MC_MCP_TOKEN", "")
-    monkeypatch.setenv("EVOL_MC_MCP_AUDIT_PATH", str(tmp_path / "mcp_audit.jsonl"))
-    yield
 
 
 @pytest.fixture(autouse=True)

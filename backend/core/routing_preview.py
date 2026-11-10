@@ -9,7 +9,6 @@ from backend.core.execution_path import (
     ExecutionPath,
     _complex_query_length,
     is_complex_task,
-    is_minecraft_heavy_task,
     needs_opc_context,
     resolve_company_template,
     resolve_execution_path,
@@ -84,9 +83,6 @@ def _estimated_cost(path: ExecutionPath, complexity: str) -> dict[str, Any]:
     if path == "company":
         level: EstimatedCostLevel = "high"
         est_tokens = 12000
-    elif path == "minecraft_ops":
-        level = "medium"
-        est_tokens = 2500
     elif path == "opc":
         level = "medium"
         est_tokens = 6000
@@ -137,10 +133,6 @@ def _collect_reason_codes(
     if needs_opc_context(text) and path == "company":
         codes.append("opc_keyword")
 
-    if path == "minecraft_ops":
-        codes.append("mc_single_action")
-        return codes
-
     if path == "company":
         try:
             from backend.linkin.pipeline import is_linkin_complex_task
@@ -149,8 +141,6 @@ def _collect_reason_codes(
                 codes.append("linkin_complex")
         except Exception:
             pass
-        if is_minecraft_heavy_task(text):
-            codes.append("minecraft_heavy")
         if _COMPANY_KEYWORDS_hit(text):
             codes.append("company_keyword")
         threshold = _complex_query_length()
@@ -159,7 +149,6 @@ def _collect_reason_codes(
         if not codes:
             codes.append("rule_company")
     elif is_complex_task(text, use_routing_feedback=True) and path == "simple":
-        # cost_speed 或規則將複雜查詢留在 simple
         if len(text) >= _complex_query_length():
             codes.append("length_over_threshold")
 

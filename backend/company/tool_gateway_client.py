@@ -29,8 +29,6 @@ def _ctx(extra: dict[str, Any] | None = None) -> dict[str, Any]:
 
 
 def _adapters(registry: Any, request: Any, role: str | None, catalog_allowed: list[str] | None) -> dict[str, Any]:
-    from linkin_core.contracts.signatures import is_sensitive
-
     def local(tool: str, args: dict[str, Any], _token: str) -> dict[str, Any]:
         token = legacy_only.set(True)
         try:
@@ -38,14 +36,6 @@ def _adapters(registry: Any, request: Any, role: str | None, catalog_allowed: li
         finally:
             legacy_only.reset(token)
         return {"ok": outcome.success, "result": outcome.result, "error": outcome.error, "tool": tool, "args": args}
-
-    def minecraft(tool: str, args: dict[str, Any], token: str) -> dict[str, Any]:
-        from backend.linkin.minecraft import execute_named_tool
-
-        if is_sensitive(tool) and not token:
-            return {"ok": False, "error": "缺少護欄簽章"}
-        result = execute_named_tool(tool, args)
-        return {"ok": bool(result.get("ok", True)), "result": result, "tool": tool}
 
     def opc_read(tool: str, args: dict[str, Any], _token: str) -> dict[str, Any]:
         return {"ok": True, "tool": tool, "result": {"node_ids": args.get("node_ids") or []}}
@@ -55,7 +45,7 @@ def _adapters(registry: Any, request: Any, role: str | None, catalog_allowed: li
             return {"ok": False, "error": "缺少護欄簽章", "tool": tool}
         return {"ok": True, "tool": tool, "result": {"accepted": True}}
 
-    return {"local": local, "minecraft": minecraft, "opc_read": opc_read, "opc_write": opc_write}
+    return {"local": local, "opc_read": opc_read, "opc_write": opc_write}
 
 
 def invoke_registered(registry: Any, request: Any, role: str | None, catalog_allowed: list[str] | None) -> Any:
@@ -213,4 +203,4 @@ def _read_adapters(legacy: dict[str, Any]) -> dict[str, Any]:
     def reject(tool: str, args: dict[str, Any], _token: str) -> dict[str, Any]:
         return {"ok": False, "tool": tool, "error": "讀取鏈不呼叫寫入", "args": args}
 
-    return {"opc_read": opc_read, "opc_write": reject, "minecraft": reject, "local": reject}
+    return {"opc_read": opc_read, "opc_write": reject, "local": reject}
