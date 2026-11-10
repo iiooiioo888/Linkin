@@ -29,7 +29,7 @@
 | 多代理人／RAHO | [company-runtime](architecture/company-runtime.md) · [角色介紹](company/roles.md) · `backend/company/` |
 | OPC | [opc-integration](architecture/opc-integration.md) · `opc_service/` |
 | 靈境／Minecraft | [linkin/](linkin/worldview.md) · [minecraft-mcp](linkin/minecraft-mcp.md) |
-| 模型池／價卡／Hub | [config/reference](config/reference.md) · [AI Hub](AI_HUB_DETAILED_DESIGN.md) |
+| 模型池／價卡／Hub | [config/reference](config/reference.md) · [AI Hub](AI_HUB_DETAILED_DESIGN.md) · [ModelGW WIRE](modelgw-wire.md) · [G-GATE1 雙閘](contracts/g-gate1-dual-gate.md) |
 | 量化工具 | [company/quant-tools](company/quant-tools.md) |
 | API／前端監控 | [api/reference](api/reference.md) · [frontend/README](../frontend/README.md) |
 | 部署 | [deployment/guide](deployment/guide.md) |

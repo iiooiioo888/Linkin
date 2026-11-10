@@ -14,12 +14,14 @@ import { useMonitorStore } from '../stores/monitorStore';
 import type { ChatMessage, L0Snapshot, TaskProgress } from '../types';
 import type { MonitorTab } from './AppShell';
 import type { LabSubTab } from '../lib/labTabs';
-import { moduleIdForTab } from '../lib/worldModules';
+import { moduleIdForTab, inferWorldModuleIdForTab } from '../lib/worldModules';
 import ModuleWorkspace from '../modules/ModuleWorkspace';
 import LiveBoard from './LiveBoard';
 import ErrorState from './ui/ErrorState';
 import { MobileLiteGate } from './ui/MobileLiteGate';
 import { PanelShell } from './ui/ConsoleLayout';
+import EmptyPlanePanel from './ui/EmptyPlanePanel';
+import { isPhase1ShellTab } from '../lib/monitorTabs';
 
 const AgentsMonitorPanel = lazy(() => import('./AgentsMonitorPanel'));
 const TasksMonitorPanel = lazy(() => import('./TasksMonitorPanel'));
@@ -38,7 +40,8 @@ interface MonitorViewProps {
   onOpenTrace?: (taskId: string) => void;
   messages?: ChatMessage[];
   activeTab: MonitorTab;
-  onTabChange: (tab: MonitorTab) => void;
+  worldModuleId?: string | null;
+  onTabChange: (tab: MonitorTab, worldModuleId?: string | null) => void;
   focusAgentId: string | null;
   onFocusAgent: (id: string | null) => void;
   focusTaskId: string | null;
@@ -130,6 +133,7 @@ export default function MonitorView({
   onOpenTrace,
   messages = [],
   activeTab,
+  worldModuleId = null,
   onTabChange,
   focusAgentId,
   onFocusAgent,
@@ -140,7 +144,7 @@ export default function MonitorView({
 }: MonitorViewProps) {
   const { t } = useTranslation();
   const tab = activeTab;
-  const moduleId = moduleIdForTab(tab);
+  const moduleId = inferWorldModuleIdForTab(tab, worldModuleId) ?? moduleIdForTab(tab, worldModuleId);
   const isMobileLite = useIsMobileLiteShell();
 
   useMonitorHub(tab !== 'lab');
@@ -232,7 +236,7 @@ export default function MonitorView({
               <div className="shrink-0 border-b border-white/[0.06] bg-[color-mix(in_srgb,var(--console-card)_80%,transparent)] px-6 py-3">
                 <p className="text-[12px] text-[var(--console-sub)]">
                   Context 主表面在<strong className="mx-1 text-[var(--console-ink)]">對話底部詳細區</strong>
-                  （輸入 <code className="text-[11px] text-[var(--console-accent)]">/context</code>）。此處為控制台完整鏡像。
+                  （輸入 <code className="text-[11px] text-[var(--console-accent)]">/context</code>）。此處為觀測完整鏡像（資產層只存與取）。
                 </p>
                 <button
                   type="button"
@@ -263,6 +267,7 @@ export default function MonitorView({
             <SkillsMcpPanel />
           </MobileLiteGate>
         )}
+        {isPhase1ShellTab(tab) && <EmptyPlanePanel tab={tab} />}
         </div>
       </Suspense>
     </div>

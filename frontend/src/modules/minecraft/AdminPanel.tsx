@@ -26,7 +26,7 @@ type Busy = 'idle' | 'load' | 'ask' | 'patrol' | 'cmd' | string;
 function toneOf(status: string | undefined): string {
   if (status === 'critical' || status === 'failed' || status === 'expired') return 'text-[var(--console-danger)]';
   if (status === 'warn' || status === 'warning' || status === 'pending') return 'text-[var(--console-amber)]';
-  if (status === 'ok' || status === 'confirmed') return 'text-[#c9a961]';
+  if (status === 'ok' || status === 'confirmed') return 'text-[var(--console-accent)]';
   return 'text-[var(--console-sub)]';
 }
 
@@ -112,14 +112,14 @@ export default function AdminPanel() {
       ) : null}
 
       <section className="mb-4 rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">健康檢查</h3>
+        <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">健康檢查</h3>
         <div className="space-y-1.5">
           {(health?.checks ?? []).length === 0 && <p className="text-[11px] text-[var(--console-sub)]">尚無檢查結果</p>}
           {(health?.checks ?? []).map((check) => (
             <div key={check.name} className="flex items-start justify-between gap-3 rounded-lg bg-black/20 px-2.5 py-1.5">
               <div>
                 <p className="text-[12px] font-medium">{check.name}</p>
-                <p className="text-[11px] text-[#8a8f98]">{check.detail || '—'}</p>
+                <p className="text-[11px] text-[var(--console-faint)]">{check.detail || '—'}</p>
               </div>
               <span className={`shrink-0 text-[10px] ${toneOf(check.critical ? 'critical' : check.warning ? 'warn' : check.ok ? 'ok' : 'fail')}`}>
                 {statusLabel(check.critical ? 'critical' : check.warning ? 'warn' : check.ok ? 'ok' : 'failed')}
@@ -130,7 +130,7 @@ export default function AdminPanel() {
       </section>
 
       <section className="mb-4 rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">運維問答</h3>
+        <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">運維問答</h3>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
             value={question}
@@ -177,7 +177,7 @@ export default function AdminPanel() {
       </section>
 
       <section className="mb-4 rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">批准隊列（{approvals.length}）</h3>
+        <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">批准隊列（{approvals.length}）</h3>
         {approvals.length === 0 && <p className="py-4 text-center text-xs text-[var(--console-sub)]">沒有待批准操作</p>}
         <div className="space-y-2">
           {approvals.map((row) => (
@@ -199,7 +199,7 @@ export default function AdminPanel() {
                       await load();
                     })
                   }
-                  className="rounded-lg bg-[color-mix(in_srgb,#c9a961_15%,transparent)] px-2 py-1 text-[11px] text-[#c9a961] disabled:opacity-40"
+                  className="rounded-lg bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] px-2 py-1 text-[11px] text-[var(--console-accent)] disabled:opacity-40"
                 >
                   批准
                 </button>
@@ -224,14 +224,14 @@ export default function AdminPanel() {
       </section>
 
       <section className="mb-4 rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">遊戲指令（Admin.execute）</h3>
+        <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">遊戲指令（Admin.execute）</h3>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             value={command}
             onChange={(e) => setCommand(e.target.value)}
             className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]"
           />
-          <label className="flex items-center gap-2 text-[11px] text-[#8a8f98]">
+          <label className="flex items-center gap-2 text-[11px] text-[var(--console-faint)]">
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
             敏感操作已二次確認
           </label>
@@ -254,7 +254,7 @@ export default function AdminPanel() {
 
       <section className="mb-4 rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">日報／審計</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--console-faint)]">日報／審計</h3>
           <button
             type="button"
             disabled={busy !== 'idle'}
@@ -274,7 +274,7 @@ export default function AdminPanel() {
           {audit.length === 0 && <p className="text-[11px] text-[var(--console-sub)]">尚無運維審計</p>}
           {audit.slice().reverse().map((row, index) => (
             <div key={`${row.ts}-${index}`} className="rounded-lg bg-black/20 px-2.5 py-1.5 text-[11px] text-[var(--console-sub)]">
-              <span className="mr-2 text-[#8a8f98]">{String(row.ts || '')}</span>
+              <span className="mr-2 text-[var(--console-faint)]">{String(row.ts || '')}</span>
               <span className="mr-2 font-medium text-[var(--console-ink)]">{String(row.tool || 'audit')}</span>
               <span>{String(row.message || row.error || '')}</span>
             </div>

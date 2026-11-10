@@ -1,0 +1,26 @@
+{
+  "3": {
+    "class_type": "KSampler",
+    "inputs": { "seed": 0, "steps": 28, "cfg": 6 }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": { "width": 1280, "height": 704, "batch_size": 1, "length": 121 }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "text": "placeholder prompt" }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "text": "placeholder negative" }
+  },
+  "10": {
+    "class_type": "LoadImage",
+    "inputs": { "image": "keyframe.png" }
+  },
+  "20": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": { "filename_prefix": "wan5b_refine", "frame_rate": 24 }
+  }
+}

@@ -14,7 +14,7 @@ import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -95,25 +95,70 @@ class ResilientHttpClient:
     trail: Callable[[dict], None] | None = None
     clock: Callable[[], float] = time.monotonic
 
+    def effective_config(self) -> IntegrationConfig:
+        """未登入用建構時的平台設定。已登入只採用該帳號自存的覆寫。
+
+        已登入但還沒有自存 overlay 時視為未配置：不繼承平台
+        ``api_key``、``base_url``、``extra_headers``，也不沿用平台的啟用狀態。
+        有自存時，缺的網址或金鑰留空，同樣不回補平台秘密。
+        """
+        from backend.core.user_settings import active_settings_user, integration_overlay
+
+        uid = active_settings_user()
+        if not uid:
+            return self.config
+        overlay = integration_overlay(uid, self.config.name)
+        if not overlay:
+            return replace(
+                self.config,
+                base_url="",
+                enabled=False,
+                api_key="",
+                extra_headers={},
+            )
+        enabled = bool(overlay.get("enabled")) if "enabled" in overlay else False
+        base_url = str(overlay.get("base_url") or "").strip()
+        api_key = str(overlay.get("api_key") or "") if "api_key" in overlay else ""
+        return replace(
+            self.config,
+            base_url=base_url,
+            enabled=enabled,
+            api_key=api_key,
+            extra_headers=self._headers_for_user_key(api_key),
+        )
+
+    def _headers_for_user_key(self, api_key: str) -> dict[str, str]:
+        """平台若把金鑰放在 header（如 WeKnora），只換上這個帳號自己的金鑰。"""
+        if not api_key or not self.config.extra_headers:
+            return {}
+        secret_names = {"authorization", "x-api-key", "api-key"}
+        rewritten: dict[str, str] = {}
+        for key, value in self.config.extra_headers.items():
+            if str(key).lower() in secret_names or value == self.config.api_key:
+                rewritten[str(key)] = api_key
+        return rewritten
+
     @property
     def enabled(self) -> bool:
-        return self.config.enabled
+        return self.effective_config().enabled
 
-    def _headers(self) -> dict[str, str]:
-        headers = {"Content-Type": "application/json", **self.config.extra_headers}
-        if self.config.api_key:
-            headers.setdefault("Authorization", f"Token {self.config.api_key}")
+    def _headers(self, cfg: IntegrationConfig | None = None) -> dict[str, str]:
+        current = cfg or self.effective_config()
+        headers = {"Content-Type": "application/json", **current.extra_headers}
+        if current.api_key:
+            headers.setdefault("Authorization", f"Token {current.api_key}")
         return headers
 
     def request(self, method: str, path: str, payload: dict | None = None) -> IntegrationResponse:
-        name = self.config.name
-        if not self.config.enabled:
+        cfg = self.effective_config()
+        name = cfg.name
+        if not cfg.enabled:
             return self._finish(False, None, ERR_INTEGRATION_DISABLED, f"integration:{name}:disabled", 0.0, method, path)
-        url = f"{self.config.base_url.rstrip('/')}/{path.lstrip('/')}"
+        url = f"{cfg.base_url.rstrip('/')}/{path.lstrip('/')}"
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
         started = self.clock()
         try:
-            status, raw = self.transport(method, url, self._headers(), body, self.config.timeout_seconds)
+            status, raw = self.transport(method, url, self._headers(cfg), body, cfg.timeout_seconds)
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             latency = (self.clock() - started) * 1000
             logger.warning("整合 %s 不可達（fail-open）：%s", name, exc)

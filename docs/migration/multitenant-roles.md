@@ -22,3 +22,5 @@
 ## 驗收
 
 見 `backend/tests/test_multitenant_roles.py` 與 PR 說明中的隔離清單。
+
+API 金鑰、整合、實驗室開關與記憶的帳號隔離見 [per-user-settings.md](per-user-settings.md)。

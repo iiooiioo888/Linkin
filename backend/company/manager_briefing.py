@@ -30,7 +30,7 @@ def _clip(text: str, limit: int = _LINE) -> str:
     return cleaned[: limit - 1].rstrip() + "…"
 
 
-def _gb(nbytes: float | int | None) -> str:
+def _gb(nbytes: float | None) -> str:
     try:
         return f"{float(nbytes or 0) / (1024 ** 3):.1f} GB"
     except (TypeError, ValueError):
@@ -258,12 +258,12 @@ def resource_snapshot(budget: Any, host: dict[str, Any] | None) -> str:
 
 
 def budget_rules_text() -> str:
-    return "\n".join([
-        "模型費按公開價卡的各收費項乘用量，單位 USD。沒有 token 計數時，低／中／高複雜度分別按 500／2000／8000 token 的輸入加輸出粗估。",
-        "雲資源按小時費率乘運行時長。預算壓力取任務、會話、月三個上限裡最高的使用率。",
-        "這次拆解呼叫本身計入任務預算。程式沒有另設緩衝比例，估算不得超過任務上限。",
-        "人天、加班與外部人力沒有單價，不要換算成金額。",
-    ])
+    return (
+        "模型費按公開價卡的各收費項乘用量，單位 USD。沒有 token 計數時，低／中／高複雜度分別按 500／2000／8000 token 的輸入加輸出粗估。\n"
+        "雲資源按小時費率乘運行時長。預算壓力取任務、會話、月三個上限裡最高的使用率。\n"
+        "這次拆解呼叫本身計入任務預算。程式沒有另設緩衝比例，估算不得超過任務上限。\n"
+        "人天、加班與外部人力沒有單價，不要換算成金額。"
+    )
 
 
 def _merge_roles(goal: str, role_cards: list[dict[str, Any]], skills: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:

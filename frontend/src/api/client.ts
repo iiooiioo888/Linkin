@@ -346,6 +346,22 @@ export async function refreshLlmModels(): Promise<LlmOpsData> {
   return resp.json();
 }
 
+export async function fetchLabPrefs(): Promise<{ mcp_tools: Record<string, boolean>; settings_user: string }> {
+  const resp = await fetch(apiUrl('/config/lab'));
+  if (!resp.ok) throw new Error(`讀取實驗室設定失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function saveLabPrefs(mcpTools: Record<string, boolean>): Promise<{ mcp_tools: Record<string, boolean> }> {
+  const resp = await fetch(apiUrl('/config/lab'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mcp_tools: mcpTools }),
+  });
+  if (!resp.ok) throw new Error(`儲存實驗室設定失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
 export async function updateLlmOpsPrefs(refreshIntervalSec: number): Promise<LlmOpsData> {
   const resp = await fetch(apiUrl('/config/ops'), {
     method: 'PUT',
@@ -584,6 +600,82 @@ export async function decideRaho(decisionId: string, choice: string, note = ''):
 }
 
 // ==================== 任務介面 ====================
+
+/** 批准或拒絕開工預算。拒絕不會開始執行。 */
+export async function decideBudget(
+  taskId: string,
+  action: 'approve' | 'reject',
+  note = '',
+): Promise<{ success: boolean; message: string; task?: TaskProgress }> {
+  const resp = await fetch(apiUrl(`/tasks/${encodeURIComponent(taskId)}/budget/decision`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, note }),
+  });
+  if (!resp.ok) {
+    let detail = `確認失敗（HTTP ${resp.status}）`;
+    try {
+      const body = await resp.json();
+      if (body?.detail) detail = String(body.detail);
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  return resp.json();
+}
+
+async function taskPost(path: string, body: unknown, fallback: string): Promise<Record<string, unknown>> {
+  const resp = await fetch(apiUrl(path), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) {
+    let detail = fallback;
+    try {
+      const payload = await resp.json();
+      if (payload?.detail) detail = String(payload.detail);
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  return resp.json();
+}
+
+/** 點頭前改新席位草稿與現場寫入。 */
+export function updateConfirmationDraft(
+  taskId: string,
+  body: { new_seats?: Array<Record<string, unknown>>; field_writes?: Array<Record<string, unknown>> },
+) {
+  return taskPost(`/tasks/${encodeURIComponent(taskId)}/confirmation-draft`, body, '確認內容更新失敗');
+}
+
+/** 已存在席位的提示詞或工具權限立刻寫進目錄。 */
+export function applySeatOverride(
+  taskId: string,
+  body: { role_id: string; system_prompt?: string; tools_allowed?: string[] },
+) {
+  return taskPost(`/tasks/${encodeURIComponent(taskId)}/seat-overrides`, body, '席位目錄更新失敗');
+}
+
+/** 開工後重試現場寫入。 */
+export function retryFieldWrites(
+  taskId: string,
+  field_writes?: Array<Record<string, unknown>>,
+) {
+  return taskPost(`/tasks/${encodeURIComponent(taskId)}/field-writes`, { field_writes }, '現場寫入重試失敗');
+}
+
+/** 敘事顯式寫入實體。 */
+export function commitNarrative(
+  taskId: string,
+  kind: 'npc' | 'quest' | 'item',
+  entity: { name: string },
+) {
+  return taskPost(`/tasks/${encodeURIComponent(taskId)}/narrative/commit`, { kind, entity }, '實體寫入失敗');
+}
 
 /** 建立後台任務（統一模式），回傳 task_id。 */
 export async function createTask(
@@ -2469,6 +2561,54 @@ export async function fetchCliRuntimes(): Promise<CliRuntimeStatus[]> {
   if (!resp.ok) throw new Error(await readApiError(resp));
   const data = (await resp.json()) as { runtimes: CliRuntimeStatus[] };
   return data.runtimes ?? [];
+}
+
+export interface CliHubNameGroup {
+  category: string;
+  count: number;
+  names: string[];
+}
+
+export interface CliHubItem {
+  name: string;
+  display_name?: string;
+  category?: string;
+  description?: string;
+  source?: string;
+  version?: string;
+  homepage?: string;
+  installed?: boolean;
+}
+
+export interface CliHubView {
+  ok: boolean;
+  hub_installed: boolean;
+  hub_path?: string;
+  version?: string;
+  action: string;
+  items: CliHubItem[];
+  categories: CliHubNameGroup[];
+  total: number;
+  shown: number;
+  note: string;
+  detail?: string;
+  reason?: string;
+}
+
+export async function fetchCliHub(params: {
+  action?: string;
+  query?: string;
+  name?: string;
+  full?: boolean;
+}): Promise<CliHubView> {
+  const search = new URLSearchParams();
+  if (params.action) search.set('action', params.action);
+  if (params.query) search.set('q', params.query);
+  if (params.name) search.set('name', params.name);
+  if (params.full) search.set('full', '1');
+  const resp = await fetch(apiUrl(`/skills/cli-hub?${search.toString()}`));
+  if (!resp.ok) throw new Error(await readApiError(resp));
+  return resp.json() as Promise<CliHubView>;
 }
 
 export async function syncAgentSkillPacks(): Promise<AgentSkillsSyncReport> {

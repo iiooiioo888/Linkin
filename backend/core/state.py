@@ -54,6 +54,8 @@ class EvoLoopState(OPCStateFields, total=False):
 
     # ---- 輸入 ----
     query: str
+    # 公司路徑：用戶已確認預算後才允許 run_company 呼叫協調器
+    budget_locked: bool
     history: list[dict[str, str]]
     session_id: str
 

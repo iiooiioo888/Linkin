@@ -19,7 +19,7 @@ export function ActivityHeatmap({
   return (
     <div>
       {title ? (
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+        <p className="mb-2 text-[10px] font-semibold text-[var(--console-faint)]">
           {title}
           {demo || empty ? <span className="ml-1 font-normal normal-case text-[var(--console-faint)]">（累積中）</span> : null}
         </p>

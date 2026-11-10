@@ -1,0 +1,842 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api-gateway
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api-gateway
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: qps
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: api-gateway
+          image: "linkin/scaffold/api-gateway:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: route-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: route-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: route-service
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: route-service
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: qps
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: route-service
+          image: "linkin/scaffold/route-service:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: route-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: route-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: route-service
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: context-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: context-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: context-service
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: context-service
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: latency
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: context-service
+          image: "linkin/scaffold/context-service:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: context-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: context-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: context-service
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reflection-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: reflection-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: reflection-service
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: reflection-service
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: cpu
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: reflection-service
+          image: "linkin/scaffold/reflection-service:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reflection-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: reflection-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: reflection-service
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: company-orchestrator
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: company-orchestrator
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: company-orchestrator
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: company-orchestrator
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: tasks
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: company-orchestrator
+          image: "linkin/scaffold/company-orchestrator:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: company-orchestrator
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: company-orchestrator
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: company-orchestrator
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seat-executor
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: seat-executor
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: seat-executor
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: seat-executor
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: queue
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: seat-executor
+          image: "linkin/scaffold/seat-executor:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seat-executor
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: seat-executor
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: seat-executor
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tool-gateway
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: tool-gateway
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tool-gateway
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tool-gateway
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: qps
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: tool-gateway
+          image: "linkin/scaffold/tool-gateway:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tool-gateway
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: tool-gateway
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: tool-gateway
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guardrail-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: guardrail-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: guardrail-service
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: guardrail-service
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: qps
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: guardrail-service
+          image: "linkin/scaffold/guardrail-service:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guardrail-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: guardrail-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: guardrail-service
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opc-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: opc-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opc-service
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: opc-service
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: qps
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: opc-service
+          image: "linkin/scaffold/opc-service:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: write
+              containerPort: 8081
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opc-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: opc-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: opc-service
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+    - name: write
+      port: 8081
+      targetPort: write
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minecraft-gateway
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: minecraft-gateway
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: minecraft-gateway
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: minecraft-gateway
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: qps
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: minecraft-gateway
+          image: "linkin/scaffold/minecraft-gateway:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-gateway
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: minecraft-gateway
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: minecraft-gateway
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memory-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: memory-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: memory-service
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: memory-service
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: qps
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: memory-service
+          image: "linkin/scaffold/memory-service:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memory-service
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: memory-service
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: memory-service
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: observability-collector
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: observability-collector
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: observability-collector
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: observability-collector
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: qps
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: observability-collector
+          image: "linkin/scaffold/observability-collector:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: otlp
+              containerPort: 4317
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: observability-collector
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: observability-collector
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: observability-collector
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+    - name: otlp
+      port: 4317
+      targetPort: otlp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/part-of: linkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: frontend
+      app.kubernetes.io/part-of: linkin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: frontend
+        app.kubernetes.io/part-of: linkin
+        linkin.io/mtls: required
+        linkin.io/scale-signal: qps
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: frontend
+          image: "linkin/scaffold/frontend:0.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/part-of: linkin
+spec:
+  selector:
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/part-of: linkin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

@@ -79,6 +79,12 @@
       "skillPath": "skills/in-progress/claude-handoff/SKILL.md",
       "computedHash": "f8c4754a25aa4e12601ce69db4388bb0d30ca526b225351180c5b0d2a4649a95"
     },
+    "cli-anything": {
+      "source": "HKUDS/CLI-Anything",
+      "sourceType": "github",
+      "skillPath": "skills/cli-anything/SKILL.md",
+      "computedHash": "0fa126043609e45a7b2b18a029ec773a2213dd47b28a632a7155df15ec4f3b17"
+    },
     "cli-creator": {
       "source": "openai/skills",
       "sourceType": "github",

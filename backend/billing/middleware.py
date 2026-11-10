@@ -21,7 +21,7 @@ class BillingContextMiddleware(BaseHTTPMiddleware):
         if not user and not gate_enabled():
             user = default_anonymous_user()
         elif not user and gate_enabled():
-            token = extract_token(request.headers, request.cookies, request.query_params)
+            token = extract_token(request.headers, request.cookies)
             user = session_user(token)
         uid = str(user or "").strip()
         if os.getenv("PYTEST_CURRENT_TEST"):

@@ -47,8 +47,8 @@ function MiniLineChart({
 }) {
   if (points.length < 2) {
     return (
-      <div className="rounded-lg border border-gray-800 bg-gray-900/80 p-3">
-        <p className="mb-1 text-[10px] uppercase text-gray-500">{label}</p>
+      <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-sidebar)]/80 p-3">
+        <p className="mb-1 text-[10px] uppercase text-[var(--console-faint)]">{label}</p>
         <p className="text-xs text-gray-600">數據不足</p>
       </div>
     );
@@ -57,9 +57,9 @@ function MiniLineChart({
   const latest = points[points.length - 1];
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900/80 p-3">
+    <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-sidebar)]/80 p-3">
       <div className="mb-1 flex items-center justify-between">
-        <p className="text-[10px] uppercase text-gray-500">{label}</p>
+        <p className="text-[10px] uppercase text-[var(--console-faint)]">{label}</p>
         <p className="text-xs font-semibold" style={{ color }}>
           {latest.toFixed(1)}{unit}
         </p>
@@ -174,8 +174,8 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
     <div className={embedded ? 'space-y-3' : 'flex-1 space-y-4 overflow-auto p-4'}>
       {/* 時間範圍選擇器 */}
       <div className="flex items-center justify-between">
-        {!embedded ? <h3 className="text-sm font-medium text-gray-200">資源監控</h3> : <span />}
-        <div className="flex items-center gap-1 rounded-lg bg-gray-900 p-0.5">
+        {!embedded ? <h3 className="text-sm font-medium text-[var(--console-ink)]">資源監控</h3> : <span />}
+        <div className="flex items-center gap-1 rounded-lg bg-[var(--console-sidebar)] p-0.5">
           {RANGE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -183,7 +183,7 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
               className={`rounded-md px-3 py-1 text-[11px] transition-colors ${
                 range === opt.value
                   ? 'bg-blue-500/20 console-status-blue'
-                  : 'text-gray-500 hover:text-gray-300'
+                  : 'text-[var(--console-faint)] hover:text-[var(--console-sub)]'
               }`}
             >
               {opt.label}
@@ -192,7 +192,7 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
           <button
             onClick={() => void refresh()}
             disabled={loading}
-            className="ml-2 rounded-md px-2 py-1 text-[11px] text-gray-500 hover:text-gray-300 disabled:opacity-40"
+            className="ml-2 rounded-md px-2 py-1 text-[11px] text-[var(--console-faint)] hover:text-[var(--console-sub)] disabled:opacity-40"
           >
             {loading ? '⏳' : '🔄'}
           </button>
@@ -208,14 +208,14 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
 
       {/* 無數據：仍畫出預期服務卡，避免整頁空白 */}
       {!loading && services.length === 0 && (
-        <div className="rounded-lg border border-gray-800 bg-gray-900/80 p-4">
-          <p className="text-sm text-gray-300">暫無監控採樣</p>
-          <p className="mt-1 text-xs text-gray-500">後台每 60 秒採集一次 Docker stats，請稍候或確認 docker.sock。</p>
+        <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-sidebar)]/80 p-4">
+          <p className="text-sm text-[var(--console-sub)]">暫無監控採樣</p>
+          <p className="mt-1 text-xs text-[var(--console-faint)]">後台每 60 秒採集一次 Docker stats，請稍候或確認 docker.sock。</p>
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {['backend', 'frontend', 'opc', 'redis', 'chroma'].map((svc) => (
-              <div key={svc} className="rounded-md border border-gray-800 bg-gray-950/40 p-3">
-                <p className="text-[10px] uppercase text-gray-500">{svc}</p>
-                <div className="mt-2 h-8 rounded bg-gray-800/80" />
+              <div key={svc} className="rounded-md border border-[var(--console-line)] bg-gray-950/40 p-3">
+                <p className="text-[10px] uppercase text-[var(--console-faint)]">{svc}</p>
+                <div className="mt-2 h-8 rounded bg-[var(--console-dim)]/80" />
                 <p className="mt-1 text-[11px] text-gray-600">CPU — · MEM —</p>
               </div>
             ))}
@@ -226,7 +226,7 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
       {/* CPU 圖表 */}
       {services.length > 0 && showChart(1) && (
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase text-gray-500">CPU 使用率 (%)</p>
+          <p className="mb-2 text-[11px] font-semibold uppercase text-[var(--console-faint)]">CPU 使用率 (%)</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {visibleServices.map((svc) => (
               <MiniLineChart
@@ -249,7 +249,7 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
       {/* 記憶體圖表 */}
       {services.length > 0 && showChart(2) && (
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase text-gray-500">記憶體 (MB)</p>
+          <p className="mb-2 text-[11px] font-semibold uppercase text-[var(--console-faint)]">記憶體 (MB)</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {visibleServices.map((svc) => (
               <MiniLineChart
@@ -272,7 +272,7 @@ export default function MonitoringPanel({ embedded = false }: { embedded?: boole
       {/* 網路圖表 */}
       {services.length > 0 && showChart(3) && (
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase text-gray-500">網路接收 (MB)</p>
+          <p className="mb-2 text-[11px] font-semibold uppercase text-[var(--console-faint)]">網路接收 (MB)</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {visibleServices.map((svc) => (
               <MiniLineChart

@@ -1,0 +1,1395 @@
+{
+  "components": {
+    "responses": {
+      "Error": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorBody"
+            }
+          }
+        },
+        "description": "錯誤"
+      }
+    },
+    "schemas": {
+      "ChatSseEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "delta": {
+            "default": "",
+            "title": "Delta",
+            "type": "string"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "event": {
+            "$ref": "#/components/schemas/SseEventName"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteDecision"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "event"
+        ],
+        "title": "ChatSseEvent",
+        "type": "object"
+      },
+      "ChatStreamRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Id"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/CompatibleStrategy",
+            "default": "auto"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trace Id"
+          }
+        },
+        "required": [
+          "query",
+          "tenant_id"
+        ],
+        "title": "ChatStreamRequest",
+        "type": "object"
+      },
+      "CompatibleStrategy": {
+        "description": "含現行程式的 simple / company 覆寫。",
+        "enum": [
+          "auto",
+          "manual",
+          "cost_speed",
+          "simple",
+          "company"
+        ],
+        "title": "CompatibleStrategy",
+        "type": "string"
+      },
+      "ErrorBody": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Detail",
+            "type": "string"
+          },
+          "error_code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Error Code",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trace Id"
+          }
+        },
+        "required": [
+          "error_code",
+          "detail"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ExecutionPathName": {
+        "enum": [
+          "simple",
+          "company",
+          "minecraft_ops"
+        ],
+        "title": "ExecutionPathName",
+        "type": "string"
+      },
+      "GuardrailApproveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "approver": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Approver",
+            "type": "string"
+          },
+          "decision_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Note",
+            "type": "string"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "approved",
+          "approver",
+          "tenant_id",
+          "trace_id"
+        ],
+        "title": "GuardrailApproveRequest",
+        "type": "object"
+      },
+      "GuardrailCheckRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actor"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/GuardrailSubject"
+          },
+          "target": {
+            "additionalProperties": true,
+            "title": "Target",
+            "type": "object"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "action",
+          "tenant_id",
+          "trace_id"
+        ],
+        "title": "GuardrailCheckRequest",
+        "type": "object"
+      },
+      "GuardrailDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "decision_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "policy_version": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "schema_version": {
+            "default": "1.0.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Trace Id",
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/GuardrailVerdict"
+          }
+        },
+        "required": [
+          "trace_id",
+          "tenant_id",
+          "decision_id",
+          "verdict",
+          "reason",
+          "policy_version"
+        ],
+        "title": "GuardrailDecision",
+        "type": "object"
+      },
+      "GuardrailSubject": {
+        "enum": [
+          "opc.write",
+          "minecraft.action",
+          "tool.invoke"
+        ],
+        "title": "GuardrailSubject",
+        "type": "string"
+      },
+      "GuardrailVerdict": {
+        "enum": [
+          "allow",
+          "deny",
+          "confirm"
+        ],
+        "title": "GuardrailVerdict",
+        "type": "string"
+      },
+      "MinecraftActionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Action",
+            "type": "string"
+          },
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "guardrail_decision_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Guardrail Decision Id"
+          },
+          "server_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Server Id",
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_id",
+          "session_id",
+          "action",
+          "tenant_id",
+          "trace_id"
+        ],
+        "title": "MinecraftActionRequest",
+        "type": "object"
+      },
+      "MinecraftActionResult": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "session_id"
+        ],
+        "title": "MinecraftActionResult",
+        "type": "object"
+      },
+      "OpcReadRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "node_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Node Ids",
+            "type": "array"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_ids",
+          "tenant_id",
+          "trace_id"
+        ],
+        "title": "OpcReadRequest",
+        "type": "object"
+      },
+      "OpcReadResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "degraded": {
+            "default": false,
+            "title": "Degraded",
+            "type": "boolean"
+          },
+          "readings": {
+            "items": {
+              "$ref": "#/components/schemas/OpcReading"
+            },
+            "title": "Readings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "readings"
+        ],
+        "title": "OpcReadResponse",
+        "type": "object"
+      },
+      "OpcReading": {
+        "additionalProperties": false,
+        "properties": {
+          "node_id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "quality": {
+            "default": "good",
+            "title": "Quality",
+            "type": "string"
+          },
+          "value": {
+            "default": null,
+            "title": "Value"
+          }
+        },
+        "required": [
+          "node_id"
+        ],
+        "title": "OpcReading",
+        "type": "object"
+      },
+      "OpcWriteAccepted": {
+        "additionalProperties": false,
+        "properties": {
+          "request_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Request Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "accepted",
+            "default": "accepted",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id"
+        ],
+        "title": "OpcWriteAccepted",
+        "type": "object"
+      },
+      "OpcWriteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "guardrail_decision_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Guardrail Decision Id",
+            "type": "string"
+          },
+          "node_id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Trace Id",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "node_id",
+          "value",
+          "guardrail_decision_id",
+          "tenant_id",
+          "trace_id"
+        ],
+        "title": "OpcWriteRequest",
+        "type": "object"
+      },
+      "RouteDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Confidence"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "path": {
+            "$ref": "#/components/schemas/ExecutionPathName"
+          },
+          "reason": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "rule_hit": {
+            "$ref": "#/components/schemas/RuleHit"
+          },
+          "version": {
+            "default": "2026-10-26",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "reason",
+          "rule_hit"
+        ],
+        "title": "RouteDecision",
+        "type": "object"
+      },
+      "RoutePreviewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "manual_path": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionPathName"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "query": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/CompatibleStrategy",
+            "default": "auto"
+          },
+          "task_complexity": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Task Complexity"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trace Id"
+          }
+        },
+        "required": [
+          "query",
+          "tenant_id"
+        ],
+        "title": "RoutePreviewRequest",
+        "type": "object"
+      },
+      "RuleHit": {
+        "enum": [
+          "manual_override",
+          "industrial",
+          "linkin_complex",
+          "mine_multi_step",
+          "mine_single_step",
+          "cost_speed",
+          "company_keyword",
+          "length",
+          "fallback_simple"
+        ],
+        "title": "RuleHit",
+        "type": "string"
+      },
+      "SseEventName": {
+        "enum": [
+          "route",
+          "token",
+          "done",
+          "error"
+        ],
+        "title": "SseEventName",
+        "type": "string"
+      },
+      "TaskAccepted": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus",
+            "default": "accepted"
+          },
+          "task_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ],
+        "title": "TaskAccepted",
+        "type": "object"
+      },
+      "TaskCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Id"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/CompatibleStrategy",
+            "default": "auto"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trace Id"
+          }
+        },
+        "required": [
+          "query",
+          "tenant_id"
+        ],
+        "title": "TaskCreateRequest",
+        "type": "object"
+      },
+      "TaskStatus": {
+        "enum": [
+          "accepted",
+          "planning",
+          "running",
+          "awaiting_confirmation",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "TaskStatus",
+        "type": "string"
+      },
+      "TaskView": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionPathName"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "task_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Task Id",
+            "type": "string"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "status",
+          "tenant_id"
+        ],
+        "title": "TaskView",
+        "type": "object"
+      },
+      "ToolErrorCode": {
+        "enum": [
+          "invalid_schema",
+          "unknown_tool",
+          "timeout",
+          "rate_limited",
+          "guardrail_denied",
+          "guardrail_confirm",
+          "upstream"
+        ],
+        "title": "ToolErrorCode",
+        "type": "string"
+      },
+      "ToolInvokeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "idempotency_key": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "seat_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Seat Id"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "timeout_ms": {
+            "default": 30000,
+            "maximum": 120000,
+            "minimum": 1,
+            "title": "Timeout Ms",
+            "type": "integer"
+          },
+          "trace_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "trace_id",
+          "idempotency_key"
+        ],
+        "title": "ToolInvokeRequest",
+        "type": "object"
+      },
+      "ToolInvokeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "audit_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Audit Event Id"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolErrorCode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "result": {
+            "default": null,
+            "title": "Result"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "ToolInvokeResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "內網 BFF 與內部服務的草案。現有 /chat、/tasks 繼續由單體提供，此檔不取代實作。AI Hub 的 /api/v1/chat/completions 是另一條契約。",
+    "title": "Linkin 服務契約",
+    "version": "2026-10-26"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/chat/stream": {
+      "post": {
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatStreamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSseEvent"
+                }
+              }
+            },
+            "description": "對話 SSE。首個事件為 route，其後為 token。"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "對話 SSE。首個事件為 route，其後為 token。",
+        "x-linkin-visibility": "public"
+      }
+    },
+    "/api/v1/guardrail/approve": {
+      "post": {
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardrailApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardrailDecision"
+                }
+              }
+            },
+            "description": "人工審批 OPC 寫入或危險 Minecraft 動作"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "人工審批 OPC 寫入或危險 Minecraft 動作",
+        "x-linkin-visibility": "internal"
+      }
+    },
+    "/api/v1/guardrail/check": {
+      "post": {
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardrailCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardrailDecision"
+                }
+              }
+            },
+            "description": "護欄檢查"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "護欄檢查",
+        "x-linkin-visibility": "internal"
+      }
+    },
+    "/api/v1/minecraft/action": {
+      "post": {
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MinecraftActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinecraftActionResult"
+                }
+              }
+            },
+            "description": "Minecraft 動作。危險動作必須帶 guardrail 決策。"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Minecraft 動作。危險動作必須帶 guardrail 決策。",
+        "x-linkin-visibility": "internal"
+      }
+    },
+    "/api/v1/opc/read": {
+      "get": {
+        "parameters": [
+          {
+            "explode": true,
+            "in": "query",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "minItems": 1,
+              "type": "array"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "trace_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpcReadResponse"
+                }
+              }
+            },
+            "description": "讀取 OPC 摘要"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "讀取 OPC 摘要",
+        "x-linkin-visibility": "internal"
+      }
+    },
+    "/api/v1/opc/write-request": {
+      "post": {
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpcWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpcWriteAccepted"
+                }
+              }
+            },
+            "description": "受理 OPC 寫入。必須帶 guardrail 決策。"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "受理 OPC 寫入。必須帶 guardrail 決策。",
+        "x-linkin-visibility": "internal"
+      }
+    },
+    "/api/v1/route-preview": {
+      "post": {
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteDecision"
+                }
+              }
+            },
+            "description": "路由預覽"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "路由預覽",
+        "x-linkin-visibility": "public"
+      }
+    },
+    "/api/v1/tasks": {
+      "post": {
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskAccepted"
+                }
+              }
+            },
+            "description": "受理公司任務"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "受理公司任務",
+        "x-linkin-visibility": "public"
+      }
+    },
+    "/api/v1/tasks/{task_id}": {
+      "get": {
+        "deprecated": false,
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            },
+            "description": "讀取任務"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "讀取任務",
+        "x-linkin-visibility": "public"
+      }
+    },
+    "/api/v1/tools/{tool}/invoke": {
+      "post": {
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolInvokeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolInvokeResponse"
+                }
+              }
+            },
+            "description": "內部工具呼叫"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "內部工具呼叫",
+        "x-linkin-visibility": "internal"
+      }
+    },
+    "/chat": {
+      "post": {
+        "deprecated": true,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatStreamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSseEvent"
+                }
+              }
+            },
+            "description": "相容入口，轉到對話契約"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "相容入口，轉到對話契約",
+        "x-linkin-visibility": "legacy"
+      }
+    },
+    "/chat/stream": {
+      "post": {
+        "deprecated": true,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatStreamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSseEvent"
+                }
+              }
+            },
+            "description": "相容 SSE 入口"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "相容 SSE 入口",
+        "x-linkin-visibility": "legacy"
+      }
+    },
+    "/tasks": {
+      "post": {
+        "deprecated": true,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskAccepted"
+                }
+              }
+            },
+            "description": "相容任務入口"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "相容任務入口",
+        "x-linkin-visibility": "legacy"
+      }
+    },
+    "/tasks/{task_id}": {
+      "get": {
+        "deprecated": true,
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskView"
+                }
+              }
+            },
+            "description": "相容任務讀取"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "相容任務讀取",
+        "x-linkin-visibility": "legacy"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://linkin.internal"
+    }
+  ],
+  "tags": [
+    {
+      "name": "public"
+    },
+    {
+      "name": "internal"
+    },
+    {
+      "name": "legacy"
+    }
+  ]
+}

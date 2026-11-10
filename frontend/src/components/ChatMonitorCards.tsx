@@ -1,16 +1,16 @@
 /**
  * ChatMonitorCards — 對話／監控共用卡片（Apple 控制中心語彙）。
- * 標題 Bold、數據 Regular；狀態燈柔光圓點；色票 #007AFF / #34C759 / #FF9500 / #FF3B30。
+ * 標題 Bold、數據 Regular；狀態用 --console-* 語意色。
  */
 import { useState, type ReactNode } from 'react';
 
 const ACCENT_CLS: Record<string, string> = {
   green: 'console-status-green',
-  amber: 'text-[#FF9500]',
+  amber: 'console-status-amber',
   blue: 'console-status-blue',
-  orange: 'text-[#FF9500]',
+  orange: 'console-status-amber',
   violet: 'console-status-blue',
-  red: 'text-[var(--console-danger)]',
+  red: 'console-status-danger',
   cyan: 'console-status-blue',
 };
 
@@ -30,7 +30,7 @@ export function TopKpi({
   return (
     <div
       className={`apple-card apple-card--tight apple-card--pad transition-shadow duration-300 ${
-        pulse ? 'ring-1 ring-[#34C759]/30' : ''
+        pulse ? 'ring-1 ring-[color-mix(in_srgb,var(--console-green)_30%,transparent)]' : ''
       }`}
     >
       <p className="apple-title">{label}</p>
@@ -100,7 +100,7 @@ export function MonitorSection({
             <span
               className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide ${
                 badge === 'LIVE'
-                  ? 'bg-[#34C759]/15 console-status-green'
+                  ? 'bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] console-status-green'
                   : 'bg-white/5 text-[var(--console-sub)]'
               }`}
             >
@@ -153,7 +153,7 @@ export function LiveTicker({
   return (
     <div className="apple-chrome shrink-0 overflow-hidden border-t">
       <div className="flex items-center gap-3 px-4 py-2">
-        <span className="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-bold uppercase tracking-wider console-status-green">
+        <span className="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-bold console-status-green">
           <span className="apple-dot apple-dot--live" />
           LIVE
         </span>
@@ -174,8 +174,8 @@ export function LiveTicker({
 
 const ROADMAP_TONE: Record<string, string> = {
   P0: 'border-[var(--console-blue)]/35 bg-[var(--console-blue)]/10',
-  P1: 'border-[#34C759]/30 bg-[#34C759]/08',
-  P2: 'border-[#FF9500]/30 bg-[#FF9500]/08',
+  P1: 'border-[color-mix(in_srgb,var(--console-green)_30%,transparent)] bg-[color-mix(in_srgb,var(--console-green)_8%,transparent)]',
+  P2: 'border-[color-mix(in_srgb,var(--console-amber)_30%,transparent)] bg-[var(--console-amber)]/08',
   P3: 'border-white/10 bg-white/[0.03]',
 };
 
@@ -256,7 +256,7 @@ export function RoadmapTable({
   return (
     <div className="overflow-x-auto rounded-2xl border border-white/[0.08]">
       <table className="w-full text-left">
-        <thead className="bg-black/25 text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">
+        <thead className="bg-black/25 text-[10px] font-bold text-[var(--console-sub)]">
           <tr>
             <th className="px-3 py-2">優先</th>
             <th className="px-3 py-2">項目</th>

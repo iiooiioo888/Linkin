@@ -52,8 +52,21 @@ def _record_circuit(model: str, failed: bool, duration_s: float) -> None:
 
 
 def _llm_probe(prompt: str, system: str | None, model: str, **kwargs: Any) -> str:
+    """Hub 上游唯一入口：經 call_llm（ModelGW precheck）；entry=hub 觀測。
+
+    G-GATE1（雙閘時序；P4-S2）：
+    - Hub ``validate_model_id``／目錄＝**B 層產品濾鏡**（可長期保留）
+    - ModelGW ``precheck_model``（WIRE=enforce）＝**唯一「能不能叫」準入權威**
+    - 二者**不得**合併成單一電路狀態；Hub 目錄綠**不得**繞過 ModelGW admit
+    """
     runtime.upstream_calls.append({"model": model, "prompt": prompt[:80]})
-    return call_llm(prompt, system=system, model=model, **kwargs)
+    try:
+        from backend.modelgw.runtime import entry_scope
+
+        with entry_scope("hub"):
+            return call_llm(prompt, system=system, model=model, **kwargs)
+    except ImportError:
+        return call_llm(prompt, system=system, model=model, **kwargs)
 
 
 def parse_failover_config(raw: str | None) -> dict[str, Any]:

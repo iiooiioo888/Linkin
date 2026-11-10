@@ -7,9 +7,9 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from opc_service.config import settings
+from opc_service.internal_auth import OpcInternalAuthMiddleware
 from opc_service.routes import router
 
 logger = logging.getLogger(__name__)
@@ -53,17 +53,15 @@ def create_app() -> FastAPI:
         description="OPC 工业数据微服务 — 封装读写、订阅与安全护栏",
         version="0.1.0",
         lifespan=lifespan,
+        # FASTAPI-OPENAPI-001：此服務不對瀏覽器公開文件。
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
     )
 
-    # CORS（开发阶段允许所有来源）
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # FASTAPI-CORS-001：只給後端伺服器呼叫，不開瀏覽器跨站。
+    app.add_middleware(OpcInternalAuthMiddleware)
 
-    # 挂载路由
     app.include_router(router)
 
     return app

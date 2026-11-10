@@ -25,14 +25,23 @@ def test_login_rejects_wrong_secret(gated_app):
         assert client.get("/dashboard").status_code == 401
 
 
+def _session_cookie(resp) -> str:
+    token = resp.cookies.get("evoloop_gate")
+    assert token
+    return token
+
+
 def test_login_issues_session_and_unlocks(gated_app):
     with TestClient(gated_app) as client:
         resp = client.post("/auth/login", json={"username": "alice", "password": "s3cret-test"})
         assert resp.status_code == 200
         data = resp.json()
-        token = data["token"]
         assert data["user"] == "alice"
-        assert token
+        assert "token" not in data
+        token = _session_cookie(resp)
+        cookie = resp.headers.get("set-cookie", "")
+        assert "httponly" in cookie.lower()
+        assert "samesite=lax" in cookie.lower()
 
         # TestClient 會保存 Cookie，登入後同一客戶端應可進入
         via_cookie = client.get("/dashboard")
@@ -53,15 +62,28 @@ def test_login_issues_session_and_unlocks(gated_app):
 
 def test_header_unlocks_without_cookie(gated_app):
     with TestClient(gated_app) as issuer:
-        token = issuer.post(
+        resp = issuer.post(
             "/auth/login", json={"username": "alice", "password": "s3cret-test"}
-        ).json()["token"]
+        )
+        token = _session_cookie(resp)
 
     with TestClient(gated_app) as client:
         denied = client.get("/dashboard")
         assert denied.status_code == 401
         ok = client.get("/dashboard", headers={"X-Linkin-Gate": token})
         assert ok.status_code == 200
+
+
+def test_query_token_does_not_authenticate(gated_app):
+    with TestClient(gated_app) as issuer:
+        resp = issuer.post(
+            "/auth/login", json={"username": "alice", "password": "s3cret-test"}
+        )
+        token = _session_cookie(resp)
+
+    with TestClient(gated_app) as client:
+        denied = client.get("/dashboard", params={"gate": token})
+        assert denied.status_code == 401
 
 
 def test_pytest_default_skips_gate():
@@ -72,84 +94,49 @@ def test_pytest_default_skips_gate():
     assert gate_enabled() is False
 
 
-def test_default_digests_reject_garbage(monkeypatch):
+def test_unset_gate_secrets_reject_login(monkeypatch):
     monkeypatch.setenv("LINKIN_AUTH_FORCE", "1")
     monkeypatch.delenv("LINKIN_GATE_ID", raising=False)
     monkeypatch.delenv("LINKIN_GATE_SECRET", raising=False)
     from backend.main import app
 
     with TestClient(app) as client:
-        resp = client.post("/auth/login", json={"username": "nope", "password": "nope"})
+        resp = client.post("/auth/login", json={"username": "alice", "password": "s3cret-test"})
         assert resp.status_code == 401
 
 
-def _restore(codes: list[int]) -> str:
-    return "".join(chr(c ^ (0x5A + (i % 7))) for i, c in enumerate(codes))
+def test_openapi_is_not_anonymous(gated_app):
+    with TestClient(gated_app) as client:
+        assert client.get("/openapi.json").status_code in {401, 404}
+        assert client.get("/docs").status_code in {401, 404}
+        assert client.get("/redoc").status_code in {401, 404}
 
 
-def test_default_credentials_unlock(monkeypatch):
-    """預設摘要對可解鎖（來源值不以明文寫在測試裡）。"""
-    monkeypatch.setenv("LINKIN_AUTH_FORCE", "1")
-    monkeypatch.delenv("LINKIN_GATE_ID", raising=False)
-    monkeypatch.delenv("LINKIN_GATE_SECRET", raising=False)
-    from backend.auth import gate as g
-    from backend.main import app
+def test_path_counts_not_blocked_by_authgate(gated_app, monkeypatch):
+    """AuthGate 放行 path-counts；無會話不得 401，交由 L2 閘回 403／200。"""
+    monkeypatch.delenv("MODELGW_PATH_COUNTS_TOKEN", raising=False)
+    monkeypatch.delenv("MODELGW_PATH_COUNTS_ALLOW_PRIVATE", raising=False)
+    with TestClient(gated_app) as client:
+        # 未登入：不得被 AuthGate 擋成 401；TestClient host 非 IP → L2 需 token → 403
+        resp = client.get("/api/internal/modelgw/path-counts")
+        assert resp.status_code == 403, resp.text
+        assert resp.json().get("code") == "PATH_COUNTS_FORBIDDEN"
 
-    gate_id = _restore([51, 62, 51, 51, 57])
-    gate_secret = _restore([22, 29, 20, 29, 14, 62, 68, 126, 44, 108, 47, 58])
-    assert "$" in gate_secret
-    assert g._digest(gate_id) == "".join(g._U)
-    assert g._digest(gate_secret) == "".join(g._S)
-    compact = gate_secret.replace("$$", "$")
-    assert compact != gate_secret
-    assert g._digest(compact) == "".join(g._S1)
-    assert g._digest(gate_secret.replace("$", "")) != "".join(g._S)
 
-    token = g.issue_login(gate_id, gate_secret, identity="unit")
-    assert token
-    assert g.session_user(token) == gate_id
-    assert g.issue_login(gate_id, compact, identity="unit-compact")
-    assert g.issue_login(gate_id, "wrong", identity="unit-bad") is None
-
-    with TestClient(app) as client:
-        resp = client.post(
-            "/auth/login", json={"username": gate_id, "password": gate_secret}
+def test_path_counts_allowed_with_internal_token_without_session(gated_app, monkeypatch):
+    """允許客戶端（正確內部 token）可過 AuthGate 抵達 handler → 200。"""
+    monkeypatch.setenv("MODELGW_PATH_COUNTS_TOKEN", "secret-l2-authgate")
+    with TestClient(gated_app) as client:
+        denied = client.get("/api/internal/modelgw/path-counts")
+        assert denied.status_code == 403
+        ok = client.get(
+            "/api/internal/modelgw/path-counts",
+            headers={"X-ModelGW-Internal-Token": "secret-l2-authgate"},
         )
-        assert resp.status_code == 200
-        assert resp.json()["user"] == gate_id
-        assert client.get("/dashboard").status_code == 200
-
-    with TestClient(app) as client:
-        resp = client.post(
-            "/auth/login", json={"username": gate_id, "password": compact}
-        )
-        assert resp.status_code == 200
-
-
-def test_frontend_gate_fragments_stay_in_sync():
-    from pathlib import Path
-
-    from backend.auth import gate as g
-
-    src = Path(__file__).resolve().parents[2] / "frontend" / "src" / "lib" / "gateDigest.ts"
-    text = src.read_text(encoding="utf-8")
-    for part in (*g._U, *g._S, *g._S1):
-        assert part in text
-    assert "ID_PARTS" in text
-    assert "SECRET_PARTS" in text
-    assert "matchPeeled" in text
-
-
-def test_frontend_peel_unlocks_same_secret():
-    """前端分段還原與後端摘要對同一組來源。"""
-    from backend.auth import gate as g
-
-    gate_id = _restore([51, 62, 51, 51, 57])
-    gate_secret = _restore([22, 29, 20, 29, 14, 62, 68, 126, 44, 108, 47, 58])
-    compact = gate_secret.replace("$$", "$")
-    assert g._digest(gate_id) == "".join(g._U)
-    assert g._digest(gate_secret) == "".join(g._S)
-    assert g._digest(compact) == "".join(g._S1)
+        assert ok.status_code == 200, ok.text
+        body = ok.json()
+        assert "via" in body and "would_block" in body and "bypass" in body
+        assert body.get("hub_metrics_is_not_path_counts") is True
 
 
 class _StubRequest:
@@ -174,3 +161,4 @@ def test_client_identity_takes_last_hop_behind_private_proxy():
 
     req = _StubRequest({"x-forwarded-for": "9.9.9.9, 203.0.113.9"}, "172.18.0.5")
     assert _client_identity(req) == "203.0.113.9"
+

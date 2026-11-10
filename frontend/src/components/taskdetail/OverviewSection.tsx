@@ -47,7 +47,7 @@ export default function OverviewSection({ task, eta }: { task: TaskProgress; eta
 
       <div className="mb-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--apple-tertiary)]">
+          <span className="text-[9px] font-semibold text-[var(--apple-tertiary)]">
             管線階段
           </span>
           <span className="apple-data text-[10px] text-[var(--apple-secondary)]">
@@ -153,7 +153,7 @@ export default function OverviewSection({ task, eta }: { task: TaskProgress; eta
 
       {task.error ? (
         <Card className="mt-2" tone="var(--apple-red)">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--apple-red)]">
+          <div className="mb-1 text-[10px] font-semibold text-[var(--apple-red)]">
             錯誤（error）
           </div>
           <p className="whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-[var(--apple-red)]">
@@ -163,7 +163,7 @@ export default function OverviewSection({ task, eta }: { task: TaskProgress; eta
       ) : null}
 
       <div className="mt-3">
-        <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--apple-tertiary)]">
+        <div className="mb-1.5 text-[9px] font-semibold text-[var(--apple-tertiary)]">
           執行參數（options）
         </div>
         <FieldGrid>

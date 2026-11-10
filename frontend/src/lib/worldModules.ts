@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { fetchModuleCatalog, type ModuleCatalogItem } from '../api/modules';
+import { hasModulePage } from '../modules/pageRegistry';
 
 export type ModuleIconKey = 'minecraft' | 'generic';
 
@@ -370,13 +371,67 @@ export function pagesOfModule(id: string): string[] {
   return [...keys];
 }
 
-export function moduleIdForTab(tab: string | null | undefined): string | null {
-  if (!tab) return null;
+function aliasMapForModule(moduleId: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const spec = getWorldModule(moduleId);
+  for (const [from, to] of Object.entries(spec?.pageAliases ?? {})) {
+    out[from] = to;
+  }
+  return out;
+}
+
+/** 模組是否擁有此頁（目錄、導覽或前端頁面註冊）。 */
+export function moduleOwnsPage(moduleId: string, page: string | null | undefined): boolean {
+  if (!page) return false;
+  const aliased = aliasMapForModule(moduleId)[page] ?? page;
+  if (pagesOfModule(moduleId).includes(aliased)) return true;
+  return hasModulePage(moduleId, aliased);
+}
+
+/** 在指定模組命名空間內解析 hash 頁名（別名、預設頁、僅註冊的前端頁）。 */
+export function resolvePageForModule(moduleId: string, rawPage: string | null | undefined): string {
+  const spec = getWorldModule(moduleId);
+  const seed = rawPage?.trim() || spec?.defaultPage || '';
+  if (!seed) return spec?.defaultPage ?? '';
+  const aliased = aliasMapForModule(moduleId)[seed] ?? MODULE_PAGE_ALIASES[seed] ?? seed;
+  if (moduleOwnsPage(moduleId, aliased)) return aliased;
+  return spec?.defaultPage ?? aliased;
+}
+
+/** 擁有同一頁鍵的模組 id（可能多個，例如 monitor）。 */
+export function listModuleIdsForPage(page: string | null | undefined): string[] {
+  if (!page) return [];
+  const aliased = aliasMap()[page] ?? page;
+  const owners: string[] = [];
   for (const spec of listWorldModules()) {
-    if (pagesOfModule(spec.id).includes(tab)) return spec.id;
-    if (spec.navGroups.some((group) => group.items.some((item) => item.key === tab))) {
-      return spec.id;
-    }
+    if (moduleOwnsPage(spec.id, aliased)) owners.push(spec.id);
+  }
+  return owners;
+}
+
+/** 切換分頁時推斷模組 id（保留當前模組命名空間、處理僅前端註冊的頁）。 */
+export function inferWorldModuleIdForTab(
+  tab: string | null | undefined,
+  currentModuleId: string | null,
+): string | null {
+  if (!tab) return currentModuleId;
+  if (currentModuleId && moduleOwnsPage(currentModuleId, tab)) return currentModuleId;
+  return moduleIdForTab(tab, currentModuleId);
+}
+
+export function moduleIdForTab(
+  tab: string | null | undefined,
+  preferredModuleId?: string | null,
+): string | null {
+  if (!tab) return null;
+  if (preferredModuleId && moduleOwnsPage(preferredModuleId, tab)) return preferredModuleId;
+  const aliased = aliasMap()[tab] ?? tab;
+  const owners = listModuleIdsForPage(aliased);
+  if (owners.length === 1) return owners[0];
+  if (owners.length > 1) {
+    if (tab in MODULE_PAGE_ALIASES && owners.includes('minecraft')) return 'minecraft';
+    if (aliased === 'monitor' && owners.includes('minecraft')) return 'minecraft';
+    return null;
   }
   return null;
 }
@@ -409,7 +464,15 @@ function aliasMap(): Record<string, string> {
 export function resolveModulePage(tab: string | null | undefined): string | null {
   if (!tab) return null;
   const aliased = aliasMap()[tab] ?? tab;
-  return moduleIdForTab(aliased) ? aliased : null;
+  const owners = listModuleIdsForPage(aliased);
+  if (owners.length === 1) return aliased;
+  if (owners.length > 1) {
+    if (tab in MODULE_PAGE_ALIASES && owners.includes('minecraft')) return aliased;
+    if (aliased === 'monitor' && owners.includes('minecraft')) return aliased;
+    return null;
+  }
+  if (listWorldModules().some((spec) => hasModulePage(spec.id, aliased))) return aliased;
+  return null;
 }
 
 export function rosterKindForTab(tab: string | null | undefined): ModuleRosterKind | null {

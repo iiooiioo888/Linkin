@@ -6,6 +6,7 @@
  */
 import type { HubMonitorModel, RoleAgent } from '../types';
 import { blankMetrics } from './agentUi';
+import { markSunsetHubModelsUnavailable } from './sunsetHubIds';
 import snapshot from '../generated/monitor-fallback.json';
 
 type MonitorFallbackSnapshot = {
@@ -27,6 +28,9 @@ export const AGENT_FALLBACK_ROSTER: RoleAgent[] = data.agents.map((agent) => ({
   metrics: agent.metrics ?? blankMetrics(),
 }));
 
-export const HUB_FALLBACK_MODELS: HubMonitorModel[] = data.hub_models;
+/** sunset 九鍵標記 available_in_pool=false，移出可選語意；仍保留列供監控降級展示。 */
+export const HUB_FALLBACK_MODELS: HubMonitorModel[] = markSunsetHubModelsUnavailable(
+  data.hub_models,
+);
 
 export const HUB_FALLBACK_ROUTING = data.hub_routing;

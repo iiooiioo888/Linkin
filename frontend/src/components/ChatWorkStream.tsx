@@ -65,7 +65,7 @@ export default function ChatWorkStream({ task, draft, thinking, onOpenTrace }: C
           <button
             type="button"
             onClick={() => onOpenTrace(task.task_id)}
-            className="rounded-lg border border-white/[0.08] px-2 py-1 text-[10px] font-medium text-[var(--console-sub)] hover:border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] hover:text-[#64B5FF]"
+            className="rounded-lg border border-white/[0.08] px-2 py-1 text-[10px] font-medium text-[var(--console-sub)] hover:border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] hover:text-[var(--console-blue)]"
           >
             軌跡
           </button>

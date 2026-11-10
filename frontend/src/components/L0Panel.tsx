@@ -107,7 +107,7 @@ export default function L0Panel({
                 type="button"
                 className="rd-btn text-[11px] text-[var(--console-sub)]"
                 onClick={() => jumpToContextMonitor(undefined, { mirror: true })}
-                title="控制台 Context 鏡像"
+                title="Context 資產鏡像"
               >
                 Context 鏡像
               </button>

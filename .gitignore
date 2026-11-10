@@ -172,6 +172,9 @@ backend/data/company_runs/run_*.jsonl
 # Runtime routing telemetry (not seed assets)
 backend/data/routing_feedback.json
 
+# 公開資料摘要（掃描後產生，不進倉庫）
+backend/data/horizon/
+
 # Skills / MCP runtime catalogs (seeded from .agents/skills/ on boot)
 backend/data/skills.json
 backend/data/mcp_servers.json
@@ -223,6 +226,26 @@ frontend/test-results/
 # Runtime traces at repo root（上游誤提交的歷史殘留；軌跡一律寫 EVOL_TRACE_DIR）
 /trace_*.jsonl
 
+# impeccable-ignore-start
+**/.impeccable/config.local.json
+**/.impeccable/hook.cache.json
+**/.impeccable/hook.pending.json
+**/.impeccable/*.png
+**/.impeccable/review/
+**/.impeccable/questions/
+**/.impeccable/live/server.json
+**/.impeccable/live/sessions/
+**/.impeccable/live/previews/
+**/.impeccable/live/annotations/
+**/.impeccable/live/cache/
+**/.impeccable/live/manual-edit-apply-transaction.json
+**/.impeccable/live/manual-edit-events.jsonl
+**/.impeccable/live/manual-edit-evidence/
+**/.impeccable/live/pending-manual-edits.json
+**/.impeccable/live/deferred-svelte-component-accepts.json
+**/.impeccable/live/*.png
+# impeccable-ignore-end
+
 # Local runtime artifacts
 .deploy-backups/
 /data/
@@ -230,3 +253,4 @@ backend/data/billing.sqlite3
 backend/data/hub_data.sqlite3
 backend/data/linkin/map_plans.json
 backend/data/linkin/minecraft_plugin_settings.json
+backend/data/local_video_studio.sqlite3

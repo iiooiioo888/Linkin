@@ -44,6 +44,7 @@ from backend.company.state import (
     CompanyConfig,
     CompanyRunState,
     WorkItemStatus,
+    assignee_token,
 )
 from backend.company.tools import tool_registry
 from backend.company.work_item import WorkItemManager
@@ -209,6 +210,10 @@ class CompanyOrchestrator:
         包含 Docker 容器預算管控：任務開始時記錄快照、
         預算緊張時自動建議優化。
         """
+        if self.task_id:
+            from backend.company.execution_gate import require_user_approved
+
+            require_user_approved(self.task_id)
         self._run_log = []
         self._run_id = uuid.uuid4().hex
         # 綁定 run 上下文：decomposer／inspector 等 orchestrator 之外的席位
@@ -647,7 +652,7 @@ class CompanyOrchestrator:
                     "id": item.id,
                     "title": item.title,
                     "description": item.description,
-                    "assignee": item.assignee.value if item.assignee else None,
+                    "assignee": assignee_token(item.assignee),
                     "status": item.status.value,
                     "tier": item.tier,
                     "priority": getattr(item, "priority", 0),
@@ -1075,7 +1080,7 @@ class CompanyOrchestrator:
 
         self.work_items.transition(item.id, WorkItemStatus.EXECUTING)
         self.events.emit(CompanyEvent.WORK_ITEM_START, {
-            "item_id": item.id, "title": item.title, "assignee": item.assignee.value if item.assignee else None,
+            "item_id": item.id, "title": item.title, "assignee": assignee_token(item.assignee),
         })
 
         # 取得角色定義
@@ -1597,7 +1602,7 @@ class CompanyOrchestrator:
                         title=item.title,
                         description=item.description,
                         issues=issues,
-                        assignee=item.assignee.value if item.assignee else "",
+                        assignee=assignee_token(item.assignee) or "",
                         superior="tactical_commander",
                         allowed_tools=self._allowed_tools_for(item),
                         on_user_pending=lambda p: self._emit_user_pending(

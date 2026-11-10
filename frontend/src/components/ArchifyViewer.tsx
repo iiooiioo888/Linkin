@@ -25,7 +25,7 @@ const ROLE_COLOR: Record<string, string> = {
   frontend: '#e8c98a',
   api: '#7a92b8',
   service: '#6fa87f',
-  data: '#c9a961',
+  data: 'var(--console-accent)',
   external: '#b88080',
 };
 
@@ -167,7 +167,7 @@ export default function ArchifyViewer({
     <div className="apple-card apple-card--diagram">
       <div className="apple-card__head">
         <h2 className="apple-title">{title}</h2>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">
+        <span className="text-[10px] font-bold text-[var(--console-sub)]">
           Archify · {kind}
         </span>
       </div>

@@ -533,7 +533,7 @@ def test_transfer_api_403(billing_store, monkeypatch):
 
     with TestClient(app) as client:
         login = client.post("/auth/login", json={"username": "t_user", "password": "t_secret"})
-        headers = {"X-Linkin-Gate": login.json()["token"]}
+        headers = {"X-Linkin-Gate": login.cookies["evoloop_gate"]}
         resp = client.post("/billing/transfer", headers=headers)
         assert resp.status_code == 403
 
@@ -779,7 +779,7 @@ def test_billing_overview_docker_plan_fields(billing_store, monkeypatch):
 
     with TestClient(app) as client:
         login = client.post("/auth/login", json={"username": "docker_overview", "password": "docker_secret"})
-        headers = {"X-Linkin-Gate": login.json()["token"]}
+        headers = {"X-Linkin-Gate": login.cookies["evoloop_gate"]}
         resp = client.get("/billing", headers=headers)
         body = resp.json()
         assert resp.status_code == 200
@@ -804,7 +804,7 @@ def test_billing_api(billing_store, monkeypatch):
 
     with TestClient(app) as client:
         login = client.post("/auth/login", json={"username": "bill_user", "password": "bill_secret"})
-        token = login.json()["token"]
+        token = login.cookies["evoloop_gate"]
         headers = {"X-Linkin-Gate": token}
         resp = client.get("/billing", headers=headers)
         assert resp.status_code == 200
@@ -829,7 +829,7 @@ def test_contributor_api_bind_lock_convert(billing_store, monkeypatch):
 
     with TestClient(app) as client:
         login = client.post("/auth/login", json={"username": "contrib_user", "password": "contrib_secret"})
-        headers = {"X-Linkin-Gate": login.json()["token"]}
+        headers = {"X-Linkin-Gate": login.cookies["evoloop_gate"]}
 
         bind = client.post(
             "/billing/contributor/bind-key",
@@ -879,7 +879,7 @@ def test_billing_pools_in_snapshot(billing_store, monkeypatch):
 
     with TestClient(app) as client:
         login = client.post("/auth/login", json={"username": "pool_user", "password": "pool_secret"})
-        headers = {"X-Linkin-Gate": login.json()["token"]}
+        headers = {"X-Linkin-Gate": login.cookies["evoloop_gate"]}
         resp = client.get("/billing", headers=headers)
         body = resp.json()
         assert "pools" in body

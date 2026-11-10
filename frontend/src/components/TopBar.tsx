@@ -7,11 +7,11 @@ import { getGateUser, logoutGate } from '../lib/auth';
 import {
   activityTitle,
   consoleChromeLabel,
-  isCoreActivity,
   resolveActivity,
 } from '../lib/monitorTabs';
 import { labSubTabLabel, type LabSubTab } from '../lib/labTabs';
 import { useIsMobile } from '../hooks/useMediaQuery';
+import PlaneBadge, { planeKindForActivity } from './ui/PlaneBadge';
 import type { MonitorTab, ViewKey } from './AppShell';
 
 interface TopBarProps {
@@ -44,17 +44,16 @@ export default function TopBar({
   const activity = resolveActivity(activeView, monitorTab);
   const path = consoleChromeLabel(activeView, monitorTab, labSubTabLabel(labSubTab), traceTaskId);
   const viewLabel =
-    activity === 'chat'
-      ? t('nav.chat')
-      : activity === 'company'
-        ? t('nav.company')
-        : activity === 'lab'
-          ? `${t('nav.lab')} · ${labSubTabLabel(labSubTab)}`
-          : !isCoreActivity(activity)
-            ? `${activityTitle(activity)} · ${path}`
-            : path || t('nav.console');
+    activity === 'work' && activeView === 'chat'
+      ? t('nav.work', { defaultValue: '工作' })
+      : activity === 'settings' && monitorTab === 'lab'
+        ? `${t('nav.lab')} · ${labSubTabLabel(labSubTab)}`
+        : path
+          ? `${activityTitle(activity)} · ${path}`
+          : activityTitle(activity) || t('nav.observe', { defaultValue: '觀測' });
 
   const showMobileSessionNav = isMobile && activeView === 'chat';
+  const plane = planeKindForActivity(activity);
 
   return (
     <header className="app-topbar flex shrink-0 items-center gap-2 border-b apple-chrome px-4">
@@ -71,19 +70,21 @@ export default function TopBar({
           </button>
         ) : null}
 
-        <span className="brand-mark shrink-0 text-[13px] text-[var(--console-ink)] sm:text-[15px]">
-          <span className="console-status-accent">靈境</span>
+        <span className="brand-mark shrink-0 text-[14px] text-[var(--console-ink)] sm:text-[15px]">
+          <span className="brand-mark__name">靈境</span>
           <span className="brand-mark__dot">·</span>
-          <span className="hidden min-[400px]:inline">Linkin</span>
+          <span className="hidden min-[400px]:inline font-medium tracking-tight">Linkin</span>
         </span>
 
-        {activity !== 'chat' ? (
+        {!(activity === 'work' && activeView === 'chat') ? (
           <span className="min-w-0 truncate text-[12px] text-[var(--console-faint)]" title={viewLabel}>
             · {viewLabel}
           </span>
         ) : (
           <span className="min-w-0 truncate text-[12px] text-[var(--console-faint)] md:hidden">· {viewLabel}</span>
         )}
+        {/* Phase1.1：手機主畫面可見平面徽章（側欄 off-canvas 時仍可見） */}
+        {plane ? <PlaneBadge kind={plane} className="shrink-0" /> : null}
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5">

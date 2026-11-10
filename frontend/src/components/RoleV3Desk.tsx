@@ -217,7 +217,7 @@ export default function RoleV3Desk({
             activeId={activeSection}
             onSelect={scrollTo}
             header={
-              <p className="px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+              <p className="px-3 pb-1 pt-2 text-[9px] font-semibold text-[var(--console-faint)]">
                 區塊
               </p>
             }
@@ -225,13 +225,13 @@ export default function RoleV3Desk({
 
           <div className="space-y-3 px-3 py-3">
             <div>
-              <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+              <p className="mb-1.5 text-[9px] font-semibold text-[var(--console-faint)]">
                 角色名冊
               </p>
               <div className="max-h-36 space-y-2 overflow-y-auto console-col-scroll">
                 {groupedAgents.map(([group, list]) => (
                   <div key={group}>
-                    <p className="mb-0.5 text-[8px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+                    <p className="mb-0.5 text-[8px] font-semibold text-[var(--console-faint)]">
                       {group}
                     </p>
                     {list.map((a) => (
@@ -358,14 +358,14 @@ export default function RoleV3Desk({
 
             {statusStack.length > 0 ? (
               <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-2">
-                <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">工作項狀態</p>
+                <p className="mb-1.5 text-[9px] font-semibold text-[var(--console-faint)]">工作項狀態</p>
                 <StackBar segments={statusStack} />
               </div>
             ) : null}
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+                <h3 className="text-[10px] font-semibold text-[var(--console-faint)]">
                   看板 · 待辦 / 進行中 / 已完成
                 </h3>
                 <span className="text-[9px] text-[var(--console-faint)]">{agent.work_items.length} 項</span>

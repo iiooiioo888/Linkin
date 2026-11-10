@@ -10,12 +10,14 @@
 
 ### 登入閘門
 
-倉庫只存 HMAC 摘要，不放來源明文。
+來源值只放環境變數。未設定帳號與密語時，登入一律拒絕。
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
-| `LINKIN_GATE_ID` | — | 覆寫閘門帳號 |
-| `LINKIN_GATE_SECRET` | — | 覆寫閘門密語 |
+| `LINKIN_GATE_ID` | 必填 | 閘門帳號 |
+| `LINKIN_GATE_SECRET` | 必填 | 閘門密語 |
+| `LINKIN_COOKIE_SECURE` | 依請求是否為 HTTPS | `1` 強制 Secure Cookie；本機 HTTP 不要設 |
+| `LINKIN_ENABLE_DOCS` | 關閉 | `1` 才掛 `/docs`，且仍要先登入 |
 | `LINKIN_AUTH_DISABLED` | `0` | `1` 關閉閘門 |
 | `LINKIN_AUTH_FORCE` | `0` | `1` 即使 pytest 也強制開啟 |
 
@@ -27,7 +29,13 @@
 | `EVOL_MODEL` | 未設時：無端點為 `gpt-5.6-luna`，有端點則該供應商模型池首項 | 預設模型（會被模型池 clamp） |
 | `EVOL_EMBED_MODEL` | `text-embedding-3-small` | 嵌入模型（用於記憶檢索和語義快取） |
 
-多組 API 請用控制台「配置 → API 路由」（或頂欄齒輪）或 `POST /config/routes` 寫入 `llm_config.json` 的 `api_routes`，不必再靠單一環境變數切換供應商。
+多組 API 請用控制台「配置 → API 路由」（或頂欄齒輪）或 `POST /config/routes` 寫入**目前登入帳號**的設定。未登入的腳本仍讀 `EVOL_CONFIG_DIR/llm_config.json`。遷移與隔離說明見 [per-user-settings.md](../migration/per-user-settings.md)。
+
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `EVOL_USER_SETTINGS_DIR` | `backend/data/user_settings` | 每帳號設定目錄 |
+| `EVOL_SETTINGS_LEGACY_OWNER` | 先 `LINKIN_GATE_ID`，否則 `deploy_admin` | 既有全域 `llm_config.json` 複製給哪一個帳號（不刪除來源） |
+| `LINKIN_GATE_ACCOUNTS` | — | 選用。JSON 陣列或檔案路徑，多帳號 `{"username","secret"}`，與單一閘門並存 |
 
 ### 模型池運維
 
@@ -112,7 +120,8 @@
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis 連線 |
+| `REDIS_URL` | — | Redis 連線。Compose 會要求 `REDIS_PASSWORD`，URL 需帶同一組密碼 |
+| `REDIS_PASSWORD` | 必填（Compose） | Redis `requirepass`。使用 URL 安全字元 |
 
 ### 狀態存儲
 
@@ -125,7 +134,8 @@
 
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
-| `OPC_SIM_ENABLED` | `false` | 啟用模擬 OPC 伺服器 |
+| `OPC_INTERNAL_TOKEN` | 必填（Compose） | 後端呼叫 OPC 讀寫時帶的內部權杖。未設定時 OPC 拒絕健康檢查以外的路由 |
+| `OPC_SIM_ENABLED` | `false` | 啟用模擬 OPC 伺服器。正式 Compose 維持關閉 |
 | `OPC_WRITE_WHITELIST` | — | 寫入白名單（逗號分隔） |
 | `OPC_STAGE_TIMEOUT` | `30` | 每級超時（秒） |
 | `OPC_ACT_HUMAN_CONFIRM` | `false` | 執行級人工確認 |
@@ -184,7 +194,11 @@ EVOL_PASS_THRESHOLD=8
 EVOL_MAX_ITERATIONS=3
 
 # Redis
-REDIS_URL=redis://localhost:6379/0
+REDIS_PASSWORD=replace-with-a-long-random-string
+REDIS_URL=redis://:replace-with-a-long-random-string@localhost:6379/0
+OPC_INTERNAL_TOKEN=replace-with-another-random-string
+LINKIN_GATE_ID=your-gate-id
+LINKIN_GATE_SECRET=your-gate-secret
 
 # ChromaDB
 CHROMA_HOST=localhost

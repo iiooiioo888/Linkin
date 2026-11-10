@@ -25,9 +25,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  disabled: 'text-[#8a8f98]',
+  disabled: 'text-[var(--console-faint)]',
   unconfigured: 'text-amber-300',
-  configured: 'text-[#c9a961]',
+  configured: 'text-[var(--console-accent)]',
   reachable: 'text-emerald-300',
   unreachable: 'text-red-300',
 };
@@ -141,24 +141,24 @@ function PluginHubPanelContent() {
     return (
       <article
         key={item.id}
-        className="rounded-xl border border-[#c9a961]/20 bg-[var(--console-card)] p-4 shadow-[inset_0_1px_0_rgba(201,169,97,0.06)]"
+        className="rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_20%,transparent)] bg-[var(--console-card)] p-4 shadow-[inset_0_1px_0_rgba(201,169,97,0.06)]"
       >
         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-[var(--console-ink)]">{item.name}</h3>
-            <p className="mt-0.5 text-[11px] text-[#8a8f98]">{item.purpose}</p>
+            <p className="mt-0.5 text-[11px] text-[var(--console-faint)]">{item.purpose}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`text-[10px] font-medium ${STATUS_COLOR[status] ?? 'text-[#8a8f98]'}`}>
+            <span className={`text-[10px] font-medium ${STATUS_COLOR[status] ?? 'text-[var(--console-faint)]'}`}>
               {STATUS_LABEL[status] ?? status}
             </span>
             {item.active_map && (
-              <span className="rounded-md border border-[#c9a961]/40 bg-[#c9a961]/10 px-1.5 py-0.5 text-[10px] text-[#c9a961]">
+              <span className="rounded-md border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-1.5 py-0.5 text-[10px] text-[var(--console-accent)]">
                 預設地圖
               </span>
             )}
             {item.embeddable && (
-              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">可嵌入</span>
+              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[var(--console-faint)]">可嵌入</span>
             )}
           </div>
         </div>
@@ -171,7 +171,7 @@ function PluginHubPanelContent() {
         {configFields.length > 0 && (
           <div className="mb-3 grid gap-2 lg:grid-cols-2">
             {configFields.map((field) => (
-              <label key={field.key} className="text-[10px] text-[#8a8f98]">
+              <label key={field.key} className="text-[10px] text-[var(--console-faint)]">
                 {field.label}
                 {field.required ? ' *' : ''}
                 <input
@@ -193,7 +193,7 @@ function PluginHubPanelContent() {
           </div>
         )}
 
-        <label className="mb-3 flex items-center gap-2 text-[11px] text-[#8a8f98]">
+        <label className="mb-3 flex items-center gap-2 text-[11px] text-[var(--console-faint)]">
           <input
             type="checkbox"
             checked={draft.enabled}
@@ -220,7 +220,7 @@ function PluginHubPanelContent() {
             type="button"
             disabled={busy !== null}
             onClick={() => void savePlugin(item.id)}
-            className="rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961] disabled:opacity-40"
+            className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)] disabled:opacity-40"
           >
             {busy === item.id ? '保存中…' : '保存設定'}
           </button>
@@ -230,7 +230,7 @@ function PluginHubPanelContent() {
                 type="button"
                 disabled={busy !== null}
                 onClick={() => void onProbe(item.id)}
-                className="rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-3 py-1.5 text-[12px] text-[#8a8f98] hover:text-[var(--console-ink)] disabled:opacity-40"
+                className="rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-3 py-1.5 text-[12px] text-[var(--console-faint)] hover:text-[var(--console-ink)] disabled:opacity-40"
               >
                 {busy === `probe-${item.id}` ? '探測中…' : '探測 URL'}
               </button>
@@ -238,7 +238,7 @@ function PluginHubPanelContent() {
                 type="button"
                 disabled={busy !== null}
                 onClick={() => void setActiveMap(item.id)}
-                className="rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-3 py-1.5 text-[12px] text-[#8a8f98] hover:text-[var(--console-ink)] disabled:opacity-40"
+                className="rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-3 py-1.5 text-[12px] text-[var(--console-faint)] hover:text-[var(--console-ink)] disabled:opacity-40"
               >
                 設為預設地圖
               </button>
@@ -268,19 +268,19 @@ function PluginHubPanelContent() {
       )}
 
       {settings?.map_url && (
-        <div className="mb-4 rounded-xl border border-[#c9a961]/30 bg-[#c9a961]/5 px-3 py-2 text-[11px] text-[#c9a961]">
+        <div className="mb-4 rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_30%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_5%,transparent)] px-3 py-2 text-[11px] text-[var(--console-accent)]">
           目前地圖 URL：{settings.map_url}
           {settings.active_map_plugin ? `（來源：${settings.active_map_plugin}）` : ''}
         </div>
       )}
 
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">地圖插件</h3>
+      <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">地圖插件</h3>
       <div className="mb-6 grid gap-3 lg:grid-cols-2">{mapPlugins.map(renderCard)}</div>
 
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">NPC／任務／建築相關</h3>
+      <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">NPC／任務／建築相關</h3>
       <div className="grid gap-3 lg:grid-cols-2">{otherPlugins.map(renderCard)}</div>
 
-      <section className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-[#8a8f98]">
+      <section className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-[var(--console-faint)]">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h4 className="font-semibold text-amber-300">iframe 被阻擋？（X-Frame-Options / CSP）</h4>
           <CopyButton text={MAP_NGINX_SNIPPET} label="複製 nginx 片段" />
@@ -297,7 +297,7 @@ function PluginHubPanelContent() {
           href="https://github.com/iiooiioo888/Linkin/blob/master/docs/linkin/minecraft-plugins.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 inline-block text-[#c9a961] hover:underline"
+          className="mt-2 inline-block text-[var(--console-accent)] hover:underline"
         >
           完整文件 →
         </a>

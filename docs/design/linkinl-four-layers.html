@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkinL — 四層執行架構（設計參考）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* LinkinL tokens — scoped to this page only */
+    :root {
+      --u: 8px;
+      --u2: 16px;
+      --u3: 24px;
+      --canvas: #07080a;
+      --panel: #0a0b0d;
+      --surface: #0e0f12;
+      --surface-hi: #121418;
+      --line: #1a1b1f;
+      --line-hi: #25262c;
+      --ink: #ececee;
+      --sub: #8b8b96;
+      --faint: #4e4e58;
+      --dim: #2a2b31;
+      --lime: #c6ff3d;
+      --lime-dk: #6a8820;
+      --lime-soft: color-mix(in srgb, var(--lime) 12%, transparent);
+      --red: #e07070;
+      --blue: #7aa8d4;
+      --rail: 72px;
+      --topbar: 48px;
+      --radius: 0px;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: Inter, 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      background: var(--canvas);
+      color: var(--ink);
+      min-height: 100vh;
+      line-height: 1.45;
+    }
+    .shell { display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar {
+      height: var(--topbar);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--u2);
+      padding: 0 var(--u2);
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .brand { font-weight: 600; font-size: 14px; letter-spacing: -0.02em; }
+    .brand .L { color: var(--lime); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+    .nav { display: flex; gap: 2px; margin-left: var(--u2); }
+    .nav a {
+      padding: 6px 10px;
+      color: var(--sub);
+      text-decoration: none;
+      font-size: 11px;
+      border: 1px solid transparent;
+    }
+    .nav a.on {
+      color: var(--ink);
+      border-color: var(--line-hi);
+      background: var(--surface);
+    }
+    .nav a.on::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      background: var(--lime);
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .meta {
+      margin-left: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--faint);
+    }
+    .meta em { color: var(--lime); font-style: normal; }
+    .body-wrap { display: flex; flex: 1; min-height: 0; }
+    .timeline-rail {
+      width: var(--rail);
+      flex-shrink: 0;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--u2) 0;
+      position: sticky;
+      top: 0;
+      align-self: flex-start;
+      min-height: 100vh;
+    }
+    .rail-label {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-top: auto;
+      padding: var(--u2) 0;
+    }
+    .rail-node {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--line-hi);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--sub);
+      margin: 6px 0;
+      position: relative;
+    }
+    .rail-node.active {
+      border-color: var(--lime);
+      color: var(--lime);
+      box-shadow: inset 0 0 0 1px var(--lime-soft);
+    }
+    .rail-node::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      width: 1px;
+      height: 10px;
+      background: var(--line-hi);
+      transform: translateX(-50%);
+    }
+    .rail-node:last-of-type::after { display: none; }
+    .main { flex: 1; min-width: 0; max-width: 1200px; margin: 0 auto; padding: var(--u3) var(--u3) var(--u6); }
+    .hero {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      padding: var(--u3);
+      margin-bottom: var(--u3);
+    }
+    .hero-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--u2); margin-bottom: var(--u3); flex-wrap: wrap; }
+    .hero-head h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.03em; }
+    .hero-head h1 span { color: var(--lime); }
+    .hero-head p { color: var(--sub); font-size: 13px; max-width: 520px; margin-top: 6px; }
+    .chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 4px 8px;
+      border: 1px solid var(--line-hi);
+      color: var(--sub);
+    }
+    .chip.lime { border-color: var(--lime-dk); color: var(--lime); background: var(--lime-soft); }
+    .dag-wrap { overflow-x: auto; padding-bottom: var(--u); }
+    .dag {
+      min-width: 720px;
+      height: 140px;
+      display: block;
+    }
+    .dag-node rect { fill: var(--surface-hi); stroke: var(--line-hi); stroke-width: 1; }
+    .dag-node.active rect { stroke: var(--lime); fill: color-mix(in srgb, var(--lime) 8%, var(--surface-hi)); }
+    .dag-node text { fill: var(--ink); font-family: Inter, sans-serif; font-size: 10px; }
+    .dag-node .mono { fill: var(--faint); font-family: 'JetBrains Mono', monospace; font-size: 8px; }
+    .dag-edge { stroke: var(--line-hi); stroke-width: 1; fill: none; }
+    .dag-edge.active { stroke: var(--lime); }
+    .layer {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      margin-bottom: var(--u2);
+    }
+    .layer-head {
+      display: flex;
+      align-items: center;
+      gap: var(--u2);
+      padding: 10px var(--u2);
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .layer-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--lime);
+      min-width: 36px;
+    }
+    .layer-title { font-size: 13px; font-weight: 600; }
+    .layer-desc { margin-left: auto; font-size: 10px; color: var(--faint); max-width: 280px; text-align: right; }
+    .layer-body { padding: var(--u2); }
+    .sig-0x02 {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: var(--u3);
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .sig-0x02 { grid-template-columns: 1fr; }
+      .timeline-rail { display: none; }
+    }
+    .stack-svg { width: 100%; max-width: 200px; }
+    .spec-cols {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+    }
+    @media (max-width: 768px) {
+      .spec-cols { grid-template-columns: 1fr 1fr; }
+    }
+    .spec-col { background: var(--surface); padding: var(--u2); min-height: 200px; }
+    .spec-col h4 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--lime);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .spec-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 10px;
+    }
+    .spec-row:last-child { border-bottom: none; }
+    .spec-row .k { color: var(--faint); flex-shrink: 0; }
+    .spec-row .v { color: var(--sub); text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 9px; }
+    .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--u2); }
+    @media (max-width: 768px) { .panel-grid { grid-template-columns: 1fr; } }
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .panel-head {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--faint);
+      background: var(--surface-hi);
+    }
+    .panel-body { padding: 12px; }
+    .meter { margin-bottom: 14px; }
+    .meter:last-child { margin-bottom: 0; }
+    .meter-top { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 6px; }
+    .meter-top .lbl { color: var(--sub); }
+    .meter-top .val { font-family: 'JetBrains Mono', monospace; color: var(--ink); }
+    .meter-track {
+      height: 6px;
+      background: var(--dim);
+      border: 1px solid var(--line);
+      position: relative;
+      overflow: hidden;
+    }
+    .meter-fill {
+      height: 100%;
+      background: var(--lime);
+      box-shadow: 0 0 8px color-mix(in srgb, var(--lime) 40%, transparent);
+    }
+    .meter-fill.warn { background: var(--blue); box-shadow: none; }
+    .meter-fill.crit { background: var(--red); box-shadow: none; }
+    .ledger { font-family: 'JetBrains Mono', monospace; font-size: 9px; }
+    .ledger-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line);
+      align-items: start;
+    }
+    .ledger-row:last-child { border-bottom: none; }
+    .ledger-row .cid { color: var(--lime); word-break: break-all; }
+    .ledger-row .hash { color: var(--faint); font-size: 8px; text-align: right; }
+    .ledger-row .meta { grid-column: 1 / -1; color: var(--sub); font-size: 9px; font-family: Inter, sans-serif; }
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+    }
+    .tile {
+      background: var(--surface);
+      padding: 12px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .tile:hover { background: var(--surface-hi); }
+    .tile:hover .tile-name { color: var(--lime); }
+    .tile-name { font-weight: 600; font-size: 12px; }
+    .tile-role { font-size: 9px; color: var(--faint); line-height: 1.4; }
+    .tile-gh {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      color: var(--sub);
+      margin-top: auto;
+    }
+    .exec-note {
+      margin-top: var(--u2);
+      padding: 10px 12px;
+      border: 1px solid var(--line-hi);
+      background: var(--lime-soft);
+      font-size: 11px;
+      color: var(--sub);
+    }
+    .exec-note strong { color: var(--lime); font-weight: 500; }
+    .foot {
+      margin-top: var(--u4);
+      padding-top: var(--u2);
+      border-top: 1px solid var(--line);
+      font-size: 9px;
+      color: var(--faint);
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">靈境·Linkin<span class="L">L</span></div>
+      <nav class="nav" aria-label="主導覽">
+        <a href="#L04" class="on">四層架構</a>
+        <a href="#hero-dag">執行軌跡</a>
+        <a href="#L03">預算</a>
+        <a href="#L02">共識</a>
+        <a href="#L01">組件</a>
+      </nav>
+      <div class="meta">本地執行 · <em>0x02</em> 招牌圖 · graphite / lime</div>
+    </header>
+
+    <div class="body-wrap">
+      <aside class="timeline-rail" aria-label="執行時間軸">
+        <div class="rail-node active" title="L04">L4</div>
+        <div class="rail-node" title="L03">L3</div>
+        <div class="rail-node" title="L02">L2</div>
+        <div class="rail-node" title="L01">L1</div>
+        <div class="rail-label">執行時間軸 · 72px</div>
+      </aside>
+
+      <main class="main">
+        <section class="hero" id="hero-dag">
+          <div class="hero-head">
+            <div>
+              <h1>四層<span>執行架構</span></h1>
+              <p>LinkinL 將敘事由「流程編排」升級為可稽核的本機執行堆疊：由上而下為 AI 執行、預算閘門、共識帳本與 OSS 組件整合。</p>
+            </div>
+            <span class="chip lime">trace · run-a3f9c2</span>
+          </div>
+          <div class="dag-wrap">
+            <svg class="dag" viewBox="0 0 880 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Agent 執行 DAG">
+              <defs>
+                <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <path d="M0,0 L6,3 L0,6 Z" fill="#25262c" />
+                </marker>
+                <marker id="arrow-lime" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <path d="M0,0 L6,3 L0,6 Z" fill="#c6ff3d" />
+                </marker>
+              </defs>
+              <!-- edges -->
+              <path class="dag-edge" d="M 98 70 L 118 70" marker-end="url(#arrow)" />
+              <path class="dag-edge" d="M 198 70 L 218 70" marker-end="url(#arrow)" />
+              <path class="dag-edge active" d="M 298 70 L 318 70" marker-end="url(#arrow-lime)" />
+              <path class="dag-edge" d="M 398 70 L 418 70" marker-end="url(#arrow)" />
+              <path class="dag-edge" d="M 498 70 L 518 70" marker-end="url(#arrow)" />
+              <path class="dag-edge" d="M 598 70 L 618 70" marker-end="url(#arrow)" />
+              <path class="dag-edge" d="M 698 70 L 718 70" marker-end="url(#arrow)" />
+              <!-- branch KV -->
+              <path class="dag-edge" d="M 348 70 L 348 95 L 448 95 L 448 88" marker-end="url(#arrow)" stroke-dasharray="3 2" />
+              <!-- nodes -->
+              <g class="dag-node" transform="translate(8,48)">
+                <rect width="90" height="44" />
+                <text x="45" y="18" text-anchor="middle">意圖解析</text>
+                <text class="mono" x="45" y="32" text-anchor="middle">12ms</text>
+              </g>
+              <g class="dag-node" transform="translate(118,48)">
+                <rect width="80" height="44" />
+                <text x="40" y="18" text-anchor="middle">檢索</text>
+                <text class="mono" x="40" y="32" text-anchor="middle">84ms</text>
+              </g>
+              <g class="dag-node active" transform="translate(218,48)">
+                <rect width="80" height="44" />
+                <text x="40" y="18" text-anchor="middle">工具呼叫</text>
+                <text class="mono" x="40" y="32" text-anchor="middle">● live</text>
+              </g>
+              <g class="dag-node" transform="translate(318,48)">
+                <rect width="80" height="44" />
+                <text x="40" y="18" text-anchor="middle">KV 快取</text>
+                <text class="mono" x="40" y="32" text-anchor="middle">hit 62%</text>
+              </g>
+              <g class="dag-node" transform="translate(418,48)">
+                <rect width="80" height="44" />
+                <text x="40" y="18" text-anchor="middle">預算檢查</text>
+                <text class="mono" x="40" y="32" text-anchor="middle">ok</text>
+              </g>
+              <g class="dag-node" transform="translate(518,48)">
+                <rect width="96" height="44" />
+                <text x="48" y="18" text-anchor="middle">產出物封存</text>
+                <text class="mono" x="48" y="32" text-anchor="middle">CID pending</text>
+              </g>
+              <g class="dag-node" transform="translate(628,48)">
+                <rect width="72" height="44" />
+                <text x="36" y="22" text-anchor="middle">輸出</text>
+              </g>
+              <text x="8" y="24" fill="#4e4e58" font-family="JetBrains Mono" font-size="9">HERO · 執行軌跡 DAG</text>
+            </svg>
+          </div>
+        </section>
+
+        <!-- L04 AI 執行層 + signature 0x02 -->
+        <section class="layer" id="L04">
+          <header class="layer-head">
+            <span class="layer-id">L04</span>
+            <span class="layer-title">AI 執行層</span>
+            <span class="layer-desc">LangGraph 統一管線 · 本機 Agent 執行與反思閉環</span>
+          </header>
+          <div class="layer-body">
+            <p style="color:var(--sub);font-size:11px;margin-bottom:var(--u2);">
+              招牌時刻 <strong style="color:var(--lime);font-family:'JetBrains Mono',monospace;">0x02</strong> — 四層執行架構總覽（左：堆疊圖 · 右：規格列）
+            </p>
+            <div class="sig-0x02">
+              <svg class="stack-svg" viewBox="0 0 160 280" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <!-- lime spine -->
+                <line x1="24" y1="28" x2="24" y2="252" stroke="#c6ff3d" stroke-width="1" />
+                <circle cx="24" cy="28" r="3" fill="#c6ff3d" />
+                <circle cx="24" cy="92" r="3" fill="#c6ff3d" />
+                <circle cx="24" cy="156" r="3" fill="#c6ff3d" />
+                <circle cx="24" cy="220" r="3" fill="#c6ff3d" />
+                <!-- L04 -->
+                <rect x="36" y="8" width="118" height="52" fill="none" stroke="#25262c" stroke-width="1" />
+                <text x="95" y="30" fill="#ececee" font-family="Inter,sans-serif" font-size="10" text-anchor="middle">L04 · AI 執行</text>
+                <text x="95" y="44" fill="#4e4e58" font-family="JetBrains Mono" font-size="8" text-anchor="middle">Agent / Graph</text>
+                <line x1="24" y1="34" x2="36" y2="34" stroke="#c6ff3d" stroke-width="1" />
+                <!-- L03 -->
+                <rect x="36" y="72" width="118" height="52" fill="none" stroke="#25262c" stroke-width="1" />
+                <text x="95" y="94" fill="#ececee" font-family="Inter,sans-serif" font-size="10" text-anchor="middle">L03 · 預算</text>
+                <text x="95" y="108" fill="#4e4e58" font-family="JetBrains Mono" font-size="8" text-anchor="middle">Token / GPU</text>
+                <line x1="24" y1="98" x2="36" y2="98" stroke="#c6ff3d" stroke-width="1" />
+                <!-- L02 -->
+                <rect x="36" y="136" width="118" height="52" fill="none" stroke="#25262c" stroke-width="1" />
+                <text x="95" y="158" fill="#ececee" font-family="Inter,sans-serif" font-size="10" text-anchor="middle">L02 · 共識</text>
+                <text x="95" y="172" fill="#4e4e58" font-family="JetBrains Mono" font-size="8" text-anchor="middle">CID / Hash</text>
+                <line x1="24" y1="162" x2="36" y2="162" stroke="#c6ff3d" stroke-width="1" />
+                <!-- L01 -->
+                <rect x="36" y="200" width="118" height="52" fill="none" stroke="#25262c" stroke-width="1" />
+                <text x="95" y="222" fill="#ececee" font-family="Inter,sans-serif" font-size="10" text-anchor="middle">L01 · 組件</text>
+                <text x="95" y="236" fill="#4e4e58" font-family="JetBrains Mono" font-size="8" text-anchor="middle">OSS 整合</text>
+                <line x1="24" y1="226" x2="36" y2="226" stroke="#c6ff3d" stroke-width="1" />
+                <text x="80" y="272" fill="#4e4e58" font-family="JetBrains Mono" font-size="8" text-anchor="middle">0x02 · 四層堆疊</text>
+              </svg>
+              <div class="spec-cols">
+                <div class="spec-col">
+                  <h4>L04 執行</h4>
+                  <div class="spec-row"><span class="k">管線</span><span class="v">LangGraph</span></div>
+                  <div class="spec-row"><span class="k">路由</span><span class="v">simple / company</span></div>
+                  <div class="spec-row"><span class="k">LLM 閘道</span><span class="v">call_llm</span></div>
+                  <div class="spec-row"><span class="k">反思</span><span class="v">EvoLoop</span></div>
+                  <div class="spec-row"><span class="k">本機埠</span><span class="v">:8000</span></div>
+                </div>
+                <div class="spec-col">
+                  <h4>L03 預算</h4>
+                  <div class="spec-row"><span class="k">Token 池</span><span class="v">128k / run</span></div>
+                  <div class="spec-row"><span class="k">GPU 配額</span><span class="v">4h / day</span></div>
+                  <div class="spec-row"><span class="k">成本上限</span><span class="v">$12.00</span></div>
+                  <div class="spec-row"><span class="k">速率閘門</span><span class="v">60 req/min</span></div>
+                  <div class="spec-row"><span class="k">超限動作</span><span class="v">hard stop</span></div>
+                </div>
+                <div class="spec-col">
+                  <h4>L02 共識</h4>
+                  <div class="spec-row"><span class="k">封存格式</span><span class="v">IPFS CID</span></div>
+                  <div class="spec-row"><span class="k">雜湊鏈</span><span class="v">sha256∥prev</span></div>
+                  <div class="spec-row"><span class="k">簽章</span><span class="v">ed25519</span></div>
+                  <div class="spec-row"><span class="k">稽核</span><span class="v">append-only</span></div>
+                  <div class="spec-row"><span class="k">回放</span><span class="v">trace id</span></div>
+                </div>
+                <div class="spec-col">
+                  <h4>L01 組件</h4>
+                  <div class="spec-row"><span class="k">推理</span><span class="v">vLLM / SGLang</span></div>
+                  <div class="spec-row"><span class="k">注意力</span><span class="v">FlashAttn</span></div>
+                  <div class="spec-row"><span class="k">編排</span><span class="v">LangGraph</span></div>
+                  <div class="spec-row"><span class="k">分散式</span><span class="v">Ray</span></div>
+                  <div class="spec-row"><span class="k">向量</span><span class="v">Chroma</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="exec-note">
+              <strong>執行語意</strong> — 上列 DAG 節點對應本機一次 Agent run：解析意圖後召回記憶與工具，經 KV 與預算閘門後將產出物寫入共識帳本再交付使用者。
+            </div>
+          </div>
+        </section>
+
+        <!-- L03 預算層 -->
+        <section class="layer" id="L03">
+          <header class="layer-head">
+            <span class="layer-id">L03</span>
+            <span class="layer-title">預算層</span>
+            <span class="layer-desc">本機資源與 spend 閘門 · 超限即停</span>
+          </header>
+          <div class="layer-body">
+            <div class="panel-grid">
+              <div class="panel">
+                <div class="panel-head">資源量表 · 即時</div>
+                <div class="panel-body">
+                  <div class="meter">
+                    <div class="meter-top"><span class="lbl">Token 用量</span><span class="val">84,320 / 128,000</span></div>
+                    <div class="meter-track"><div class="meter-fill" style="width:65.9%"></div></div>
+                  </div>
+                  <div class="meter">
+                    <div class="meter-top"><span class="lbl">GPU 時數（今日）</span><span class="val">2.4h / 4.0h</span></div>
+                    <div class="meter-track"><div class="meter-fill warn" style="width:60%"></div></div>
+                  </div>
+                  <div class="meter">
+                    <div class="meter-top"><span class="lbl">成本上限（USD）</span><span class="val">$8.42 / $12.00</span></div>
+                    <div class="meter-track"><div class="meter-fill warn" style="width:70.2%"></div></div>
+                  </div>
+                  <div class="meter">
+                    <div class="meter-top"><span class="lbl">速率閘門</span><span class="val">38 / 60 req·min⁻¹</span></div>
+                    <div class="meter-track"><div class="meter-fill" style="width:63.3%"></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="panel-head">閘門策略（示意）</div>
+                <div class="panel-body" style="font-size:11px;color:var(--sub);">
+                  <div class="spec-row"><span class="k">公司模式席位</span><span class="v">budget pool</span></div>
+                  <div class="spec-row"><span class="k">simple 路徑</span><span class="v">single cap</span></div>
+                  <div class="spec-row"><span class="k">Minecraft ops</span><span class="v">tool budget</span></div>
+                  <div class="spec-row"><span class="k">OPC 寫入</span><span class="v">guard 獨立</span></div>
+                  <p style="margin-top:12px;color:var(--faint);font-size:10px;">量表數值為設計稿占位；實作對接 `backend/company/` 預算與 Hub 探針。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- L02 共識層 -->
+        <section class="layer" id="L02">
+          <header class="layer-head">
+            <span class="layer-id">L02</span>
+            <span class="layer-title">共識層</span>
+            <span class="layer-desc">產出物帳本 · CID 與雜湊鏈可回放</span>
+          </header>
+          <div class="layer-body">
+            <div class="panel">
+              <div class="panel-head">產出物帳本 · Artifact Ledger</div>
+              <div class="panel-body ledger">
+                <div class="ledger-row">
+                  <span class="cid">bafybei…k7m2 · final_answer.md</span>
+                  <span class="hash">h₃ ← h₂</span>
+                  <span class="meta">run-a3f9c2 · 2026-11-04 09:41 · sha256:9f2c…a1</span>
+                </div>
+                <div class="ledger-row">
+                  <span class="cid">bafybeig…p4nq · tool_trace.json</span>
+                  <span class="hash">h₂ ← h₁</span>
+                  <span class="meta">run-a3f9c2 · 2026-11-04 09:40 · sha256:4b8d…c0</span>
+                </div>
+                <div class="ledger-row">
+                  <span class="cid">bafybeih…x1rw · retrieval_pack</span>
+                  <span class="hash">h₁ ← genesis</span>
+                  <span class="meta">run-a3f9c2 · 2026-11-04 09:40 · sha256:1aa3…7f</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- L01 組件層 -->
+        <section class="layer" id="L01">
+          <header class="layer-head">
+            <span class="layer-id">L01</span>
+            <span class="layer-title">組件層</span>
+            <span class="layer-desc">GitHub OSS 整合磚 · 本機可替換推理與編排栈</span>
+          </header>
+          <div class="layer-body">
+            <div class="tiles">
+              <a class="tile" href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener noreferrer">
+                <span class="tile-name">vLLM</span>
+                <span class="tile-role">高吞吐 LLM 推理服務</span>
+                <span class="tile-gh">github.com/vllm-project/vllm</span>
+              </a>
+              <a class="tile" href="https://github.com/sgl-project/sglang" target="_blank" rel="noopener noreferrer">
+                <span class="tile-name">SGLang</span>
+                <span class="tile-role">結構化生成與 RadixAttention</span>
+                <span class="tile-gh">github.com/sgl-project/sglang</span>
+              </a>
+              <a class="tile" href="https://github.com/Dao-AILab/flash-attention" target="_blank" rel="noopener noreferrer">
+                <span class="tile-name">FlashAttention</span>
+                <span class="tile-role">IO 感知注意力核心</span>
+                <span class="tile-gh">github.com/Dao-AILab/flash-attention</span>
+              </a>
+              <a class="tile" href="https://github.com/langchain-ai/langgraph" target="_blank" rel="noopener noreferrer">
+                <span class="tile-name">LangGraph</span>
+                <span class="tile-role">Linkin 統一反思管線圖</span>
+                <span class="tile-gh">github.com/langchain-ai/langgraph</span>
+              </a>
+              <a class="tile" href="https://github.com/ray-project/ray" target="_blank" rel="noopener noreferrer">
+                <span class="tile-name">Ray</span>
+                <span class="tile-role">分散式任務與 Actor</span>
+                <span class="tile-gh">github.com/ray-project/ray</span>
+              </a>
+              <a class="tile" href="https://github.com/chroma-core/chroma" target="_blank" rel="noopener noreferrer">
+                <span class="tile-name">Chroma</span>
+                <span class="tile-role">本機向量召回 · 整合記憶</span>
+                <span class="tile-gh">github.com/chroma-core/chroma</span>
+              </a>
+              <a class="tile" href="https://github.com/BerriAI/litellm" target="_blank" rel="noopener noreferrer">
+                <span class="tile-name">LiteLLM</span>
+                <span class="tile-role">call_llm 多供應商路由</span>
+                <span class="tile-gh">github.com/BerriAI/litellm</span>
+              </a>
+              <a class="tile" href="https://github.com/redis/redis" target="_blank" rel="noopener noreferrer">
+                <span class="tile-name">Redis</span>
+                <span class="tile-role">KV 快取 · 執行狀態</span>
+                <span class="tile-gh">github.com/redis/redis</span>
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <p class="foot">
+          LinkinL 設計參考 · canvas #07080A · accent #C6FF3D · 0px radius · 1px hairline · 72px 執行時間軸<br />
+          對照：<code>monitor-dashboard-v3.html</code> · <code>system-overview-ocd.html</code> · 未修改根 <code>DESIGN.md</code> / <code>frontend/src/index.css</code>
+        </p>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

@@ -125,7 +125,7 @@ export default function LlmOpsPanel() {
           <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-3">
             <SectionHeader
               title={pageTab === 'edit' ? '編輯路由' : '模型目錄'}
-              description={`多組 API 並存；每組再勾選可用模型。角色在「${navPathForTab('agents')} → 模型／設定」指定。`}
+              description={`多組 API 只保存在目前登入帳號，其他帳號讀不到金鑰與模型勾選。角色在「${navPathForTab('agents')} → 模型／設定」指定。`}
               actions={
                 <div className="flex gap-2">
                   <button
@@ -193,7 +193,7 @@ export default function LlmOpsPanel() {
                 </div>
                 <div className="overflow-x-auto rounded-lg border border-[var(--console-line)]">
                   <table className="w-full text-left text-[12px]">
-                    <thead className="bg-[var(--console-card-elevated)] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
+                    <thead className="bg-[var(--console-card-elevated)] text-[10px] text-[var(--console-faint)]">
                       <tr>
                         <th className="px-3 py-2 font-medium">模型 ID</th>
                         <th className="px-3 py-2 font-medium">名稱</th>

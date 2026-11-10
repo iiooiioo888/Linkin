@@ -153,14 +153,14 @@ export function RoleIcon({ status }: { status: RoleStatus }) {
 }
 
 export const ITEM_STATUS_META: Record<string, { label: string; cls: string; bar: string }> = {
-  planning: { label: '規劃中', cls: 'bg-gray-700/60 text-gray-300', bar: 'bg-gray-500' },
+  planning: { label: '規劃中', cls: 'bg-gray-700/60 text-[var(--console-sub)]', bar: 'bg-gray-500' },
   ready: { label: '就緒', cls: 'bg-[color-mix(in_srgb,var(--console-blue)_15%,transparent)] console-status-blue', bar: 'bg-blue-400' },
   executing: { label: '執行中', cls: 'bg-yellow-500/15 text-yellow-300', bar: 'bg-yellow-400' },
   in_review: { label: '審查中', cls: 'bg-purple-500/15 text-purple-300', bar: 'bg-purple-400' },
   rework: { label: '修改中', cls: 'bg-orange-500/15 text-orange-300', bar: 'bg-orange-400' },
   done: { label: '已完成', cls: 'bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] console-status-green', bar: 'bg-green-400' },
   blocked: { label: '阻塞', cls: 'bg-red-500/15 console-status-danger', bar: 'bg-red-400' },
-  cancelled: { label: '已取消', cls: 'bg-gray-600/40 text-gray-400 line-through', bar: 'bg-gray-500' },
+  cancelled: { label: '已取消', cls: 'bg-gray-600/40 text-[var(--console-faint)] line-through', bar: 'bg-gray-500' },
 };
 
 export const EVENT_LABELS: Record<string, string> = {
@@ -320,7 +320,7 @@ export default function TaskPanel({
         <span className="font-medium text-gray-100">
           {isOPC ? '🏭 OPC 診斷' : isCompany ? '🏢 公司任務' : '⚙️ 反思任務'}
         </span>
-        <span className="truncate text-gray-500">
+        <span className="truncate text-[var(--console-faint)]">
           {running
             ? `${phases[currentIdx]?.label ?? task.phase}${totalCount > 0 ? ` · ${doneCount}/${totalCount} 工作項` : ''}`
             : isCancelled
@@ -382,12 +382,12 @@ export default function TaskPanel({
                       ? 'bg-blue-500'
                       : active
                         ? 'progress-shimmer'
-                        : 'bg-gray-700/70'
+                        : 'bg-[var(--console-line)]'
                 }`}
               />
               <span
                 className={`whitespace-nowrap text-[10px] ${
-                  active ? 'console-status-blue' : phasePassed(i) ? 'text-gray-300' : 'text-gray-600'
+                  active ? 'console-status-blue' : phasePassed(i) ? 'text-[var(--console-sub)]' : 'text-gray-600'
                 }`}
               >
                 {p.label}
@@ -401,29 +401,29 @@ export default function TaskPanel({
       {/* ── 耗時／預計剩餘 ── */}
       {!compactTerminal && eta && (
         <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px]" title={etaTip}>
-          <span className="text-gray-400">
-            已耗 <span className="font-medium text-gray-200">{formatDuration(eta.elapsedSec)}</span>
+          <span className="text-[var(--console-faint)]">
+            已耗 <span className="font-medium text-[var(--console-ink)]">{formatDuration(eta.elapsedSec)}</span>
           </span>
           {running ? (
             eta.remainingSec != null ? (
               <>
                 <span className="text-gray-600">|</span>
-                <span className="text-gray-400">
+                <span className="text-[var(--console-faint)]">
                   預計剩餘{' '}
                   <span className="font-medium console-status-blue">≈ {formatDuration(eta.remainingSec)}</span>
                 </span>
                 {eta.totalSec != null && (
-                  <span className="text-gray-500">（全程 ≈ {formatDuration(eta.totalSec)}）</span>
+                  <span className="text-[var(--console-faint)]">（全程 ≈ {formatDuration(eta.totalSec)}）</span>
                 )}
                 {eta.curPhaseSec != null && (
-                  <span className="text-gray-500">本階段已 {formatDuration(eta.curPhaseSec)}</span>
+                  <span className="text-[var(--console-faint)]">本階段已 {formatDuration(eta.curPhaseSec)}</span>
                 )}
               </>
             ) : (
-              <span className="text-gray-500">剩餘時間估算中…</span>
+              <span className="text-[var(--console-faint)]">剩餘時間估算中…</span>
             )
           ) : (
-            <span className="text-gray-500">
+            <span className="text-[var(--console-faint)]">
               {task.status === 'completed' ? '完成於' : '結束於'} {eventClock(lastEventTsOf(task))}
             </span>
           )}
@@ -436,7 +436,7 @@ export default function TaskPanel({
       )}
 
       {compactTerminal && eta && (
-        <p className="mt-2 text-[11px] text-gray-500">
+        <p className="mt-2 text-[11px] text-[var(--console-faint)]">
           已耗 {formatDuration(eta.elapsedSec)}
           {isCancelled ? ' · 任務已取消' : ' · 任務已中斷'}
         </p>
@@ -454,7 +454,7 @@ export default function TaskPanel({
               : `已調用 ${toolCalls.length} 次工具`}
           </p>
           {!toolPending && lastToolResult && (
-            <p className="mt-0.5 truncate text-[10px] text-gray-500">
+            <p className="mt-0.5 truncate text-[10px] text-[var(--console-faint)]">
               {lastToolResult.data.success ? '✓' : '✗'} {String(lastToolResult.data.tool ?? '')}
               {lastToolResult.data.observation ? `：${String(lastToolResult.data.observation).slice(0, 80)}` : ''}
             </p>
@@ -477,7 +477,7 @@ export default function TaskPanel({
                         ? 'border-red-500/40 bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] text-red-200'
                         : role.status === 'waiting'
                           ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200'
-                          : 'border-gray-700/70 bg-gray-800/40 text-gray-500'
+                          : 'border-[var(--console-line)]/70 bg-[var(--console-dim)]/40 text-[var(--console-faint)]'
                 }`}
               >
                 {role.label}
@@ -503,7 +503,7 @@ export default function TaskPanel({
                 label: col.label,
                 count: entries.length,
                 children: entries.map(({ status, item, role }) => {
-                  const meta = ITEM_STATUS_META[status] ?? { label: status, cls: 'bg-gray-700/60 text-gray-300' };
+                  const meta = ITEM_STATUS_META[status] ?? { label: status, cls: 'bg-gray-700/60 text-[var(--console-sub)]' };
                   const running = col.key === 'executing';
                   return (
                     <div key={item.id} className="rd-tc">
@@ -541,7 +541,7 @@ export default function TaskPanel({
       {evaluations.length > 1 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {evaluations.map((e, i) => (
-            <span key={i} className="rounded-full bg-gray-800 px-2 py-0.5 text-[11px] text-gray-300">
+            <span key={i} className="rounded-full bg-[var(--console-dim)] px-2 py-0.5 text-[11px] text-[var(--console-sub)]">
               第 {Number(e.data.iteration ?? 0) + 1} 次：
               <span className="ml-1 font-medium console-status-blue">{String(e.data.score ?? '?')} 分</span>
             </span>
@@ -554,12 +554,12 @@ export default function TaskPanel({
         <div className="mt-2.5">
           <button
             onClick={() => setShowTimeline((v) => !v)}
-            className="text-[11px] text-gray-400 hover:text-gray-200"
+            className="text-[11px] text-[var(--console-faint)] hover:text-[var(--console-ink)]"
           >
             {showTimeline ? '▲ 收合時間軸' : `▼ 事件時間軸（${task.events.length}）`}
           </button>
           {showTimeline && (
-            <div className="task-expand-in relative mt-1.5 ml-1 border-l border-gray-700/70 pl-3.5">
+            <div className="task-expand-in relative mt-1.5 ml-1 border-l border-[var(--console-line)]/70 pl-3.5">
               {task.events.slice(-10).map((e, i) => (
                 <div key={i} className="relative mb-1 flex items-baseline gap-2 text-[11px] last:mb-0">
                   <span className={`absolute -left-[19px] top-1.5 h-1.5 w-1.5 rounded-full ${
@@ -568,8 +568,8 @@ export default function TaskPanel({
                         : e.event === 'tool_call' || e.event === 'tool_result' ? 'bg-cyan-400'
                           : 'bg-blue-400/80'
                   }`} />
-                  <span className="shrink-0 text-gray-300">{EVENT_LABELS[e.event] ?? e.event}</span>
-                  <span className="min-w-0 flex-1 truncate text-gray-500">
+                  <span className="shrink-0 text-[var(--console-sub)]">{EVENT_LABELS[e.event] ?? e.event}</span>
+                  <span className="min-w-0 flex-1 truncate text-[var(--console-faint)]">
                     {e.event === 'tool_call' || e.event === 'tool_result'
                       ? String(e.data.tool ?? '')
                       : String(e.data.title ?? e.data.phase ?? '')}
@@ -584,7 +584,7 @@ export default function TaskPanel({
 
       {/* ── 預算 ── */}
       {isCompany && Object.keys(task.budget).length > 0 && (
-        <p className="mt-2 text-[11px] text-gray-500">
+        <p className="mt-2 text-[11px] text-[var(--console-faint)]">
           💰 花費 ${String(task.budget.task_spent ?? 0)} / 上限 ${String(task.budget.task_limit ?? '-')}
           <span className="ml-2">模型：{String(task.budget.active_tier ?? '-')}</span>
         </p>
@@ -606,7 +606,7 @@ export default function TaskPanel({
         {onOpenFull && (
           <button
             onClick={onOpenFull}
-            className="flex-1 rounded-lg border border-gray-700/70 bg-gray-800/40 py-1.5 text-[11px] font-medium text-gray-300 transition-all duration-200 hover:border-blue-500/70 hover:bg-blue-500/10 hover:console-status-blue active:scale-[0.98]"
+            className="flex-1 rounded-lg border border-[var(--console-line)]/70 bg-[var(--console-dim)]/40 py-1.5 text-[11px] font-medium text-[var(--console-sub)] transition-all duration-200 hover:border-blue-500/70 hover:bg-blue-500/10 hover:console-status-blue active:scale-[0.98]"
           >
             ⛶ 開啟任務頁面
           </button>
@@ -614,7 +614,7 @@ export default function TaskPanel({
         {onOpenTrace && (
           <button
             onClick={() => onOpenTrace(task.task_id)}
-            className="flex-1 rounded-lg border border-gray-700/70 bg-gray-800/40 py-1.5 text-[11px] font-medium text-gray-300 transition-all duration-200 hover:border-[var(--console-blue)]/70 hover:bg-[var(--console-blue)]/10 hover:console-status-blue active:scale-[0.98]"
+            className="flex-1 rounded-lg border border-[var(--console-line)]/70 bg-[var(--console-dim)]/40 py-1.5 text-[11px] font-medium text-[var(--console-sub)] transition-all duration-200 hover:border-[var(--console-blue)]/70 hover:bg-[var(--console-blue)]/10 hover:console-status-blue active:scale-[0.98]"
           >
             📜 思考過程
           </button>

@@ -7,6 +7,7 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from opc_service.client import opc_client
+from opc_service.internal_auth import token_matches
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,9 @@ async def ws_subscribe(websocket: WebSocket):
     服务器推送 JSON 消息：
       {"tag_name": "Temperature", "value": 25.5, "timestamp": "...", "status": "Good"}
     """
+    if not token_matches(websocket.headers.get("x-opc-internal")):
+        await websocket.close(code=1008)
+        return
     await websocket.accept()
     queue: asyncio.Queue = asyncio.Queue()
     subscription_active = False

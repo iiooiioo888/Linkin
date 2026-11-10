@@ -121,7 +121,7 @@ export default function SeatFeedList({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-[var(--apple-hairline)] px-2.5 py-1.5">
-        <span className="mr-1 text-[10px] font-medium uppercase tracking-wide text-[var(--apple-tertiary)]">
+        <span className="mr-1 text-[10px] font-medium text-[var(--apple-tertiary)]">
           投遞流水
           <span className="ml-1 font-mono normal-case text-[var(--apple-secondary)]">{rows.length}</span>
         </span>
