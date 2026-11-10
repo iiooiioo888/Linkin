@@ -82,7 +82,7 @@ Pages 僅靜態前端預覽；登入閘門可在無後端時本機核對。聊�
 - Docker Compose prod：宿主 **3001** → 容器 nginx 80
 - Docker Compose dev（HMR）：宿主／容器皆 **3001**
 
-舊文件若寫 5173 已過時。後端仍是 **8000**，OPC **8001**，MineMCP 預設 **3000**。速查：[glossary.md](glossary.md)。
+舊文件若寫 5173 已過時。後端仍是 **8000**，OPC **8001**。速查：[glossary.md](glossary.md)。
 
 ## Hub 拒跟 ModelGW 拒差在哪？（G-GATE1）
 

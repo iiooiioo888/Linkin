@@ -9,9 +9,8 @@
 - NATS JetStream 傳事件；Redis 只做快取與會話；Postgres 存任務、席位、審批與審計索引；Chroma 獨立 StatefulSet。
 - 延遲：路由預覽 P95 < 300ms；SSE 首 token < 1s；公司任務受理 < 500ms、計畫生成 < 5s；OPC 讀 < 500ms；OPC 寫受理 < 2s，執行可異步並經人工確認。
 - 同步呼叫鏈最多 3 跳。`context-service` 對記憶與 OPC 讀數是平行扇出，帶逾時與快取，不計成第四跳。
-- 預設 12 個服務，加 `frontend` 共 13 個映像。團隊小於 5 人時，`context-service` 併入 `route-service`，`reflection-service` 併入 `company-orchestrator`。
+- 預設 11 個服務，加 `frontend` 共 12 個映像。團隊小於 5 人時，`context-service` 併入 `route-service`，`reflection-service` 併入 `company-orchestrator`。
 - OPC 寫入必須人工審批，審批在 `guardrail-service`。
-- Minecraft 多會話先走單一 `minecraft-gateway`，再按會話數擴展。
 - 租戶識別放在 `api-gateway`。
 - 公司任務與席位可異步；simple 路徑的反思同步返回。
 - 第一刀再抽 `tool-gateway` 與 `guardrail-service`。本檔只凍結契約。
@@ -27,9 +26,8 @@
 | `company-orchestrator` | 任務分析、里程碑、席位註冊、狀態機；發出 `seat.task.created` |
 | `seat-executor` | 領任務、執行、回傳。只經 `tool-gateway` 叫工具 |
 | `tool-gateway` | 工具 schema、校驗、路由、限流、審計。工具呼叫的唯一入口 |
-| `guardrail-service` | 寫入護欄、靈境鐵律、OPC 寫與危險 Minecraft 動作的審批 |
+| `guardrail-service` | 寫入護欄、靈境鐵律、OPC 寫的審批 |
 | `opc-service` | OPC UA 連線、讀、訂閱。寫入必須帶護欄決策，不對外直接開寫入口 |
-| `minecraft-gateway` | MineMCP。危險動作的鐵律結果必須來自 guardrail |
 | `memory-service` | 記憶與 Chroma，按租戶／會話隔離 |
 | `observability-collector` | OTel、指標、追蹤、審計。異步，不擋住主鏈 |
 | `frontend` | 對話、任務、監控、靜態預覽。一個映像 |
@@ -49,13 +47,12 @@
 | POST | `/api/v1/guardrail/approve` | 僅內部 |
 | GET | `/api/v1/opc/read` | 僅內部 |
 | POST | `/api/v1/opc/write-request` | 僅內部。必須帶護欄決策 |
-| POST | `/api/v1/minecraft/action` | 僅內部。`place_block`、`pose_block`、`break_block`、`fill_block`、`execute_command` 必須帶護欄決策 |
 
 草案：`linkin_core/contracts/openapi.json`。
 
 規則鏈（`manual`、`simple`、`company` 在鏈之前結束）：
 
-`industrial` → `linkin_complex` → `mine_multi_step` → `mine_single_step` → `cost_speed` → `company_keyword` → `length` → `fallback_simple`。
+`industrial` → `linkin_complex` → `cost_speed` → `company_keyword` → `length` → `fallback_simple`。
 
 現行 `is_complex_task` 仍把關鍵詞與長度一起判斷。契約把兩段拆開，留給階段 2 的 `route-service`。舊路徑名 `opc` 在契約裡收成 `company`。
 
@@ -82,7 +79,7 @@ NATS JetStream。每則含 `schema_version`、`trace_id`、`tenant_id`。
 | 工具呼叫 | seat-executor → tool-gateway → guardrail | 3 |
 | OPC 寫受理 | guardrail → opc-service | 2 |
 
-席位不能直連 OPC 或 Minecraft。
+席位不能直連 OPC；寫入必須經 `tool-gateway` → `guardrail-service`。
 
 ## 骨架
 

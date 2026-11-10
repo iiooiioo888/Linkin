@@ -5,7 +5,7 @@
 | 狀態 | **已核准**（P0 可開工；實作依分階段 PR 交付） |
 | 核准日期 | 2026-10-05（PM） |
 | 基線 commit | `fdeb619`（`master`，已含 #6 `POST /routing/preview`、#7 輪次對齊相關合併） |
-| 範圍 | `POST /chat`、`POST /chat/stream`（含公司／minecraft_ops 分支）、`POST /tasks` + Task WebSocket |
+| 範圍 | `POST /chat`、`POST /chat/stream`（公司分支）、`POST /tasks` + Task WebSocket（`minecraft_ops` 已於 2026-11-10 移除） |
 | 非目標 | AI Hub `/api/v1/*`、OPC 微服務內部六級圖、前端 Grill 產品邏輯重寫 |
 
 ## 1. 問題與目標
@@ -76,7 +76,7 @@ flowchart LR
 
 ### 3.2 介面（摘要）
 
-`run_unified_pipeline(req: PipelineRequest, mode=BATCH|STREAM|TASK, emit=…, token_sink=…)` → `EvoLoopState`。`mode=stream`：company 保留 EventBus；minecraft_ops 用 `ainvoke`；simple 用共用前置 + stream 生成 + 共用反思。
+`run_unified_pipeline(req: PipelineRequest, mode=BATCH|STREAM|TASK, emit=…, token_sink=…)` → `EvoLoopState`。`mode=stream`：company 保留 EventBus；simple 用共用前置 + stream 生成 + 共用反思。
 
 ### 3.3 串流選型
 

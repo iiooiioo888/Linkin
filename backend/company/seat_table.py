@@ -222,12 +222,31 @@ def build_default_seat_table(
     *,
     schema_version: str = SEAT_TABLE_SCHEMA_VERSION,
 ) -> SeatTable:
-    """從 STANDARD_ROLES 派生預設席位表；呼叫方可注入自訂 roles 以便測試隔離。"""
+    """從 STANDARD_ROLES 派生預設席位表；呼叫方可注入自訂 roles 以便測試隔離。
+
+    L0 ``environment_kernel`` 是 RAHO 脊柱席，即使不在 80 席名冊也必須出現在席位表。
+    """
     if roles is None:
         from backend.company.roles import STANDARD_ROLES
 
         roles = STANDARD_ROLES
     seats = {role.role_type.value: _derive_seat(role) for role in roles.values()}
+    if RoleType.ENVIRONMENT_KERNEL.value not in seats:
+        seats[RoleType.ENVIRONMENT_KERNEL.value] = SeatSpec(
+            role_id=RoleType.ENVIRONMENT_KERNEL.value,
+            display_name="環境與記憶核心",
+            raho_layer="L0",
+            responsibilities=("注入環境與記憶上下文", "不執行任務"),
+            prompt_ref=f"role:{RoleType.ENVIRONMENT_KERNEL.value}",
+            tool_scope=(),
+            plugin_whitelist=(),
+            upstream=(),
+            downstream=(),
+            skippable=False,
+            parallel=False,
+            max_plugin_source_level="L0",
+            deploy_confirm=False,
+        )
     _validate_l0_invariant(seats.values())
     return SeatTable(schema_version=schema_version, seats=seats)
 

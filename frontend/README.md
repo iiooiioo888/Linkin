@@ -6,8 +6,8 @@
 |--------|------|
 | 對話 | 聊天；有進行中任務才左右分裂（左對話／文件／終端，右監控） |
 | 觀測 | Linkin Agent Desk：總覽、執行、審計、計費、系統（不含世界觀／Admin） |
-| 世界模組 | 可插拔宿主；Minecraft 為內建（世界觀／Admin／內容／建築／橋接），目錄 `GET /modules`，業務 `/modules/{id}/api/*` |
-| 實驗室 | 四類：核心的開發組件、minecraft組件、價格分析探針組件、整合。整合再按召回、採集、工業接線、Agent 工作流、設計、技能 |
+| 世界模組 | 可插拔宿主；內建 media-vault、local-video-studio。目錄 `GET /modules`，業務 `/modules/{id}/api/*` |
+| 實驗室 | 三類：核心的開發組件、價格分析探針組件、整合。整合再按召回、採集、工業接線、Agent 工作流、設計、技能 |
 
 ## 行動端／響應式
 
@@ -42,9 +42,9 @@ npm run dev
 | `src/components/MonitorView.tsx` | 監控主視圖 |
 | `src/lib/monitorTabs.ts` | 觀測分頁（總覽／執行／審計／計費／系統） |
 | `src/lib/worldModules.ts` | 世界模組目錄（可 hydrate `GET /modules`） |
-| `src/modules/` | 模組宿主；`minecraft/` 為獨立世界模組 |
+| `src/modules/` | 模組宿主（`media-vault/`、`local-video-studio/`） |
 | `src/lib/auth.ts` | 登入閘門 |
-| `src/api/` | REST 客戶端（`createModuleClient` 統一閘道、`linkin.ts` 為 Minecraft 型別包裝） |
+| `src/api/` | REST 客戶端（`createModuleClient` 統一閘道） |
 | `src/vendor/neiki-gallery/` | 畫廊元件 |
 
 ## GitHub Pages

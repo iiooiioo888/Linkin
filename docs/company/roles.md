@@ -168,7 +168,7 @@
 | NPC（共鳴） | `custom_linkin_npc_director` | `…_npc_executor` | `…_npc_reviewer` | `…_npc_scribe` | `NPC.create/dialogue`＋讀玩家狀態 |
 | 道具（賦形） | `custom_linkin_item_director` | `…_item_executor` | `…_item_reviewer` | `…_item_scribe` | `Item.create`；無 Minecraft 寫入工具 |
 
-世界觀憲法為最高裁決；工具鐵律見 [Minecraft MCP](../linkin/minecraft-mcp.md) · [世界觀](../linkin/worldview.md)。
+世界觀憲法為最高裁決；見 [世界觀](../linkin/worldview.md) · [靈境 API](../linkin/api.md)。
 
 ## 開發者怎麼改角色
 
@@ -178,7 +178,7 @@
 | 執行期覆寫／自定義席 | 監控中心或 `role_catalog` API；檔案 `backend/data/role_catalog.json` |
 | 新增組織模板 | 在 `roles.py` 加 `create_*` 並掛進 `BUILTIN_TEMPLATES` |
 | 靈境 16 席 | `backend/linkin/roles.py`＋`prompts.py`，啟動時冪等刷新 |
-| 禁止事項 | 勿讓角色直連 MineMCP／檔案系統工具；LLM 一律 `call_llm` |
+| 禁止事項 | 勿把檔案系統寫入工具暴露給角色；LLM 一律 `call_llm` |
 
 ## 相關入口
 

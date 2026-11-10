@@ -1,8 +1,9 @@
 # 系統架構與運作流程（全面·2026-09）
 
-> 對齊日期：**2026-09-12** · 倉庫產品名：**靈境·Linkin**（EvoLoop 運行時）  
+> 對齊日期：**2026-09-12**（修訂 **2026-11-10**：Minecraft／MineMCP／`minecraft_ops` 已自產品移除；現行選路僅 `simple`／`company`，目錄地圖以 [structure.md](../structure.md) 為準）  
+> 倉庫產品名：**靈境·Linkin**（EvoLoop 運行時）  
 > 本文為生產環境對齊的**單篇全景**：部署拓撲、分層、LangGraph 統一管線、公司運行時、計費 v6／共享池掘礦、對話生命週期、前端殼。  
-> 細部專題仍見同目錄其他文件；本文不重複 API 金鑰或密鑰。
+> 細部專題仍見同目錄其他文件；本文不重複 API 金鑰或密鑰。文中若仍出現 Minecraft 圖示，視為歷史殘影，以修訂註記與 `structure.md` 為準。
 
 ---
 
@@ -28,7 +29,6 @@ flowchart TB
     subgraph External["外部服務"]
         LLM["LLM 供應商<br/>（LiteLLM 多路由）"]
         BSS["阿里雲 BSS<br/>帳單／用量 OpenAPI"]
-        MineMCP["MineMCP :3000<br/>（可選）"]
     end
 
     User -->|HTTPS/HTTP| Nginx
@@ -39,7 +39,6 @@ flowchart TB
     API --> OPC
     API --> LLM
     API --> BSS
-    API -.->|Minecraft 模組| MineMCP
 ```
 
 | 元件 | 生產埠／路徑 | 職責 |
@@ -161,7 +160,6 @@ flowchart TD
     RECALL --> ROUTE{route_by_complexity}
 
     ROUTE -->|company，含工業| RC[run_company<br/>任務經理分析]
-    ROUTE -->|minecraft_ops| MC[run_minecraft_ops<br/>輕量 ReAct]
     ROUTE -->|simple| GEN[generate_initial_answer<br/>單次 LLM]
 
     RC --> SEC{should_evaluate_company}
@@ -195,7 +193,7 @@ flowchart TD
 
 | 值 | 行為 |
 |----|------|
-| `auto`（預設） | 工業關鍵詞 → `company`／`industrial_ops`；靈境複雜或 Minecraft 重型 → `company`；Minecraft 單步 → `minecraft_ops`；其後 cost_speed，再關鍵詞與長度 |
+| `auto`（預設） | 工業關鍵詞 → `company`／`industrial_ops`；靈境複雜 → `company`；其後 cost_speed，再關鍵詞與長度 |
 | `simple` | 強制 `generate_initial_answer` |
 | `company` | 強制 `run_company` |
 
@@ -305,7 +303,7 @@ flowchart TD
 |------|-----------------|------|-----------|
 | free | 10,000 | 1 | base_models |
 | starter | 30,000 | 2 | + quant |
-| pro | 100,000 | 5 | + advanced_models, minecraft, raho, opc |
+| pro | 100,000 | 5 | + advanced_models, raho, opc |
 | business | 500,000 | 15 | + audit |
 | enterprise | 5,000,000 | 100 | + byok, private_deploy, sla, sso |
 
@@ -436,7 +434,6 @@ flowchart LR
 | 公司運行時 | `backend/company/` | 協調器、任務經理、**80** 席、預算 |
 | 靈境 | `backend/linkin/` | 憲法、**16** 席、Minecraft 護欄 |
 | 世界模組 | `backend/modules/` | `GET /modules`、`/{id}/api/*` |
-| Minecraft MCP | `backend/tools/` + `linkin/minecraft.py` | JSON-RPC、鐵律、審計 |
 | AI Hub | `backend/hub/` | 探針／熔斷／目錄 |
 | OPC | `opc_service/` | 6 級閉環、`guard.py` |
 | 計費 v6 | `backend/billing/` | 方案、多池、共享池、申訴 |

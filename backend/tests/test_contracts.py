@@ -44,28 +44,6 @@ from backend.company.task_state_machine import (
     queued_pairs,
     transition,
 )
-from backend.linkin.compiler_pipeline import (
-    ERR_DEPLOY_UNAUTHORIZED,
-    ERR_RUNTIME_JAVA_FORBIDDEN,
-    ERR_SANDBOX_FAILED,
-    ArtifactKind,
-    CompileArtifact,
-    CompilePipeline,
-    CompileRequest,
-    ConflictKind,
-    InMemoryArtifactStore,
-    InMemoryWorldIndex,
-    RecordingDeployer,
-    _hash_files,
-    guard_artifact_kind,
-    sandbox_scan,
-)
-from backend.linkin.narrative_workspace import (
-    CHOICE_REBIND,
-    ERR_SNAPSHOT_UNRESOLVED,
-    WorkspaceRegistry,
-    WorkspaceState,
-)
 from backend.scripts.lint_contracts import scan as lint_scan
 from backend.scripts.lint_contracts import scan_file as lint_scan_file
 from backend.services.conversation_audit import (
@@ -274,99 +252,6 @@ def test_contract_c_state_006_awaiting_deploy_pause_semantics():
     assert "部署審批流程獨立" in decision.note
 
 
-# ═══════════════════════════════════════════════════════════════
-# §8 MC 編譯器契約（P0）
-# ═══════════════════════════════════════════════════════════════
-
-def _pipeline(**kwargs) -> tuple[CompilePipeline, RecordingDeployer, InMemoryArtifactStore]:
-    store = kwargs.pop("store", InMemoryArtifactStore())
-    deployer = kwargs.pop("deployer", RecordingDeployer())
-    return CompilePipeline(store=store, deployer=deployer, **kwargs), deployer, store
-
-
-def test_contract_c_comp_001_explicit_compile_and_sandbox_gate():
-    """C-COMP-001：編譯顯式觸發；沙盒通過才進 awaiting_deploy；不自動部署。"""
-    pipeline, deployer, store = _pipeline()
-    req = CompileRequest(namespace="quest_a", kind=ArtifactKind.DATAPACK, files={"data/quest_a/a.mcfunction": "say hi"})
-    out = pipeline.compile("task-1", req)
-    assert out.ok is True
-    assert out.state is TaskRuntimeState.AWAITING_DEPLOY
-    assert deployer.deployed == []            # 編譯成功 ≠ 自動部署
-    assert store.latest("quest_a") is None    # 線上版本未被覆蓋
-
-
-def test_contract_c_comp_002_failure_keeps_old_version_no_reload():
-    """C-COMP-002：沙盒失敗保留舊版本、禁止自動 /reload。"""
-    pipeline, deployer, store = _pipeline()
-    ok_req = CompileRequest(namespace="quest_a", kind=ArtifactKind.DATAPACK, files={"a.mcfunction": "say 1"})
-    first = pipeline.compile("task-1", ok_req)
-    assert first.ok and first.artifact is not None
-    deployed = pipeline.deploy("task-1", first.artifact.artifact_id, confirmed_by="l5_user")
-    assert deployed.ok is True
-    # 第二次編譯：產物含 .java → 沙盒結構校驗失敗
-    bad_req = CompileRequest(namespace="quest_a", kind=ArtifactKind.DATAPACK, files={"Evil.java": "class Evil {}"})
-    failed = pipeline.compile("task-2", bad_req)
-    assert failed.ok is False and failed.error_code == ERR_SANDBOX_FAILED
-    assert store.latest("quest_a").version == 1  # 舊版本保留
-    assert deployer.reload_calls == 0            # 禁止自動 /reload
-
-
-def test_contract_c_comp_003_runtime_java_forbidden():
-    """C-COMP-003（§8.6）：禁止運行時生成／編譯 Java；形態優先級寫死。"""
-    with pytest.raises(ValueError, match=ERR_RUNTIME_JAVA_FORBIDDEN):
-        guard_artifact_kind(ArtifactKind.JAVA_MOD_RUNTIME)
-    pipeline, _, _ = _pipeline()
-    req = CompileRequest(namespace="x", kind=ArtifactKind.JAVA_MOD_RUNTIME, files={"A.java": "..."})
-    assert pipeline.compile("task-1", req).error_code == ERR_RUNTIME_JAVA_FORBIDDEN
-
-
-def test_contract_c_comp_004_deploy_requires_confirm_seat():
-    """C-COMP-004（§8.2）：未具部署確認權的席位不得部署；確認動作可審計。"""
-    trail: list[tuple[str, dict]] = []
-    pipeline, deployer, _ = _pipeline(trail=lambda tid, ev: trail.append((tid, ev)))
-    req = CompileRequest(namespace="quest_a", kind=ArtifactKind.DATAPACK, files={"a.mcfunction": "say 1"})
-    out = pipeline.compile("task-1", req)
-    assert out.ok and out.artifact is not None
-    denied = pipeline.deploy("task-1", out.artifact.artifact_id, confirmed_by=RoleType.ATOMIC_EXECUTOR.value)
-    assert denied.ok is False and denied.error_code == ERR_DEPLOY_UNAUTHORIZED
-    assert deployer.deployed == []
-    approved = pipeline.deploy("task-1", out.artifact.artifact_id, confirmed_by="human_admin")
-    assert approved.ok is True
-    assert any(ev["type"] == "deployed" for _, ev in trail)
-
-
-def test_contract_c_comp_005_sandbox_scans_five_conflict_kinds():
-    """C-COMP-005（§8.2）：衝突掃描涵蓋命名空間／實體 ID／配方／戰利品表／標籤。"""
-    artifact = CompileArtifact(
-        artifact_id="a1",
-        namespace="dup_ns",
-        kind=ArtifactKind.DATAPACK,
-        version=1,
-        content_hash=_hash_files({"f": "x"}),
-        files={"f": "x"},
-        entity_ids=("zombie_custom",),
-        recipes=("bread_x",),
-        loot_tables=("chests/x",),
-        tags=("minecraft:logs",),
-    )
-    world = InMemoryWorldIndex(
-        namespaces=("dup_ns",),
-        entity_ids=("zombie_custom",),
-        recipes=("bread_x",),
-        loot_tables=("chests/x",),
-        tags=("minecraft:logs",),
-    )
-    report = sandbox_scan(artifact, world)
-    assert report.ok is False
-    kinds = {c.kind for c in report.conflicts}
-    assert kinds == {
-        ConflictKind.NAMESPACE,
-        ConflictKind.ENTITY_ID,
-        ConflictKind.RECIPE,
-        ConflictKind.LOOT_TABLE,
-        ConflictKind.TAG,
-    }
-
 
 # ═══════════════════════════════════════════════════════════════
 # §2 補強：繞過指揮鏈 lint＋L1 仲裁（P0）
@@ -496,34 +381,6 @@ def test_contract_c_l0_003_pressure_drives_injection_strength():
 # §4.7 敘事臨時工作區（P1）
 # ═══════════════════════════════════════════════════════════════
 
-def test_contract_c_l0_004_narrative_workspace_no_dual_write():
-    """C-L0-004：工作區無圖譜寫入入口；落庫必經顯式 writer；快照衝突預設待確認。"""
-    for forbidden in ("write_graph", "put_entity", "upsert_relation"):
-        assert not hasattr(WorkspaceRegistry, forbidden), f"禁止第二套可寫圖譜：{forbidden}"
-    reg = WorkspaceRegistry()
-    ws = reg.begin("task-1", snapshot_id="snap-a")
-    assert ws.workspace_id and ws.snapshot_id == "snap-a"
-    assert reg.write_draft(ws.workspace_id, "branch", {"choice": "open"}).ok is True
-    # L0 刷新 → 快照變更 → 預設 awaiting_confirmation（保留成果，不丟棄）
-    assert reg.on_l0_refresh("snap-b") == [ws.workspace_id]
-    assert reg.get(ws.workspace_id).state is WorkspaceState.AWAITING_CONFIRMATION
-    # 快照未確認前禁止落庫
-    assert reg.commit(ws.workspace_id, writer=lambda d: None).error_code == ERR_SNAPSHOT_UNRESOLVED
-    # 顯式重綁後才可經 writer 落庫
-    assert reg.confirm(ws.workspace_id, CHOICE_REBIND, new_snapshot_id="snap-b").ok is True
-    written: list[dict] = []
-    assert reg.commit(ws.workspace_id, writer=written.append).ok is True
-    assert written == [{"branch": {"choice": "open"}}]
-    # 任務結束＝生命週期上限：未提交草稿自動丟棄
-    ws2 = reg.begin("task-2", snapshot_id="snap-b")
-    reg.write_draft(ws2.workspace_id, "draft", "x")
-    assert reg.end_task("task-2") == 1
-    assert reg.get(ws2.workspace_id).state is WorkspaceState.DISCARDED
-
-
-# ═══════════════════════════════════════════════════════════════
-# §5 降 LLM 依賴契約（P1）
-# ═══════════════════════════════════════════════════════════════
 
 def test_contract_c_llm_002_route_reason_codes():
     """C-LLM-002：可程式化決策走程式碼路徑且附原因碼；經 LLM 決定直接拒絕。"""

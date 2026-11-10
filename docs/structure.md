@@ -1,7 +1,7 @@
 # 專案目錄地圖
 
 > **詳文單一來源**：改目錄或新增套件時，先更新本文，再同步根 `README.md`／`docs/architecture/overview.md` 的精簡樹。  
-> 對齊日期：2026-10-26
+> 對齊日期：2026-11-10
 
 ## 組件分類
 
@@ -43,7 +43,7 @@ OPC 寫入仍走護欄。
 |------|------|------|
 | `backend/` | FastAPI + LangGraph 主程式 | 見 [backend/README.md](../backend/README.md) |
 | `linkin_core/` | 服務化契約（OpenAPI／AsyncAPI）。階段 0 不取代單體 | 見 [服務契約](architecture/service-contracts.md) |
-| `deploy/k8s/linkin/` | 內網 12 服務骨架 | 映像尚未發布 |
+| `deploy/k8s/linkin/` | 內網 11 服務骨架 | 映像尚未發布 |
 | `services/` | `tool-gateway`、`guardrail-service` | 階段 1。K8s 映像仍是佔位 |
 | `opc_service/` | OPC UA 微服務與護欄 | 整合類。見 [opc_service/README.md](../opc_service/README.md) |
 | `frontend/` | React 19 監控中心 | 見 [frontend/README.md](../frontend/README.md) |
@@ -76,7 +76,6 @@ OPC 寫入仍走護欄。
 | `company/` | 核心的開發組件：任務經理、80 席、工作項、預算。量化工具屬價格分析探針組件 |
 | `linkin/` | 靈境：憲法、實體、16 席子角色種子（敘事／NPC／道具等） |
 | `modules/` | 可插拔世界／整合模組目錄（`GET /modules`）；內建 media-vault、local-video-studio |
-| `tools/` | 外部工具封裝（經 tool_registry） |
 | `hub/` | 價格分析探針組件：廠商延遲／價格探針、熔斷、目錄；契約：`AI_HUB_DETAILED_DESIGN.md` |
 | `billing/` | 核心的開發組件：積分池 v6、Docker 計量 |
 | `memory/` | 整合：向量記憶（Chroma 等） |
@@ -135,12 +134,11 @@ OPC 寫入仍走護欄。
 
 | 檔案 | 職責 |
 |------|------|
-| `api.py` | `/linkin/*` 路由 |
+| `api.py` | `/linkin/*` 路由（憲法／NPC／任務／道具／Grill） |
 | `constitution.py` · `knowledge.py` | 憲法、知識／RAG |
-| `tools.py` | 工具鐵律與實體校驗 |
+| `tools.py` | 實體校驗與鐵律（無遊戲寫入） |
 | `roles.py` · `prompts.py` | 16 席種子、提示詞 |
-| `schematic.py` · `nbt.py` · `schem_nbtlib.py` | 建築圖／NBT |
-| `pipeline.py` · `grill_me.py` · `design_llm.py` · `server_admin.py` | 管線、Grill、設計、伺服器管理 |
+| `pipeline.py` · `grill_me.py` · `quest_objectives.py` | 管線注入、Grill、任務目標 |
 
 ### backend/modules/
 
@@ -161,7 +159,7 @@ OPC 寫入仍走護欄。
 | `export_openapi` | 匯出 OpenAPI → `docs/openapi.json` |
 | `export_roles_doc` | 匯出角色介紹 → `docs/company/roles.md` |
 | `export_monitor_fallback` | Pages／離線監控降級資料 |
-| `build_schem` · `archify_compile_ir` | 建築圖／Archify IR |
+| `archify_compile_ir` | Archify IR |
 
 ```powershell
 python -m backend.scripts.seed_demo_content

@@ -53,7 +53,6 @@
 - [世界觀](linkin/worldview.md)
 - [系統設計](linkin/architecture.md)
 - [靈境 API](linkin/api.md)
-- [Minecraft MCP](linkin/minecraft-mcp.md)
 - [頂層系統提示詞](linkin/system-prompt.md)
 
 ### 開發 · 部署
@@ -109,6 +108,6 @@
 | 反思閉環 | [reflection-loop](architecture/reflection-loop.md) |
 | 多代理人／角色一覽 | [company-runtime](architecture/company-runtime.md) · [角色介紹](company/roles.md) |
 | OPC | [opc-integration](architecture/opc-integration.md) |
-| 靈境／Minecraft | [worldview](linkin/worldview.md) · [minecraft-mcp](linkin/minecraft-mcp.md) |
+| 靈境世界觀 | [worldview](linkin/worldview.md) · [api](linkin/api.md) |
 | 量化工具 | [quant-tools](company/quant-tools.md) |
 | 常見問題 | [faq](faq.md) |

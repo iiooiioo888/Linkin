@@ -5,7 +5,7 @@
 ## 開始之前
 
 1. 讀 [新人導覽](docs/onboarding.md)（10–15 分鐘）
-2. 讀 [AGENTS.md](AGENTS.md) 的**關鍵約束**（LLM／圖狀態／OPC／Minecraft）
+2. 讀 [AGENTS.md](AGENTS.md) 的**關鍵約束**（LLM／圖狀態／OPC）
 3. 複製 `.env.example` → `.env`（勿提交 `.env`）
 
 本地啟動與測試指令見 [開發指南](docs/development/guide.md)。
@@ -25,7 +25,7 @@
 
 - [ ] `pytest backend/tests/ -q` 通過（或至少跑與變更相關的模組測試）
 - [ ] 未直接呼叫模型供應商 SDK（一律 `call_llm`）
-- [ ] 未繞過 OPC `guard`／Minecraft MCP 護欄
+- [ ] 未繞過 OPC `guard`
 - [ ] 未把 `write_file` 等檔案系統工具暴露給角色
 - [ ] 前端變更：`cd frontend && npm run build` 可通過（若改了 UI／型別）
 - [ ] 新增環境變數時更新 `.env.example` 與 [docs/config/reference.md](docs/config/reference.md)
@@ -37,7 +37,7 @@ pytest backend/tests/test_reflection_loop.py -q
 pytest backend/tests/test_company.py -q
 pytest backend/tests/test_raho.py -q
 pytest backend/tests/test_linkin_api.py -q
-pytest backend/tests/test_minecraft_mcp.py -q
+pytest backend/tests/test_modules.py -q
 pytest backend/tests/test_opc_service.py -q
 pytest backend/tests/test_architecture.py -q
 ```

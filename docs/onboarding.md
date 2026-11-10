@@ -1,12 +1,12 @@
 # 新人導覽
 
 > 目標：半天內能在本機跑起服務、知道改哪裡、知道文件在哪。  
-> 對齊日期：2026-09-09
+> 對齊日期：2026-11-10
 
 ## 1. 專案一句話
 
 **Linkin** = EvoLoop 統一管線（反思／公司／OPC）+ 靈境世界觀 + 監控中心前端。  
-沒有「標準版／公司版／OPC 版」三套產品；複雜度路由決定執行路徑。
+沒有「標準版／公司版／OPC 版」三套產品；`resolve_execution_path` 只在 `simple`／`company` 選路。
 
 ## 2. 建議閱讀順序（約 30–45 分鐘）
 
@@ -28,7 +28,7 @@
 | 反思閉環／圖節點 | [reflection-loop](architecture/reflection-loop.md) · `backend/core/` |
 | 多代理人／RAHO | [company-runtime](architecture/company-runtime.md) · [角色介紹](company/roles.md) · `backend/company/` |
 | OPC | [opc-integration](architecture/opc-integration.md) · `opc_service/` |
-| 靈境／Minecraft | [linkin/](linkin/worldview.md) · [minecraft-mcp](linkin/minecraft-mcp.md) |
+| 靈境世界觀 | [linkin/](linkin/worldview.md) · [靈境 API](linkin/api.md) |
 | 模型池／價卡／Hub | [config/reference](config/reference.md) · [AI Hub](AI_HUB_DETAILED_DESIGN.md) · [ModelGW WIRE](modelgw-wire.md) · [G-GATE1 雙閘](contracts/g-gate1-dual-gate.md) |
 | 量化工具 | [company/quant-tools](company/quant-tools.md) |
 | API／前端監控 | [api/reference](api/reference.md) · [frontend/README](../frontend/README.md) |
@@ -41,22 +41,21 @@
 ```
 請求 → FastAPI (backend/main.py)
      → LangGraph (backend/core/graph.py)
-         ├─ 簡單：生成 → 評估 →（反思）→ 記憶
-         ├─ 複雜：company/ + raho/
-         └─ 工業：opc_service 上下文 + 6 級閉環
-前端 MonitorView 只負責觀測與配置；寫世界／OPC 仍走護欄。
+         ├─ simple：生成 → 評估 →（反思）→ 記憶
+         └─ company：任務經理 → 席位（工業查詢亦走此路；OPC 寫入經護欄）
+前端 MonitorView 只負責觀測與配置；OPC 寫入仍走護欄。
 ```
 
 | 目錄 | 職責 | 套件 README |
 |------|------|-------------|
 | `backend/core/` | 圖、節點、`call_llm`、評估、模型池 | [backend/](../backend/README.md) |
 | `backend/company/` | 協調器、**80** 席 STANDARD_ROLES、任務經理 | 同上 |
-| `backend/linkin/` | 憲法、實體、**16** 席子角色、Minecraft 業務護欄 | 同上 |
-| `backend/tools/` | MineMCP／運維等底層橋接 | 同上 |
+| `backend/linkin/` | 憲法、實體、**16** 席子角色（敘事／NPC／道具） | 同上 |
 | `backend/hub/` | AI Hub 契約實作 | 同上 |
 | `opc_service/` | OPC UA 讀寫與護欄（獨立進程） | [opc_service/](../opc_service/README.md) |
 | `frontend/src/` | 單一 UI（對話／控制台／世界模組宿主／實驗室） | [frontend/](../frontend/README.md) |
-| `backend/modules/` | 可插拔模組目錄（Minecraft 為內建） | 同上 |
+| `backend/modules/` | 可插拔模組目錄（media-vault、local-video-studio） | 同上 |
+| `services/` | `tool-gateway`、`guardrail-service`（階段 1） | — |
 | `docs/` | **詳文唯一來源** | [docs/README.md](README.md) |
 
 ## 4. 本機最小路徑
