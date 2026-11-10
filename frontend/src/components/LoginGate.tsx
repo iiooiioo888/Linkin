@@ -53,13 +53,6 @@ export default function LoginGate({ children }: LoginGateProps) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!hasGate()) {
-        if (!cancelled) {
-          setOk(false);
-          setReady(true);
-        }
-        return;
-      }
       const valid = await verifyGate();
       if (!cancelled) {
         setOk(valid);

@@ -30,7 +30,7 @@ function WordCloud({
   words: Array<{ word: string; count: number; weight: number }>;
 }) {
   if (!words.length) {
-    return <p className="text-xs text-[#62666d]">尚無評論詞彙，用戶留下 comment 後將生成詞雲。</p>;
+    return <p className="text-xs text-[var(--console-faint)]">尚無評論詞彙，用戶留下 comment 後將生成詞雲。</p>;
   }
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 py-4">
@@ -118,11 +118,11 @@ export default function UserFeedbackPanel() {
               <div key={key}>
                 <div className="mb-1 flex justify-between text-xs">
                   <span>{SIGNAL_LABELS[key] ?? key}</span>
-                  <span className="tabular-nums text-[#8a8f98]">
+                  <span className="tabular-nums text-[var(--console-faint)]">
                     {count} ({Math.round((count / signalTotal) * 100)}%)
                   </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-[#141516]">
+                <div className="h-1.5 overflow-hidden rounded-full bg-[var(--console-card)]">
                   <div
                     className="h-full rounded-full bg-[var(--console-accent)]"
                     style={{ width: `${(count / signalTotal) * 100}%` }}
@@ -143,7 +143,7 @@ export default function UserFeedbackPanel() {
           <ConsoleCardHeader>最近反饋</ConsoleCardHeader>
           <div className="divide-y divide-white/[0.06]">
           {(fb?.recent ?? []).length === 0 ? (
-            <p className="p-3 text-xs text-[#62666d]">尚無反饋記錄</p>
+            <p className="p-3 text-xs text-[var(--console-faint)]">尚無反饋記錄</p>
           ) : (
             fb?.recent
               .slice()
@@ -154,9 +154,9 @@ export default function UserFeedbackPanel() {
                     {SIGNAL_LABELS[rec.signal ?? ''] ?? rec.signal}
                   </span>
                   {rec.score != null && (
-                    <span className="font-mono text-[#8a8f98]">評分 {rec.score}</span>
+                    <span className="font-mono text-[var(--console-faint)]">評分 {rec.score}</span>
                   )}
-                  {rec.comment && <span className="text-[#d0d6e0]">{rec.comment}</span>}
+                  {rec.comment && <span className="text-[var(--console-sub)]">{rec.comment}</span>}
                 </div>
               ))
           )}

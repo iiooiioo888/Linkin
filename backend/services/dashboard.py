@@ -50,6 +50,11 @@ def _audit_dir() -> Path:
 
 
 def _memory_store() -> JsonMemoryStore:
+    from backend.core.user_settings import active_settings_user, user_settings_dir
+
+    uid = active_settings_user()
+    if uid:
+        return JsonMemoryStore(user_settings_dir(uid) / "memory_store.json")
     path = os.getenv("EVOL_MEMORY_STORE_PATH")
     return JsonMemoryStore(path) if path else JsonMemoryStore()
 

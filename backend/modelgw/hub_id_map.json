@@ -1,0 +1,14 @@
+{
+  "_comment": "Hub 靜態 9 ↔ Registry model_id 顯式映射（P4/#133 Q3）。空字串／null／TBD＝未映射 → UNSUPPORTED_MODEL。禁止別名猜測。與 demo seed（local-qwen-7b 等）零重疊可接受。",
+  "map": {
+    "gpt-5.6-sol": "",
+    "gemini-3.1-pro": "",
+    "mimo-v2.5-pro": "",
+    "deepseek-v4-flash": "",
+    "qwen3.8-max": "",
+    "mercury-2": "",
+    "nemotron-3.5-lightning": "",
+    "glm-5.3": "",
+    "kimi-k3": ""
+  }
+}

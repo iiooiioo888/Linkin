@@ -88,6 +88,8 @@
 | 5 | 已開啟 cost_speed | 依複雜度設定為 `company` 或 `simple` |
 | 6 | 公司關鍵詞，或長度達到門檻 | `company`，否則 `simple` |
 
+服務化契約把第 6 步拆成 `company_keyword` 與 `length`，並預留 12 個內網服務。運行時仍是上面這張表。清單見 [服務契約](docs/architecture/service-contracts.md)。
+
 ### 圖上怎麼走
 
 每條進圖的查詢都先走完前置鏈，再分叉。工業查詢進 `run_company`，由任務經理分析；前置鏈裡的 OPC 上下文只提供讀數。
@@ -143,7 +145,7 @@ flowchart TD
 
 | 類 | 落在哪 |
 |----|--------|
-| 核心的開發組件 | `backend/core/`、`backend/company/`、`backend/billing/`。實驗室：提示詞、架構、精簡、容器、A/B |
+| 核心的開發組件 | `backend/core/`、`backend/company/`、`backend/billing/`、`linkin_core/`（契約）。實驗室：提示詞、架構、精簡、容器、A/B |
 | minecraft組件 | `backend/linkin/`、`backend/modules/`、`backend/tools/`。畫面在 `#/modules/minecraft` |
 | 價格分析探針組件 | `backend/hub/`、`backend/company/quant_*.py`。實驗室：策略庫、策略圖、價格探針 |
 | 整合 | 再按召回、採集、工業接線、Agent 工作流、設計、技能。見 [目錄地圖](docs/structure.md#整合的功能) |
@@ -252,10 +254,11 @@ python -m backend.scripts.seed_demo_content
 | [scrapegraphai/just-scrape](https://github.com/scrapegraphai/just-scrape) | 1 | `just-scrape` CLI，需 `SGAI_API_KEY` | [作者頁](https://mcpservers.org/zh-TW/agent-skills/author/scrapegraphai) |
 | [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) | 1 | `agent-browser` 瀏覽器自動化 CLI | [技能頁](https://mcpservers.org/zh-TW/agent-skills/vercel/agent-browser) |
 | [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) | 1 | `agent-reach` 網際網路閱讀／搜尋路由（CLI，非包裝層） | — |
+| [HKUDS/CLI-Anything](https://github.com/HKUDS/CLI-Anything) | 1 | `cli-hub` 軟體命令列目錄（Linkin 只查目錄） | [首頁](https://clianything.cc/) |
 
-上表 **103** 項。Anthropic 與 OpenAI 都有 `pdf`、`skill-creator`，本倉庫分別名為 `anthropic-pdf` / `openai-pdf` 與 `anthropic-skill-creator` / `openai-skill-creator`。
+上表 **104** 項。Anthropic 與 OpenAI 都有 `pdf`、`skill-creator`，本倉庫分別名為 `anthropic-pdf` / `openai-pdf` 與 `anthropic-skill-creator` / `openai-skill-creator`。
 
-另外內嵌、不計入上表的兩項：`mediacrawler`（多平台採集）、`token-dashboard`（Token 用量看板）。目錄合計 **105**。設定與入口見 [docs/mcp/agent-skills.md](docs/mcp/agent-skills.md)。
+另外內嵌、不計入上表的三項：`mediacrawler`（多平台採集）、`token-dashboard`（Token 用量看板）、`media-collect`（跨平台採集主技能，契約見 `.agents/skills/media-collect/references/TOOLS.md`，藍圖 [docs/integrations/crawl-skill-mcp.md](docs/integrations/crawl-skill-mcp.md)）。目錄合計 **107**。設定與入口見 [docs/mcp/agent-skills.md](docs/mcp/agent-skills.md)。
 
 ### 安裝
 
@@ -263,19 +266,20 @@ python -m backend.scripts.seed_demo_content
 # 還原鎖定版本（建議）
 npx skills@latest experimental_install
 
-# 或從上游重裝上表五個來源
+# 或從上游重裝下列來源（CLI-Anything 與 Agent Reach 見下方註解）
 npx skills@latest add mattpocock/skills --all --copy
 npx skills@latest add anthropics/skills --all --copy
 npx skills@latest add openai/skills --all --copy
 npx skills@latest add scrapegraphai/just-scrape --all --copy
 npx skills@latest add vercel-labs/agent-browser --all --copy
 # Agent Reach 已內嵌於 .agents/skills/agent-reach/（勿從 PyPI 安裝同名套件）
+# CLI-Anything 技能在 .agents/skills/cli-anything/，hub 見 requirements.txt 的 cli-anything-hub
 # 裝完刪掉各 Agent 目錄下的副本，只留 .agents/skills/
 ```
 
 每個 clone 接著在 Agent 裡跑一次 `setup-matt-pocock-skills`，設定 issue tracker、分類標籤與 domain 文件版面。步驟在 `.agents/skills/setup-matt-pocock-skills/SKILL.md`。
 
-多數技能只靠 `SKILL.md`。Figma、Linear、OpenAI Developer Docs 可再接 MCP。`just-scrape`、`agent-browser` 與 `agent-reach` 是 CLI。片段與環境變數見 [docs/mcp/agent-skills.md](docs/mcp/agent-skills.md)。
+多數技能只靠 `SKILL.md`。Figma、Linear、OpenAI Developer Docs 可再接 MCP。`just-scrape`、`agent-browser`、`agent-reach` 與 `cli-anything` 是 CLI。片段與環境變數見 [docs/mcp/agent-skills.md](docs/mcp/agent-skills.md)。
 
 ### 靈境·Linkin 運行時怎麼用這些檔
 

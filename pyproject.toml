@@ -68,6 +68,6 @@ disable_error_code = [
 # Pytest
 # ============================================================
 [tool.pytest.ini_options]
-testpaths = ["backend/tests"]
+testpaths = ["backend/tests", "linkin_core/tests"]
 # --basetemp：使用專案內暫存目錄，避免 Windows 系統暫存目錄建立失敗 (OSError)
 addopts = "-v --basetemp=.pytest_tmp"

@@ -84,6 +84,9 @@ class TestCompanyStreamPostReflect:
 
         monkeypatch.delenv("EVOL_POST_COMPANY_REFLECT", raising=False)
         monkeypatch.delenv("EVOL_SKIP_POST_COMPANY_REFLECT", raising=False)
+        # 公司串流預設停在預算確認閘（execution_gate），不會進到反思階段；
+        # 本測試只驗反思階段，故明確跳過確認。
+        monkeypatch.setenv("EVOL_BUDGET_AUTO_APPROVE", "1")
         assert _post_company_reflect_mode() == "off"
 
         async def _fake_execute(self, query):

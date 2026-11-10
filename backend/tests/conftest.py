@@ -18,6 +18,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = PROJECT_ROOT / "backend"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+for _service in ("services/guardrail-service", "services/tool-gateway", "services/minecraft-gateway"):
+    _service_path = str(PROJECT_ROOT / _service)
+    if _service_path not in sys.path:
+        sys.path.insert(0, _service_path)
 
 _EMPTY_ROUTING_FEEDBACK = {
     "records": [],
@@ -105,6 +109,32 @@ def _isolate_role_catalog(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_media_vault(tmp_path, monkeypatch):
+    """Media Vault DB／媒體目錄寫入暫存。"""
+    monkeypatch.setenv("MEDIA_VAULT_DATABASE_URL", f"sqlite:///{tmp_path / 'media_vault.sqlite3'}")
+    monkeypatch.setenv("MEDIA_VAULT_MEDIA_ROOT", str(tmp_path / "media_vault_media"))
+    from backend.media_vault import db as media_vault_db
+
+    media_vault_db.reset_media_vault_db()
+    yield
+    media_vault_db.reset_media_vault_db()
+
+
+@pytest.fixture(autouse=True)
+def _isolate_local_video_studio(tmp_path, monkeypatch):
+    """Local Video Studio DB 寫入暫存；雲端關閉。"""
+    monkeypatch.setenv("LVS_DATABASE_URL", f"sqlite:///{tmp_path / 'local_video_studio.sqlite3'}")
+    monkeypatch.setenv("LVS_CLOUD_ENABLED", "false")
+    monkeypatch.setenv("CLOUD_ENABLED", "false")
+    monkeypatch.delenv("LVS_API_KEY", raising=False)
+    from backend.local_video_studio.db import reset_db_state
+
+    reset_db_state()
+    yield
+    reset_db_state()
+
+
+@pytest.fixture(autouse=True)
 def _isolate_minecraft_mcp(tmp_path, monkeypatch):
     """所有測試共用：Minecraft MCP 預設乾跑，審計寫入暫存。"""
     monkeypatch.setenv("EVOL_MC_MCP_ENABLED", "false")
@@ -117,6 +147,7 @@ def _isolate_minecraft_mcp(tmp_path, monkeypatch):
 def _isolate_llm_config_and_ops(tmp_path, monkeypatch):
     """隔離 LLM 配置檔，並關閉模型目錄背景迴圈。"""
     monkeypatch.setenv("EVOL_CONFIG_DIR", str(tmp_path / "llm_cfg"))
+    monkeypatch.setenv("EVOL_USER_SETTINGS_DIR", str(tmp_path / "user_settings"))
     monkeypatch.setenv("EVOL_LLM_OPS_ENABLED", "false")
     # save_runtime_config 會寫入 process env；必須每測試清空以免污染 clamp_model
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -125,14 +156,17 @@ def _isolate_llm_config_and_ops(tmp_path, monkeypatch):
     from backend.core.api_router import reset_router_state
     from backend.core.llm_config import reset_runtime_config
     from backend.core.provider_pool import reset_pool_health
+    from backend.memory.tenant_store import reset_tenant_memory_stores
 
     reset_runtime_config()
     reset_router_state()
     reset_pool_health()
+    reset_tenant_memory_stores()
     yield
     reset_runtime_config()
     reset_router_state()
     reset_pool_health()
+    reset_tenant_memory_stores()
 
 
 @pytest.fixture(autouse=True)
@@ -184,6 +218,45 @@ def _isolate_state_and_memory_stores(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_docker_probe(monkeypatch):
+    """停用 Docker 探測，避免測試對 /var/run/docker.sock 發真實連線。
+
+    ``DockerManager.__init__`` 會在 docker SDK 存在時 ``ping()`` 一次，且未設
+    連線逾時。CI runner 上沒有 docker daemon，該次 ping 會卡到 urllib3 預設逾時
+    （約 60 秒），使 job 撞上 workflow 的 10 分鐘上限。單例也一併重置，讓需要
+    真實 Docker 行為的測試能自行覆寫 ``DOCKER_AVAILABLE``。
+    """
+    from backend.services import docker_manager
+
+    monkeypatch.setattr(docker_manager, "DOCKER_AVAILABLE", False)
+    monkeypatch.setattr(docker_manager, "_docker_manager", None)
+    yield
+    monkeypatch.setattr(docker_manager, "_docker_manager", None)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_raho_superior_llm(monkeypatch):
+    """RAHO 質詢升級改走離線裁決，不呼叫真實 LLM、也不真的等用戶。
+
+    兩個問題都在 ``resolve_grill`` 這條路上：
+
+    1. ``_ask_layer`` 經 ``backend.core.llm.call_llm`` 呼叫真實模型。該 import 在
+       函式內，測試普遍只 patch ``backend.company.orchestrator.call_llm``，
+    攔不到它。沒有 API 金鑰時 LiteLLM 會退到很長的預設逾時。
+    2. 升級到 L5 時 ``wait_user_decision`` 會真的阻塞
+       ``EVOL_RAHO_DECISION_TTL`` 秒（預設 60）等用戶點選。
+
+    這裡把 TTL 設為 0（立即採用第一案，語意等同用戶逾時）並把 L3/L4 裁決 stub 成
+    升級標記，讓升級鏈照常走到 L5。需要真實裁決行為的測試可自行覆寫。
+    """
+    from backend.company.raho import escalation
+
+    monkeypatch.setenv("EVOL_RAHO_DECISION_TTL", "0")
+    monkeypatch.setattr(escalation, "_call_superior", lambda system, prompt: escalation.ESCALATE_MARK)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _isolate_linkin_runtime_data(tmp_path, monkeypatch):
     """靈境資料目錄與憲法路徑寫入暫存（憲法自 repo 唯讀複製）。"""
     linkin_dir = tmp_path / "linkin"
@@ -223,24 +296,3 @@ def _isolate_mediacrawler_data(tmp_path, monkeypatch):
     monkeypatch.setenv("EVOL_MEDIACRAWLER_JOBS_STORE", str(mc_root / "jobs.json"))
     monkeypatch.setenv("EVOL_MEDIACRAWLER_ENABLED", "false")
     yield
-
-
-@pytest.fixture(autouse=True)
-def _isolate_raho_superior_llm(monkeypatch):
-    """RAHO 質詢升級改走離線裁決，不呼叫真實 LLM、也不真的等用戶。
-
-    1. _ask_layer 經 backend.core.llm.call_llm 呼叫真實模型；該 import 在函式內，
-       測試普遍只 patch backend.company.orchestrator.call_llm，攔不到它。沒有 API
-       金鑰時 LiteLLM 會退到很長的預設逾時。
-    2. 升級到 L5 時 wait_user_decision 會真的阻塞 EVOL_RAHO_DECISION_TTL 秒
-       （預設 60）等用戶點選。
-
-    這裡把 TTL 設為 0（立即採用第一案，語意等同用戶逾時），並把 L3/L4 裁決 stub 成
-    升級標記，讓升級鏈照常走到 L5。需要真實裁決行為的測試可自行覆寫。
-    """
-    from backend.company.raho import escalation
-
-    monkeypatch.setenv("EVOL_RAHO_DECISION_TTL", "0")
-    monkeypatch.setattr(escalation, "_call_superior", lambda system, prompt: escalation.ESCALATE_MARK)
-    yield
-

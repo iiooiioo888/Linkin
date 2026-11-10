@@ -32,7 +32,7 @@ const STATUS_COLORS: Record<string, string> = {
   running: 'bg-green-500/20 console-status-green',
   exited: 'bg-red-500/20 console-status-danger',
   restarting: 'bg-yellow-500/20 text-yellow-300',
-  paused: 'bg-gray-500/20 text-gray-400',
+  paused: 'bg-gray-500/20 text-[var(--console-faint)]',
   removing: 'bg-red-500/20 console-status-danger',
 };
 
@@ -40,7 +40,7 @@ const HEALTH_COLORS: Record<string, string> = {
   healthy: 'bg-green-500/20 console-status-green',
   unhealthy: 'bg-red-500/20 console-status-danger',
   starting: 'bg-yellow-500/20 text-yellow-300',
-  unknown: 'bg-gray-500/20 text-gray-400',
+  unknown: 'bg-gray-500/20 text-[var(--console-faint)]',
 };
 
 function statusLabel(status: string): string {
@@ -91,8 +91,8 @@ function ContainerCard({
   const [confirming, setConfirming] = useState<string | null>(null);
 
   const statusKey = statusLabel(container.status);
-  const statusColor = STATUS_COLORS[statusKey] || 'bg-gray-500/20 text-gray-400';
-  const healthColor = HEALTH_COLORS[container.health] || 'bg-gray-500/20 text-gray-400';
+  const statusColor = STATUS_COLORS[statusKey] || 'bg-gray-500/20 text-[var(--console-faint)]';
+  const healthColor = HEALTH_COLORS[container.health] || 'bg-gray-500/20 text-[var(--console-faint)]';
 
   // 是否可以被操作（非 stub 容器）
   const isReal = container.service !== '_docker_unavailable';
@@ -108,14 +108,14 @@ function ContainerCard({
   const hours = (container.uptime_seconds / 3600).toFixed(1);
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900/80 p-4 transition-colors hover:border-gray-700">
+    <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-sidebar)]/80 p-4 transition-colors hover:border-[var(--console-line)]">
       {/* 头部：服务名 + 状态 */}
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="text-base">🐳</span>
           <div>
-            <p className="text-sm font-medium text-gray-200">{container.service}</p>
-            <p className="text-[11px] text-gray-500">{container.name}</p>
+            <p className="text-sm font-medium text-[var(--console-ink)]">{container.service}</p>
+            <p className="text-[11px] text-[var(--console-faint)]">{container.name}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -140,18 +140,18 @@ function ContainerCard({
       {stats && !stats.error && (
         <div className="mb-3 grid grid-cols-4 gap-2 rounded-md bg-gray-950/60 px-3 py-2">
           <div className="text-center">
-            <p className="text-[10px] uppercase text-gray-500">CPU</p>
-            <p className="text-xs font-semibold text-gray-200">{cpu ?? '--'}%</p>
+            <p className="text-[10px] uppercase text-[var(--console-faint)]">CPU</p>
+            <p className="text-xs font-semibold text-[var(--console-ink)]">{cpu ?? '--'}%</p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] uppercase text-gray-500">内存</p>
-            <p className="text-xs font-semibold text-gray-200">
+            <p className="text-[10px] uppercase text-[var(--console-faint)]">内存</p>
+            <p className="text-xs font-semibold text-[var(--console-ink)]">
               {memMb ?? '--'}{memLimitMb ? ` / ${memLimitMb} MB` : ' MB'}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] uppercase text-gray-500">网络</p>
-            <p className="text-xs font-semibold text-gray-200">
+            <p className="text-[10px] uppercase text-[var(--console-faint)]">网络</p>
+            <p className="text-xs font-semibold text-[var(--console-ink)]">
               {stats ? `${((stats.network_rx + stats.network_tx) / (1024 * 1024)).toFixed(1)} MB` : '--'}
             </p>
           </div>
@@ -166,8 +166,8 @@ function ContainerCard({
       {(!stats || stats.error) && isRunning && (
         <div className="mb-3 rounded-md bg-gray-950/60 px-3 py-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase text-gray-500">运行时长</span>
-            <span className="text-xs text-gray-300">{hours} 小时</span>
+            <span className="text-[10px] uppercase text-[var(--console-faint)]">运行时长</span>
+            <span className="text-xs text-[var(--console-sub)]">{hours} 小时</span>
           </div>
           <div className="mt-1 flex items-center justify-between">
             <span className="text-[10px] uppercase text-amber-400">累计费用</span>
@@ -180,7 +180,7 @@ function ContainerCard({
       {container.ports.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-1.5">
           {container.ports.map((p) => (
-            <span key={p} className="rounded bg-gray-800 px-2 py-0.5 text-[11px] text-gray-400">
+            <span key={p} className="rounded bg-[var(--console-dim)] px-2 py-0.5 text-[11px] text-[var(--console-faint)]">
               {p}
             </span>
           ))}
@@ -189,11 +189,11 @@ function ContainerCard({
 
       {/* 操作按钮 */}
       {isReal && (
-        <div className="flex items-center gap-2 border-t border-gray-800 pt-3">
+        <div className="flex items-center gap-2 border-t border-[var(--console-line)] pt-3">
           <button
             onClick={onViewLogs}
             disabled={isBusy}
-            className="rounded-md bg-gray-800 px-2.5 py-1 text-[11px] text-gray-400 transition-colors hover:bg-gray-700 hover:text-gray-200 disabled:opacity-40"
+            className="rounded-md bg-[var(--console-dim)] px-2.5 py-1 text-[11px] text-[var(--console-faint)] transition-colors hover:bg-gray-700 hover:text-[var(--console-ink)] disabled:opacity-40"
           >
             📋 日志
           </button>
@@ -213,7 +213,7 @@ function ContainerCard({
                 className={`rounded-md px-2.5 py-1 text-[11px] transition-colors disabled:opacity-40 ${
                   confirming === `restart-${container.service}`
                     ? 'bg-yellow-500/20 text-yellow-300'
-                    : 'bg-gray-800 text-gray-400 hover:bg-yellow-500/10 hover:text-yellow-300'
+                    : 'bg-[var(--console-dim)] text-[var(--console-faint)] hover:bg-yellow-500/10 hover:text-yellow-300'
                 }`}
               >
                 {confirming === `restart-${container.service}` ? '⚠ 确认重启?' : '🔄 重启'}
@@ -231,7 +231,7 @@ function ContainerCard({
                 className={`rounded-md px-2.5 py-1 text-[11px] transition-colors disabled:opacity-40 ${
                   confirming === `stop-${container.service}`
                     ? 'bg-red-500/20 console-status-danger'
-                    : 'bg-gray-800 text-gray-400 hover:bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] hover:console-status-danger'
+                    : 'bg-[var(--console-dim)] text-[var(--console-faint)] hover:bg-[color-mix(in_srgb,var(--console-danger)_10%,transparent)] hover:console-status-danger'
                 }`}
               >
                 {confirming === `stop-${container.service}` ? '⚠ 确认停止?' : '⏹ 停止'}
@@ -253,7 +253,7 @@ function ContainerCard({
               className={`rounded-md px-2.5 py-1 text-[11px] transition-colors disabled:opacity-40 ${
                 confirming === `start-${container.service}`
                   ? 'bg-green-500/20 console-status-green'
-                  : 'bg-gray-800 text-gray-400 hover:bg-green-500/10 hover:console-status-green'
+                  : 'bg-[var(--console-dim)] text-[var(--console-faint)] hover:bg-green-500/10 hover:console-status-green'
               }`}
             >
               {confirming === `start-${container.service}` ? '✓ 确认启动?' : '▶ 启动'}
@@ -272,8 +272,8 @@ function HealthBar({ health }: { health: DockerHealth }) {
   const unhealthy = total - healthy;
 
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-gray-800 bg-gray-900/80 px-4 py-2.5">
-      <span className="text-xs font-medium text-gray-400">健康检查</span>
+    <div className="flex items-center gap-4 rounded-lg border border-[var(--console-line)] bg-[var(--console-sidebar)]/80 px-4 py-2.5">
+      <span className="text-xs font-medium text-[var(--console-faint)]">健康检查</span>
       <div className="flex items-center gap-3">
         <span className="flex items-center gap-1.5 text-xs">
           <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
@@ -285,7 +285,7 @@ function HealthBar({ health }: { health: DockerHealth }) {
             <span className="console-status-danger">{unhealthy} 异常</span>
           </span>
         )}
-        <span className="text-xs text-gray-500">共 {total} 服务</span>
+        <span className="text-xs text-[var(--console-faint)]">共 {total} 服务</span>
       </div>
       <span
         className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-medium ${
@@ -320,18 +320,18 @@ function LogModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="flex h-[80vh] w-full max-w-3xl flex-col rounded-xl border border-gray-700 bg-gray-900 shadow-2xl">
+      <div className="flex h-[80vh] w-full max-w-3xl flex-col rounded-xl border border-[var(--console-line)] bg-[var(--console-sidebar)] shadow-2xl">
         {/* 头部 */}
-        <div className="flex items-center justify-between border-b border-gray-800 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-[var(--console-line)] px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="text-base">📋</span>
-            <span className="text-sm font-medium text-gray-200">{service} 日志</span>
+            <span className="text-sm font-medium text-[var(--console-ink)]">{service} 日志</span>
           </div>
           <div className="flex items-center gap-2">
             <select
               value={tail}
               onChange={(e) => onTailChange(Number(e.target.value))}
-              className="rounded-md border border-gray-700 bg-gray-800 px-2 py-1 text-[11px] text-gray-300"
+              className="rounded-md border border-[var(--console-line)] bg-[var(--console-dim)] px-2 py-1 text-[11px] text-[var(--console-sub)]"
             >
               <option value={50}>最近 50 行</option>
               <option value={100}>最近 100 行</option>
@@ -341,13 +341,13 @@ function LogModal({
             <button
               onClick={onRefresh}
               disabled={loading}
-              className="rounded-md bg-gray-800 px-2.5 py-1 text-[11px] text-gray-400 transition-colors hover:bg-gray-700 disabled:opacity-40"
+              className="rounded-md bg-[var(--console-dim)] px-2.5 py-1 text-[11px] text-[var(--console-faint)] transition-colors hover:bg-gray-700 disabled:opacity-40"
             >
               {loading ? '加载中...' : '🔄 刷新'}
             </button>
             <button
               onClick={onClose}
-              className="rounded-md px-2 py-1 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-200"
+              className="rounded-md px-2 py-1 text-[var(--console-faint)] transition-colors hover:bg-[var(--console-dim)] hover:text-[var(--console-ink)]"
             >
               ✕
             </button>
@@ -358,10 +358,10 @@ function LogModal({
         <div className="flex-1 overflow-auto p-4">
           {loading ? (
             <div className="flex h-full items-center justify-center">
-              <span className="text-sm text-gray-500">加载中...</span>
+              <span className="text-sm text-[var(--console-faint)]">加载中...</span>
             </div>
           ) : (
-            <pre className="whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-gray-400">
+            <pre className="whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed text-[var(--console-faint)]">
               {logs || '暂无日志'}
             </pre>
           )}
@@ -504,7 +504,7 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
       <div className="flex flex-1 items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <span className="animate-spin text-3xl">🐳</span>
-          <p className="text-sm text-gray-500">加载 Docker 容器状态...</p>
+          <p className="text-sm text-[var(--console-faint)]">加载 Docker 容器状态...</p>
         </div>
       </div>
     );
@@ -545,21 +545,21 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
         {/* 标题栏 */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-200">Docker 容器管理</h2>
-            <p className="mt-0.5 text-xs text-gray-500">
+            <h2 className="text-lg font-semibold text-[var(--console-ink)]">Docker 容器管理</h2>
+            <p className="mt-0.5 text-xs text-[var(--console-faint)]">
               {status?.available
                 ? `监控 ${sortedContainers.length} 个容器 · 自动刷新`
                 : 'Docker 不可用 — 请确认后端已挂载 docker.sock'}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-gray-500">
+            <span className="text-[11px] text-[var(--console-faint)]">
               {loading ? '刷新中...' : '每 8 秒自动刷新'}
             </span>
             <button
               onClick={() => void refresh()}
               disabled={loading}
-              className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs text-gray-300 transition-colors hover:bg-gray-700 disabled:opacity-40"
+              className="rounded-lg border border-[var(--console-line)] bg-[var(--console-dim)] px-3 py-1.5 text-xs text-[var(--console-sub)] transition-colors hover:bg-gray-700 disabled:opacity-40"
             >
               {loading ? '⏳' : '🔄'} 手动刷新
             </button>
@@ -577,7 +577,7 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
               <span className="text-[11px] font-semibold console-status-amber">💰 按時計費</span>
               {Object.entries(status.hourly_rates).map(([svc, rate]) => (
-                <span key={svc} className="text-[11px] text-gray-500">
+                <span key={svc} className="text-[11px] text-[var(--console-faint)]">
                   {svc} {formatRate(rate)}
                 </span>
               ))}
@@ -595,7 +595,7 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
         {budget?.company_budget && (
           <div className="apple-card apple-card--tight !p-0 p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              <p className="text-[11px] font-semibold text-[var(--console-faint)]">
                 公司預算
               </p>
               <span className="font-mono text-xs console-status-amber">
@@ -605,7 +605,7 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
               </span>
             </div>
             {(budget.company_budget.optimization_suggestions?.length ?? 0) === 0 ? (
-              <p className="text-[11px] text-gray-500">目前無需自動優化。</p>
+              <p className="text-[11px] text-[var(--console-faint)]">目前無需自動優化。</p>
             ) : (
               <div className="space-y-1">
                 {budget.company_budget.optimization_suggestions.map((s) => (
@@ -613,10 +613,10 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
                     key={`${s.service}-${s.action}`}
                     className="flex items-center justify-between rounded-md bg-gray-950/50 px-2 py-1.5 text-[11px]"
                   >
-                    <span className="text-gray-300">
+                    <span className="text-[var(--console-sub)]">
                       {s.priority} · {s.service} {s.action}
                     </span>
-                    <span className="text-gray-500">{s.reason}</span>
+                    <span className="text-[var(--console-faint)]">{s.reason}</span>
                     <span className="font-mono console-status-green">
                       -{formatCost(s.estimated_saving_per_hour)}/h
                     </span>
@@ -654,15 +654,15 @@ export default function DockerView({ embedded = false }: { embedded?: boolean })
         </div>
 
         {sortedContainers.length === 0 && (
-          <div className="rounded-lg border border-gray-800 bg-gray-900/60 p-4">
-            <p className="text-sm text-gray-300">未發現 EvoLoop 容器</p>
-            <p className="mt-1 text-xs text-gray-500">
+          <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-sidebar)]/60 p-4">
+            <p className="text-sm text-[var(--console-sub)]">未發現 Linkin 容器</p>
+            <p className="mt-1 text-xs text-[var(--console-faint)]">
               請確認 Docker Compose 已啟動且後端已掛載 docker.sock
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {['backend', 'frontend', 'opc', 'redis', 'chroma'].map((svc) => (
-                <div key={svc} className="rounded-md border border-dashed border-gray-700 px-3 py-3">
-                  <p className="text-xs font-medium text-gray-400">{svc}</p>
+                <div key={svc} className="rounded-md border border-dashed border-[var(--console-line)] px-3 py-3">
+                  <p className="text-xs font-medium text-[var(--console-faint)]">{svc}</p>
                   <p className="mt-1 text-[11px] text-gray-600">待命</p>
                 </div>
               ))}

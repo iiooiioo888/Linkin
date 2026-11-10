@@ -34,6 +34,7 @@ import {
 import { AGENT_FALLBACK_ROSTER } from '../lib/monitorFallbacks';
 import { nodesForRole } from '../lib/rahoUi';
 import type { AgentMonitorData, GrillTree, L0Snapshot, RahoSnapshot, RoleAgent } from '../types';
+import AgentExecutionTree from './AgentExecutionTree';
 import RoleSettingsPanel, { CreateRoleModal, draftToPayload, type RoleSettingsDraft } from './RoleSettingsPanel';
 import RoleTasksPanel from './RoleTasksPanel';
 import RoleV3Desk from './RoleV3Desk';
@@ -390,6 +391,16 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
         </div>
       )}
 
+      <div className="agents-monitor-split">
+        <AgentExecutionTree
+          agents={agents}
+          selectedId={selected?.id ?? null}
+          generatedAt={data?.generated_at}
+          onSelectRole={(id) => openDesk(id)}
+          onSelectWork={(roleId) => openDesk(roleId, 'tasks')}
+        />
+        <div className="agents-monitor-desk">
+
       {!selected && (
         <ConsoleEmpty className="flex flex-1 items-center justify-center">
           <p className="text-[13px] text-[var(--console-sub)]">
@@ -629,6 +640,8 @@ export default function AgentsMonitorPanel({ focusAgentId, onFocusAgent, deskSco
           )}
         </div>
       )}
+        </div>
+      </div>
       {creating && (
         <CreateRoleModal
           catalog={data?.catalog_meta}

@@ -2,6 +2,7 @@
  * 角色設定主面板：toolbar、分區導覽與五個 section 的組裝。
  */
 import { useEffect, useMemo, useState } from 'react';
+import { SUNSET_BLOCK_MESSAGE, collectSunsetModelRefs } from '../../lib/sunsetHubIds';
 import AlertsSection from './sections/AlertsSection';
 import IdentitySection from './sections/IdentitySection';
 import ModelSection from './sections/ModelSection';
@@ -25,9 +26,11 @@ export default function RoleSettingsPanel({
 }: RoleSettingsPanelProps) {
   const [draft, setDraft] = useState<RoleSettingsDraft>(() => draftFromAgent(agent));
   const [section, setSection] = useState<RoleSettingsSection>(initialSection);
+  const [sunsetSaveError, setSunsetSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(draftFromAgent(agent));
+    setSunsetSaveError(null);
   }, [agent]);
 
   useEffect(() => {
@@ -80,7 +83,19 @@ export default function RoleSettingsPanel({
             <button
               type="button"
               disabled={saving || !dirty}
-              onClick={() => void onSave(draft)}
+              onClick={() => {
+                const hits = collectSunsetModelRefs({
+                  preferred_model: draft.preferred_model,
+                  failover_models: draft.failoverText.split(',').map((s) => s.trim()).filter(Boolean),
+                });
+                if (hits.length > 0) {
+                  setSunsetSaveError(`${SUNSET_BLOCK_MESSAGE}（${hits.join(', ')}）`);
+                  goSection('model');
+                  return;
+                }
+                setSunsetSaveError(null);
+                void onSave(draft);
+              }}
               className="rs-act rs-act--primary"
             >
               {saving ? '儲存中…' : '儲存設定'}
@@ -111,7 +126,13 @@ export default function RoleSettingsPanel({
         </nav>
         <div className="min-w-0 space-y-3.5">
           <IdentitySection agent={agent} agents={agents} catalog={catalog} draft={draft} setDraft={setDraft} />
-          <ModelSection catalog={catalog} draft={draft} setDraft={setDraft} />
+          <ModelSection
+            catalog={catalog}
+            draft={draft}
+            setDraft={setDraft}
+            sunsetSaveError={sunsetSaveError}
+            onClearSunsetError={() => setSunsetSaveError(null)}
+          />
           <PromptSection draft={draft} setDraft={setDraft} />
           <RuntimeSection draft={draft} setDraft={setDraft} />
           <AlertsSection agent={agent} draft={draft} setDraft={setDraft} />

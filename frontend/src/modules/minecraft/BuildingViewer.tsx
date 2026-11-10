@@ -128,7 +128,7 @@ export default function BuildingViewer({ preview, loading = false }: Props) {
   }, [preview]);
 
   if (loading) {
-    return <div className="flex h-full items-center justify-center text-[12px] text-[#8a8f98]">載入 3D 模型…</div>;
+    return <div className="flex h-full items-center justify-center text-[12px] text-[var(--console-faint)]">載入 3D 模型…</div>;
   }
   if (!preview || preview.voxels.length === 0) {
     return (

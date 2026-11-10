@@ -142,6 +142,25 @@ class MediaCrawlerJobManager:
                 encoding="utf-8",
             )
             self._persist()
+        self._ingest_into_media_vault(job)
+
+    def _ingest_into_media_vault(self, job: MediaCrawlerJob) -> None:
+        if job.dry_run or not job.results_dir:
+            return
+        try:
+            from backend.media_vault.ingest import ingest_job_results
+
+            req = job.request if isinstance(job.request, dict) else {}
+            ingest_job_results(
+                job.job_id,
+                Path(job.results_dir),
+                platform=str(req.get("platform") or ""),
+                batch_id=job.job_id,
+                crawl_method=str(req.get("crawl_type") or ""),
+                compliance_basis="public",
+            )
+        except Exception as exc:
+            logger.warning("MediaVault ingest after job %s failed: %s", job.job_id, exc)
 
     def _run_job(self, job_id: str, req: CrawlJobRequest) -> None:
         job = self.get_job(job_id)
@@ -187,6 +206,7 @@ class MediaCrawlerJobManager:
                 raise RuntimeError(f"MediaCrawler 退出碼 {rc}")
             with self._lock:
                 job.status = "completed"
+            self._ingest_into_media_vault(job)
         except Exception as exc:
             logger.warning("MediaCrawler job %s failed: %s", job_id, exc)
             with self._lock:

@@ -164,7 +164,7 @@ export default function RahoDecisionBar({
       data-variant={variant}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="text-[11px] font-medium uppercase tracking-wide text-[var(--console-danger)]">
+        <div className="text-[11px] font-medium text-[var(--console-danger)]">
           決策阻塞點
         </div>
         <p className="text-[10px] text-[var(--console-sub)]">點選下方方案以繼續任務</p>

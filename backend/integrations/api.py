@@ -140,7 +140,10 @@ def reset_registry() -> None:
 
 
 def _status_of(name: str, client: Any) -> dict[str, Any]:
-    cfg: IntegrationConfig = client.http.config
+    from backend.core.llm_config import masked_key
+    from backend.core.user_settings import active_settings_user
+
+    cfg: IntegrationConfig = client.http.effective_config()
     meta = next((m for m in INTEGRATION_CATALOG if m["name"] == name), {})
     status: dict[str, Any] = {
         "name": name,
@@ -151,6 +154,9 @@ def _status_of(name: str, client: Any) -> dict[str, Any]:
         "docs_url": meta.get("docs_url", ""),
         "enabled": cfg.enabled,
         "base_url": cfg.base_url,
+        "has_api_key": bool(cfg.api_key),
+        "api_key_masked": masked_key(cfg.api_key),
+        "settings_user": active_settings_user() or "",
     }
     if cfg.enabled:
         if name in ("yao", "openpencil", "ouroboros"):
@@ -248,14 +254,66 @@ class ToggleRequest(BaseModel):
     enabled: bool
 
 
-@router.post("/{name}/toggle")
-def toggle_integration(name: str, req: ToggleRequest) -> dict[str, Any]:
-    """顯式啟停（運行時）；禁止串流／webhook 自動呼叫本端點。"""
+class IntegrationSettingsBody(BaseModel):
+    enabled: bool | None = None
+    base_url: str | None = None
+    api_key: str | None = None
+    clear_api_key: bool = False
+
+
+@router.put("/{name}/settings")
+def update_integration_settings(name: str, body: IntegrationSettingsBody) -> dict[str, Any]:
+    """儲存目前帳號的整合連線（網址、金鑰、啟用）。金鑰回傳一律脫敏。"""
+    from backend.core.user_settings import (
+        active_settings_user,
+        guard_settings_write,
+        set_integration_fields,
+    )
+
+    guard_settings_write()
     reg = get_registry()
     client = reg.get(name)
     if client is None:
         return {"ok": False, "error_code": "ERR_UNKNOWN_INTEGRATION"}
-    object.__setattr__(client.http.config, "enabled", req.enabled)  # frozen dataclass：受控切換
+    uid = active_settings_user()
+    if not uid:
+        if body.enabled is not None:
+            object.__setattr__(client.http.config, "enabled", body.enabled)
+        return {"ok": True, **_status_of(name, client)}
+    fields: dict[str, Any] = {}
+    if body.enabled is not None:
+        fields["enabled"] = body.enabled
+    if body.base_url is not None:
+        fields["base_url"] = body.base_url.strip()
+    if body.clear_api_key:
+        fields["api_key"] = ""
+    elif body.api_key is not None and body.api_key.strip():
+        fields["api_key"] = body.api_key.strip()
+    if fields:
+        set_integration_fields(uid, name, **fields)
+    logger.info("整合 %s 設定已寫入使用者 %s", name, uid)
+    return {"ok": True, **_status_of(name, client)}
+
+
+@router.post("/{name}/toggle")
+def toggle_integration(name: str, req: ToggleRequest) -> dict[str, Any]:
+    """顯式啟停。已登入時只改該帳號；未綁定租戶時維持程序內切換（單機／測試）。"""
+    from backend.core.user_settings import (
+        active_settings_user,
+        guard_settings_write,
+        set_integration_fields,
+    )
+
+    guard_settings_write()
+    reg = get_registry()
+    client = reg.get(name)
+    if client is None:
+        return {"ok": False, "error_code": "ERR_UNKNOWN_INTEGRATION"}
+    uid = active_settings_user()
+    if uid:
+        set_integration_fields(uid, name, enabled=req.enabled)
+    else:
+        object.__setattr__(client.http.config, "enabled", req.enabled)  # frozen dataclass：受控切換
     logger.info("整合 %s 已%s（顯式動作）", name, "啟用" if req.enabled else "停用")
     return {"ok": True, "name": name, "enabled": req.enabled}
 

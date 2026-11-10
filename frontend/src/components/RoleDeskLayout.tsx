@@ -104,7 +104,7 @@ export function RoleDeskHeader({
               <div className="absolute left-0 top-full z-50 mt-1 max-h-72 w-64 overflow-y-auto rounded-lg border border-[var(--console-line)] bg-[var(--console-sidebar)] shadow-xl">
                 {grouped.map(([group, list]) => (
                   <div key={group} className="border-b border-[var(--console-line)] last:border-0">
-                    <p className="px-3 py-1.5 text-[8px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+                    <p className="px-3 py-1.5 text-[8px] font-semibold text-[var(--console-faint)]">
                       {group}
                     </p>
                     {list.map((a) => (
@@ -511,7 +511,7 @@ export function TokenUsageBlock({ agent }: { agent: RoleAgent }) {
           </svg>
           <div className="rd-center">
             <span className="apple-data text-[15px] font-bold leading-none">{used.toLocaleString()}</span>
-            <span className="mt-0.5 text-[7.5px] uppercase tracking-wide text-[var(--console-sub)]">tok</span>
+            <span className="mt-0.5 text-[7.5px] text-[var(--console-sub)]">tok</span>
           </div>
         </div>
         <div className="rd-tk-brk">
@@ -650,7 +650,7 @@ export function RoleMonitorBlock({ agent }: { agent: RoleAgent }) {
       </div>
       <ActivityHeatmap rows={heatmap} demo={heatmapEmpty} title="活動" />
       <div>
-        <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">技能</p>
+        <p className="mb-1.5 text-[9px] font-semibold text-[var(--console-faint)]">技能</p>
         <SkillTags tags={skillTags} />
       </div>
     </div>

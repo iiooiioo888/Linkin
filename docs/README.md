@@ -80,7 +80,10 @@
 | [DESIGN.md](../DESIGN.md) | **前端視覺 Token**（非系統設計） |
 | [design/README.md](design/README.md) | 視覺 Token 說明（避免與架構混淆） |
 | [DEPLOYMENT.md](../DEPLOYMENT.md) | 指向部署指南的捷徑 |
+| [PROJECT_SPEC.md](../PROJECT_SPEC.md) | Local Video Studio 規格（M0–M7） |
 | [docs/openapi.json](openapi.json) | OpenAPI 匯出（若有） |
+| [integrations/local-video-studio.md](integrations/local-video-studio.md) | Studio 整合捷徑（→ PROJECT_SPEC） |
+| [integrations/media-vault.md](integrations/media-vault.md) | 採集媒資庫 |
 
 ### 文件維護規則
 

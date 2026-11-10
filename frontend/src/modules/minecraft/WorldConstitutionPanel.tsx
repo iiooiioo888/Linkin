@@ -88,7 +88,7 @@ export default function WorldConstitutionPanel() {
       {message && <p className="mc-note">{message}</p>}
       <McMetrics items={metrics} />
 
-      <div className="mb-4 rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2 text-[11px] text-[#8a8f98]">
+      <div className="mb-4 rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2 text-[11px] text-[var(--console-faint)]">
         世界觀約束 NPC／任務／道具。Minecraft 連線、建築派發與審計在
         <a href="#/modules/minecraft/bridge" className="ml-1 text-[var(--console-accent)] hover:underline">
           {activityNavPath('minecraft')}
@@ -98,7 +98,7 @@ export default function WorldConstitutionPanel() {
 
       <div className="mb-4 grid gap-3 lg:grid-cols-2">
         <section className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">三大陣營</h3>
+          <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">三大陣營</h3>
           {factions.length > 0 && (
             <div className="mb-3">
               <MediaGallery
@@ -119,14 +119,14 @@ export default function WorldConstitutionPanel() {
           <div className="space-y-2">
             {factions.map((faction) => (
               <div key={String(faction.id || faction.name)} className="rounded-lg border border-white/[0.06] px-2.5 py-2">
-                <p className="text-[13px] font-medium">{String(faction.name)} <span className="text-[10px] text-[#8a8f98]">{String(faction.alignment || '')}</span></p>
+                <p className="text-[13px] font-medium">{String(faction.name)} <span className="text-[10px] text-[var(--console-faint)]">{String(faction.alignment || '')}</span></p>
                 <p className="mt-1 text-[11px] text-[var(--console-sub)]">{String(faction.creed || '')}</p>
               </div>
             ))}
           </div>
         </section>
         <section className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">靈絲術</h3>
+          <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">靈絲術</h3>
           <p className="text-[13px] font-medium">
             {[data?.magic?.name, data?.magic?.alias].filter(Boolean).join(' · ') || '尚未記載'}
           </p>
@@ -144,7 +144,7 @@ export default function WorldConstitutionPanel() {
               />
             </div>
           )}
-          <ul className="mt-2 space-y-1 text-[11px] text-[#8a8f98]">
+          <ul className="mt-2 space-y-1 text-[11px] text-[var(--console-faint)]">
             {schools.map((school) => (
               <li key={String(school.id || school.name)}>{school.name} — {school.domain}</li>
             ))}
@@ -154,7 +154,7 @@ export default function WorldConstitutionPanel() {
 
       {events.length > 0 && (
         <section className="mb-4 rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#8a8f98]">歷史事件</h3>
+          <h3 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">歷史事件</h3>
           <div className="mb-3">
             <MediaGallery
               layout="filmstrip"

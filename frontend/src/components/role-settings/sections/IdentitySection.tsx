@@ -36,7 +36,7 @@ export default function IdentitySection({ agent, agents, catalog, draft, setDraf
             onClick={() => setDraft({ ...draft, enabled: !draft.enabled })}
             className={`rounded-md border px-3 py-1.5 text-[12px] ${
               draft.enabled
-                ? 'border-[#4cc38a]/40 bg-[#4cc38a]/10 text-[#4cc38a]'
+                ? 'border-[color-mix(in_srgb,var(--console-green)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-green)_10%,transparent)] text-[var(--console-green)]'
                 : 'border-red-500/30 bg-red-500/10 text-red-300'
             }`}
           >

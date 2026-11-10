@@ -7,8 +7,8 @@
     # 同时启动模拟 OPC 服务器 + API（开发测试用）
     OPC_SIM_ENABLED=true python -m opc_service.main
 
-    # 使用 uvicorn
-    uvicorn opc_service.app:app --host 0.0.0.0 --port 8001 --reload
+    # 使用 uvicorn（正式啟動不要加 --reload；開發熱重載見 docker-compose.dev.yml）
+    uvicorn opc_service.app:app --host 0.0.0.0 --port 8001
 """
 
 import logging
@@ -24,9 +24,10 @@ logging.basicConfig(
 if __name__ == "__main__":
     import uvicorn
 
+    # FASTAPI-DEPLOY-001：這個入口不當開發伺服器用，檔案變更不應重啟對外行程。
     uvicorn.run(
         "opc_service.app:app",
         host=settings.host,
         port=settings.port,
-        reload=True,
+        reload=False,
     )

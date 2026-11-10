@@ -71,29 +71,29 @@ export default function MemoryPanel({ onClose }: MemoryPanelProps) {
   return (
     <div className="flex h-full min-h-0 flex-col apple-canvas text-[var(--console-ink)]">
       {/* 標題列 */}
-      <div className="flex items-center justify-between border-b border-gray-800 p-3">
-        <h3 className="text-sm font-medium text-gray-200">
-          🧠 記憶庫 <span className="text-xs text-gray-500">（{total} 條）</span>
+      <div className="flex items-center justify-between border-b border-[var(--console-line)] p-3">
+        <h3 className="text-sm font-medium text-[var(--console-ink)]">
+          🧠 記憶庫 <span className="text-xs text-[var(--console-faint)]">（此帳號 {total} 條）</span>
         </h3>
         <div className="flex items-center gap-2">
           <button
             onClick={() => void handleCleanup()}
             disabled={cleaning || loading}
-            className="rounded-md border border-gray-700 px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-800 disabled:opacity-40"
+            className="rounded-md border border-[var(--console-line)] px-2 py-1 text-xs text-[var(--console-sub)] transition-colors hover:bg-[var(--console-dim)] disabled:opacity-40"
           >
             {cleaning ? '清理中...' : '🧹 清理過期'}
           </button>
           <button
             onClick={() => void load()}
             disabled={loading}
-            className="rounded-md border border-gray-700 px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-800 disabled:opacity-40"
+            className="rounded-md border border-[var(--console-line)] px-2 py-1 text-xs text-[var(--console-sub)] transition-colors hover:bg-[var(--console-dim)] disabled:opacity-40"
           >
             {loading ? '...' : '🔄'}
           </button>
           {onClose && (
             <button
               onClick={onClose}
-              className="rounded-md px-2 py-1 text-xs text-gray-400 hover:bg-gray-800"
+              className="rounded-md px-2 py-1 text-xs text-[var(--console-faint)] hover:bg-[var(--console-dim)]"
             >
               ✕
             </button>
@@ -116,12 +116,12 @@ export default function MemoryPanel({ onClose }: MemoryPanelProps) {
       {/* 記憶列表 */}
       <div className="flex-1 overflow-y-auto p-3">
         {loading && memories.length === 0 && (
-          <p className="py-8 text-center text-xs text-gray-500">載入中...</p>
+          <p className="py-8 text-center text-xs text-[var(--console-faint)]">載入中...</p>
         )}
         {!loading && memories.length === 0 && (
           <div className="py-12 text-center">
             <span className="text-3xl">🧠</span>
-            <p className="mt-2 text-xs text-gray-500">尚無記憶</p>
+            <p className="mt-2 text-xs text-[var(--console-faint)]">尚無記憶</p>
             <p className="mt-1 text-[11px] text-gray-600">
               完成反思任務後，成功經驗會自動存入記憶庫
             </p>
@@ -133,9 +133,9 @@ export default function MemoryPanel({ onClose }: MemoryPanelProps) {
             return (
               <div
                 key={m.id}
-                className="rounded-lg border border-gray-800 bg-gray-900/60 p-2.5"
+                className="rounded-lg border border-[var(--console-line)] bg-[var(--console-sidebar)]/60 p-2.5"
               >
-                <p className="whitespace-pre-wrap text-xs leading-relaxed text-gray-300">
+                <p className="whitespace-pre-wrap text-xs leading-relaxed text-[var(--console-sub)]">
                   {m.text.length > 300 ? `${m.text.slice(0, 300)}...` : m.text}
                 </p>
                 <div className="mt-1.5 flex items-center justify-between">

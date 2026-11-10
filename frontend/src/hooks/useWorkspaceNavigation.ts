@@ -14,6 +14,7 @@ import { OPEN_CONTEXT_MODAL_EVENT } from '../lib/contextUi';
 import type { OpenContextModalDetail } from '../lib/contextUi';
 import type { LabSubTab } from '../lib/labTabs';
 import { normalizeMonitorTab } from '../lib/monitorTabs';
+import { inferWorldModuleIdForTab } from '../lib/worldModules';
 import type { ChatSession, TaskProgress } from '../types';
 import { usesIndustrialStages } from '../types';
 import type { UseAppRouteResult } from './useAppRoute';
@@ -42,7 +43,7 @@ export interface UseWorkspaceNavigationResult {
   handleOpenRaho: (focus: string) => void;
   handleOpenTrace: (taskId: string) => void;
   handleViewChange: (view: ViewKey) => void;
-  handleMonitorTabChange: (tab: MonitorTab) => void;
+  handleMonitorTabChange: (tab: MonitorTab, nextWorldModuleId?: string | null) => void;
   handleLabSubTabChange: (sub: LabSubTab) => void;
   handleFocusAgent: (id: string | null) => void;
   handleFocusTask: (id: string | null) => void;
@@ -59,6 +60,7 @@ export function useWorkspaceNavigation({
   const {
     activeView,
     monitorTab,
+    worldModuleId,
     focusAgentId,
     focusTaskId,
     traceTaskId,
@@ -79,6 +81,7 @@ export function useWorkspaceNavigation({
   surfaceRef.current = {
     view: activeView,
     monitorTab,
+    worldModuleId,
     focusAgentId,
     focusTaskId,
     traceTaskId,
@@ -246,7 +249,7 @@ export function useWorkspaceNavigation({
   );
 
   const handleMonitorTabChange = useCallback(
-    (tab: MonitorTab) => {
+    (tab: MonitorTab, nextWorldModuleId?: string | null) => {
       if (tab === 'grill') {
         requestRoleGrillDesk(focusAgentId && !isLinkinStudioAgent(focusAgentId) ? focusAgentId : undefined);
       }
@@ -254,15 +257,18 @@ export function useWorkspaceNavigation({
       const keepAgent =
         (resolved === 'agents' && !isLinkinStudioAgent(focusAgentId)) ||
         (resolved === 'studio' && isLinkinStudioAgent(focusAgentId));
+      const inferredModuleId =
+        nextWorldModuleId !== undefined ? nextWorldModuleId : inferWorldModuleIdForTab(resolved, worldModuleId);
       navigateRoute({
         view: 'monitor',
         monitorTab: resolved,
+        worldModuleId: inferredModuleId,
         focusAgentId: keepAgent ? focusAgentId : null,
         focusTaskId: resolved === 'tasks' ? focusTaskId : null,
         labSubTab: resolved === 'lab' ? labSubTab : 'prompt',
       });
     },
-    [navigateRoute, focusAgentId, focusTaskId, labSubTab],
+    [navigateRoute, focusAgentId, focusTaskId, labSubTab, worldModuleId],
   );
 
   const handleLabSubTabChange = useCallback(

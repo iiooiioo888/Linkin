@@ -1,6 +1,6 @@
 # 架構總覽
 
-> 對齊日期：2026-10-22 · 倉庫產品名：**靈境·Linkin**（EvoLoop 運行時）
+> 對齊日期：2026-10-26 · 倉庫產品名：**靈境·Linkin**（EvoLoop 運行時）
 
 > **全景文檔**：部署、分層、LangGraph、公司運行時、計費 v6、對話與前端殼的完整圖解見 **[系統架構與運作流程（全面·2026-09）](system-architecture-2026-09.md)**。組件分類見 [目錄地圖](../structure.md#組件分類)。
 
@@ -22,7 +22,7 @@ Linkin／EvoLoop 是一個**統一模式** AI 系統，所有任務進入同一�
 | **公司（含工業）** | 策略 `company`，或 auto 判為工業、靈境複雜、Minecraft 重型、關鍵詞與長度 | 任務經理分析後席位分工。工業模板 `industrial_ops` 帶工業席位，感測讀數注入目標，寫入經護欄。成功後預設定稿 |
 | **Minecraft 輕量** | 單步控制查詢 | ReAct + MineMCP，評估一次後定稿 |
 
-選路優先序與入口分派見根目錄 [README 運作邏輯](../../README.md#運作邏輯)。實作：`backend/core/execution_path.py`。
+選路優先序與入口分派見根目錄 [README 運作邏輯](../../README.md#運作邏輯)。實作：`backend/core/execution_path.py`。內網拆分的凍結契約見 [服務契約](service-contracts.md)，現行程式尚未改走那些服務。
 
 ## 統一管線流程
 

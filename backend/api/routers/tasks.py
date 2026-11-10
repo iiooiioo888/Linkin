@@ -13,7 +13,8 @@ from pydantic import BaseModel
 from backend.auth.gate import ws_authorized
 from backend.billing.context import billing_enabled, billing_task_id, current_billing_user
 from backend.billing.errors import InsufficientCreditsError
-from backend.billing.task_lifecycle import begin_billed_task
+from backend.billing.task_lifecycle import begin_billed_task, precheck_billed_task
+from backend.core.execution_path import resolve_execution_path
 from backend.services.cancelled_task_cleanup import cleanup_enabled, run_cleanup
 from backend.services.context_insight import build_context_insight, resolve_default_task_id
 from backend.services.monitor_hub import collect_monitor_hub
@@ -42,6 +43,36 @@ class TaskRequest(BaseModel):
     options: dict[str, Any] = {}
 
 
+# 開工預算確認（上游 execution gate）請求模型
+class BudgetDecisionRequest(BaseModel):
+    action: str
+    note: str = ""
+
+
+class BudgetLinesRequest(BaseModel):
+    lines: list[dict[str, Any]] = []
+
+
+class ConfirmationDraftRequest(BaseModel):
+    new_seats: list[dict[str, Any]] | None = None
+    field_writes: list[dict[str, Any]] | None = None
+
+
+class SeatOverrideRequest(BaseModel):
+    role_id: str
+    system_prompt: str | None = None
+    tools_allowed: list[str] | None = None
+
+
+class FieldWriteRetryRequest(BaseModel):
+    field_writes: list[dict[str, Any]] | None = None
+
+
+class NarrativeCommitRequest(BaseModel):
+    kind: str
+    entity: dict[str, Any] = {}
+
+
 # ==================== 任務介面 API（後台執行 + 進度輪詢） ====================
 
 @router.post("/tasks")
@@ -60,33 +91,53 @@ async def create_task(req: TaskRequest):
     record = task_manager.create_task(
         req.query, req.execution_strategy, req.company_template, options=req.options
     )
+    path = resolve_execution_path(record.query, req.execution_strategy)
+    record.resolved_path = "company" if path == "opc" else path
     billing_meta: dict = {}
     uid = current_billing_user()
+    company_gate = record.resolved_path == "company"
     if billing_enabled() and uid:
         try:
-            billing_meta = await asyncio.to_thread(
-                begin_billed_task,
-                uid,
-                task_id=record.task_id,
-                baseline_tokens=max(500, len(req.query) // 2),
-                model=str((req.options or {}).get("model") or "default"),
-            )
-            token = billing_task_id.set(record.task_id)
-            record.options = {**(record.options or {}), "billing": billing_meta}
-            task_manager._persist(record)
-            billing_task_id.reset(token)
+            baseline = max(500, len(req.query) // 2)
+            model = str((req.options or {}).get("model") or "default")
+            if company_gate:
+                # 公司路徑先「預檢」額度：確認開工後才真正扣款／保留。
+                billing_meta = await asyncio.to_thread(
+                    precheck_billed_task,
+                    uid,
+                    baseline_tokens=baseline,
+                    model=model,
+                )
+            else:
+                billing_meta = await asyncio.to_thread(
+                    begin_billed_task,
+                    uid,
+                    task_id=record.task_id,
+                    baseline_tokens=baseline,
+                    model=model,
+                )
+                token = billing_task_id.set(record.task_id)
+                record.options = {**(record.options or {}), "billing": billing_meta}
+                task_manager._persist(record)
+                billing_task_id.reset(token)
         except Exception as exc:
             if isinstance(exc, InsufficientCreditsError):
                 raise HTTPException(status_code=402, detail=exc.message) from exc
             exc_cls = getattr(exc, "__class__", None)
             if exc_cls is not None and exc_cls.__name__ == "InsufficientCreditsError":
                 raise HTTPException(status_code=402, detail=str(exc)) from exc
-    task_manager.start_task(record)
+    if company_gate:
+        # 公司任務先停在預算確認，使用者點頭才進席位執行。
+        task_manager.start_budget_draft(record)
+    else:
+        task_manager.start_task(record)
     return {
         "task_id": record.task_id,
         "strategy": req.execution_strategy,
+        "status": record.status,
+        "awaiting_confirmation": company_gate,
         "pricing_version": billing_meta.get("pricing_config_version"),
-        "reserved_credits": billing_meta.get("reserved_credits"),
+        "reserved_credits": billing_meta.get("reserved_credits", 0),
     }
 
 
@@ -101,6 +152,73 @@ async def get_task(task_id: str, events_limit: int = 50):
     if record is None:
         raise HTTPException(status_code=404, detail="任務不存在")
     return record.to_dict(events_limit=events_limit)
+
+
+@router.post("/tasks/{task_id}/budget/decision")
+async def budget_decision(task_id: str, body: BudgetDecisionRequest):
+    """批准或拒絕開工預算。拒絕與逾時都不進入席位執行。"""
+    ok, message = task_manager.decide_budget(task_id, body.action, body.note)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    record = task_manager.get_task(task_id)
+    return {"success": True, "message": message, "task": record.to_dict() if record else None}
+
+
+@router.post("/tasks/{task_id}/budget/lines")
+async def budget_lines(task_id: str, body: BudgetLinesRequest):
+    """能力負責人回填分項。確認前可改，確認後鎖定。"""
+    ok, message = task_manager.update_budget_lines(task_id, body.lines)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    record = task_manager.get_task(task_id)
+    return {"success": True, "message": message, "budget_plan": record.budget_plan if record else None}
+
+
+@router.post("/tasks/{task_id}/confirmation-draft")
+async def confirmation_draft(task_id: str, body: ConfirmationDraftRequest):
+    """點頭前改新席位草稿與現場寫入。不寫席位目錄，不改世界觀。"""
+    ok, message = task_manager.update_confirmation_draft(
+        task_id,
+        new_seats=body.new_seats,
+        field_writes=body.field_writes,
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    record = task_manager.get_task(task_id)
+    return {"success": True, "message": message, "budget_plan": record.budget_plan if record else None}
+
+
+@router.post("/tasks/{task_id}/seat-overrides")
+async def seat_overrides(task_id: str, body: SeatOverrideRequest):
+    """已存在席位的提示詞與工具權限立刻寫進目錄。"""
+    ok, message = task_manager.apply_seat_override(
+        task_id,
+        body.role_id,
+        system_prompt=body.system_prompt,
+        tools_allowed=body.tools_allowed,
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    return {"success": True, "message": message}
+
+
+@router.post("/tasks/{task_id}/field-writes")
+async def field_writes(task_id: str, body: FieldWriteRetryRequest):
+    """開工後重試現場寫入。整批通過檢查才寫。"""
+    ok, message = task_manager.retry_field_writes(task_id, body.field_writes)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    record = task_manager.get_task(task_id)
+    return {"success": True, "message": message, "budget_plan": record.budget_plan if record else None}
+
+
+@router.post("/tasks/{task_id}/narrative/commit")
+async def narrative_commit(task_id: str, body: NarrativeCommitRequest):
+    """敘事顯式寫入實體。世界觀維持只讀。"""
+    ok, message, stored = task_manager.commit_narrative(task_id, body.kind, body.entity)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    return {"success": True, "message": message, "stored": stored}
 
 
 @router.post("/tasks/{task_id}/cancel")

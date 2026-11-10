@@ -43,7 +43,7 @@ export default function RuntimeSection({ draft, setDraft }: RuntimeSectionProps)
             ['allow_tool_use', '允許工具', draft.allow_tool_use],
             ['auto_escalate', '失敗自動升級', draft.auto_escalate],
           ].map(([key, label, checked]) => (
-            <label key={String(key)} className="flex items-center gap-2 text-[12px] text-[#d0d6e0]">
+            <label key={String(key)} className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
               <input
                 type="checkbox"
                 checked={Boolean(checked)}

@@ -101,7 +101,7 @@ export default function AlertsSection({ agent, draft, setDraft }: AlertsSectionP
         </div>
 
         <div className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3">
-          <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#8a8f98]">SLA／告警</h4>
+          <h4 className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">SLA／告警</h4>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Field label="SLA 延遲 ms" hint="0=不檢查">
               <input
@@ -113,7 +113,7 @@ export default function AlertsSection({ agent, draft, setDraft }: AlertsSectionP
               />
             </Field>
             <div className="flex flex-wrap content-end gap-3">
-              <label className="flex items-center gap-2 text-[12px] text-[#d0d6e0]">
+              <label className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
                 <input
                   type="checkbox"
                   checked={draft.alert_on_error}
@@ -121,7 +121,7 @@ export default function AlertsSection({ agent, draft, setDraft }: AlertsSectionP
                 />
                 錯誤時告警
               </label>
-              <label className="flex items-center gap-2 text-[12px] text-[#d0d6e0]">
+              <label className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
                 <input
                   type="checkbox"
                   checked={draft.alert_on_budget}
@@ -129,7 +129,7 @@ export default function AlertsSection({ agent, draft, setDraft }: AlertsSectionP
                 />
                 預算告警
               </label>
-              <label className="flex items-center gap-2 text-[12px] text-[#d0d6e0]">
+              <label className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
                 <input
                   type="checkbox"
                   checked={draft.alert_on_sla}
@@ -137,7 +137,7 @@ export default function AlertsSection({ agent, draft, setDraft }: AlertsSectionP
                 />
                 SLA 逾時告警
               </label>
-              <label className="flex items-center gap-2 text-[12px] text-[#d0d6e0]">
+              <label className="flex items-center gap-2 text-[12px] text-[var(--console-sub)]">
                 <input
                   type="checkbox"
                   checked={draft.always_require_review}

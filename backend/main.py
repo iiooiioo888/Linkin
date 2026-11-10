@@ -44,6 +44,14 @@ async def _lifespan(_app: FastAPI):
     from backend.core.opc_degrade import reset_opc_health
 
     reset_opc_health()
+    try:
+        from backend.core.user_settings import migrate_legacy_user_settings
+
+        migrated = await asyncio.to_thread(migrate_legacy_user_settings)
+        if migrated.get("llm_copied") or migrated.get("cookie_copied"):
+            logger.info("遺留設定已複製到帳號 %s（來源檔保留）", migrated.get("owner"))
+    except Exception as exc:
+        logger.warning("遺留設定遷移失敗（不刪除來源）：%s", exc)
     # 重啟回灌：從 Redis 載回任務記錄，修復任務列表／管線重啟後清空
     try:
         await asyncio.to_thread(task_manager.rehydrate)
@@ -148,12 +156,26 @@ async def _lifespan(_app: FastAPI):
                 logger.warning("已取消任務清理失敗：%s", exc)
 
     cleanup_task = asyncio.create_task(_cancelled_task_cleanup_loop())
+    # ModelGW P3/#132：PROVISIONING* 超時 poller（同進程；shadow；不切 enforce）
+    modelgw_provision_task = None
+    try:
+        from backend.modelgw.provision_controller import start_provision_poller
+
+        modelgw_provision_task = start_provision_poller()
+    except Exception as exc:
+        logger.warning("ModelGW provision poller 啟動失敗：%s", exc)
     ect_worker_stop = None
     if ephemeral_containers_enabled():
         ect_worker_stop = container_task_worker
     try:
         yield
     finally:
+        if modelgw_provision_task is not None:
+            modelgw_provision_task.cancel()
+            try:
+                await modelgw_provision_task
+            except asyncio.CancelledError:
+                pass
         if ect_worker_stop is not None:
             await ect_worker_stop.stop()
         cleanup_task.cancel()
@@ -182,11 +204,16 @@ async def _lifespan(_app: FastAPI):
         except asyncio.CancelledError:
             pass
 
+# FASTAPI-OPENAPI-001：公開部署預設關掉互動文件，避免未登入就能讀到全部路由。
+_docs_on = os.getenv("LINKIN_ENABLE_DOCS", "").strip().lower() in {"1", "true", "yes"}
 app = FastAPI(
     title="靈境·Linkin — Evoloop 運行時",
     description="靈境·Linkin 世界觀控制面 + EvoLoop 反思闭环 / 多代理人公司运行时",
     version="0.1.0",
     lifespan=_lifespan,
+    docs_url="/docs" if _docs_on else None,
+    redoc_url="/redoc" if _docs_on else None,
+    openapi_url="/openapi.json" if _docs_on else None,
 )
 
 # CORS 配置：僅允許受信任的來源
@@ -223,6 +250,9 @@ app.add_middleware(
 
 # AI Hub 旁路面：/api/v1/*（Nginx 剝除 /api 時另掛 /v1/*）
 register_hub(app)
+from backend.modelgw.api import register_modelgw
+
+register_modelgw(app)
 register_linkin(app)
 from backend.ephemeral_containers.api import register_ephemeral_containers
 
@@ -231,6 +261,9 @@ register_modules(app)
 from backend.integrations.api import register_integrations
 
 register_integrations(app)
+from backend.core.account_settings_api import register_account_settings
+
+register_account_settings(app)
 from backend.company.runtime_api import register_runtime_api
 
 register_runtime_api(app)
@@ -238,6 +271,14 @@ register_billing(app)
 from backend.mediacrawler import register_mediacrawler
 
 register_mediacrawler(app)
+from backend.media_vault import register_media_vault
+
+register_media_vault(app)
+from backend.local_video_studio import register_local_video_studio
+
+register_local_video_studio(app)
+
+
 @app.exception_handler(InsufficientCreditsError)
 async def billing_insufficient_handler(_request: Request, exc: InsufficientCreditsError):
     return JSONResponse(
@@ -289,6 +330,9 @@ from backend.api.routers import (
     health_auth as health_auth_routes,
 )
 from backend.api.routers import (
+    horizon as horizon_routes,
+)
+from backend.api.routers import (
     lab as lab_routes,
 )
 from backend.api.routers import (
@@ -318,6 +362,7 @@ app.include_router(docker_cloud_routes.router)
 app.include_router(db_admin_routes.router)
 app.include_router(lab_routes.router)
 app.include_router(skills_mcp_routes.router)
+app.include_router(horizon_routes.router)
 
 
 if __name__ == "__main__":

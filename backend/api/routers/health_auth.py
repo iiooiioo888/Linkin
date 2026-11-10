@@ -7,9 +7,8 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from backend.api.security import _client_identity, _set_gate_cookie
+from backend.api.security import _clear_gate_cookie, _client_identity, _set_gate_cookie
 from backend.auth.gate import (
-    AUTH_COOKIE,
     clear_session,
     extract_token,
     issue_login,
@@ -41,14 +40,14 @@ async def auth_login(body: GateLoginBody, request: Request):
     token = issue_login(body.username, body.password, identity=_client_identity(request))
     if not token:
         raise HTTPException(status_code=401, detail="帳號或密碼不正確")
-    resp = JSONResponse({"ok": True, "user": body.username.strip(), "token": token})
-    _set_gate_cookie(resp, token)
+    resp = JSONResponse({"ok": True, "user": body.username.strip()})
+    _set_gate_cookie(resp, token, request)
     return resp
 
 
 @router.get("/auth/me")
 async def auth_me(request: Request):
-    token = extract_token(request.headers, request.cookies, request.query_params)
+    token = extract_token(request.headers, request.cookies)
     user = session_user(token)
     if not user:
         raise HTTPException(status_code=401, detail="未登入或會話已失效")
@@ -57,8 +56,8 @@ async def auth_me(request: Request):
 
 @router.post("/auth/logout")
 async def auth_logout(request: Request):
-    token = extract_token(request.headers, request.cookies, request.query_params)
+    token = extract_token(request.headers, request.cookies)
     clear_session(token)
     resp = JSONResponse({"ok": True})
-    resp.delete_cookie(AUTH_COOKIE, path="/")
+    _clear_gate_cookie(resp, request)
     return resp

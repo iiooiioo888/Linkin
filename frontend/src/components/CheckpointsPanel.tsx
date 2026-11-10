@@ -117,7 +117,7 @@ export default function CheckpointsPanel({ embedded = false }: { embedded?: bool
           <ConsoleCard className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left">
             <thead>
-              <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
+              <tr className="border-b border-white/[0.08] text-[10px] text-[var(--console-faint)]">
                 <th className="px-3 py-2 font-medium">任務</th>
                 <th className="px-3 py-2 font-medium">目標</th>
                 <th className="px-3 py-2 font-medium">階段</th>
@@ -133,7 +133,7 @@ export default function CheckpointsPanel({ embedded = false }: { embedded?: bool
                   <td className="px-3 py-2 font-mono text-[11px] console-status-blue">
                     {c.task_id.slice(0, 12)}
                   </td>
-                  <td className="max-w-[240px] truncate px-3 py-2 text-xs text-[#d0d6e0]">
+                  <td className="max-w-[240px] truncate px-3 py-2 text-xs text-[var(--console-sub)]">
                     {c.goal || '—'}
                   </td>
                   <td className="px-3 py-2 text-[11px] text-[var(--console-sub)]">{c.phase || '—'}</td>

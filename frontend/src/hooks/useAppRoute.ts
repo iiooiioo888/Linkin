@@ -12,6 +12,7 @@ import {
   routesEqual,
   syncAppRouteHash,
 } from '../lib/appRoute';
+import { inferWorldModuleIdForTab } from '../lib/worldModules';
 import type { MonitorTab, ViewKey } from '../components/AppShell';
 import type { LabSubTab } from '../lib/labTabs';
 
@@ -19,6 +20,7 @@ export interface UseAppRouteResult {
   routeReady: boolean;
   activeView: ViewKey;
   monitorTab: MonitorTab;
+  worldModuleId: string | null;
   focusAgentId: string | null;
   focusTaskId: string | null;
   traceTaskId: string | null;
@@ -33,6 +35,7 @@ export function useAppRoute(): UseAppRouteResult {
   const [routeReady, setRouteReady] = useState(false);
   const [activeView, setActiveView] = useState<ViewKey>(initialRoute.activeView);
   const [monitorTab, setMonitorTab] = useState<MonitorTab>(initialRoute.monitorTab);
+  const [worldModuleId, setWorldModuleId] = useState<string | null>(initialRoute.worldModuleId);
   /** 進入監控「角色 Agent」時預選一位，主區開工作台；名冊在左側外圍 */
   const [focusAgentId, setFocusAgentId] = useState<string | null>(initialRoute.focusAgentId);
   const [focusTaskId, setFocusTaskId] = useState<string | null>(initialRoute.focusTaskId);
@@ -54,6 +57,7 @@ export function useAppRoute(): UseAppRouteResult {
       appRouteFromState({
         activeView,
         monitorTab,
+        worldModuleId,
         focusAgentId,
         focusTaskId,
         traceTaskId,
@@ -61,7 +65,7 @@ export function useAppRoute(): UseAppRouteResult {
         labSubTab,
       }),
     );
-  }, [routeReady, activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
+  }, [routeReady, activeView, monitorTab, worldModuleId, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -69,6 +73,7 @@ export function useAppRoute(): UseAppRouteResult {
       const current = appRouteFromState({
         activeView,
         monitorTab,
+        worldModuleId,
         focusAgentId,
         focusTaskId,
         traceTaskId,
@@ -79,6 +84,7 @@ export function useAppRoute(): UseAppRouteResult {
       const next = applyAppRoute(parsed);
       setActiveView(next.activeView);
       setMonitorTab(next.monitorTab);
+      setWorldModuleId(next.worldModuleId);
       setFocusAgentId(next.focusAgentId);
       setFocusTaskId(next.focusTaskId);
       setTraceTaskId(next.traceTaskId);
@@ -87,13 +93,21 @@ export function useAppRoute(): UseAppRouteResult {
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, [activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
+  }, [activeView, monitorTab, worldModuleId, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab]);
 
   const navigateRoute = useCallback(
     (patch: Partial<ReturnType<typeof getDefaultRoute>>) => {
       const route = appRouteFromState({
         activeView: patch.view ?? activeView,
         monitorTab: patch.monitorTab ?? monitorTab,
+        worldModuleId:
+          patch.worldModuleId !== undefined
+            ? patch.worldModuleId
+            : patch.view && patch.view !== 'monitor'
+              ? null
+              : patch.monitorTab !== undefined
+                ? inferWorldModuleIdForTab(patch.monitorTab, worldModuleId)
+                : worldModuleId,
         focusAgentId: patch.focusAgentId !== undefined ? patch.focusAgentId : focusAgentId,
         focusTaskId: patch.focusTaskId !== undefined ? patch.focusTaskId : focusTaskId,
         traceTaskId: patch.traceTaskId !== undefined ? patch.traceTaskId : traceTaskId,
@@ -103,19 +117,21 @@ export function useAppRoute(): UseAppRouteResult {
       const applied = applyAppRoute(route);
       setActiveView(applied.activeView);
       setMonitorTab(applied.monitorTab);
+      setWorldModuleId(applied.worldModuleId);
       setFocusAgentId(applied.focusAgentId);
       setFocusTaskId(applied.focusTaskId);
       setTraceTaskId(applied.traceTaskId);
       setRahoFocus(applied.rahoFocus);
       setLabSubTab(applied.labSubTab);
     },
-    [activeView, monitorTab, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab],
+    [activeView, monitorTab, worldModuleId, focusAgentId, focusTaskId, traceTaskId, rahoFocus, labSubTab],
   );
 
   return {
     routeReady,
     activeView,
     monitorTab,
+    worldModuleId,
     focusAgentId,
     focusTaskId,
     traceTaskId,

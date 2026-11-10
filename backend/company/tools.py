@@ -244,6 +244,13 @@ class ToolRegistry:
                 error=f"角色目錄未授權工具 {request.tool}",
             )
 
+        from backend.company.tool_gateway_client import invoke_registered, legacy_only
+
+        if legacy_only.get():
+            return self._execute_local(tool, request, role)
+        return invoke_registered(self, request, role, catalog_allowed)
+
+    def _execute_local(self, tool: ToolDefinition, request: ToolCallRequest, role: str | None) -> ToolCallResult:
         try:
             result = tool.execute(**request.args)
             _maybe_bill_tool(request.tool, role=role, args=request.args)
@@ -368,8 +375,8 @@ def _register_builtin_tools() -> None:
 
     # 記憶查詢工具
     def _memory_query(query: str, k: int = 3) -> str:
-        from backend.memory.vector_store import VectorMemoryStore
-        store = VectorMemoryStore()
+        from backend.memory.tenant_store import vector_store_for_request
+        store = vector_store_for_request()
         results = store.search_similar(query, k=k)
         if not results:
             return "（無相關記憶）"
@@ -462,6 +469,23 @@ def _register_builtin_tools() -> None:
             "id": {"type": "string", "description": "分類 id（ma…）或策略 id（dual_ma…）"},
         },
         execute=lambda view="overview", id="": _archify_strategies(view=view, id=id),
+        readonly=True,
+    )
+
+    def _cli_hub_tool(action: str = "list", query: str = "", name: str = "") -> dict[str, Any]:
+        from backend.company.cli_anything import query_cli_hub
+
+        return query_cli_hub(action, query=query, name=name)
+
+    tool_registry.register(
+        name="cli_hub",
+        description="查詢 CLI-Anything 公開目錄（list、search、info、installed）。安裝或啟動個別軟體需要另行確認。",
+        parameters={
+            "action": {"type": "string", "description": "list、search、info 或 installed"},
+            "query": {"type": "string", "description": "search 的關鍵字"},
+            "name": {"type": "string", "description": "info 的 CLI 名稱"},
+        },
+        execute=_cli_hub_tool,
         readonly=True,
     )
 

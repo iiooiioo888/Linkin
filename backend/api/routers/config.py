@@ -86,21 +86,29 @@ class FeedbackRequest(BaseModel):
 
 @router.get("/config")
 async def get_config():
-    """回傳当前 LLM 配置（金鑰脱敏）與可用模型池。"""
+    """回傳当前 LLM 配置（金鑰脱敏）與可用模型池。只含目前登入帳號。"""
+    from backend.core.user_settings import active_settings_user
+
     cfg = get_runtime_config()
     pool = public_pool(cfg)
+    uid = active_settings_user() or ""
     return {
         "configured": bool(cfg.get("api_key")),
         "api_key": masked_key(cfg.get("api_key", "")),
         "api_base": cfg.get("api_base", ""),
         "model": cfg.get("model", "") or pool.get("model", ""),
         **pool,
+        "settings_user": uid,
+        "settings_isolated": bool(uid),
     }
 
 
 @router.post("/config")
 async def update_config(req: LlmConfigRequest):
-    """動態更新 LLM 配置（即時生效並持久化），隨後刷新可用模型池。"""
+    """動態更新目前帳號的 LLM 配置（即時生效並持久化），隨後刷新可用模型池。"""
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     save_runtime_config(api_key=req.api_key, api_base=req.api_base, model=req.model)
     if req.route_strategy:
         set_route_strategy(req.route_strategy)
@@ -122,7 +130,10 @@ async def get_config_routes():
 
 @router.put("/config/routes")
 async def replace_config_routes(body: ApiRoutesReplaceBody):
-    """整批覆寫 API 路由。"""
+    """整批覆寫目前帳號的 API 路由。"""
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     save_routes(
         [r.model_dump() for r in body.api_routes],
         strategy=body.route_strategy,
@@ -137,7 +148,10 @@ async def replace_config_routes(body: ApiRoutesReplaceBody):
 
 @router.post("/config/routes")
 async def upsert_config_route(body: ApiRouteBody):
-    """新增或更新一條 API 路由。"""
+    """新增或更新目前帳號的一條 API 路由。"""
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     route = upsert_route(body.model_dump())
     try:
         refresh_route_catalog(route["id"], reason="save")
@@ -148,6 +162,9 @@ async def upsert_config_route(body: ApiRouteBody):
 
 @router.delete("/config/routes/{route_id}")
 async def delete_config_route(route_id: str):
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     delete_route(route_id)
     return public_router_state()
 
@@ -175,6 +192,9 @@ async def test_config_route(route_id: str):
 
 @router.put("/config/strategy")
 async def update_route_strategy(body: RouteStrategyBody):
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     strategy = set_route_strategy(body.route_strategy)
     if body.default_route_id:
         merge_runtime_config({"default_route_id": body.default_route_id.strip().lower()})
@@ -202,7 +222,10 @@ async def reload_cost_speed_config():
 
 @router.put("/config/ops")
 async def update_llm_ops(body: LlmOpsPrefsBody):
-    """更新模型目錄定時檢查間隔（秒）。"""
+    """更新目前帳號的模型目錄定時檢查間隔（秒）。"""
+    from backend.core.user_settings import guard_settings_write
+
+    guard_settings_write()
     return set_refresh_interval(body.refresh_interval_sec)
 
 

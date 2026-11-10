@@ -699,17 +699,17 @@ export default function NarrativeWorkspacePanel() {
       />
       <div className="mc-workspace">
 
-      <section className="mb-4 rounded-xl border border-[#c9a961]/40 bg-[var(--console-card)] p-4">
+      <section className="mb-4 rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[var(--console-card)] p-4">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-[#c9a961]/80">一鍵完整圈</p>
-            <p className="mt-1 text-[11px] text-[#8a8f98]">
+            <p className="text-[10px] text-[var(--console-accent)]">一鍵完整圈</p>
+            <p className="mt-1 text-[11px] text-[var(--console-faint)]">
               第一次：生成草案、提交、地圖與預覽。第二次（或勾選確認）：落地建築／世界／地圖。
             </p>
           </div>
-          <div className="text-[10px] text-[#8a8f98]">
+          <div className="text-[10px] text-[var(--console-faint)]">
             MineMCP：
-            <span className="text-[#c9a961]">
+            <span className="text-[var(--console-accent)]">
               {bridgeStatus?.enabled
                 ? bridgeStatus.connected
                   ? '已連線'
@@ -730,7 +730,7 @@ export default function NarrativeWorkspacePanel() {
             type="button"
             disabled={pipelineBusy || awaitingConfirmation}
             onClick={() => void onRunPipeline(pipelineConfirmWorld)}
-            className="rounded-lg border border-[#c9a961]/50 bg-[#c9a961]/20 px-4 py-2 text-[13px] font-medium text-[#c9a961] disabled:opacity-40"
+            className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_20%,transparent)] px-4 py-2 text-[13px] font-medium text-[var(--console-accent)] disabled:opacity-40"
           >
             {pipelineBusy ? '管線執行中…' : pipelineConfirmWorld ? '一鍵完整圈（確認寫入世界）' : '一鍵完整圈'}
           </button>
@@ -782,8 +782,8 @@ export default function NarrativeWorkspacePanel() {
         </div>
       )}
 
-      <div className="mb-4 grid gap-2 rounded-xl border border-[#c9a961]/20 bg-[var(--console-card)] p-3 sm:grid-cols-2 lg:grid-cols-6">
-        <label className="text-[10px] text-[#8a8f98]">
+      <div className="mb-4 grid gap-2 rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_20%,transparent)] bg-[var(--console-card)] p-3 sm:grid-cols-2 lg:grid-cols-6">
+        <label className="text-[10px] text-[var(--console-faint)]">
           任務 ID
           <input
             value={taskId}
@@ -792,7 +792,7 @@ export default function NarrativeWorkspacePanel() {
             className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]"
           />
         </label>
-        <label className="text-[10px] text-[#8a8f98]">
+        <label className="text-[10px] text-[var(--console-faint)]">
           L0 快照 ID
           <input
             value={snapshotId}
@@ -801,7 +801,7 @@ export default function NarrativeWorkspacePanel() {
             className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]"
           />
         </label>
-        <label className="text-[10px] text-[#8a8f98]">
+        <label className="text-[10px] text-[var(--console-faint)]">
           區域
           <select
             value={region}
@@ -813,7 +813,7 @@ export default function NarrativeWorkspacePanel() {
             ))}
           </select>
         </label>
-        <label className="text-[10px] text-[#8a8f98]">
+        <label className="text-[10px] text-[var(--console-faint)]">
           主題
           <input
             value={theme}
@@ -821,9 +821,9 @@ export default function NarrativeWorkspacePanel() {
             className="mt-1 w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[12px]"
           />
         </label>
-        <div className="flex flex-col justify-end text-[11px] text-[#8a8f98]">
+        <div className="flex flex-col justify-end text-[11px] text-[var(--console-faint)]">
           <span>
-            狀態：<span className="text-[#c9a961]">{stateLabel}</span>
+            狀態：<span className="text-[var(--console-accent)]">{stateLabel}</span>
           </span>
           {workspace && (
             <span className="truncate text-[10px] text-[var(--console-sub)]">{workspace.workspace_id}</span>
@@ -834,7 +834,7 @@ export default function NarrativeWorkspacePanel() {
             type="button"
             disabled={busy || (Boolean(workspace) && !isTerminal)}
             onClick={() => void onBegin()}
-            className="w-full rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961] disabled:opacity-40"
+            className="w-full rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)] disabled:opacity-40"
           >
             {busy ? '處理中…' : workspace && !isTerminal ? '工作區進行中' : '建立工作區'}
           </button>
@@ -849,7 +849,7 @@ export default function NarrativeWorkspacePanel() {
               type="button"
               disabled={busy}
               onClick={() => void onConfirm('rebind')}
-              className="rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961]"
+              className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)]"
             >
               重綁新快照
             </button>
@@ -867,8 +867,8 @@ export default function NarrativeWorkspacePanel() {
 
       {workspace && !isTerminal && (
         <>
-          <div className="mb-4 rounded-xl border border-[#c9a961]/20 bg-[#121216] p-3">
-            <label className="block text-[10px] text-[#8a8f98]">
+          <div className="mb-4 rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_20%,transparent)] bg-[var(--console-sidebar)] p-3">
+            <label className="block text-[10px] text-[var(--console-faint)]">
               Brief（故事種子／主題描述）
               <textarea
                 value={brief}
@@ -876,7 +876,7 @@ export default function NarrativeWorkspacePanel() {
                 disabled={busy || awaitingConfirmation}
                 placeholder="例：旅人在織庭都發現失落的靈丝契約，需與典章抄錄者合作揭開三大陣營的秘密…"
                 rows={3}
-                className="mt-1 w-full resize-y rounded-lg border border-white/[0.08] bg-[#08080a] px-3 py-2 text-[12px] leading-relaxed text-[var(--console-ink)] placeholder:text-[var(--console-sub)] disabled:opacity-50"
+                className="mt-1 w-full resize-y rounded-lg border border-white/[0.08] bg-[var(--console-bg)] px-3 py-2 text-[12px] leading-relaxed text-[var(--console-ink)] placeholder:text-[var(--console-sub)] disabled:opacity-50"
               />
             </label>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -884,7 +884,7 @@ export default function NarrativeWorkspacePanel() {
                 type="button"
                 disabled={busy || awaitingConfirmation || !brief.trim()}
                 onClick={() => void onGenerate()}
-                className="rounded-lg border border-[#c9a961]/50 bg-[#c9a961]/15 px-4 py-1.5 text-[12px] font-medium text-[#c9a961] disabled:opacity-40"
+                className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] px-4 py-1.5 text-[12px] font-medium text-[var(--console-accent)] disabled:opacity-40"
               >
                 {busy ? '生成中…' : 'AI 生成'}
               </button>
@@ -895,8 +895,8 @@ export default function NarrativeWorkspacePanel() {
           </div>
 
           <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
-          <aside className="rounded-xl border border-white/[0.08] bg-[#121216] p-2">
-            <p className="mb-2 px-1 text-[10px] text-[#8a8f98]">RPG 草案鍵</p>
+          <aside className="rounded-xl border border-white/[0.08] bg-[var(--console-sidebar)] p-2">
+            <p className="mb-2 px-1 text-[10px] text-[var(--console-faint)]">RPG 草案鍵</p>
             <div className="space-y-1">
               {KNOWN_KEYS.map((key) => {
                 const saved = workspace.draft_keys?.includes(key);
@@ -907,7 +907,7 @@ export default function NarrativeWorkspacePanel() {
                     onClick={() => setSelectedKey(key)}
                     className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[12px] ${
                       selectedKey === key
-                        ? 'border border-[#c9a961]/40 bg-[#c9a961]/10 text-[#c9a961]'
+                        ? 'border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] text-[var(--console-accent)]'
                         : 'border border-transparent text-[var(--console-sub)] hover:bg-white/[0.04]'
                     }`}
                   >
@@ -927,7 +927,7 @@ export default function NarrativeWorkspacePanel() {
             </button>
           </aside>
 
-          <section className="flex min-h-[280px] flex-col rounded-xl border border-white/[0.08] bg-[#121216] p-3">
+          <section className="flex min-h-[280px] flex-col rounded-xl border border-white/[0.08] bg-[var(--console-sidebar)] p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-[13px] font-medium">
                 編輯 · {DRAFT_LABELS[selectedKey] ?? selectedKey}
@@ -946,7 +946,7 @@ export default function NarrativeWorkspacePanel() {
                   type="button"
                   disabled={busy || awaitingConfirmation}
                   onClick={() => void onCommit()}
-                  className="rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961] disabled:opacity-40"
+                  className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)] disabled:opacity-40"
                 >
                   提交至 Linkin
                 </button>
@@ -1046,19 +1046,19 @@ export default function NarrativeWorkspacePanel() {
           )}
 
           {committedBriefId && buildBrief && (
-            <section className="rounded-xl border border-[#c9a961]/30 bg-[var(--console-card)] p-4">
+            <section className="rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_30%,transparent)] bg-[var(--console-card)] p-4">
               <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="mc-kicker">落地建築</p>
-                  <h3 className="text-[13px] font-medium text-[#c9a961]">{buildBrief.title}</h3>
-                  <p className="mt-1 text-[11px] text-[#8a8f98]">
+                  <h3 className="text-[13px] font-medium text-[var(--console-accent)]">{buildBrief.title}</h3>
+                  <p className="mt-1 text-[11px] text-[var(--console-faint)]">
                     {buildBrief.id} · {buildBrief.region} · {buildBrief.location} · 狀態 {buildBrief.status ?? 'pending_builder'}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => void refreshBridgeStatus()}
-                  className="rounded-lg border border-[#c9a961]/30 px-2 py-1 text-[10px] text-[#c9a961]"
+                  className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_30%,transparent)] px-2 py-1 text-[10px] text-[var(--console-accent)]"
                 >
                   刷新橋接狀態
                 </button>
@@ -1066,21 +1066,21 @@ export default function NarrativeWorkspacePanel() {
 
               <p className="mb-3 text-[11px] leading-relaxed text-[var(--console-sub)]">{buildBrief.prompt}</p>
 
-              <div className="mb-3 flex flex-wrap gap-3 text-[10px] text-[#8a8f98]">
+              <div className="mb-3 flex flex-wrap gap-3 text-[10px] text-[var(--console-faint)]">
                 <span>
                   MineMCP：
-                  <span className="text-[#c9a961]">
+                  <span className="text-[var(--console-accent)]">
                     {bridgeStatus?.enabled ? (bridgeStatus.connected ? '已連線' : '未連線') : '未啟用（乾跑）'}
                   </span>
                 </span>
                 {briefPreview && (
                   <span>
-                    預估方塊：<span className="text-[#c9a961]">{briefPreview.bounds.solid_count}</span>
+                    預估方塊：<span className="text-[var(--console-accent)]">{briefPreview.bounds.solid_count}</span>
                   </span>
                 )}
                 {applyResult && (
                   <span>
-                    已放置：<span className="text-[#c9a961]">{applyResult.placement.blocks_placed}</span>/
+                    已放置：<span className="text-[var(--console-accent)]">{applyResult.placement.blocks_placed}</span>/
                     {applyResult.placement.blocks_total}
                   </span>
                 )}
@@ -1099,7 +1099,7 @@ export default function NarrativeWorkspacePanel() {
                   type="button"
                   disabled={buildBusy !== 'idle'}
                   onClick={() => void onApplyBuild()}
-                  className="rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961] disabled:opacity-40"
+                  className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)] disabled:opacity-40"
                 >
                   {buildBusy === 'apply' ? '落地中…' : '落地建築'}
                 </button>
@@ -1142,7 +1142,7 @@ export default function NarrativeWorkspacePanel() {
               <div key={step} className="flex-1">
                 <div
                   className={`h-1.5 w-full rounded-full ${
-                    done ? 'bg-[#c9a961]' : active ? 'progress-shimmer bg-[color-mix(in_srgb,var(--console-accent)_60%,transparent)]' : 'bg-gray-700/70'
+                    done ? 'bg-[var(--console-accent)]' : active ? 'progress-shimmer bg-[color-mix(in_srgb,var(--console-accent)_60%,transparent)]' : 'bg-[var(--console-line)]'
                   }`}
                 />
                 <p className={`mt-1 text-center text-[10px] ${active ? 'text-[var(--console-accent)]' : 'text-[var(--console-sub)]'}`}>
@@ -1161,7 +1161,7 @@ export default function NarrativeWorkspacePanel() {
 
         <div className="grid gap-3 lg:grid-cols-2">
           <div className="space-y-2 rounded-lg border border-white/[0.06] bg-black/20 p-3">
-            <label className="block text-[10px] text-[#8a8f98]">
+            <label className="block text-[10px] text-[var(--console-faint)]">
               區域 seed（可選）
               <input
                 value={mapSeed}
@@ -1203,7 +1203,7 @@ export default function NarrativeWorkspacePanel() {
                   setMapStep('apply');
                   void onApplyMap();
                 }}
-                className="rounded-lg border border-[#c9a961]/40 bg-[#c9a961]/10 px-3 py-1.5 text-[12px] text-[#c9a961] disabled:opacity-40"
+                className="rounded-lg border border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-1.5 text-[12px] text-[var(--console-accent)] disabled:opacity-40"
               >
                 落地地圖（confirm）
               </button>
@@ -1214,7 +1214,7 @@ export default function NarrativeWorkspacePanel() {
             {mapPreview ? (
               <div className="space-y-2 text-[11px]">
                 <p className="font-medium text-[var(--console-ink)]">{mapPreview.title}</p>
-                <p className="text-[#8a8f98]">
+                <p className="text-[var(--console-faint)]">
                   plots {mapPreview.plot_count} · 預估 {mapPreview.estimated_blocks} 方塊 · 跨度 x
                   {mapPreview.axis_span.x}/y{mapPreview.axis_span.y}/z{mapPreview.axis_span.z}
                 </p>

@@ -124,7 +124,9 @@ export function useTaskProgressStream(): UseTaskProgressStreamResult {
       if (
         (progress.status === 'failed' ||
           progress.status === 'cancelled' ||
-          progress.status === 'interrupted') &&
+          progress.status === 'interrupted' ||
+          progress.status === 'rejected' ||
+          progress.status === 'expired') &&
         !finished
       ) {
         finished = true;

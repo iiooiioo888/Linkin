@@ -80,7 +80,7 @@ function CodeBlock({
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <h4 className="mb-1 mt-3 first:mt-0 text-[9.5px] font-medium uppercase tracking-wide text-[var(--apple-tertiary)]">
+    <h4 className="mb-1 mt-3 first:mt-0 text-[9.5px] font-medium text-[var(--apple-tertiary)]">
       {children}
     </h4>
   );
@@ -301,7 +301,7 @@ export default function SeatIODrawer({
                   </>
                 )}
                 <div className="mb-1.5 flex items-center gap-1">
-                  <span className="mr-auto text-[9.5px] uppercase tracking-wide text-[var(--apple-tertiary)]">
+                  <span className="mr-auto text-[9.5px] text-[var(--apple-tertiary)]">
                     response（模型回傳全文 · {fmtChars(rec.response_length)} 字）
                   </span>
                   <button

@@ -13,7 +13,7 @@ from backend.company.raho.atomic_executor import (
     DEFAULT_TOKEN_BUDGET,
     AtomicExecutorFactory,
 )
-from backend.company.state import RoleType, WorkItem
+from backend.company.state import RoleType, WorkItem, assignee_token
 
 
 @dataclass
@@ -101,7 +101,7 @@ def pick_template(item: WorkItem) -> AtomicTemplate:
         return TEMPLATES["web_scraper"]
     if any(k in text for k in ("調研", "调研", "競品", "竞品", "研究")):
         return TEMPLATES["research"]
-    role = item.assignee.value if item.assignee else ""
+    role = assignee_token(item.assignee) or ""
     return TEMPLATES.get(_ROLE_HINTS.get(role, ""), TEMPLATES["generic"])
 
 

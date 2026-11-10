@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchHubMonitor } from '../api/client';
 import { HUB_FALLBACK_MODELS, HUB_FALLBACK_ROUTING } from '../lib/monitorFallbacks';
+import { markSunsetHubModelsUnavailable } from '../lib/sunsetHubIds';
 import type { HubMonitorData } from '../types';
 import {
   ConsoleCard,
@@ -21,11 +22,11 @@ import {
 function circuitTone(state: string): string {
   if (state === 'OPEN') return 'bg-red-500/15 console-status-danger';
   if (state === 'HALF_OPEN') return 'bg-[color-mix(in_srgb,var(--console-amber)_15%,transparent)] console-status-amber';
-  return 'bg-[#27a644]/15 text-[#4cc38a]';
+  return 'bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] text-[var(--console-green)]';
 }
 
 function statusTone(status: string): string {
-  if (status === 'success') return 'text-[#4cc38a]';
+  if (status === 'success') return 'text-[var(--console-green)]';
   if (status === 'filtered' || status === 'budget_denied') return 'console-status-amber';
   return 'console-status-danger';
 }
@@ -81,7 +82,9 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
   const hitPct = Math.round((cache?.hit_rate ?? 0) * 100);
   const targetPct = Math.round((cache?.target_hit_rate ?? 0.4) * 100);
   const budget = data?.budgets[0];
-  const models = data?.models && data.models.length > 0 ? data.models : HUB_FALLBACK_MODELS;
+  const models = markSunsetHubModelsUnavailable(
+    data?.models && data.models.length > 0 ? data.models : HUB_FALLBACK_MODELS,
+  );
   const routing = data?.routing ?? HUB_FALLBACK_ROUTING;
   const spentPct =
     budget && budget.daily_limit_usd > 0
@@ -96,7 +99,7 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
             title="AI Hub 編排監控"
             description={
               data?.routing?.pool_lock?.lock_message
-                || 'GPT-5.6 Sol 旗艦 · Gemini 3.1 Pro 多模態 · 禁止 Anthropic / Claude'
+                || '多模型編排監控 · sunset Hub 鍵已標不可用 · 禁止 Anthropic / Claude'
             }
             actions={
               <button type="button" onClick={() => void refresh()} className={consoleLayout.refreshBtn}>
@@ -160,7 +163,7 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
           {(routing.default_chain).map(
             (id, i, arr) => (
               <span key={id} className="flex items-center gap-1.5">
-                <span className="rounded-full border border-white/[0.08] bg-[var(--console-card)] px-2 py-0.5 text-[#d0d6e0]">
+                <span className="rounded-full border border-white/[0.08] bg-[var(--console-card)] px-2 py-0.5 text-[var(--console-sub)]">
                   {id}
                 </span>
                 {i < arr.length - 1 && <span className="text-[var(--console-faint)]">→</span>}
@@ -179,7 +182,7 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
         <ConsoleCard className="overflow-x-auto">
         <table className="w-full min-w-[1040px] text-left">
           <thead>
-            <tr className="border-b border-white/[0.08] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
+            <tr className="border-b border-white/[0.08] text-[10px] text-[var(--console-faint)]">
               <th className="px-3 py-2 font-medium">模型</th>
               <th className="px-3 py-2 font-medium">目前 API</th>
               <th className="px-3 py-2 font-medium">智能分</th>
@@ -208,7 +211,7 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
                   {m.available_in_pool === false ? (
                     <span className="text-[var(--console-faint)]">不可用</span>
                   ) : (
-                    <span className="text-[#4cc38a]">{m.mapped_model || '可用'}</span>
+                    <span className="text-[var(--console-green)]">{m.mapped_model || '可用'}</span>
                   )}
                 </td>
                 <td className="px-3 py-2 font-mono text-xs">{m.intelligence}</td>
@@ -267,7 +270,7 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
                   key={`${log.id ?? i}`}
                   className="flex items-center justify-between gap-2 rounded-md bg-[var(--console-card)] px-2 py-1.5 text-[11px]"
                 >
-                  <span className="min-w-0 truncate text-[#d0d6e0]">
+                  <span className="min-w-0 truncate text-[var(--console-sub)]">
                     {log.model_name} · {log.provider}
                   </span>
                   <span className="shrink-0 font-mono text-[var(--console-sub)]">
@@ -295,7 +298,7 @@ export default function HubMonitorPanel({ embedded = false }: { embedded?: boole
               {data!.agent_tasks.map((t) => (
                 <div key={t.task_id} className="rounded-md bg-[var(--console-card)] px-2 py-1.5 text-[11px]">
                   <div className="flex items-center justify-between">
-                    <span className="text-[#d0d6e0]">{t.status}</span>
+                    <span className="text-[var(--console-sub)]">{t.status}</span>
                     <span className="font-mono text-[var(--console-sub)]">{fmtUsd(t.cost_usd)}</span>
                   </div>
                   <p className="mt-0.5 truncate text-[var(--console-sub)]">{t.input}</p>

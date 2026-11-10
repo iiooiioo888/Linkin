@@ -23,9 +23,9 @@ docker compose logs -f backend
 |------|------|------|
 | `backend` | 8000 | FastAPI + LangGraph |
 | `frontend` | **3001**（宿主） | Compose prod：3001→容器 80；Compose dev／本機 Vite：3001 |
-| `opc_service` | 8001 | OPC UA 微服務 |
-| `redis` | 6379 | 任務持久化 |
-| `chroma` | 8100 | 向量記憶庫 |
+| `opc_service` | 127.0.0.1:8001 | OPC UA 微服務（要 `OPC_INTERNAL_TOKEN`） |
+| `redis` | 127.0.0.1:6379 | 任務持久化（要 `REDIS_PASSWORD`） |
+| `chroma` | 127.0.0.1:8100 | 向量記憶庫 |
 
 完整埠號矩陣見 [術語表](../glossary.md)。
 

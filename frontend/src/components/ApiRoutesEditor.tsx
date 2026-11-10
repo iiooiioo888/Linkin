@@ -32,9 +32,8 @@ export const PROVIDER_PRESETS = [
     label: '通義千問 Qwen',
     apiBase: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     defaultModel: 'qwen3.8-flash',
-    hint: '最新 qwen3.8／3.7 系列（1M 上下文）；舊 qwen-plus／max 仍可勾選',
+    hint: '最新 qwen3.8／3.7 系列（1M 上下文）；舊 qwen-plus／max 仍可勾選；qwen3.8-max 已 sunset 自預設剔除',
     models: [
-      'qwen3.8-max',
       'qwen3.8-flash',
       'qwen3.7-plus',
       'qwen3.7-flash',
@@ -49,17 +48,17 @@ export const PROVIDER_PRESETS = [
     value: 'deepseek',
     label: 'DeepSeek',
     apiBase: 'https://api.deepseek.com',
-    defaultModel: 'deepseek-v4-flash',
-    hint: '單一廠商；可與千問、OpenRouter 同時存在',
-    models: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-v4-flash-vision-exp'],
+    defaultModel: 'deepseek-v4-pro',
+    hint: '單一廠商；可與千問、OpenRouter 同時存在；deepseek-v4-flash 已 sunset 自預設剔除',
+    models: ['deepseek-v4-pro', 'deepseek-v4-flash-vision-exp'],
   },
   {
     value: 'moonshot',
     label: 'Moonshot / Kimi',
     apiBase: 'https://api.moonshot.cn/v1',
-    defaultModel: 'kimi-k3',
-    hint: 'kimi-k2／moonshot-v1 系列已下線（調用回 404），請用 K3／K2.7 Code／K2.6',
-    models: ['kimi-k3', 'kimi-k2.7-code', 'kimi-k2.6'],
+    defaultModel: 'kimi-k2.7-code',
+    hint: 'kimi-k2／moonshot-v1 與 kimi-k3（sunset）已自現行預設剔除；請用 K2.7 Code／K2.6',
+    models: ['kimi-k2.7-code', 'kimi-k2.6'],
   },
   {
     value: 'openrouter',
@@ -74,16 +73,16 @@ export const PROVIDER_PRESETS = [
     label: 'OpenAI',
     apiBase: 'https://api.openai.com/v1',
     defaultModel: 'gpt-5.6-terra',
-    hint: 'gpt-4o／4.1 已退役；現行為 GPT-6／GPT-5.6 系列（Responses API）',
-    models: ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'],
+    hint: 'gpt-4o／4.1 已退役；gpt-5.6-sol 已 sunset 自預設剔除；現行為 GPT-6／GPT-5.6 terra／luna',
+    models: ['gpt-6-astra', 'gpt-5.6-terra', 'gpt-5.6-luna'],
   },
   {
     value: 'zhipu',
     label: '智譜 GLM',
     apiBase: 'https://open.bigmodel.cn/api/paas/v4',
-    defaultModel: 'glm-5.3',
-    hint: 'glm-4 系列與 glm-5.2 已退役；現行 GLM-5.3／5.3-flash／5.1／5（1M～200K 上下文）',
-    models: ['glm-5.3', 'glm-5.3-flash', 'glm-5.1', 'glm-5', 'glm-5.2'],
+    defaultModel: 'glm-5.3-flash',
+    hint: 'glm-5.3 已 sunset 自預設剔除；現行建議 GLM-5.3-flash／5.1／5',
+    models: ['glm-5.3-flash', 'glm-5.1', 'glm-5', 'glm-5.2'],
   },
   {
     value: 'ollama',
@@ -399,9 +398,10 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
 
   return (
     <div className={`space-y-4 ${className}`}>
+      <p className="text-[11px] text-[var(--console-sub)]">金鑰、端點與模型勾選只保存在目前登入帳號。</p>
       <div className={`grid grid-cols-1 gap-3 ${compact || hideList ? '' : 'md:grid-cols-2'}`}>
         <label className="block">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-[var(--console-sub)]">
+          <span className="mb-1 block text-[10px] font-semibold text-[var(--console-sub)]">
             全域分發策略
           </span>
           <select
@@ -438,7 +438,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
         </p>
       ) : (
       <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--console-sub)]">已配置的 API</p>
+        <p className="text-[10px] font-semibold text-[var(--console-sub)]">已配置的 API</p>
         {routes.length === 0 ? (
           <p className="rounded-xl border border-dashed border-white/[0.08] px-3 py-6 text-center text-sm text-[var(--console-sub)]">
             尚未加入 API。請在下方選擇供應商並填入金鑰。
@@ -520,7 +520,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
       )}
 
       <div className="rounded-xl border border-white/[0.08] p-3">
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--console-sub)]">
+        <p className="mb-3 text-[10px] font-semibold text-[var(--console-sub)]">
           {editingId ? `編輯 ${editingId}` : '新增 API'}
         </p>
         <label className="mb-1 block text-[11px] text-[var(--console-sub)]">供應商</label>
@@ -614,7 +614,7 @@ export default function ApiRoutesEditor({ onChanged, className = '', compact = f
                 全選
               </button>
             </div>
-            <div className="max-h-36 overflow-y-auto rounded-xl border border-white/[0.08] bg-[#0D0D0F] p-2">
+            <div className="max-h-36 overflow-y-auto rounded-xl border border-white/[0.08] bg-[var(--console-bg)] p-2">
               <div className="flex flex-wrap gap-1.5">
                 {editingModels.slice(0, 80).map((id) => {
                   const on = draft.allowedModels.includes(id);

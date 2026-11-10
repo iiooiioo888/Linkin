@@ -257,34 +257,34 @@ export default function BuildPanel() {
       <div className="mc-workspace">
       {error && <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
       {dispatchNote && <div className="mb-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">{dispatchNote}</div>}
-      {briefNote && <div className="mb-3 rounded-md border border-[#c9a961]/30 bg-[#c9a961]/10 px-3 py-2 text-xs text-[#c9a961]">{briefNote}</div>}
+      {briefNote && <div className="mb-3 rounded-md border border-[color-mix(in_srgb,var(--console-accent)_30%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)] px-3 py-2 text-xs text-[var(--console-accent)]">{briefNote}</div>}
 
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--console-bg)]">
           <BuildingViewer preview={preview} loading={busy === 'preview' || busy === 'generate' || busy === 'import'} />
         </div>
         <div className="grid gap-2">
-          <label className="text-[10px] text-[#8a8f98]">描述 prompt
+          <label className="text-[10px] text-[var(--console-faint)]">描述 prompt
             <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} className="mt-1 min-h-[72px] w-full rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2 text-[12px]" />
           </label>
-          <label className="text-[10px] text-[#8a8f98]">區域
+          <label className="text-[10px] text-[var(--console-faint)]">區域
             <select value={region} onChange={(e) => setRegion(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-[12px]">
               {Object.keys(regionStyles).map((item) => (
                 <option key={item} value={item}>{narrativeRegionLabel(item)}</option>
               ))}
             </select>
           </label>
-          <label className="text-[10px] text-[#8a8f98]">風格模板（依區域篩選）
+          <label className="text-[10px] text-[var(--console-faint)]">風格模板（依區域篩選）
             <select value={style} onChange={(e) => setStyle(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-[12px]">
               {styles.map((item) => (
                 <option key={item} value={item}>{item}</option>
               ))}
             </select>
           </label>
-          <label className="text-[10px] text-[#8a8f98]">坐標 location
+          <label className="text-[10px] text-[var(--console-faint)]">坐標 location
             <input value={location} onChange={(e) => setLocation(e.target.value)} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-[12px]" />
           </label>
-          <label className="text-[10px] text-[#8a8f98]">
+          <label className="text-[10px] text-[var(--console-faint)]">
             方塊數（上限 5000）
             <input type="number" min={1} max={8000} value={blockCount} onChange={(e) => setBlockCount(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-[12px]" />
           </label>
@@ -322,7 +322,7 @@ export default function BuildPanel() {
               </a>
             )}
           </div>
-          <label className="text-[10px] text-[#8a8f98]">
+          <label className="text-[10px] text-[var(--console-faint)]">
             Base64 .schem（可貼上或從目前預覽複製）
             <textarea
               value={b64Input}
@@ -353,14 +353,14 @@ export default function BuildPanel() {
       </div>
 
       {result && (
-        <p className="mt-3 text-[11px] text-[#8a8f98]">
+        <p className="mt-3 text-[11px] text-[var(--console-faint)]">
           {result.style} · {result.width ?? '?'}×{result.height ?? '?'}×{result.length ?? '?'} · v{result.schematic_version ?? 3}
           {result.note ? ` · ${result.note}` : ''}
         </p>
       )}
 
       {buildBriefs.length > 0 && (
-        <section className="mt-6 rounded-xl border border-[#c9a961]/25 bg-[var(--console-card)] p-3">
+        <section className="mt-6 rounded-xl border border-[color-mix(in_srgb,var(--console-accent)_25%,transparent)] bg-[var(--console-card)] p-3">
           <h3 className="mb-2">待落地建築（{buildBriefs.length}）</h3>
           <p className="mb-3 mc-note">這些建築來自敘事工作區。要放進遊戲，需手動落地。</p>
           <div className="space-y-2">
@@ -368,8 +368,8 @@ export default function BuildPanel() {
               <article key={brief.id} className="rounded-lg border border-white/[0.08] bg-black/20 p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-[12px] font-medium text-[var(--console-ink)]">{brief.title}</h4>
-                  <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{brief.status}</span>
-                  <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{brief.block_count} 方塊預算</span>
+                  <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[var(--console-faint)]">{brief.status}</span>
+                  <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[var(--console-faint)]">{brief.block_count} 方塊預算</span>
                 </div>
                 <p className="mt-1 text-[11px] text-[var(--console-sub)]">{brief.prompt}</p>
                 <div className="mt-2 flex flex-wrap gap-3">
@@ -385,7 +385,7 @@ export default function BuildPanel() {
                     type="button"
                     disabled={busy !== 'idle'}
                     onClick={() => void onBriefApply(brief.id)}
-                    className="text-[10px] text-[#c9a961] disabled:opacity-40"
+                    className="text-[10px] text-[var(--console-accent)] disabled:opacity-40"
                   >
                     落地建築
                   </button>
@@ -396,7 +396,7 @@ export default function BuildPanel() {
         </section>
       )}
 
-      <h3 className="mb-2 mt-6 text-[11px] font-semibold text-[#8a8f98]">已規劃方案（{buildings.length}）</h3>
+      <h3 className="mb-2 mt-6 text-[11px] font-semibold text-[var(--console-faint)]">已規劃方案（{buildings.length}）</h3>
       {buildings.length > 0 && (
         <div className="mb-3">
           <MediaGallery
@@ -425,18 +425,18 @@ export default function BuildPanel() {
           >
             <div className="flex flex-wrap items-center gap-2">
               <h4 className="text-[13px] font-medium">{item.style}</h4>
-              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{item.region || String(item.location)}</span>
-              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{item.voxel_count || item.block_count} 方塊</span>
+              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[var(--console-faint)]">{item.region || String(item.location)}</span>
+              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[var(--console-faint)]">{item.voxel_count || item.block_count} 方塊</span>
               {item.width && item.height && item.length && (
-                <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">
+                <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[var(--console-faint)]">
                   {item.width}×{item.height}×{item.length}
                 </span>
               )}
-              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">v{item.schematic_version ?? 3}</span>
-              {item.status && <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[#8a8f98]">{item.status}</span>}
+              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[var(--console-faint)]">v{item.schematic_version ?? 3}</span>
+              {item.status && <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-[var(--console-faint)]">{item.status}</span>}
             </div>
             <p className="mt-1 text-[12px] leading-relaxed text-[var(--console-sub)]">{item.prompt}</p>
-            {item.note && <p className="mt-1 text-[11px] text-[#8a8f98]">{item.note}</p>}
+            {item.note && <p className="mt-1 text-[11px] text-[var(--console-faint)]">{item.note}</p>}
             <div className="mt-2 flex flex-wrap gap-3">
               <button type="button" disabled={busy !== 'idle'} onClick={() => void loadPreview(item.id)} className="text-[10px] text-[var(--console-accent)] disabled:opacity-40">
                 3D 預覽

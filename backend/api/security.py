@@ -5,6 +5,7 @@
 """
 
 import ipaddress
+import os
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -56,7 +57,20 @@ def _client_identity(request: Request) -> str:
     return peer
 
 
-def _set_gate_cookie(response: JSONResponse, token: str) -> None:
+def _cookie_secure(request: Request) -> bool:
+    """FASTAPI-SESS-001：只有 HTTPS 才加 Secure。本機 HTTP 不加，否則瀏覽器會丟掉登入 Cookie。"""
+    flag = os.getenv("LINKIN_COOKIE_SECURE", "").strip().lower()
+    if flag in {"1", "true", "yes"}:
+        return True
+    if flag in {"0", "false", "no"}:
+        return False
+    forwarded = (request.headers.get("x-forwarded-proto") or request.url.scheme or "")
+    proto = forwarded.split(",")[0].strip().lower()
+    return proto == "https"
+
+
+def _set_gate_cookie(response: JSONResponse, token: str, request: Request) -> None:
+    # REACT-AUTH-001：權杖只放 HttpOnly Cookie，不進 JSON，腳本讀不到。
     response.set_cookie(
         key=AUTH_COOKIE,
         value=token,
@@ -64,5 +78,15 @@ def _set_gate_cookie(response: JSONResponse, token: str) -> None:
         httponly=True,
         samesite="lax",
         path="/",
-        secure=False,
+        secure=_cookie_secure(request),
+    )
+
+
+def _clear_gate_cookie(response: JSONResponse, request: Request) -> None:
+    response.delete_cookie(
+        AUTH_COOKIE,
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=_cookie_secure(request),
     )

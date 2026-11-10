@@ -87,7 +87,7 @@ body {
     'PingFang TC',
     'Microsoft JhengHei',
     sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
@@ -137,9 +137,7 @@ body.scroll-lock {
 }
 
 .apple-canvas {
-  background:
-    radial-gradient(640px 220px at 8% -8%, color-mix(in srgb, var(--console-accent) 7%, transparent), transparent 72%),
-    var(--apple-canvas);
+  background: var(--apple-canvas);
   color: var(--apple-light);
 }
 
@@ -151,8 +149,12 @@ body.scroll-lock {
 .brand-mark {
   font-family: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: -0.02em;
   line-height: 1;
+}
+
+.brand-mark__name {
+  color: var(--console-accent);
 }
 
 .brand-mark__dot {
@@ -163,17 +165,6 @@ body.scroll-lock {
 
 .app-topbar {
   position: relative;
-}
-
-.app-topbar::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 18px;
-  width: 88px;
-  height: 1px;
-  background: linear-gradient(90deg, var(--console-accent), transparent);
-  pointer-events: none;
 }
 
 .activity-rail {
@@ -219,7 +210,6 @@ body.scroll-lock {
   height: 18px;
   border-radius: 1px;
   background: var(--console-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--console-accent) 65%, transparent);
 }
 
 button:focus-visible,
@@ -1077,23 +1067,23 @@ textarea:focus-visible {
   content: '';
   position: absolute;
   top: 0;
-  left: 14%;
-  right: 14%;
+  left: 0;
+  right: 0;
   z-index: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--console-accent), transparent);
+  background: color-mix(in srgb, var(--console-accent) 28%, var(--console-line));
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
 .apple-composer:focus-within {
-  border-color: color-mix(in srgb, var(--console-accent) 62%, var(--console-line));
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--console-accent) 16%, transparent),
-    0 18px 40px rgba(0, 0, 0, 0.32);
+  border-color: color-mix(in srgb, var(--console-accent) 55%, var(--console-line));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
 
 .apple-composer:focus-within::before {
-  box-shadow: 0 0 12px color-mix(in srgb, var(--console-accent) 80%, transparent);
+  opacity: 1;
 }
 
 .apple-composer__field {
@@ -1599,14 +1589,15 @@ textarea:focus-visible {
   padding: 0;
 }
 .markdown-body blockquote {
-  border-left: 3px solid rgba(96, 165, 250, 0.5);
+  border-left: 1px solid var(--console-line-strong);
   margin: 0.6em 0;
   padding: 0.2em 0.9em;
-  color: #9ca3af;
+  color: var(--console-faint);
 }
 .markdown-body a {
-  color: #60a5fa;
+  color: var(--console-accent);
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .markdown-body table {
   border-collapse: collapse;
@@ -1637,11 +1628,11 @@ textarea:focus-visible {
 .progress-shimmer {
   background-image: linear-gradient(
     90deg,
-    rgba(59, 130, 246, 1) 0%,
-    rgba(129, 140, 248, 1) 40%,
-    rgba(147, 197, 253, 1) 50%,
-    rgba(129, 140, 248, 1) 60%,
-    rgba(59, 130, 246, 1) 100%
+    var(--console-accent-soft) 0%,
+    var(--console-accent) 45%,
+    color-mix(in srgb, var(--console-accent) 70%, white) 50%,
+    var(--console-accent) 55%,
+    var(--console-accent-soft) 100%
   );
   background-size: 200% 100%;
   animation: progress-shimmer 2.4s linear infinite;
@@ -1677,30 +1668,30 @@ textarea:focus-visible {
   animation: task-section-in 0.35s ease-out both;
 }
 
-/* 執行中狀態徽標的呼吸光暈 */
+/* 執行中狀態：輕微透明度脈動（無彩色 glow） */
 @keyframes badge-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.35);
+    opacity: 1;
   }
   50% {
-    box-shadow: 0 0 12px 2px rgba(59, 130, 246, 0.25);
+    opacity: 0.82;
   }
 }
 .badge-glow {
-  animation: badge-glow 2s ease-in-out infinite;
+  animation: badge-glow 2.4s ease-in-out infinite;
 }
 
-/* 活躍節點外圈漣漪 */
+/* 活躍節點：細環擴張，中性陰影 */
 @keyframes node-ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.45);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--console-ink) 18%, transparent);
   }
   70% {
-    box-shadow: 0 0 0 7px rgba(96, 165, 250, 0);
+    box-shadow: 0 0 0 6px transparent;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+    box-shadow: 0 0 0 0 transparent;
   }
 }
 .node-ring {
@@ -3169,7 +3160,7 @@ textarea:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 11px;
-  color: #8a8f98;
+  color: var(--console-faint);
 }
 
 .rs-actions {
@@ -3186,7 +3177,7 @@ textarea:focus-visible {
   border-radius: 6px;
   background: transparent;
   padding: 4px 8px;
-  color: #8a8f98;
+  color: var(--console-faint);
   cursor: pointer;
   font-family: inherit;
   font-size: 11px;
@@ -3220,7 +3211,7 @@ textarea:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 11px;
-  color: #8a8f98;
+  color: var(--console-faint);
 }
 
 @media (max-width: 1100px) {
@@ -3284,7 +3275,7 @@ textarea:focus-visible {
 
 .rs-budget-h span {
   font-size: 10px;
-  color: #62666d;
+  color: var(--console-faint);
 }
 
 .rs-sec {
@@ -3316,7 +3307,7 @@ textarea:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 10px;
-  color: #8a8f98;
+  color: var(--console-faint);
 }
 
 @media (max-width: 1023px) {

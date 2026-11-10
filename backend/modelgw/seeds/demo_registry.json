@@ -1,0 +1,40 @@
+{
+  "models": [
+    {
+      "model_id": "local-qwen-7b",
+      "revision": "abc123",
+      "endpoint": "http://localhost:8080/v1",
+      "runtime": "vllm",
+      "provider": "local",
+      "plane": "local",
+      "status": "READY",
+      "license": "Apache-2.0",
+      "trust_remote_code": false,
+      "gated": false
+    },
+    {
+      "model_id": "cloud-gpt-proxy",
+      "revision": "2026-10-01",
+      "endpoint": "https://api.example.com/v1",
+      "runtime": "cloud",
+      "provider": "openai",
+      "plane": "cloud",
+      "status": "READY",
+      "license": "MIT",
+      "trust_remote_code": false,
+      "gated": false
+    },
+    {
+      "model_id": "warming-llama",
+      "revision": "def456",
+      "endpoint": "",
+      "runtime": "kserve",
+      "provider": "local",
+      "plane": "local",
+      "status": "PROVISIONING",
+      "license": "Apache-2.0",
+      "trust_remote_code": false,
+      "gated": false
+    }
+  ]
+}

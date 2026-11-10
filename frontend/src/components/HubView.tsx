@@ -12,11 +12,12 @@ import {
   HUB_DEV_API_KEY,
 } from '../api/client';
 import type { HubCatalog, HubChatResult, HubAgentTask, HubModelInfo } from '../api/client';
+import { filterSelectableHubModels, isSunsetHubId } from '../lib/sunsetHubIds';
 
 const STRATEGIES = [
-  { value: 'quality_first', label: '品質優先（GPT-5.6 Sol）' },
-  { value: 'cost_first', label: '成本優先（DeepSeek）' },
-  { value: 'speed_first', label: '速度優先（Gemini × Mercury 競速）' },
+  { value: 'quality_first', label: '品質優先' },
+  { value: 'cost_first', label: '成本優先' },
+  { value: 'speed_first', label: '速度優先（競速）' },
   { value: 'manual', label: '手動指定模型' },
 ] as const;
 
@@ -55,7 +56,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
   const [mode, setMode] = useState<'chat' | 'agent'>('chat');
   const [strategy, setStrategy] = useState('quality_first');
   const [region, setRegion] = useState('TW');
-  const [model, setModel] = useState('gpt-5.6-sol');
+  const [model, setModel] = useState('');
   const [prompt, setPrompt] = useState(SAMPLE_CHAT);
   const [tools, setTools] = useState<string[]>(['StocksX_get_price']);
   const [busy, setBusy] = useState(false);
@@ -70,9 +71,12 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
   }, []);
 
   useEffect(() => {
-    const usable = (catalog?.models ?? []).filter((m) => m.available_in_pool !== false);
-    if (usable.length > 0 && !usable.some((m) => m.id === model)) {
-      setModel(usable[0].id);
+    const usable = filterSelectableHubModels(
+      (catalog?.models ?? []).filter((m) => m.available_in_pool !== false),
+    );
+    // 預設空態「請選擇」；若目前值為 sunset／鎖定外則清空，不自動落九鍵。
+    if (model && (isSunsetHubId(model) || !usable.some((m) => m.id === model))) {
+      setModel('');
     }
   }, [catalog, model]);
 
@@ -81,6 +85,9 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
     setError(null);
     setChatResult(null);
     try {
+      if (strategy === 'manual' && (!model || isSunsetHubId(model))) {
+        throw new Error('請選擇可用模型（sunset／unsupported_long_term 九鍵已隱藏）');
+      }
       const result = await hubChatCompletion({
         prompt,
         strategy,
@@ -131,7 +138,9 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
 
   const content =
     chatResult?.choices?.[0]?.message?.content || agentTask?.result?.content || '';
-  const usableModels = (catalog?.models ?? []).filter((m) => m.available_in_pool !== false);
+  const usableModels = filterSelectableHubModels(
+    (catalog?.models ?? []).filter((m) => m.available_in_pool !== false),
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col apple-canvas text-[var(--console-ink)]">
@@ -140,7 +149,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
           <h1 className="text-sm font-semibold tracking-tight">AI Hub 多模型編排</h1>
           <p className="mt-0.5 text-[11px] text-[var(--console-sub)]">
             {catalog?.pool_lock?.lock_message
-              || '旗艦 GPT-5.6 Sol · 多模態 Gemini 3.1 Pro · 不含 Anthropic / Claude'}
+              || '多模型編排 · 不含 Anthropic / Claude · sunset Hub 鍵已自選型隱藏'}
           </p>
         </div>
       )}
@@ -206,7 +215,8 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
                 onChange={(e) => setModel(e.target.value)}
                 className="mb-3 w-full rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2 py-1.5 text-xs"
               >
-                {(usableModels.length ? usableModels : [{ id: 'gpt-5.6-sol' }]).map((m) => (
+                <option value="">請選擇模型</option>
+                {usableModels.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.id}
                     {'provider' in m ? ` · ${m.provider}` : ''}
@@ -221,7 +231,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
               <p className="mb-2 text-[11px] text-[var(--console-sub)]">工具（可多選；寫入 OPC 禁止）</p>
               <div className="space-y-1">
                 {TOOL_OPTIONS.map((opt) => (
-                  <label key={opt.id} className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
+                  <label key={opt.id} className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
                     <input
                       type="checkbox"
                       checked={tools.includes(opt.id)}
@@ -258,7 +268,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
 
           {catalog && (
             <div className="mt-4">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+              <p className="mb-2 text-[11px] font-semibold text-[var(--console-faint)]">
                 模型目錄（灰字＝目前 API 不可用）
               </p>
               <ul className="space-y-1">
@@ -269,7 +279,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
                       m.available_in_pool === false ? 'opacity-40' : ''
                     }`}
                   >
-                    <span className="text-[#d0d6e0]">{m.id}</span>
+                    <span className="text-[var(--console-sub)]">{m.id}</span>
                     <span className="max-w-[220px] truncate text-right text-[var(--console-faint)]" title={hubPriceLine(m)}>
                       {hubPriceLine(m)}
                     </span>
@@ -324,7 +334,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
               {agentTask.result.tool_traces.map((t, i) => (
                 <pre
                   key={`${t.tool}-${i}`}
-                  className="mb-1 overflow-x-auto text-[11px] text-[#d0d6e0]"
+                  className="mb-1 overflow-x-auto text-[11px] text-[var(--console-sub)]"
                 >
                   {t.tool} · {t.http_status} · {t.latency_ms}ms
                   {'\n'}
@@ -336,7 +346,7 @@ export default function HubView({ embedded = false }: { embedded?: boolean }) {
 
           <div className="min-h-[160px] flex-1 apple-card apple-card--tight !p-0 p-4">
             {content ? (
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#d0d6e0]">{content}</p>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--console-sub)]">{content}</p>
             ) : (
               <p className="text-xs text-[var(--console-faint)]">
                 結果會顯示於此。Agent 會依工具呼叫 StocksX / LittleCrawler / StoryForge / PysdnOPC

@@ -100,7 +100,7 @@ export default function ModelCallPanel() {
           <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-3">
             <SectionHeader
               title="調用用量"
-              description="從全鏈路 Trace 彙總 LLM 調用 · 按模型與環節統計"
+              description="金鑰與模型選擇在 API 路由，只屬於目前登入帳號。此頁彙總這台服務的調用軌跡。"
               meta={
                 <>
                   要改金鑰或目錄請到{' '}

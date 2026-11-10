@@ -83,21 +83,10 @@
 .mc-metric {
   position: relative;
   overflow: hidden;
-  padding: 14px 16px 12px 18px;
-  border: 1px solid color-mix(in srgb, var(--mc-gold) 18%, var(--console-line));
+  padding: 14px 16px 12px;
+  border: 1px solid color-mix(in srgb, var(--mc-gold) 22%, var(--console-line));
   border-radius: 14px;
   background: var(--mc-card);
-}
-
-.mc-metric::before {
-  content: '';
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: 0;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--mc-gold);
 }
 
 .mc-metric__value {
@@ -749,7 +738,7 @@ button.mc-row.is-on {
   text-transform: none;
 }
 
-.mc-page .mc-workspace :is(.text-\[\#8a8f98\], .uppercase) {
+.mc-page .mc-workspace :is(.text-\[var\(--console-faint\)\], .uppercase) {
   color: var(--console-sub);
   letter-spacing: 0;
   text-transform: none;

@@ -77,9 +77,9 @@ async def enhance_with_opc_context(state: StateInput) -> dict[str, Any]:
         return _opc_context("not_required")
 
     try:
-        from opc_service.sense import sense_opc
+        from backend.company.tool_gateway_client import sense_opc_for_context
 
-        result = await sense_opc(dict(state))
+        result = await sense_opc_for_context(dict(state))
     except Exception as exc:
         reason = str(exc)
         logger.warning("OPC 上下文增強失敗：%s", exc)
@@ -161,7 +161,27 @@ def run_company(state: StateInput) -> dict[str, Any]:
     失敗時直接設定 final_answer 並跳過迭代。
 
     這是同步包裝器，內部使用 asyncio.run 呼叫非同步協調器。
+    未帶 budget_locked 時不呼叫協調器。
     """
+    if not state.get("budget_locked"):
+        return {
+            "final_answer": "這是公司任務，要先確認預算方案才會開始執行。",
+            "company_result": {
+                "success": False,
+                "error": "budget_confirmation_required",
+                "awaiting_confirmation": True,
+            },
+            "company_kanban": {},
+            "company_budget": {},
+            "iteration": 0,
+            "score": 0.0,
+            "evaluation": {
+                "score": 0,
+                "strengths": "",
+                "weaknesses": "預算方案尚未確認",
+            },
+        }
+
     query = state.get("query", "")
     lock = state.get("semantic_lock") or {}
     if isinstance(lock, dict):

@@ -8,6 +8,7 @@ from typing import Any
 
 from backend.billing.context import begin_chat_billing, chat_billing_snapshot, end_chat_billing
 from backend.company.events import CompanyEvent
+from backend.company.execution_gate import auto_approve_enabled
 from backend.company.orchestrator import CompanyOrchestrator
 from backend.company.roles import BUILTIN_TEMPLATES
 from backend.core import nodes
@@ -16,6 +17,7 @@ from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD, reflection_should
 from backend.core.post_company_reflect import post_company_reflect_mode
 from backend.core.routing_preview import build_routing_preview
 from backend.core.unified_pipeline import pipeline_at_least
+from backend.services.task_manager import task_manager
 from backend.services.trace_logger import TraceLogger
 
 from .models import ChatRequest
@@ -24,12 +26,33 @@ from .routes import _sse_path_resolved
 logger = logging.getLogger(__name__)
 
 
+async def _company_confirmation_stream(req: ChatRequest):
+    """公司 SSE 不直接執行。建立待確認任務後結束。"""
+    record = task_manager.create_task(
+        req.query, req.execution_strategy or "company", req.company_template or "quick_task", options={}
+    )
+    record.resolved_path = "company"
+    task_manager.start_budget_draft(record)
+    payload = {
+        "task_id": record.task_id,
+        "status": "awaiting_confirmation",
+        "awaiting_confirmation": True,
+        "answer": "請先確認預算方案，確認後才會開始執行。",
+    }
+    yield f"event: phase\ndata: {json_mod.dumps({'phase': 'pending_user', 'task_id': record.task_id}, ensure_ascii=False)}\n\n"
+    yield f"event: done\ndata: {json_mod.dumps(payload, ensure_ascii=False)}\n\n"
+
+
 async def _company_stream(req: ChatRequest):
     """公司運行時 SSE 串流：異步執行 + EventBus 事件推送。
 
-    將公司運行時的生命週期事件轉換為 SSE 事件，
-    前端可即時看到分解/執行/審查/整合各階段進度。
+    預設先停在預算確認。只有 EVOL_BUDGET_AUTO_APPROVE 才沿用直接執行。
     """
+    if not auto_approve_enabled():
+        async for chunk in _company_confirmation_stream(req):
+            yield chunk
+        return
+
     session_id = req.session_id or uuid.uuid4().hex[:12]
 
     billing_token = begin_chat_billing(session_id)

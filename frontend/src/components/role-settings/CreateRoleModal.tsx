@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { TIER_LABEL, rateOptionLabel } from '../../lib/agentUi';
 import { modelsForRoute } from '../../lib/llmCatalog';
+import { SUNSET_BLOCK_MESSAGE, filterSelectableHubIds, isSunsetHubId } from '../../lib/sunsetHubIds';
 import type { AgentCatalogMeta, RoleAgent, RolePreset } from '../../types';
 import { inputCls, routeOptionLabel } from './fields';
 
@@ -26,7 +27,10 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
   const [reportingTo, setReportingTo] = useState(cloneFrom?.reporting_to ?? '');
   const [tier, setTier] = useState(cloneFrom?.default_tier || 'routine');
   const [description, setDescription] = useState(cloneFrom?.description ?? '');
-  const [model, setModel] = useState(cloneFrom?.preferred_model ?? '');
+  const [model, setModel] = useState(() => {
+    const m = cloneFrom?.preferred_model ?? '';
+    return isSunsetHubId(m) ? '' : m;
+  });
   const [provider, setProvider] = useState(cloneFrom?.preferred_provider ?? '');
   const [maxOutput, setMaxOutput] = useState(cloneFrom?.max_output_tokens ?? 4096);
   const [contextWindow, setContextWindow] = useState(cloneFrom?.context_window ?? 0);
@@ -63,14 +67,14 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto apple-card p-4">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold">{cloneFrom ? `複製「${cloneFrom.name}」` : '新增自定義角色'}</h3>
-          <button type="button" className="text-[12px] text-[#8a8f98]" onClick={onClose}>
+          <button type="button" className="text-[12px] text-[var(--console-faint)]" onClick={onClose}>
             關閉
           </button>
         </div>
         {error && <p className="mb-2 text-[12px] text-red-300">{error}</p>}
         {presets.length > 0 && !cloneFrom && (
           <div className="mb-3">
-            <p className="mb-1 text-[10px] uppercase tracking-wider text-[#62666d]">快速模板</p>
+            <p className="mb-1 text-[10px] text-[var(--console-faint)]">快速模板</p>
             <div className="flex flex-wrap gap-1">
               {presets.map((p) => (
                 <button
@@ -81,7 +85,7 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
                   className={`rounded border px-2 py-1 text-[11px] ${
                     presetId === p.id
                       ? 'border-[color-mix(in_srgb,var(--console-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] text-[var(--console-accent)]'
-                      : 'border-white/[0.08] text-[#8a8f98]'
+                      : 'border-white/[0.08] text-[var(--console-faint)]'
                   }`}
                 >
                   {p.name}
@@ -168,7 +172,9 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
               <option value="">模型：該 API 預設</option>
               {(catalog?.models_by_provider ?? [])
                 .filter((g) => !provider || g.route_id === provider)
-                .flatMap((g) => g.models.map((mid) => ({ group: g.name, mid })))
+                .flatMap((g) =>
+                  filterSelectableHubIds(g.models).map((mid) => ({ group: g.name, mid })),
+                )
                 .map((row) => (
                   <option key={`${row.group}-${row.mid}`} value={row.mid}>
                     {rateOptionLabel(row.mid, catalog?.model_rate_cards)}
@@ -241,19 +247,19 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
               value={priority}
               onChange={(e) => setPriority(Number(e.target.value) || 3)}
             />
-            <label className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
+            <label className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
               <input type="checkbox" checked={requireReview} onChange={(e) => setRequireReview(e.target.checked)} />
               一律送審查
             </label>
-            <label className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
+            <label className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
               <input type="checkbox" checked={onCall} onChange={(e) => setOnCall(e.target.checked)} />
               值班
             </label>
-            <label className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
+            <label className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
               <input type="checkbox" checked={humanApproval} onChange={(e) => setHumanApproval(e.target.checked)} />
               需人工核准
             </label>
-            <label className="flex items-center gap-2 text-[11px] text-[#d0d6e0]">
+            <label className="flex items-center gap-2 text-[11px] text-[var(--console-sub)]">
               <input type="checkbox" checked={mainlandOnly} onChange={(e) => setMainlandOnly(e.target.checked)} />
               僅國內模型
             </label>
@@ -261,7 +267,7 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
           <input className={inputCls} placeholder="標籤，逗號分隔" value={tags} onChange={(e) => setTags(e.target.value)} />
         </div>
         <div className="mt-3 flex justify-end gap-2">
-          <button type="button" className="rounded border border-white/[0.08] px-3 py-1.5 text-[12px] text-[#8a8f98]" onClick={onClose}>
+          <button type="button" className="rounded border border-white/[0.08] px-3 py-1.5 text-[12px] text-[var(--console-faint)]" onClick={onClose}>
             取消
           </button>
           <button
@@ -272,6 +278,9 @@ export function CreateRoleModal({ catalog, agents, cloneFrom, onClose, onCreate 
               setBusy(true);
               setError(null);
               try {
+                if (isSunsetHubId(model)) {
+                  throw new Error(SUNSET_BLOCK_MESSAGE);
+                }
                 await onCreate({
                   id: id.trim() || name.trim(),
                   name: name.trim(),

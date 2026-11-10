@@ -25,12 +25,14 @@ import {
   type ConsoleNavItem,
   type ConsoleNavKey,
 } from '../lib/monitorTabs';
+import PlaneBadge, { planeKindForActivity } from './ui/PlaneBadge';
 import { MINECRAFT_NAV_DEFAULT_OPEN_GROUP_IDS, rosterKindForTab } from '../lib/worldModules';
 import { partitionNavGroupsForMobileLite } from '../lib/mobileShell';
 import { useIsMobileLiteShell } from '../hooks/useMediaQuery';
 import { useMonitorStore } from '../stores/monitorStore';
 import type { MonitorTab, ViewKey } from './AppShell';
 import TraceRoster from './TraceRoster';
+import { sidePanelMonitorPick } from './sidePanelNavPick';
 
 interface SidePanelProps {
   activeView: ViewKey;
@@ -42,7 +44,7 @@ interface SidePanelProps {
   onDeleteSession: (id: string) => void;
   onClose: () => void;
   monitorTab: MonitorTab;
-  onMonitorTabChange: (tab: MonitorTab) => void;
+  onMonitorTabChange: (tab: MonitorTab, worldModuleId?: string | null) => void;
   focusAgentId: string | null;
   onFocusAgent: (id: string | null) => void;
   focusTaskId: string | null;
@@ -51,6 +53,7 @@ interface SidePanelProps {
   onTraceTaskChange: (id: string | null) => void;
   labSubTab: LabSubTab;
   onLabSubTabChange: (tab: LabSubTab) => void;
+  onViewChange?: (view: ViewKey) => void;
 }
 
 function formatRelative(ts: number): string {
@@ -86,7 +89,7 @@ function SessionList({
   return (
     <>
       <div className="border-b border-white/[0.06] p-2.5">
-        <p className="mb-2 px-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">對話</p>
+        <p className="mb-2 px-0.5 text-[10px] font-bold text-[var(--console-sub)]">對話</p>
         <button
           onClick={onNewSession}
           className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] font-medium text-[var(--console-ink)] transition-colors hover:bg-white/[0.06]"
@@ -136,7 +139,7 @@ function SessionList({
           </div>
         ))}
       </div>
-      <div className="border-t border-white/[0.06] px-3 py-2 text-[10px] text-[#48484A]">
+      <div className="border-t border-white/[0.06] px-3 py-2 text-[10px] text-[var(--console-faint)]">
         本機儲存
       </div>
     </>
@@ -357,7 +360,7 @@ function ApiRouteRoster() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 space-y-1.5 border-b border-white/[0.06] px-3 pb-3 pt-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--console-sub)]">已配置的 API</p>
+          <p className="text-[10px] font-bold text-[var(--console-sub)]">已配置的 API</p>
           <button
             type="button"
             onClick={() => dispatchNewApiRoute()}
@@ -417,12 +420,12 @@ function ApiRouteRoster() {
 }
 
 const TASK_STATUS_DOT: Record<string, string> = {
-  pending: 'bg-[#FF9500]',
+  pending: 'bg-[var(--console-amber)]',
   running: 'bg-[var(--console-accent)] animate-pulse',
-  completed: 'bg-[#34C759]',
+  completed: 'bg-[var(--console-green)]',
   failed: 'bg-[var(--console-danger)]',
   cancelled: 'bg-[var(--console-sub)]',
-  interrupted: 'bg-[#FF9500]',
+  interrupted: 'bg-[var(--console-amber)]',
 };
 
 const EMPTY_TASKS: TaskSummary[] = [];
@@ -513,7 +516,7 @@ function TaskRoster({
                   }}
                   className="ar-rg"
                 >
-                  <span className="inline-block w-2 font-mono text-[#48484A]">{open ? '▾' : '▸'}</span>
+                  <span className="inline-block w-2 font-mono text-[var(--console-faint)]">{open ? '▾' : '▸'}</span>
                   <span>{row.label}</span>
                   <span className="ml-auto font-mono text-[10px] text-[var(--console-sub)]">{row.count}</span>
                 </button>
@@ -633,6 +636,7 @@ function MonitorSidebar({
   onLabSubTabChange,
   traceTaskId,
   onTraceTaskChange,
+  onViewChange,
 }: {
   activeView: ViewKey;
   monitorTab: MonitorTab;
@@ -641,16 +645,17 @@ function MonitorSidebar({
   onFocusAgent: (id: string | null) => void;
   focusTaskId: string | null;
   onFocusTask: (id: string | null) => void;
-  onMonitorTabChange: (tab: MonitorTab) => void;
+  onMonitorTabChange: (tab: MonitorTab, worldModuleId?: string | null) => void;
   labSubTab: LabSubTab;
   onLabSubTabChange: (tab: LabSubTab) => void;
   traceTaskId: string | null;
   onTraceTaskChange: (id: string | null) => void;
+  onViewChange?: (view: ViewKey) => void;
 }) {
   const { t } = useTranslation();
   const isMobileLite = useIsMobileLiteShell();
   const activity = resolveActivity(activeView, monitorTab);
-  const onLab = activity === 'lab';
+  const onLab = activity === 'settings' && monitorTab === 'lab';
   const allNavGroups = navGroupsForActivity(activity);
   const { primary: primaryNavGroups, advanced: advancedNavGroups } = useMemo(
     () =>
@@ -660,7 +665,7 @@ function MonitorSidebar({
     [allNavGroups, isMobileLite, activity],
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const isMinecraftNav = activity === 'minecraft';
+  const isMinecraftNav = activity === 'world';
   const [mcNavOpen, setMcNavOpen] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const group of allNavGroups) {
@@ -675,7 +680,14 @@ function MonitorSidebar({
   const onTasksTab = activeView === 'monitor' && monitorTab === 'tasks';
   const onLlmTab = activeView === 'monitor' && monitorTab === 'llm';
   const onTraces = activeView === 'traces';
-  const currentKey: ConsoleNavKey = onTraces ? 'traces' : monitorTab;
+  const currentKey: ConsoleNavKey =
+    activeView === 'chat'
+      ? 'chat'
+      : activeView === 'company'
+        ? 'company'
+        : onTraces
+          ? 'traces'
+          : monitorTab;
 
   useEffect(() => {
     if (!isMinecraftNav) return;
@@ -686,12 +698,23 @@ function MonitorSidebar({
     }
   }, [allNavGroups, currentKey, isMinecraftNav]);
 
-  const pick = (key: ConsoleNavKey) => {
+  const pick = (key: ConsoleNavKey, clickedWorldModuleId?: string) => {
+    if (key === 'chat') {
+      onViewChange?.('chat');
+      onClose();
+      return;
+    }
+    if (key === 'company') {
+      onViewChange?.('company');
+      onClose();
+      return;
+    }
     if (key === 'traces') {
       onTraceTaskChange(traceTaskId);
       return;
     }
-    onMonitorTabChange(key);
+    const { tab, worldModuleId } = sidePanelMonitorPick(key, clickedWorldModuleId);
+    onMonitorTabChange(tab, worldModuleId);
     const keepAgent = key === 'agents' || key === 'memory' || rosterKindForTab(key) === 'agents';
     if (!keepAgent && focusAgentId) onFocusAgent(null);
     if (key !== 'tasks' && focusTaskId) onFocusTask(null);
@@ -710,10 +733,10 @@ function MonitorSidebar({
       <div className="sp-list">
         {group.items.map((item) => (
           <TabBtn
-            key={item.key}
+            key={item.worldModuleId ? `${item.worldModuleId}:${item.key}` : item.key}
             item={item}
             active={currentKey === item.key}
-            onClick={() => pick(item.key)}
+            onClick={() => pick(item.key, item.worldModuleId)}
           />
         ))}
       </div>
@@ -737,9 +760,13 @@ function MonitorSidebar({
       );
     }
 
+    const plane = group.plane ?? planeKindForActivity(activity);
     return (
       <div key={group.id}>
-        <div className="sp-group">{groupLabel}</div>
+        <div className="sp-group flex items-center gap-1.5">
+          <span>{groupLabel}</span>
+          {plane ? <PlaneBadge kind={plane} /> : null}
+        </div>
         {list}
       </div>
     );
@@ -818,6 +845,7 @@ export default function SidePanel({
   onTraceTaskChange,
   labSubTab,
   onLabSubTabChange,
+  onViewChange,
 }: SidePanelProps) {
   return (
     <>
@@ -841,16 +869,11 @@ export default function SidePanel({
           </button>
         </div>
 
-        {activeView === 'chat' && (
-          <SessionList
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onSelectSession={onSelectSession}
-            onNewSession={onNewSession}
-            onDeleteSession={onDeleteSession}
-          />
-        )}
-        {(activeView === 'monitor' || activeView === 'traces') && (
+        {(activeView === 'monitor' ||
+          activeView === 'traces' ||
+          activeView === 'chat' ||
+          activeView === 'task' ||
+          activeView === 'raho') && (
           <MonitorSidebar
             activeView={activeView}
             monitorTab={monitorTab}
@@ -864,6 +887,16 @@ export default function SidePanel({
             onLabSubTabChange={onLabSubTabChange}
             traceTaskId={traceTaskId}
             onTraceTaskChange={onTraceTaskChange}
+            onViewChange={onViewChange}
+          />
+        )}
+        {activeView === 'chat' && (
+          <SessionList
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={onSelectSession}
+            onNewSession={onNewSession}
+            onDeleteSession={onDeleteSession}
           />
         )}
       </aside>

@@ -10,10 +10,10 @@ import type { CloudEvent } from '../types';
 import { ConsolePagination } from './ui/ConsolePagination';
 
 function tone(type: string): string {
-  if (type === 'start') return 'bg-[#27a644]/15 text-[#4cc38a]';
+  if (type === 'start') return 'bg-[color-mix(in_srgb,var(--console-green)_15%,transparent)] text-[var(--console-green)]';
   if (type === 'stop') return 'bg-red-500/15 text-red-300';
   if (type === 'restart') return 'bg-amber-500/15 text-amber-300';
-  return 'bg-[#141516] text-[#8a8f98]';
+  return 'bg-[var(--console-card)] text-[var(--console-faint)]';
 }
 
 function fmtTime(iso: string): string {
@@ -57,11 +57,11 @@ export default function EventsPanel({ embedded = false }: { embedded?: boolean }
       <div className="flex items-center justify-between">
         <div>
           {!embedded ? <h3 className="text-sm font-medium">容器事件時間線</h3> : null}
-          <p className="mt-0.5 text-[11px] text-[#8a8f98]">start / stop / restart · 最近 {events.length} 筆</p>
+          <p className="mt-0.5 text-[11px] text-[var(--console-faint)]">start / stop / restart · 最近 {events.length} 筆</p>
         </div>
         <button
           onClick={() => void refresh()}
-          className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2 py-1 text-[11px] text-[#8a8f98] hover:text-[var(--console-ink)]"
+          className="rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2 py-1 text-[11px] text-[var(--console-faint)] hover:text-[var(--console-ink)]"
         >
           {loading ? '同步中' : '重新整理'}
         </button>
@@ -81,7 +81,7 @@ export default function EventsPanel({ embedded = false }: { embedded?: boolean }
           { label: '重啟', value: counts.restart ?? 0 },
         ].map((kpi) => (
           <div key={kpi.label} className="apple-card apple-card--tight !p-0 px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wider text-[#62666d]">{kpi.label}</p>
+            <p className="text-[10px] text-[var(--console-faint)]">{kpi.label}</p>
             <p className="mt-1 font-mono text-lg">{kpi.value}</p>
           </div>
         ))}
@@ -89,8 +89,8 @@ export default function EventsPanel({ embedded = false }: { embedded?: boolean }
 
       {events.length === 0 ? (
         <div className="apple-card apple-card--tight !p-0 px-4 py-16 text-center">
-          <p className="text-sm text-[#8a8f98]">尚無容器事件</p>
-          <p className="mt-1 text-[11px] text-[#62666d]">
+          <p className="text-sm text-[var(--console-faint)]">尚無容器事件</p>
+          <p className="mt-1 text-[11px] text-[var(--console-faint)]">
             在「實例管理」對容器執行啟動 / 停止 / 重啟後，會寫入 events.jsonl。
           </p>
         </div>
@@ -98,17 +98,17 @@ export default function EventsPanel({ embedded = false }: { embedded?: boolean }
         <div className="relative space-y-0 apple-card apple-card--tight !p-0 p-3">
           {(embedded ? eventsPager.slice : events).map((e, i) => (
             <div key={`${e.ts}-${e.service}-${i}`} className="relative flex gap-3 py-2 pl-4">
-              <span className="absolute left-0 top-3 h-full w-px bg-[#23252a]" />
+              <span className="absolute left-0 top-3 h-full w-px bg-[var(--console-line)]" />
               <span className="absolute left-[-3px] top-3.5 h-1.5 w-1.5 rounded-full bg-[var(--console-accent)]" />
               <span className={`h-fit shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase ${tone(e.type)}`}>
                 {e.type}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-[#d0d6e0]">
+                <p className="text-xs text-[var(--console-sub)]">
                   {e.service}
-                  {e.detail ? <span className="text-[#8a8f98]"> · {e.detail}</span> : null}
+                  {e.detail ? <span className="text-[var(--console-faint)]"> · {e.detail}</span> : null}
                 </p>
-                <p className="mt-0.5 font-mono text-[10px] text-[#62666d]">{fmtTime(e.ts)}</p>
+                <p className="mt-0.5 font-mono text-[10px] text-[var(--console-faint)]">{fmtTime(e.ts)}</p>
               </div>
             </div>
           ))}

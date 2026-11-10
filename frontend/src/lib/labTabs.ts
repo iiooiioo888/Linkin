@@ -150,7 +150,8 @@ export const LAB_INTEGRATE_SECTIONS: LabNavSection[] = [
     label: '採集',
     items: [
       FIRECRAWL,
-      link('social', '⧉', '社媒', 'MediaCrawler', '#/monitor/skills'),
+      link('media-vault', '▦', '採集 · 媒體庫', '控制／監控／圖庫', '#/modules/media-vault'),
+      link('social', '⧉', '社媒', 'MediaCrawler 技能卡', '#/monitor/skills'),
       link(
         'agent-reach',
         '⌁',
@@ -171,12 +172,22 @@ export const LAB_INTEGRATE_SECTIONS: LabNavSection[] = [
     items: [
       link('yao', '▣', 'Yao', '任務板', '#/monitor/integrations/yao'),
       link('ouroboros', '⟳', 'Ouroboros', '訪談閘門', '#/monitor/integrations/ouroboros'),
+      link('cli-anything', '⌨', 'CLI-Anything', '軟體命令列目錄', '#/monitor/skills/cli-anything'),
     ],
   },
   {
     id: 'design',
     label: '設計',
-    items: [link('openpencil', '✎', 'OpenPencil', 'Design-as-Code', '#/monitor/integrations/openpencil')],
+    items: [
+      link('openpencil', '✎', 'OpenPencil', 'Design-as-Code', '#/monitor/integrations/openpencil'),
+      link(
+        'local-video-studio',
+        '▶',
+        'Local Video Studio',
+        '本機優先影片工作室',
+        '#/modules/local-video-studio',
+      ),
+    ],
   },
   {
     id: 'skills',

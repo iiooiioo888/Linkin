@@ -1,13 +1,10 @@
 /**
- * 前端閘門狀態：會話票存放於本機，請求時帶 X-Linkin-Gate。
- * 有後端時走 /auth/login；GitHub Pages 等靜態站改以本機摘要核對。
- * 此檔不含任何身分明文。
+ * 前端閘門狀態。會話權杖只留在後端設的 HttpOnly Cookie（REACT-AUTH-001）。
+ * 這裡只記顯示用的帳號，不記權杖。靜態站不再在瀏覽器裡核對登入秘密。
  */
-import { matchLocalGate } from './gateDigest';
-
-const TOKEN_KEY = 'evoloop.runtime';
+const USER_KEY = 'evoloop.gateUser';
+const LEGACY_TOKEN_KEY = 'evoloop.runtime';
 const API_BASE: string = import.meta.env.VITE_API_URL ?? '/api';
-const LOCAL_PREFIX = 'lg1.';
 
 function hasRemoteApi(): boolean {
   const raw = import.meta.env.VITE_API_URL;
@@ -22,45 +19,52 @@ function isStaticHost(): boolean {
   return import.meta.env.VITE_GITHUB_PAGES === 'true';
 }
 
-type GateRecord = { t: string; u: string; exp: number };
-
 const AUTH_EVENT = 'linkin-auth-changed';
 
-function readRecord(): GateRecord | null {
+function clearLegacyToken() {
   try {
-    const raw = localStorage.getItem(TOKEN_KEY);
-    if (!raw) return null;
-    const rec = JSON.parse(raw) as GateRecord;
-    if (!rec?.t || !rec?.u) return null;
-    if (rec.exp && rec.exp < Date.now()) {
-      localStorage.removeItem(TOKEN_KEY);
-      return null;
-    }
-    return rec;
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+clearLegacyToken();
+
+function readUser(): string | null {
+  try {
+    const user = sessionStorage.getItem(USER_KEY);
+    return user || null;
   } catch {
     return null;
   }
 }
 
-function writeRecord(rec: GateRecord) {
-  localStorage.setItem(TOKEN_KEY, JSON.stringify(rec));
+function writeUser(user: string) {
+  clearLegacyToken();
+  try {
+    sessionStorage.setItem(USER_KEY, user);
+  } catch {
+    /* ignore */
+  }
   window.dispatchEvent(new Event(AUTH_EVENT));
 }
 
-export function getGateToken(): string | null {
-  return readRecord()?.t ?? null;
-}
-
 export function getGateUser(): string | null {
-  return readRecord()?.u ?? null;
+  return readUser();
 }
 
 export function hasGate(): boolean {
-  return Boolean(getGateToken());
+  return Boolean(readUser());
 }
 
 export function clearGate() {
-  localStorage.removeItem(TOKEN_KEY);
+  clearLegacyToken();
+  try {
+    sessionStorage.removeItem(USER_KEY);
+  } catch {
+    /* ignore */
+  }
   window.dispatchEvent(new Event(AUTH_EVENT));
 }
 
@@ -73,20 +77,8 @@ function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
 
-function isLocalToken(token: string | null): boolean {
-  return Boolean(token?.startsWith(LOCAL_PREFIX));
-}
-
-function issueLocalSession(user: string) {
-  const nid =
-    typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID().replace(/-/g, '')
-      : `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
-  writeRecord({ t: `${LOCAL_PREFIX}${nid}`, u: user, exp: Date.now() + 12 * 3600 * 1000 });
-}
-
 type RemoteLogin =
-  | { kind: 'ok'; token: string; user: string }
+  | { kind: 'ok'; user: string }
   | { kind: 'denied'; error: string }
   | { kind: 'offline' };
 
@@ -118,84 +110,56 @@ async function tryRemoteLogin(username: string, password: string): Promise<Remot
     }
     return { kind: 'denied', error: detail };
   }
-  if (!resp.ok) return { kind: 'offline' };
-  if (!looksLikeJson(resp)) return { kind: 'offline' };
+  if (!resp.ok || !looksLikeJson(resp)) return { kind: 'offline' };
   try {
-    const data = (await resp.json()) as { token?: string; user?: string };
-    const token = data.token ?? '';
-    if (!token) return { kind: 'offline' };
-    return { kind: 'ok', token, user: data.user || username.trim() };
+    const data = (await resp.json()) as { ok?: boolean; user?: string };
+    if (!data.ok && !data.user) return { kind: 'offline' };
+    return { kind: 'ok', user: data.user || username.trim() };
   } catch {
     return { kind: 'offline' };
   }
 }
 
-async function unlockLocal(username: string, password: string): Promise<{ ok: true; user: string } | { ok: false; error: string }> {
-  const user = username.trim();
-  let matched = false;
-  try {
-    matched = await matchLocalGate(user, password);
-  } catch {
-    return { ok: false, error: '本機核對失敗' };
-  }
-  if (!matched) return { ok: false, error: '帳號或密碼不正確' };
-  issueLocalSession(user);
-  return { ok: true, user };
-}
-
 export async function loginGate(username: string, password: string): Promise<{ ok: true; user: string } | { ok: false; error: string }> {
-  // 有後端時必須以後端會話為準：本機 lg1. 偽票後端不認，直接採信會造成
-  // 「登入成功但所有 API 401」。本機摘要僅供 GitHub Pages／後端離線降級用，
-  // 且 tryRemoteLogin 對非 JSON 回應（靜態站 404/401 HTML）回傳 offline 自動落到本機核對。
-  if (!isStaticHost()) {
-    const remote = await tryRemoteLogin(username, password);
-    if (remote.kind === 'ok') {
-      writeRecord({ t: remote.token, u: remote.user, exp: Date.now() + 12 * 3600 * 1000 });
-      return { ok: true, user: remote.user };
-    }
-    if (remote.kind === 'denied') return { ok: false, error: remote.error };
-    // offline → 本機摘要降級
+  if (isStaticHost()) {
+    return { ok: false, error: '此部署沒有登入服務' };
   }
-  return unlockLocal(username, password);
+  const remote = await tryRemoteLogin(username, password);
+  if (remote.kind === 'ok') {
+    writeUser(remote.user);
+    return { ok: true, user: remote.user };
+  }
+  if (remote.kind === 'denied') return { ok: false, error: remote.error };
+  return { ok: false, error: '登入服務無法連線' };
 }
 
 export async function verifyGate(): Promise<boolean> {
-  const token = getGateToken();
-  if (!token) return false;
-  // 本機偽票只在靜態站可信；有後端時一律以後端 /auth/me 為準
-  if (isStaticHost()) return true;
-  if (isLocalToken(token)) {
+  clearLegacyToken();
+  if (isStaticHost()) {
     clearGate();
     return false;
   }
   try {
-    const resp = await fetch(apiUrl('/auth/me'), {
-      credentials: 'include',
-      headers: { 'X-Linkin-Gate': token },
-    });
+    const resp = await fetch(apiUrl('/auth/me'), { credentials: 'include' });
     if (resp.status === 401) {
       clearGate();
       return false;
     }
-    if (!resp.ok) return true;
+    if (!resp.ok) return hasGate();
     const data = (await resp.json()) as { user?: string };
-    if (data.user) {
-      writeRecord({ t: token, u: data.user, exp: Date.now() + 12 * 3600 * 1000 });
-    }
+    if (data.user) writeUser(data.user);
     return true;
   } catch {
-    return true;
+    return hasGate();
   }
 }
 
 export async function logoutGate(): Promise<void> {
-  const token = getGateToken();
-  if (token && !isLocalToken(token) && !isStaticHost()) {
+  if (!isStaticHost()) {
     try {
       await fetch(apiUrl('/auth/logout'), {
         method: 'POST',
         credentials: 'include',
-        headers: { 'X-Linkin-Gate': token },
       });
     } catch {
       /* ignore */
@@ -212,11 +176,7 @@ function shouldAttach(url: string): boolean {
 }
 
 export function attachGateHeaders(init?: RequestInit): RequestInit {
-  const token = getGateToken();
-  if (!token) return init ?? {};
-  const headers = new Headers(init?.headers);
-  if (!headers.has('X-Linkin-Gate')) headers.set('X-Linkin-Gate', token);
-  return { ...init, credentials: init?.credentials ?? 'include', headers };
+  return { ...init, credentials: init?.credentials ?? 'include' };
 }
 
 export function installAuthFetch() {
@@ -231,13 +191,7 @@ export function installAuthFetch() {
     const next = shouldAttach(url) ? attachGateHeaders(init) : init;
     return native(input, next).then((resp) => {
       const isHub = url.includes('/api/v1') || url.includes('/v1/');
-      if (
-        resp.status === 401 &&
-        shouldAttach(url) &&
-        !url.includes('/auth/login') &&
-        !isHub &&
-        !isLocalToken(getGateToken())
-      ) {
+      if (resp.status === 401 && shouldAttach(url) && !url.includes('/auth/login') && !isHub) {
         clearGate();
       }
       return resp;
@@ -245,9 +199,7 @@ export function installAuthFetch() {
   };
 }
 
+/** WebSocket 走同站 Cookie，不再把權杖放進網址（FASTAPI-AUTH-002）。 */
 export function appendGateQuery(url: string): string {
-  const token = getGateToken();
-  if (!token) return url;
-  const join = url.includes('?') ? '&' : '?';
-  return `${url}${join}gate=${encodeURIComponent(token)}`;
+  return url;
 }

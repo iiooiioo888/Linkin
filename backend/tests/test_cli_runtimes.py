@@ -11,7 +11,7 @@ from backend.scripts.cli_runtimes import main
 
 def test_catalog_covers_cli_only_skills():
     ids = {item.skill_id for item in CLI_RUNTIMES}
-    assert ids == {"agent-reach", "just-scrape", "agent-browser"}
+    assert ids == {"agent-reach", "just-scrape", "agent-browser", "cli-anything"}
     assert all(item.check_args == ("--help",) for item in CLI_RUNTIMES)
     assert "pypi" not in CLI_RUNTIMES[0].install.lower()
     assert "github.com/Panniantong/agent-reach" in CLI_RUNTIMES[0].install
@@ -74,4 +74,9 @@ def test_cli_json(capsys):
     code = main(["--json"])
     assert code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert {row["id"] for row in payload["runtimes"]} == {"agent-reach", "just-scrape", "agent-browser"}
+    assert {row["id"] for row in payload["runtimes"]} == {
+        "agent-reach",
+        "just-scrape",
+        "agent-browser",
+        "cli-anything",
+    }

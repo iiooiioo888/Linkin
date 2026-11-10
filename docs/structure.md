@@ -1,7 +1,7 @@
 # 專案目錄地圖
 
 > **詳文單一來源**：改目錄或新增套件時，先更新本文，再同步根 `README.md`／`docs/architecture/overview.md` 的精簡樹。  
-> 對齊日期：2026-10-22
+> 對齊日期：2026-10-26
 
 ## 組件分類
 
@@ -9,7 +9,7 @@
 
 | 類 | 做什麼 | 落在哪 | 實驗室 |
 |----|--------|--------|--------|
-| **核心的開發組件** | 前置注入、選路、簡單路徑的生成／評估／反思；任務經理分析與 80 席；提示詞、架構圖、精簡、A/B、臨時容器 | `backend/core/`、`backend/company/`（量化工具見下一類）、`backend/billing/`、`backend/prompts/`、對話與控制台 | 提示詞、架構、精簡、容器、A/B |
+| **核心的開發組件** | 前置注入、選路、簡單路徑的生成／評估／反思；任務經理分析與 80 席；提示詞、架構圖、精簡、A/B、臨時容器。服務化契約在 `linkin_core/`，運行時仍是單體 | `backend/core/`、`backend/company/`（量化工具見下一類）、`backend/billing/`、`backend/prompts/`、`linkin_core/`、對話與控制台 | 提示詞、架構、精簡、容器、A/B |
 | **minecraft組件** | 憲法、16 席子角色、世界模組、MineMCP 寫入護欄、`minecraft_ops` | `backend/linkin/`、`backend/modules/`、`backend/tools/`、Minecraft 畫面 | 側欄進入 `#/modules/minecraft` |
 | **價格分析探針組件** | 廠商延遲與報價探針；策略庫與策略圖 | `backend/hub/`、`backend/company/quant_*.py`、Hub 監控（基礎設施 → AI Hub） | 策略庫、策略圖、價格探針 |
 | **整合** | 依功能再分：召回、採集、工業接線、Agent 工作流、設計、技能。見下一節 | `backend/memory/`、`backend/integrations/`、`.agents/skills/`、`opc_service/` | `LAB_INTEGRATE_SECTIONS` |
@@ -21,10 +21,10 @@
 | 功能 | 做什麼 | 落在哪 |
 |------|--------|--------|
 | **召回** | 向量記憶與 Token 節省注入：MemOS、OpenViking、WeKnora | `backend/memory/`、`backend/integrations/memos.py`、`openviking.py`、`weknora.py` |
-| **採集** | 網頁轉 Markdown、社媒公開採集、Agent Reach 即時閱讀與搜尋 | 實驗室「爬蟲」；MediaCrawler 與 [Agent Reach](https://github.com/Panniantong/Agent-Reach)（`.agents/skills/agent-reach/`）。Agent Reach、just-scrape、agent-browser 要本機 CLI，用 `python -m backend.scripts.cli_runtimes` 檢查 |
+| **採集** | 網頁轉 Markdown、社媒公開採集、Agent Reach 即時閱讀與搜尋 | 實驗室「爬蟲」；**采集媒体库**見 [media-vault.md](integrations/media-vault.md)（`#/modules/media-vault`）；跨平台 Skill／MCP 藍圖見 [crawl-skill-mcp.md](integrations/crawl-skill-mcp.md)（`.agents/skills/media-collect/`）；MediaCrawler 與 [Agent Reach](https://github.com/Panniantong/Agent-Reach)（`.agents/skills/agent-reach/`）。Agent Reach、just-scrape、agent-browser、cli-hub 要本機 CLI，用 `python -m backend.scripts.cli_runtimes` 檢查 |
 | **工業接線** | OPC 讀寫。寫入經護欄。實驗室 MCP 頁把 OPC 開關放在這一組 | `opc_service/` |
-| **Agent 工作流** | 任務板與訪談閘門：Yao、Ouroboros | `backend/integrations/yao.py`、`ouroboros.py` |
-| **設計** | Design-as-Code，須顯式觸發：OpenPencil | `backend/integrations/openpencil.py` |
+| **Agent 工作流** | 任務板、訪談閘門，以及 CLI-Anything 的軟體命令列目錄 | `backend/integrations/yao.py`、`ouroboros.py`、`backend/company/cli_anything.py` |
+| **設計** | Design-as-Code（OpenPencil）；**Local Video Studio** 本機優先影片工作室（M0 骨架） | `backend/integrations/openpencil.py`；[local-video-studio.md](integrations/local-video-studio.md)（`backend/local_video_studio/`、`#/modules/local-video-studio`） |
 | **技能** | Agent skills | `.agents/skills/`、`#/monitor/skills` |
 
 控制台左側（總覽、執行、角色、審計、計費、系統）是核心的開發組件裡的導覽，定義在 `frontend/src/lib/monitorTabs.ts` 的 `CONSOLE_NAV_GROUPS`。Minecraft 世界模組用自己的導覽。實驗室四類的單一來源是 `frontend/src/lib/labTabs.ts` 的 `LAB_NAV_GROUPS`。
@@ -44,6 +44,9 @@
 | 路徑 | 職責 | 備註 |
 |------|------|------|
 | `backend/` | FastAPI + LangGraph 主程式 | 見 [backend/README.md](../backend/README.md) |
+| `linkin_core/` | 服務化契約（OpenAPI／AsyncAPI）。階段 0 不取代單體 | 見 [服務契約](architecture/service-contracts.md) |
+| `deploy/k8s/linkin/` | 內網 12 服務骨架 | 映像尚未發布 |
+| `services/` | `tool-gateway`、`guardrail-service`、`minecraft-gateway` | 階段 1。K8s 映像仍是佔位 |
 | `opc_service/` | OPC UA 微服務與護欄 | 整合類。見 [opc_service/README.md](../opc_service/README.md) |
 | `frontend/` | React 19 監控中心 | 見 [frontend/README.md](../frontend/README.md) |
 | `docs/` | **知識庫（詳文唯一來源）** | 本目錄 |
@@ -62,8 +65,8 @@
 | 情境 | 前端 | 後端 | OPC | Redis | Chroma |
 |------|------|------|-----|-------|--------|
 | 本機 Vite | **3001** | 8000 | 8001 | 6379 | 8100 |
-| Compose prod（nginx） | **3001→80** | 8000 | 8001 | 6379 | 8100 |
-| Compose dev（vite HMR） | **3001** | 8000 | 8001 | 6379 | 8100 |
+| Compose prod（nginx） | **3001→80** | 8000 | 127.0.0.1:8001 | 127.0.0.1:6379 | 127.0.0.1:8100 |
+| Compose dev（vite HMR） | **3001** | 8000 | 127.0.0.1:8001 | 127.0.0.1:6379 | 127.0.0.1:8100 |
 
 MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.md)。
 
@@ -83,6 +86,8 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `billing/` | 核心的開發組件：積分池 v6、Docker 計量 |
 | `memory/` | 整合：向量記憶（Chroma 等） |
 | `integrations/` | 整合：MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil |
+| `mediacrawler/` · `media_vault/` | 整合／採集：社媒採集與媒資庫 |
+| `local_video_studio/` | 整合／設計：Local Video Studio（見根 `PROJECT_SPEC.md`；M0 health） |
 | `services/` | 任務、軌跡、監控、llm_ops、雲控制台、實驗室。跨四類，不單獨成類 |
 | `environment/` | 環境探測／執行環境輔助 |
 | `middleware/` | FastAPI 中介層 |

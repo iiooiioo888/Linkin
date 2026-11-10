@@ -15,8 +15,8 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-[#62666d]">{label}</span>
-      {hint && <span className="ml-2 text-[10px] text-[#8a8f98]">{hint}</span>}
+      <span className="text-[10px] font-semibold text-[var(--console-faint)]">{label}</span>
+      {hint && <span className="ml-2 text-[10px] text-[var(--console-faint)]">{hint}</span>}
       <div className="mt-1">{children}</div>
     </label>
   );

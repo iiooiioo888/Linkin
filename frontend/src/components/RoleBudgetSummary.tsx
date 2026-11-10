@@ -95,7 +95,7 @@ export function RoleBudgetSummary({
         : `${fmtUsd(cloud)} · ${unlimited}`;
     return (
       <div className="space-y-1.5 rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] px-2.5 py-2">
-        <p className="text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+        <p className="text-[9px] font-semibold text-[var(--console-faint)]">
           {t('roles.budgetSummary')}
         </p>
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
@@ -199,7 +199,7 @@ export function AccountBudgetBanner({ summary }: { summary?: AccountBudgetSummar
     <div className="mb-3 grid gap-2 sm:grid-cols-2">
       {hub ? (
         <div className="rounded-lg border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-2">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+          <p className="text-[9px] font-semibold text-[var(--console-faint)]">
             {t('roles.accountHubBudget')}
           </p>
           <p className="mt-1 font-mono text-[12px] text-[var(--console-ink)]">

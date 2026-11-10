@@ -10,7 +10,7 @@ export const CARD_CLS =
   'rounded-[7px] border border-[var(--apple-hairline)] bg-[var(--apple-surface)] p-2.5';
 
 export const LABEL_CLS =
-  'text-[9px] font-semibold uppercase tracking-[0.06em] text-[var(--apple-tertiary)]';
+  'text-[9px] font-semibold text-[var(--apple-tertiary)]';
 
 /** 區塊標題（左側導航錨點對應的正文標題）。 */
 export function SectionHead({

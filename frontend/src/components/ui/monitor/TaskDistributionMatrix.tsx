@@ -22,7 +22,7 @@ export function TaskDistributionMatrix({
 
   return (
     <div>
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">
+      <p className="mb-2 text-[10px] font-semibold text-[var(--console-faint)]">
         任務分佈 · L4/L3/L2 × 24h
         {demo || empty ? <span className="ml-1 font-normal normal-case">（累積中）</span> : null}
       </p>

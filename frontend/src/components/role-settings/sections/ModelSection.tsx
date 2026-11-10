@@ -12,6 +12,7 @@ import {
 } from '../../../lib/agentUi';
 import { modelsForRoute } from '../../../lib/llmCatalog';
 import { navPathForTab } from '../../../lib/monitorTabs';
+import { filterSelectableHubIds, isSunsetHubId } from '../../../lib/sunsetHubIds';
 import type { AgentCatalogMeta } from '../../../types';
 import { Field, TokenSlider, inputCls, routeOptionLabel, tokenHint } from '../fields';
 import type { DraftUpdater, RoleSettingsDraft } from '../types';
@@ -20,9 +21,17 @@ interface ModelSectionProps {
   catalog: AgentCatalogMeta | undefined;
   draft: RoleSettingsDraft;
   setDraft: DraftUpdater;
+  sunsetSaveError: string | null;
+  onClearSunsetError: () => void;
 }
 
-export default function ModelSection({ catalog, draft, setDraft }: ModelSectionProps) {
+export default function ModelSection({
+  catalog,
+  draft,
+  setDraft,
+  sunsetSaveError,
+  onClearSunsetError,
+}: ModelSectionProps) {
   const tiers = catalog?.tiers ?? Object.entries(TIER_LABEL).map(([id, label]) => ({ id, label }));
   const routing = catalog?.routing_strategies ?? Object.entries(ROUTING_LABEL).map(([id, label]) => ({ id, label }));
   const selectedHint = tokenHint(draft.preferred_model, catalog?.model_token_hints);
@@ -113,36 +122,50 @@ export default function ModelSection({ catalog, draft, setDraft }: ModelSectionP
           <select
             className={inputCls}
             value={draft.preferred_model}
-            onChange={(e) => setDraft({ ...draft, preferred_model: e.target.value })}
+            onChange={(e) => {
+              onClearSunsetError();
+              setDraft({ ...draft, preferred_model: e.target.value });
+            }}
           >
             <option value="">該 API 預設模型</option>
+            {isSunsetHubId(draft.preferred_model) ? (
+              <option value={draft.preferred_model} disabled>
+                {draft.preferred_model}（已 sunset，請改選）
+              </option>
+            ) : null}
             {(catalog?.models_by_provider ?? []).length > 0
               ? (catalog?.models_by_provider ?? [])
                   .filter((g) => !draft.preferred_provider || g.route_id === draft.preferred_provider)
                   .map((g) => (
                     <optgroup key={g.route_id} label={routeDisplayName(g) || g.name}>
-                      {g.models.map((id) => (
+                      {filterSelectableHubIds(g.models).map((id) => (
                         <option key={`${g.route_id}-${id}`} value={id}>
                           {rateOptionLabel(id, catalog?.model_rate_cards)}
                         </option>
                       ))}
                     </optgroup>
                   ))
-              : (catalog?.allowed_models ?? []).map((id) => (
+              : filterSelectableHubIds(catalog?.allowed_models ?? []).map((id) => (
                   <option key={id} value={id}>
                     {rateOptionLabel(id, catalog?.model_rate_cards)}
                   </option>
                 ))}
           </select>
+          {isSunsetHubId(draft.preferred_model) || sunsetSaveError ? (
+            <p className="mt-1 text-[11px] text-amber-300/90">
+              {sunsetSaveError ||
+                '此角色仍存有 sunset Hub 鍵；請改選可用模型後儲存（隱藏≠清庫）。'}
+            </p>
+          ) : null}
         </Field>
         {selectedRate ? (
           <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-[#62666d]">價目 USD / 1M tokens</p>
+            <p className="text-[10px] text-[var(--console-faint)]">價目 USD / 1M tokens</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {(selectedRate.items ?? []).map((item) => (
                 <span
                   key={item.id}
-                  className="rounded-md bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-[#d0d6e0]"
+                  className="rounded-md bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] text-[var(--console-sub)]"
                 >
                   {item.label} {fmtRate(item.usd_per_1m, item.unit)}
                 </span>
@@ -166,7 +189,7 @@ export default function ModelSection({ catalog, draft, setDraft }: ModelSectionP
         <Field label="故障轉移模型" hint="逗號分隔，主模型失敗後依序切換">
           <input
             className={inputCls}
-            placeholder="gemini-3.1-pro, deepseek-v4-flash"
+            placeholder="可用模型 id（勿填 sunset 九鍵）"
             value={draft.failoverText}
             onChange={(e) => setDraft({ ...draft, failoverText: e.target.value })}
           />

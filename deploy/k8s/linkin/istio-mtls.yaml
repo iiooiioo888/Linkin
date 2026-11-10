@@ -1,0 +1,26 @@
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: linkin-strict
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: linkin-strict
+    app.kubernetes.io/part-of: linkin
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: linkin-mtls
+  namespace: linkin
+  labels:
+    app.kubernetes.io/name: linkin-mtls
+    app.kubernetes.io/part-of: linkin
+spec:
+  host: "*.linkin.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL

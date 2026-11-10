@@ -1,7 +1,7 @@
 /**
  * SystemMetricsPanel — 系統總覽（OCD 三欄 · 非工業 OPC）。
  *
- * 彙總反思閉環、快取、路由、Trace、任務運行時等 EvoLoop 自身指標。
+ * 彙總反思閉環、快取、路由、Trace、任務運行時等 Linkin 自身指標。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchOptimizationMonitor } from '../api/client';
@@ -246,7 +246,7 @@ export default function SystemMetricsPanel() {
         <ConsoleLeftRail>
           <div className="shrink-0 border-b border-[var(--console-line)] px-4 py-4">
             <h1 className="text-[15px] font-semibold text-[var(--console-ink)]">系統總覽</h1>
-            <p className="mt-1 text-[10px] text-[var(--console-faint)]">EvoLoop 運行時</p>
+            <p className="mt-1 text-[10px] text-[var(--console-faint)]">Linkin 運行時</p>
           </div>
           <ConsoleColumnScroll className="!px-0 !py-0">
             <ConsoleRailNav
@@ -340,7 +340,7 @@ export default function SystemMetricsPanel() {
                   <p className="mt-2 text-center text-[10px] text-[var(--console-faint)]">主機 CPU／記憶體／網路。不是任務數估算。</p>
                   {statusStack.length > 0 ? (
                     <div className="mt-4">
-                      <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--console-faint)]">任務狀態</p>
+                      <p className="mb-1.5 text-[9px] font-semibold text-[var(--console-faint)]">任務狀態</p>
                       <StackBar segments={statusStack} />
                     </div>
                   ) : null}
@@ -351,7 +351,7 @@ export default function SystemMetricsPanel() {
             <ConsoleCard className="mt-3 overflow-x-auto">
               <table className="w-full min-w-[640px] text-left">
                 <thead>
-                  <tr className="border-b border-[var(--console-line)] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
+                  <tr className="border-b border-[var(--console-line)] text-[10px] text-[var(--console-faint)]">
                     <th className="px-3 py-2 font-medium">指標</th>
                     <th className="px-3 py-2 font-medium">即時值</th>
                     <th className="px-3 py-2 font-medium">趨勢</th>
@@ -395,7 +395,7 @@ export default function SystemMetricsPanel() {
             <ConsoleCard className="mt-3">
               <ConsoleCardHeader>反思鏈路追蹤（輪次 · 耗時 · 改進幅度）</ConsoleCardHeader>
               <table className="w-full text-left text-[12px]">
-                <thead className="bg-[var(--console-card)] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
+                <thead className="bg-[var(--console-card)] text-[10px] text-[var(--console-faint)]">
                   <tr>
                     <th className="px-3 py-2 font-medium">任務</th>
                     <th className="px-3 py-2 font-medium">輪次</th>
@@ -452,7 +452,7 @@ export default function SystemMetricsPanel() {
             <ConsoleCard className="mt-3">
               <ConsoleCardHeader>環節 → 模型層級（P0 任務-模型匹配）</ConsoleCardHeader>
               <table className="w-full text-left text-[12px]">
-                <thead className="bg-[var(--console-card)] text-[10px] uppercase tracking-wider text-[var(--console-faint)]">
+                <thead className="bg-[var(--console-card)] text-[10px] text-[var(--console-faint)]">
                   <tr>
                     <th className="px-3 py-2 font-medium">環節</th>
                     <th className="px-3 py-2 font-medium">Tier</th>

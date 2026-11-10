@@ -9,6 +9,41 @@ from backend.billing.pool_store import get_pool_store
 from backend.billing.pools_service import get_pools_service
 
 
+def precheck_billed_task(
+    user_id: str,
+    *,
+    baseline_tokens: int = 1000,
+    iterations: int = 1,
+    roles: int = 1,
+    model: str = "default",
+) -> dict[str, Any]:
+    """確認前只檢查餘額，不凍結、不預扣執行費。"""
+    from backend.billing.pools_service import evaluate_reserve_tier
+    from backend.billing.pricing_engine import estimate_task_reserve
+
+    pools = get_pools_service()
+    account_id = pools.ensure_user(user_id)
+    snapshot = pools.store.snapshot_pricing()
+    estimate = estimate_task_reserve(
+        snapshot["pricing_config"],
+        baseline_tokens=baseline_tokens,
+        iterations=iterations,
+        roles=roles,
+        model=model,
+    )
+    available = pools.store.total_spendable(account_id)
+    if evaluate_reserve_tier(available, estimate) == "reject":
+        from backend.billing.pools_service import ReserveRejectedError
+
+        raise ReserveRejectedError(balance_credits=available, required_credits=estimate)
+    return {
+        "estimated_credits": estimate,
+        "reserved_credits": 0,
+        "prechecked": True,
+        "pricing_config_version": snapshot.get("version") or snapshot.get("pricing_config_version"),
+    }
+
+
 def begin_billed_task(
     user_id: str,
     *,
