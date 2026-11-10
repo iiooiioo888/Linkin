@@ -228,7 +228,7 @@ class TestDeliveryGateForLoopsOutsideTheGraph:
 
         concise = "Python 是直譯式語言。"
         monkeypatch.setattr(
-            "backend.api.routers.chat.call_llm_stream",
+            "backend.api.routers.chat.streaming.call_llm_stream",
             lambda prompt, system=None, **kw: iter(["說" * 900]),
         )
         fake = FakeLLM([

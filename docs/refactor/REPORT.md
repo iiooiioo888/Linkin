@@ -27,7 +27,7 @@ backend/
 │       ├── health_auth.py      # /health、/auth/*
 │       ├── raho_auditor.py     # /raho/*、/auditor/*
 │       ├── config.py           # /config/*、/monitor/llm-ops|optimization|hub-snapshot、/feedback*
-│       ├── chat.py             # /chat、/chat/stream、/routing/preview（含 SSE 串流 helper）
+│       ├── chat/               # /chat、/chat/stream、/routing/preview（第二輪再拆成 7 檔套件，見 §8）
 │       ├── tasks.py            # /tasks*、/traces、/checkpoints、/context、2 個 WebSocket
 │       ├── memories.py         # /memories*
 │       ├── monitor.py          # /dashboard、/monitor/opc|hub|agents*|raho/*
@@ -60,7 +60,7 @@ backend/
 | `npm run build` 在 Windows 失敗 | prebuild 只找系統 `python`（缺 litellm）。改為優先找 `../.venv/Scripts/python.exe`／`../.venv/bin/python`（或 `PYTHON` 環境變數） |
 | Ruff 3 條既有違規 | `cli_runtimes.py` UP035（collections.abc）、`manager_briefing.py` PYI041／FLY002 |
 | 測試殘留 `backend/data/role_catalog/` | 加入 `.gitignore`（租戶角色目錄快取） |
-| 測試 patch 目標 | `backend.main.call_llm_stream` → `backend.api.routers.chat.call_llm_stream`；`backend.main.task_manager` → `backend.api.routers.tasks.task_manager`（`backend.main.nodes.*` 因 re-export 不用改） |
+| 測試 patch 目標 | `backend.main.call_llm_stream` → `backend.api.routers.chat.streaming.call_llm_stream`（第二輪再移到 `chat.streaming`）；`backend.main.task_manager` → `backend.api.routers.tasks.task_manager`（`backend.main.nodes.*` 因 re-export 不用改） |
 
 ## 3. 行為不變的證據
 
@@ -76,9 +76,9 @@ backend/
 
 | 檢查 | 指令 | 結果 |
 |------|------|------|
-| 後端測試 | `pytest backend/tests/` | **1291 passed / 3 failed / 1 skipped**（2 分 25 秒；3 個失敗皆為重構前既有，見 §6） |
+| 後端測試 | `pytest backend/tests/` | **1291 passed / 3 failed / 1 skipped**（2 分 30 秒；3 個失敗皆為重構前既有，見 §6） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（435 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（441 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 11 files / 39 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -94,6 +94,9 @@ backend/
 | 後端最短／最長 router | — | 42 行（db_admin）／753 行（chat） |
 | `frontend/src/api/client.ts` | 2,575 行 | 16 檔／2,707 行（含檔頭與 import） |
 | `frontend/src/types.ts` | 1,951 行 | 10 檔／2,087 行 |
+| `backend/api/routers/chat.py` | 753 行 | 7 檔套件／812 行（最大 388 行）＝ 第二輪 |
+| `frontend/src/App.tsx` | 1,205 行 | **282 行** ＋ `src/hooks/` 5 檔／1,252 行 ＝ 第二輪 |
+| `frontend/src/components/RoleSettingsPanel.tsx` | 1,255 行 | **7 行 barrel** ＋ `components/role-settings/` 10 檔／1,374 行 ＝ 第二輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -101,20 +104,51 @@ backend/
    合併上游時 `backend/api/` 與前端 client/types 套件會是主要衝突面；建議先把上游合併回本地後再重放本次 commit，
    或先用 `git rebase --onto` 把 4 個本地 commit 疊到上游。
 2. **3 個測試失敗在重構前即存在**（已用 `git worktree` 在未改動的 `master` 上逐一重現，非本次引入，未在本次修）：
-   - `test_company.py::TestRoles::test_standard_roles_have_all_types`：本地 `STANDARD_ROLES` 缺 `RoleType.REQUIREMENT_AUDITOR`（本地落後上游 40 個 commit 的角色表差異）。
-   - `test_contracts.py::test_contract_c_seat_003_l0_has_no_tools_or_plugins`：本地席位表缺 `ENVIRONMENT_KERNEL`（L0）席位。
-   - `test_lab_tools.py::test_lab_api_endpoints`：`/lab/archify/system-flows/raho` 標題是「任務經理」，測試期待含「RAHO」（本地 system-flows 資料與測試不同步）。
-3. Windows 開發機需自行安裝 `tzdata`（`pip install tzdata`）才會有 IANA 時區資料；
-   否則 `routing_feedback` 相關 16 個測試會因 `ZoneInfoNotFoundError: Asia/Taipei` 失敗（CI Linux 不受影響）。
-   建議後續在 `requirements.txt` 加 `tzdata; sys_platform == "win32"`
-3. `frontend/src/App.tsx`（1,132 行）、`components/RoleSettingsPanel.tsx`（1,226 行）仍是大型元件，
-   下一輪可依「路由殼／面板 hook／子元件」再拆。
-4. `chat.py`（753 行）仍偏大，若未來要再細分，建議把 SSE helper 獨立成 `api/streaming.py`。
-5. logger 名稱由 `backend.main` 改為 `backend.api.routers.*`（訊息內容不變；若有 caplog 以 logger 名稱斷言的測試需注意）。
+3. Windows 開發機需自行安裝 `tzdata`（`pip install tzdata`）才會有 IANA 時區資料；否則 `routing_feedback` 相關 16 個測試會因 `ZoneInfoNotFoundError: Asia/Taipei` 失敗（CI Linux 不受影響）。建議後續在 `requirements.txt` 加 `tzdata; sys_platform == "win32"`。
+4. logger 名稱由 `backend.main` 改為 `backend.api.routers.*`（第二輪後再細分為 `chat.streaming` 等；訊息內容不變；若有 caplog 以 logger 名稱斷言的測試需注意）。
+5. 前端 App 層目前沒有元件／行為測試（vitest 只覆蓋 `src/lib`）。第二輪 App 拆分以 tsc ＋「JSX 151/151 行逐字相同」＋「21 個 dependency array 內容一致」作為等價保護；建議後續補 ChatView／App 級測試（可用 Playwright）。
+6. 第二輪新增 4 個 oxlint `exhaustive-deps` warning：因規則要求 dependency array 照舊，而 setter 現在是 props；runtime 等價，屬 repo 既有 warning 類別，不影響 build。
+7. 第二輪 hooks 之間 effect 的相對執行順序與原單檔略有不同（彼此獨立、同 commit 執行，無可觀察差異），已列為第二輪最大風險面。
 
 ## 7. 如何審閱
 
-1. `git diff --stat master` 先看刪除的 `main.py`／`client.ts`／`types.ts` 與新增的套件。
-2. 每個 router 與 main.py 原區段一一對照（decorator 外無邏輯差異）。
-3. 前端看 `api/client/index.ts` 與 `types/index.ts` 的 `export *` 清單即可知道公開 API 邊界。
+1. `git log --oneline master..HEAD` 會看到兩個 commit：第一輪（main.py／client／types）、第二輪（App／RoleSettingsPanel／chat）。
+2. 每個 router／hook 與原檔區段一一對照（除 import／decorator／參數化外無邏輯差異）。
+3. 前端看 `api/client/index.ts`、`types/index.ts`、`components/RoleSettingsPanel.tsx` 的 barrel 即知公開 API 邊界。
 4. 重跑 §4 的六條命令。
+
+## 8. 第二輪（2026-11-11 續）
+
+### 8.1 App.tsx → 5 個 hook（1,205 → 282 行）
+
+| 檔案 | 行數 | 職責 |
+|------|-----:|------|
+| `src/App.tsx` | 282 | 只留組裝＋JSX（151 行 JSX 與重構前逐行相同） |
+| `src/hooks/useAppRoute.ts` | 126 | route state／hash 同步／前後退／navigateRoute |
+| `src/hooks/useChatSessions.ts` | 192 | sessions 持久化、active session、任務狀態 patch、決策阻塞 |
+| `src/hooks/useChatSend.ts` | 320 | sendQuery（SSE＋建立任務）、handleRetry、handleSuggest |
+| `src/hooks/useTaskProgressStream.ts` | 268 | 任務進度：applyProgress／pollProgress／TaskWebSocket 綁定 |
+| `src/hooks/useWorkspaceNavigation.ts` | 346 | task detail、surface return、view／monitor／lab／focus／trace 切換 |
+
+等價性：JSX 151/151 行相同；原檔第 67-1204 行每個非空行可在新檔逐字找到；useState/useRef 25/25、useEffect 11/11、21 個 dependency array 內容一致。
+
+### 8.2 RoleSettingsPanel.tsx → role-settings 套件（1,255 → 7 行 barrel）
+
+`types.ts`（194）、`fields.tsx`（91）、`sections/`（Identity 146／Model 234／Prompt 47／Runtime 59／Alerts 154）、`RoleSettingsPanel.tsx`（122，主面板）、`CreateRoleModal.tsx`（320）、`index.ts`（7）。
+公開 API（default、`CreateRoleModal`、`draftFromAgent`、`draftToPayload`、`RoleSettingsDraft`）不變，唯一消費端 `AgentsMonitorPanel.tsx` 未改一行。
+
+### 8.3 chat.py → chat/ 套件（753 行 → 7 檔／812 行）
+
+`__init__.py`（16，維持原註冊順序）、`_router.py`（5，共用 APIRouter）、`models.py`（36）、`routes.py`（62）、`streaming.py`（388）、`company_stream.py`（239）、`minecraft_stream.py`（66）。
+`main.py` 未改；4 個測試 patch 目標改為 `backend.api.routers.chat.streaming.call_llm_stream`；路由順序／paths／components／operationId 與舊版完全一致。
+
+### 8.4 第二輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | 1291 passed／3 failed（同 §6 既有問題）／1 skipped、無 error |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（441 files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run`／`npm run build` | 39 passed／BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（62 warnings；其中 4 個為本次 dependency array 照舊所致） |

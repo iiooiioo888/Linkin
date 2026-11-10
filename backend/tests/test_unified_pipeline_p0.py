@@ -503,7 +503,7 @@ class TestKnownDivergencesXfail:
 
         with (
             patch("backend.core.routing_feedback.record_outcome", side_effect=lambda **kw: recorded.append(kw)),
-            patch("backend.api.routers.chat.call_llm_stream", side_effect=fake_stream),
+            patch("backend.api.routers.chat.streaming.call_llm_stream", side_effect=fake_stream),
             patch("backend.core.nodes.call_llm", side_effect=fake_eval),
             patch("backend.core.evaluation.call_llm", side_effect=fake_eval),
             patch("backend.core.nodes._memory_store", store),
