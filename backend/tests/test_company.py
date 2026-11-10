@@ -369,7 +369,13 @@ class TestRoles:
     """角色定義測試。"""
 
     def test_standard_roles_have_all_types(self):
+        # STANDARD_ROLES 是 80 席公司角色（AGENTS.md）；RAHO 脊柱 5 席（L0–L4）
+        # 由 seat_table._RAHO_SPINE 定義，不進公司角色表。
+        from backend.company.seat_table import _RAHO_SPINE
+
         for role_type in RoleType:
+            if role_type in _RAHO_SPINE:
+                continue
             assert role_type in STANDARD_ROLES
 
     def test_manager_can_delegate(self):

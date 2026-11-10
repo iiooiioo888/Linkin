@@ -8,8 +8,21 @@
 | 種類 | 數量 | 程式來源 | 用途 |
 |------|------|----------|------|
 | **公司 STANDARD_ROLES** | 80 | `backend/company/roles.py` | 複雜任務由任務經理調度的代理人席位 |
+| **RAHO 脊柱席位** | 5 | `backend/company/seat_table.py`（`_RAHO_SPINE`） | L0–L4 固定席位，不屬公司角色表 |
 | **靈境子角色** | 16 | `backend/linkin/roles.py` → `role_catalog` | 建築／敘事／NPC／道具四部門 |
 | **組織模板 BUILTIN_TEMPLATES** | 8 | 同 `roles.py` | 預組團隊（非獨立角色） |
+
+> 席位表（`build_default_seat_table()`）＝ **80 公司席＋5 RAHO 脊柱席＝85 席**。
+> 脊柱席不是公司角色，不列入 `STANDARD_ROLES`，但必須在席位表內，
+> 否則 C-SEAT-003（L0 注入席無工具／無插件）的不變式無從驗證。
+
+| RAHO 層 | 席位 | role_id |
+|---|---|---|
+| L4 | 需求審計官 | `requirement_auditor` |
+| L3 | 戰術指揮官 | `tactical_commander` |
+| L2 | 原子執行席 | `atomic_executor` |
+| L1 | 憲法檢察官 | `constitutional_inspector` |
+| L0 | 環境核心 | `environment_kernel` |
 
 監控中心可覆寫 Prompt／預算／工具；持久化於 `EVOL_ROLE_CATALOG_PATH`（預設 `backend/data/role_catalog.json`）。
 詳見 [公司運行時](../architecture/company-runtime.md) · [術語表](../glossary.md)。
