@@ -139,7 +139,8 @@ def _mediacrawler_failures(limit: int) -> list[dict[str, Any]]:
     for job in jobs:
         if job.get("status") != "failed":
             continue
-        req = job.get("request") if isinstance(job.get("request"), dict) else {}
+        raw_req = job.get("request")
+        req: dict[Any, Any] = raw_req if isinstance(raw_req, dict) else {}
         out.append(
             {
                 "job_id": job.get("job_id"),

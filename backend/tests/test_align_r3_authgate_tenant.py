@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
+
 import pytest
 
 from backend.core.align_r3_authgate_tenant import (
@@ -24,7 +26,7 @@ from backend.core.align_r3_authgate_tenant import (
 
 
 @pytest.fixture(autouse=True)
-def _clear_shadow() -> None:
+def _clear_shadow() -> Generator[None, None, None]:
     reset_r3_shadow_log()
     yield
     reset_r3_shadow_log()
