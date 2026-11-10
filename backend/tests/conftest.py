@@ -229,6 +229,17 @@ def _isolate_linkin_runtime_data(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolate_server_admin_paths(tmp_path, monkeypatch):
+    """伺服器管理批准隊列、審計與備份寫入暫存。"""
+    root = tmp_path / "server_admin"
+    root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("EVOL_SA_BACKUP_DIR", str(root / "backups"))
+    monkeypatch.setenv("EVOL_SA_AUDIT_PATH", str(root / "server_audit.jsonl"))
+    monkeypatch.setenv("EVOL_SA_PENDING_PATH", str(root / "server_pending.json"))
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _isolate_mediacrawler_data(tmp_path, monkeypatch):
     """MediaCrawler 結果、運行時配置與任務 store 寫入暫存。"""
     mc_root = tmp_path / "mediacrawler"

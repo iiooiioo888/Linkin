@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 from uuid import uuid4
 
 import httpx
@@ -24,7 +24,7 @@ class ComfyClient:
         if self._owns:
             self._client.close()
 
-    def __enter__(self) -> "ComfyClient":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *exc: object) -> None:

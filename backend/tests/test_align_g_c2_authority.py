@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
+
 import pytest
 
 from backend.core.align_g_c2_authority import (
@@ -26,7 +28,7 @@ from backend.core.align_g_c2_authority import (
 
 
 @pytest.fixture(autouse=True)
-def _clear_shadow() -> None:
+def _clear_shadow() -> Generator[None, None, None]:
     reset_authority_shadow_log()
     yield
     reset_authority_shadow_log()

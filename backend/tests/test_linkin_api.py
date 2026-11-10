@@ -10,6 +10,7 @@ from backend.core.evaluation import DimensionResult, EvaluationResult
 from backend.linkin.api import register_linkin
 from backend.linkin.constitution import reset_cache as reset_constitution_cache
 from backend.linkin.knowledge import QualityGateError, get_store, reset_store
+
 NPC_CARD = {
     "name": "司契·白绫",
     "faction": "织庭盟",
@@ -96,7 +97,7 @@ def test_npc_crud_and_dialogue(client: TestClient):
     assert talk.status_code == 200
     body = talk.json()
     assert "reply" in body
-    assert "rag_hits" in body or "backend" in body
+    assert "rag" in body
 
     deleted = client.delete(f"/linkin/npcs/{npc_id}")
     assert deleted.status_code == 200

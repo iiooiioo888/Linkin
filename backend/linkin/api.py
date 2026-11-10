@@ -1,4 +1,4 @@
-"""靈境 REST 路由：憲法、NPC、任務、道具、事件與總覽。"""
+"""靈境 REST 路由：憲法、NPC、任務、道具、事件、總覽、運維與 grill-me。"""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from backend.linkin.knowledge import (
     COL_PLAYERS,
     COL_WORLDVIEW,
     QualityGateError,
+    delete_entity,
     get_store,
     list_entities,
     upsert_entity,
@@ -36,6 +37,7 @@ from backend.linkin.tools import (
     invoke_tool,
     npc_relationships,
 )
+from backend.tools.server_admin import ServerAdminError
 
 logger = logging.getLogger(__name__)
 
@@ -91,11 +93,10 @@ def _extract_json_object(text: str) -> dict[str, Any] | None:
 
 
 def _delete_entity_or_404(collection: str, rec_id: str) -> dict[str, Any]:
-    from backend.linkin.knowledge import delete_entity
-
     if not delete_entity(collection, rec_id):
         raise HTTPException(status_code=404, detail=f"{collection} 不存在")
     return {"deleted": True, "id": rec_id}
+
 
 
 def _tool_http(exc: ToolValidationError) -> HTTPException:
@@ -134,20 +135,7 @@ def put_constitution(body: dict[str, Any]) -> dict[str, Any]:
         payload = {k: v for k, v in body.items() if k != "replace"}
         if body.get("replace"):
             return save_constitution(payload)
-        if set(payload.keys()) <= {
-            "world_name",
-            "foundation",
-            "magic",
-            "factions",
-            "regions",
-            "content_boundaries",
-            "consistency_rules",
-            "item_balance",
-            "builder",
-            "version",
-            "tagline",
-            "world_name_zh_hant",
-        }:
+        if set(payload.keys()) <= {"world_name", "foundation", "magic", "factions", "regions", "content_boundaries", "consistency_rules", "item_balance", "builder", "version", "tagline", "world_name_zh_hant"}:
             return update_constitution(payload)
         return save_constitution(payload)
     return update_constitution(body)
@@ -252,15 +240,18 @@ def npc_dialogue(npc_id: str, body: dict[str, Any]) -> dict[str, Any]:
     reply = _npc_reply(card, message, context)
     store.upsert(
         COL_PLAYERS,
-        f"玩家與 {card['name']} 對話：{message} → {reply}",
-        {"kind": "dialogue", "npc_id": npc_id},
+        f"玩家对 {card['name']} 说：{message}\n回应：{reply}",
+        {"kind": "dialogue", "npc_id": npc_id, "player_id": body.get("player_id") or "anonymous"},
         skip_quality=True,
     )
     return {
         "npc_id": npc_id,
         "reply": reply,
-        "rag_hits": len(retrieved),
-        "backend": store.backend_status(),
+        "rag": {
+            "hits": retrieved,
+            "threshold": 0.75,
+            "backend": store.backend_status(),
+        },
     }
 
 
@@ -355,7 +346,6 @@ def list_quests() -> dict[str, Any]:
 def remove_quest(quest_id: str) -> dict[str, Any]:
     return _delete_entity_or_404("quests", quest_id)
 
-
 @linkin_router.get("/items")
 def list_items() -> dict[str, Any]:
     items = list_entities("items")
@@ -389,7 +379,6 @@ def create_item(body: dict[str, Any]) -> dict[str, Any]:
     )
     return {"item": item, "rag_checked": True}
 
-
 @linkin_router.get("/events")
 def list_events() -> dict[str, Any]:
     items = []
@@ -405,7 +394,6 @@ def list_events() -> dict[str, Any]:
             }
         )
     return {"events": items, "count": len(items)}
-
 
 @linkin_router.get("/overview")
 def overview() -> dict[str, Any]:
@@ -431,30 +419,164 @@ def overview() -> dict[str, Any]:
         },
     }
 
+# ── 服務器運維智能體（本地定制，恢復自 server_admin 模組）──
+_SERVER_ERROR_STATUS = {
+    "unknown_tool": 400,
+    "invalid": 400,
+    "invalid_service": 400,
+    "path_denied": 403,
+    "service_denied": 403,
+    "dangerous_input": 403,
+    "expired": 409,
+    "invalid_state": 409,
+    "needs_confirmation": 409,
+}
+
+
+def _server_http(exc: ServerAdminError) -> HTTPException:
+    status = _SERVER_ERROR_STATUS.get(str(exc.code), 500)
+    return HTTPException(
+        status_code=status,
+        detail={"message": str(exc), "code": exc.code, **exc.extra},
+    )
+
+
+@linkin_router.get("/server/health")
+def server_health() -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    return server_ops.health_snapshot()
+
+
+@linkin_router.post("/server/ask")
+def server_ask(body: dict[str, Any]) -> dict[str, Any]:
+    """自然語言運維問答：讀操作即執行；寫操作轉 pending_approval。"""
+    from backend.linkin import server_admin as server_ops
+
+    question = str(body.get("question") or body.get("command") or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="需要 question")
+    auto_approve = bool(body.get("auto_approve"))
+    role = str(body.get("role") or "").strip()
+    try:
+        return server_ops.ask_agent(question, auto_approve=auto_approve, role=role)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ServerAdminError as exc:
+        raise _server_http(exc) from exc
+
+
+@linkin_router.get("/server/approvals")
+def server_approvals(include_done: bool = Query(False)) -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    items = server_ops.list_approvals(include_done=include_done)
+    return {"approvals": items, "count": len(items)}
+
+
+@linkin_router.post("/server/approvals/{approval_id}/confirm")
+def server_approval_confirm(approval_id: str) -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    try:
+        return server_ops.confirm_approval(approval_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ServerAdminError as exc:
+        raise _server_http(exc) from exc
+
+
+@linkin_router.post("/server/approvals/{approval_id}/cancel")
+def server_approval_cancel(approval_id: str) -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    try:
+        return server_ops.cancel_approval(approval_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ServerAdminError as exc:
+        raise _server_http(exc) from exc
+
+
+@linkin_router.post("/server/patrol")
+def server_patrol(body: dict[str, Any] | None = None) -> dict[str, Any]:
+    """主動巡檢：健康快照 + 規則提案（預設轉人工批准；不自動執行破壞性操作）。"""
+    from backend.linkin import server_admin as server_ops
+
+    auto_approve = bool((body or {}).get("auto_approve"))
+    return server_ops.patrol(auto_approve=auto_approve)
+
+
+@linkin_router.get("/server/report")
+def server_report() -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    return {"report": server_ops.daily_report()}
+
+
+@linkin_router.get("/server/audit")
+def server_audit(limit: int = Query(100, ge=1, le=1000)) -> dict[str, Any]:
+    from backend.linkin import server_admin as server_ops
+
+    rows = server_ops.audit_tail(limit)
+    return {"entries": rows, "count": len(rows)}
+
+
+# ── grill-me 嚴刑拷打模式（本地定制，上游無此區塊）──
+
 
 @linkin_router.post("/grill/start")
 def grill_start(body: dict[str, Any]) -> dict[str, Any]:
+    """開一場拷問會話：body={"topic": "<計畫/決策/想法>"}。"""
     from backend.linkin import grill_me
 
-    return grill_me.start(body)
+    topic = str((body or {}).get("topic") or (body or {}).get("question") or "").strip()
+    try:
+        return {"status": "ok", **grill_me.grill_start(topic)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    except Exception as exc:
+        logger.warning("grill_me 啟動失敗：%s", exc)
+        raise HTTPException(
+            status_code=503, detail={"message": f"grill-me 不可用（LLM 未配置或呼叫失敗）：{exc}"}
+        ) from exc
 
 
 @linkin_router.post("/grill/turn")
 def grill_turn(body: dict[str, Any]) -> dict[str, Any]:
+    """繼續拷問：body={"session_id": "...", "answer": "<使用者回答>"}。"""
     from backend.linkin import grill_me
 
-    return grill_me.turn(body)
+    session_id = str((body or {}).get("session_id") or "").strip()
+    answer = str((body or {}).get("answer") or "").strip()
+    try:
+        return {"status": "ok", **grill_me.grill_turn(session_id, answer)}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    except Exception as exc:
+        logger.warning("grill_me 回合失敗：%s", exc)
+        raise HTTPException(status_code=503, detail={"message": f"grill-me 不可用：{exc}"}) from exc
 
 
 @linkin_router.post("/grill/summary")
 def grill_summary(body: dict[str, Any]) -> dict[str, Any]:
+    """強制收尾：body={"session_id": "..."} → 🟢🟡🔴 總結 + GO/NO-GO 裁決。"""
     from backend.linkin import grill_me
 
-    return grill_me.summary(body)
+    session_id = str((body or {}).get("session_id") or "").strip()
+    try:
+        return {"status": "ok", **grill_me.grill_summary(session_id)}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except Exception as exc:
+        logger.warning("grill_me 總結失敗：%s", exc)
+        raise HTTPException(status_code=503, detail={"message": f"grill-me 不可用：{exc}"}) from exc
 
 
 @linkin_router.get("/grill/status")
 def grill_status() -> dict[str, Any]:
     from backend.linkin import grill_me
 
-    return grill_me.status()
+    return grill_me.grill_status()
