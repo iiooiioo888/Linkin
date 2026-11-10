@@ -92,7 +92,11 @@ def run_once(
                 self._c.close()
 
         mock_server = create_mock_comfy_app(output_dir=root / "_mock_comfy")
-        client = ComfyClient(cfg.comfyui_url, client=_Adapter(mock_server))
+        # _Adapter 是 TestClient 包裝，duck-type 成 httpx.Client；刻意不對齊靜態型別。
+        client = ComfyClient(
+            cfg.comfyui_url,
+            client=_Adapter(mock_server),  # type: ignore[arg-type]
+        )
         owns_client = True
     else:
         client = ComfyClient(cfg.comfyui_url)
