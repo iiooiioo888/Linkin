@@ -12,7 +12,6 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -33,6 +32,13 @@ from backend.auth.gate import (
 from backend.billing import register_billing
 from backend.billing.errors import FeatureNotEntitledError, InsufficientCreditsError
 from backend.billing.middleware import BillingContextMiddleware
+
+# 公司預算狀態實作在 backend.company.budget_state；此處 re-export
+# 保留 ``backend.main.update_company_budget_state`` 供既有呼叫方與測試使用。
+from backend.company.budget_state import (  # noqa: F401
+    get_company_budget_state,
+    update_company_budget_state,
+)
 from backend.company.docker_tools import DOCKER_SERVICE_HOURLY_RATES
 from backend.company.role_catalog import (
     create_custom_role,
@@ -83,31 +89,6 @@ from backend.services.opc_monitor import collect_opc_monitor
 from backend.services.optimization_monitor import collect_optimization_monitor
 from backend.services.task_broadcaster import task_broadcaster
 from backend.services.task_manager import task_manager
-
-# ═══════════════════════════════════════════════════════════════
-# 全局公司預算狀態（由 orchestrator 更新，API 讀取）
-# ═══════════════════════════════════════════════════════════════
-
-_company_budget_state: dict[str, Any] = {
-    "api_cost": 0.0,
-    "docker_cost": 0.0,
-    "aliyun_cost": 0.0,
-    "cloud_cost": 0.0,
-    "total_spent": 0.0,
-    "budget_pressure": 0.0,
-    "optimization_suggestions": [],
-    "auto_optimized": {},
-    "last_updated": "",
-}
-
-
-def update_company_budget_state(state: dict[str, Any]) -> None:
-    """由公司 orchestrator 調用，更新全局預算狀態。"""
-    global _company_budget_state
-    _company_budget_state = {
-        **state,
-        "last_updated": datetime.now(timezone.utc).isoformat(),
-    }
 
 logging.basicConfig(
     level=logging.INFO,
@@ -2554,7 +2535,7 @@ async def docker_budget():
         "total_docker_cost": round(total_docker_cost, 4),
         "total_hourly_rate": round(total_hourly_rate, 4),
         "monthly_projection": round(total_hourly_rate * 24 * 30, 4),
-        "company_budget": _company_budget_state,
+        "company_budget": get_company_budget_state(),
         "user_billing": docker_billing_for_request(),
     }
 

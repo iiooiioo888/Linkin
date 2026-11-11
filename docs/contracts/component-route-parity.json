@@ -1,0 +1,2230 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "eb14f83",
+  "count": 317,
+  "routes": [
+    {
+      "path": "/api/v1/chat/completions",
+      "methods": [
+        "POST"
+      ],
+      "name": "hub_chat"
+    },
+    {
+      "path": "/api/v1/agent/tasks",
+      "methods": [
+        "POST"
+      ],
+      "name": "hub_create_task"
+    },
+    {
+      "path": "/api/v1/agent/tasks/{task_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "hub_get_task"
+    },
+    {
+      "path": "/api/v1/catalog",
+      "methods": [
+        "GET"
+      ],
+      "name": "hub_catalog"
+    },
+    {
+      "path": "/v1/chat/completions",
+      "methods": [
+        "POST"
+      ],
+      "name": "hub_chat_compat"
+    },
+    {
+      "path": "/v1/agent/tasks",
+      "methods": [
+        "POST"
+      ],
+      "name": "hub_create_task_compat"
+    },
+    {
+      "path": "/v1/agent/tasks/{task_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "hub_get_task_compat"
+    },
+    {
+      "path": "/v1/catalog",
+      "methods": [
+        "GET"
+      ],
+      "name": "hub_catalog_compat"
+    },
+    {
+      "path": "/healthz",
+      "methods": [
+        "GET"
+      ],
+      "name": "healthz"
+    },
+    {
+      "path": "/metrics",
+      "methods": [
+        "GET"
+      ],
+      "name": "metrics"
+    },
+    {
+      "path": "/modelgw/healthz",
+      "methods": [
+        "GET"
+      ],
+      "name": "healthz"
+    },
+    {
+      "path": "/modelgw/registry",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_registry"
+    },
+    {
+      "path": "/modelgw/v1/admit",
+      "methods": [
+        "POST"
+      ],
+      "name": "admit_endpoint"
+    },
+    {
+      "path": "/modelgw/v1/chat/completions",
+      "methods": [
+        "POST"
+      ],
+      "name": "chat_completions"
+    },
+    {
+      "path": "/modelgw/internal/v1/deploy-callback",
+      "methods": [
+        "POST"
+      ],
+      "name": "deploy_callback"
+    },
+    {
+      "path": "/api/internal/modelgw/path-counts",
+      "methods": [
+        "GET"
+      ],
+      "name": "internal_path_counts"
+    },
+    {
+      "path": "/linkin/constitution",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_constitution"
+    },
+    {
+      "path": "/linkin/constitution",
+      "methods": [
+        "PUT"
+      ],
+      "name": "put_constitution"
+    },
+    {
+      "path": "/linkin/npcs",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_npcs"
+    },
+    {
+      "path": "/linkin/npcs",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_npc"
+    },
+    {
+      "path": "/linkin/npcs",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_npc_collection"
+    },
+    {
+      "path": "/linkin/npcs",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "delete_npc_collection"
+    },
+    {
+      "path": "/linkin/npcs/{npc_id}",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_npc"
+    },
+    {
+      "path": "/linkin/npcs/{npc_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "remove_npc"
+    },
+    {
+      "path": "/linkin/npcs/{npc_id}/dialogue",
+      "methods": [
+        "POST"
+      ],
+      "name": "npc_dialogue"
+    },
+    {
+      "path": "/linkin/quests/generate",
+      "methods": [
+        "POST"
+      ],
+      "name": "generate_quest"
+    },
+    {
+      "path": "/linkin/quests",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_quests"
+    },
+    {
+      "path": "/linkin/quests/{quest_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "remove_quest"
+    },
+    {
+      "path": "/linkin/items",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_items"
+    },
+    {
+      "path": "/linkin/items/{item_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "remove_item"
+    },
+    {
+      "path": "/linkin/items",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_item"
+    },
+    {
+      "path": "/linkin/events",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_events"
+    },
+    {
+      "path": "/linkin/overview",
+      "methods": [
+        "GET"
+      ],
+      "name": "overview"
+    },
+    {
+      "path": "/linkin/server/health",
+      "methods": [
+        "GET"
+      ],
+      "name": "server_health"
+    },
+    {
+      "path": "/linkin/server/ask",
+      "methods": [
+        "POST"
+      ],
+      "name": "server_ask"
+    },
+    {
+      "path": "/linkin/server/approvals",
+      "methods": [
+        "GET"
+      ],
+      "name": "server_approvals"
+    },
+    {
+      "path": "/linkin/server/approvals/{approval_id}/confirm",
+      "methods": [
+        "POST"
+      ],
+      "name": "server_approval_confirm"
+    },
+    {
+      "path": "/linkin/server/approvals/{approval_id}/cancel",
+      "methods": [
+        "POST"
+      ],
+      "name": "server_approval_cancel"
+    },
+    {
+      "path": "/linkin/server/patrol",
+      "methods": [
+        "POST"
+      ],
+      "name": "server_patrol"
+    },
+    {
+      "path": "/linkin/server/report",
+      "methods": [
+        "GET"
+      ],
+      "name": "server_report"
+    },
+    {
+      "path": "/linkin/server/audit",
+      "methods": [
+        "GET"
+      ],
+      "name": "server_audit"
+    },
+    {
+      "path": "/linkin/grill/start",
+      "methods": [
+        "POST"
+      ],
+      "name": "grill_start"
+    },
+    {
+      "path": "/linkin/grill/turn",
+      "methods": [
+        "POST"
+      ],
+      "name": "grill_turn"
+    },
+    {
+      "path": "/linkin/grill/summary",
+      "methods": [
+        "POST"
+      ],
+      "name": "grill_summary"
+    },
+    {
+      "path": "/linkin/grill/status",
+      "methods": [
+        "GET"
+      ],
+      "name": "grill_status"
+    },
+    {
+      "path": "/linkin/containers/config",
+      "methods": [
+        "GET"
+      ],
+      "name": "containers_config"
+    },
+    {
+      "path": "/linkin/containers/tasks",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_container_task"
+    },
+    {
+      "path": "/linkin/containers/tasks/{task_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_container_task"
+    },
+    {
+      "path": "/linkin/containers/tasks/{task_id}/logs",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_container_task_logs"
+    },
+    {
+      "path": "",
+      "methods": [
+        "WS"
+      ],
+      "name": ""
+    },
+    {
+      "path": "/modules",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_world_modules"
+    },
+    {
+      "path": "/modules/{module_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_world_module"
+    },
+    {
+      "path": "/modules/{module_id}/pages",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_world_module_pages"
+    },
+    {
+      "path": "/modules/{module_id}/pages/{page}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_world_module_page"
+    },
+    {
+      "path": "/modules/{module_id}/health",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_world_module_health"
+    },
+    {
+      "path": "/modules/{module_id}/capabilities",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_world_module_capabilities"
+    },
+    {
+      "path": "/modules/{module_id}/api/{path:path}",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "POST",
+        "PUT"
+      ],
+      "name": "world_module_api"
+    },
+    {
+      "path": "/plugins",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_plugins"
+    },
+    {
+      "path": "/plugins/catalog",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_plugin_catalog"
+    },
+    {
+      "path": "/plugins/{plugin_id}/install",
+      "methods": [
+        "POST"
+      ],
+      "name": "install_plugin"
+    },
+    {
+      "path": "/plugins/{plugin_id}/toggle",
+      "methods": [
+        "POST"
+      ],
+      "name": "toggle_plugin"
+    },
+    {
+      "path": "/plugins/{plugin_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_plugin"
+    },
+    {
+      "path": "/integrations/catalog",
+      "methods": [
+        "GET"
+      ],
+      "name": "catalog"
+    },
+    {
+      "path": "/integrations",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_integrations"
+    },
+    {
+      "path": "/integrations/recall",
+      "methods": [
+        "POST"
+      ],
+      "name": "recall"
+    },
+    {
+      "path": "/integrations/{name}/settings",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_integration_settings"
+    },
+    {
+      "path": "/integrations/{name}/toggle",
+      "methods": [
+        "POST"
+      ],
+      "name": "toggle_integration"
+    },
+    {
+      "path": "/integrations/yao/workspaces",
+      "methods": [
+        "GET"
+      ],
+      "name": "yao_list_workspaces"
+    },
+    {
+      "path": "/integrations/yao/workspaces/{workspace_id}/tasks",
+      "methods": [
+        "GET"
+      ],
+      "name": "yao_list_tasks"
+    },
+    {
+      "path": "/integrations/yao/tasks",
+      "methods": [
+        "POST"
+      ],
+      "name": "yao_create_task"
+    },
+    {
+      "path": "/integrations/ouroboros/interview",
+      "methods": [
+        "POST"
+      ],
+      "name": "ouroboros_interview"
+    },
+    {
+      "path": "/integrations/ouroboros/auto",
+      "methods": [
+        "POST"
+      ],
+      "name": "ouroboros_auto"
+    },
+    {
+      "path": "/integrations/ouroboros/evaluate",
+      "methods": [
+        "POST"
+      ],
+      "name": "ouroboros_evaluate"
+    },
+    {
+      "path": "/integrations/openpencil/projects",
+      "methods": [
+        "GET"
+      ],
+      "name": "openpencil_list_projects"
+    },
+    {
+      "path": "/integrations/openpencil/generate",
+      "methods": [
+        "POST"
+      ],
+      "name": "openpencil_generate"
+    },
+    {
+      "path": "/config/lab",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_lab_prefs"
+    },
+    {
+      "path": "/config/lab",
+      "methods": [
+        "PUT"
+      ],
+      "name": "put_lab_prefs"
+    },
+    {
+      "path": "/runtime/state-matrix",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_state_matrix"
+    },
+    {
+      "path": "/runtime/state-matrix/evaluate",
+      "methods": [
+        "POST"
+      ],
+      "name": "evaluate_state_action"
+    },
+    {
+      "path": "/runtime/perf-budgets",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_perf_budgets"
+    },
+    {
+      "path": "/runtime/perf-budgets/check",
+      "methods": [
+        "POST"
+      ],
+      "name": "post_perf_check"
+    },
+    {
+      "path": "/config/cost-speed/post-company-reflect",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_post_company_reflect"
+    },
+    {
+      "path": "/config/cost-speed/post-company-reflect",
+      "methods": [
+        "PUT"
+      ],
+      "name": "put_post_company_reflect"
+    },
+    {
+      "path": "/config/cost-speed/routing-feedback",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_routing_feedback_config"
+    },
+    {
+      "path": "/billing",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_billing"
+    },
+    {
+      "path": "/billing/overview",
+      "methods": [
+        "GET"
+      ],
+      "name": "billing_overview"
+    },
+    {
+      "path": "/billing/usage",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_usage"
+    },
+    {
+      "path": "/billing/ledger",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_ledger"
+    },
+    {
+      "path": "/billing/topup",
+      "methods": [
+        "POST"
+      ],
+      "name": "topup"
+    },
+    {
+      "path": "/billing/assign-plan",
+      "methods": [
+        "POST"
+      ],
+      "name": "assign_plan"
+    },
+    {
+      "path": "/billing/appeals",
+      "methods": [
+        "POST"
+      ],
+      "name": "submit_appeal"
+    },
+    {
+      "path": "/billing/appeals",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_my_appeals"
+    },
+    {
+      "path": "/billing/pools",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_pools"
+    },
+    {
+      "path": "/billing/rollover-records",
+      "methods": [
+        "GET"
+      ],
+      "name": "my_rollover_records"
+    },
+    {
+      "path": "/billing/grants",
+      "methods": [
+        "GET"
+      ],
+      "name": "my_grants"
+    },
+    {
+      "path": "/billing/pools/ledger",
+      "methods": [
+        "GET"
+      ],
+      "name": "my_pool_ledger"
+    },
+    {
+      "path": "/billing/contribution/convert",
+      "methods": [
+        "POST"
+      ],
+      "name": "convert_contribution"
+    },
+    {
+      "path": "/billing/token-dashboard",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_token_dashboard"
+    },
+    {
+      "path": "/billing/token-dashboard/generate",
+      "methods": [
+        "POST"
+      ],
+      "name": "post_token_dashboard"
+    },
+    {
+      "path": "/billing/transfer",
+      "methods": [
+        "POST"
+      ],
+      "name": "transfer_forbidden"
+    },
+    {
+      "path": "/wallet",
+      "methods": [
+        "GET"
+      ],
+      "name": "wallet_alias"
+    },
+    {
+      "path": "/wallet/ledger",
+      "methods": [
+        "GET"
+      ],
+      "name": "wallet_ledger_alias"
+    },
+    {
+      "path": "/wallet/topup",
+      "methods": [
+        "POST"
+      ],
+      "name": "wallet_topup_alias"
+    },
+    {
+      "path": "/admin/billing/contribution/seed",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_seed_contribution"
+    },
+    {
+      "path": "/admin/billing/pricing-configs",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_pricing_configs"
+    },
+    {
+      "path": "/admin/billing/pricing-configs/active",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_active_pricing"
+    },
+    {
+      "path": "/admin/billing/pricing-configs",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_pricing_config"
+    },
+    {
+      "path": "/admin/billing/pricing-configs/{version}/activate",
+      "methods": [
+        "POST"
+      ],
+      "name": "activate_pricing_config"
+    },
+    {
+      "path": "/admin/billing/pricing-configs/{version}/rollback",
+      "methods": [
+        "POST"
+      ],
+      "name": "rollback_pricing_config"
+    },
+    {
+      "path": "/admin/billing/credit-policies",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_credit_policies"
+    },
+    {
+      "path": "/admin/billing/credit-policies",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_credit_policy"
+    },
+    {
+      "path": "/admin/billing/credit-policies/{version}/activate",
+      "methods": [
+        "POST"
+      ],
+      "name": "activate_credit_policy"
+    },
+    {
+      "path": "/admin/billing/rollover-records",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_rollover_records"
+    },
+    {
+      "path": "/admin/billing/rollover/run",
+      "methods": [
+        "POST"
+      ],
+      "name": "trigger_rollover"
+    },
+    {
+      "path": "/admin/billing/vendor-configs",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_vendor_configs"
+    },
+    {
+      "path": "/admin/billing/vendor-configs",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_vendor_config"
+    },
+    {
+      "path": "/admin/billing/vendor-configs/{version}/activate",
+      "methods": [
+        "POST"
+      ],
+      "name": "activate_vendor_config"
+    },
+    {
+      "path": "/admin/billing/appeals",
+      "methods": [
+        "GET"
+      ],
+      "name": "admin_list_appeals"
+    },
+    {
+      "path": "/admin/billing/appeals/{appeal_id}/resolve",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_resolve_appeal"
+    },
+    {
+      "path": "/admin/billing/cache-stats",
+      "methods": [
+        "GET"
+      ],
+      "name": "cache_stats"
+    },
+    {
+      "path": "/admin/billing/fault-pool",
+      "methods": [
+        "GET"
+      ],
+      "name": "fault_pool_stats"
+    },
+    {
+      "path": "/admin/billing/routing/stats",
+      "methods": [
+        "GET"
+      ],
+      "name": "routing_stats"
+    },
+    {
+      "path": "/admin/billing/routing/task/{task_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "routing_for_task"
+    },
+    {
+      "path": "/admin/billing/fault-pool/resume-public",
+      "methods": [
+        "POST"
+      ],
+      "name": "resume_public_pool"
+    },
+    {
+      "path": "/admin/billing/task-ledger/{task_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "task_ledger"
+    },
+    {
+      "path": "/billing/contributor/bind-key",
+      "methods": [
+        "POST"
+      ],
+      "name": "bind_contributor_key"
+    },
+    {
+      "path": "/billing/contributor/keys",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_contributor_keys"
+    },
+    {
+      "path": "/billing/contributor/keys/{key_id}/health",
+      "methods": [
+        "GET"
+      ],
+      "name": "contributor_key_health"
+    },
+    {
+      "path": "/billing/contributor/keys/{key_id}/health-check",
+      "methods": [
+        "POST"
+      ],
+      "name": "run_contributor_key_health_check"
+    },
+    {
+      "path": "/billing/contributor/earnings",
+      "methods": [
+        "GET"
+      ],
+      "name": "contributor_earnings"
+    },
+    {
+      "path": "/billing/contributor/contribution/status",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_contribution_status"
+    },
+    {
+      "path": "/billing/contributor/contribution/lock",
+      "methods": [
+        "POST"
+      ],
+      "name": "lock_contribution_endpoint"
+    },
+    {
+      "path": "/billing/contributor/contribution/convert",
+      "methods": [
+        "POST"
+      ],
+      "name": "convert_contribution"
+    },
+    {
+      "path": "/billing/contributor/contribution/unlock-installments",
+      "methods": [
+        "POST"
+      ],
+      "name": "trigger_installments"
+    },
+    {
+      "path": "/billing/contributor/contribution/early-unlock",
+      "methods": [
+        "POST"
+      ],
+      "name": "early_unlock_endpoint"
+    },
+    {
+      "path": "/mediacrawler/collect",
+      "methods": [
+        "POST"
+      ],
+      "name": "mediacrawler_collect"
+    },
+    {
+      "path": "/mediacrawler/status",
+      "methods": [
+        "GET"
+      ],
+      "name": "mediacrawler_status"
+    },
+    {
+      "path": "/mediacrawler/config",
+      "methods": [
+        "GET"
+      ],
+      "name": "mediacrawler_get_config"
+    },
+    {
+      "path": "/mediacrawler/config",
+      "methods": [
+        "PUT"
+      ],
+      "name": "mediacrawler_put_config"
+    },
+    {
+      "path": "/mediacrawler/jobs/validate",
+      "methods": [
+        "POST"
+      ],
+      "name": "mediacrawler_validate_job"
+    },
+    {
+      "path": "/mediacrawler/jobs",
+      "methods": [
+        "POST"
+      ],
+      "name": "mediacrawler_create_job"
+    },
+    {
+      "path": "/mediacrawler/jobs",
+      "methods": [
+        "GET"
+      ],
+      "name": "mediacrawler_list_jobs"
+    },
+    {
+      "path": "/mediacrawler/jobs/{job_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "mediacrawler_get_job"
+    },
+    {
+      "path": "/mediacrawler/jobs/{job_id}/results",
+      "methods": [
+        "GET"
+      ],
+      "name": "mediacrawler_job_results"
+    },
+    {
+      "path": "/mediacrawler/jobs/{job_id}/results/{filename}",
+      "methods": [
+        "GET"
+      ],
+      "name": "mediacrawler_download_result"
+    },
+    {
+      "path": "/media-vault/images",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_images"
+    },
+    {
+      "path": "/media-vault/images/{post_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_image_detail"
+    },
+    {
+      "path": "/media-vault/files/{asset_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "serve_asset"
+    },
+    {
+      "path": "/media-vault/monitor/summary",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_monitor_summary"
+    },
+    {
+      "path": "/media-vault/control/overview",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_control_overview"
+    },
+    {
+      "path": "/media-vault/ingest/replay",
+      "methods": [
+        "POST"
+      ],
+      "name": "replay_ingest"
+    },
+    {
+      "path": "/local-video-studio/health",
+      "methods": [
+        "GET"
+      ],
+      "name": "health"
+    },
+    {
+      "path": "/local-video-studio/api/v1/health",
+      "methods": [
+        "GET"
+      ],
+      "name": "health_v1"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_create_project"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_list_projects"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects/{project_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_get_project"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects/{project_id}",
+      "methods": [
+        "PATCH"
+      ],
+      "name": "api_patch_project"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects/{project_id}/scripts",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_upload_script"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects/{project_id}/shots",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_create_shot"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects/{project_id}/shots",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_list_shots"
+    },
+    {
+      "path": "/local-video-studio/api/v1/shots/{shot_id}",
+      "methods": [
+        "PATCH"
+      ],
+      "name": "api_patch_shot"
+    },
+    {
+      "path": "/local-video-studio/api/v1/jobs",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_create_job"
+    },
+    {
+      "path": "/local-video-studio/api/v1/jobs",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_list_jobs"
+    },
+    {
+      "path": "/local-video-studio/api/v1/jobs/{job_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_get_job"
+    },
+    {
+      "path": "/local-video-studio/api/v1/jobs/{job_id}/claim",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_claim_job"
+    },
+    {
+      "path": "/local-video-studio/api/v1/jobs/{job_id}/complete",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_complete_job"
+    },
+    {
+      "path": "/local-video-studio/api/v1/jobs/{job_id}/cancel",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_cancel_job"
+    },
+    {
+      "path": "/local-video-studio/api/v1/jobs/{job_id}/retry",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_retry_job"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects/{project_id}/assets",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_list_assets"
+    },
+    {
+      "path": "/local-video-studio/api/v1/assets/{asset_id}/review",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_review_asset"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects/{project_id}/review-queue",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_review_queue"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects/{project_id}/compose",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_compose"
+    },
+    {
+      "path": "/local-video-studio/api/v1/assets/{asset_id}/compliance",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_get_compliance"
+    },
+    {
+      "path": "/local-video-studio/api/v1/assets/{asset_id}/compliance-stamp",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_stamp_compliance"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects/{project_id}/resources",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_resources"
+    },
+    {
+      "path": "/local-video-studio/api/v1/assets/{asset_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_get_asset"
+    },
+    {
+      "path": "/local-video-studio/api/v1/assets/{asset_id}/media",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_asset_media"
+    },
+    {
+      "path": "/local-video-studio/api/v1/projects/{project_id}/uploads",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_upload_project_file"
+    },
+    {
+      "path": "/local-video-studio/api/v1/workflows",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_import_workflow"
+    },
+    {
+      "path": "/local-video-studio/api/v1/workflows",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_list_workflows"
+    },
+    {
+      "path": "/local-video-studio/api/v1/workflows/{name}",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_get_workflow"
+    },
+    {
+      "path": "/local-video-studio/api/v1/models",
+      "methods": [
+        "POST"
+      ],
+      "name": "api_register_model"
+    },
+    {
+      "path": "/local-video-studio/api/v1/models",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_list_models"
+    },
+    {
+      "path": "/local-video-studio/api/v1/models/{name}",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_get_model"
+    },
+    {
+      "path": "/local-video-studio/api/v1/jobs/{job_id}/log",
+      "methods": [
+        "GET"
+      ],
+      "name": "api_job_log"
+    },
+    {
+      "path": "/health",
+      "methods": [
+        "GET"
+      ],
+      "name": "health"
+    },
+    {
+      "path": "/auth/login",
+      "methods": [
+        "POST"
+      ],
+      "name": "auth_login"
+    },
+    {
+      "path": "/auth/me",
+      "methods": [
+        "GET"
+      ],
+      "name": "auth_me"
+    },
+    {
+      "path": "/auth/logout",
+      "methods": [
+        "POST"
+      ],
+      "name": "auth_logout"
+    },
+    {
+      "path": "/raho/grill/start",
+      "methods": [
+        "POST"
+      ],
+      "name": "raho_grill_start"
+    },
+    {
+      "path": "/raho/grill/turn",
+      "methods": [
+        "POST"
+      ],
+      "name": "raho_grill_turn"
+    },
+    {
+      "path": "/raho/grill/status",
+      "methods": [
+        "GET"
+      ],
+      "name": "raho_grill_status"
+    },
+    {
+      "path": "/auditor/start",
+      "methods": [
+        "POST"
+      ],
+      "name": "auditor_gateway_start"
+    },
+    {
+      "path": "/auditor/turn",
+      "methods": [
+        "POST"
+      ],
+      "name": "auditor_gateway_turn"
+    },
+    {
+      "path": "/auditor/status",
+      "methods": [
+        "GET"
+      ],
+      "name": "auditor_gateway_status"
+    },
+    {
+      "path": "/auditor/stream",
+      "methods": [
+        "POST"
+      ],
+      "name": "auditor_gateway_stream"
+    },
+    {
+      "path": "/raho/tree",
+      "methods": [
+        "GET"
+      ],
+      "name": "raho_tree"
+    },
+    {
+      "path": "/raho/l0",
+      "methods": [
+        "GET"
+      ],
+      "name": "raho_l0"
+    },
+    {
+      "path": "/raho/decide",
+      "methods": [
+        "POST"
+      ],
+      "name": "raho_decide"
+    },
+    {
+      "path": "/raho/commander/plan",
+      "methods": [
+        "POST"
+      ],
+      "name": "raho_commander_plan"
+    },
+    {
+      "path": "/raho/commander/grill",
+      "methods": [
+        "POST"
+      ],
+      "name": "raho_commander_grill"
+    },
+    {
+      "path": "/raho/commander/grill/stream",
+      "methods": [
+        "POST"
+      ],
+      "name": "raho_commander_grill_stream"
+    },
+    {
+      "path": "/raho/scorecard",
+      "methods": [
+        "GET"
+      ],
+      "name": "raho_scorecard"
+    },
+    {
+      "path": "/config",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_config"
+    },
+    {
+      "path": "/config",
+      "methods": [
+        "POST"
+      ],
+      "name": "update_config"
+    },
+    {
+      "path": "/config/routes",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_config_routes"
+    },
+    {
+      "path": "/config/routes",
+      "methods": [
+        "PUT"
+      ],
+      "name": "replace_config_routes"
+    },
+    {
+      "path": "/config/routes",
+      "methods": [
+        "POST"
+      ],
+      "name": "upsert_config_route"
+    },
+    {
+      "path": "/config/routes/{route_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "delete_config_route"
+    },
+    {
+      "path": "/config/routes/{route_id}/refresh",
+      "methods": [
+        "POST"
+      ],
+      "name": "refresh_config_route"
+    },
+    {
+      "path": "/config/routes/{route_id}/test",
+      "methods": [
+        "POST"
+      ],
+      "name": "test_config_route"
+    },
+    {
+      "path": "/config/strategy",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_route_strategy"
+    },
+    {
+      "path": "/config/models/refresh",
+      "methods": [
+        "POST"
+      ],
+      "name": "refresh_config_models"
+    },
+    {
+      "path": "/config/cost-speed/reload",
+      "methods": [
+        "POST"
+      ],
+      "name": "reload_cost_speed_config"
+    },
+    {
+      "path": "/config/ops",
+      "methods": [
+        "PUT"
+      ],
+      "name": "update_llm_ops"
+    },
+    {
+      "path": "/monitor/llm-ops",
+      "methods": [
+        "GET"
+      ],
+      "name": "monitor_llm_ops"
+    },
+    {
+      "path": "/monitor/optimization",
+      "methods": [
+        "GET"
+      ],
+      "name": "monitor_optimization"
+    },
+    {
+      "path": "/feedback",
+      "methods": [
+        "POST"
+      ],
+      "name": "submit_feedback"
+    },
+    {
+      "path": "/feedback/stats",
+      "methods": [
+        "GET"
+      ],
+      "name": "feedback_stats"
+    },
+    {
+      "path": "/monitor/hub-snapshot",
+      "methods": [
+        "GET"
+      ],
+      "name": "monitor_hub_snapshot"
+    },
+    {
+      "path": "/config/test",
+      "methods": [
+        "POST"
+      ],
+      "name": "test_config"
+    },
+    {
+      "path": "/chat",
+      "methods": [
+        "POST"
+      ],
+      "name": "chat"
+    },
+    {
+      "path": "/routing/preview",
+      "methods": [
+        "POST"
+      ],
+      "name": "routing_preview"
+    },
+    {
+      "path": "/chat/stream",
+      "methods": [
+        "POST"
+      ],
+      "name": "chat_stream"
+    },
+    {
+      "path": "/tasks",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_task"
+    },
+    {
+      "path": "/tasks/{task_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_task"
+    },
+    {
+      "path": "/tasks/{task_id}/budget/decision",
+      "methods": [
+        "POST"
+      ],
+      "name": "budget_decision"
+    },
+    {
+      "path": "/tasks/{task_id}/budget/lines",
+      "methods": [
+        "POST"
+      ],
+      "name": "budget_lines"
+    },
+    {
+      "path": "/tasks/{task_id}/confirmation-draft",
+      "methods": [
+        "POST"
+      ],
+      "name": "confirmation_draft"
+    },
+    {
+      "path": "/tasks/{task_id}/seat-overrides",
+      "methods": [
+        "POST"
+      ],
+      "name": "seat_overrides"
+    },
+    {
+      "path": "/tasks/{task_id}/field-writes",
+      "methods": [
+        "POST"
+      ],
+      "name": "field_writes"
+    },
+    {
+      "path": "/tasks/{task_id}/narrative/commit",
+      "methods": [
+        "POST"
+      ],
+      "name": "narrative_commit"
+    },
+    {
+      "path": "/tasks/{task_id}/cancel",
+      "methods": [
+        "POST"
+      ],
+      "name": "cancel_task"
+    },
+    {
+      "path": "/tasks/{task_id}/resume",
+      "methods": [
+        "POST"
+      ],
+      "name": "resume_task"
+    },
+    {
+      "path": "/admin/tasks/purge-cancelled",
+      "methods": [
+        "POST"
+      ],
+      "name": "admin_purge_cancelled_tasks"
+    },
+    {
+      "path": "/tasks/{task_id}/trace",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_task_trace"
+    },
+    {
+      "path": "/tasks/{task_id}/context",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_task_context_insight"
+    },
+    {
+      "path": "/context",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_context_insight"
+    },
+    {
+      "path": "/tasks/{task_id}/checkpoint",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_task_checkpoint"
+    },
+    {
+      "path": "/traces",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_traces"
+    },
+    {
+      "path": "/checkpoints",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_checkpoints"
+    },
+    {
+      "path": "/tasks/{task_id}/ws",
+      "methods": [
+        "WS"
+      ],
+      "name": "task_websocket"
+    },
+    {
+      "path": "/monitor/ws",
+      "methods": [
+        "WS"
+      ],
+      "name": "monitor_hub_websocket"
+    },
+    {
+      "path": "/memories",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_memories"
+    },
+    {
+      "path": "/memories/{memory_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "delete_memory"
+    },
+    {
+      "path": "/memories/cleanup",
+      "methods": [
+        "POST"
+      ],
+      "name": "cleanup_memories"
+    },
+    {
+      "path": "/dashboard",
+      "methods": [
+        "GET"
+      ],
+      "name": "dashboard"
+    },
+    {
+      "path": "/monitor/opc",
+      "methods": [
+        "GET"
+      ],
+      "name": "monitor_opc"
+    },
+    {
+      "path": "/monitor/hub",
+      "methods": [
+        "GET"
+      ],
+      "name": "monitor_hub"
+    },
+    {
+      "path": "/monitor/agents",
+      "methods": [
+        "GET"
+      ],
+      "name": "monitor_agents"
+    },
+    {
+      "path": "/monitor/agents/prefs",
+      "methods": [
+        "PUT"
+      ],
+      "name": "monitor_agents_prefs"
+    },
+    {
+      "path": "/monitor/agents/{role_id}/settings",
+      "methods": [
+        "PUT"
+      ],
+      "name": "monitor_agent_settings"
+    },
+    {
+      "path": "/monitor/agents/{role_id}/reset",
+      "methods": [
+        "POST"
+      ],
+      "name": "monitor_agent_reset"
+    },
+    {
+      "path": "/monitor/agents",
+      "methods": [
+        "POST"
+      ],
+      "name": "monitor_agents_create"
+    },
+    {
+      "path": "/monitor/agents/{role_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "monitor_agents_delete"
+    },
+    {
+      "path": "/monitor/raho/feed",
+      "methods": [
+        "GET"
+      ],
+      "name": "raho_seat_feed"
+    },
+    {
+      "path": "/monitor/raho/seat/{io_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "raho_seat_detail"
+    },
+    {
+      "path": "/docker/status",
+      "methods": [
+        "GET"
+      ],
+      "name": "docker_status"
+    },
+    {
+      "path": "/docker/budget",
+      "methods": [
+        "GET"
+      ],
+      "name": "docker_budget"
+    },
+    {
+      "path": "/docker/containers",
+      "methods": [
+        "GET"
+      ],
+      "name": "docker_containers"
+    },
+    {
+      "path": "/docker/logs/{service}",
+      "methods": [
+        "GET"
+      ],
+      "name": "docker_logs"
+    },
+    {
+      "path": "/docker/stats",
+      "methods": [
+        "GET"
+      ],
+      "name": "docker_stats"
+    },
+    {
+      "path": "/system/resources",
+      "methods": [
+        "GET"
+      ],
+      "name": "system_resources"
+    },
+    {
+      "path": "/docker/health",
+      "methods": [
+        "GET"
+      ],
+      "name": "docker_health"
+    },
+    {
+      "path": "/docker/restart/{service}",
+      "methods": [
+        "POST"
+      ],
+      "name": "docker_restart"
+    },
+    {
+      "path": "/docker/stop/{service}",
+      "methods": [
+        "POST"
+      ],
+      "name": "docker_stop"
+    },
+    {
+      "path": "/docker/start/{service}",
+      "methods": [
+        "POST"
+      ],
+      "name": "docker_start"
+    },
+    {
+      "path": "/cloud/billing",
+      "methods": [
+        "GET"
+      ],
+      "name": "cloud_billing"
+    },
+    {
+      "path": "/cloud/aliyun",
+      "methods": [
+        "GET"
+      ],
+      "name": "cloud_aliyun_status"
+    },
+    {
+      "path": "/cloud/monitoring",
+      "methods": [
+        "GET"
+      ],
+      "name": "cloud_monitoring"
+    },
+    {
+      "path": "/cloud/monitoring/latest",
+      "methods": [
+        "GET"
+      ],
+      "name": "cloud_monitoring_latest"
+    },
+    {
+      "path": "/cloud/events",
+      "methods": [
+        "GET"
+      ],
+      "name": "cloud_events"
+    },
+    {
+      "path": "/cloud/alerts",
+      "methods": [
+        "GET"
+      ],
+      "name": "cloud_alerts_list"
+    },
+    {
+      "path": "/cloud/alerts",
+      "methods": [
+        "POST"
+      ],
+      "name": "cloud_alerts_create"
+    },
+    {
+      "path": "/cloud/alerts/{rule_id}/toggle",
+      "methods": [
+        "POST"
+      ],
+      "name": "cloud_alerts_toggle"
+    },
+    {
+      "path": "/cloud/alerts/{rule_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "cloud_alerts_delete"
+    },
+    {
+      "path": "/lab/firecrawl/scrape",
+      "methods": [
+        "POST"
+      ],
+      "name": "lab_firecrawl_scrape"
+    },
+    {
+      "path": "/lab/firecrawl/search",
+      "methods": [
+        "POST"
+      ],
+      "name": "lab_firecrawl_search"
+    },
+    {
+      "path": "/lab/prompt/optimize",
+      "methods": [
+        "POST"
+      ],
+      "name": "lab_prompt_optimize"
+    },
+    {
+      "path": "/lab/ponytail/review",
+      "methods": [
+        "POST"
+      ],
+      "name": "lab_ponytail_review"
+    },
+    {
+      "path": "/lab/archify/evoloop",
+      "methods": [
+        "GET"
+      ],
+      "name": "lab_archify_evoloop"
+    },
+    {
+      "path": "/lab/archify/system-flows",
+      "methods": [
+        "GET"
+      ],
+      "name": "lab_archify_system_flows"
+    },
+    {
+      "path": "/lab/archify/system-flows/{flow_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "lab_archify_system_flow"
+    },
+    {
+      "path": "/lab/archify/generate",
+      "methods": [
+        "POST"
+      ],
+      "name": "lab_archify_generate"
+    },
+    {
+      "path": "/lab/archify/html",
+      "methods": [
+        "GET"
+      ],
+      "name": "lab_archify_html"
+    },
+    {
+      "path": "/lab/archify/artifact",
+      "methods": [
+        "GET"
+      ],
+      "name": "lab_archify_artifact"
+    },
+    {
+      "path": "/lab/archify/render",
+      "methods": [
+        "POST"
+      ],
+      "name": "lab_archify_render"
+    },
+    {
+      "path": "/lab/archify/strategies",
+      "methods": [
+        "GET"
+      ],
+      "name": "lab_archify_strategies"
+    },
+    {
+      "path": "/lab/archify/strategies/{strategy_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "lab_archify_strategy"
+    },
+    {
+      "path": "/lab/quant/strategies",
+      "methods": [
+        "GET"
+      ],
+      "name": "lab_quant_strategies"
+    },
+    {
+      "path": "/lab/quant/preview",
+      "methods": [
+        "GET"
+      ],
+      "name": "lab_quant_preview"
+    },
+    {
+      "path": "/lab/quant/capital-flow",
+      "methods": [
+        "GET"
+      ],
+      "name": "lab_quant_capital_flow"
+    },
+    {
+      "path": "/admin/db/pool/stats",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_db_pool_stats"
+    },
+    {
+      "path": "/admin/db/pool/refresh",
+      "methods": [
+        "POST"
+      ],
+      "name": "refresh_db_pool"
+    },
+    {
+      "path": "/admin/db/pool/connection/{connection_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "close_db_connection"
+    },
+    {
+      "path": "/admin/db/health",
+      "methods": [
+        "POST"
+      ],
+      "name": "run_db_health_check"
+    },
+    {
+      "path": "/skills",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_skills"
+    },
+    {
+      "path": "/skills",
+      "methods": [
+        "POST"
+      ],
+      "name": "save_skill"
+    },
+    {
+      "path": "/skills/{skill_id}/toggle",
+      "methods": [
+        "POST"
+      ],
+      "name": "toggle_skill"
+    },
+    {
+      "path": "/skills/{skill_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "delete_skill"
+    },
+    {
+      "path": "/skills/cli-runtimes",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_skill_cli_runtimes"
+    },
+    {
+      "path": "/skills/cli-hub",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_cli_hub_catalog"
+    },
+    {
+      "path": "/horizon/latest",
+      "methods": [
+        "GET"
+      ],
+      "name": "horizon_latest"
+    },
+    {
+      "path": "/horizon/scan",
+      "methods": [
+        "POST"
+      ],
+      "name": "horizon_scan"
+    },
+    {
+      "path": "/horizon/proposals/{proposal_id}/decide",
+      "methods": [
+        "POST"
+      ],
+      "name": "horizon_decide"
+    },
+    {
+      "path": "/horizon/proposals/{proposal_id}/rollback",
+      "methods": [
+        "POST"
+      ],
+      "name": "horizon_rollback"
+    },
+    {
+      "path": "/skills/preview",
+      "methods": [
+        "GET"
+      ],
+      "name": "preview_skill_prompt"
+    },
+    {
+      "path": "/skills/sync-agent-packs",
+      "methods": [
+        "POST"
+      ],
+      "name": "sync_agent_skill_packs"
+    },
+    {
+      "path": "/mcp/servers",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_mcp_servers"
+    },
+    {
+      "path": "/mcp/servers",
+      "methods": [
+        "POST"
+      ],
+      "name": "save_mcp_server"
+    },
+    {
+      "path": "/mcp/servers/{server_id}/toggle",
+      "methods": [
+        "POST"
+      ],
+      "name": "toggle_mcp_server"
+    },
+    {
+      "path": "/mcp/servers/{server_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "delete_mcp_server"
+    },
+    {
+      "path": "/mcp/servers/{server_id}/probe",
+      "methods": [
+        "POST"
+      ],
+      "name": "probe_mcp_server"
+    },
+    {
+      "path": "/mcp/servers/{server_id}/call",
+      "methods": [
+        "POST"
+      ],
+      "name": "call_mcp_tool"
+    },
+    {
+      "path": "/mcp/mount",
+      "methods": [
+        "POST"
+      ],
+      "name": "mount_mcp_tools"
+    },
+    {
+      "path": "/mcp/tools",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_mcp_tools"
+    },
+    {
+      "path": "/mcp-server",
+      "methods": [
+        "POST"
+      ],
+      "name": "mcp_server_endpoint"
+    }
+  ]
+}
