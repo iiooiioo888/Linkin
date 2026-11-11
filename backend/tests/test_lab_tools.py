@@ -252,8 +252,6 @@ def test_company_tool_registry_includes_lab_tools():
         "archify_generate",
         "archify_evoloop",
         "archify_strategies",
-        "place_block",
-        "execute_command",
         "market_quote",
         "market_backtest",
         "market_compare",

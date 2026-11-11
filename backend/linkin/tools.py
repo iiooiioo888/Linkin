@@ -5,31 +5,22 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from backend.linkin.constitution import (
-    allowed_styles_for_region,
-    item_balance,
-    max_blocks_per_call,
-)
+from backend.linkin.constitution import item_balance
 
-MAX_BLOCKS = 5000
 SIMILARITY_THRESHOLD = 0.75
 QUALITY_THRESHOLD = 80
 
-TOOL_BUILDER_GENERATE = "BuilderAI.generate"
 TOOL_NPC_CREATE = "NPC.create"
 TOOL_NPC_DIALOGUE = "NPC.dialogue"
 TOOL_QUEST_GENERATE = "Quest.generate"
 TOOL_ITEM_CREATE = "Item.create"
-TOOL_ADMIN_EXECUTE = "Admin.execute"
 
 ALLOWED_TOOLS = frozenset(
     {
-        TOOL_BUILDER_GENERATE,
         TOOL_NPC_CREATE,
         TOOL_NPC_DIALOGUE,
         TOOL_QUEST_GENERATE,
         TOOL_ITEM_CREATE,
-        TOOL_ADMIN_EXECUTE,
     }
 )
 
@@ -39,15 +30,6 @@ DIFFICULTIES = frozenset({"简单", "普通", "困难", "簡單", "困難", "eas
 
 COMMAND_CHAIN_TOKENS = ("&&", ";", "|", "\n&&", "；")
 COMMAND_CHAIN_RE = re.compile(r"(&&|;|\n\s*&&|\s\|\s)")
-
-SENSITIVE_ADMIN_RE = re.compile(
-    r"("
-    r"kick|ban|pardon|op\b|deop|stop|restart|whitelist|gamemode|difficulty|"
-    r"worldborder|save-off|save-on|op-permission|whitelist|"
-    r"踢出|封禁|停服|重啟|重启|修改世界|管理員|管理员|白名單|白名单"
-    r")",
-    re.IGNORECASE,
-)
 
 
 class ToolValidationError(ValueError):
@@ -99,54 +81,6 @@ def validate_single_tool(tool_name: str, extra_tools: list[str] | None = None) -
         )
     if tool_name not in ALLOWED_TOOLS:
         raise ToolValidationError(f"未知工具：{tool_name}", code="unknown_tool")
-
-
-def validate_builder_generate(params: dict[str, Any]) -> dict[str, Any]:
-    prompt = _as_text(params.get("prompt")).strip()
-    style = _as_text(params.get("style")).strip()
-    location = params.get("location")
-    region = _as_text(params.get("region")).strip()
-    if not prompt:
-        raise ToolValidationError("BuilderAI.generate 需要 prompt")
-    if not style:
-        raise ToolValidationError("BuilderAI.generate 需要 style")
-    if location is None or _as_text(location).strip() == "":
-        raise ToolValidationError("BuilderAI.generate 需要 location")
-
-    raw_blocks = params.get("block_count", params.get("blocks"))
-    if raw_blocks is None:
-        block_count = min(MAX_BLOCKS, max(16, len(prompt) * 4))
-    else:
-        try:
-            block_count = int(raw_blocks)
-        except (TypeError, ValueError) as exc:
-            raise ToolValidationError("block_count 必須為整數") from exc
-    limit = max_blocks_per_call() or MAX_BLOCKS
-    if block_count > limit or block_count > MAX_BLOCKS:
-        raise ToolValidationError(
-            f"單次生成不得超過 {min(limit, MAX_BLOCKS)} 方塊（收到 {block_count}）",
-            code="block_limit",
-            extra={"block_count": block_count, "max_blocks": min(limit, MAX_BLOCKS)},
-        )
-    if block_count <= 0:
-        raise ToolValidationError("block_count 必須為正整數", code="block_limit")
-
-    if not region and isinstance(location, str):
-        region = location.strip()
-    allowed = allowed_styles_for_region(region) if region else None
-    if allowed is not None and style not in allowed:
-        raise ToolValidationError(
-            f"風格「{style}」與區域「{region}」文化不符。允許：{'、'.join(allowed)}",
-            code="style_mismatch",
-            extra={"style": style, "region": region, "allowed_styles": allowed},
-        )
-    return {
-        "prompt": prompt,
-        "style": style,
-        "location": location,
-        "region": region,
-        "block_count": block_count,
-    }
 
 
 def npc_relationships(card: dict[str, Any]) -> dict[str, Any]:
@@ -266,31 +200,11 @@ def validate_item_create(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def is_sensitive_admin(command: str) -> bool:
-    return bool(SENSITIVE_ADMIN_RE.search(command or ""))
-
-
-def validate_admin_execute(params: dict[str, Any], *, confirmed: bool = False) -> dict[str, Any]:
-    command = _as_text(params.get("command")).strip()
-    if not command:
-        raise ToolValidationError("Admin.execute 需要 command")
-    confirm_flag = confirmed or bool(params.get("confirmed") or params.get("confirm"))
-    if is_sensitive_admin(command) and not confirm_flag:
-        raise ToolValidationError(
-            "敏感操作需二次確認（踢出玩家、修改世界設定、停服等）",
-            code="needs_confirmation",
-            extra={"needs_confirmation": True, "command": command},
-        )
-    return {"command": command, "confirmed": confirm_flag, "sensitive": is_sensitive_admin(command)}
-
-
 _VALIDATORS = {
-    TOOL_BUILDER_GENERATE: lambda p, **kw: validate_builder_generate(p),
     TOOL_NPC_CREATE: lambda p, **kw: validate_npc_create(p),
     TOOL_NPC_DIALOGUE: lambda p, **kw: validate_npc_dialogue(p),
     TOOL_QUEST_GENERATE: lambda p, **kw: validate_quest_generate(p),
     TOOL_ITEM_CREATE: lambda p, **kw: validate_item_create(p),
-    TOOL_ADMIN_EXECUTE: lambda p, **kw: validate_admin_execute(p, confirmed=kw.get("confirmed", False)),
 }
 
 

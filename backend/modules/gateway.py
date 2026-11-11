@@ -2,7 +2,7 @@
 
 後續世界／整合模組只要：
 1. ``register_module(ModuleSpec)``（capabilities.routes 為允許清單）
-2. 把實作掛在 ``api_prefix``（Minecraft 為 ``/linkin``）
+2. 把實作掛在 ``api_prefix``
 
 客戶端一律走 ``/modules/{id}/api/{path}``，閘道校驗後轉發到該模組
 ``api_prefix``，寫入仍經原護欄，不另開旁路。

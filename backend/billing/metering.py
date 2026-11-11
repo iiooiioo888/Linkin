@@ -15,8 +15,6 @@ from backend.billing.context import (
 )
 from backend.billing.credits import (
     credits_for_docker_usd,
-    credits_for_mc_fill,
-    credits_for_mc_op,
     credits_for_opc_read,
     credits_for_opc_write,
     credits_for_quant_call,
@@ -27,7 +25,6 @@ from backend.billing.credits import (
 from backend.billing.errors import FeatureNotEntitledError
 from backend.billing.plans import (
     PACK_ADVANCED_MODELS,
-    PACK_MINECRAFT,
     PACK_OPC,
     PACK_QUANT,
     PACK_RAHO,
@@ -288,12 +285,6 @@ def meter_opc_write(count: int = 1, **kwargs) -> dict | None:
 def meter_opc_read(count: int = 1, **kwargs) -> dict | None:
     require_feature(PACK_OPC, kwargs.get("user_id"))
     return emit_usage_event("opc_read", credits_for_opc_read(count), quantity=count, unit="read", reference="opc", **kwargs)
-
-
-def meter_minecraft(tool: str, blocks: int = 0, **kwargs) -> dict | None:
-    require_feature(PACK_MINECRAFT, kwargs.get("user_id"))
-    credits = credits_for_mc_fill(blocks) if blocks > 0 or "fill" in tool.lower() else credits_for_mc_op(tool)
-    return emit_usage_event("minecraft_op", credits, reference=tool, meta={"tool": tool, "blocks": blocks}, **kwargs)
 
 
 def meter_docker(service: str, hours: float, cost_usd: float, **kwargs) -> dict | None:

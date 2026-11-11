@@ -1,61 +1,16 @@
-# 靈境·Linkin 系統設計
+# 靈境架構
 
-靈境是掛在既有 **EvoLoop 統一管線** 上的世界觀控制面，不是第二套後端。聊天、公司運行時、OPC 維持原路由；靈境只新增 `/linkin/*`，前端以世界模組「Minecraft」呈現（世界觀／Admin／內容／建築／橋接），與 EvoLoop 控制台分離；目錄見 `GET /modules`。
-
-## 與 EvoLoop 的關係
+靈境是掛在既有 **EvoLoop 統一管線** 上的世界觀控制面，不是第二套後端。聊天、公司運行時、OPC 維持原路由；靈境提供 `/linkin/*` 憲法與實體 API。
 
 ```
-使用者 / 監控中心
-        │
-        ▼
- FastAPI backend/main.py
-        │
-        ├── /chat /tasks /monitor/* /config /cloud /docker   （既有）
-        └── /linkin/*  ← register_linkin(app)               （靈境）
-                │
-                ├── constitution.json   世界觀憲法
-                ├── tools.py            工具鐵律
-                ├── minecraft.py        MineMCP 護欄與公司工具註冊
-                ├── knowledge.py        RAG 四庫（Chroma → JSON 降級）
-                └── roles.py            16 席子角色（繼承頂層提示詞）
-
-backend/tools/minecraft_mcp.py     JSON-RPC 客戶端（Token／乾跑／審計）
-
-統一圖：
-  retrieve_memories → enhance_with_opc_context → enhance_with_linkin_context
+START → retrieve_memories → enhance_with_opc_context → enhance_with_linkin_context
     → enhance_with_recall_context → route_by_complexity
-    → generate_initial_answer | run_company | run_minecraft_ops
+    → generate_initial_answer | run_company
 ```
 
-複雜靈境任務與 Minecraft 重型任務（建造、敘事、多步）走公司運行時：命中世界觀關鍵詞時由 `enhance_with_linkin_context` 注入憲法／RAG；這類查詢的預設模板從 `quick_task` 升為 `story_studio`。單步 Minecraft 控制走 `minecraft_ops`（輕量 ReAct + MCP，`place_block` 對遠端 `pose_block`）。公司路徑的審查仍要求四維 ≥80，記錄員寫入 RAG。
+複雜靈境任務（世界觀 + 敘事／NPC／任務／道具）走公司運行時：命中世界觀關鍵詞時由 `enhance_with_linkin_context` 注入憲法／RAG；這類查詢的預設模板可從 `quick_task` 升為 `story_studio`。
 
-## 五層控制
-
-| 層 | 職責 | 程式位置 |
-|----|------|----------|
-| 身份 | 靈境意志 | `docs/linkin/system-prompt.md` |
-| 憲法 | 陣營、靈絲術、邊界 | `backend/data/linkin_constitution.json` |
-| 規則 | 思考流程、單次一工具 | `backend/linkin/prompts.py` |
-| 工具 | 參數校驗、敏感二次確認 | `backend/linkin/tools.py` |
-| 記憶 | 四維評分後寫入 | `backend/linkin/knowledge.py` |
-
-## 部件對照（相對倉庫現況）
-
-下列路徑在倉庫中**已經存在**，請勿平行再寫一套同名模組。
-
-| 模組 | 路徑 | 狀態 |
+| 區塊 | 路徑 | 狀態 |
 |------|------|------|
-| FastAPI 入口 | `backend/main.py` | 已掛載 `/linkin/*` |
-| 統一圖 / 節點 / LLM | `backend/core/` | EvoLoop 既有 |
-| 公司協調器與 **80** 席 `STANDARD_ROLES` | `backend/company/` | 既有；靈境另加 **16** 席 custom 子角色 |
-| AI Hub | `backend/hub/` | 既有 |
-| 監控／雲／Docker | `backend/services/` | 既有 |
-| 靈境憲法／API／工具 | `backend/linkin/` | 已落地（含管線注入 `pipeline.py`、Minecraft 護欄 `minecraft.py`、Sponge Schematic v3 `schematic.py`） |
-| Minecraft MCP 橋接 | `backend/tools/minecraft_mcp.py` | 已落地（MineMCP JSON-RPC，乾跑預設） |
-| 種子 | `backend/scripts/seed_linkin_world.py` | 已落地 |
-| OPC 微服務 | `opc_service/` | 既有 6 級閉環 |
-| 前端監控與靈境面板 | `frontend/src/` | 已落地 |
-| Docker Compose / CI / LICENSE | 倉庫根目錄 | 既有 |
-
-> 上列路徑**已經存在**。請勿平行再寫一套 `backend/main.py`、`backend/core/graph.py` 或第二套監控前端。缺口應補在既有模組上（本文件對齊 2026-09-09）。  
-> 倉庫目錄總表：[docs/structure.md](../structure.md)。
+| 靈境憲法／API／工具 | `backend/linkin/` | 已落地（管線注入 `pipeline.py`、憲法、實體 RAG） |
+| 世界／整合模組目錄 | `backend/modules/` | media-vault、local-video-studio |

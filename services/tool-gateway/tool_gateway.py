@@ -138,8 +138,6 @@ def _route(tool: str, args: dict[str, Any], token: str, adapters: dict[str, Adap
         return adapters["opc_read"](tool, args, "")
     if tool in {"opc_write", "opc.write"}:
         return adapters["opc_write"](tool, args, token)
-    if tool in {"place_block", "pose_block", "break_block", "fill_block", "execute_command", "get_player", "get_online_players"}:
-        return adapters["minecraft"](tool, args, token)
     return adapters["local"](tool, args, token)
 
 

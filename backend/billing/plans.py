@@ -8,7 +8,6 @@ from typing import Any
 # 功能包鍵
 PACK_QUANT = "quant"
 PACK_OPC = "opc"
-PACK_MINECRAFT = "minecraft"
 PACK_ADVANCED_MODELS = "advanced_models"
 PACK_AUDIT = "audit"
 PACK_RAHO = "raho"
@@ -52,7 +51,7 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
         "price_usd_month": 99,
         "monthly_credits": int(os.getenv("LINKIN_PLAN_PRO_CREDITS", "100000")),
         "concurrency": 5,
-        "features": [PACK_BASE_MODELS, PACK_QUANT, PACK_ADVANCED_MODELS, PACK_MINECRAFT, PACK_RAHO, PACK_OPC],
+        "features": [PACK_BASE_MODELS, PACK_QUANT, PACK_ADVANCED_MODELS, PACK_RAHO, PACK_OPC],
         "description_zh": "每月 10 萬積分 · 5 併發 · 量化 · RAHO · OPC",
         "docker_rate_multiplier": 1.0,
         "docker_included_hours_per_month": 20,
@@ -69,7 +68,6 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
             PACK_BASE_MODELS,
             PACK_QUANT,
             PACK_ADVANCED_MODELS,
-            PACK_MINECRAFT,
             PACK_RAHO,
             PACK_OPC,
             PACK_AUDIT,
@@ -90,7 +88,6 @@ PLAN_DEFINITIONS: dict[str, dict[str, Any]] = {
             PACK_BASE_MODELS,
             PACK_QUANT,
             PACK_ADVANCED_MODELS,
-            PACK_MINECRAFT,
             PACK_RAHO,
             PACK_OPC,
             PACK_AUDIT,
@@ -115,7 +112,6 @@ _LEGACY_PLAN_ALIASES: dict[str, str] = {
 FEATURE_LABELS_ZH: dict[str, str] = {
     PACK_QUANT: "量化策略包",
     PACK_OPC: "工業 OPC 包",
-    PACK_MINECRAFT: "Minecraft 包",
     PACK_ADVANCED_MODELS: "進階模型",
     PACK_AUDIT: "審計與合規",
     PACK_RAHO: "RAHO 公司運行時",

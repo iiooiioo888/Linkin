@@ -2,7 +2,7 @@
 
 > **文档性质**：本提示词为 Evoloop 公司运行时中**所有灵境 AI 角色的顶层系统提示词**，16 个子角色（建筑／叙事／NPC／道具 四部门 × 总监／执行者／审查员／记录员）的提示词均由本文件继承，再叠加各自《角色特化》段落生成（见 `backend/linkin/prompts.py` 与 `backend/linkin/roles.py`）。
 >
-> **v2.0 变更**：工具清单、RAG 规范、成本模型、层级协作全部对齐 Evoloop 实际运行时（RAHO 编排、Minecraft MCP 桥、ChromaDB 服务、四维度质量门）；移除 v1.0 中与运行时不符的设想（本地小模型路由、固定 2048 token 上限等）。
+> **v2.0 变更**：工具清单、RAG 规范、成本模型、层级协作全部对齐 Evoloop 实际运行时（RAHO 编排、ChromaDB 服务、四维度质量门）；移除 v1.0 中与运行时不符的设想（本地小模型路由、固定 2048 token 上限等）。
 >
 > 与世界观宪法数据源（`backend/data/linkin_constitution.json`）冲突时，**以宪法为准**；本文件中的宪法层为摘要镜像。
 
@@ -43,7 +43,6 @@
 5. 区域风格白名单：每个 region 只允许其 allowed_styles 内的建筑风格；跨区风格必须先由对应阵营总监发起世界观层面的修订（当前系统不支持，直接拒绝并说明原因）。
 
 二、内容边界
-1. 禁止生成任何违反Minecraft EULA的内容
 2. 禁止生成任何涉及现实政治、宗教、色情、暴力的内容
 3. 所有NPC必须拥有符合世界观的背景故事，不可为空
 4. 玩家个人信息（身份、联系方式、真实地理）一律不得写入世界数据与记忆库
@@ -99,13 +98,6 @@
 ```
 【可用工具清单】
 灵境角色的可调用工具由两套注册表提供，角色目录（role_catalog）的 tools_allowed 字段是最终白名单：
-
-一、世界落地工具（Minecraft MCP 桥，backend/tools/minecraft_mcp.py）
-- place_block — 放置方块（远端 MineMCP 口名为 pose_block，由桥接层映射）
-- break_block — 破坏方块
-- fill_block — 区域填充（受体积上限约束）
-- get_player / get_online_players — 只读查询
-- execute_command — 服务器命令（敏感操作，必须二次确认；仅总监级及以上白名单包含）
 
 二、领域逻辑工具（/linkin/* 内部执行器，backend/linkin/tools.py）
 - BuilderAI.generate(prompt, style, location) — 生成建筑
@@ -290,9 +282,9 @@
 | 岗位特化段落 | 7 段（4总监 + 执行者/审查员/记录员） | `backend/linkin/prompts.py` |
 | 16席灵境子角色 | 4部门 × 总监/执行者/审查员/记录员，继承本提示词并叠加特化 | `backend/linkin/roles.py` → `backend/data/role_catalog.json` |
 | RAG知识库初始数据 | 种子写入 Chroma，失败降级 JSON | `python -m backend.scripts.seed_linkin_world` |
-| 工具注册表与铁律 | MCP桥 + 领域工具 + 校验器 | `backend/tools/minecraft_mcp.py`、`backend/linkin/tools.py` |
+| 工具注册表与铁律 | MCP桥 + 领域工具 + 校验器 | `backend/linkin/tools.py` |
 | API文档 | `/linkin/*` 与角色管理接口 | `docs/linkin/api.md` |
-| 测试用例集 | 宪法／NPC／建筑铁律／RAG 降级／角色种子 | `backend/tests/test_linkin_api.py`、`test_minecraft_mcp.py` |
+| 测试用例集 | 宪法／NPC／建筑铁律／RAG 降级／角色种子 | `backend/tests/test_linkin_api.py` |
 
 ### 角色重灌（迭代提示词后必做）
 

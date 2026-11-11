@@ -181,7 +181,7 @@ export default function AppShell({
 
       if (target === 'world') {
         const remembered = lastTabByActivity.current.world;
-        // Phase1.1：勿硬編 minecraft；依記憶分頁所屬模組或清單首項
+        // Phase1.1：依記憶分頁所屬模組或清單首項
         const moduleId =
           (remembered ? moduleIdForTab(String(remembered)) : null) ??
           listWorldModules()[0]?.id ??

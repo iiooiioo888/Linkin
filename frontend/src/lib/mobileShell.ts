@@ -75,22 +75,10 @@ export const MOBILE_LITE_NAV_PRIMARY_KEYS: ReadonlySet<string> = new Set([
   'agents',
 ]);
 
-/** Minecraft 模組手機側欄預設可見頁 */
-export const MOBILE_MINECRAFT_PRIMARY_KEYS: ReadonlySet<string> = new Set([
-  'monitor',
-  'narrative',
-  'player_presence',
-  'bridge_monitor',
-]);
-
-const MOBILE_MODULE_PRIMARY_KEYS: Partial<Record<string, ReadonlySet<string>>> = {
-  minecraft: MOBILE_MINECRAFT_PRIMARY_KEYS,
-};
+/** 模組手機側欄預設可見頁（依模組 id） */
+const MOBILE_MODULE_PRIMARY_KEYS: Partial<Record<string, ReadonlySet<string>>> = {};
 
 function primaryKeysForActivity(activity: ActivityKey | undefined): ReadonlySet<string> {
-  if (activity === 'world' || activity === 'minecraft') {
-    return MOBILE_MINECRAFT_PRIMARY_KEYS;
-  }
   if (activity && MOBILE_MODULE_PRIMARY_KEYS[activity]) {
     return MOBILE_MODULE_PRIMARY_KEYS[activity]!;
   }

@@ -10,12 +10,6 @@ from backend.core.evaluation import DimensionResult, EvaluationResult
 from backend.linkin.api import register_linkin
 from backend.linkin.constitution import reset_cache as reset_constitution_cache
 from backend.linkin.knowledge import QualityGateError, get_store, reset_store
-from backend.linkin.tools import (
-    TOOL_ADMIN_EXECUTE,
-    TOOL_BUILDER_GENERATE,
-    ToolValidationError,
-    invoke_tool,
-)
 
 NPC_CARD = {
     "name": "司契·白绫",
@@ -101,127 +95,13 @@ def test_npc_crud_and_dialogue(client: TestClient):
         json={"playerMessage": "织庭都还欢迎旅人吗？"},
     )
     assert talk.status_code == 200
-    assert "reply" in talk.json()
-    assert "rag" in talk.json()
+    body = talk.json()
+    assert "reply" in body
+    assert "rag" in body
 
     deleted = client.delete(f"/linkin/npcs/{npc_id}")
     assert deleted.status_code == 200
     assert client.get("/linkin/npcs").json()["count"] == 0
-
-
-def test_builder_block_limit_rejected(client: TestClient):
-    resp = client.post(
-        "/linkin/buildings/generate",
-        json={
-            "prompt": "一座巨大的蒸汽圣殿",
-            "style": "精灵古典",
-            "location": "精灵森林",
-            "region": "精灵森林",
-            "block_count": 5001,
-        },
-    )
-    assert resp.status_code == 400
-    assert resp.json()["detail"]["code"] == "block_limit"
-
-
-def test_builder_style_mismatch_rejected(client: TestClient):
-    resp = client.post(
-        "/linkin/buildings/generate",
-        json={
-            "prompt": "黄铜烟囱塔",
-            "style": "蒸汽帆索",
-            "location": "精灵森林",
-            "region": "精灵森林",
-            "block_count": 120,
-        },
-    )
-    assert resp.status_code == 400
-    assert resp.json()["detail"]["code"] == "style_mismatch"
-
-
-def test_command_chain_rejected(client: TestClient):
-    resp = client.post(
-        "/linkin/buildings/generate",
-        json={
-            "prompt": "先建塔 && 再灌岩浆",
-            "style": "精灵古典",
-            "location": "精灵森林",
-            "region": "精灵森林",
-            "block_count": 80,
-        },
-    )
-    assert resp.status_code == 400
-    assert resp.json()["detail"]["code"] == "command_chain"
-
-    with pytest.raises(ToolValidationError) as exc:
-        invoke_tool(
-            TOOL_BUILDER_GENERATE,
-            {"prompt": "ok", "style": "精灵古典", "location": "精灵森林"},
-            extra_tools=[TOOL_ADMIN_EXECUTE],
-        )
-    assert exc.value.code == "multi_tool"
-
-
-def test_sensitive_admin_requires_confirmation():
-    with pytest.raises(ToolValidationError) as exc:
-        invoke_tool(TOOL_ADMIN_EXECUTE, {"command": "kick Steve"})
-    assert exc.value.code == "needs_confirmation"
-
-    ok = invoke_tool(TOOL_ADMIN_EXECUTE, {"command": "kick Steve", "confirmed": True})
-    assert ok["ok"] is True
-    assert ok["params"]["sensitive"] is True
-
-
-def test_admin_api_confirmation(client: TestClient):
-    denied = client.post("/linkin/admin/execute", json={"command": "ban Steve"})
-    assert denied.status_code == 409
-    allowed = client.post("/linkin/admin/execute", json={"command": "ban Steve", "confirmed": True})
-    assert allowed.status_code == 200
-    assert allowed.json()["executed"] is True
-
-
-def test_quest_and_item_and_overview(client: TestClient):
-    quest = client.post(
-        "/linkin/quests/generate",
-        json={"playerId": "p1", "questType": "支线", "difficulty": "普通", "region": "织庭都"},
-    )
-    assert quest.status_code == 200
-    assert client.get("/linkin/quests").json()["count"] == 1
-
-    listed_before = client.get("/linkin/buildings")
-    assert listed_before.status_code == 200
-
-    building = client.post(
-        "/linkin/buildings/generate",
-        json={
-            "prompt": "月光庭园一座小桥",
-            "style": "精灵古典",
-            "location": "精灵森林",
-            "region": "精灵森林",
-            "block_count": 400,
-        },
-    )
-    assert building.status_code == 200
-    listed_buildings = client.get("/linkin/buildings")
-    assert listed_buildings.status_code == 200
-    assert listed_buildings.json()["count"] == listed_before.json()["count"] + 1
-
-    item = client.post(
-        "/linkin/items",
-        json={"name": "灵丝短杖", "type": "武器", "rarity": "uncommon", "attributes": {"power": 12}},
-    )
-    assert item.status_code == 200
-
-    overview = client.get("/linkin/overview")
-    assert overview.status_code == 200
-    body = overview.json()
-    assert body["world_name"] == "灵境·Linkin"
-    assert body["compliance"]["factions_defined"] is True
-    assert body["compliance"]["magic_defined"] is True
-    assert body["compliance"]["minecraft"]["dry_run"] is True
-    assert body["minecraft"]["dry_run"] is True
-    assert body["quest_count"] == 1
-    assert body["item_count"] == 1
 
 
 def test_quality_gate_rejects_low_score(linkin_env, monkeypatch):
@@ -276,82 +156,8 @@ def test_existing_chat_and_monitor_routes_untouched():
     assert "/linkin/overview" in paths
     assert "/linkin/constitution" in paths
     assert "/linkin/npcs" in paths
-    assert "/linkin/buildings" in paths
     assert "/linkin/events" in paths
-    assert "/linkin/minecraft/status" in paths
-    assert "/linkin/minecraft/call" in paths
-    assert "/linkin/buildings/{building_id}/dispatch" in paths or "/linkin/buildings/{building_id:bldid}/dispatch" in paths
-    assert "/linkin/buildings/{building_id}/preview" in paths or "/linkin/buildings/{building_id:bldid}/preview" in paths
-    assert "/linkin/buildings/{building_id}/schematic" in paths or "/linkin/buildings/{building_id:bldid}/schematic" in paths
-    assert "/linkin/buildings/import" in paths
-    assert "/linkin/buildings/import-base64" in paths
     assert "/linkin/quests/{quest_id}" in paths or any(p.endswith("/quests/{quest_id}") for p in paths)
-
-
-def test_building_schematic_v3_preview_download_and_import(client: TestClient):
-    created = client.post(
-        "/linkin/buildings/generate",
-        json={
-            "prompt": "月光庭园一座小桥",
-            "style": "精灵古典",
-            "location": "120, 64, -300",
-            "region": "精灵森林",
-            "block_count": 80,
-        },
-    )
-    assert created.status_code == 200, created.text
-    body = created.json()
-    building = body["building"]
-    assert building["schematic_version"] == 3
-    assert building["format"] == "sponge_schematic"
-    assert building["width"] >= 1
-    assert building["voxel_count"] >= 1
-    assert body["preview"]["version"] == 3
-    assert body["preview"]["voxel_count"] == building["voxel_count"]
-    assert body["preview"]["schematic_base64"]
-    assert body["preview"]["schematic_base64"].startswith("H4sI")
-    bld_id = building["id"]
-
-    preview = client.get(f"/linkin/buildings/{bld_id}/preview")
-    assert preview.status_code == 200
-    assert preview.json()["voxels"]
-    assert preview.json()["biome"] == "minecraft:forest"
-
-    downloaded = client.get(f"/linkin/buildings/{bld_id}/schematic")
-    assert downloaded.status_code == 200
-    raw = downloaded.content
-    assert raw[:2] == b"\x1f\x8b"
-    assert 'attachment; filename="' in downloaded.headers.get("content-disposition", "")
-
-    imported = client.post(
-        "/linkin/buildings/import",
-        files={"file": ("bridge.schem", raw, "application/octet-stream")},
-        data={"prompt": "匯入小桥", "location": "1, 64, 1", "region": "精灵森林", "style": "精灵古典"},
-    )
-    assert imported.status_code == 200, imported.text
-    imported_building = imported.json()["building"]
-    assert imported_building["schematic_version"] == 3
-    assert imported_building["voxel_count"] == building["voxel_count"]
-    assert imported_building["id"] != bld_id
-
-    from_b64 = client.post(
-        "/linkin/buildings/import-base64",
-        json={"schematic_base64": body["preview"]["schematic_base64"], "prompt": "Base64 小桥"},
-    )
-    assert from_b64.status_code == 200, from_b64.text
-    assert from_b64.json()["building"]["voxel_count"] == building["voxel_count"]
-    assert from_b64.json()["preview"]["schematic_base64"]
-
-
-def test_import_base64_not_method_not_allowed(client: TestClient):
-    """靜態路徑不可被 /buildings/{id} 吃成 405。"""
-    resp = client.post("/linkin/buildings/import-base64", json={"schematic_base64": "not-valid"})
-    assert resp.status_code != 405, resp.text
-    assert resp.status_code == 400
-    generate = client.post("/linkin/buildings/generate", json={"prompt": "x"})
-    assert generate.status_code != 405
-    preview = client.get("/linkin/buildings/import-base64/preview")
-    assert preview.status_code == 404
 
 
 def test_entity_delete_and_events(client: TestClient):
@@ -368,20 +174,6 @@ def test_entity_delete_and_events(client: TestClient):
     deleted = client.delete(f"/linkin/quests/{quest_id}")
     assert deleted.status_code == 200
     assert client.get("/linkin/quests").json()["count"] == 0
-
-    building = client.post(
-        "/linkin/buildings/generate",
-        json={
-            "prompt": "雾中庭园一座隐所",
-            "style": "隐士木屋",
-            "location": "宁渊谷",
-            "region": "宁渊谷",
-            "block_count": 40,
-        },
-    )
-    assert building.status_code == 200
-    bld_id = building.json()["building"]["id"]
-    assert client.delete(f"/linkin/buildings/{bld_id}").status_code == 200
 
     item = client.post(
         "/linkin/items",
@@ -403,19 +195,21 @@ def test_seed_linkin_roles(linkin_env):
     director = get_snapshot("custom_linkin_build_director")
     assert director is not None
     assert director["level"] == 1
-    assert "place_block" in (director.get("tools_allowed") or [])
-    assert "execute_command" in (director.get("tools_allowed") or [])
+    assert "place_block" not in (director.get("tools_allowed") or [])
+    assert "execute_command" not in (director.get("tools_allowed") or [])
     prompt = director["system_prompt"]
     assert "灵境意志" in prompt or "灵境·Linkin" in prompt
     assert "[待Phase" not in prompt
     assert "织庭盟" in prompt
     assert "灵丝术" in prompt
+    narrative = get_snapshot("custom_linkin_narrative_director")
+    assert narrative is not None
+    assert "Quest.generate" in (narrative.get("tools_allowed") or [])
     executor = get_snapshot("custom_linkin_build_executor")
     assert executor is not None
     assert executor["level"] == 2
     assert "執行者" in executor["name"] or "执行者" in executor["name"] or "建築" in executor["name"]
-    assert "place_block" in (executor.get("tools_allowed") or [])
-    assert "execute_command" not in (executor.get("tools_allowed") or [])
+    assert "place_block" not in (executor.get("tools_allowed") or [])
 
 
 def test_seed_refreshes_stale_system_prompt(linkin_env):
@@ -489,67 +283,3 @@ def test_format_npc_text_relationships_consistent():
     assert npc_relationships({"relationships": {"雾衡": "合作"}}) == {"雾衡": "合作"}
 
 
-def test_minecraft_status_dry_run_call_and_dispatch(client: TestClient):
-    status = client.get("/linkin/minecraft/status")
-    assert status.status_code == 200
-    assert status.json()["dry_run"] is True
-    assert status.json()["enabled"] is False
-
-    probe = client.post("/linkin/minecraft/probe")
-    assert probe.status_code == 200
-    assert probe.json()["dry_run"] is True
-    assert probe.json()["connected"] is False
-    assert "乾跑" in probe.json().get("message", "") or "JSON-RPC" in probe.json().get("message", "")
-
-    placed = client.post(
-        "/linkin/minecraft/call",
-        json={
-            "tool": "place_block",
-            "arguments": {"x": 120, "y": 64, "z": -300, "material": "OAK_PLANKS"},
-        },
-    )
-    assert placed.status_code == 200
-    payload = placed.json()
-    assert payload["ok"] is True
-    assert payload["dry_run"] is True
-    assert payload["remote"] == "pose_block"
-
-    denied = client.post(
-        "/linkin/minecraft/call",
-        json={"tool": "read_file", "arguments": {"path": "secrets.env"}},
-    )
-    assert denied.status_code == 400
-
-    building = client.post(
-        "/linkin/buildings/generate",
-        json={
-            "prompt": "月光庭园一座小桥",
-            "style": "精灵古典",
-            "location": "120, 64, -300",
-            "region": "精灵森林",
-            "block_count": 80,
-        },
-    )
-    assert building.status_code == 200
-    bld_id = building.json()["building"]["id"]
-    dispatched = client.post(f"/linkin/buildings/{bld_id}/dispatch")
-    assert dispatched.status_code == 200
-    mcp = dispatched.json()["minecraft"]
-    assert mcp["ok"] is True
-    assert mcp["dry_run"] is True
-    assert dispatched.json()["building"]["status"] == "dispatched"
-
-    missing_xyz = client.post(
-        "/linkin/buildings/generate",
-        json={
-            "prompt": "雾中庭园一座隐所",
-            "style": "隐士木屋",
-            "location": "宁渊谷",
-            "region": "宁渊谷",
-            "block_count": 40,
-        },
-    )
-    assert missing_xyz.status_code == 200
-    bad_id = missing_xyz.json()["building"]["id"]
-    failed = client.post(f"/linkin/buildings/{bad_id}/dispatch")
-    assert failed.status_code == 400

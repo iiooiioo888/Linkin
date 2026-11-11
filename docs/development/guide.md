@@ -56,7 +56,7 @@ python -m backend.scripts.seed_linkin_world
 
 ## 測試
 
-單元測試以 `monkeypatch` 隔離 LLM／Redis／OPC／MineMCP，**無需真實 API 金鑰**。目前約 **639** 筆收錄（以 `pytest --collect-only -q` 為準）。
+單元測試以 `monkeypatch` 隔離 LLM／Redis／OPC，**無需真實 API 金鑰**。目前約 **639** 筆收錄（以 `pytest --collect-only -q` 為準）。
 
 ```powershell
 pytest backend/tests/ -q
@@ -66,7 +66,6 @@ pytest backend/tests/test_company.py -q
 pytest backend/tests/test_raho.py -q
 pytest backend/tests/test_reflection_loop.py -q
 pytest backend/tests/test_linkin_api.py -q
-pytest backend/tests/test_minecraft_mcp.py -q
 pytest backend/tests/test_opc_service.py -q
 pytest backend/tests/test_provider_pool.py -q
 pytest backend/tests/test_architecture.py -q
@@ -92,7 +91,7 @@ Linkin/
 │   │   ├── provider_pool.py    #   模型池鎖定
 │   │   └── evaluation.py       #   多維評估
 │   ├── company/                # 協調器、角色（82）、任務經理、量化
-│   ├── linkin/                 # 靈境＋16 席子角色＋Minecraft 業務護欄
+│   ├── linkin/                 # 靈境＋16 席子角色＋憲法／實體
 │   ├── tools/ · hub/ · memory/ · services/
 │   ├── config/                 # 執行期 JSON（價卡等）
 │   ├── data/ · scripts/
@@ -111,7 +110,6 @@ Linkin/
 2. **測試隔離**：外部服務用 `monkeypatch`，不依賴真實金鑰／遊戲伺服器  
 3. **圖狀態**：禁止改編譯後的圖；改 `build_graph()` 與節點實作  
 4. **OPC**：寫入必須經 `opc_service/guard.py`  
-5. **Minecraft**：寫入必須經 `backend/tools/minecraft_mcp.py` 與 `backend/linkin/minecraft.py`；禁止把檔案系統工具暴露給角色  
 
 詳見 [AGENTS.md](../../AGENTS.md)。
 

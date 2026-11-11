@@ -26,11 +26,8 @@ from backend.linkin.prompts import (
 
 logger = logging.getLogger(__name__)
 
-MC_READ_TOOLS = ["get_player", "get_online_players"]
-MC_BUILD_TOOLS = ["place_block", "break_block", "fill_block", "pose_block", *MC_READ_TOOLS]
-MC_ADMIN_TOOLS = [*MC_BUILD_TOOLS, "execute_command"]
 DOMAIN_TOOLS = {
-    "build": ["BuilderAI.generate"],
+    "build": [],
     "narrative": ["Quest.generate"],
     "npc": ["NPC.create", "NPC.dialogue"],
     "item": ["Item.create"],
@@ -40,17 +37,9 @@ DOMAIN_TOOLS = {
 def _tools_for(dept_slug: str, staff_slug: str | None) -> list[str]:
     domain = list(DOMAIN_TOOLS.get(dept_slug, []))
     if staff_slug in {ROLE_REVIEWER, ROLE_SCRIBE}:
-        return list(MC_READ_TOOLS)
-    if dept_slug == "build":
-        if staff_slug is None:
-            return [*domain, *MC_ADMIN_TOOLS]
-        if staff_slug == ROLE_EXECUTOR:
-            return [*domain, *MC_BUILD_TOOLS]
-        return list(MC_READ_TOOLS)
-    if dept_slug in {"narrative", "npc", "item"}:
-        if staff_slug == ROLE_EXECUTOR:
-            return [*domain, *MC_READ_TOOLS]
-        return list(MC_READ_TOOLS)
+        return []
+    if staff_slug is None or staff_slug == ROLE_EXECUTOR:
+        return domain
     return []
 
 DEPARTMENTS: tuple[tuple[str, str, str, str], ...] = (
@@ -70,8 +59,8 @@ STAFF: tuple[tuple[str, str, str, int, str], ...] = (
 DEPT_META: dict[str, dict[str, Any]] = {
     "build": {
         "school": "塑形學派",
-        "director_focus": "風格與區域文化匹配、單次 ≤5000 方塊預算、靈脈和諧否決權",
-        "executor_duty": "用 place_block／fill_block／break_block 落地建築方案並附自檢清單",
+        "director_focus": "風格與區域文化匹配、靈脈和諧否決權、建築敘事一致性",
+        "executor_duty": "產出區域建築敘事與佈局說明，附自檢清單（不含遊戲寫入）",
     },
     "narrative": {
         "school": "言靈學派",

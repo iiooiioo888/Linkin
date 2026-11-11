@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 RouteChoice = Literal["simple", "company"]
 QueryBucket = Literal["short", "medium", "long"]
 
-_EXCLUDED_EXECUTION_PATHS = frozenset({"minecraft_ops", "opc"})
+_EXCLUDED_EXECUTION_PATHS = frozenset({"opc"})
 
 
 def routing_feedback_applies(
@@ -28,7 +28,7 @@ def routing_feedback_applies(
     execution_path: str | None = None,
     route: RouteChoice | None = None,
 ) -> bool:
-    """routing_feedback 僅作用於 simple／company 閉環，不影響輕量 minecraft_ops 等路徑。"""
+    """routing_feedback 僅作用於 simple／company 閉環，不影響 opc 等排除路徑。"""
     path = str(execution_path or "").strip().lower()
     if path in _EXCLUDED_EXECUTION_PATHS:
         return False

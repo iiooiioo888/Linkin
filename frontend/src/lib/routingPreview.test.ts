@@ -44,7 +44,7 @@ describe('routingPreview helpers', () => {
     expect(usesTaskWorkspace('company', null)).toBe(true);
     expect(usesTaskWorkspace('simple', companyPreview)).toBe(false);
     expect(usesTaskWorkspace('auto', { ...companyPreview, path: 'opc' })).toBe(true);
-    expect(usesTaskWorkspace('auto', { ...companyPreview, path: 'minecraft_ops' })).toBe(false);
+    expect(usesTaskWorkspace('auto', { ...companyPreview, path: 'simple' })).toBe(false);
   });
 
   it('shouldRunGrill stays off after the command chain is removed', () => {
