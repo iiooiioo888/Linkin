@@ -195,7 +195,7 @@ EVOL_OPC_EDGE_CACHE=opc_service/data/edge_cache.json
 
 **模組**：
 
-- `backend/services/trace_logger.py` — 任務級 JSONL 軌跡；`aggregate_reflection_stats()` 彙總反思輪次／耗時／改進幅度
+- `backend/services/trace_logger/` — 任務級 JSONL 軌跡；`aggregate_reflection_stats()` 彙總反思輪次／耗時／改進幅度
 - `backend/core/pipeline_trace.py` — LangGraph 節點事件
 
 節點在 `session_id` / `task_id` 存在時自動寫入 trace，供監控面板與後續分析使用。

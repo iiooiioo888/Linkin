@@ -40,7 +40,7 @@
 
 | 向量記憶 | `memory/` |
 
-| 任務／軌跡／監控 | `services/task_manager/`、`trace_logger.py`、`monitor_hub.py` |
+| 任務／軌跡／監控 | `services/task_manager/`、`trace_logger/`、`monitor_hub.py` |
 
 | 模型目錄爬取 | `services/llm_ops.py` |
 
