@@ -101,7 +101,7 @@ OPC 寫入仍走護欄。
 | `nodes.py` | 生成／評估／反思／改進 |
 | `company_nodes.py` | 公司運行時節點橋接 |
 | `llm.py` | **`call_llm`（唯一 LLM 出口）** |
-| `llm_config.py` · `api_router.py` · `provider_pool/` | 配置、多 API 路由、模型池鎖定 |
+| `llm_config.py` · `api_router/` · `provider_pool/` | 配置、多 API 路由、模型池鎖定 |
 | `evaluation.py` | 多維評估與權重 |
 | `state.py` | EvoLoopState |
 | `llm_cache.py` · `dynamic_threshold.py` · `routing_feedback.py` | 快取、門檻、路由回饋 |
@@ -129,7 +129,7 @@ OPC 寫入仍走護欄。
 | `raho/` | 執行期內部協議（記憶注入與交付檢查），不再佔名冊席位 |
 | `budget.py` · `rate_card.py` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
 | `seat_io.py` | 席位投遞 I/O 軌跡（prompt／system／response 全文＋來源分解）；前端席位監察頁資料源，契約見 [api/reference.md](api/reference.md) |
-| `decomposer.py` · `react_loop.py` · `tools.py` | 拆解、ReAct、工具 |
+| `decomposer/` · `react_loop.py` · `tools.py` | 拆解、ReAct、工具 |
 | `quant_tools/` · `quant_*.py` · `docker_tools.py` · `archify_compile.py` | 量化與策略圖（價格分析探針）；Docker 容器（核心的開發組件） |
 
 ### backend/linkin/（關鍵）

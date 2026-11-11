@@ -119,7 +119,7 @@ EVOL_MERGE_REVIEW_SYNTH=true   # 預設 true；設為 false 恢復分離流程
 |------|------|------|
 | LLM 精確 + 語義 | `backend/core/llm_cache.py` | 反思循環 prompt 複用 |
 | Hub 語義 | `backend/hub/cache.py` | AI Hub 對話快取 |
-| 任務拆分 | `backend/company/decomposer.py` | 分解結果 LRU |
+| 任務拆分 | `backend/company/decomposer/` | 分解結果 LRU |
 
 ```env
 EVOL_LLM_CACHE_SIZE=512

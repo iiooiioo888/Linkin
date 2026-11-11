@@ -1,34 +1,17 @@
-"""任務拆分器 —— EvoLoop 核心主功能。
-
-將複雜目標分解為可並行執行的子工作項，是整個公司運行時的
-第一大階段。支援三種拆分策略：
-
-  1. LLM 驅動：利用 LLM 理解目標語義，智能分解與角色指派
-  2. 模板驅動：基於內建任務模板（如 page_dev）快速匹配
-  3. 規則驅動：簡單關鍵字拆分，適用於低複雜度任務
-
-設計原則：
-  - 獨立模組：可脫離 CompanyOrchestrator 單獨使用與測試
-  - 策略可插拔：三種策略可根據場景自動選擇或手動指定
-  - 層級感知：充分利用 org_chart 規劃並行階段與依賴鏈
-  - 預算感知：根據預算壓力自動選擇合適的拆分策略
-"""
+"""任務拆分器主體：TaskDecomposer（LLM／模板／規則三策略）。"""
 
 from __future__ import annotations
 
-import asyncio
+import hashlib
 import logging
 import os
 import time
-from dataclasses import dataclass, field
-from enum import Enum
+from collections import OrderedDict as _OrderedDict
 from typing import Any
 
 from backend.company.budget import BudgetManager, CostTracker
 from backend.company.milestone_actions import catalog_role_ids, resolve_assignee
-from backend.company.prompts import (
-    PromptConfig,
-)
+from backend.company.prompts import PromptConfig
 from backend.company.state import (
     BudgetTier,
     CompanyConfig,
@@ -37,89 +20,20 @@ from backend.company.state import (
     WorkItemStatus,
 )
 from backend.company.work_item import WorkItemManager
-from backend.core.llm import call_llm, llm_kwargs_for_role, parse_json_response
+from backend.core.llm import llm_kwargs_for_role, parse_json_response
 
-logger = logging.getLogger(__name__)
+from ._compat import call_llm
+from .llm import _llm_thread
+from .types import DecompositionResult, DecompositionStrategy, _draft_assumptions
 
+# 沿用原單檔模組名稱，維持日誌通道不變
+logger = logging.getLogger("backend.company.decomposer")
 
-def _draft_assumptions(result: dict[str, Any]) -> list[Any]:
-    draft = result.get("budget_draft")
-    if isinstance(draft, dict) and isinstance(draft.get("assumptions"), list):
-        return draft["assumptions"]
-    return []
-
-
-async def _llm_thread(fn, *args, **kwargs):
-    """worker 執行緒跑同步 LLM；StopIteration 轉 RuntimeError（不得進 Future）。"""
-    def _run():
-        try:
-            return fn(*args, **kwargs)
-        except StopIteration as exc:
-            raise RuntimeError(f"LLM 呼叫序列耗盡（StopIteration）：{exc}") from exc
-
-    return await asyncio.to_thread(_run)
-
-import hashlib
-from collections import OrderedDict as _OrderedDict
 
 # ── 拆分結果快取（優化 #13）──
 _DECOMPOSE_CACHE_SIZE = int(os.getenv("EVOL_DECOMPOSE_CACHE_SIZE", "64"))
 
 _decompose_cache: _OrderedDict[str, DecompositionResult] = _OrderedDict()
-
-
-# ═══════════════════════════════════════════════════════════════
-# 拆分策略
-# ═══════════════════════════════════════════════════════════════
-
-class DecompositionStrategy(str, Enum):
-    """任務拆分策略。
-
-    - LLM:      利用 LLM 理解目標語義，智能分解（最強大，有成本）
-    - TEMPLATE: 基於內建任務模板匹配（快速，適合已知場景）
-    - RULE:     簡單關鍵字/規則拆分（零成本，適合簡單任務）
-    - AUTO:     自動選擇最優策略（預設）
-    """
-    LLM = "llm"
-    TEMPLATE = "template"
-    RULE = "rule"
-    AUTO = "auto"
-
-
-# ═══════════════════════════════════════════════════════════════
-# 拆分結果
-# ═══════════════════════════════════════════════════════════════
-
-@dataclass
-class DecompositionResult:
-    """任務拆分結果：包含子工作項描述與執行計劃。"""
-
-    goal: str
-    strategy: DecompositionStrategy
-    subtasks: list[dict[str, Any]] = field(default_factory=list)
-    execution_plan: str = ""
-    phases: list[list[int]] = field(default_factory=list)  # 每階段的工作項索引
-    meta: dict[str, Any] = field(default_factory=dict)      # 額外元數據
-
-    @property
-    def subtask_count(self) -> int:
-        return len(self.subtasks)
-
-    @property
-    def phase_count(self) -> int:
-        return len(self.phases)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "goal": self.goal,
-            "strategy": self.strategy.value,
-            "subtask_count": self.subtask_count,
-            "phase_count": self.phase_count,
-            "execution_plan": self.execution_plan,
-            "subtasks": self.subtasks,
-            "phases": self.phases,
-            "meta": self.meta,
-        }
 
 
 # ═══════════════════════════════════════════════════════════════
