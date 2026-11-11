@@ -1,6 +1,8 @@
 # Local Video Studio（`local-video-studio`）
 
-本機優先的私有化 AI 影片生成模組。完整規格見 [`PROJECT_SPEC.md`](../../PROJECT_SPEC.md)；整合說明見 [`docs/integrations/local-video-studio.md`](../../docs/integrations/local-video-studio.md)；運維見 [`docs/integrations/OPERATIONS.md`](../../docs/integrations/OPERATIONS.md)。
+本機優先的私有化 AI 影片生成模組。完整規格見 [`PROJECT_SPEC.md`](../../PROJECT_SPEC.md)；功能矩陣見 [`FEATURES_AND_TOOLS.md`](../../FEATURES_AND_TOOLS.md)；整合說明見 [`docs/integrations/local-video-studio.md`](../../docs/integrations/local-video-studio.md)；backlog 見 [`docs/backlog/`](../../docs/backlog/README.md)；運維見 [`docs/integrations/OPERATIONS.md`](../../docs/integrations/OPERATIONS.md)。
+
+**OpenAPI**：主應用啟動後開啟 `/docs`（Swagger）或 `/redoc`；LVS 前綴 `/local-video-studio` 與 `/local-video-studio/api/v1/*`（`X-API-Key`）。人類可讀端點表見 backlog [P0-13](../../docs/backlog/P0-13-API-文档同步.md)（`docs/API.md` 仍待補）。
 
 ## 里程碑
 
@@ -24,10 +26,15 @@ curl -s http://127.0.0.1:8000/local-video-studio/health
 
 ## API 前綴 `/local-video-studio/api/v1`
 
+完整端點與可複製 curl／httpx 見 [`docs/API.md`](../../docs/API.md)；工作流／模型見 [`docs/WORKFLOWS.md`](../../docs/WORKFLOWS.md)。
+
 | 方法 | 路徑 | 說明 |
 | --- | --- | --- |
 | * | `/projects` `/shots` `/scripts` | M1 CRUD |
 | * | `/jobs` `/jobs/{id}/claim|complete|cancel|retry` | M2 |
+| GET | `/jobs/{id}/log` | P0-12 任務日誌尾部 |
+| POST/GET | `/workflows` `/workflows/{name}` | P0-03 模板匯入與版本 |
+| POST/GET | `/models` `/models/{name}` | P0-11 模型註冊 |
 | GET | `/projects/{id}/assets` | 資產列表 |
 | POST | `/assets/{id}/review` | approve／reject／needs_retry |
 | GET | `/projects/{id}/review-queue` | 審核佇列 |
@@ -50,7 +57,8 @@ curl -s http://127.0.0.1:8000/local-video-studio/health
 ```bash
 pytest backend/tests/test_local_video_studio.py \
        backend/tests/test_local_video_studio_m2.py \
-       backend/tests/test_local_video_studio_m3_m6.py -q
+       backend/tests/test_local_video_studio_m3_m6.py \
+       backend/tests/test_local_video_studio_p0_gaps.py -q
 ```
 
 ## 約束

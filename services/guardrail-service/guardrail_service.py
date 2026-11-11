@@ -1,14 +1,12 @@
-"""護欄服務。OPC 寫入與危險 Minecraft 動作在這裡做決定，並簽發 HMAC。"""
+"""護欄服務。OPC 寫入等敏感動作在這裡做決定，並簽發 HMAC。"""
 
 from __future__ import annotations
 
-import re
 import time
 import uuid
 from typing import Any
 
 from linkin_core.contracts.guardrail import GuardrailVerdict
-from linkin_core.contracts.minecraft import MUTATING_MINECRAFT_ACTIONS
 from linkin_core.contracts.signatures import (
     POLICY_VERSION,
     SCHEMA_VERSION,
@@ -20,8 +18,8 @@ from linkin_core.contracts.signatures import (
 
 CALLER_CHECK = "tool-gateway"
 CALLER_APPROVE = "api-gateway"
-_DESTRUCTIVE_RE = re.compile(r"\b(ban|kick|op|deop|stop|restart|whitelist)\b", re.IGNORECASE)
 _TEMP_CEILING = 150.0
+
 
 def evaluate(tool: str, args: dict[str, Any]) -> tuple[str, str]:
     """回傳 (verdict, reason)。confirm 即需要人工審批。"""
@@ -31,13 +29,6 @@ def evaluate(tool: str, args: dict[str, Any]) -> tuple[str, str]:
         if isinstance(value, (int, float)) and "temp" in tag.lower() and not 0 <= float(value) <= _TEMP_CEILING:
             return GuardrailVerdict.deny.value, "超出溫度邊界"
         return GuardrailVerdict.confirm.value, "OPC 寫入需要人工審批"
-    if tool == "execute_command":
-        command = str(args.get("command") or "")
-        if _DESTRUCTIVE_RE.search(command):
-            return GuardrailVerdict.deny.value, "靈境鐵律拒絕危險指令"
-        return GuardrailVerdict.confirm.value, "指令需要人工審批"
-    if tool in MUTATING_MINECRAFT_ACTIONS:
-        return GuardrailVerdict.confirm.value, "危險 Minecraft 動作需要人工審批"
     return GuardrailVerdict.allow.value, "非敏感工具"
 
 

@@ -100,8 +100,7 @@ class TestTaskPathResolvedSingleSource:
     async def test_path_resolved_event_matches_record_resolved_path(self, monkeypatch):
         cases = [
             ("今天天氣如何", "auto", "simple"),
-            ("在坐标(100, 64, 200)处放置一个钻石块", "auto", "minecraft_ops"),
-            ("請設計並實現一個完整的微服務系統架構", "auto", "company"),
+                        ("請設計並實現一個完整的微服務系統架構", "auto", "company"),
         ]
         mgr = TaskManager()
 
@@ -110,8 +109,7 @@ class TestTaskPathResolvedSingleSource:
 
         monkeypatch.setattr(mgr, "_run_simple_task", _noop)
         monkeypatch.setattr(mgr, "_run_company_task", _noop)
-        monkeypatch.setattr(mgr, "_run_minecraft_ops_task", _noop)
-
+        
         for query, strategy, expected in cases:
             record = TaskRecord(f"path-{expected}", query, strategy, "quick_task")
             await mgr._run_unified_task(record)

@@ -1,4 +1,4 @@
-"""靈境統一管線注入：非靈境且非 Minecraft 控制查詢不得改路由；命中世界觀才注入 RAG。"""
+"""靈境統一管線注入：非靈境查詢不得改路由；命中世界觀才注入 RAG。"""
 
 from __future__ import annotations
 
@@ -39,8 +39,8 @@ def test_world_query_is_simple_dialogue():
     assert is_linkin_complex_task(query) is False
 
 
-def test_build_query_is_complex():
-    query = "在精灵森林建造一座月光庭园主城"
+def test_narrative_query_is_complex():
+    query = "在灵境精灵森林撰写主线任务与NPC角色卡"
     assert needs_linkin_context(query) is True
     assert is_linkin_complex_task(query) is True
 
@@ -57,7 +57,10 @@ def test_enhance_injects_constitution(linkin_env):
 def test_route_linkin_complex_to_company():
     from backend.core.company_nodes import route_by_complexity
 
-    state = {"query": "在灵境精灵森林建造一座树桥聚落", "execution_strategy": "auto"}
+    state = {
+        "query": "在灵境精灵森林撰写主线任务与NPC角色卡",
+        "execution_strategy": "auto",
+    }
     assert route_by_complexity(state) == "run_company"
 
 
@@ -70,20 +73,13 @@ def test_route_generic_query_unchanged():
 
 def test_story_studio_only_for_default_template():
     state = {
-        "query": "在灵境建造一座白石圣殿",
+        "query": "在灵境撰写主线任务",
         "company_template": "quick_task",
         "linkin_context": {"active": True, "complex": True},
     }
     assert resolve_linkin_company_template(state) == "story_studio"
     state["company_template"] = "full_company"
     assert resolve_linkin_company_template(state) is None
-
-
-def test_route_minecraft_query_to_ops():
-    from backend.core.company_nodes import route_by_complexity
-
-    state = {"query": "使用 place_block 放钻石块", "execution_strategy": "auto"}
-    assert route_by_complexity(state) == "run_minecraft_ops"
 
 
 def test_graph_includes_linkin_node():
@@ -94,6 +90,7 @@ def test_graph_includes_linkin_node():
     assert "enhance_with_linkin_context" in names
     assert "enhance_with_opc_context" in names
     assert "enhance_with_recall_context" in names
+    assert "run_minecraft_ops" not in names
 
 
 def test_generate_injects_linkin_overlay(monkeypatch):
@@ -126,36 +123,7 @@ def test_generate_injects_linkin_overlay(monkeypatch):
     assert "靈境·Linkin" in captured["system"]
 
 
-def test_minecraft_query_injects_mcp_without_rag():
+def test_non_world_block_query_skips_context():
     query = "在坐标(100, 64, 200)处放置一个钻石块"
     assert needs_linkin_context(query) is False
-    ctx = enhance_with_linkin_context({"query": query})["linkin_context"]
-    assert ctx["active"] is True
-    assert ctx["minecraft"] is True
-    assert ctx["complex"] is False
-    assert ctx["rag_hits"] == 0
-    assert "Minecraft MCP" in ctx["summary"]
-    assert "pose_block" in ctx["system_overlay"]
-    assert resolve_linkin_company_template(
-        {"query": query, "company_template": "quick_task", "linkin_context": ctx}
-    ) is None
-
-
-def test_story_studio_injects_players_without_keyword(monkeypatch):
-    monkeypatch.setattr(
-        "backend.linkin.minecraft_players.has_live_player_signal",
-        lambda: True,
-    )
-    monkeypatch.setattr(
-        "backend.linkin.minecraft_players.format_players_presence_markdown",
-        lambda **kwargs: "## 玩家現場\n- 在線 1 人\n- Steve [world] (0, 64, 0) 背包=—",
-    )
-    ctx = enhance_with_linkin_context(
-        {
-            "query": "幫我檢查這段對白是否通順",
-            "company_template": "story_studio",
-        }
-    )["linkin_context"]
-    assert ctx["active"] is True
-    assert ctx["minecraft_observability"] is True
-    assert "玩家現場" in ctx["summary"]
+    assert enhance_with_linkin_context({"query": query}) == {"linkin_context": {}}

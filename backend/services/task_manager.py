@@ -15,7 +15,6 @@
 統一管線流程：
   記憶檢索 → OPC 上下文增強（自動） → 靈境 RAG 增強（自動） → 複雜度路由
     ├─ 公司（含工業）→ 任務經理分析後席位分工；感測讀數注入目標，寫入經護欄
-    ├─ Minecraft 單步 → 輕量 ReAct
     └─ 簡單任務 → 單次 LLM 生成
   → 依路徑定稿或反思 → 存檔
 """
@@ -989,8 +988,6 @@ class TaskManager:
         try:
             if record.resolved_path == "company":
                 await self._run_company_task(record)
-            elif path == "minecraft_ops":
-                await self._run_minecraft_ops_task(record)
             else:
                 await self._run_simple_task(record)
         except asyncio.CancelledError:
@@ -1006,80 +1003,6 @@ class TaskManager:
             self._running_tasks.pop(record.task_id, None)
 
     # ── 簡單任務執行（單次生成 + 反思迴圈） ──
-
-    async def _run_minecraft_ops_task(self, record: TaskRecord) -> None:
-        """Minecraft 輕量路徑：記憶／上下文增強 → ReAct+MCP → 精簡反思迴圈。"""
-        tracer = TraceLogger(record.task_id)
-        opts = record.options or {}
-        from backend.core.company_nodes import run_minecraft_ops
-        from backend.core.locale_prompt import normalize_ui_language
-
-        state: dict[str, Any] = {
-            "query": record.query,
-            "session_id": record.task_id,
-            "task_id": record.task_id,
-            "history": [],
-            "ui_language": normalize_ui_language(opts.get("ui_language")),
-            "execution_strategy": record.strategy if record.strategy == "simple" else "auto",
-            "task_complexity": "simple",
-            "resolved_execution_path": "minecraft_ops",
-        }
-        try:
-            self._set_phase(record, "retrieve_memories")
-            tracer.log_phase_change("retrieve_memories")
-            state.update(await asyncio.to_thread(nodes.retrieve_memories, state))
-            if self._check_cancelled(record):
-                self._finish(record)
-                return
-
-            self._set_phase(record, "enhance_opc_context")
-            state.update(await enhance_with_opc_context(state))
-            if self._check_cancelled(record):
-                self._finish(record)
-                return
-
-            self._set_phase(record, "enhance_linkin_context")
-            state.update(await asyncio.to_thread(enhance_with_linkin_context, state))
-            if self._check_cancelled(record):
-                self._finish(record)
-                return
-
-            self._set_phase(record, "enhance_recall_context")
-            state.update(await asyncio.to_thread(enhance_with_recall_context, state))
-            if self._check_cancelled(record):
-                self._finish(record)
-                return
-
-            self._set_phase(record, "minecraft_ops")
-            tracer.log_phase_change("minecraft_ops", data={"execution_path": "minecraft_ops"})
-            self._add_event(record, "minecraft_ops_start", {"path": "minecraft_ops"})
-            state.update(await asyncio.to_thread(run_minecraft_ops, state))
-            self._add_event(
-                record,
-                "minecraft_ops_done",
-                state.get("minecraft_ops_result") or {},
-            )
-            if self._check_cancelled(record):
-                self._finish(record)
-                return
-
-            await self._run_reflection_loop(record, state, tracer)
-
-            record.answer = str(
-                state.get("final_answer") or state.get("current_answer") or ""
-            )
-            record.score = state.get("score")
-            record.iteration = state.get("iteration", 0)
-            if record.status != "cancelled" and not record.cancel_requested:
-                record.status = "completed"
-                tracer.log_phase_change("done")
-                self._set_phase(record, "done")
-        except Exception as exc:
-            logger.error("Minecraft 輕量任務 %s 執行失敗：%s", record.task_id, exc)
-            record.status = "failed"
-            record.error = str(exc)
-            tracer.log_error(str(exc), phase=record.phase, recoverable=False)
-        self._finish(record)
 
     async def _run_simple_task(self, record: TaskRecord) -> None:
         """簡單任務：記憶檢索 → OPC 上下文增強 → 生成 → 反思迴圈。"""
@@ -1200,10 +1123,7 @@ class TaskManager:
         merged = {**state, "execution_strategy": record.strategy}
         merged["task_complexity"] = record.task_complexity or state.get("task_complexity")
         merged["resolved_execution_path"] = record.resolved_path
-        if record.resolved_path == "minecraft_ops":
-            merged["execution_strategy"] = "simple"
-            merged["task_complexity"] = "simple"
-        elif record.resolved_path == "simple" and record.strategy == "simple":
+        if record.resolved_path == "simple" and record.strategy == "simple":
             merged["task_complexity"] = "simple"
         return merged
 

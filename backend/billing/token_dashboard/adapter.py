@@ -16,7 +16,6 @@ _WORKSPACE_LABELS: dict[str, str] = {
     "raho": "RAHO",
     "reflection": "反思閉環",
     "opc": "OPC",
-    "minecraft": "Minecraft",
     "docker": "Docker",
     "llm_tokens": "LLM Token",
     "llm": "LLM",

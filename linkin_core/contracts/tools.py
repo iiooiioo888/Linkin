@@ -1,4 +1,4 @@
-"""工具呼叫的唯一入口。席位不得直連 OPC 或 Minecraft。"""
+"""工具呼叫的唯一入口。席位不得直連 OPC 等外部系統。"""
 
 from __future__ import annotations
 

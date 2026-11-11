@@ -1,9 +1,8 @@
-"""Render agent 單步循環：claim → inject → Comfy → complete。"""
+"""Render agent 單步循環：claim → validate models → inject → Comfy → complete。"""
 
 from __future__ import annotations
 
 import hashlib
-import json
 import time
 from pathlib import Path
 from typing import Any
@@ -12,24 +11,14 @@ from sqlalchemy.orm import Session
 
 from backend.local_video_studio.comfy_client import ComfyClient, ComfyClientError, new_client_id
 from backend.local_video_studio.config import load_config
+from backend.local_video_studio.job_log import append_job_log
 from backend.local_video_studio.jobs import claim_job, complete_job, list_jobs
+from backend.local_video_studio.model_registry import ModelValidationError, validate_required_models
+from backend.local_video_studio.models import GenerationJob
 from backend.local_video_studio.schemas import AssetPayload, JobComplete, ResourcePayload
+from backend.local_video_studio.storage import LocalPathStorage
 from backend.local_video_studio.workflow_inject import WorkflowMappingError, inject_params
-
-_WORKFLOWS = Path(__file__).resolve().parent.parent / "workflows"
-
-
-def _load_template(name: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    wf_path = _WORKFLOWS / f"{name}.json"
-    map_path = _WORKFLOWS / "mappings" / f"{name}.mapping.json"
-    if not wf_path.is_file():
-        raise FileNotFoundError(f"workflow 不存在：{wf_path}")
-    if not map_path.is_file():
-        raise FileNotFoundError(f"mapping 不存在：{map_path}")
-    return (
-        json.loads(wf_path.read_text(encoding="utf-8")),
-        json.loads(map_path.read_text(encoding="utf-8")),
-    )
+from backend.local_video_studio.workflow_templates import load_template_payload
 
 
 def _asset_type_for_job(job_type: str) -> str:
@@ -49,28 +38,72 @@ def _ensure_output_path(storage_base: Path, relative: str, payload: bytes) -> tu
     return len(payload), digest
 
 
+def _fail_job(
+    session: Session,
+    job: GenerationJob,
+    exc: BaseException,
+    *,
+    storage: LocalPathStorage,
+) -> dict[str, Any]:
+    msg = str(exc)
+    append_job_log(
+        job.project_id,
+        job.id,
+        "error",
+        msg,
+        storage=storage,
+        error=msg,
+        attempt=job.attempt,
+    )
+    job.log_relative_path = f"projects/{job.project_id}/logs/{job.id}.log"
+    result = complete_job(
+        session,
+        job.id,
+        JobComplete(status="failed", error=msg),
+    )
+    session.flush()
+    return result.model_dump(mode="json")
+
+
 def run_once(
     session: Session,
     *,
     comfy: ComfyClient | None = None,
     agent_id: str | None = None,
     storage_base: Path | None = None,
+    models_root: Path | None = None,
 ) -> dict[str, Any] | None:
     """處理一個 queued 任務；若無任務回傳 None。"""
     cfg = load_config()
     agent = agent_id or cfg.agent_id
     root = Path(storage_base or cfg.storage_base)
+    store = LocalPathStorage(root)
 
     queued = list_jobs(session, status="queued", unassigned=True)
     if not queued:
         return None
-    job = queued[0]
-    claimed = claim_job(session, job.id, agent)
+    job_out = queued[0]
+    claimed = claim_job(session, job_out.id, agent)
+    session.flush()
+    row = session.get(GenerationJob, claimed.id)
+    assert row is not None
+
+    append_job_log(
+        row.project_id,
+        row.id,
+        "info",
+        "claimed",
+        storage=store,
+        agent=agent,
+        workflow_template=row.workflow_template,
+        workflow_version=row.workflow_version,
+        attempt=row.attempt,
+    )
+    row.log_relative_path = f"projects/{row.project_id}/logs/{row.id}.log"
     session.flush()
 
     started = time.monotonic()
     owns_client = False
-    mock_server = None
     if comfy is not None:
         client = comfy
     elif cfg.use_mock_comfy:
@@ -102,9 +135,49 @@ def run_once(
         client = ComfyClient(cfg.comfyui_url)
         owns_client = True
     try:
-        template_json, mapping = _load_template(claimed.workflow_template)
+        template_json, mapping, resolved_ver, tmpl_models = load_template_payload(
+            session,
+            claimed.workflow_template,
+            version=row.workflow_version,
+        )
+        if resolved_ver is not None and row.workflow_version is None:
+            row.workflow_version = resolved_ver
+            session.flush()
+
         params = dict(claimed.params_json or {})
+        required = list(params.get("required_models") or []) + list(tmpl_models)
+        # 去重保序
+        seen: set[str] = set()
+        required_unique: list[str] = []
+        for name in required:
+            key = str(name).strip()
+            if key and key not in seen:
+                seen.add(key)
+                required_unique.append(key)
+
+        if required_unique:
+            append_job_log(
+                row.project_id,
+                row.id,
+                "info",
+                "validating models",
+                storage=store,
+                required_models=required_unique,
+            )
+            validate_required_models(
+                session,
+                required_unique,
+                models_root=models_root or root / "models",
+            )
+
         injected = inject_params(template_json, params, mapping)
+        append_job_log(
+            row.project_id,
+            row.id,
+            "info",
+            "params injected",
+            storage=store,
+        )
 
         input_rel = params.get("input_image_relative_path")
         if input_rel:
@@ -118,7 +191,6 @@ def run_once(
                     b"\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82"
                 )
             uploaded = client.upload_image(input_path)
-            # 把上傳名注入 LoadImage
             for entry in mapping.get("mappings") or []:
                 if entry.get("param") == "input_image_relative_path":
                     node = injected.get(str(entry["node_id"]), {})
@@ -126,6 +198,14 @@ def run_once(
                         node["inputs"][entry["input"]] = uploaded.get("name", input_path.name)
 
         prompt_id = client.submit_prompt(injected, new_client_id())
+        append_job_log(
+            row.project_id,
+            row.id,
+            "info",
+            "comfy submitted",
+            storage=store,
+            prompt_id=prompt_id,
+        )
         hist = client.wait_history(prompt_id, timeout_sec=15.0)
         outputs = hist.get("outputs") or {}
         filename = None
@@ -151,12 +231,21 @@ def run_once(
         out_rel = params.get("output_relative_path") or (
             f"projects/{claimed.project_id}/{folder}/{default_name}"
         )
-        # mapping 可能把 output_relative_path 寫進 filename_prefix；強制落盤相對路徑
         if isinstance(out_rel, str) and not str(out_rel).startswith("projects/"):
             out_rel = f"projects/{claimed.project_id}/{folder}/{claimed.shot_id}_{filename}"
         size, sha = _ensure_output_path(root, str(out_rel), raw)
         wall = (time.monotonic() - started) / 60.0
 
+        append_job_log(
+            row.project_id,
+            row.id,
+            "info",
+            "succeeded",
+            storage=store,
+            relative_path=str(out_rel),
+            bytes=size,
+            sha256=sha,
+        )
         result = complete_job(
             session,
             claimed.id,
@@ -180,14 +269,14 @@ def run_once(
         )
         session.flush()
         return result.model_dump(mode="json")
-    except (ComfyClientError, WorkflowMappingError, FileNotFoundError, OSError) as exc:
-        result = complete_job(
-            session,
-            claimed.id,
-            JobComplete(status="failed", error=str(exc)),
-        )
-        session.flush()
-        return result.model_dump(mode="json")
+    except (
+        ComfyClientError,
+        WorkflowMappingError,
+        ModelValidationError,
+        FileNotFoundError,
+        OSError,
+    ) as exc:
+        return _fail_job(session, row, exc, storage=store)
     finally:
         if owns_client:
             client.close()

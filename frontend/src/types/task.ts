@@ -113,7 +113,7 @@ export interface TaskProgress {
   /** 統一模式：執行策略（auto / simple / company） */
   strategy: 'auto' | 'simple' | 'company';
   /** 統一模式：實際解析的執行路徑。工業執行的路徑標籤是 company */
-  resolved_path: 'simple' | 'company' | 'opc' | 'minecraft_ops' | '';
+  resolved_path: 'simple' | 'company' | 'opc' | '';
   query: string;
   template: string;
   phase: string;
@@ -223,7 +223,7 @@ export interface CheckpointSummary {
 }
 
 /** POST /routing/preview 與 SSE path_resolved 共用契約 */
-export type RoutingPath = 'simple' | 'company' | 'opc' | 'minecraft_ops';
+export type RoutingPath = 'simple' | 'company' | 'opc';
 export type RoutingPreviewMode = 'auto' | 'simple' | 'company';
 export type EstimatedCostLevel = 'low' | 'medium' | 'high';
 

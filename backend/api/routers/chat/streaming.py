@@ -18,7 +18,7 @@ from backend.billing.context import (
 )
 from backend.billing.errors import InsufficientCreditsError
 from backend.core import nodes
-from backend.core.execution_path import chat_stream_uses_company_sse, resolve_execution_path
+from backend.core.execution_path import chat_stream_uses_company_sse
 from backend.core.graph import reflection_should_continue
 from backend.core.llm import call_llm_stream, split_thinking
 from backend.core.locale_prompt import normalize_ui_language
@@ -31,7 +31,6 @@ from backend.services.trace_logger import eval_trace_kwargs as _eval_trace_kwarg
 
 from ._router import router
 from .company_stream import _company_stream
-from .minecraft_stream import _minecraft_ops_stream
 from .models import ChatRequest
 from .routes import _sse_path_resolved
 
@@ -66,13 +65,6 @@ async def chat_stream(req: ChatRequest, request: Request):
         # 公司運行時：SSE 串流進度（優化 #11）
         return StreamingResponse(
             _company_stream(req),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-        )
-
-    if resolve_execution_path(req.query, req.execution_strategy) == "minecraft_ops":
-        return StreamingResponse(
-            _minecraft_ops_stream(req),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )

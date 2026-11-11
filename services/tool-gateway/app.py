@@ -53,7 +53,6 @@ def invoke_route(
         adapters={
             "opc_read": _missing,
             "opc_write": _missing,
-            "minecraft": _missing,
             "local": _missing,
         },
         execute=False,

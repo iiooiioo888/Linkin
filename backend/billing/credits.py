@@ -59,8 +59,6 @@ RAHO_LAYER_CREDITS: dict[str, float] = {
 QUANT_API_CREDITS = float(os.getenv("LINKIN_CREDIT_QUANT_CALL", "0.5"))
 OPC_WRITE_CREDITS = float(os.getenv("LINKIN_CREDIT_OPC_WRITE", "5"))
 OPC_READ_CREDITS = float(os.getenv("LINKIN_CREDIT_OPC_READ", "0.1"))
-MC_FILL_CREDITS_PER_1000_BLOCKS = float(os.getenv("LINKIN_CREDIT_MC_FILL_PER_1K", "2"))
-MC_OP_CREDITS = float(os.getenv("LINKIN_CREDIT_MC_OP", "1"))
 RECALL_CREDITS = float(os.getenv("LINKIN_CREDIT_RECALL", "1"))
 # Docker：$0.01/h ≈ 10 credits/h at 1000 credits/$1
 DOCKER_USD_TO_CREDITS = float(os.getenv("LINKIN_CREDIT_PER_USD", "1000"))
@@ -182,19 +180,6 @@ def credits_for_opc_read(count: int = 1) -> float:
     return round(OPC_READ_CREDITS * max(1, int(count)), 4)
 
 
-def credits_for_mc_fill(blocks: int) -> float:
-    n = max(0, int(blocks))
-    if n <= 0:
-        return MC_OP_CREDITS
-    return round((n / 1000.0) * MC_FILL_CREDITS_PER_1000_BLOCKS, 4)
-
-
-def credits_for_mc_op(tool: str = "") -> float:
-    if "fill" in (tool or "").lower():
-        return MC_OP_CREDITS
-    return MC_OP_CREDITS
-
-
 def credits_for_docker_usd(amount_usd: float) -> float:
     return round(max(0.0, float(amount_usd)) * DOCKER_USD_TO_CREDITS, 4)
 
@@ -225,7 +210,6 @@ def public_rate_card() -> dict[str, Any]:
         "quant_api_call": QUANT_API_CREDITS,
         "opc_write": OPC_WRITE_CREDITS,
         "opc_read": OPC_READ_CREDITS,
-        "mc_fill_per_1k_blocks": MC_FILL_CREDITS_PER_1000_BLOCKS,
         "docker_usd_to_credits": DOCKER_USD_TO_CREDITS,
         "docker_base_hourly_rates_usd": base_hourly_rates(),
         "docker_tiers": docker_tiers,

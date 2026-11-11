@@ -2378,7 +2378,7 @@ class CompanyOrchestrator:
     def _get_docker_tools_for_role(self, role_type: RoleType, item=None) -> str:
         """獲取角色可用的工具說明文字（使用新工具註冊表）。
 
-        包含 Docker、記憶、實驗室與 Minecraft MCP 等該角色可用的工具。
+        包含 Docker、記憶、實驗室等該角色可用的工具。
         若角色無可用工具或已停用工具，回傳空字串。
         """
         allow_tools, catalog_allowed = self._catalog_tool_filter(role_type.value, item)

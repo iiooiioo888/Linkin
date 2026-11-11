@@ -256,3 +256,6 @@ backend/data/hub_data.sqlite3
 backend/data/linkin/map_plans.json
 backend/data/linkin/minecraft_plugin_settings.json
 backend/data/local_video_studio.sqlite3
+
+# LVS runtime-imported workflow blobs (DB is source of truth)
+backend/local_video_studio/workflows/imported/**/*.json

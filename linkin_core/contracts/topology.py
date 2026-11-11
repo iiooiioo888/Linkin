@@ -15,7 +15,6 @@ DEFAULT_SERVICES: tuple[str, ...] = (
     "tool-gateway",
     "guardrail-service",
     "opc-service",
-    "minecraft-gateway",
     "memory-service",
     "observability-collector",
 )
@@ -36,8 +35,6 @@ SYNC_CHAINS: dict[str, tuple[str, ...]] = {
     "tool_invoke": ("seat-executor", "tool-gateway", "guardrail-service"),
     "opc_read": ("context-service", "tool-gateway", "opc-service"),
     "opc_write": ("tool-gateway", "guardrail-service", "opc-service"),
-    "minecraft_sensitive": ("tool-gateway", "guardrail-service", "minecraft-gateway"),
-    "minecraft_plain": ("tool-gateway", "minecraft-gateway"),
     "opc_write_accept": ("guardrail-service", "opc-service"),
 }
 
@@ -63,10 +60,8 @@ ALLOW: tuple[tuple[str, str, int], ...] = (
     ("seat-executor", "nats", 4222),
     ("tool-gateway", "guardrail-service", 8080),
     ("tool-gateway", "opc-service", 8080),
-    ("tool-gateway", "minecraft-gateway", 8080),
     ("tool-gateway", "nats", 4222),
     ("guardrail-service", "opc-service", 8081),
-    ("guardrail-service", "minecraft-gateway", 8080),
     ("guardrail-service", "nats", 4222),
 )
 

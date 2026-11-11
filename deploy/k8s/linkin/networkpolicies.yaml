@@ -198,39 +198,6 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-in-minecraft-gateway
-  namespace: linkin
-  labels:
-    app.kubernetes.io/name: allow-in-minecraft-gateway
-    app.kubernetes.io/part-of: linkin
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: minecraft-gateway
-      app.kubernetes.io/part-of: linkin
-  policyTypes:
-    - Ingress
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: tool-gateway
-              app.kubernetes.io/part-of: linkin
-      ports:
-        - protocol: TCP
-          port: 8080
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: guardrail-service
-              app.kubernetes.io/part-of: linkin
-      ports:
-        - protocol: TCP
-          port: 8080
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
   name: allow-in-nats
   namespace: linkin
   labels:
@@ -361,14 +328,6 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: opc-service
-              app.kubernetes.io/part-of: linkin
-      ports:
-        - protocol: TCP
-          port: 4317
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: minecraft-gateway
               app.kubernetes.io/part-of: linkin
       ports:
         - protocol: TCP
@@ -922,14 +881,6 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/name: minecraft-gateway
-              app.kubernetes.io/part-of: linkin
-      ports:
-        - protocol: TCP
-          port: 8080
-    - to:
-        - podSelector:
-            matchLabels:
               app.kubernetes.io/name: nats
               app.kubernetes.io/part-of: linkin
       ports:
@@ -977,40 +928,6 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
-    - to:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: observability-collector
-              app.kubernetes.io/part-of: linkin
-      ports:
-        - protocol: TCP
-          port: 4317
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-out-minecraft-gateway
-  namespace: linkin
-  labels:
-    app.kubernetes.io/name: allow-out-minecraft-gateway
-    app.kubernetes.io/part-of: linkin
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: minecraft-gateway
-      app.kubernetes.io/part-of: linkin
-  policyTypes:
-    - Egress
-  egress:
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-      ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
     - to:
         - podSelector:
             matchLabels:
@@ -1361,14 +1278,6 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: opc-service
-              app.kubernetes.io/part-of: linkin
-      ports:
-        - protocol: TCP
-          port: 8080
-    - to:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: minecraft-gateway
               app.kubernetes.io/part-of: linkin
       ports:
         - protocol: TCP

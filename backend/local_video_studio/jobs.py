@@ -45,12 +45,16 @@ def job_to_out(session: Session, job: GenerationJob) -> JobOut:
             .where(Asset.project_id == job.project_id, Asset.shot_id == job.shot_id)
             .order_by(Asset.created_at.desc())
         )
+    from backend.local_video_studio.job_log import log_relative_path
+
+    log_rel = job.log_relative_path or log_relative_path(job.project_id, job.id)
     return JobOut(
         id=job.id,
         project_id=job.project_id,
         shot_id=job.shot_id,
         job_type=job.job_type,
         workflow_template=job.workflow_template,
+        workflow_version=job.workflow_version,
         params_json=job.params_json,
         status=job.status,
         attempt=job.attempt,
@@ -61,6 +65,8 @@ def job_to_out(session: Session, job: GenerationJob) -> JobOut:
         started_at=job.started_at,
         finished_at=job.finished_at,
         error=job.error,
+        error_summary=job.error,
+        log_relative_path=log_rel,
         created_at=job.created_at,
         asset=asset_to_out(asset) if job.status == "succeeded" else None,
     )
@@ -79,12 +85,19 @@ def create_job(session: Session, body: JobCreate) -> JobOut:
         if not load_config().cloud_enabled and body.data_class != "local_only":
             raise HTTPException(status_code=400, detail="CLOUD_ENABLED=false，僅允許 local_only")
 
+    params = dict(body.params or {})
+    if body.required_models:
+        params["required_models"] = list(body.required_models)
+
+    from backend.local_video_studio.job_log import log_relative_path
+
     job = GenerationJob(
         project_id=body.project_id,
         shot_id=body.shot_id,
         job_type=body.job_type,
         workflow_template=body.workflow_template,
-        params_json=body.params or {},
+        workflow_version=body.workflow_version,
+        params_json=params,
         priority=body.priority,
         data_class=body.data_class,
         max_attempts=body.max_attempts,
@@ -92,6 +105,8 @@ def create_job(session: Session, body: JobCreate) -> JobOut:
         attempt=0,
     )
     session.add(job)
+    session.flush()
+    job.log_relative_path = log_relative_path(job.project_id, job.id)
     session.flush()
     return job_to_out(session, job)
 

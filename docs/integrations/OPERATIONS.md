@@ -43,6 +43,10 @@ PY
 - `backend/local_video_studio/workflows/ltx_draft.json`
 - `backend/local_video_studio/workflows/wan5b_refine.json`
 - 對應 `workflows/mappings/*.mapping.json`
+- 執行時匯入：`POST /local-video-studio/api/v1/workflows`（版本進 DB；見 `docs/WORKFLOWS.md`）
+- 模型註冊：`POST /local-video-studio/api/v1/models`；缺檔時 job 失敗且錯誤含模型名
+- 任務日誌：`projects/<id>/logs/<job_id>.log`；`GET /jobs/{id}/log`
+- API 文件：`docs/API.md` 與 `/docs` 同步
 
 前端任務頁可建立關鍵幀／草稿／精修；產出落在 `projects/<id>/keyframes|drafts|refines/`。
 

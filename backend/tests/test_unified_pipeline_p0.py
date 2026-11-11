@@ -62,8 +62,7 @@ def task_manager_no_redis():
 def _graph_target_to_exec_path(target: str) -> str:
     return {
         "run_company": "company",
-        "run_minecraft_ops": "minecraft_ops",
-        "generate_initial_answer": "simple",
+                "generate_initial_answer": "simple",
     }[target]
 
 
@@ -147,8 +146,6 @@ def routing_snapshot_sse(
             mode=strategy,
             company_template=company_template,
         )
-    elif resolve_execution_path(query, strategy) == "minecraft_ops":
-        branch = "minecraft_ops"
         preview = build_routing_preview(
             effective,
             mode=strategy,

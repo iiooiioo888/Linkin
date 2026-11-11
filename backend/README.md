@@ -2,7 +2,7 @@
 
 
 
-靈境·Linkin 後端：統一管線入口、公司運行時、靈境／Minecraft 護欄、AI Hub、記憶與監控服務。
+靈境·Linkin 後端：統一管線入口、公司運行時、靈境憲法／實體、AI Hub、記憶與監控服務。
 
 
 
@@ -35,7 +35,6 @@
 | 靈境實體／憲法 | `linkin/` |
 | 世界模組目錄 | `modules/`（`GET /modules`、`/{id}/api/*`） |
 
-| Minecraft 寫入護欄 | `linkin/minecraft.py` + `tools/minecraft_mcp.py` |
 
 | AI Hub | `hub/`（契約：`docs/AI_HUB_DETAILED_DESIGN.md`） |
 
@@ -108,7 +107,7 @@ python -m backend.scripts.seed_demo_content
 
 2. 直接改編譯後的 LangGraph 圖（改 `build_graph()`／節點）  
 
-3. 繞過 OPC／Minecraft 護欄，或把 `write_file` 等檔案工具暴露給角色  
+3. 繞過 OPC 護欄，或把 `write_file` 等檔案工具暴露給角色  
 
 
 

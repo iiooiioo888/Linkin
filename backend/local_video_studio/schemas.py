@@ -83,10 +83,12 @@ class JobCreate(BaseModel):
     shot_id: str
     job_type: str = Field(pattern="^(keyframe|draft|refine|audio|compose)$")
     workflow_template: str = Field(min_length=1)
+    workflow_version: int | None = Field(default=None, ge=1)
     params: dict[str, Any] = Field(default_factory=dict)
     priority: int = 100
     data_class: str = "local_only"
     max_attempts: int = Field(default=3, ge=1, le=20)
+    required_models: list[str] = Field(default_factory=list)
 
 
 class AssetPayload(BaseModel):
@@ -134,6 +136,7 @@ class JobOut(BaseModel):
     shot_id: str
     job_type: str
     workflow_template: str
+    workflow_version: int | None = None
     params_json: dict[str, Any]
     status: str
     attempt: int
@@ -144,10 +147,62 @@ class JobOut(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     error: str | None = None
+    error_summary: str | None = None
+    log_relative_path: str | None = None
     created_at: datetime
     asset: AssetOut | None = None
 
     model_config = {"from_attributes": True}
+
+
+class WorkflowTemplateImport(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    workflow_json: dict[str, Any]
+    mapping_json: dict[str, Any]
+    required_models: list[str] = Field(default_factory=list)
+    notes: str | None = None
+
+
+class WorkflowTemplateOut(BaseModel):
+    id: str
+    name: str
+    version: int
+    json_path: str | None = None
+    mapping_path: str | None = None
+    required_models: list[str] = Field(default_factory=list)
+    notes: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ModelRegister(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    path: str = Field(min_length=1)
+    sha256: str | None = Field(default=None, max_length=64)
+    vae_name: str | None = None
+    notes: str | None = None
+
+
+class ModelRegistryOut(BaseModel):
+    id: str
+    name: str
+    path: str
+    sha256: str | None = None
+    vae_name: str | None = None
+    notes: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class JobLogOut(BaseModel):
+    job_id: str
+    project_id: str
+    log_relative_path: str
+    exists: bool
+    content: str | None = None
+    error_summary: str | None = None
 
 
 class ReviewCreate(BaseModel):
