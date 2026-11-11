@@ -8,7 +8,6 @@ import pytest
 from fastapi.testclient import TestClient
 from guardrail_service import approve_decision, check_decision
 from guardrail_service import reset_state as reset_guard
-from minecraft_gateway import app as minecraft_app
 from tool_gateway import execute_new_path, should_sample
 from tool_gateway import reset_state as reset_tools
 
@@ -36,15 +35,15 @@ def _key(monkeypatch):
 
 
 def test_sampling_defaults():
-    assert should_sample("place_block", rng=lambda: 0.99) is True
+    assert should_sample("opc_write", rng=lambda: 0.99) is True
     assert should_sample("echo", rng=lambda: 0.5) is False
     assert should_sample("echo", rng=lambda: 0.05) is True
 
 
 def test_sensitive_execute_new_path_blocked_in_shadow_and_enabled():
-    assert execute_new_path("shadow", "place_block") is False
+    assert execute_new_path("shadow", "opc_write") is False
     assert execute_new_path("enabled", "opc_write") is False
-    assert execute_new_path("disabled", "place_block") is True
+    assert execute_new_path("disabled", "opc_write") is True
     # 非敏感仍依開關
     assert execute_new_path("enabled", "opc_read") is True
 
@@ -95,8 +94,8 @@ def test_opc_write_needs_approval_then_signature_opens_port():
 
 def test_approve_issues_new_decision_id():
     row = check_decision(
-        tool="place_block",
-        args={"x": 1, "y": 2, "z": 3},
+        tool="opc_write",
+        args={"node_id": "ns=2;s=Valve", "value": 1},
         tenant_id="acme",
         trace_id="trace-appr",
         caller="tool-gateway",
@@ -139,27 +138,6 @@ def test_sensitive_denied_without_hmac_key(monkeypatch):
     assert row["verdict"] == "deny"
     assert "金鑰" in row["reason"]
 
-
-def test_minecraft_sensitive_without_token_is_rejected():
-    client = TestClient(minecraft_app)
-    resp = client.post(
-        "/api/v1/minecraft/action",
-        json={
-            "action": "execute_command",
-            "args": {"command": "ban Steve"},
-            "tenant_id": "acme",
-            "trace_id": "trace-mc",
-        },
-    )
-    assert resp.json()["ok"] is False
-    banned = check_decision(
-        tool="execute_command",
-        args={"command": "ban Steve"},
-        tenant_id="acme",
-        trace_id="trace-mc",
-        caller="tool-gateway",
-    )
-    assert banned["verdict"] == "deny"
 
 
 def test_check_rejects_other_callers():
@@ -255,4 +233,3 @@ def test_stage1_edges_match_the_locked_chains():
     assert ("seat-executor", "opc-service", 8081) not in ALLOW
     assert len(SYNC_CHAINS["opc_read"]) <= 3
     assert len(SYNC_CHAINS["opc_write"]) <= 3
-    assert len(SYNC_CHAINS["minecraft_sensitive"]) <= 3

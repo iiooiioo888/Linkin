@@ -7,8 +7,6 @@ import pytest
 from backend.core.company_nodes import route_by_complexity
 from backend.core.execution_path import (
     chat_stream_uses_company_sse,
-    is_minecraft_heavy_task,
-    is_minecraft_ops_query,
     resolve_execution_path,
     route_by_complexity_target,
 )
@@ -28,11 +26,7 @@ def _cost_speed_default(monkeypatch):
 class TestExecutionPathMatrix:
     SIMPLE_Q = "今天天氣如何"
     COMPLEX_Q = "請設計並實現一個完整的微服務系統架構"
-    LINKIN_Q = "在灵境精灵森林建造一座树桥聚落"
-    MC_Q = "在坐标(100, 64, 200)处放置一个钻石块"
-    MC_HEAVY_Q = "在灵境精灵森林建造一座树桥聚落"
-    MC_BUILD_Q = "使用 place_block 設計並建造完整主城結構"
-    MC_NARRATIVE_Q = "minecraft story_studio 敘事管線 phase 2 待落地"
+    LINKIN_Q = "在灵境为精灵森林撰写主线任务与NPC角色卡"
     GENERIC_PIPELINE_Q = "解釋一下 CI pipeline 怎麼設定"
     GENERIC_PIPELINE_ZH = "資料管線優化"
     OPC_Q = "產線馬達溫度感測異常請診斷"
@@ -48,7 +42,7 @@ class TestExecutionPathMatrix:
         assert uses_sse == (expected_task == "company")
 
     def test_simple_strategy_never_company(self):
-        for q in (self.COMPLEX_Q, self.LINKIN_Q, self.MC_Q):
+        for q in (self.COMPLEX_Q, self.LINKIN_Q):
             self._assert_all_agree(q, "simple", "generate_initial_answer", "simple")
 
     def test_company_strategy_always_company(self):
@@ -57,22 +51,9 @@ class TestExecutionPathMatrix:
     def test_auto_linkin_complex_to_company(self):
         self._assert_all_agree(self.LINKIN_Q, "auto", "run_company", "company")
 
-    def test_auto_minecraft_simple_to_ops(self):
-        self._assert_all_agree(self.MC_Q, "auto", "run_minecraft_ops", "minecraft_ops")
-        assert is_minecraft_ops_query(self.MC_Q) is True
-        assert is_minecraft_heavy_task(self.MC_Q) is False
-
-    def test_auto_minecraft_heavy_stays_company(self):
-        self._assert_all_agree(self.MC_HEAVY_Q, "auto", "run_company", "company")
-        self._assert_all_agree(self.MC_BUILD_Q, "auto", "run_company", "company")
-        self._assert_all_agree(self.MC_NARRATIVE_Q, "auto", "run_company", "company")
-        assert is_minecraft_heavy_task(self.MC_NARRATIVE_Q) is True
-
     def test_generic_pipeline_queries_stay_simple(self):
         self._assert_all_agree(self.GENERIC_PIPELINE_Q, "auto", "generate_initial_answer", "simple")
         self._assert_all_agree(self.GENERIC_PIPELINE_ZH, "auto", "generate_initial_answer", "simple")
-        assert is_minecraft_heavy_task(self.GENERIC_PIPELINE_Q) is False
-        assert is_minecraft_heavy_task(self.GENERIC_PIPELINE_ZH) is False
 
     def test_auto_generic_simple(self):
         self._assert_all_agree(self.SIMPLE_Q, "auto", "generate_initial_answer", "simple")
@@ -93,8 +74,6 @@ class TestExecutionPathMatrix:
         assert "OPC 即時讀數" in merged
 
     def test_auto_industrial_is_company_for_task_manager(self):
-        from backend.core.routing_preview import build_routing_preview
-
         self._assert_all_agree(self.OPC_Q, "auto", "run_company", "company")
         preview = build_routing_preview(self.OPC_Q, mode="auto")
         assert preview["template"] == "industrial_ops"
@@ -106,31 +85,7 @@ class TestExecutionPathMatrix:
         assert explicit["template"] == "full_company"
 
 
-class TestMinecraftOpsReflectionCap:
-    def test_minecraft_ops_skips_score_driven_reflection(self):
-        state = {
-            "resolved_execution_path": "minecraft_ops",
-            "task_complexity": "simple",
-            "execution_strategy": "auto",
-        }
-        assert reflection_max_iterations(state) == 0
-
-    def test_should_improve_finalizes_without_length_directive(self, monkeypatch):
-        monkeypatch.delenv("EVOL_POST_COMPANY_REFLECT", raising=False)
-        from backend.core.graph import should_improve
-
-        state = {
-            "resolved_execution_path": "minecraft_ops",
-            "score": 3.0,
-            "iteration": 0,
-            "query": "在坐标(100, 64, 200)处放置一个钻石块",
-        }
-        assert should_improve(state) == "finalize"
-
-
 class TestPreviewMatchesExecution:
-    QUERIES = TestExecutionPathMatrix.SIMPLE_Q, TestExecutionPathMatrix.MC_Q
-
     def test_preview_and_task_share_path_and_reflection_cap(self):
         query = "請解釋 Python 裝飾器的工作原理並舉例"
         mode = "auto"

@@ -582,7 +582,7 @@ def decide_final_answer(state: StateInput) -> dict:
     if warnings:
         logger.warning("質量門警告：%s", "；".join(warnings))
 
-    # P2：路由自適應反饋 — 記錄最終品質供後續調整（不含 minecraft_ops）
+    # P2：路由自適應反饋 — 記錄最終品質供後續調整
     try:
         from backend.core.routing_feedback import record_outcome
 

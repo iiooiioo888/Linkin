@@ -8,11 +8,11 @@
 
 - 執行策略顯式設為 `company`
 - auto 下的工業關鍵詞（感測、閥門、OPC、PLC…），模板升為 `industrial_ops`，仍由任務經理分析；感測讀數注入目標
-- auto 下的靈境複雜任務，或 Minecraft 建造／敘事／多步
+- auto 下的靈境複雜任務（敘事／NPC／任務／道具）
 - auto 下 cost_speed 把該複雜度對到 `company`
 - 前面都未命中時：查詢長度達到門檻（基準 200 字，可被路由回饋調整），或含開發、設計、構建、實現、系統、架構、重構、deploy、build、implement 等關鍵詞
 
-單步 Minecraft 控制走 `minecraft_ops`。公司頁回到對話，用同一條發送路徑建立策略為 `company` 的任務。工業寫入仍經 `opc_service/guard.py`。
+公司頁回到對話，用同一條發送路徑建立策略為 `company` 的任務。工業寫入仍經 `opc_service/guard.py`。
 
 ## 角色體系
 
@@ -40,12 +40,9 @@ Level 4: Support（11）          — 審查、整合、Prompt、法務、記憶
 | `page_dev` | 頁面開發 | 前端為主 |
 | `fullstack_app` | 全端開發 | 完整團隊 |
 | `research_report` | 研究報告 | 研究為主 |
-| `story_studio` | 情節／世界觀／Minecraft 建造 | manager／creative_lead／story_writer 可調用 MCP |
+| `story_studio` | 情節／世界觀／敘事 | manager／creative_lead／story_writer |
 | `full_company` | 完整公司 | 全角色啟用 |
 
-## Minecraft MCP 工具
-
-公司角色透過 `tool_registry` 的 ReAct `tool_call` 區塊呼叫 `backend/tools/minecraft_mcp.py`（JSON-RPC → MineMCP）。寫入工具僅 manager／creative_lead／story_writer／`custom_linkin_build_*` 可用；`execute_command` 另限建築總監。未設定 `EVOL_MC_MCP_TOKEN` 時乾跑，不寫入世界。Minecraft 控制查詢與靈境建造任務在預設 `quick_task` 時會改走 `story_studio`，避免只有 developer 執行卻無權放方塊。詳見 [Minecraft MCP](../linkin/minecraft-mcp.md)。
 
 ## 量化行情工具
 
@@ -55,7 +52,7 @@ Level 4: Support（11）          — 審查、整合、Prompt、法務、記憶
 
 任務經理能查資源快照、角色能力卡、已啟用的技能與 MCP 註冊項。送給模型的是一份上下文包：任務與約束、資源快照、與本次目標相關的少量候選、預算口徑。全量名冊、技能全文、MCP 連線秘密不進這次呼叫。模型產出的 WBS 與預算是草案。
 
-公司路徑在用戶確認前不會進入席位執行。`POST /tasks` 先做餘額預檢並產出預算草案；`POST /tasks/{id}/budget/decision` 批准後才凍結執行費並下達。拒絕或確認逾時都停在未執行。短問題與 Minecraft 單步仍直接執行。
+公司路徑在用戶確認前不會進入席位執行。`POST /tasks` 先做餘額預檢並產出預算草案；`POST /tasks/{id}/budget/decision` 批准後才凍結執行費並下達。拒絕或確認逾時都停在未執行。短問題仍直接執行。
 
 ```
 任務經理分析（對照資源、角色、技能與 MCP）

@@ -126,7 +126,7 @@ def main() -> None:
         )
     lines += [
         "",
-        ("> Minecraft 建造／靈境任務在預設 `quick_task` 時會改走 `story_studio`，"
+        ("> 靈境複雜任務在預設 `quick_task` 時會改走 `story_studio`，"
         "以免只有 `developer` 卻無權放方塊。"),
         "",
         "## 靈境子角色（16）",
@@ -153,7 +153,7 @@ def main() -> None:
     lines += [
         "",
         ("世界觀憲法為最高裁決；工具鐵律見 "
-        "[Minecraft MCP](../linkin/minecraft-mcp.md) · "
+        "[靈境 API](../linkin/api.md) · "
         "[世界觀](../linkin/worldview.md)。"),
         "",
         "## 開發者怎麼改角色",
@@ -168,7 +168,7 @@ def main() -> None:
         "`BUILTIN_TEMPLATES` |"),
         ("| 靈境 16 席 | `backend/linkin/roles.py`＋`prompts.py`，"
         "啟動時冪等刷新 |"),
-        ("| 禁止事項 | 勿讓角色直連 MineMCP／檔案系統工具；"
+        ("| 禁止事項 | 勿把檔案系統工具暴露給角色；"
         "LLM 一律 `call_llm` |"),
         "",
         "## 相關入口",

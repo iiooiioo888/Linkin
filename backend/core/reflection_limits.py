@@ -18,11 +18,6 @@ def simple_path_max_iterations() -> int:
         return 1
 
 
-def is_minecraft_ops_execution_state(state: Mapping[str, Any]) -> bool:
-    """minecraft_ops 路徑：僅允許單次評估，不進入分數驅動的反思／改進。"""
-    return str(state.get("resolved_execution_path") or "").strip().lower() == "minecraft_ops"
-
-
 def is_simple_execution_state(state: Mapping[str, Any]) -> bool:
     """是否套用簡單路徑反思上限（強制 simple 策略或 auto 下 task_complexity=simple）。"""
     strategy = (state.get("execution_strategy") or "auto").strip().lower()
@@ -71,9 +66,6 @@ def reflection_max_iterations(
     ``routing_preview=True`` 時公司路徑回傳 post_company_reflect 上限（#6 預覽）；
     執行期反思狀態（含 score/iteration）維持與 #80 相同的公司路徑 MAX_ITERATIONS。
     """
-    if is_minecraft_ops_execution_state(state):
-        return 0
-
     path = str(state.get("resolved_execution_path") or "").strip().lower()
     strategy = (state.get("execution_strategy") or "auto").strip().lower()
 
@@ -123,7 +115,6 @@ def resolve_task_complexity(query: str, execution_strategy: str = "auto") -> str
 
 
 __all__ = [
-    "is_minecraft_ops_execution_state",
     "is_simple_execution_state",
     "reflection_max_iterations",
     "resolve_task_complexity",

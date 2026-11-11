@@ -14,7 +14,6 @@ from linkin_core.boundaries import forbidden_imports
 from linkin_core.contracts.asyncapi_doc import build_asyncapi, event_names
 from linkin_core.contracts.events import EventName
 from linkin_core.contracts.export import artifacts
-from linkin_core.contracts.minecraft import MinecraftActionRequest
 from linkin_core.contracts.opc import OpcWriteRequest
 from linkin_core.contracts.openapi_doc import build_openapi
 from linkin_core.contracts.route import (
@@ -38,8 +37,6 @@ def test_rule_chain_order():
     assert [item.value for item in RULE_CHAIN] == [
         "industrial",
         "linkin_complex",
-        "mine_multi_step",
-        "mine_single_step",
         "cost_speed",
         "company_keyword",
         "length",
@@ -49,7 +46,6 @@ def test_rule_chain_order():
 
 def test_legacy_opc_path_is_company():
     assert normalize_execution_path("opc") is ExecutionPathName.company
-    assert normalize_execution_path("minecraft_ops") is ExecutionPathName.minecraft_ops
 
 
 def test_manual_route_requires_path():
@@ -68,31 +64,13 @@ def test_opc_write_requires_guardrail_decision():
         OpcWriteRequest(node_id="ns=2;s=Valve", value=1, tenant_id="acme", trace_id="trace-1")
 
 
-def test_dangerous_minecraft_action_requires_guardrail():
-    with pytest.raises(ValidationError):
-        MinecraftActionRequest(
-            server_id="srv",
-            session_id="sess",
-            action="execute_command",
-            tenant_id="acme",
-            trace_id="trace-1",
-        )
-    ok = MinecraftActionRequest(
-        server_id="srv",
-        session_id="sess",
-        action="get_player",
-        tenant_id="acme",
-        trace_id="trace-1",
-    )
-    assert ok.guardrail_decision_id is None
-
 
 def test_sync_chains_stay_within_budget():
     assert_sync_budget()
     assert all(len(chain) <= MAX_SYNC_HOPS for chain in SYNC_CHAINS.values())
     assert seat_executor_targets() == {"tool-gateway", "nats"}
     assert "opc-service" not in seat_executor_targets()
-    assert len(DEFAULT_SERVICES) == 12
+    assert len(DEFAULT_SERVICES) == 11
 
 
 def test_openapi_and_asyncapi_cover_the_locked_surface():
@@ -108,7 +86,6 @@ def test_openapi_and_asyncapi_cover_the_locked_surface():
         "/api/v1/guardrail/approve",
         "/api/v1/opc/read",
         "/api/v1/opc/write-request",
-        "/api/v1/minecraft/action",
         "/chat",
         "/tasks",
     ):
@@ -153,8 +130,6 @@ def test_runtime_doc_order_matches_rule_chain():
     positions = [
         text.index("工業關鍵詞"),
         text.index("靈境複雜任務"),
-        text.index("Minecraft 重型"),
-        text.index("Minecraft 單步"),
         text.index("cost_speed"),
         text.index("關鍵詞／長度規則"),
     ]

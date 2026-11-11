@@ -2,7 +2,7 @@
 
 控制台（EvoLoop）與可插拔模組分離：新模組實作 ``ModuleSpec`` 並
 ``register_module``，即可出現在 ``GET /modules`` 與前端活動欄。
-既有業務仍走各模組自己的 API（Minecraft 為 ``/linkin/*``），本層只提供
+既有業務仍走各模組自己的 API，本層只提供
 目錄、頁面、能力與健康檢查的統一契約。
 """
 
