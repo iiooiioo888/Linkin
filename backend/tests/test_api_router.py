@@ -30,7 +30,7 @@ def test_single_config_still_synthesizes_primary(monkeypatch):
         model="deepseek-v4-flash",
     )
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: (_ for _ in ()).throw(RuntimeError("offline")),
     )
     refresh_model_catalog(reason="test")
@@ -41,7 +41,7 @@ def test_single_config_still_synthesizes_primary(monkeypatch):
 
 def test_multi_route_clamp_keeps_qwen_and_deepseek(monkeypatch):
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: (_ for _ in ()).throw(RuntimeError("offline")),
     )
     save_routes(
@@ -143,7 +143,7 @@ def test_role_runtime_clamps_to_chosen_provider(monkeypatch):
     from backend.company.role_catalog import create_custom_role, resolve_runtime
 
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: (_ for _ in ()).throw(RuntimeError("offline")),
     )
     save_routes(
@@ -199,7 +199,7 @@ def test_routes_http_crud(monkeypatch):
 
     monkeypatch.setattr(task_manager, "tasks", {})
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: {"data": [{"id": "qwen-plus"}, {"id": "qwen-max"}]},
     )
 
@@ -357,7 +357,7 @@ def test_locked_models_survive_refresh(monkeypatch):
     from backend.core.provider_pool import refresh_route_catalog
 
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: {
             "data": [{"id": "qwen-plus"}, {"id": "qwen-max"}, {"id": "qwen-turbo"}]
         },

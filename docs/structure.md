@@ -101,7 +101,7 @@ OPC 寫入仍走護欄。
 | `nodes.py` | 生成／評估／反思／改進 |
 | `company_nodes.py` | 公司運行時節點橋接 |
 | `llm.py` | **`call_llm`（唯一 LLM 出口）** |
-| `llm_config.py` · `api_router.py` · `provider_pool.py` | 配置、多 API 路由、模型池鎖定 |
+| `llm_config.py` · `api_router.py` · `provider_pool/` | 配置、多 API 路由、模型池鎖定 |
 | `evaluation.py` | 多維評估與權重 |
 | `state.py` | EvoLoopState |
 | `llm_cache.py` · `dynamic_threshold.py` · `routing_feedback.py` | 快取、門檻、路由回饋 |

@@ -39,7 +39,7 @@ export function resolvedPathLabel(path: string | null | undefined): string {
   return PATH_META[key]?.label ?? key;
 }
 
-/** 需求審計官門票狀態（backend/services/auditor.py）。 */
+/** 需求審計官門票狀態（backend/services/auditor/）。 */
 export const TICKET_STATUS_LABEL: Record<string, string> = {
   APPROVED_FOR_PLANNING: '已核准進入規劃',
   AUDITING: '審計中',

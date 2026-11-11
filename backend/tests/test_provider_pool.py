@@ -100,7 +100,7 @@ def test_clamp_locks_agents_to_deepseek(monkeypatch):
         model="gpt-4o",
     )
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: (_ for _ in ()).throw(RuntimeError("offline")),
     )
     refresh_model_catalog(reason="test")
@@ -127,7 +127,7 @@ def test_openrouter_crawl_writes_catalog(monkeypatch):
             ]
         }
 
-    monkeypatch.setattr("backend.core.provider_pool._http_get_json", fake_get)
+    monkeypatch.setattr("backend.core.provider_pool.catalog._http_get_json", fake_get)
     pool = refresh_model_catalog(reason="test")
     assert pool["provider_kind"] == "openrouter"
     assert pool["catalog_source"] == "crawl"
@@ -151,7 +151,7 @@ def test_config_and_monitor_llm_ops_http(monkeypatch):
 
     monkeypatch.setattr(task_manager, "tasks", {})
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: {"data": [{"id": "deepseek-v4-flash"}, {"id": "deepseek-v4-pro"}]},
     )
 
@@ -190,7 +190,7 @@ def test_compatible_hub_models_deepseek_only(monkeypatch):
         model="gpt-4o",
     )
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: (_ for _ in ()).throw(RuntimeError("offline")),
     )
     refresh_model_catalog(reason="test")
@@ -219,7 +219,7 @@ def test_openrouter_maps_hub_models_by_vendor_prefix(monkeypatch):
             ]
         }
 
-    monkeypatch.setattr("backend.core.provider_pool._http_get_json", fake_get)
+    monkeypatch.setattr("backend.core.provider_pool.catalog._http_get_json", fake_get)
     refresh_model_catalog(reason="test")
     compat = compatible_hub_models(sorted(HUB_CATALOG), PROVIDER_OF)
     assert "deepseek-v4-flash" in compat
@@ -236,7 +236,7 @@ def test_preferred_model_clamped_to_pool(monkeypatch):
         model="deepseek-v4-flash",
     )
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: (_ for _ in ()).throw(RuntimeError("offline")),
     )
     refresh_model_catalog(reason="test")
@@ -345,7 +345,7 @@ def test_probe_pool_health_opens_primary_when_endpoint_down(monkeypatch):
         }
     )
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: (_ for _ in ()).throw(RuntimeError("connection refused")),
     )
     snap = probe_pool_health(reason="test")
@@ -385,7 +385,7 @@ def test_probe_pool_health_opens_missing_and_heals_probe_open(monkeypatch):
     assert is_pool_model_open("deepseek-v4-pro")
 
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: {"data": [{"id": "deepseek-v4-flash"}, {"id": "deepseek-v4-pro"}]},
     )
     snap = probe_pool_health(reason="test")
@@ -422,7 +422,7 @@ def test_probe_pool_health_optional_ping(monkeypatch):
     )
     force_open_pool_model("deepseek-v4-flash", "call fail", from_probe=False)
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: {"data": [{"id": "deepseek-v4-flash"}, {"id": "deepseek-v4-pro"}]},
     )
 
@@ -451,7 +451,7 @@ def test_fetch_catalog_auth_failure_not_healthy(monkeypatch):
     def fail_models(url, key, timeout=15.0):
         raise RuntimeError("HTTP Error 401: Unauthorized")
 
-    monkeypatch.setattr("backend.core.provider_pool._http_get_json", fail_models)
+    monkeypatch.setattr("backend.core.provider_pool.catalog._http_get_json", fail_models)
     result = fetch_catalog(
         "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
         "bad-key",

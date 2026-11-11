@@ -89,7 +89,7 @@ Linkin/
 │   │   ├── nodes.py            #   生成／評估／反思／改進
 │   │   ├── company_nodes.py    #   公司運行時節點
 │   │   ├── llm.py              #   call_llm（唯一允許的 LLM 出口）
-│   │   ├── provider_pool.py    #   模型池鎖定
+│   │   ├── provider_pool/      #   模型池鎖定
 │   │   └── evaluation.py       #   多維評估
 │   ├── company/                # 協調器、角色（82）、任務經理、量化
 │   ├── linkin/                 # 靈境＋16 席子角色＋憲法／實體

@@ -46,7 +46,7 @@ def test_authenticated_user_does_not_inherit_platform_secret(monkeypatch):
 
 def test_two_users_http_api_settings_do_not_leak(monkeypatch):
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: {"data": [{"id": "qwen-plus"}]},
     )
     platform_path = Path(os.environ["EVOL_CONFIG_DIR"]) / "llm_config.json"
@@ -96,7 +96,7 @@ def test_two_real_logins_do_not_share_api_keys(monkeypatch):
         ),
     )
     monkeypatch.setattr(
-        "backend.core.provider_pool._http_get_json",
+        "backend.core.provider_pool.catalog._http_get_json",
         lambda url, key, timeout=15.0: {"data": [{"id": "deepseek-v4-flash"}]},
     )
     from backend.auth.gate import clear_failures

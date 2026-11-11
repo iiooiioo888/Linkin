@@ -24,7 +24,7 @@ from backend.services.auditor import (
 def _reset_auditor(monkeypatch):
     monkeypatch.setenv("EVOL_RAHO_ENABLED", "true")
     monkeypatch.setenv("EVOL_RAHO_USER_GRILL", "true")
-    monkeypatch.setattr("backend.services.auditor._llm_question", lambda *a, **k: None)
+    monkeypatch.setattr("backend.services.auditor.service._llm_question", lambda *a, **k: None)
     STORE.user_sessions.clear()
     STORE.trees.clear()
     yield

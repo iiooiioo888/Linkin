@@ -588,7 +588,7 @@ def test_agent_monitor_ingests_auditor_sessions(tmp_path, monkeypatch):
     monkeypatch.setenv("EVOL_ROLE_CATALOG_PATH", str(tmp_path / "role_catalog.json"))
     monkeypatch.setenv("EVOL_RAHO_ENABLED", "true")
     monkeypatch.setenv("EVOL_RAHO_USER_GRILL", "true")
-    monkeypatch.setattr("backend.services.auditor._llm_question", lambda *a, **k: None)
+    monkeypatch.setattr("backend.services.auditor.service._llm_question", lambda *a, **k: None)
     from backend.company.role_catalog import reset_catalog_cache
     reset_catalog_cache()
     monkeypatch.setattr(task_manager, "tasks", {})

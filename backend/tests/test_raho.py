@@ -93,7 +93,7 @@ class TestSemanticLock:
 
     def test_start_asks_then_lock(self, monkeypatch):
         monkeypatch.setattr(
-            "backend.services.auditor._llm_question",
+            "backend.services.auditor.service._llm_question",
             lambda *a, **k: None,
         )
         started = grill_user_start("提升轉化率")
@@ -397,7 +397,7 @@ class TestEscalationTtl:
 class TestRahoApi:
     def test_grill_and_tree_endpoints(self, monkeypatch):
         monkeypatch.setattr(
-            "backend.services.auditor._llm_question",
+            "backend.services.auditor.service._llm_question",
             lambda *a, **k: None,
         )
         from backend.main import app

@@ -67,7 +67,7 @@ class TestCostSpeedRouting:
             model="deepseek-v4-flash",
         )
         monkeypatch.setattr(
-            "backend.core.provider_pool._http_get_json",
+            "backend.core.provider_pool.catalog._http_get_json",
             lambda url, key, timeout=15.0: (_ for _ in ()).throw(RuntimeError("offline")),
         )
         from backend.core.provider_pool import refresh_model_catalog

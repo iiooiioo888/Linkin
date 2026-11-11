@@ -30,7 +30,7 @@
 
 | LLM 呼叫 | **僅** `core/llm.py` → `call_llm`（LiteLLM） |
 
-| 模型池／API 路由 | `core/provider_pool.py`、`core/api_router.py`、`core/llm_config.py` |
+| 模型池／API 路由 | `core/provider_pool/`、`core/api_router.py`、`core/llm_config.py` |
 
 | 靈境實體／憲法 | `linkin/` |
 | 世界模組目錄 | `modules/`（`GET /modules`、`/{id}/api/*`） |

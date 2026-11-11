@@ -62,7 +62,7 @@ EVOL_STAGE_TIER_IMPROVE=routine
 
 ## P1：模型池健康檢查 + 自動降級
 
-**模組**：`backend/core/provider_pool.py` → `invoke_with_pool_failover`；`backend/core/llm.py` → `call_llm`
+**模組**：`backend/core/provider_pool/registry.py` → `invoke_with_pool_failover`；`backend/core/llm.py` → `call_llm`
 
 當主模型逾時、限流或連續失敗時，自動在 `allowed_models` 池內切換成本更低的備援模型（Hub 路由已有類似能力，此優化覆蓋反思閉環主鏈路）。
 

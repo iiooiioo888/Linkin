@@ -91,7 +91,7 @@ Linkin/
 │   │   ├── graph.py             #     build_graph()、複雜度路由
 │   │   ├── nodes.py / company_nodes.py
 │   │   ├── llm.py               #     call_llm（唯一 LLM 出口）
-│   │   ├── provider_pool.py     #     模型池鎖定
+│   │   ├── provider_pool/       #     模型池鎖定
 │   │   └── evaluation.py        #     多維評估
 │   ├── company/                 #   多代理人 + 任務經理 + 量化（80 席）
 │   ├── linkin/                  #   靈境憲法／實體（16 席子角色）
