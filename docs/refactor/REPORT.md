@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（542 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（562 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -112,6 +112,11 @@ backend/
 | `backend/core/provider_pool.py` | 1,229 行 | 6 檔套件／1,437 行（最大 323）＝ 第五輪 |
 | `frontend/src/components/ApiRoutesEditor.tsx` | 774 行 | **9 行 barrel** ＋ `apiroutes-editor/` 7 檔（最大 316）＝ 第五輪 |
 | `frontend/src/components/RoleDeskLayout.tsx` | 742 行 | **14 行 barrel** ＋ `roledesk/` 8 檔（最大 190）＝ 第五輪 |
+| `backend/company/roles.py` | 1,905 行 | 8 檔套件／2,389 行（最大 479）＝ 第六輪 |
+| `backend/company/role_catalog.py` | 1,218 行 | 8 檔套件／1,501 行（最大 463）＝ 第六輪 |
+| `backend/services/agent_monitor.py` | 1,302 行 | 7 檔套件／1,468 行（最大 453）＝ 第六輪 |
+| `frontend/src/components/ChatView.tsx` | 646 行 | **7 行 barrel** ＋ `chatview/` 6 檔（最大 375）＝ 第六輪 |
+| `frontend/src/components/LabPanel.tsx` | 681 行 | **6 行 barrel** ＋ `labpanel/` 9 檔（最大 346）＝ 第六輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -312,3 +317,33 @@ backend/
 | `oxlint src` | 0 errors（41 個既有 warnings） |
 
 文件同步：`backend/README.md`、`docs/structure.md`、`docs/architecture/overview.md`、`docs/development/guide.md`、`docs/architecture/optimization-roadmap.md`、`frontend/src/components/taskdetail/labels.ts` 的舊檔案路徑已更新。
+
+## 14. 第八輪：roles／role_catalog／agent_monitor／ChatView／LabPanel（round6，2026-11-12）
+
+### 14.1 後端三個模組 → 套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `company/roles.py` 1,905 行 | 8 檔／2,389 行：`definitions_leadership`／`engineering`／`specialist`／`support`／`exec`＋`templates`（STANDARD_ROLES）＋`teams`（8 個 create_*＋BUILTIN_TEMPLATES）＋`__init__`；公開名稱 95/95 一致、91/91 頂層節點 AST 逐字相同、22 條段落註解保留 |
+| `company/role_catalog.py` 1,218 行 | 8 檔／1,501 行：`constants`／`store`／`normalize`／`builtins`／`snapshots`／`query`／`service`／`__init__`；`dir()` 公開名 47/47、59/59 模組層定義 AST 相同；套件層 patch `resolve_runtime` 仍生效（未改測試）；24 個行為 probe 與 HEAD 一致 |
+| `services/agent_monitor.py` 1,302 行 | 7 檔／1,468 行：`common`／`events`／`items`／`costs`／`roster`／`aggregate`／`__init__`；29 個公開名稱、32/32 函式與 11/11 常數 AST 相同；`_finalize_agent`／`_allocate_cloud_costs` patch 目標改指 `costs` 子模組 |
+
+### 14.2 前端兩個面板 → 薄 barrel + 子元件套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `ChatView.tsx` 646 行 | 7 行 barrel ＋ `chatview/` 6 檔（ChatConfirmPanel／ChatMonitorSide／ChatNav／ChatNotices／types／主體，最大 375）；hooks 順序與 confirm 跨任務 state 語意保留 |
+| `LabPanel.tsx` 681 行 | 6 行 barrel ＋ `labpanel/` 9 檔（六個分頁子元件＋constants＋主體，最大 346）；state／effects 留在主體，切換分頁不流失輸入 |
+
+### 14.3 第八輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 00 秒，與重構前一致） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（562 source files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（41 個既有 warnings） |
+
+文件同步：`docs/company/roles.md`、`docs/structure.md`、`docs/development/guide.md` 舊路徑已更新。測試整合：`test_linkin_role_budgets.py`（收斂到 `agent_monitor.costs`）與 `test_aliyun_budget.py`（收斂到 `agent_monitor.aggregate`／`costs` 呼叫端）。
