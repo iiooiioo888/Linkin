@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（489 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（496 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -98,6 +98,10 @@ backend/
 | `frontend/src/App.tsx` | 1,205 行 | **282 行** ＋ `src/hooks/` 5 檔／1,252 行 ＝ 第二輪 |
 | `frontend/src/components/RoleSettingsPanel.tsx` | 1,255 行 | **7 行 barrel** ＋ `components/role-settings/` 10 檔／1,374 行 ＝ 第二輪 |
 | `backend/main.py`（合併上游後） | — | **373 行**（新增上游 app 級註冊／docs 開關／horizon router） |
+| `backend/company/orchestrator.py` | 2,411 行 | 8 檔套件／2,753 行（最大 622）＝ 第三輪 |
+| `frontend/src/components/LiveBoard.tsx` | 1,169 行 | **8 行 barrel** ＋ `liveboard/` 8 檔（最大 297）＝ 第三輪 |
+| `frontend/src/components/ContextPanel.tsx` | 994 行 | **6 行 barrel** ＋ `contextpanel/` 8 檔（最大 293）＝ 第三輪 |
+| `frontend/src/components/SkillsMcpPanel.tsx` | 1,149 行 | **7 行 barrel** ＋ `skills-mcp/` 9 檔（最大 379）＝ 第三輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -199,3 +203,38 @@ backend/
 | 重構側調整 | 刪除 `backend/api/routers/chat/minecraft_stream.py`；`chat/streaming.py` 移除 minecraft_ops 分支；`types/task.ts` 的 `resolved_path`／`RoutingPath` 移除 `minecraft_ops` |
 
 驗收：pytest **1397 passed / 1 skipped**、ruff All checks passed、mypy Success（489 files）、tsc 0 error、vitest **16 檔 / 66 tests**、npm build BUILD_EXIT=0 → merge commit `f5252f6`。
+
+## 11. 第五輪：orchestrator 與三個前端大面板（round3，2026-11-11）
+
+### 11.1 後端：CompanyOrchestrator 2,411 行 → 套件化 mixin
+
+| 檔案 | 行數 | 內容 |
+|------|-----:|------|
+| `orchestrator/__init__.py` | 70 | 組合類 `CompanyOrchestrator(StateMixin, ExecutionMixin, ItemMixin, ToolLoopMixin, ReviewMixin)`、`call_llm` patch 表面、`from_checkpoint`、`__all__` |
+| `_base.py` | 237 | `_llm_thread`＋屬性宣告與方法介面 stub（供 mypy 跨 mixin 解析） |
+| `state.py` / `execution.py` / `item.py` / `tool_loop.py` / `review.py` | 469／517／583／238／622 | 取消與檢查點／執行迴圈／單項執行／工具閉環／審查與整合 |
+| `_compat.py` | 17 | `call_llm` 延遲解析代理 |
+
+- 外部 `from backend.company.orchestrator import CompanyOrchestrator`（40+ 處）一行未改；`patch("backend.company.orchestrator.call_llm")`（18+ 處）仍生效。
+- AST 逐方法比對：41/41 方法與原檔**逐字元相同**；未改任何測試檔。
+
+### 11.2 前端：三個大面板 → 薄 barrel + 子元件套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `LiveBoard.tsx` 1,169 行 | 8 行 barrel ＋ `liveboard/` 8 檔（types／focus／cards／integrations／rails／kpis／center／主體，最大 297） |
+| `ContextPanel.tsx` 994 行 | 6 行 barrel ＋ `contextpanel/` 8 檔（utils／composition／charts／panes／sections／header／主體，最大 293） |
+| `SkillsMcpPanel.tsx` 1,149 行 | 7 行 barrel ＋ `skills-mcp/` 9 檔（Skills／Mcp／Cli／VizPlugins／shared／styles／tiers，最大 379） |
+
+三者 default export 與既有 import 路徑（`lazy(() => import('./LiveBoard'))` 等）完全不變；抽取以逐行等價稽核（非空 body 行 multiset／LCS）確認 JSX 與邏輯未變。
+
+### 11.3 第五輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（2 分 35 秒） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（496 source files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（41 個既有 warnings） |
