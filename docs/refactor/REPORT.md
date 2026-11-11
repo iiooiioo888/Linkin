@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（521 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（542 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -107,6 +107,11 @@ backend/
 | `backend/company/quant_tools.py` | 3,303 行 | 10 檔套件／3,574 行（最大 554）＝ 第四輪 |
 | `frontend/src/components/SidePanel.tsx` | 905 行 | **7 行 barrel** ＋ `sidepanel/` 9 檔（最大 227）＝ 第四輪 |
 | `frontend/src/components/DockerView.tsx` | 713 行 | **13 行 barrel** ＋ `dockerview/` 5 檔（最大 362）＝ 第四輪 |
+| `backend/services/commander.py` | 1,559 行 | 9 檔套件／1,753 行（最大 375）＝ 第五輪 |
+| `backend/services/auditor.py` | 1,418 行 | 9 檔套件／1,782 行（最大 430）＝ 第五輪 |
+| `backend/core/provider_pool.py` | 1,229 行 | 6 檔套件／1,437 行（最大 323）＝ 第五輪 |
+| `frontend/src/components/ApiRoutesEditor.tsx` | 774 行 | **9 行 barrel** ＋ `apiroutes-editor/` 7 檔（最大 316）＝ 第五輪 |
+| `frontend/src/components/RoleDeskLayout.tsx` | 742 行 | **14 行 barrel** ＋ `roledesk/` 8 檔（最大 190）＝ 第五輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -275,3 +280,35 @@ backend/
 | `oxlint src` | 0 errors（41 個既有 warnings） |
 
 文件同步：`backend/README.md`、`docs/structure.md`、`docs/company/quant-tools.md`、`docs/architecture/company-runtime.md`、`reflection-loop.md`、`optimization-roadmap.md` 的舊檔案路徑已更新為套件路徑。
+
+## 13. 第七輪：commander／auditor／provider_pool／ApiRoutesEditor／RoleDeskLayout（round5，2026-11-12）
+
+### 13.1 後端三個服務檔案 → 套件（import 路徑與測試 patch 語意不變）
+
+| 原檔 | 重構後 |
+|------|--------|
+| `services/commander.py` 1,559 行 | 9 檔／1,753 行：`prompts`／`templates`／`ticket`／`rules`／`grill`／`planner`／`plan`／`commander`／`__init__`；`__all__` 40 個名稱不變，80/80 頂層節點 AST 逐字相同 |
+| `services/auditor.py` 1,418 行 | 9 檔／1,782 行：`constants`／`bank`／`questions`／`scoring`／`scenario`／`ticket`／`service`／`auditor`／`__init__`；`__all__` 102 個名稱、94/94 定義 AST 相同；`_llm_question` patch 目標改指 `auditor.service`（4 處測試） |
+| `core/provider_pool.py` 1,229 行 | 6 檔／1,437 行：`constants`／`helpers`／`catalog`／`health`／`registry`／`__init__`；46 個公開名稱、46/46 函式與 15/15 常數 AST 相同；18 處 `_http_get_json` patch 目標改指 `provider_pool.catalog` |
+
+### 13.2 前端兩個面板 → 薄 barrel + 子元件套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `ApiRoutesEditor.tsx` 774 行 | 9 行 barrel ＋ `apiroutes-editor/` 7 檔（presets／types／shared／RouteForm／RouteList／StrategyBar／主體，最大 316） |
+| `RoleDeskLayout.tsx` 742 行 | 14 行 barrel ＋ `roledesk/` 8 檔（types／shared／Header／StatsStrip／OrgReportTree／TaskBlocks／MonitorBlocks／RightPanel，最大 190） |
+
+公開 export（含 `PROVIDER_PRESETS`／`ProviderValue` 與 roledesk 13 個 named export）與既有 import 路徑不變；抽取以逐行等價稽核確認 JSX／邏輯未變。
+
+### 13.3 第七輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（2 分 34 秒，與重構前一致） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（542 source files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（41 個既有 warnings） |
+
+文件同步：`backend/README.md`、`docs/structure.md`、`docs/architecture/overview.md`、`docs/development/guide.md`、`docs/architecture/optimization-roadmap.md`、`frontend/src/components/taskdetail/labels.ts` 的舊檔案路徑已更新。
