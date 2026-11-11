@@ -21,14 +21,14 @@ def test_shadow_keeps_legacy_result_and_records_sensitive_gap(monkeypatch):
     registry = ToolRegistry()
     calls = {"n": 0}
 
-    def _place(**_kwargs):
+    def _write(**_kwargs):
         calls["n"] += 1
-        return "placed"
+        return "written"
 
-    registry.register("place_block", "放方塊", {}, _place)
-    outcome = registry.execute(ToolCallRequest("place_block", {"x": 1}))
+    registry.register("opc_write", "OPC 寫入", {}, _write)
+    outcome = registry.execute(ToolCallRequest("opc_write", {"node_id": "Valve", "value": 1}))
     assert outcome.success is True
-    assert outcome.result == "placed"
+    assert outcome.result == "written"
     assert calls["n"] == 1
     alerts = alert_rows()
     assert alerts
@@ -47,28 +47,23 @@ def test_shadow_sensitive_zero_side_effects_even_if_execute_flag_on(monkeypatch)
     reset_nonce_store()
     adapter_hits = {"n": 0}
 
-    def minecraft(tool, args, token):
-        adapter_hits["n"] += 1
-        return {"ok": True, "tool": tool}
-
     def reject(*_a, **_k):
         adapter_hits["n"] += 1
         return {"ok": False}
 
     from tool_gateway import execute_new_path
 
-    assert execute_new_path("shadow", "place_block") is False
+    assert execute_new_path("shadow", "opc_write") is False
     result = invoke(
-        "place_block",
-        {"x": 1},
+        "opc_write",
+        {"node_id": "Valve", "value": 1},
         {"tenant_id": "acme", "trace_id": "t-shadow"},
         adapters={
-            "minecraft": minecraft,
             "opc_write": reject,
             "opc_read": reject,
             "local": reject,
         },
-        execute=execute_new_path("shadow", "place_block"),
+        execute=execute_new_path("shadow", "opc_write"),
     )
     assert adapter_hits["n"] == 0
     assert result.get("error_code") == "guardrail_confirm" or (
@@ -77,7 +72,7 @@ def test_shadow_sensitive_zero_side_effects_even_if_execute_flag_on(monkeypatch)
 
 
 def test_enabled_sensitive_only_dry_run(monkeypatch):
-    """enabled 下敏感工具只做護欄 dry-run，不調 8081／minecraft。"""
+    """enabled 下敏感工具只做護欄 dry-run，不調上游適配器。"""
     monkeypatch.setenv("LINKIN_GUARDRAIL_HMAC_KEY", "stage1-test-key")
     monkeypatch.setenv("TOOL_GATEWAY_RATE_LIMIT", "0")
     monkeypatch.setenv("TOOL_DUAL_RUN", "enabled")
@@ -105,7 +100,6 @@ def test_enabled_sensitive_only_dry_run(monkeypatch):
         adapters={
             "opc_write": opc_write,
             "opc_read": reject,
-            "minecraft": reject,
             "local": reject,
         },
         execute=execute_new_path("enabled", "opc_write"),
@@ -123,15 +117,26 @@ def test_disabled_sensitive_stops_before_legacy(monkeypatch):
     reset_guard()
     reset_tools()
     reset_nonce_store()
-    registry = ToolRegistry()
-    calls = {"n": 0}
+    adapter_hits = {"n": 0}
 
-    def _place(**_kwargs):
-        calls["n"] += 1
-        return "placed"
+    def opc_write(tool, args, token):
+        adapter_hits["n"] += 1
+        return {"ok": True}
 
-    registry.register("place_block", "放方塊", {}, _place)
-    outcome = registry.execute(ToolCallRequest("place_block", {"x": 1}))
-    assert outcome.success is False
-    assert calls["n"] == 0
-    assert "審批" in outcome.error
+    def reject(*_a, **_k):
+        adapter_hits["n"] += 1
+        return {"ok": False}
+
+    result = invoke(
+        "opc_write",
+        {"node_id": "Valve", "value": 1},
+        {"tenant_id": "acme", "trace_id": "t-disabled"},
+        adapters={
+            "opc_write": opc_write,
+            "opc_read": reject,
+            "local": reject,
+        },
+        execute=True,
+    )
+    assert adapter_hits["n"] == 0
+    assert result.get("ok") is False or result.get("error_code")

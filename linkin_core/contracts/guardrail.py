@@ -1,4 +1,4 @@
-"""護欄與審批。OPC 寫入與危險 Minecraft 動作都在這裡做決定。"""
+"""護欄與審批。OPC 寫入等敏感動作都在這裡做決定。"""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from linkin_core.contracts.common import TENANT_ID, TRACE_ID, ContractModel, Tra
 
 class GuardrailSubject(str, Enum):
     opc_write = "opc.write"
-    minecraft_action = "minecraft.action"
     tool_invoke = "tool.invoke"
 
 

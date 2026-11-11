@@ -20,11 +20,3 @@ services:
       - "127.0.0.1:8092:8080"
     depends_on:
       - guardrail-service
-  minecraft-gateway:
-    build:
-      context: .
-      dockerfile: services/minecraft-gateway/Dockerfile
-    environment:
-      LINKIN_GUARDRAIL_HMAC_KEY: ${LINKIN_GUARDRAIL_HMAC_KEY:?}
-    ports:
-      - "127.0.0.1:8093:8080"

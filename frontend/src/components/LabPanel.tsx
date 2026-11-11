@@ -20,7 +20,6 @@ import {
   saveLabPrefs,
 } from '../api/client';
 import { isLabLink, LAB_TABS, labGroupForTab, labSectionForTab, type LabSubTab } from '../lib/labTabs';
-import { activityNavPath } from '../lib/monitorTabs';
 import { extractMarkdownImages } from '../lib/visualCards';
 import ArchifyFrame from './ArchifyFrame';
 import LcBarChart from './charts/LcBarChart';
@@ -590,8 +589,7 @@ export default function LabPanel({ activeTab, onTabChange }: LabPanelProps) {
         {tab === 'mcp' && (
           <div className="mx-auto max-w-2xl space-y-3">
             <p className="text-[11px] text-[var(--console-sub)]">
-              開關按功能排列，並儲存到目前登入帳號。Minecraft 放置、填充與指令在
-              「{activityNavPath('minecraft')}」。
+              開關按功能排列，並儲存到目前登入帳號。工業接線與採集相關開關見本頁各功能分組。
             </p>
             {toolStatus ? <p className="text-[11px] text-[var(--console-accent)]">{toolStatus}</p> : null}
             {MCP_FUNCTIONS.map((fn) => (

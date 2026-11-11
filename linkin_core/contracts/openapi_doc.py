@@ -13,7 +13,6 @@ from linkin_core.contracts.guardrail import (
     GuardrailCheckRequest,
     GuardrailDecision,
 )
-from linkin_core.contracts.minecraft import MinecraftActionRequest, MinecraftActionResult
 from linkin_core.contracts.opc import (
     OpcReadRequest,
     OpcReadResponse,
@@ -43,8 +42,6 @@ _MODELS: tuple[type[BaseModel], ...] = (
     OpcReadResponse,
     OpcWriteRequest,
     OpcWriteAccepted,
-    MinecraftActionRequest,
-    MinecraftActionResult,
 )
 
 
@@ -157,7 +154,7 @@ def build_openapi() -> dict[str, Any]:
             },
             "/api/v1/guardrail/approve": {
                 "post": _op(
-                    summary="人工審批 OPC 寫入或危險 Minecraft 動作",
+                    summary="人工審批 OPC 寫入等敏感動作",
                     body="GuardrailApproveRequest",
                     response="GuardrailDecision",
                     visibility="internal",
@@ -213,14 +210,6 @@ def build_openapi() -> dict[str, Any]:
                     body="OpcWriteRequest",
                     response="OpcWriteAccepted",
                     status="202",
-                    visibility="internal",
-                )
-            },
-            "/api/v1/minecraft/action": {
-                "post": _op(
-                    summary="Minecraft 動作。危險動作必須帶 guardrail 決策。",
-                    body="MinecraftActionRequest",
-                    response="MinecraftActionResult",
                     visibility="internal",
                 )
             },

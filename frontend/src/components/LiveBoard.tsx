@@ -719,7 +719,7 @@ function LabToolsCard({
         ))}
       </div>
       <p className="mt-2 text-[10px] leading-relaxed text-[var(--console-faint)]">
-        核心的開發組件 · minecraft組件 · 價格分析探針組件 · 整合
+        核心的開發組件 · 價格分析探針組件 · 整合
       </p>
     </MonitorPanel>
   );

@@ -11,11 +11,10 @@ import secrets
 import time
 from typing import Any
 
-from linkin_core.contracts.minecraft import MUTATING_MINECRAFT_ACTIONS
 from linkin_core.contracts.version import SCHEMA_VERSION
 
 POLICY_VERSION = "2026-10-26"
-SENSITIVE_TOOLS = frozenset({"opc_write", "opc.write", *MUTATING_MINECRAFT_ACTIONS})
+SENSITIVE_TOOLS = frozenset({"opc_write", "opc.write"})
 DEFAULT_KID = "v1"
 
 # nonce 重放防護（進程內；正式可換 Redis）

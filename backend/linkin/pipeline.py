@@ -1,7 +1,6 @@
 """靈境上下文增強：掛在統一管線上，對齊 OPC 的「感知後注入」模式。
 
-非靈境且非 Minecraft 控制的查詢一律空物件返回，不碰 RAG、不改路由。
-Minecraft 控制查詢只注入 MCP 摘要（不碰 RAG）；僅重型 MC／靈境任務標為 complex 以走 story_studio。
+非靈境查詢一律空物件返回，不碰 RAG、不改路由。
 """
 
 from __future__ import annotations
@@ -25,36 +24,13 @@ _LINKIN_WORLD_RE = re.compile(
     re.IGNORECASE,
 )
 
-_NARRATIVE_PIPELINE_RE = re.compile(
-    r"("
-    r"narrative|敘事|管線|pipeline|phase\s*[0-5]|"
-    r"map\s*plan|地圖計畫|build\s*brief|建築落地|"
-    r"世界意圖|待落地|story_studio"
-    r")",
-    re.IGNORECASE,
-)
-
-_MC_OBSERVABILITY_RE = re.compile(
-    r"("
-    r"minecraft|minemcp|mine\s*mcp|"
-    r"橋接|bridge|伺服器|server\s*map|"
-    r"dynmap|bluemap|squaremap|地圖插件|插件中心|"
-    r"map\s*plan|地圖計畫|待落地|build\s*brief|建築落地|"
-    r"npc.*落地|任務.*落地|世界意圖|"
-    r"玩家|player|背包|inventory|在線|在线|現場"
-    r")",
-    re.IGNORECASE,
-)
-
 _LINKIN_WORK_RE = re.compile(
     r"("
-    r"建造|建筑|建築|扩建|擴建|改建|主城|"
     r"NPC|角色卡|"
     r"任务|任務|主线|主線|支线|支線|"
     r"道具|附魔|"
     r"世界观|世界觀|宪法|憲法|"
-    r"BuilderAI|"
-    r"minecraft|方块|方塊|放置|坐标|座標"
+    r"叙事|敘事|故事|世界设定|世界設定"
     r")",
     re.IGNORECASE,
 )
@@ -63,13 +39,7 @@ _SYSTEM_OVERLAY = (
     "你正在協助「靈境·Linkin」。必須遵守世界觀憲法："
     "三大陣營（織庭盟／自由舟／寧淵庭）張力為故事源泉；"
     "魔法僅能以靈絲術解釋；禁止現實政治、宗教、色情與寫實暴力；"
-    "不得改寫已記載歷史；建築風格須匹配區域；NPC 背景不可為空。"
-)
-
-_MC_SYSTEM_OVERLAY = (
-    "你正在透過 Minecraft MCP 指揮遊戲世界。"
-    "放置方塊使用 place_block（遠端 MineMCP 工具名為 pose_block）。"
-    "禁止呼叫 write_file 等檔案系統工具。敏感指令需 confirmed=true。"
+    "不得改寫已記載歷史；NPC 背景不可為空。"
 )
 
 
@@ -79,7 +49,7 @@ def needs_linkin_context(query: str) -> bool:
 
 
 def is_linkin_complex_task(query: str) -> bool:
-    """靈境世界觀 + 建造／NPC／任務／道具等工作動詞 → 走公司運行時。"""
+    """靈境世界觀 + 敘事／NPC／任務／道具等工作動詞 → 走公司運行時。"""
     text = query or ""
     return bool(_LINKIN_WORLD_RE.search(text) and _LINKIN_WORK_RE.search(text))
 
@@ -106,104 +76,32 @@ def constitution_brief() -> str:
         f"核心衝突：{conflict}\n"
         f"陣營：{factions or '织庭盟、自由舟、宁渊庭'}。魔法：{magic}。\n"
         "邊界：禁止現實政治／宗教／色情／寫實暴力；NPC 背景不可為空；"
-        "建築風格須匹配區域；歷史不可矛盾。"
+        "歷史不可矛盾。"
     )
-
-
-def _is_minecraft_context(state: StateInput) -> bool:
-    """Minecraft 模組會話或故事工作室管線。"""
-    if not isinstance(state, dict):
-        return False
-    meta = state.get("archive_metadata")
-    if isinstance(meta, dict):
-        module = str(meta.get("module_id") or meta.get("world_module") or "").strip().lower()
-        if module == "minecraft":
-            return True
-    template = str(state.get("company_template") or "").strip()
-    return template == "story_studio"
-
-
-def _is_narrative_pipeline_flow(query: str, state: StateInput) -> bool:
-    """敘事／管線相關查詢或 RAHO 活躍任務。"""
-    if is_linkin_complex_task(query):
-        return True
-    if _NARRATIVE_PIPELINE_RE.search(query or ""):
-        return True
-    if isinstance(state, dict):
-        raho = state.get("raho")
-        if isinstance(raho, dict) and raho.get("active"):
-            return True
-    return False
 
 
 def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
     """靈境 RAG 增強：命中世界觀關鍵詞時注入憲法摘要與知識庫檢索。
 
-    Minecraft 控制查詢即使未提靈境也注入 MCP 摘要（不碰 RAG），
-    重型任務才升級 story_studio；單步控制走 minecraft_ops 輕量路徑。
     知識庫／憲法不可用時靜默降級（不中斷主流程）。
     """
     query = state.get("query", "")
     world_hit = needs_linkin_context(query)
-    mc_hit = False
-    mcp_block = ""
-    try:
-        from backend.tools.minecraft_mcp import connector_status_brief, is_minecraft_control_query
-
-        mc_hit = is_minecraft_control_query(query)
-        if mc_hit:
-            mcp_block = "\n" + connector_status_brief()
-    except Exception as exc:
-        logger.debug("Minecraft MCP 摘要略過：%s", exc)
-
-    obs_hit = bool(_MC_OBSERVABILITY_RE.search(query))
-    inject_full_obs = world_hit or mc_hit or obs_hit
-    observability_block = ""
-    if inject_full_obs:
-        try:
-            from backend.linkin.minecraft_observability import build_ai_context
-
-            ctx_blob = build_ai_context(max_chars=2400, fmt="markdown")
-            observability_block = "\n" + str(ctx_blob.get("context") or "").strip()
-        except Exception as exc:
-            logger.debug("Minecraft 可觀測性上下文略過：%s", exc)
-
-    players_presence_block = ""
-    minecraft_ctx = _is_minecraft_context(state)
-    narrative_flow = _is_narrative_pipeline_flow(query, state)
-    try:
-        from backend.linkin.minecraft_players import (
-            format_players_presence_markdown,
-            has_live_player_signal,
-        )
-
-        if (
-            has_live_player_signal()
-            and not inject_full_obs
-            and (minecraft_ctx or narrative_flow or world_hit or mc_hit)
-        ):
-            blob = format_players_presence_markdown(max_chars=900)
-            if blob:
-                players_presence_block = "\n" + blob
-    except Exception as exc:
-        logger.debug("玩家現場上下文略過：%s", exc)
-
-    if not world_hit and not mc_hit and not obs_hit and not players_presence_block:
+    if not world_hit:
         return {"linkin_context": {}}
 
-    brief = constitution_brief() if world_hit else ""
+    brief = constitution_brief()
     hits: list[dict[str, Any]] = []
     backend = "none"
-    if world_hit:
-        try:
-            from backend.linkin.knowledge import COL_EVENTS, COL_NPCS, COL_WORLDVIEW, get_store
+    try:
+        from backend.linkin.knowledge import COL_EVENTS, COL_NPCS, COL_WORLDVIEW, get_store
 
-            store = get_store()
-            backend = "chroma" if store.backend_status().get("chroma") else "json"
-            for collection in (COL_WORLDVIEW, COL_NPCS, COL_EVENTS):
-                hits.extend(store.search(collection, query, k=2))
-        except Exception as exc:
-            logger.warning("靈境 RAG 檢索失敗（降級僅憲法）：%s", exc)
+        store = get_store()
+        backend = "chroma" if store.backend_status().get("chroma") else "json"
+        for collection in (COL_WORLDVIEW, COL_NPCS, COL_EVENTS):
+            hits.extend(store.search(collection, query, k=2))
+    except Exception as exc:
+        logger.warning("靈境 RAG 檢索失敗（降級僅憲法）：%s", exc)
 
     hit_lines: list[str] = []
     for hit in hits[:6]:
@@ -211,23 +109,13 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
         if text:
             hit_lines.append(f"- {text[:160]}")
     rag_block = ("\n【靈境知識庫】\n" + "\n".join(hit_lines)) if hit_lines else ""
-    overlays = []
-    if world_hit:
-        overlays.append(_SYSTEM_OVERLAY)
-    if mc_hit:
-        overlays.append(_MC_SYSTEM_OVERLAY)
-    summary = f"{brief}{rag_block}{mcp_block}{observability_block}{players_presence_block}".strip()
-    from backend.core.execution_path import is_minecraft_heavy_task
-
-    mc_complex = bool(mc_hit and is_minecraft_heavy_task(query))
+    summary = f"{brief}{rag_block}".strip()
     return {
         "linkin_context": {
             "active": True,
             "summary": summary,
-            "system_overlay": "\n".join(overlays),
-            "complex": is_linkin_complex_task(query) or mc_complex,
-            "minecraft": mc_hit,
-            "minecraft_observability": bool(observability_block or players_presence_block),
+            "system_overlay": _SYSTEM_OVERLAY,
+            "complex": is_linkin_complex_task(query),
             "rag_hits": len(hits),
             "backend": backend,
         }
@@ -235,39 +123,14 @@ def enhance_with_linkin_context(state: StateInput) -> dict[str, Any]:
 
 
 def resolve_linkin_company_template(state: StateInput) -> str | None:
-    """靈境複雜任務或 Minecraft 重型任務且呼叫端仍用預設 quick_task 時，改走故事工作室。
-
-    quick_task 只有 manager＋developer；developer 不能放方塊。
-    story_studio 含 creative_lead／story_writer，才能實際呼叫 MCP 寫入工具。
-    單步 Minecraft 控制由 minecraft_ops 路徑處理，不在此升級。
-    """
-    from backend.core.execution_path import is_minecraft_heavy_task, resolve_execution_path
-
+    """靈境複雜任務且呼叫端仍用預設 quick_task 時，改走故事工作室。"""
     ctx = state.get("linkin_context") or {}
     query = state.get("query", "")
-    strategy = str(state.get("execution_strategy") or "auto")
-    if resolve_execution_path(query, strategy) == "minecraft_ops":
-        return None
-    mc_hit = False
-    if isinstance(ctx, dict) and ctx.get("minecraft"):
-        mc_hit = True
-    else:
-        try:
-            from backend.tools.minecraft_mcp import is_minecraft_control_query
-
-            mc_hit = is_minecraft_control_query(query)
-        except Exception:
-            mc_hit = False
-    mc_heavy = bool(mc_hit and is_minecraft_heavy_task(query))
     active = isinstance(ctx, dict) and bool(ctx.get("active"))
-    complex_hit = (
-        bool(isinstance(ctx, dict) and ctx.get("complex"))
-        or is_linkin_complex_task(query)
-        or mc_heavy
+    complex_hit = bool(isinstance(ctx, dict) and ctx.get("complex")) or is_linkin_complex_task(
+        query
     )
-    if not active and not mc_heavy:
-        return None
-    if not complex_hit:
+    if not active or not complex_hit:
         return None
     current = str(state.get("company_template") or "quick_task").strip() or "quick_task"
     if current == "quick_task":

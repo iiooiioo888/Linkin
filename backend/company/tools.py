@@ -299,11 +299,6 @@ def _maybe_bill_tool(tool_name: str, *, role: str | None = None, args: dict | No
             from backend.billing.docker_api import on_docker_stopped
 
             on_docker_stopped(str(tool_args.get("service") or "frontend"))
-        elif name in {"place_block", "break_block", "fill_block", "execute_command"} or "minecraft" in name:
-            from backend.billing.metering import meter_minecraft
-
-            blocks = 0
-            meter_minecraft(tool_name, blocks=blocks, meta={"role": role or ""})
     except Exception:
         pass
 
@@ -490,9 +485,7 @@ def _register_builtin_tools() -> None:
     )
 
     from backend.company.quant_tools import register_company_tools as _register_quant
-    from backend.linkin.minecraft import register_company_tools as _register_mc
 
-    _register_mc(tool_registry)
     _register_quant(tool_registry)
 
     try:  # 服務器運維智能體工具（本地定制模組，缺失時不影響其他工具註冊）

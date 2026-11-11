@@ -2,7 +2,7 @@
 
 讓 Linkin 能連上任意 MCP server，自動發現其 tools 並動態註冊進
 公司工具註冊表（backend/company/tools.py），角色即可透過既有
-tool_call 閉環調用。與 minecraft_mcp.py（MineMCP 專用、JSON-RPC）
+tool_call 閉環調用。通用 MCP
 互補：這裡是通用 MCP 客戶端。
 
 支援三種傳輸：

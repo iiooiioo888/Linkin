@@ -63,7 +63,7 @@ export async function resolveRoutingPreviewForSend(params: {
   }
 }
 
-/** 任務 API 路徑（非 SSE 簡單／minecraft_ops 串流）。opc 是舊標籤，與 company 同一條公司任務。 */
+/** 任務 API 路徑（非 SSE 簡單串流）。opc 是舊標籤，與 company 同一條公司任務。 */
 export function usesTaskWorkspace(
   strategy: RoutingPreviewMode,
   preview: RoutingPreview | null | undefined,
@@ -85,7 +85,7 @@ export function shouldRunGrill(
 
 export function parseRoutingPreview(data: Record<string, unknown>): RoutingPreview | null {
   const path = String(data.path ?? '').trim();
-  if (path !== 'simple' && path !== 'company' && path !== 'opc' && path !== 'minecraft_ops') {
+  if (path !== 'simple' && path !== 'company' && path !== 'opc') {
     return null;
   }
   const level = String((data.estimated_cost as { level?: string } | undefined)?.level ?? 'low');

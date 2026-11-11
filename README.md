@@ -4,7 +4,7 @@
 
 **靈境·Linkin 運行時 — 具反思閉環的統一 AI 管線、任務經理與監控控制台**
 
-反思閉環、RAHO 公司運行時、OPC 工業整合與 Minecraft 輕量操作共用同一條前置鏈。`resolve_execution_path` 依策略與內容選路，LangGraph、SSE 與任務 API 用同一份判斷。
+反思閉環、RAHO 公司運行時與 OPC 工業整合共用同一條前置鏈。`resolve_execution_path` 依策略與內容選路，LangGraph、SSE 與任務 API 用同一份判斷。
 
 [![CI](https://github.com/iiooiioo888/Linkin/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/iiooiioo888/Linkin/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -58,16 +58,15 @@
 
 | 能力 | 做什麼 |
 |------|--------|
-| **統一管線** | 每則查詢先注入記憶、感測上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 在 `simple`、`company`、`minecraft_ops` 中選一條 |
-| **反思閉環** | 簡單路徑做多維評分與改進迴圈。公司路徑預設定稿；Minecraft 輕量路徑評估一次 |
+| **統一管線** | 每則查詢先注入記憶、感測上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 在 `simple`、`company` 中選一條 |
+| **反思閉環** | 簡單路徑做多維評分與改進迴圈。公司路徑預設定稿 |
 | **任務經理** | 公司任務由任務經理分析：產出里程碑、成敗標準與依賴，再拆給席位執行。工業查詢同樣進公司，預設模板 `industrial_ops`，感測讀數注入目標；寫入仍經護欄。**80** 席 |
-| **監控控制台** | 對話、控制台、靈境、Minecraft、實驗室。Linear 風 dense UI，桌面三欄約一屏高 |
+| **監控控制台** | 對話、控制台、世界／整合模組、實驗室。Linear 風 dense UI，桌面三欄約一屏高 |
 | **行動版** | 768px 以下改底部 Tab 與 safe-area；桌面 ≥1440 維持三欄 |
 | **整合召回** | MemOS、OpenViking、WeKnora、Yao、Ouroboros、OpenPencil。只在明確召回時省 token，不接受自動 webhook |
 | **積分與計費 v6** | 虛擬積分錢包（不是第三方支付）。個人／共享／貢獻／故障多池，Docker 按時計費，方案牌價，阿里雲成本唯讀對帳 |
 | **AI Hub** | 探針、熔斷、目錄；多 API 路由與模型池鎖定 |
 | **OPC** | OPC UA 微服務。公司任務可讀感測摘要；寫入必經護欄 |
-| **Minecraft MCP** | MineMCP JSON-RPC 與靈境鐵律。角色只經 tool_registry |
 
 ---
 
@@ -83,8 +82,6 @@
 |------|------|------|
 | 1 | 工業關鍵詞（感測、閥門、OPC、PLC…） | `company`，預設模板 `industrial_ops`，由任務經理分析 |
 | 2 | 靈境複雜任務 | `company` |
-| 3 | Minecraft 建造、敘事、多步 | `company` |
-| 4 | Minecraft 單步控制 | `minecraft_ops` |
 | 5 | 已開啟 cost_speed | 依複雜度設定為 `company` 或 `simple` |
 | 6 | 公司關鍵詞，或長度達到門檻 | `company`，否則 `simple` |
 
@@ -102,7 +99,6 @@ flowchart TD
     LK --> RC[整合召回]
     RC --> ROUTE{route_by_complexity}
     ROUTE -->|company，含工業| RUN[run_company<br/>任務經理分析]
-    ROUTE -->|minecraft_ops| MC[run_minecraft_ops]
     ROUTE -->|simple| GEN[單次生成]
     RUN --> GATE{公司後反思}
     GATE -->|預設 off| DEC[決定最終回答]
@@ -126,16 +122,15 @@ flowchart TD
 | 路徑 | 生成之後 |
 |------|----------|
 | `simple` | 長度守門後做多維評估。未達標、迭代未用盡、且分數仍有提升時，反思並改進 |
-| `minecraft_ops` | 輕量 ReAct 加 MineMCP。評估一次後定稿；只有超長才回到反思 |
 | `company` | 任務經理分析後席位分工。工業模板 `industrial_ops` 用工業席位，感測讀數附在目標上，寫入經護欄。`EVOL_POST_COMPANY_REFLECT` 預設 `off`。超長仍回到反思 |
 
 ### 請求從哪裡進來
 
 | 入口 | 實際分派 |
 |------|----------|
-| 對話 `#/chat` | 先取路由預覽。公司路徑直接 `POST /tasks` 與 WebSocket，由任務經理分析。`simple` 與 `minecraft_ops` 走 SSE。預覽逾時 1.5 秒則改走 SSE |
+| 對話 `#/chat` | 先取路由預覽。公司路徑直接 `POST /tasks` 與 WebSocket，由任務經理分析。`simple` 走 SSE。預覽逾時 1.5 秒則改走 SSE |
 | 公司頁 | 回到對話，策略固定 `company`，同一條發送路徑建立任務 |
-| `POST /chat/stream` | 公司路徑走公司 SSE（任務經理分析）；`minecraft_ops` 走編譯圖；其餘走簡單串流 |
+| `POST /chat/stream` | 公司路徑走公司 SSE（任務經理分析）；其餘走簡單串流 |
 | `POST /tasks` | 公司路徑由任務經理分析後席位分工。其餘走對應的手抄前置與收尾 |
 | `POST /chat` | `evoloop_graph.ainvoke`。工業查詢在 `run_company` 裡由任務經理分析 |
 
@@ -146,7 +141,6 @@ flowchart TD
 | 類 | 落在哪 |
 |----|--------|
 | 核心的開發組件 | `backend/core/`、`backend/company/`、`backend/billing/`、`linkin_core/`（契約）。實驗室：提示詞、架構、精簡、容器、A/B |
-| minecraft組件 | `backend/linkin/`、`backend/modules/`、`backend/tools/`。畫面在 `#/modules/minecraft` |
 | 價格分析探針組件 | `backend/hub/`、`backend/company/quant_*.py`。實驗室：策略庫、策略圖、價格探針 |
 | 整合 | 再按召回、採集、工業接線、Agent 工作流、設計、技能。見 [目錄地圖](docs/structure.md#整合的功能) |
 
@@ -190,12 +184,11 @@ Linkin/
 
 ### 埠號
 
-| 情境 | 前端 | 後端 | OPC | Redis | Chroma | MineMCP |
+| 情境 | 前端 | 後端 | OPC | Redis | Chroma |
 |------|------|------|-----|-------|--------|---------|
 | 本機 Vite | **3001** | 8000 | 8001 | 6379 | 8100 | 3000 |
 | Compose | **3001** | 8000 | 8001 | 6379 | 8100 | — |
 
-MineMCP 預設 3000，與前端錯開。
 
 ### 本機跑起來
 
@@ -315,7 +308,6 @@ python -m backend.scripts.sync_agent_skills
 | [角色介紹](docs/company/roles.md) | 80 席與 16 席靈境子角色 |
 | [AI Hub 設計](docs/AI_HUB_DETAILED_DESIGN.md) | Hub 契約 |
 | [靈境世界觀](docs/linkin/worldview.md) | 世界觀 |
-| [Minecraft MCP](docs/linkin/minecraft-mcp.md) | 遊戲橋接 |
 | [REST API](docs/api/reference.md) | 端點與 SSE |
 | [前端](frontend/README.md) | Vite 開發入口 |
 | [知識庫](docs/README.md) | 文件總索引 |
@@ -328,7 +320,6 @@ python -m backend.scripts.sync_agent_skills
 2. 測試用 `monkeypatch` 隔離外部依賴，不需要真實 API 金鑰。
 3. 不要改編譯後的 LangGraph 圖。改 `build_graph()` 與節點。
 4. OPC 寫入必須經 `opc_service/guard.py`。
-5. Minecraft 寫入必須經 `backend/tools/minecraft_mcp.py` 與 `backend/linkin/minecraft.py`。
 
 完整條文：[AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
 

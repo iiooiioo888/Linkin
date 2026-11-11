@@ -24,18 +24,11 @@ def _clean_registry():
     reset_registry()
 
 
-def test_register_and_list_minecraft():
+def test_register_and_list_builtin_modules():
     register_builtin_modules()
     ids = [item.id for item in list_modules()]
-    assert ids == ["minecraft", "media-vault", "local-video-studio"]
-    spec = get_module("minecraft")
-    assert spec is not None
-    assert spec.default_page == "monitor"
-    assert spec.api_prefix == "/linkin"
-    cap_ids = {cap.id for cap in spec.capabilities}
-    assert cap_ids == {"worldview", "content", "admin", "building", "bridge", "monitor", "plugins"}
-    pages = {item.key for group in spec.nav_groups for item in group.items}
-    assert {"monitor", "world", "admin", "building", "minecraft", "studio", "narrative"} <= pages
+    assert ids == ["media-vault", "local-video-studio"]
+    assert get_module("minecraft") is None
     studio = get_module("local-video-studio")
     assert studio is not None
     assert studio.api_prefix == "/local-video-studio"
@@ -61,7 +54,6 @@ def test_custom_module_appears_in_catalog():
         )
     )
     assert [item.id for item in list_modules()] == [
-        "minecraft",
         "media-vault",
         "local-video-studio",
         "demo-world",
@@ -69,129 +61,34 @@ def test_custom_module_appears_in_catalog():
 
 
 def test_modules_http_catalog(monkeypatch, tmp_path):
-    monkeypatch.setenv("EVOL_LINKIN_CONSTITUTION_PATH", str(tmp_path / "linkin_constitution.json"))
-    monkeypatch.setenv("EVOL_LINKIN_DATA_DIR", str(tmp_path / "linkin"))
-    from backend.linkin.constitution import reset_cache
-
-    reset_cache()
     app = FastAPI()
     register_modules(app)
     with TestClient(app) as client:
         listed = client.get("/modules")
         assert listed.status_code == 200
         body = listed.json()
-        assert body["count"] == 3
+        assert body["count"] == 2
         by_id = {m["id"]: m for m in body["modules"]}
-        assert set(by_id) == {"minecraft", "media-vault", "local-video-studio"}
-        mc = by_id["minecraft"]
-        nav_groups = mc["nav_groups"]
-        assert nav_groups[0]["id"] == "players_group"
-        assert nav_groups[0]["items"][0]["key"] == "player_presence"
-        monitor_group = next(g for g in nav_groups if g["id"] == "monitor")
-        assert monitor_group["items"][0]["key"] == "monitor"
+        assert set(by_id) == {"media-vault", "local-video-studio"}
         assert by_id["local-video-studio"]["api_prefix"] == "/local-video-studio"
 
-        detail = client.get("/modules/minecraft")
-        assert detail.status_code == 200
-        assert detail.json()["title"] == "Minecraft"
-        admin = next(c for c in detail.json()["capabilities"] if c["id"] == "admin")
-        assert "/server/health" in admin["routes"]
-        assert "/admin/execute" in admin["routes"]
-
-        missing = client.get("/modules/nope")
+        missing = client.get("/modules/minecraft")
         assert missing.status_code == 404
 
-        health = client.get("/modules/minecraft/health")
+        health = client.get("/modules/local-video-studio/health")
         assert health.status_code == 200
-        snap = health.json()
-        assert snap["id"] == "minecraft"
-        assert "world" in snap
-        assert "bridge" in snap
+        assert health.json()["id"] == "local-video-studio"
 
-        pages = client.get("/modules/minecraft/pages")
-        assert pages.status_code == 200
-        page_body = pages.json()
-        assert page_body["id"] == "minecraft"
-        assert page_body["default_page"] == "monitor"
-        keys = {item["key"] for item in page_body["pages"]}
-        assert {
-            "monitor",
-            "world",
-            "admin",
-            "building",
-            "minecraft",
-            "studio",
-            "narrative",
-            "player_presence",
-            "ai_gm",
-        } <= keys
-        world = next(item for item in page_body["pages"] if item["key"] == "world")
-        assert world["capability"] == "worldview"
-        assert "/constitution" in world["routes"]
-
-        page = client.get("/modules/minecraft/pages/admin")
-        assert page.status_code == 200
-        assert page.json()["page"]["capability"] == "admin"
-        assert page.json()["page"]["api_prefix"] == "/linkin"
-
-        caps = client.get("/modules/minecraft/capabilities")
-        assert caps.status_code == 200
-        cap_body = caps.json()
-        assert cap_body["id"] == "minecraft"
-        assert cap_body["gateway_prefix"] == "/modules/minecraft/api"
-        assert {item["id"] for item in cap_body["capabilities"]} == {
-            "worldview",
-            "content",
-            "admin",
-            "building",
-            "bridge",
-            "monitor",
-            "plugins",
-        }
-
-        missing_page = client.get("/modules/minecraft/pages/nope")
-        assert missing_page.status_code == 404
         missing_caps = client.get("/modules/nope/capabilities")
         assert missing_caps.status_code == 404
-        reset_cache()
 
 
 def test_pages_on_catalog_payload():
     register_builtin_modules()
-    spec = get_module("minecraft")
-    assert spec is not None
-    payload = spec.to_dict()
-    assert payload["gateway_prefix"] == "/modules/minecraft/api"
-    assert payload["page_aliases"]["bridge"] == "minecraft"
-    assert payload["page_aliases"]["server"] == "admin"
-    assert any(page["key"] == "admin" and page["capability"] == "admin" for page in payload["pages"])
-    studio = next(page for page in payload["pages"] if page["key"] == "studio")
-    assert studio["roster"] == "agents"
-
-
-def test_gateway_forwards_allowed_path(monkeypatch, tmp_path):
-    monkeypatch.setenv("EVOL_LINKIN_CONSTITUTION_PATH", str(tmp_path / "linkin_constitution.json"))
-    monkeypatch.setenv("EVOL_LINKIN_DATA_DIR", str(tmp_path / "linkin"))
-    from backend.linkin.api import register_linkin
-    from backend.linkin.constitution import reset_cache
-
-    reset_cache()
-    app = FastAPI()
-    register_linkin(app)
-    register_modules(app)
-    with TestClient(app) as client:
-        via_legacy = client.get("/linkin/constitution")
-        via_gateway = client.get("/modules/minecraft/api/constitution")
-        assert via_gateway.status_code == 200
-        assert via_gateway.json()["world_name"] == via_legacy.json()["world_name"]
-
-        blocked = client.get("/modules/minecraft/api/grill/status")
-        assert blocked.status_code == 404
-
-        missing = client.get("/modules/minecraft/api/")
-        assert missing.status_code in {404, 405, 307}
-        assert via_gateway.headers.get("content-type", "").startswith("application/json")
-        reset_cache()
+    studio = get_module("local-video-studio")
+    assert studio is not None
+    payload = studio.to_dict()
+    assert payload["gateway_prefix"] == "/modules/local-video-studio/api"
 
 
 def test_as_header_map_from_asgi_list():
@@ -205,12 +102,23 @@ def test_as_header_map_from_asgi_list():
 
 def test_path_allowed_nested():
     from backend.modules.gateway import path_allowed
-    from backend.modules.minecraft import build_minecraft_spec
 
-    spec = build_minecraft_spec()
+    spec = ModuleSpec(
+        id="demo",
+        title="Demo",
+        description="d",
+        api_prefix="/demo",
+        capabilities=(
+            ModuleCapability(
+                id="content",
+                title="Content",
+                description="c",
+                api_prefix="/demo",
+                routes=("/npcs", "/npcs/{id}/dialogue", "/constitution"),
+            ),
+        ),
+    )
     assert path_allowed(spec, "constitution")
     assert path_allowed(spec, "/npcs/aria/dialogue")
-    assert path_allowed(spec, "server/approvals/sa-1/confirm")
-    assert path_allowed(spec, "buildings/bld-1/dispatch")
     assert not path_allowed(spec, "grill/start")
     assert not path_allowed(spec, "")

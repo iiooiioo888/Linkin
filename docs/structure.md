@@ -5,12 +5,11 @@
 
 ## 組件分類
 
-系統分成四類。新套件先歸進其中一類，再寫進下面的目錄表。選路是三條：`simple`、`company`、`minecraft_ops`。工業查詢走 `company`，感測讀數由 `backend/core/` 注入，寫入經 `opc_service/guard.py`。
+系統分成三類。新套件先歸進其中一類，再寫進下面的目錄表。選路是兩條：`simple`、`company`。工業查詢走 `company`，感測讀數由 `backend/core/` 注入，寫入經 `opc_service/guard.py`。
 
 | 類 | 做什麼 | 落在哪 | 實驗室 |
 |----|--------|--------|--------|
 | **核心的開發組件** | 前置注入、選路、簡單路徑的生成／評估／反思；任務經理分析與 80 席；提示詞、架構圖、精簡、A/B、臨時容器。服務化契約在 `linkin_core/`，運行時仍是單體 | `backend/core/`、`backend/company/`（量化工具見下一類）、`backend/billing/`、`backend/prompts/`、`linkin_core/`、對話與控制台 | 提示詞、架構、精簡、容器、A/B |
-| **minecraft組件** | 憲法、16 席子角色、世界模組、MineMCP 寫入護欄、`minecraft_ops` | `backend/linkin/`、`backend/modules/`、`backend/tools/`、Minecraft 畫面 | 側欄進入 `#/modules/minecraft` |
 | **價格分析探針組件** | 廠商延遲與報價探針；策略庫與策略圖 | `backend/hub/`、`backend/company/quant_*.py`、Hub 監控（基礎設施 → AI Hub） | 策略庫、策略圖、價格探針 |
 | **整合** | 依功能再分：召回、採集、工業接線、Agent 工作流、設計、技能。見下一節 | `backend/memory/`、`backend/integrations/`、`.agents/skills/`、`opc_service/` | `LAB_INTEGRATE_SECTIONS` |
 
@@ -27,16 +26,15 @@
 | **設計** | Design-as-Code（OpenPencil）；**Local Video Studio** 本機優先影片工作室（M0–M6；見根 `FEATURES_AND_TOOLS.md`） | `backend/integrations/openpencil.py`；[local-video-studio.md](integrations/local-video-studio.md) · [features-and-tools.md](integrations/features-and-tools.md)（`backend/local_video_studio/`、`#/modules/local-video-studio`） |
 | **技能** | Agent skills | `.agents/skills/`、`#/monitor/skills` |
 
-控制台左側（總覽、執行、角色、審計、計費、系統）是核心的開發組件裡的導覽，定義在 `frontend/src/lib/monitorTabs.ts` 的 `CONSOLE_NAV_GROUPS`。Minecraft 世界模組用自己的導覽。實驗室四類的單一來源是 `frontend/src/lib/labTabs.ts` 的 `LAB_NAV_GROUPS`。
+控制台左側（總覽、執行、角色、審計、計費、系統）是核心的開發組件裡的導覽，定義在 `frontend/src/lib/monitorTabs.ts` 的 `CONSOLE_NAV_GROUPS`。實驗室三類的單一來源是 `frontend/src/lib/labTabs.ts` 的 `LAB_NAV_GROUPS`。
 
 ```
 請求 → backend/main.py
      → 前置：記憶、OPC 讀數、靈境、整合召回
      → resolve_execution_path
          ├─ simple          → 生成／評估／反思
-         ├─ company         → 任務經理分析 → 席位（含工業模板）
-         └─ minecraft_ops   → 輕量 ReAct + MineMCP
-寫世界／OPC 仍走護欄。
+         └─ company         → 任務經理分析 → 席位（含工業模板）
+OPC 寫入仍走護欄。
 ```
 
 ## 根目錄
@@ -46,7 +44,7 @@
 | `backend/` | FastAPI + LangGraph 主程式 | 見 [backend/README.md](../backend/README.md) |
 | `linkin_core/` | 服務化契約（OpenAPI／AsyncAPI）。階段 0 不取代單體 | 見 [服務契約](architecture/service-contracts.md) |
 | `deploy/k8s/linkin/` | 內網 12 服務骨架 | 映像尚未發布 |
-| `services/` | `tool-gateway`、`guardrail-service`、`minecraft-gateway` | 階段 1。K8s 映像仍是佔位 |
+| `services/` | `tool-gateway`、`guardrail-service` | 階段 1。K8s 映像仍是佔位 |
 | `opc_service/` | OPC UA 微服務與護欄 | 整合類。見 [opc_service/README.md](../opc_service/README.md) |
 | `frontend/` | React 19 監控中心 | 見 [frontend/README.md](../frontend/README.md) |
 | `docs/` | **知識庫（詳文唯一來源）** | 本目錄 |
@@ -68,8 +66,6 @@
 | Compose prod（nginx） | **3001→80** | 8000 | 127.0.0.1:8001 | 127.0.0.1:6379 | 127.0.0.1:8100 |
 | Compose dev（vite HMR） | **3001** | 8000 | 127.0.0.1:8001 | 127.0.0.1:6379 | 127.0.0.1:8100 |
 
-MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.md)。
-
 ## backend/
 
 | 路徑 | 職責 |
@@ -78,9 +74,9 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `auth/` | 登入閘門 |
 | `core/` | 核心的開發組件：圖、節點、`call_llm`、評估、模型池、路由 |
 | `company/` | 核心的開發組件：任務經理、80 席、工作項、預算。量化工具屬價格分析探針組件 |
-| `linkin/` | minecraft組件：憲法、實體、Minecraft **業務**護欄、16 席子角色種子 |
-| `modules/` | minecraft組件：可插拔世界模組目錄（`GET /modules`）；Minecraft 為內建模組 |
-| `tools/` | minecraft組件：MineMCP／運維等**底層**橋接（角色勿直連） |
+| `linkin/` | 靈境：憲法、實體、16 席子角色種子（敘事／NPC／道具等） |
+| `modules/` | 可插拔世界／整合模組目錄（`GET /modules`）；內建 media-vault、local-video-studio |
+| `tools/` | 外部工具封裝（經 tool_registry） |
 | `hub/` | 價格分析探針組件：廠商延遲／價格探針、熔斷、目錄；契約：`AI_HUB_DETAILED_DESIGN.md` |
 | `billing/` | 核心的開發組件：積分池 v6、Docker 計量 |
 | `memory/` | 整合：向量記憶（Chroma 等） |
@@ -141,7 +137,7 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 |------|------|
 | `api.py` | `/linkin/*` 路由 |
 | `constitution.py` · `knowledge.py` | 憲法、知識／RAG |
-| `minecraft.py` · `tools.py` | **業務護欄**、工具鐵律 |
+| `tools.py` | 工具鐵律與實體校驗 |
 | `roles.py` · `prompts.py` | 16 席種子、提示詞 |
 | `schematic.py` · `nbt.py` · `schem_nbtlib.py` | 建築圖／NBT |
 | `pipeline.py` · `grill_me.py` · `design_llm.py` · `server_admin.py` | 管線、Grill、設計、伺服器管理 |
@@ -153,7 +149,6 @@ MineMCP 預設 **3000**（與前端錯開）。術語見 [glossary.md](glossary.
 | `registry.py` | `ModuleSpec` 註冊表；禁止與 chat／console／lab 撞 id |
 | `api.py` | `GET /modules`、`/{id}`、`/{id}/pages`、`/{id}/capabilities`、`/{id}/health`、`/{id}/api/{path}` |
 | `gateway.py` | 統一業務閘道：校驗 capabilities 後轉發 `api_prefix` |
-| `minecraft.py` | 內建 Minecraft 模組契約（世界觀／Admin／建築／橋接） |
 
 ### backend/scripts/
 
@@ -200,8 +195,8 @@ python backend/scripts/test_llm_connection.py
 | `src/components/MonitorView.tsx` | 監控主視圖 |
 | `src/lib/monitorTabs.ts` | 控制台分頁（總覽／執行／審計／計費／系統） |
 | `src/lib/worldModules.ts` | 世界模組目錄（hydrate `GET /modules`） |
-| `src/modules/` | 模組宿主；`minecraft/` 為獨立世界模組 UI |
-| `src/api/` | REST 客戶端（`modules.ts` 的 `createModuleClient`、`linkin.ts` 為 Minecraft typed wrapper） |
+| `src/modules/` | 模組宿主（media-vault、local-video-studio） |
+| `src/api/` | REST 客戶端（`modules.ts` 的 `createModuleClient`） |
 | 開發埠 | 預設 **3001**（`VITE_DEV_PORT` 可覆寫） |
 
 ## docs/（知識庫）
@@ -213,7 +208,7 @@ python backend/scripts/test_llm_connection.py
 | `glossary.md` | 術語與埠號速查 |
 | `architecture/` | 管線、反思、公司、OPC、路線圖 |
 | `api/` · `config/` | REST 與環境變數 |
-| `linkin/` | 世界觀、靈境 API、Minecraft MCP |
+| `linkin/` | 世界觀、靈境 API（憲法／實體） |
 | `company/` | 量化工具等 |
 | `development/` · `deployment/` · `faq.md` | 開發、部署、FAQ |
 | `AI_HUB_DETAILED_DESIGN.md` | Hub 契約（**路徑固定**，測試會讀取） |
