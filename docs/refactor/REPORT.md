@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（562 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（577 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -117,6 +117,11 @@ backend/
 | `backend/services/agent_monitor.py` | 1,302 行 | 7 檔套件／1,468 行（最大 453）＝ 第六輪 |
 | `frontend/src/components/ChatView.tsx` | 646 行 | **7 行 barrel** ＋ `chatview/` 6 檔（最大 375）＝ 第六輪 |
 | `frontend/src/components/LabPanel.tsx` | 681 行 | **6 行 barrel** ＋ `labpanel/` 9 檔（最大 346）＝ 第六輪 |
+| `backend/company/raho/inspector.py` | 954 行 | 7 檔套件／1,177 行（最大 446）＝ 第七輪 |
+| `backend/core/api_router.py` | 938 行 | 6 檔套件／1,163 行（最大 312）＝ 第七輪 |
+| `backend/company/decomposer.py` | 743 行 | 5 檔套件／836 行（最大 657）＝ 第七輪 |
+| `frontend/src/components/IntegrationsPanel.tsx` | 699 行 | **7 行 barrel** ＋ `integrations/` 8 檔（最大 187）＝ 第七輪 |
+| `frontend/src/components/AgentsMonitorPanel.tsx` | 664 行 | **8 行 barrel** ＋ `agentsmonitor/` 4 檔（最大 355）＝ 第七輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -347,3 +352,33 @@ backend/
 | `oxlint src` | 0 errors（41 個既有 warnings） |
 
 文件同步：`docs/company/roles.md`、`docs/structure.md`、`docs/development/guide.md` 舊路徑已更新。測試整合：`test_linkin_role_budgets.py`（收斂到 `agent_monitor.costs`）與 `test_aliyun_budget.py`（收斂到 `agent_monitor.aggregate`／`costs` 呼叫端）。
+
+## 15. 第九輪：inspector／api_router／decomposer／IntegrationsPanel／AgentsMonitorPanel（round7，2026-11-12）
+
+### 15.1 後端三個模組 → 套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `company/raho/inspector.py` 954 行 | 7 檔／1,177 行：`constants`／`models`／`similarity`／`schema`／`service`／`gate`／`__init__`；公開名稱 55/55、63/63 頂層節點 AST 逐字相同（含 `__all__` 與 CONSTITUTION_LAYER 全文） |
+| `core/api_router.py` 938 行 | 6 檔／1,163 行：`models`／`presets`／`routes`／`selection`／`state`／`__init__`；`dir()` 公開名 51/51、52/52 定義 AST 相同；33 個行為 probe 與舊模組一致；無測試 patch 需調整 |
+| `company/decomposer.py` 743 行 | 5 檔／836 行：`types`／`llm`／`service`／`_compat`／`__init__`；28 個公開名稱、AST 相同；`backend.company.decomposer.call_llm` 的 3 處既有 patch 經 `_compat` 延遲解析維持有效（測試零修改） |
+
+### 15.2 前端兩個面板 → 薄 barrel + 子元件套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `IntegrationsPanel.tsx` 699 行 | 7 行 barrel ＋ `integrations/` 8 檔（IntegrationCard／三組 Actions／RecallWorkbench／shared／helpers／主體，最大 187）；body 624/624 行逐字保留 |
+| `AgentsMonitorPanel.tsx` 664 行 | 8 行 barrel ＋ `agentsmonitor/` 4 檔（RoleDeskPanes／RoleMonitorExtras／RoleDeepMonitor／主體，最大 355）；state／effects／handlers 留在主體，hooks 順序不變 |
+
+### 15.3 第九輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（2 分 30 秒，與重構前一致） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（577 source files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（41 個既有 warnings） |
+
+文件同步：`AGENTS.md`、`backend/README.md`、`docs/structure.md`、`docs/architecture/optimization-roadmap.md` 舊路徑已更新。
