@@ -81,8 +81,11 @@
 | [design/README.md](design/README.md) | 視覺 Token 說明（避免與架構混淆） |
 | [DEPLOYMENT.md](../DEPLOYMENT.md) | 指向部署指南的捷徑 |
 | [PROJECT_SPEC.md](../PROJECT_SPEC.md) | Local Video Studio 規格（M0–M7） |
+| [FEATURES_AND_TOOLS.md](../FEATURES_AND_TOOLS.md) | Studio 功能矩陣與工具選型（§0–5） |
 | [docs/openapi.json](openapi.json) | OpenAPI 匯出（若有） |
 | [integrations/local-video-studio.md](integrations/local-video-studio.md) | Studio 整合捷徑（→ PROJECT_SPEC） |
+| [integrations/features-and-tools.md](integrations/features-and-tools.md) | FEATURES_AND_TOOLS 指針＋backlog |
+| [backlog/](backlog/README.md) | Studio §4 issue backlog（P0／P1 狀態 vs #167） |
 | [integrations/media-vault.md](integrations/media-vault.md) | 採集媒資庫 |
 
 ### 文件維護規則
