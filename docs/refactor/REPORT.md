@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（496 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（521 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -102,6 +102,11 @@ backend/
 | `frontend/src/components/LiveBoard.tsx` | 1,169 行 | **8 行 barrel** ＋ `liveboard/` 8 檔（最大 297）＝ 第三輪 |
 | `frontend/src/components/ContextPanel.tsx` | 994 行 | **6 行 barrel** ＋ `contextpanel/` 8 檔（最大 293）＝ 第三輪 |
 | `frontend/src/components/SkillsMcpPanel.tsx` | 1,149 行 | **7 行 barrel** ＋ `skills-mcp/` 9 檔（最大 379）＝ 第三輪 |
+| `backend/services/task_manager.py` | 1,539 行 | 9 檔套件／1,946 行（最大 332）＝ 第四輪 |
+| `backend/billing/pool_store.py` | 1,960 行 | 9 檔套件／2,135 行（最大 376）＝ 第四輪 |
+| `backend/company/quant_tools.py` | 3,303 行 | 10 檔套件／3,574 行（最大 554）＝ 第四輪 |
+| `frontend/src/components/SidePanel.tsx` | 905 行 | **7 行 barrel** ＋ `sidepanel/` 9 檔（最大 227）＝ 第四輪 |
+| `frontend/src/components/DockerView.tsx` | 713 行 | **13 行 barrel** ＋ `dockerview/` 5 檔（最大 362）＝ 第四輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -238,3 +243,35 @@ backend/
 | `tsc -p tsconfig.app.json --noEmit` | 0 error |
 | `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
 | `oxlint src` | 0 errors（41 個既有 warnings） |
+
+## 12. 第六輪：task_manager／pool_store／quant_tools／SidePanel／DockerView（round4，2026-11-12）
+
+### 12.1 後端三個大檔 → 套件（import 路徑與測試 patch 語意不變）
+
+| 原檔 | 重構後 |
+|------|--------|
+| `services/task_manager.py` 1,539 行 | 9 檔／1,946 行：`models`／`store`／`lifecycle`／`budget`／`runtime`／`company_runtime`／`_base`／`_compat`／`__init__`；singleton 與 `TraceLogger`／checkpoint patch 表面保留（`_compat` 延遲解析）；49/49 方法 AST 逐字相同 |
+| `billing/pool_store.py` 1,960 行 | 9 檔／2,135 行：`schema`／`schema_sql`（352 行 DDL）／`pricing`／`pools`／`task_billing`／`keys`／`misc`／`installments`／`__init__`；69/69 方法 AST 逐字相同、25 個 re-export 符號與 `_DEFAULT_DB` 路徑不變 |
+| `company/quant_tools.py` 3,303 行 | 10 檔／3,574 行：`data`／`indicators`／`strategies`／`strategies_advanced`／`backtest`／`analysis`／`portfolio`／`tools`／`constants`／`__init__`；37 個公開名稱不變；102/102 函式 AST 相同；3 個測試檔的 `_http_get_json`／`_http_get_text` patch 目標改指 `quant_tools.data`；`pyproject` 的 mypy override 擴為 `backend.company.quant_tools.*` |
+
+### 12.2 前端兩個面板 → 薄 barrel + 子元件套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `SidePanel.tsx` 905 行 | 7 行 barrel ＋ `sidepanel/` 9 檔（types／shared／SessionList／AgentRoster／ApiRouteRoster／TaskRoster／LabSidebar／MonitorSidebar／主體，最大 227） |
+| `DockerView.tsx` 713 行 | 13 行 barrel ＋ `dockerview/` 5 檔（ContainerCard／HealthBar／LogModal／shared／主體，最大 362） |
+
+兩者 default export 與既有 import 路徑不變；抽取以逐行等價稽核（非空 body 行 multiset）確認 JSX／邏輯未變。
+
+### 12.3 第六輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（2 分 33 秒，與重構前一致） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（521 source files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（41 個既有 warnings） |
+
+文件同步：`backend/README.md`、`docs/structure.md`、`docs/company/quant-tools.md`、`docs/architecture/company-runtime.md`、`reflection-loop.md`、`optimization-roadmap.md` 的舊檔案路徑已更新為套件路徑。
