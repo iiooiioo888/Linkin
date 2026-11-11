@@ -76,11 +76,11 @@ backend/
 
 | 檢查 | 指令 | 結果 |
 |------|------|------|
-| 後端測試 | `pytest backend/tests/` | **1572 passed / 1 skipped / 0 failed**（2 分 39 秒；合併上游後最終樹） |
+| 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（538 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（489 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
-| 前端單元測試 | `npx vitest run` | 17 files / 72 tests passed |
+| 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
 
 執行環境：Windows 11／Python 3.13（專案 venv）／Node 24。
@@ -190,3 +190,12 @@ backend/
 | `oxlint src` | 0 errors（67 warnings，既有類別） |
 
 分支現狀：`master` = 上游 + 本地 4 commit；`refactor/project-structure` = 上述 + 三輪重構（4 個 commit）。
+
+## 10. 第四輪：上游移除 Minecraft 組件（#176，2026-11-11）
+
+| 步驟 | 內容 |
+|------|------|
+| `master` ← `origin/master` | 3 個新 commit（含 `eb14f83` 移除 Minecraft 組件：96 檔刪除、約 −30,729 行）。6 個衝突：`backend/main.py`、`frontend/src/App.tsx`（保留重構結構＋移植移除 delta）；`backend/linkin/minecraft.py`、`backend/tools/minecraft_mcp.py`、`backend/tests/test_minecraft_mcp.py`（接受上游刪除）；`frontend/src/types.ts`（接受我方刪除，`minecraft_ops` 值移植到 `types/task.ts` 移除） |
+| 重構側調整 | 刪除 `backend/api/routers/chat/minecraft_stream.py`；`chat/streaming.py` 移除 minecraft_ops 分支；`types/task.ts` 的 `resolved_path`／`RoutingPath` 移除 `minecraft_ops` |
+
+驗收：pytest **1397 passed / 1 skipped**、ruff All checks passed、mypy Success（489 files）、tsc 0 error、vitest **16 檔 / 66 tests**、npm build BUILD_EXIT=0 → merge commit `f5252f6`。
