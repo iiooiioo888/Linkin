@@ -26,10 +26,15 @@ curl -s http://127.0.0.1:8000/local-video-studio/health
 
 ## API 前綴 `/local-video-studio/api/v1`
 
+完整端點與可複製 curl／httpx 見 [`docs/API.md`](../../docs/API.md)；工作流／模型見 [`docs/WORKFLOWS.md`](../../docs/WORKFLOWS.md)。
+
 | 方法 | 路徑 | 說明 |
 | --- | --- | --- |
 | * | `/projects` `/shots` `/scripts` | M1 CRUD |
 | * | `/jobs` `/jobs/{id}/claim|complete|cancel|retry` | M2 |
+| GET | `/jobs/{id}/log` | P0-12 任務日誌尾部 |
+| POST/GET | `/workflows` `/workflows/{name}` | P0-03 模板匯入與版本 |
+| POST/GET | `/models` `/models/{name}` | P0-11 模型註冊 |
 | GET | `/projects/{id}/assets` | 資產列表 |
 | POST | `/assets/{id}/review` | approve／reject／needs_retry |
 | GET | `/projects/{id}/review-queue` | 審核佇列 |
@@ -52,7 +57,8 @@ curl -s http://127.0.0.1:8000/local-video-studio/health
 ```bash
 pytest backend/tests/test_local_video_studio.py \
        backend/tests/test_local_video_studio_m2.py \
-       backend/tests/test_local_video_studio_m3_m6.py -q
+       backend/tests/test_local_video_studio_m3_m6.py \
+       backend/tests/test_local_video_studio_p0_gaps.py -q
 ```
 
 ## 約束

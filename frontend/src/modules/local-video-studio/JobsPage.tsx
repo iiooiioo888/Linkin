@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   cancelLvsJob,
   createLvsJob,
+  getLvsJobLog,
   listLvsJobs,
   listLvsShots,
   recalledLvsProjectId,
   retryLvsJob,
   type LvsJob,
+  type LvsJobLog,
   type LvsShot,
 } from '../../lib/localVideoStudioApi';
 import { StatusBadge, goLvs } from './ui';
@@ -18,6 +20,7 @@ export default function JobsPage() {
   const [shotId, setShotId] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [logPreview, setLogPreview] = useState<LvsJobLog | null>(null);
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
@@ -84,6 +87,16 @@ export default function JobsPage() {
       await retryLvsJob(jobId);
       setMessage(`已重試 ${jobId.slice(0, 8)}`);
       await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const onShowLog = async (jobId: string) => {
+    setError('');
+    try {
+      const log = await getLvsJobLog(jobId);
+      setLogPreview(log);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -201,10 +214,16 @@ export default function JobsPage() {
               </td>
               <td className="py-2 pr-2">{job.assigned_agent || '—'}</td>
               <td className="py-2 pr-2 font-mono text-[11px] text-[var(--console-sub)]">
-                {job.asset?.relative_path || job.error || '—'}
+                {job.status === 'failed' ? (
+                  <span className="text-red-400" data-testid="lvs-job-error-summary">
+                    {job.error_summary || job.error || '失敗（無摘要）'}
+                  </span>
+                ) : (
+                  job.asset?.relative_path || '—'
+                )}
               </td>
               <td className="py-2">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {(job.status === 'queued' || job.status === 'running') && (
                     <button
                       type="button"
@@ -223,6 +242,14 @@ export default function JobsPage() {
                       重試
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="text-[var(--console-sub)] hover:underline"
+                    onClick={() => void onShowLog(job.id)}
+                    data-testid="lvs-job-log-btn"
+                  >
+                    日誌
+                  </button>
                 </div>
               </td>
             </tr>
@@ -236,6 +263,38 @@ export default function JobsPage() {
           ) : null}
         </tbody>
       </table>
+
+      {logPreview ? (
+        <section
+          className="rounded border border-[var(--console-line)] p-3"
+          data-testid="lvs-job-log-panel"
+        >
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h3 className="text-[13px] font-medium text-[var(--console-ink)]">
+              日誌 · {logPreview.job_id.slice(0, 8)}
+            </h3>
+            <button
+              type="button"
+              className="text-[12px] text-[var(--console-sub)] hover:underline"
+              onClick={() => setLogPreview(null)}
+            >
+              關閉
+            </button>
+          </div>
+          <p className="mb-2 font-mono text-[11px] text-[var(--console-sub)]">
+            {logPreview.log_relative_path}
+            {logPreview.error_summary ? (
+              <>
+                {' · '}
+                <span className="text-red-400">{logPreview.error_summary}</span>
+              </>
+            ) : null}
+          </p>
+          <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] text-[var(--console-ink)]">
+            {logPreview.exists ? logPreview.content || '（空）' : '（尚未產生日誌檔）'}
+          </pre>
+        </section>
+      ) : null}
     </div>
   );
 }
