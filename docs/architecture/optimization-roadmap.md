@@ -103,7 +103,7 @@ EVOL_COST_SPEED_PATH=backend/config/cost_speed.json
 
 ## P1：Reviewer + Synthesizer 合併
 
-**模組**：`backend/company/orchestrator.py` → `_review_and_synthesize`
+**模組**：`backend/company/orchestrator/review.py` → `_review_and_synthesize`
 
 公司運行時階段 3 預設啟用合併模式：單次 LLM 完成交付物審查 + 整合，減少一次 API 往返。
 

@@ -101,7 +101,7 @@ LangGraph 只覆蓋 `POST /chat`。另有三處**手抄的反思迴圈**（不�
 |------|------|
 | `POST /chat/stream`（SSE 串流） | `backend/api/routers/chat/streaming.py` → `chat_stream()` |
 | 公司運行時 SSE | `backend/api/routers/chat/company_stream.py` → `_company_stream()` |
-| `POST /tasks` 背景任務 | `backend/services/task_manager.py` → `_run_reflection_loop()` |
+| `POST /tasks` 背景任務 | `backend/services/task_manager/runtime.py` → `_run_reflection_loop()` |
 
 新增第四條路徑時，務必照同樣方式接上守門節點，否則該路徑的超長輸出不會被拦。
 

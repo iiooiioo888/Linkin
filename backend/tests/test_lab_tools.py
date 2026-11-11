@@ -202,7 +202,7 @@ def test_lab_quant_preview_returns_workflow_and_chart(client: TestClient, monkey
 
     closes = _up_then_down(90)
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: _yahoo_payload(closes),
     )
     r = client.get("/lab/quant/preview", params={"strategy": "dual_ma", "symbol": "600519"})
@@ -224,7 +224,7 @@ def test_lab_quant_capital_flow(client, monkeypatch):
 
     closes = [100 + i * 0.5 for i in range(80)]
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: _yahoo_payload(closes),
     )
     r = client.get(

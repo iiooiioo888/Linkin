@@ -95,7 +95,7 @@ def test_market_quote_and_kline_from_yahoo(monkeypatch):
         assert "finance.yahoo.com" in url
         return payload
 
-    monkeypatch.setattr("backend.company.quant_tools._http_get_json", fake_get)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_json", fake_get)
     quote = market_quote("茅台")
     assert quote["ok"] is True
     assert quote["symbol"] == "600519.SS"
@@ -111,7 +111,7 @@ def test_market_quote_and_kline_from_yahoo(monkeypatch):
 def test_market_backtest_dual_ma_and_macd(monkeypatch):
     closes = _up_then_down(90)
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: _yahoo_payload(closes),
     )
     dual = market_backtest("600519", strategy="dual_ma", short=5, long=20)
@@ -142,7 +142,7 @@ def test_market_backtest_dual_ma_and_macd(monkeypatch):
 def test_market_compare_ranks_all_strategies(monkeypatch):
     closes = _up_then_down(90)
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: _yahoo_payload(closes),
     )
     result = market_compare("600519")
@@ -168,7 +168,7 @@ def test_market_compare_ranks_all_strategies(monkeypatch):
 def test_market_watch_alerts(monkeypatch):
     closes = [100.0] * 30 + [90.0]
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: _yahoo_payload(closes),
     )
     watch = market_watch("000001", drop_pct=3)
@@ -188,7 +188,7 @@ def test_yahoo_fail_falls_back_to_eastmoney(monkeypatch):
             rows.append(f"2024-01-{i+1:02d},{price:.2f},{price+0.2:.2f},{price+0.3:.2f},{price-0.1:.2f},1000")
         return {"data": {"klines": rows}}
 
-    monkeypatch.setattr("backend.company.quant_tools._http_get_json", fake_get)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_json", fake_get)
     quote = market_quote("600519")
     assert quote["ok"] is True
     assert quote["source"] == "eastmoney"
@@ -208,7 +208,7 @@ def test_fx_and_crypto(monkeypatch):
             }
         raise AssertionError(url)
 
-    monkeypatch.setattr("backend.company.quant_tools._http_get_json", fake_get)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_json", fake_get)
     fx = fx_rate("USD", "CNY")
     assert fx["ok"] is True
     assert fx["rate"] == 7.2
@@ -221,11 +221,11 @@ def test_fx_and_crypto(monkeypatch):
 
 def test_network_error_is_structured(monkeypatch):
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: (_ for _ in ()).throw(RuntimeError("timeout")),
     )
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_text",
+        "backend.company.quant_tools.data._http_get_text",
         lambda url, params=None: (_ for _ in ()).throw(RuntimeError("timeout")),
     )
     quote = market_quote("AAPL")
@@ -284,7 +284,7 @@ def test_company_registry_has_quant_tools_and_role_filter():
 
 def test_registry_execute_quote_json(monkeypatch):
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: _yahoo_payload([10, 11, 12, 13, 14]),
     )
     result = tool_registry.execute(
@@ -351,7 +351,7 @@ def _route_json(url, params=None):
 
 
 def test_eastmoney_research_tools(monkeypatch):
-    monkeypatch.setattr("backend.company.quant_tools._http_get_json", _route_json)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_json", _route_json)
     fund = market_fundamentals("茅台")
     assert fund["ok"] is True
     assert fund["pe"] == 28.5
@@ -389,7 +389,7 @@ def test_market_search_and_portfolio(monkeypatch):
             return payload
         return _route_json(url, params)
 
-    monkeypatch.setattr("backend.company.quant_tools._http_get_json", fake_get)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_json", fake_get)
     search = market_search("茅台")
     assert search["ok"] is True
     symbols = {item["symbol"] for item in search["hits"]}
@@ -413,8 +413,8 @@ def test_us_yahoo_fail_falls_back_to_stooq(monkeypatch):
 
     csv = "Date,Open,High,Low,Close,Volume\n2024-01-01,10,11,9,10.5,100\n2024-01-02,10.5,12,10,11,100\n2024-01-03,11,12,10,10.8,100\n"
 
-    monkeypatch.setattr("backend.company.quant_tools._http_get_json", fake_json)
-    monkeypatch.setattr("backend.company.quant_tools._http_get_text", lambda url, params=None: csv)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_json", fake_json)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_text", lambda url, params=None: csv)
     quote = market_quote("AAPL")
     assert quote["ok"] is True
     assert quote["source"] == "stooq"
@@ -429,7 +429,7 @@ def test_crypto_coingecko_fallback(monkeypatch):
             return {"bitcoin": {"usd": 64000, "usd_24h_change": 1.1}}
         raise AssertionError(url)
 
-    monkeypatch.setattr("backend.company.quant_tools._http_get_json", fake_get)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_json", fake_get)
     crypto = crypto_quote("BTC")
     assert crypto["ok"] is True
     assert crypto["source"] == "coingecko"
@@ -439,7 +439,7 @@ def test_crypto_coingecko_fallback(monkeypatch):
 def test_extra_strategies_optimize_walkforward_and_signals(monkeypatch):
     closes = _up_then_down(90)
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: _yahoo_payload(closes),
     )
     turtle = market_backtest("600519", strategy="turtle")
@@ -481,7 +481,7 @@ def test_fx_currency_api_fallback(monkeypatch):
             return {"date": "2024-06-01", "usd": {"cny": 7.21}}
         raise AssertionError(url)
 
-    monkeypatch.setattr("backend.company.quant_tools._http_get_json", fake_get)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_json", fake_get)
     fx = fx_rate("USD", "CNY")
     assert fx["ok"] is True
     assert fx["source"] == "currency_api"
@@ -496,7 +496,7 @@ def test_crypto_binance_fallback(monkeypatch):
             return {"lastPrice": "65000.1", "priceChangePercent": "1.2", "quoteVolume": "10"}
         raise AssertionError(url)
 
-    monkeypatch.setattr("backend.company.quant_tools._http_get_json", fake_get)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_json", fake_get)
     crypto = crypto_quote("BTC")
     assert crypto["ok"] is True
     assert crypto["source"] == "binance"
@@ -506,7 +506,7 @@ def test_crypto_binance_fallback(monkeypatch):
 def test_parabolic_sar_t1_and_extra_portfolio(monkeypatch):
     closes = _up_then_down(90)
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: _yahoo_payload(closes),
     )
     sar = market_backtest("600519", strategy="parabolic_sar", enable_t1=True, trailing_stop_pct=8)
@@ -546,7 +546,7 @@ def test_minutes_flow_benchmark_returns_and_sina(monkeypatch):
             return payload
         raise AssertionError(url)
 
-    monkeypatch.setattr("backend.company.quant_tools._http_get_json", fake_get)
+    monkeypatch.setattr("backend.company.quant_tools.data._http_get_json", fake_get)
     minutes = market_minutes("600519", interval="5m")
     assert minutes["ok"] is True
     assert minutes["source"] == "eastmoney"
@@ -650,7 +650,7 @@ def test_strategy_catalog_and_engine_aliases(monkeypatch):
 
     closes = _up_then_down(90)
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: _yahoo_payload(closes),
     )
     alias = market_backtest("600519", strategy="sma_cross_5_20")
@@ -695,7 +695,7 @@ def test_stock_quant_volume_strategies(monkeypatch):
         prices.append(round(price, 4))
 
     monkeypatch.setattr(
-        "backend.company.quant_tools._http_get_json",
+        "backend.company.quant_tools.data._http_get_json",
         lambda url, params=None: _yahoo_payload(prices, volumes=vols),
     )
     catalog = market_strategy_catalog(listing=True)

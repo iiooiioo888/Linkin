@@ -52,6 +52,7 @@ check_untyped_defs = false
 [[tool.mypy.overrides]]
 module = [
     "backend.company.quant_tools",
+    "backend.company.quant_tools.*",
     "backend.company.quant_strategy_maps",
 ]
 disable_error_code = [

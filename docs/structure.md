@@ -112,7 +112,7 @@ OPC 寫入仍走護欄。
 
 | 檔案 | 職責 |
 |------|------|
-| `task_manager.py` · `task_broadcaster.py` | 任務生命週期與廣播 |
+| `task_manager/` · `task_broadcaster.py` | 任務生命週期與廣播 |
 | `trace_logger.py` · `archiver.py` · `state_store.py` | 軌跡、存檔、狀態 |
 | `monitor_hub.py` · `dashboard.py` · `agent_monitor.py` | 監控彙總 |
 | `llm_ops.py` | 模型目錄爬取／運維 |
@@ -124,13 +124,13 @@ OPC 寫入仍走護欄。
 
 | 路徑 | 職責 |
 |------|------|
-| `orchestrator.py` · `work_item.py` · `state.py` | 協調、工作項 DAG、狀態機 |
+| `orchestrator/` · `work_item.py` · `state.py` | 協調、工作項 DAG、狀態機 |
 | `roles.py` · `role_catalog.py` · `role_memory.py` | 80 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
 | `raho/` | 執行期內部協議（記憶注入與交付檢查），不再佔名冊席位 |
 | `budget.py` · `rate_card.py` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
 | `seat_io.py` | 席位投遞 I/O 軌跡（prompt／system／response 全文＋來源分解）；前端席位監察頁資料源，契約見 [api/reference.md](api/reference.md) |
 | `decomposer.py` · `react_loop.py` · `tools.py` | 拆解、ReAct、工具 |
-| `quant_*.py` · `docker_tools.py` · `archify_compile.py` | 量化與策略圖（價格分析探針）；Docker 容器（核心的開發組件） |
+| `quant_tools/` · `quant_*.py` · `docker_tools.py` · `archify_compile.py` | 量化與策略圖（價格分析探針）；Docker 容器（核心的開發組件） |
 
 ### backend/linkin/（關鍵）
 
