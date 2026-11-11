@@ -21,7 +21,10 @@ from backend.local_video_studio.schemas import (
     ComposeRequest,
     JobComplete,
     JobCreate,
+    JobLogOut,
     JobOut,
+    ModelRegister,
+    ModelRegistryOut,
     ProjectCreate,
     ProjectOut,
     ProjectPatch,
@@ -34,6 +37,8 @@ from backend.local_video_studio.schemas import (
     ShotCreate,
     ShotOut,
     ShotPatch,
+    WorkflowTemplateImport,
+    WorkflowTemplateOut,
 )
 
 router = APIRouter(prefix="/local-video-studio", tags=["local-video-studio"])
@@ -345,6 +350,112 @@ async def api_upload_project_file(
         "kind": kind,
         "filename": raw_name,
     }
+
+
+@v1.post(
+    "/workflows",
+    response_model=WorkflowTemplateOut,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_import_workflow(
+    body: WorkflowTemplateImport, db: Session = Depends(get_db)
+) -> WorkflowTemplateOut:
+    """P0-03：匯入 ComfyUI API 格式 JSON＋mapping；缺 node 回 422。"""
+    from backend.local_video_studio import workflow_templates as wf_svc
+
+    return wf_svc.import_workflow(db, body)
+
+
+@v1.get(
+    "/workflows",
+    response_model=list[WorkflowTemplateOut],
+    dependencies=[Depends(_require_api_key)],
+)
+def api_list_workflows(
+    name: str | None = None,
+    latest_only: bool = False,
+    db: Session = Depends(get_db),
+) -> list[WorkflowTemplateOut]:
+    from backend.local_video_studio import workflow_templates as wf_svc
+
+    return wf_svc.list_workflows(db, name=name, latest_only=latest_only)
+
+
+@v1.get(
+    "/workflows/{name}",
+    response_model=WorkflowTemplateOut,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_get_workflow(
+    name: str,
+    version: int | None = Query(default=None, ge=1),
+    db: Session = Depends(get_db),
+) -> WorkflowTemplateOut:
+    from backend.local_video_studio import workflow_templates as wf_svc
+
+    return wf_svc.get_workflow(db, name, version=version)
+
+
+@v1.post(
+    "/models",
+    response_model=ModelRegistryOut,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_register_model(body: ModelRegister, db: Session = Depends(get_db)) -> ModelRegistryOut:
+    """P0-11：登記模型名／路徑／sha256／VAE。"""
+    from backend.local_video_studio import model_registry as model_svc
+
+    return model_svc.register_model(db, body)
+
+
+@v1.get(
+    "/models",
+    response_model=list[ModelRegistryOut],
+    dependencies=[Depends(_require_api_key)],
+)
+def api_list_models(db: Session = Depends(get_db)) -> list[ModelRegistryOut]:
+    from backend.local_video_studio import model_registry as model_svc
+
+    return model_svc.list_models(db)
+
+
+@v1.get(
+    "/models/{name}",
+    response_model=ModelRegistryOut,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_get_model(name: str, db: Session = Depends(get_db)) -> ModelRegistryOut:
+    from backend.local_video_studio import model_registry as model_svc
+
+    return model_svc.get_model(db, name)
+
+
+@v1.get(
+    "/jobs/{job_id}/log",
+    response_model=JobLogOut,
+    dependencies=[Depends(_require_api_key)],
+)
+def api_job_log(
+    job_id: str,
+    tail: int | None = Query(default=80, ge=1, le=2000),
+    db: Session = Depends(get_db),
+) -> JobLogOut:
+    """P0-12：讀取 job 獨立日誌檔（尾部摘要）。"""
+    from backend.local_video_studio.job_log import error_summary_from_log, read_job_log
+    from backend.local_video_studio.models import GenerationJob
+
+    job = db.get(GenerationJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="任務不存在")
+    rel, content = read_job_log(job.project_id, job.id, tail_lines=tail)
+    return JobLogOut(
+        job_id=job.id,
+        project_id=job.project_id,
+        log_relative_path=job.log_relative_path or rel,
+        exists=content is not None,
+        content=content,
+        error_summary=error_summary_from_log(content, fallback=job.error),
+    )
 
 
 def _guess_mime(path: Path) -> str:

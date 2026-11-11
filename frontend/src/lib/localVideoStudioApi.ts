@@ -143,6 +143,7 @@ export type LvsJob = {
   shot_id: string;
   job_type: string;
   workflow_template: string;
+  workflow_version?: number | null;
   params_json: Record<string, unknown>;
   status: string;
   attempt: number;
@@ -150,6 +151,8 @@ export type LvsJob = {
   priority: number;
   assigned_agent?: string | null;
   error?: string | null;
+  error_summary?: string | null;
+  log_relative_path?: string | null;
   created_at: string;
   asset?: {
     id: string;
@@ -158,6 +161,15 @@ export type LvsJob = {
     bytes?: number | null;
     sha256?: string | null;
   } | null;
+};
+
+export type LvsJobLog = {
+  job_id: string;
+  project_id: string;
+  log_relative_path: string;
+  exists: boolean;
+  content?: string | null;
+  error_summary?: string | null;
 };
 
 export async function listLvsJobs(projectId?: string): Promise<LvsJob[]> {
@@ -271,6 +283,15 @@ export async function retryLvsJob(jobId: string): Promise<LvsJob> {
   const resp = await fetch(
     apiUrl(`/local-video-studio/api/v1/jobs/${encodeURIComponent(jobId)}/retry`),
     { method: 'POST' },
+  );
+  return parseJson(resp);
+}
+
+export async function getLvsJobLog(jobId: string, tail = 80): Promise<LvsJobLog> {
+  const resp = await fetch(
+    apiUrl(
+      `/local-video-studio/api/v1/jobs/${encodeURIComponent(jobId)}/log?tail=${encodeURIComponent(String(tail))}`,
+    ),
   );
   return parseJson(resp);
 }

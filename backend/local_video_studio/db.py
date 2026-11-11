@@ -87,7 +87,9 @@ def init_db() -> None:
         ).fetchone()
         if existing is None:
             conn.execute(
-                text("INSERT INTO lvs_schema_meta(key, value) VALUES ('revision', 'm1_001')")
+                text(
+                    "INSERT INTO lvs_schema_meta(key, value) VALUES ('revision', 'p0_003_011_012')"
+                )
             )
 
 

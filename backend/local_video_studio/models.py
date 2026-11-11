@@ -106,6 +106,7 @@ class GenerationJob(Base):
     )
     job_type: Mapped[str] = mapped_column(String(32), nullable=False)
     workflow_template: Mapped[str] = mapped_column(String(128), nullable=False)
+    workflow_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     params_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
     attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -116,6 +117,7 @@ class GenerationJob(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    log_relative_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -123,6 +125,44 @@ class GenerationJob(Base):
     project: Mapped[Project] = relationship(back_populates="jobs")
     resources: Mapped[list[ResourceRecord]] = relationship(
         back_populates="job", cascade="all, delete-orphan"
+    )
+
+
+class WorkflowTemplate(Base):
+    """ComfyUI API 格式工作流模板＋mapping；同名可多版本。"""
+
+    __tablename__ = "lvs_workflow_templates"
+    __table_args__ = (
+        UniqueConstraint("name", "version", name="uq_lvs_workflow_name_version"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    json_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mapping_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    workflow_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    mapping_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    required_models_json: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ModelRegistry(Base):
+    """本機模型登記：名／路徑／sha256／VAE；執行前存在性校驗。"""
+
+    __tablename__ = "lvs_model_registry"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    path: Mapped[str] = mapped_column(Text, nullable=False)
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    vae_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
 
