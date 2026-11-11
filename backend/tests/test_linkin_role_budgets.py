@@ -178,11 +178,11 @@ def test_budget_alert_when_over_daily(monkeypatch):
         return real_finalize(agent)
 
     monkeypatch.setattr(
-        "backend.services.agent_monitor._finalize_agent",
+        "backend.services.agent_monitor.costs._finalize_agent",
         finalize,
     )
     monkeypatch.setattr(
-        "backend.services.agent_monitor._allocate_cloud_costs",
+        "backend.services.agent_monitor.costs._allocate_cloud_costs",
         lambda agents: {
             "docker_usd": 0.0,
             "aliyun_usd": 0.0,

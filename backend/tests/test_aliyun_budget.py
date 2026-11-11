@@ -146,9 +146,11 @@ def test_can_afford_uses_combined_monthly(monkeypatch):
 
 def test_agent_monitor_allocates_cloud_into_budget(monkeypatch):
     from backend.services import agent_monitor as am
+    from backend.services.agent_monitor import aggregate as am_agg
+    from backend.services.agent_monitor import costs as am_costs
 
     monkeypatch.setattr(
-        am,
+        am_agg,
         "list_role_snapshots",
         lambda: [
             {
@@ -175,13 +177,13 @@ def test_agent_monitor_allocates_cloud_into_budget(monkeypatch):
         ],
     )
     monkeypatch.setattr(am.task_manager, "tasks", {})
-    monkeypatch.setattr(am, "_ingest_run_logs", lambda agents: None)
+    monkeypatch.setattr(am_agg, "_ingest_run_logs", lambda agents: None)
     monkeypatch.setattr(
-        am,
+        am_agg,
         "catalog_meta",
         lambda: {"categories": [], "org_templates": [], "presets": []},
     )
-    monkeypatch.setattr(am, "get_monitor_prefs", dict)
+    monkeypatch.setattr(am_agg, "get_monitor_prefs", dict)
 
     class _Billing:
         def get_billing_summary(self):
@@ -207,7 +209,7 @@ def test_agent_monitor_allocates_cloud_into_budget(monkeypatch):
             agent["status"] = "busy"
         return real_finalize(agent)
 
-    monkeypatch.setattr(am, "_finalize_agent", finalize)
+    monkeypatch.setattr(am_costs, "_finalize_agent", finalize)
 
     data = am.collect_agent_monitor()
     by_id = {a["id"]: a for a in data["agents"]}

@@ -114,7 +114,7 @@ OPC 寫入仍走護欄。
 |------|------|
 | `task_manager/` · `task_broadcaster.py` | 任務生命週期與廣播 |
 | `trace_logger.py` · `archiver.py` · `state_store.py` | 軌跡、存檔、狀態 |
-| `monitor_hub.py` · `dashboard.py` · `agent_monitor.py` | 監控彙總 |
+| `monitor_hub.py` · `dashboard.py` · `agent_monitor/` | 監控彙總 |
 | `llm_ops.py` | 模型目錄爬取／運維 |
 | `cloud_console.py` · `docker_manager.py` · `aliyun_bss.py` | 雲／Docker／帳單 |
 | `opc_monitor.py` · `optimization_monitor.py` | OPC 與優化指標 |
@@ -125,7 +125,7 @@ OPC 寫入仍走護欄。
 | 路徑 | 職責 |
 |------|------|
 | `orchestrator/` · `work_item.py` · `state.py` | 協調、工作項 DAG、狀態機 |
-| `roles.py` · `role_catalog.py` · `role_memory.py` | 80 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
+| `roles/` · `role_catalog/` · `role_memory.py` | 80 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
 | `raho/` | 執行期內部協議（記憶注入與交付檢查），不再佔名冊席位 |
 | `budget.py` · `rate_card.py` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
 | `seat_io.py` | 席位投遞 I/O 軌跡（prompt／system／response 全文＋來源分解）；前端席位監察頁資料源，契約見 [api/reference.md](api/reference.md) |
@@ -174,7 +174,7 @@ python backend/scripts/test_llm_connection.py
 
 | 數字 | 含義 | 來源 |
 |------|------|------|
-| **80** | 公司 `STANDARD_ROLES` | `backend/company/roles.py` |
+| **80** | 公司 `STANDARD_ROLES` | `backend/company/roles/` |
 | **16** | 靈境子角色（4 總監 × 總監+執行者+審查員+記錄員） | `backend/linkin/roles.py` |
 | **8** | `BUILTIN_TEMPLATES` 組織模板 | `backend/company/roles.py` |
 

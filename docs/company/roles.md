@@ -1,13 +1,13 @@
 # 角色介紹
 
-> 來源：`backend/company/roles.py`（`STANDARD_ROLES`）＋`backend/linkin/roles.py`（靈境子角色種子）
+> 來源：`backend/company/roles/`（`STANDARD_ROLES`）＋`backend/linkin/roles.py`（靈境子角色種子）
 > 對齊日期：2026-10-22 · 內建 **80** 席＋靈境 **16** 席＋模板 **8**
 
 ## 先分清楚三種「角色」
 
 | 種類 | 數量 | 程式來源 | 用途 |
 |------|------|----------|------|
-| **公司 STANDARD_ROLES** | 80 | `backend/company/roles.py` | 複雜任務由任務經理調度的代理人席位 |
+| **公司 STANDARD_ROLES** | 80 | `backend/company/roles/` | 複雜任務由任務經理調度的代理人席位 |
 | **RAHO 脊柱席位** | 5 | `backend/company/seat_table.py`（`_RAHO_SPINE`） | L0–L4 固定席位，不屬公司角色表 |
 | **靈境子角色** | 16 | `backend/linkin/roles.py` → `role_catalog` | 建築／敘事／NPC／道具四部門 |
 | **組織模板 BUILTIN_TEMPLATES** | 8 | 同 `roles.py` | 預組團隊（非獨立角色） |
@@ -187,13 +187,13 @@
 
 | 需求 | 作法 |
 |------|------|
-| 改內建席 Prompt／職責 | 編輯 `backend/company/roles.py` 對應 `ROLE_*`，補測試 |
+| 改內建席 Prompt／職責 | 編輯 `backend/company/roles/` 對應 `ROLE_*`，補測試 |
 | 執行期覆寫／自定義席 | 監控中心或 `role_catalog` API；檔案 `backend/data/role_catalog.json` |
-| 新增組織模板 | 在 `roles.py` 加 `create_*` 並掛進 `BUILTIN_TEMPLATES` |
+| 新增組織模板 | 在 `roles/` 加 `create_*` 並掛進 `BUILTIN_TEMPLATES` |
 | 靈境 16 席 | `backend/linkin/roles.py`＋`prompts.py`，啟動時冪等刷新 |
 | 禁止事項 | 勿讓角色直連 MineMCP／檔案系統工具；LLM 一律 `call_llm` |
 
 ## 相關入口
 
 - [公司運行時](../architecture/company-runtime.md) · [目錄地圖](../structure.md) · [新人導覽](../onboarding.md)
-- 程式：`backend/company/roles.py` · `role_catalog.py` · `backend/linkin/roles.py`
+- 程式：`backend/company/roles/` · `role_catalog/` · `backend/linkin/roles.py`

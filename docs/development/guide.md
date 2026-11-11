@@ -124,7 +124,7 @@ Linkin/
 
 ### 新組織模板
 
-在 `backend/company/roles.py` 的 `BUILTIN_TEMPLATES` 新增角色與預算。席位職責表見 [角色介紹](../company/roles.md)；改完後執行 `python -m backend.scripts.export_roles_doc` 同步文件。
+在 `backend/company/roles/` 的 `BUILTIN_TEMPLATES` 新增角色與預算。席位職責表見 [角色介紹](../company/roles.md)；改完後執行 `python -m backend.scripts.export_roles_doc` 同步文件。
 
 ### 新 OPC 感測器
 
