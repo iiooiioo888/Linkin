@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（577 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（589 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -122,6 +122,11 @@ backend/
 | `backend/company/decomposer.py` | 743 行 | 5 檔套件／836 行（最大 657）＝ 第七輪 |
 | `frontend/src/components/IntegrationsPanel.tsx` | 699 行 | **7 行 barrel** ＋ `integrations/` 8 檔（最大 187）＝ 第七輪 |
 | `frontend/src/components/AgentsMonitorPanel.tsx` | 664 行 | **8 行 barrel** ＋ `agentsmonitor/` 4 檔（最大 355）＝ 第七輪 |
+| `backend/services/trace_logger.py` | 857 行 | 6 檔套件／953 行（最大 318）＝ 第八輪 |
+| `backend/company/rate_card.py` | 781 行 | 5 檔套件／880 行（最大 464）＝ 第八輪 |
+| `backend/services/context_insight.py` | 768 行 | 4 檔套件／825 行（最大 442）＝ 第八輪 |
+| `frontend/src/types/monitor.ts` | 683 行 | **8 行 barrel** ＋ `monitor/` 4 檔（最大 297）＝ 第八輪 |
+| `frontend/src/components/TaskPanel.tsx` | 625 行 | **14 行 barrel** ＋ `taskpanel/` 9 檔（最大 347）＝ 第八輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -382,3 +387,33 @@ backend/
 | `oxlint src` | 0 errors（41 個既有 warnings） |
 
 文件同步：`AGENTS.md`、`backend/README.md`、`docs/structure.md`、`docs/architecture/optimization-roadmap.md` 舊路徑已更新。
+
+## 16. 第十輪：trace_logger／rate_card／context_insight／monitor types／TaskPanel（round8，2026-11-12）
+
+### 16.1 後端三個模組 → 套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `services/trace_logger.py` 857 行 | 6 檔／953 行：`paths`／`logger`（TraceLogger）／`checkpoints`／`traces`／`stats`／`__init__`；公開名稱 28/28、23/23 頂層節點 AST 相同；預設目錄常數改 `parents[2]`（值逐字驗證相同） |
+| `company/rate_card.py` 781 行 | 5 檔／880 行：`fields`／`cards`（54 個 model 費率表逐字保留）／`parsing`／`service`／`__init__`；`dir()` 公開名 17/17、費率資料 deep-equality 與 hash 相同 |
+| `services/context_insight.py` 768 行 | 4 檔／825 行：`composition`／`insight`（419 行主聚合原樣）／`browser`／`__init__`；公開名稱 10/10、14/14 函式與 4/4 常數 AST 相同 |
+
+### 16.2 前端型別與面板
+
+| 原檔 | 重構後 |
+|------|--------|
+| `types/monitor.ts` 683 行 | 8 行 barrel ＋ `types/monitor/` 4 檔（opc 42／hub 89／agent 297／llmops 260）；types 對外 export 118 不變、monitor 26/26 宣告逐字相同 |
+| `TaskPanel.tsx` 625 行 | 14 行 barrel ＋ `components/taskpanel/` 9 檔（roleMeta／phases／types／RoleIcon／PhaseProgress／KanbanBoard／TimelineBlock／主體，最大 347）；12 個公開 export 不變 |
+
+### 16.3 第十輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（2 分 29 秒，與重構前一致） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（589 source files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（37 個既有 warnings） |
+
+文件同步：`backend/README.md`、`docs/structure.md`、`docs/architecture/optimization-roadmap.md` 舊路徑已更新。
