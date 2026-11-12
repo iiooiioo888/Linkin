@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（669 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（696 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -147,6 +147,11 @@ backend/
 | `backend/company/quant_strategy_catalog.py` | 586 行 | 4 檔套件／617 行（最大 350）＝ 第十二輪 |
 | `backend/linkin/api.py` | 582 行 | 11 檔套件／811 行（最大 171）＝ 第十二輪 |
 | `backend/company/quant_capital_flow_maps.py` | 579 行 | 5 檔套件／620 行（最大 212）＝ 第十二輪 |
+| `backend/core/nodes.py` | 675 行 | 9 檔套件／864 行（最大 190）＝ 第十三輪 |
+| `backend/company/decomposer/service.py` | 657 行 | 6 檔子套件／771 行（最大 195）＝ 第十三輪 |
+| `backend/company/orchestrator/review.py` | 622 行 | 5 檔子套件／698 行（最大 226）＝ 第十三輪 |
+| `backend/company/orchestrator/item.py` | 583 行 | 3 檔子套件／618 行（最大 435）＝ 第十三輪 |
+| `backend/company/quant_tools/data.py` | 554 行 | 9 檔子套件／723 行（最大 175）＝ 第十三輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -552,3 +557,26 @@ backend/
 | `tsc` / `vitest run` / `npm run build` | 0 error／16 檔 66 tests passed／BUILD_EXIT=0 |
 
 文件同步：`docs/structure.md`、`docs/AI_HUB_DETAILED_DESIGN.md`、`docs/architecture/optimization-roadmap.md`、`docs/architecture/credit-pools-lifecycle.md`、`docs/architecture/system-architecture-2026-09.md`、`docs/company/quant-tools.md`、`backend/linkin/server_admin/__init__.py` docstring。
+
+## 21. 第十五輪：core/nodes／orchestrator review+item／decomposer service／quant_tools data（round13，2026-11-12）
+
+### 21.1 後端五個模組 → 套件／子套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `core/nodes.py` 675 行 | 9 檔／864 行：`length`／`memory`／`prompt_build`／`generate`／`reflection`／`finalize`／`archive`／`_compat`／`__init__`；公開名稱 33/33；`call_llm`／`_memory_store` patch 經 `_compat` 延遲解析維持有效；`test_architecture` 的 `NODE_MODULE_FILES` 改為掃描 `core/nodes/*.py`（**+8 個參數化架構檢查，guard 強度不降**） |
+| `company/decomposer/service.py` 657 行 | 6 檔子套件／771 行：`state`／`roles`／`strategies`／`llm_mixin`／`decompose_mixin`／`__init__`；`TaskDecomposer` 13/13 方法 AST 相同、`decomposer.call_llm` patch 語意不變 |
+| `company/orchestrator/review.py` 622 行 | 5 檔子套件／698 行：`l1`／`item`／`rework`／`final`／`__init__`；`ReviewMixin` 6/6 方法與簽名相同 |
+| `company/orchestrator/item.py` 583 行 | 3 檔子套件／618 行：`_run`／`_seat`／`__init__`；`ItemMixin` 39 個可解析方法簽名完全相同 |
+| `company/quant_tools/data.py` 554 行 | 9 檔子套件／723 行：`http`／`symbols`／`util`／`bars`／`market`／`fx`／`crypto`／`_compat`／`__init__`；公開名稱 21/21、`_http_get_json`／`_http_get_text` patch 經 `_compat` 維持有效 |
+
+### 21.2 第十五輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1405 passed / 1 skipped / 0 failed**（1397 基線 + 8 個新增節點模組參數化架構檢查；2 分 30 秒） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（696 source files） |
+| `tsc` / `vitest run` / `npm run build` | 0 error／16 檔 66 tests passed／BUILD_EXIT=0 |
+
+文件同步：`backend/README.md`、`docs/architecture/optimization-roadmap.md`、`docs/design/roadmap-1-unified-pipeline.md` 舊路徑更新。
