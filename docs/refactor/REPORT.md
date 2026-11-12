@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（589 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（600 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -127,6 +127,11 @@ backend/
 | `backend/services/context_insight.py` | 768 行 | 4 檔套件／825 行（最大 442）＝ 第八輪 |
 | `frontend/src/types/monitor.ts` | 683 行 | **8 行 barrel** ＋ `monitor/` 4 檔（最大 297）＝ 第八輪 |
 | `frontend/src/components/TaskPanel.tsx` | 625 行 | **14 行 barrel** ＋ `taskpanel/` 9 檔（最大 347）＝ 第八輪 |
+| `backend/tools/server_admin.py` | 732 行 | 5 檔套件／912 行（最大 302）＝ 第九輪 |
+| `backend/linkin/server_admin.py` | 729 行 | 5 檔套件／898 行（最大 325）＝ 第九輪 |
+| `backend/company/quant_strategy_maps.py` | 773 行 | 4 檔套件／850 行（最大 352）＝ 第九輪 |
+| `frontend/src/lib/chatWorkspace.ts` | 635 行 | **15 行 barrel** ＋ `lib/chatWorkspace/` 9 檔（最大 152）＝ 第九輪 |
+| `frontend/src/components/ui/ConsoleLayout.tsx` | 629 行 | **45 行 barrel** ＋ `ui/consolelayout/` 10 檔（最大 172）＝ 第九輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -417,3 +422,33 @@ backend/
 | `oxlint src` | 0 errors（37 個既有 warnings） |
 
 文件同步：`backend/README.md`、`docs/structure.md`、`docs/architecture/optimization-roadmap.md` 舊路徑已更新。
+
+## 17. 第十一輪：server_admin（tools／linkin）／quant_strategy_maps／chatWorkspace／ConsoleLayout（round9，2026-11-12）
+
+### 17.1 後端三個模組 → 套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `tools/server_admin.py` 732 行 | 5 檔／912 行：`config`／`guards`／`system`（psutil 軟依賴）／`operations`／`__init__`；公開名稱 47/47、39/39 頂層節點 AST 相同 |
+| `linkin/server_admin.py` 729 行 | 5 檔／898 行：`config`／`pending`／`tools`／`agent`／`__init__`；`dir()` 公開名 33/33；`_llm_ready`／`call_llm` 的動態 monkeypatch 以 `_package_attr` 延遲解析維持有效（測試零修改） |
+| `company/quant_strategy_maps.py` 773 行 | 4 檔／850 行：`ir`／`overview`／`strategies`／`__init__`；公開名稱 17/17＋私有 `_find_item`／`_listing`、18/18 函式 AST 相同 |
+
+### 17.2 前端 lib 與 UI 元件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `lib/chatWorkspace.ts` 635 行 | 15 行 barrel ＋ `lib/chatWorkspace/` 9 檔（eventLog／kanban／taskView／files／code／types／status／query／metrics，最大 152）；38 個公開 export 不變、`chatWorkspace.test.ts` 4 tests 綠 |
+| `ui/ConsoleLayout.tsx` 629 行 | 45 行 barrel ＋ `ui/consolelayout/` 10 檔（Shell／Rails／Sections／Kpi／Cards／SectionNav／hooks／types／cn／tokens，最大 172）；35 個公開 export 不變 |
+
+### 17.3 第十一輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（2 分 59 秒，與重構前一致） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（600 source files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（37 個既有 warnings） |
+
+其他：`pyproject` 的 mypy override 擴充 `backend.company.quant_strategy_maps.*` 並移除子模組 inline disable；`docs/company/quant-tools.md` 舊路徑更新。所有本地分支（含各輪 refactor 分支、backup、wip）已推上 GitHub。
