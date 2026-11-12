@@ -116,7 +116,7 @@ OPC 寫入仍走護欄。
 | `trace_logger/` · `archiver.py` · `state_store.py` | 軌跡、存檔、狀態 |
 | `monitor_hub.py` · `dashboard.py` · `agent_monitor/` | 監控彙總 |
 | `llm_ops.py` | 模型目錄爬取／運維 |
-| `cloud_console.py` · `docker_manager/` · `aliyun_bss.py` | 雲／Docker／帳單 |
+| `cloud_console/` · `docker_manager/` · `aliyun_bss.py` | 雲／Docker／帳單 |
 | `opc_monitor.py` · `optimization_monitor.py` | OPC 與優化指標 |
 | `lab_tools.py` | 實驗室工具 |
 
