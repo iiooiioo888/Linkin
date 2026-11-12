@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（643 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（669 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -142,6 +142,11 @@ backend/
 | `backend/company/mcp_clients.py` | 609 行 | 5 檔套件／712 行（最大 362）＝ 第十一輪 |
 | `backend/services/docker_manager.py` | 606 行 | 8 檔套件／737 行（最大 219）＝ 第十一輪 |
 | `frontend/src/components/RoleV3Desk.tsx` | 538 行 | **8 行 barrel** ＋ `roledesk-v3/` 7 檔（最大 196）＝ 第十一輪 |
+| `backend/company/archify_compile.py` | 604 行 | 6 檔套件／718 行（最大 212）＝ 第十二輪 |
+| `backend/company/budget.py` | 598 行 | 5 檔套件／651 行（最大 482）＝ 第十二輪 |
+| `backend/company/quant_strategy_catalog.py` | 586 行 | 4 檔套件／617 行（最大 350）＝ 第十二輪 |
+| `backend/linkin/api.py` | 582 行 | 11 檔套件／811 行（最大 171）＝ 第十二輪 |
+| `backend/company/quant_capital_flow_maps.py` | 579 行 | 5 檔套件／620 行（最大 212）＝ 第十二輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -524,3 +529,26 @@ backend/
 | `tsc -p tsconfig.app.json --noEmit` | 0 error |
 | `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
 | `oxlint src` | 0 errors（37 個既有 warnings） |
+
+## 20. 第十四輪：archify_compile／budget／quant_strategy_catalog／linkin api／quant_capital_flow_maps（round12，2026-11-12）
+
+### 20.1 後端五個模組 → 套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `company/archify_compile.py` 604 行 | 6 檔／718 行：`labels`／`layout`／`ir`／`diagrams`／`compile`／`__init__`；公開名稱 25/25；`ROOT` 改 `parents[3]`（值已驗證等價） |
+| `company/budget.py` 598 行 | 5 檔／651 行：`constants`／`costs`／`tiers`／`manager`／`__init__`；`dir()` 公開名 20/20、`__all__` 逐字保留、8 個行為 probe 相同 |
+| `company/quant_strategy_catalog.py` 586 行 | 4 檔／617 行：`data`／`rows`（345 行目錄資料逐字）／`queries`／`__init__`；公開名稱 6/6、AST 相同 |
+| `linkin/api.py` 582 行 | 11 檔／811 行：`router`／`shared`／`npcs`／`server_routes`／`quests`／`grill`／`items`／`overview`／`constitution_routes`／`events`；**29 條路由 (path, methods, endpoint) 集合完全相同**、公開名稱 63/63 |
+| `company/quant_capital_flow_maps.py` 579 行 | 5 檔／620 行：`profiles`／`diagrams`／`timeline`／`ir`／`__init__`；公開名稱 3/3、IR／Mermaid 字串逐字保留 |
+
+### 20.2 第十四輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（2 分 29 秒，與重構前一致） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（669 source files） |
+| `tsc` / `vitest run` / `npm run build` | 0 error／16 檔 66 tests passed／BUILD_EXIT=0 |
+
+文件同步：`docs/structure.md`、`docs/AI_HUB_DETAILED_DESIGN.md`、`docs/architecture/optimization-roadmap.md`、`docs/architecture/credit-pools-lifecycle.md`、`docs/architecture/system-architecture-2026-09.md`、`docs/company/quant-tools.md`、`backend/linkin/server_admin/__init__.py` docstring。
