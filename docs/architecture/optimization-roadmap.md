@@ -42,7 +42,7 @@ EVOL_STAGE_TIER_REFLECT=reasoning
 EVOL_STAGE_TIER_IMPROVE=routine
 ```
 
-公司運行時工作項級別路由見 `backend/company/budget.py` → `TierRouter`。
+公司運行時工作項級別路由見 `backend/company/budget/` → `TierRouter`。
 
 ---
 

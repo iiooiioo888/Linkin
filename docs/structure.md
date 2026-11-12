@@ -127,10 +127,10 @@ OPC 寫入仍走護欄。
 | `orchestrator/` · `work_item.py` · `state.py` | 協調、工作項 DAG、狀態機 |
 | `roles/` · `role_catalog/` · `role_memory.py` | 80 席、自定義 CRUD、角色記憶；詳表 [roles.md](company/roles.md) |
 | `raho/` | 執行期內部協議（記憶注入與交付檢查），不再佔名冊席位 |
-| `budget.py` · `rate_card/` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
+| `budget/` · `rate_card/` · `events.py` · `run_log.py` | 預算、價卡、事件、執行日誌 |
 | `seat_io.py` | 席位投遞 I/O 軌跡（prompt／system／response 全文＋來源分解）；前端席位監察頁資料源，契約見 [api/reference.md](api/reference.md) |
 | `decomposer/` · `react_loop.py` · `tools.py` | 拆解、ReAct、工具 |
-| `quant_tools/` · `quant_*.py` · `docker_tools.py` · `archify_compile.py` | 量化與策略圖（價格分析探針）；Docker 容器（核心的開發組件） |
+| `quant_tools/` · `quant_*.py` · `docker_tools.py` · `archify_compile/` | 量化與策略圖（價格分析探針）；Docker 容器（核心的開發組件） |
 
 ### backend/linkin/（關鍵）
 

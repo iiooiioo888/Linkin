@@ -31,7 +31,7 @@
 | `AGENTS.md`：所有 LLM 必須經 `backend.core.llm.call_llm` | Hermes 若直連廠商 SDK 即違規 | Hermes 叢集 **只打 LiteLLM OpenAI 相容端點**，節點模組禁止 `import openai` 等 SDK |
 | `opc_service/guard.py` 為 OPC 寫入唯一護欄 | PysdnOPC 工具若直寫標籤即違規 | 工具執行層只呼叫 `opc_service` REST，禁止繞過護欄 |
 | Redis 已用於任務持久化（TTL 7 天） | Key 碰撞 | Hub 使用獨立前綴 `hub:` / `semantic:` / `provider:` / `budget:` |
-| `backend/company/budget.py` 的 `_MODEL_COST_PER_1M_TOKENS` 原僅覆蓋 gpt-4o 家族與舊 DeepSeek | 與 Hub 九模型目錄不一致，未知模型會落入保守單價 (1.0, 4.0) | Hub 使用獨立價目表（§1.6）；公司運行時價目表已同步補上 Hub 九模型單價（**不含任何 Claude ID**），LangGraph 預設仍走 `gpt-5.6-sol` / `gpt-5.6-luna`，兩邊計數器不共用 |
+| `backend/company/budget/` 的 `_MODEL_COST_PER_1M_TOKENS` 原僅覆蓋 gpt-4o 家族與舊 DeepSeek | 與 Hub 九模型目錄不一致，未知模型會落入保守單價 (1.0, 4.0) | Hub 使用獨立價目表（§1.6）；公司運行時價目表已同步補上 Hub 九模型單價（**不含任何 Claude ID**），LangGraph 預設仍走 `gpt-5.6-sol` / `gpt-5.6-luna`，兩邊計數器不共用 |
 | `backend/tests/test_architecture.py` 已禁止節點模組 `import anthropic` | Hub 若直連 Anthropic SDK 會被架構測試擋下 | Hermes 只打 LiteLLM；Hub 目錄校驗額外拒絕 Claude 字串 |
 | 現有基礎設施僅 Redis + ChromaDB，無 PostgreSQL / Kong / Jaeger | 新元件 | 以獨立 Compose 服務新增，不改現有 `evoloop-backend` 容器職責 |
 
@@ -1644,7 +1644,7 @@ Agent 任務：建立時用 `expected_output_tokens=4096` 且再乘工具次數�
 
 | 模組 | 管什麼 | 不管什麼 |
 | :--- | :--- | :--- |
-| `backend/company/budget.py` `BudgetManager` | LangGraph 公司運行時的 task/session/month 限額 | Hub `/api/v1/*` |
+| `backend/company/budget/` `BudgetManager` | LangGraph 公司運行時的 task/session/month 限額 | Hub `/api/v1/*` |
 | Hub `budget:daily:*` | Hub 日限額硬閘 | EvoLoop `/chat` |
 
 兩者 **不共享計數器**，避免雙重 403。帳單產品若要合併，在報表層 `UNION`，不在熱路徑耦合。

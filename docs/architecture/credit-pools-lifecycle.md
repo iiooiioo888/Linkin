@@ -180,7 +180,7 @@ flowchart TB
         LLM[call_llm 計量]
     end
 
-    subgraph USD["美元預算域（company/budget.py）"]
+    subgraph USD["美元預算域（company/budget/）"]
         API[API LLM 月累計]
         DOCK[Docker 按時<br/>docker_meter.py]
         BSS[阿里雲 BSS<br/>aliyun_bss.py]

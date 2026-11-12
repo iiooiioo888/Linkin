@@ -1,117 +1,14 @@
-"""預算控制系統。
-
-提供：
-- BudgetManager: 追蹤任務/會話/月度花費，強制執行上限與降級
-- TierRouter: 根據任務重要性與預算壓力選擇模型層級
-- CostTracker: 估算 LLM 呼叫成本（token 計價）
-
-所有金額以 USD 為單位。
-"""
+"""BudgetManager：任務／會話／雲端預算追蹤與可負擔性判斷（自 backend.company.budget 抽出）。"""
 
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from backend.company.rate_card import (
-    estimate_usage_cost,
-    get_model_costs,
-    get_model_rate_cards,
-    public_rate_cards,
-    rate_card_for,
-    reload_model_costs,
-)
 from backend.company.state import BudgetConfig, BudgetTier
 
-logger = logging.getLogger(__name__)
-
-# ── 預算預測配置 ──
-DEFAULT_HISTORY_WINDOW_DAYS = 7
-DEFAULT_FORECAST_WINDOW_DAYS = 30
-MIN_DATA_POINTS_FOR_FORECAST = 3
-
-
-class CostTracker:
-    """估算 LLM 呼叫成本（含快取／推理／多模態收費項）。"""
-
-    @staticmethod
-    def estimate_cost(
-        model: str,
-        input_tokens: int = 0,
-        output_tokens: int = 0,
-        *,
-        cached_input_tokens: int = 0,
-        cache_write_tokens: int = 0,
-        reasoning_tokens: int = 0,
-        image_tokens: int = 0,
-        audio_tokens: int = 0,
-        embedding_tokens: int = 0,
-        **extra: int,
-    ) -> float:
-        """根據各收費項用量估算成本（USD）。"""
-        return estimate_usage_cost(
-            model,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cached_input_tokens=cached_input_tokens,
-            cache_write_tokens=cache_write_tokens,
-            reasoning_tokens=reasoning_tokens,
-            image_tokens=image_tokens,
-            audio_tokens=audio_tokens,
-            embedding_tokens=embedding_tokens,
-            **extra,
-        )
-
-    @staticmethod
-    def estimate_cost_rough(model: str, complexity: str = "medium") -> float:
-        """粗略估算（無 token 計數時使用）。"""
-        base_tokens = {"low": 500, "medium": 2000, "high": 8000}
-        tokens = base_tokens.get(complexity, 2000)
-        return CostTracker.estimate_cost(model, input_tokens=tokens, output_tokens=tokens)
-
-
-class TierRouter:
-    """根據任務重要性與預算壓力選擇模型層級。"""
-
-    def __init__(self, config: BudgetConfig):
-        self.config = config
-
-    def resolve_model(
-        self,
-        tier: BudgetTier,
-        budget_pressure: float = 0.0,  # 0.0 ~ 1.0，越高壓力越大
-    ) -> str:
-        """根據層級與預算壓力解析實際使用的模型名稱。
-
-        budget_pressure >= degrade_threshold 時，使用降級鏈中的便宜模型。
-        """
-        if budget_pressure >= self.config.degrade_threshold:
-            degraded = self.config.degrade_chain.get(tier)
-            if degraded:
-                logger.info(
-                    "預算壓力 %.0f%%，tier %s 降級為 %s",
-                    budget_pressure * 100,
-                    tier.value,
-                    degraded,
-                )
-                return degraded
-        return self.config.tier_models.get(tier, "gpt-5.6-luna")
-
-    def select_tier(
-        self,
-        task_complexity: str,
-        is_critical: bool = False,
-    ) -> BudgetTier:
-        """根據任務特徵選擇層級。"""
-        if is_critical:
-            return BudgetTier.CRITICAL
-        mapping = {
-            "high": BudgetTier.REASONING,
-            "medium": BudgetTier.ROUTINE,
-            "low": BudgetTier.SUMMARY,
-        }
-        return mapping.get(task_complexity, BudgetTier.ROUTINE)
+from .constants import logger
+from .tiers import TierRouter
 
 
 class BudgetManager:
@@ -583,16 +480,3 @@ class BudgetManager:
             ),
             **self.credit_budget_snapshot(),
         }
-
-
-__all__ = [
-    "BudgetManager",
-    "CostTracker",
-    "TierRouter",
-    "estimate_usage_cost",
-    "get_model_costs",
-    "get_model_rate_cards",
-    "public_rate_cards",
-    "rate_card_for",
-    "reload_model_costs",
-]

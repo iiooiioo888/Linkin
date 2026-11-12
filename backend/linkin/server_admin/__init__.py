@@ -1,9 +1,9 @@
 """靈境·服務器運維域層：具名工具編排、人工批准隊列與 LLM 運維智能體（AIOps）。
 
 三層模式對照 Minecraft MCP（AGENTS.md 鐵律）：
-    backend/tools/server_admin.py   底層橋接（psutil/docker/systemd + 護欄 + 乾跑 + 審計）
-    backend/linkin/server_admin.py  本檔：批准隊列、LLM 規劃、巡檢、日報、公司工具掛載
-    backend/linkin/api.py           REST：/linkin/server/*
+    backend/tools/server_admin/     底層橋接（psutil/docker/systemd + 護欄 + 乾跑 + 審計）
+    backend/linkin/server_admin/    本檔：批准隊列、LLM 規劃、巡檢、日報、公司工具掛載
+    backend/linkin/api/             REST：/linkin/server/*
 
 核心紀律：
 - **絕不暴露自由 shell**——只有具名工具白名單（底層 ALL_TOOLS）

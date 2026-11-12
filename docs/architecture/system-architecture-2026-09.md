@@ -87,7 +87,7 @@ flowchart TB
     subgraph L2["L2 · FastAPI 應用"]
         Main["main.py<br/>/chat · /tasks · /modules"]
         Hub["hub/api.py<br/>/api/v1/chat/completions"]
-        LinkinAPI["linkin/api.py<br/>/linkin/*"]
+        LinkinAPI["linkin/api/<br/>/linkin/*"]
         ModAPI["modules/api.py<br/>GET /modules · /{id}/api/*"]
     end
 

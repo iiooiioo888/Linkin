@@ -93,4 +93,4 @@ Hub 的 `StocksX_get_price` 仍為沙箱測試工具；真實公開行情走下�
 
 量化研究桌（`create_quant_desk`）會指派上述金融角色；輸出必須標明來源、時間戳與不確定性，禁止保證報酬。
 
-實作：`backend/company/quant_tools/`（套件）、`quant_strategy_catalog.py`、`quant_strategy_maps/`，於 `_register_builtin_tools` 註冊。
+實作：`backend/company/quant_tools/`（套件）、`quant_strategy_catalog/`、`quant_strategy_maps/`，於 `_register_builtin_tools` 註冊。
