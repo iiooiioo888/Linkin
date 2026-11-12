@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（619 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（643 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -137,6 +137,11 @@ backend/
 | `backend/company/raho/protocol.py` | 613 行 | 7 檔套件／797 行（最大 209）＝ 第十輪 |
 | `frontend/src/lib/monitorTabs.ts` | 575 行 | **16 行 barrel** ＋ `lib/monitorTabs/` 7 檔（最大 186）＝ 第十輪 |
 | `frontend/src/components/SystemMetricsPanel.tsx` | 538 行 | **8 行 barrel** ＋ `systemmetrics/` 6 檔（最大 230）＝ 第十輪 |
+| `backend/core/llm.py` | 713 行 | 9 檔套件／984 行（最大 259）＝ 第十一輪 |
+| `backend/company/prompts.py` | 634 行 | 6 檔套件／727 行（最大 237）＝ 第十一輪 |
+| `backend/company/mcp_clients.py` | 609 行 | 5 檔套件／712 行（最大 362）＝ 第十一輪 |
+| `backend/services/docker_manager.py` | 606 行 | 8 檔套件／737 行（最大 219）＝ 第十一輪 |
+| `frontend/src/components/RoleV3Desk.tsx` | 538 行 | **8 行 barrel** ＋ `roledesk-v3/` 7 檔（最大 196）＝ 第十一輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -487,3 +492,35 @@ backend/
 | `oxlint src` | 0 errors（37 個既有 warnings） |
 
 文件同步：`docs/contracts/g-gate1-dual-gate.md` 與 frontend 5 處註解舊路徑更新。
+
+## 19. 第十三輪：core/llm／prompts／mcp_clients／docker_manager／RoleV3Desk（round11，2026-11-12）
+
+### 19.1 後端四個模組 → 套件（最高風險：core/llm）
+
+| 原檔 | 重構後 |
+|------|--------|
+| `core/llm.py` 713 行 | 9 檔／984 行：`params`／`usage`／`completion`／`core`／`roles`／`stream`／`json_text`／`_compat`／`__init__`；公開名稱 22/22；**14 個 patch 目標**（`call_llm`／`completion`／`clamp_model`／`_build_call_hops`／`_call_llm_on_route`／`_resolve_call_target`／`_llm_params`／`_ensure_provider_prefix`／`_openrouter_extra` 等）經 `_compat` 延遲解析全部維持有效，測試檔零修改 |
+| `company/prompts.py` 634 行 | 6 檔／727 行：`manager`／`developer`／`reviewer`／`templates`／`config`／`__init__`；公開名稱 21/21；prompt 逐字保留（AST 無差異、sha256 全部相同） |
+| `company/mcp_clients.py` 609 行 | 5 檔／712 行：`models`／`sessions`／`registry`／`_compat`／`__init__`；公開名稱 26/26；私有 `_make_session`／`probe_server` patch 以 `_compat` 維持有效 |
+| `services/docker_manager.py` 606 行 | 8 檔／737 行：查詢／格式／控制 mixin＋metrics＋errors＋manager；公開名稱 16/16、`DockerManager` 公開方法不變、`DOCKER_AVAILABLE`／`docker`／`_docker_manager` patch 點相容 |
+
+### 19.2 前端面板
+
+| 原檔 | 重構後 |
+|------|--------|
+| `RoleV3Desk.tsx` 538 行 | 8 行 barrel ＋ `roledesk-v3/` 7 檔（主體 59／LeftRail 157／CenterColumn 196／RightRail 151／WorkKanbanCard 52／shared／types）；default＋`RoleV3DeskProps` 不變 |
+
+### 19.3 其他
+- `backend/scripts/lint_contracts.py` 的 `_SDK_ALLOWLIST` 改為支援套件前綴（`backend/core/llm/`），修復 LLM 套件化後 `no_direct_provider_sdk` 契約測試。
+- 文件：`backend/README.md`、`docs/structure.md`、`docs/AI_HUB_DETAILED_DESIGN.md`、`docs/architecture/optimization-roadmap.md`、`docs/architecture/system-architecture-2026-09.md` 舊路徑更新。
+
+### 19.4 第十三輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（2 分 28 秒，與重構前一致） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（643 source files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（37 個既有 warnings） |
