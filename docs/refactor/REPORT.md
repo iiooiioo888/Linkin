@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（696 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（718 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -152,6 +152,11 @@ backend/
 | `backend/company/orchestrator/review.py` | 622 行 | 5 檔子套件／698 行（最大 226）＝ 第十三輪 |
 | `backend/company/orchestrator/item.py` | 583 行 | 3 檔子套件／618 行（最大 435）＝ 第十三輪 |
 | `backend/company/quant_tools/data.py` | 554 行 | 9 檔子套件／723 行（最大 175）＝ 第十三輪 |
+| `backend/company/quant_tools/strategies.py` | 538 行 | 4 檔子套件／603 行（最大 251）＝ 第十四輪 |
+| `backend/services/cloud_console.py` | 521 行 | 7 檔套件／630 行（最大 167）＝ 第十四輪 |
+| `backend/company/orchestrator/execution.py` | 517 行 | 5 檔子套件／576 行（最大 263）＝ 第十四輪 |
+| `backend/company/quant_tools/analysis.py` | 515 行 | 5 檔子套件／583 行（最大 226）＝ 第十四輪 |
+| `backend/company/raho/atomic_executor.py` | 507 行 | 6 檔子套件／637 行（最大 221）＝ 第十四輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -580,3 +585,31 @@ backend/
 | `tsc` / `vitest run` / `npm run build` | 0 error／16 檔 66 tests passed／BUILD_EXIT=0 |
 
 文件同步：`backend/README.md`、`docs/architecture/optimization-roadmap.md`、`docs/design/roadmap-1-unified-pipeline.md` 舊路徑更新。
+
+## 22. 第十六輪：strategies／cloud_console／execution／analysis／atomic_executor（round14，2026-11-12）
+
+### 22.1 後端五個模組 → 套件／子套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `quant_tools/strategies.py` 538 行 | 4 檔子套件／603 行：`charts`／`runner`／`volume`／`__init__`；21/21 頂層函式 AST 相同 |
+| `services/cloud_console.py` 521 行 | 7 檔套件／630 行：`billing`／`monitor`／`alerts`／`events`／`singletons`／`common`／`__init__`；公開名稱 24/24；`get_cloud_billing` patch 對 lazy import 呼叫端維持有效（測試零修改） |
+| `orchestrator/execution.py` 517 行 | 5 檔子套件／576 行：`run`／`loop`／`mgp`／`plan`／`__init__`；`ExecutionMixin` 6/6 方法與簽名相同 |
+| `quant_tools/analysis.py` 515 行 | 5 檔子套件／583 行：`eastmoney`／`compare`／`screener`／`watch`／`__init__`；公開名稱 19/19；`quant_tools.data._http_get_json` patch 相容維持 |
+| `raho/atomic_executor.py` 507 行 | 6 檔子套件／637 行：`constants`／`models`／`helpers`／`prompt`／`executor`／`__init__`；公開名稱 38/38、`__all__` 22 名逐字保留 |
+
+### 22.2 第十六輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1405 passed / 1 skipped / 0 failed**（2 分 30 秒） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（718 source files） |
+| `tsc` / `vitest run` / `npm run build` | 0 error／16 檔 66 tests passed／BUILD_EXIT=0 |
+
+### 22.3 重構完成里程碑（2026-11-12）
+
+- **全 repo 已無 >500 行的原始碼檔案**：backend（不含 tests）＋frontend/src 共 **934 個 py/ts 檔**，最大檔 `backend/company/tools.py` 500 行。
+- 十五輪（含上游合併輪）累計拆分 **57 個大檔**成套件／子元件；每一輪都維持 `pytest` 全綠（1397 → 1405，增加的是 nodes 套件化後 +8 個參數化架構檢查）。
+- 相容性策略已成慣例：套件 `__init__` 全量 re-export（保留 import 路徑與 `dir()` 基線）、`_compat` 延遲解析維持測試 monkeypatch／patch 語意、必要時更新測試 patch 目標、以 AST 逐節點等價＋行為 probe 驗證保真。
+- 目前僅剩 450–500 行的檔案（`company/tools.py` 500、`quant_tools/backtest.py` 491、`hub/db.py` 490、`modelgw/sql_registry.py` 485、`budget/manager.py` 482、`local_video_studio/api.py` 481 等），屬單一職責內聚模組，無須再拆。
