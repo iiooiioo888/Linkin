@@ -28,7 +28,7 @@
 
 | 公司／RAHO | `company/`、`company/raho/`、`core/company_nodes.py` |
 
-| LLM 呼叫 | **僅** `core/llm.py` → `call_llm`（LiteLLM） |
+| LLM 呼叫 | **僅** `core/llm/` → `call_llm`（LiteLLM） |
 
 | 模型池／API 路由 | `core/provider_pool/`、`core/api_router/`、`core/llm_config.py` |
 

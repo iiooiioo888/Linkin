@@ -27,7 +27,8 @@ _PROVIDER_SDK = re.compile(
 
 # 允許直連 SDK 的路徑（LLM 調用層／嵌入層／測試）；其餘一律違規
 _SDK_ALLOWLIST: tuple[str, ...] = (
-    "backend/core/llm.py",          # 唯一 LLM 調用層（AGENTS.md 關鍵約束 #1）
+    "backend/core/llm.py",          # 唯一 LLM 調用層（AGENTS.md 關鍵約束 #1；保護傘路徑）
+    "backend/core/llm/",            # 套件化後的 LLM 調用層（前綴）
     "backend/core/api_router.py",   # 多 API 路由（call_llm 底層）
     "backend/core/llm_cache.py",    # LLM 快取層（call_llm 底層）
     "backend/memory/vector_store.py",  # litellm.embedding（嵌入層，非生成）
@@ -71,7 +72,7 @@ def scan_file(path: Path, root: Path) -> list[Violation]:
     except (OSError, UnicodeDecodeError):
         return []
     out: list[Violation] = []
-    if rel not in _SDK_ALLOWLIST:
+    if not any(rel == allowed or rel.startswith(allowed.rstrip("/") + "/") for allowed in _SDK_ALLOWLIST):
         for match in _PROVIDER_SDK.finditer(text):
             line = text.count("\n", 0, match.start()) + 1
             out.append(Violation("no_direct_provider_sdk", rel, line, match.group(0)))

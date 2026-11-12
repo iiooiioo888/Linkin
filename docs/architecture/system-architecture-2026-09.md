@@ -94,7 +94,7 @@ flowchart TB
     subgraph L3["L3 · 核心 LangGraph"]
         Graph["core/graph.py<br/>build_graph()"]
         Nodes["nodes.py · company_nodes.py"]
-        LLM["core/llm.py<br/>call_llm（唯一出口）"]
+        LLM["core/llm/<br/>call_llm（唯一出口）"]
     end
 
     subgraph L4["L4 · 領域運行時"]

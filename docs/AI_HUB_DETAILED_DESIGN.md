@@ -1227,7 +1227,7 @@ def invoke_with_failover(
     raise TimeoutError("ALL_PROVIDERS_UNAVAILABLE") from last_err
 ```
 
-與既有 `backend/core/llm.py` 的差異：現有 `call_llm` 已對 **同一模型** 做 3 次線性退避。Hub 路由器在切換模型前，應將 LiteLLM 層重試降為 1，避免 3×3 次放大延遲（實作時給 `call_llm` 增加 `max_retries=1` 參數，**預設保持 3 以不破壞既有反思閉環**）。
+與既有 `backend/core/llm/` 的差異：現有 `call_llm` 已對 **同一模型** 做 3 次線性退避。Hub 路由器在切換模型前，應將 LiteLLM 層重試降為 1，避免 3×3 次放大延遲（實作時給 `call_llm` 增加 `max_retries=1` 參數，**預設保持 3 以不破壞既有反思閉環**）。
 
 ## 4.3 多方並發競速（Race to the Top）
 
