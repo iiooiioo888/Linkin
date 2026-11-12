@@ -78,7 +78,7 @@ backend/
 |------|------|------|
 | 後端測試 | `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（3 分 15 秒；上游 #176 移除 Minecraft 組件後） |
 | Lint | `ruff check backend/ opc_service/` | All checks passed |
-| 型別 | `mypy backend/ opc_service/` | Success: no issues found（600 source files） |
+| 型別 | `mypy backend/ opc_service/` | Success: no issues found（619 source files） |
 | 前端型別 | `npx tsc -p tsconfig.app.json --noEmit --incremental false` | 0 error |
 | 前端單元測試 | `npx vitest run` | 16 files / 66 tests passed |
 | 前端建置 | `npm run build`（tsc -b ＋ vite build ＋ verify-ux-bundle） | BUILD_EXIT=0 |
@@ -132,6 +132,11 @@ backend/
 | `backend/company/quant_strategy_maps.py` | 773 行 | 4 檔套件／850 行（最大 352）＝ 第九輪 |
 | `frontend/src/lib/chatWorkspace.ts` | 635 行 | **15 行 barrel** ＋ `lib/chatWorkspace/` 9 檔（最大 152）＝ 第九輪 |
 | `frontend/src/components/ui/ConsoleLayout.tsx` | 629 行 | **45 行 barrel** ＋ `ui/consolelayout/` 10 檔（最大 172）＝ 第九輪 |
+| `backend/company/state.py` | 709 行 | 8 檔套件／809 行（最大 332）＝ 第十輪 |
+| `backend/hub/service.py` | 696 行 | 7 檔套件／937 行（最大 292）＝ 第十輪 |
+| `backend/company/raho/protocol.py` | 613 行 | 7 檔套件／797 行（最大 209）＝ 第十輪 |
+| `frontend/src/lib/monitorTabs.ts` | 575 行 | **16 行 barrel** ＋ `lib/monitorTabs/` 7 檔（最大 186）＝ 第十輪 |
+| `frontend/src/components/SystemMetricsPanel.tsx` | 538 行 | **8 行 barrel** ＋ `systemmetrics/` 6 檔（最大 230）＝ 第十輪 |
 
 ## 6. 已知限制與後續建議
 
@@ -452,3 +457,33 @@ backend/
 | `oxlint src` | 0 errors（37 個既有 warnings） |
 
 其他：`pyproject` 的 mypy override 擴充 `backend.company.quant_strategy_maps.*` 並移除子模組 inline disable；`docs/company/quant-tools.md` 舊路徑更新。所有本地分支（含各輪 refactor 分支、backup、wip）已推上 GitHub。
+
+## 18. 第十二輪：state／hub service／raho protocol／monitorTabs／SystemMetricsPanel（round10，2026-11-12）
+
+### 18.1 後端三個模組 → 套件
+
+| 原檔 | 重構後 |
+|------|--------|
+| `company/state.py` 709 行 | 8 檔／809 行：`enums`／`role_types`／`role`／`budget`／`models`／`config`／`run_state`／`__init__`；公開名稱 24/24、16/16 頂層節點 AST 相同、27/27 段落註解保留；`CompanyRunState` 置於 `run_state` 以避循環 |
+| `hub/service.py` 696 行 | 7 檔／937 行：`failover`／`probe`／`complete`／`agents`／`auth`／`_compat`／`__init__`；`dir()` 公開名 55/55；`backend.hub.service.call_llm` 的 2 處 patch 經 `_compat` 延遲解析維持有效（測試零修改） |
+| `company/raho/protocol.py` 613 行 | 7 檔／797 行：`layers`／`labels`／`roles`／`flags`／`edges`／`models`／`__init__`；公開名稱 61/61、24/24 函式與 5/5 類別、31/31 常數 AST 相同 |
+
+### 18.2 前端 lib／面板
+
+| 原檔 | 重構後 |
+|------|--------|
+| `lib/monitorTabs.ts` 575 行 | 16 行 barrel ＋ `lib/monitorTabs/` 7 檔（navGroups／tabs／navHelpers／activity／types／tabAliases／worldModuleBridge，最大 186）；56 個公開 export 不變 |
+| `components/SystemMetricsPanel.tsx` 538 行 | 8 行 barrel ＋ `systemmetrics/` 6 檔（主體／metrics／MetricTable／ReflectionCyclesCard／StageRouterCard／RightRail，最大 230）；hooks 順序與 default export 不變 |
+
+### 18.3 第十二輪驗收
+
+| 檢查 | 結果 |
+|------|------|
+| `pytest backend/tests/` | **1397 passed / 1 skipped / 0 failed**（2 分 31 秒，與重構前一致） |
+| `ruff check backend/ opc_service/` | All checks passed |
+| `mypy backend/ opc_service/` | Success（619 source files） |
+| `tsc -p tsconfig.app.json --noEmit` | 0 error |
+| `vitest run` / `npm run build` | 16 檔／66 tests passed／BUILD_EXIT=0 |
+| `oxlint src` | 0 errors（37 個既有 warnings） |
+
+文件同步：`docs/contracts/g-gate1-dual-gate.md` 與 frontend 5 處註解舊路徑更新。
