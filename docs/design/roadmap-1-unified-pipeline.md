@@ -296,8 +296,8 @@ OPC 服務可用時，命中延遲可能升至 **數十–數百 ms**（受 `EVO
 | --- | --- |
 | OPC 增強 | `backend/core/company_nodes.py:enhance_with_opc_context` L58–95 |
 | 靈境增強 | `backend/linkin/pipeline.py:enhance_with_linkin_context` L139–234 |
-| `record_outcome` | `backend/core/nodes.py:decide_final_answer` L569–583 |
-| Task finalize | `backend/core/nodes.py:finalize_task_answer` L83–88 |
+| `record_outcome` | `backend/core/nodes/finalize.py:decide_final_answer` |
+| Task finalize | `backend/core/nodes/finalize.py:finalize_task_answer` |
 | SSE 計費 | `backend/main.py:event_stream` L1315–1316、L1551–1552 |
 | 同步 chat（無計費上下文） | `backend/main.py:chat` L941–966 |
 

@@ -30,8 +30,14 @@ FORBIDDEN_VENDOR_SDKS: set[str] = {
 }
 
 # ── 需要检查的节点模块文件路径 ──
+# nodes 已套件化：掃描 backend/core/nodes/*.py 全部子模組，
+# 確保每個節點模組都受「不得直連供應商 SDK／litellm、須經 call_llm」約束。
+_NODES_PACKAGE_DIR = PROJECT_ROOT / "backend" / "core" / "nodes"
 NODE_MODULE_FILES: list[str] = [
-    "backend/core/nodes.py",
+    *sorted(
+        path.relative_to(PROJECT_ROOT).as_posix()
+        for path in _NODES_PACKAGE_DIR.glob("*.py")
+    ),
     "backend/core/company_nodes.py",
     "backend/linkin/pipeline.py",
 ]
