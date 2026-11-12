@@ -54,6 +54,7 @@ module = [
     "backend.company.quant_tools",
     "backend.company.quant_tools.*",
     "backend.company.quant_strategy_maps",
+    "backend.company.quant_strategy_maps.*",
 ]
 disable_error_code = [
     "operator",
