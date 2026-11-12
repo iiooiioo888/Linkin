@@ -1,5 +1,5 @@
 /**
- * RAHO 層級／角色統一顯示（與 backend/company/raho/protocol.py 對齊）。
+ * RAHO 層級／角色統一顯示（與 backend/company/raho/protocol/ 對齊）。
  * 任務由任務經理分析。憲兵與環境核心不是名冊席位。
  * 質詢樹、角色名冊、工作台必須走這份資料，禁止各面板自寫 L0–L5 名稱。
  */

@@ -1,7 +1,7 @@
 /**
  * 任務詳情整頁的中文標籤表。
- * 與後端字面值對齊（backend/services/task_manager.py、company/state.py、
- * company/prompts.py 的需求審計輸出、company/raho/protocol.py）。
+ * 與後端字面值對齊（backend/services/task_manager.py、company/state/、
+ * company/prompts.py 的需求審計輸出、company/raho/protocol/）。
  */
 import { COMPANY_TEMPLATES } from '../../types';
 
@@ -82,7 +82,7 @@ export const BUDGET_LABELS: Array<{ key: string; label: string; group: 'task' | 
   { key: 'active_tier', label: '目前模型層', group: 'other' },
 ];
 
-/** 與後端 BudgetConfig 對齊（company/state.py：warn 0.8 / degrade 0.9）。 */
+/** 與後端 BudgetConfig 對齊（company/state/：warn 0.8 / degrade 0.9）。 */
 export const BUDGET_WARN = 0.8;
 export const BUDGET_DEGRADE = 0.9;
 

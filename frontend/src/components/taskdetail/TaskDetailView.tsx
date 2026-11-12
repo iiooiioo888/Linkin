@@ -37,7 +37,7 @@ import RequirementSection from './RequirementSection';
 const ContextPanel = lazy(() => import('../ContextPanel'));
 
 const REFRESH_MS = 3000;
-/** 看板狀態 → 顯示標籤（對應 backend/company/state.py::WorkItemStatus）。 */
+/** 看板狀態 → 顯示標籤（對應 backend/company/state/::WorkItemStatus）。 */
 const KANBAN_LABEL: Record<string, { label: string; tone: string }> = {
   planning: { label: '規劃中', tone: 'var(--apple-tertiary)' },
   ready: { label: '待領取', tone: 'var(--console-cyan)' },

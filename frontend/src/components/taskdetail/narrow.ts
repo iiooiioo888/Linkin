@@ -42,7 +42,7 @@ export type BlockedNode = GrillTreeNode & {
   item_id?: string;
 };
 
-/** 看板狀態字面值（對應 backend/company/state.py::WorkItemStatus）。 */
+/** 看板狀態字面值（對應 backend/company/state/::WorkItemStatus）。 */
 export const KANBAN_STATUS_ORDER = [
   'planning',
   'ready',

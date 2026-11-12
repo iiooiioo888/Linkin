@@ -3,7 +3,7 @@
 > **狀態：** 文件／宣導落地（PR 開立；**`ready_to_merge=false`**；不合並／不部署／不改 WIRE）  
 > **契約 ID：** `G-GATE1`  
 > **性質：** 對人宣導與口徑契約（**不是** Align 式 runtime evaluate／shadow contract）  
-> **父錨：** P4-S2 acceptance §5；碼註解 `hub/catalog.py`／`hub/service.py`／`modelgw/runtime.py`  
+> **父錨：** P4-S2 acceptance §5；碼註解 `hub/catalog.py`／`hub/service/`／`modelgw/runtime.py`  
 > **產線錨：** HEAD `caba36c`；WIRE=enforce；L1 繼續
 
 ## 一句精神
@@ -52,7 +52,7 @@
 | 檔案 | 錨 |
 | :--- | :--- |
 | `backend/hub/catalog.py` → `validate_model_id` | G-GATE1：B 濾鏡；非準入權威 |
-| `backend/hub/service.py` → `_llm_probe` | 雙閘時序；目錄綠不得繞過 |
+| `backend/hub/service/` → `_llm_probe` | 雙閘時序；目錄綠不得繞過 |
 | `backend/modelgw/runtime.py` 模組 docstring | precheck＝唯一權威 |
 
 ## 明確不做（本波）
