@@ -6,7 +6,11 @@
   3. 租戶默認 → 採用，reason=user_default（入口仍可切）
   4. 沒有默認 → simple，reason=fallback
 
-系統建議沿用原 auto 規則，只當預選與理由，不自動執行。
+系統建議沿用原 auto 規則，只當預選與理由，不自動執行：
+  1. 工業關鍵詞 → company（任務經理分析；預設模板 industrial_ops 席位）
+  2. 靈境複雜任務 → company
+  3. cost_speed 分類與 path 配置 → company | simple
+  4. 關鍵詞／長度規則 → company | simple
 ``strategy="auto"`` 僅保留給圖與舊內部呼叫，已棄用，不得作為 API 默認。
 """
 
