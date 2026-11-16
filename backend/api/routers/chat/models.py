@@ -1,6 +1,6 @@
 """聊天與路由預覽的請求／回應模型。"""
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import HTTPException
 from pydantic import BaseModel
@@ -50,6 +50,16 @@ class ChatRequest(BaseModel):
     skip_user_grill: bool = False
 
 
+class ExecutionPathBody(BaseModel):
+    """與 POST /tasks 決策欄位同構的執行路徑。SSE 事件本體不使用這個模型。"""
+
+    chosen: Literal["simple", "company"]
+    source: Literal["user_explicit", "user_default", "admin_lock", "fallback"]
+    suggested: Literal["simple", "company"]
+    reason: str
+    locked: bool
+
+
 class ChatResponse(BaseModel):
     session_id: str
     answer: str
@@ -57,6 +67,7 @@ class ChatResponse(BaseModel):
     iteration: int = 0
     status: str = "ok"
     grill: dict[str, Any] | None = None
+    execution_path: ExecutionPathBody
 
 
 class RoutingPreviewRequest(BaseModel):

@@ -177,6 +177,52 @@ def reason_text(code: str) -> str:
     return _REASON_TEXT.get(code, code)
 
 
+DECISION_SOURCES: tuple[DecisionSource, ...] = (
+    "user_explicit",
+    "user_default",
+    "admin_lock",
+    "fallback",
+)
+# 同步聊天與 POST /tasks 決策投影共用的欄位順序。SSE 事件本體不加這個物件。
+EXECUTION_PATH_FIELDS: tuple[str, ...] = (
+    "chosen",
+    "source",
+    "suggested",
+    "reason",
+    "locked",
+)
+
+
+def build_chat_execution_path(
+    query: str,
+    strategy: str,
+    *,
+    config: object | None = None,
+) -> dict[str, object]:
+    """同步聊天回應的 ``execution_path``。
+
+    ``chosen``／``source``／``locked`` 與 ``decide_task_execution`` 的實際路徑、
+    ``decision_source``、鎖定一致。``reason`` 是既有 ``reason_text``，不是第二套文案。
+    ``suggested`` 只來自系統建議，不改寫 ``chosen``。
+    """
+    from backend.core.execution_path_config import ExecutionPathConfig, load_execution_path_config
+
+    cfg = config if isinstance(config, ExecutionPathConfig) else load_execution_path_config()
+    text = query or ""
+    chosen = resolve_execution_path(text, strategy, config=cfg)
+    suggestion = suggest_execution_path(text, config=cfg)
+    source: DecisionSource = (
+        chosen.reason if chosen.reason in DECISION_SOURCES else "fallback"
+    )
+    return {
+        "chosen": chosen.suggested,
+        "source": source,
+        "suggested": suggestion.suggested,
+        "reason": reason_text(chosen.reason if chosen.reason in DECISION_SOURCES else source),
+        "locked": bool(chosen.locked),
+    }
+
+
 def keywords_force_company(query: str, keywords: tuple[str, ...] | list[str]) -> bool:
     text = (query or "").lower()
     for raw in keywords:
