@@ -14,7 +14,14 @@ from backend.auth.gate import ws_authorized
 from backend.billing.context import billing_enabled, billing_task_id, current_billing_user
 from backend.billing.errors import InsufficientCreditsError
 from backend.billing.task_lifecycle import begin_billed_task, precheck_billed_task
-from backend.core.execution_path import resolve_execution_path
+from backend.core.execution_path import (
+    ChoiceForbiddenError,
+    ChoiceRequiredError,
+    decide_task_execution,
+    normalize_external_strategy,
+    reason_text,
+)
+from backend.core.execution_path_config import load_execution_path_config
 from backend.services.cancelled_task_cleanup import cleanup_enabled, run_cleanup
 from backend.services.context_insight import build_context_insight, resolve_default_task_id
 from backend.services.monitor_hub import collect_monitor_hub
@@ -36,8 +43,9 @@ router = APIRouter(tags=["tasks"])
 
 class TaskRequest(BaseModel):
     query: str
-    # 統一模式：執行策略（auto / simple / company），預設 auto 自動判斷
-    execution_strategy: str = "auto"
+    # 對外：simple / company / user_default / suggest_only。不設默認，缺值由租戶默認或 4xx 處理。
+    # auto 已棄用，傳入會被拒絕。
+    execution_strategy: str | None = None
     company_template: str = "quick_task"
     # 控制細項（進階參數）
     options: dict[str, Any] = {}
@@ -75,24 +83,78 @@ class NarrativeCommitRequest(BaseModel):
 
 # ==================== 任務介面 API（後台執行 + 進度輪詢） ====================
 
+def _reject_strategy(raw: str | None) -> str | None:
+    try:
+        return normalize_external_strategy(raw)
+    except ValueError as exc:
+        token = str(exc)
+        if token == "auto":
+            raise HTTPException(
+                status_code=422,
+                detail="execution_strategy 不再接受 auto。請改用 simple、company、user_default 或 suggest_only。",
+            ) from exc
+        raise HTTPException(
+            status_code=422,
+            detail=f"不支援的 execution_strategy：{token}。允許 simple、company、user_default、suggest_only。",
+        ) from exc
+
+
+def _suggestion_payload(decision: Any) -> dict[str, Any]:
+    return {
+        "created": False,
+        "task_id": None,
+        "suggested": decision.suggested,
+        "reason": decision.reason,
+        "reason_text": reason_text(decision.reason),
+        "locked": decision.locked,
+        "can_switch": decision.can_switch,
+    }
+
+
+@router.get("/tasks/path-suggestion")
+async def path_suggestion(query: str):
+    """回建議路徑與理由。不建立任務，也不執行。"""
+    require_tenant_http()
+    if not query.strip():
+        raise HTTPException(status_code=422, detail="query 不可為空")
+    decision = decide_task_execution(query, "suggest_only", config=load_execution_path_config())
+    return _suggestion_payload(decision)
+
+
 @router.post("/tasks")
 async def create_task(req: TaskRequest):
-    """建立後台任務（統一模式），回傳 task_id 供輪詢。
+    """建立後台任務。execution_strategy 必填，除非租戶已有默認。
 
-    統一模式下不再區分模式，execution_strategy 僅為可選的強制指定：
-    - "auto"（預設）: 系統自動判斷執行路徑
-    - "simple": 強制單次 LLM 生成
-    - "company": 強制公司運行時
+    - simple / company：本次明示，reason=user_explicit
+    - user_default：採用租戶默認；沒有默認則 fallback simple
+    - suggest_only：只回建議，不建任務
+    - 缺值：有默認就採用並標 decision_source=user_default，否則 422
+    - auto：拒絕
+    管理員關鍵詞鎖定則改走 company，decision_source=admin_lock。
     """
     require_tenant_http()
     if not req.query.strip():
         raise HTTPException(status_code=422, detail="query 不可為空")
 
+    strategy = _reject_strategy(req.execution_strategy)
+    try:
+        decision = decide_task_execution(req.query, strategy, config=load_execution_path_config())
+    except ChoiceRequiredError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ChoiceForbiddenError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    if not decision.created:
+        return _suggestion_payload(decision)
+
     record = task_manager.create_task(
-        req.query, req.execution_strategy, req.company_template, options=req.options
+        req.query, decision.suggested, req.company_template, options=req.options
     )
-    path = resolve_execution_path(record.query, req.execution_strategy)
-    record.resolved_path = "company" if path == "opc" else path
+    path = decision.suggested
+    record.resolved_path = path
+    record.decision_source = decision.decision_source or ""
+    record.path_locked = decision.locked
+    record.path_reason = decision.reason
+    task_manager._persist(record)
     billing_meta: dict = {}
     uid = current_billing_user()
     company_gate = record.resolved_path == "company"
@@ -133,7 +195,15 @@ async def create_task(req: TaskRequest):
         task_manager.start_task(record)
     return {
         "task_id": record.task_id,
-        "strategy": req.execution_strategy,
+        "strategy": decision.suggested,
+        "requested_strategy": strategy,
+        "decision_source": decision.decision_source,
+        "reason": decision.reason,
+        "reason_text": reason_text(decision.reason),
+        "locked": decision.locked,
+        "using_default": decision.using_default,
+        "can_switch": decision.can_switch,
+        "created": True,
         "status": record.status,
         "awaiting_confirmation": company_gate,
         "pricing_version": billing_meta.get("pricing_config_version"),

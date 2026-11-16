@@ -4,7 +4,7 @@
  * sendQuery 本體自 App.tsx 原樣搬入（邏輯與 dependency array 不變）；
  * 任務建立後的 WebSocket／輪詢監聽交由 useTaskProgressStream。
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createTask, sendChatStream } from '../api/client';
@@ -29,6 +29,7 @@ export interface UseChatSendResult {
   sendQuery: (query: string, options: SendOptions) => Promise<void>;
   handleRetry: () => void;
   handleSuggest: (text: string, company: boolean) => void;
+  handleUpgrade: (query: string, priorAnswer: string) => void;
 }
 
 export function useChatSend({
@@ -42,6 +43,7 @@ export function useChatSend({
   // ── 发送状态 ──
   const [sending, setSending] = useState(false);
   const [lastQuery, setLastQuery] = useState<string | null>(null);
+  const lastOptionsRef = useRef<SendOptions | null>(null);
 
   const { startTaskProgressStream } = useTaskProgressStream();
 
@@ -49,6 +51,7 @@ export function useChatSend({
   const sendQuery = useCallback(
     async (query: string, options: SendOptions) => {
       if (!activeSession) return;
+      lastOptionsRef.current = options;
       const sessionId = activeSession.id;
       setError(null);
       setLastQuery(query);
@@ -95,12 +98,16 @@ export function useChatSend({
         }));
       };
 
-      let routingPreview = await resolveRoutingPreviewForSend({
-        query,
-        mode: options.executionStrategy,
-        companyTemplate: options.companyTemplate,
-        snapshot: options.routingPreviewSnapshot,
-      });
+      const previewMode =
+        options.executionStrategy === 'user_default' ? null : options.executionStrategy;
+      let routingPreview = previewMode
+        ? await resolveRoutingPreviewForSend({
+            query,
+            mode: previewMode,
+            companyTemplate: options.companyTemplate,
+            snapshot: options.routingPreviewSnapshot,
+          })
+        : null;
       if (routingPreview) {
         patchAssistantRouting(routingPreview);
       }
@@ -114,16 +121,21 @@ export function useChatSend({
       }
 
       // ── 簡單／minecraft_ops 走 SSE；公司任務（含工業）建任務，由任務經理分析 ──
-      if (workQuery.trim() !== query.trim()) {
+      if (previewMode && workQuery.trim() !== query.trim()) {
         routingPreview = await resolveRoutingPreviewForSend({
           query: workQuery,
-          mode: options.executionStrategy,
+          mode: previewMode,
           companyTemplate: options.companyTemplate,
           snapshot: null,
         });
         if (routingPreview) patchAssistantRouting(routingPreview);
       }
-      const openTaskWorkspace = usesTaskWorkspace(options.executionStrategy, routingPreview);
+      const postsTask =
+        options.executionStrategy === 'simple' ||
+        options.executionStrategy === 'company' ||
+        options.executionStrategy === 'user_default';
+      const openTaskWorkspace =
+        postsTask || usesTaskWorkspace(options.executionStrategy, routingPreview);
       if (!openTaskWorkspace) {
         setSending(false);
 
@@ -298,23 +310,45 @@ export function useChatSend({
   );
 
   const handleRetry = useCallback(() => {
-    if (lastQuery)
-      void sendQuery(lastQuery, {
-        executionStrategy: 'auto',
+    if (!lastQuery) return;
+    void sendQuery(
+      lastQuery,
+      lastOptionsRef.current ?? {
+        executionStrategy: 'simple',
         companyTemplate: 'quick_task',
-      });
+      },
+    );
   }, [lastQuery, sendQuery]);
 
   // ── 快捷建议 ──
   const handleSuggest = useCallback(
     (text: string, company: boolean) => {
       void sendQuery(text, {
-        executionStrategy: company ? 'company' : 'auto',
+        executionStrategy: company ? 'company' : 'simple',
         companyTemplate: 'quick_task',
       });
     },
     [sendQuery],
   );
 
-  return { sending, lastQuery, sendQuery, handleRetry, handleSuggest };
+  const handleUpgrade = useCallback(
+    (query: string, priorAnswer: string) => {
+      const brief = priorAnswer.trim()
+        ? `${query.trim()}\n\n【先前簡單生成，請一併分析】\n${priorAnswer.trim()}`
+        : query.trim();
+      if (!brief) return;
+      void sendQuery(brief, {
+        executionStrategy: 'company',
+        companyTemplate: 'quick_task',
+        taskOptions: {
+          upgrade_from: 'simple',
+          prior_query: query,
+          prior_answer: priorAnswer,
+        },
+      });
+    },
+    [sendQuery],
+  );
+
+  return { sending, lastQuery, sendQuery, handleRetry, handleSuggest, handleUpgrade };
 }

@@ -1,16 +1,25 @@
-/** 輸入列：極簡 composer，模式收在選單內；支援 /context 斜線命令。 */
-import { useMemo, useRef, useState } from 'react';
+/** 輸入列：送出前可見路徑切換，建議只預選、按下才送。支援 /context 斜線命令。 */
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { COMPANY_TEMPLATES } from '../types';
 import type { RoutingPreviewSnapshot } from '../lib/routingPreview';
 import type { CompanyTemplate, TaskOptions } from '../types';
 import { openChatContextDetail, openContextModal } from '../lib/contextUi';
-import { useRoutingPreview } from '../hooks/useRoutingPreview';
-import { RoutingPreviewChips } from './ui/monitor';
+import { usePathSuggestion } from '../hooks/usePathSuggestion';
+import { fetchExecutionPathSettings, saveExecutionPathDefault } from '../api/client';
+import {
+  PATH_LABEL,
+  readSessionPathChoice,
+  strategyForChoice,
+  writeSessionPathChoice,
+  type ConcretePath,
+  type PathChoice,
+} from '../lib/executionPath';
+import PathSuggester from './PathSuggester';
 
 export interface SendOptions {
-  executionStrategy: 'auto' | 'simple' | 'company';
+  executionStrategy: 'simple' | 'company' | 'user_default';
   companyTemplate: CompanyTemplate;
   taskOptions?: TaskOptions;
   /** 已通過需求審計官，跳過前置閘門 */
@@ -32,10 +41,9 @@ interface InputBarProps {
 
 /** 發送由後端護欄結算；輸入列不顯示預估用量。 */
 
-const STRATEGIES: { key: 'auto' | 'simple' | 'company'; label: string }[] = [
-  { key: 'auto', label: '自動' },
-  { key: 'simple', label: '簡單' },
-  { key: 'company', label: '公司' },
+const PATHS: { key: ConcretePath; label: string }[] = [
+  { key: 'simple', label: PATH_LABEL.simple },
+  { key: 'company', label: PATH_LABEL.company },
 ];
 
 const SLASH_COMMANDS = [
@@ -59,7 +67,9 @@ export default function InputBar({
 }: InputBarProps) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
-  const [executionStrategy, setExecutionStrategy] = useState<'auto' | 'simple' | 'company'>('auto');
+  const [pathChoice, setPathChoice] = useState<PathChoice | null>(() => readSessionPathChoice());
+  const [allowChoice, setAllowChoice] = useState(true);
+  const [choiceHint, setChoiceHint] = useState('');
   const [companyTemplate, setCompanyTemplate] = useState<CompanyTemplate>('quick_task');
   const [showMenu, setShowMenu] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -71,13 +81,46 @@ export default function InputBar({
   const [slashIndex, setSlashIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const strategyLabel = STRATEGIES.find((s) => s.key === executionStrategy)?.label ?? '自動';
-  const { snapshot: routingPreviewSnapshot } = useRoutingPreview(
-    text,
-    executionStrategy,
-    companyTemplate,
-  );
-  const routingPreview = routingPreviewSnapshot?.preview ?? null;
+  const { suggestion, loading: suggestionLoading } = usePathSuggestion(text);
+  const locked = Boolean(suggestion?.locked);
+  const selectedPath: ConcretePath | null = locked ? 'company' : pathChoice?.path ?? null;
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchExecutionPathSettings()
+      .then((settings) => {
+        if (cancelled) return;
+        setAllowChoice(settings.allow_user_path_choice !== false);
+        const stored = readSessionPathChoice();
+        if (stored?.source === 'session') {
+          setPathChoice(stored);
+          return;
+        }
+        if (settings.default_execution_strategy === 'simple' || settings.default_execution_strategy === 'company') {
+          const next: PathChoice = { source: 'default', path: settings.default_execution_strategy };
+          setPathChoice(next);
+          writeSessionPathChoice(next);
+        }
+      })
+      .catch(() => {
+        /* 設定讀取失敗時仍可手動選路徑 */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const remember = (next: PathChoice) => {
+    setPathChoice(next);
+    writeSessionPathChoice(next);
+    setChoiceHint(next.source === 'default' ? '已設為默認，送出前仍可切換' : '只用於這次');
+  };
+
+  const selectPath = (path: ConcretePath, source: PathChoice['source']) => {
+    if (!allowChoice && source === 'session' && !locked) return;
+    if (locked && path === 'simple') return;
+    remember({ source, path: locked ? 'company' : path });
+  };
 
   const slashMatches = useMemo(() => {
     const trimmed = text.trim();
@@ -119,6 +162,29 @@ export default function InputBar({
     clearComposer();
   };
 
+  const sendWith = (choice: PathChoice, rawText: string) => {
+    const trimmed = rawText.trim();
+    if (!trimmed || disabled) return;
+    const taskOptions: TaskOptions = {};
+    if (budgetLimit) taskOptions.budget_limit = parseFloat(budgetLimit);
+    if (maxParallel) taskOptions.max_parallel = parseInt(maxParallel, 10);
+    if (maxIterations) taskOptions.max_iterations = parseInt(maxIterations, 10);
+    if (maxReviewRounds) taskOptions.max_review_rounds = parseInt(maxReviewRounds, 10);
+    if (passThreshold) taskOptions.pass_threshold = parseFloat(passThreshold);
+    const path = locked ? 'company' : choice.path;
+    onSend(trimmed, {
+      executionStrategy: locked ? 'company' : strategyForChoice({ ...choice, path }),
+      companyTemplate,
+      taskOptions,
+    });
+    setText('');
+    setChoiceHint('');
+    setShowMenu(false);
+    requestAnimationFrame(() => {
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    });
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = text.trim();
@@ -128,23 +194,14 @@ export default function InputBar({
       runContextCommand(/\bpeek\b/i.test(trimmed) ? 'peek' : 'detail');
       return;
     }
-    const taskOptions: TaskOptions = {};
-    if (budgetLimit) taskOptions.budget_limit = parseFloat(budgetLimit);
-    if (maxParallel) taskOptions.max_parallel = parseInt(maxParallel, 10);
-    if (maxIterations) taskOptions.max_iterations = parseInt(maxIterations, 10);
-    if (maxReviewRounds) taskOptions.max_review_rounds = parseInt(maxReviewRounds, 10);
-    if (passThreshold) taskOptions.pass_threshold = parseFloat(passThreshold);
-    onSend(trimmed, {
-      executionStrategy,
-      companyTemplate,
-      taskOptions,
-      routingPreviewSnapshot,
-    });
-    setText('');
-    setShowMenu(false);
-    requestAnimationFrame(() => {
-      if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    });
+    const choice: PathChoice | null = locked
+      ? { source: 'session', path: 'company' }
+      : pathChoice;
+    if (!choice) {
+      setChoiceHint('請先選擇簡單生成或公司分析');
+      return;
+    }
+    sendWith(choice, trimmed);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -230,22 +287,8 @@ export default function InputBar({
 
         {showMenu && (
           <div className="absolute bottom-full left-0 z-10 mb-2 w-52 rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-1.5 shadow-xl">
-            <p className="px-2 py-1 text-[10px] text-[var(--console-sub)]">執行模式</p>
-            {STRATEGIES.map((s) => (
-              <button
-                key={s.key}
-                type="button"
-                onClick={() => setExecutionStrategy(s.key)}
-                className={`flex w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] ${
-                  executionStrategy === s.key
-                    ? 'bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] text-[var(--console-blue)]'
-                    : 'text-[var(--console-sub)] hover:bg-white/[0.04]'
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-            {executionStrategy === 'company' && (
+            <p className="px-2 py-1 text-[10px] text-[var(--console-sub)]">公司模板</p>
+            {(selectedPath === 'company' || locked) && (
               <select
                 value={companyTemplate}
                 onChange={(e) => setCompanyTemplate(e.target.value as CompanyTemplate)}
@@ -299,6 +342,50 @@ export default function InputBar({
           </div>
         )}
 
+        <PathSuggester
+          suggestion={suggestion}
+          loading={suggestionLoading}
+          allowChoice={allowChoice}
+          onUse={(path) => {
+            const next: PathChoice = { source: 'session', path: locked ? 'company' : path };
+            remember(next);
+            sendWith(next, text);
+          }}
+          onMakeDefault={(path) => {
+            const target = locked ? 'company' : path;
+            void saveExecutionPathDefault(target)
+              .then(() => remember({ source: 'default', path: target }))
+              .catch((err: unknown) => setChoiceHint(err instanceof Error ? err.message : '儲存默認失敗'));
+          }}
+        />
+
+        <div className="mb-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="執行路徑" data-testid="path-switcher">
+          {PATHS.map((item) => {
+            const active = selectedPath === item.key;
+            const blocked = (!allowChoice && !locked) || (locked && item.key === 'simple');
+            return (
+              <button
+                key={item.key}
+                type="button"
+                aria-pressed={active}
+                disabled={disabled || blocked}
+                onClick={() => selectPath(item.key, 'session')}
+                className={`rounded-lg px-2.5 py-1 text-[12px] ${
+                  active
+                    ? 'bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] text-[var(--console-blue)]'
+                    : 'text-[var(--console-sub)] hover:bg-white/[0.04]'
+                } disabled:opacity-40`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+          {pathChoice?.source === 'default' && !locked && (
+            <span className="text-[11px] text-[var(--console-faint)]">目前是默認，仍可切換</span>
+          )}
+          {choiceHint && <span className="text-[11px] text-[var(--console-sub)]">{choiceHint}</span>}
+        </div>
+
         <form onSubmit={handleSubmit} className="apple-composer">
           <textarea
             ref={textareaRef}
@@ -323,12 +410,8 @@ export default function InputBar({
                 showMenu ? 'bg-white/[0.06] text-[var(--console-ink)]' : ''
               }`}
             >
-              {strategyLabel}
+              {selectedPath === 'company' ? '模板' : '選項'}
             </button>
-
-            {routingPreview && (
-              <RoutingPreviewChips preview={routingPreview} compact className="min-w-0 flex-1 sm:flex-none" />
-            )}
 
             <button
               type="submit"

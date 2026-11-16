@@ -33,7 +33,7 @@ class RuntimeMixin(TaskManagerBase):
             record.query,
             record.strategy,
             task_complexity=tc,
-        )
+        ).suggested
 
     # ── 統一管線執行 ──
 

@@ -21,7 +21,7 @@ export interface ChatMessage {
   /** 使用者回饋：1=👎 2=👍 */
   feedback?: 1 | 2;
   /** 統一模式執行策略 */
-  executionStrategy?: 'auto' | 'simple' | 'company';
+  executionStrategy?: 'auto' | 'simple' | 'company' | 'user_default';
   /** 後台任務 ID */
   taskId?: string;
   /** 任務即時進度 */

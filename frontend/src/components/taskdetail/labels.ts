@@ -20,14 +20,18 @@ export const COMPANY_TEMPLATE_LABEL: Record<string, string> = Object.fromEntries
 );
 
 export const STRATEGY_LABEL: Record<string, string> = {
-  auto: 'auto（系統自動路由）',
-  simple: 'simple（強制單次生成）',
-  company: 'company（強制公司運行時）',
+  auto: 'auto（已棄用）',
+  simple: '簡單生成',
+  company: '公司分析',
+  user_default: '默認路徑',
+  user_explicit: '本次指定',
+  admin_lock: '管理員鎖定',
+  fallback: '兜底簡單生成',
 };
 
 export const PATH_META: Record<string, { label: string; icon: string; tone: string }> = {
-  simple: { label: '反思閉環', icon: '⚙', tone: 'var(--apple-blue-soft)' },
-  company: { label: '公司', icon: '🏢', tone: 'var(--apple-green)' },
+  simple: { label: '簡單生成', icon: '⚙', tone: 'var(--apple-blue-soft)' },
+  company: { label: '公司分析', icon: '🏢', tone: 'var(--apple-green)' },
   opc: { label: '公司', icon: '🏭', tone: 'var(--apple-orange)' },
   '': { label: '尚未路由', icon: '·', tone: 'var(--apple-tertiary)' },
 };

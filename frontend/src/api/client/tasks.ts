@@ -86,13 +86,50 @@ export function commitNarrative(
   return taskPost(`/tasks/${encodeURIComponent(taskId)}/narrative/commit`, { kind, entity }, '實體寫入失敗');
 }
 
-/** 建立後台任務（統一模式），回傳 task_id。 */
+export type TaskExecutionStrategy = 'simple' | 'company' | 'user_default' | 'suggest_only';
+
+export interface PathSuggestion {
+  suggested: 'simple' | 'company';
+  reason: string;
+  reason_text?: string;
+  locked: boolean;
+  can_switch?: boolean;
+  created?: boolean;
+  task_id?: string | null;
+}
+
+export interface CreatedTask {
+  task_id: string;
+  strategy: string;
+  decision_source?: 'user_explicit' | 'user_default' | 'admin_lock' | 'fallback';
+  reason?: string;
+  reason_text?: string;
+  locked?: boolean;
+  using_default?: boolean;
+  can_switch?: boolean;
+  created?: boolean;
+  status?: string;
+}
+
+/** 建議路徑與理由。不建立任務。 */
+export async function fetchPathSuggestion(query: string, signal?: AbortSignal): Promise<PathSuggestion> {
+  const params = new URLSearchParams({ query });
+  const resp = await fetch(apiUrl(`/tasks/path-suggestion?${params}`), { signal });
+  if (!resp.ok) throw new Error(await parseBillingError(resp));
+  const data = (await resp.json()) as PathSuggestion;
+  if (data.suggested !== 'simple' && data.suggested !== 'company') {
+    throw new Error('路徑建議無效');
+  }
+  return data;
+}
+
+/** 建立後台任務。策略必填，不再默認 auto。 */
 export async function createTask(
   query: string,
-  executionStrategy: 'auto' | 'simple' | 'company' = 'auto',
+  executionStrategy: TaskExecutionStrategy,
   companyTemplate: string = 'quick_task',
   options?: TaskOptions,
-): Promise<{ task_id: string; strategy: string }> {
+): Promise<CreatedTask> {
   let resp: Response;
   try {
     resp = await fetch(
@@ -112,7 +149,7 @@ export async function createTask(
     throw new Error('網路連線失敗，請檢查後端服務是否啟動');
   }
   if (!resp.ok) throw new Error(await parseBillingError(resp));
-  return resp.json();
+  return resp.json() as Promise<CreatedTask>;
 }
 
 /** 斷點續跑：從檢查點恢復任務執行。 */

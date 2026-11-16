@@ -163,6 +163,29 @@ export async function testApiRoute(routeId: string): Promise<{ ok: boolean; repl
   return resp.json();
 }
 
+export interface ExecutionPathSettings {
+  allow_user_path_choice: boolean;
+  default_execution_strategy: 'simple' | 'company' | null;
+  force_company_keywords: string[];
+  settings_user?: string;
+}
+
+export async function fetchExecutionPathSettings(): Promise<ExecutionPathSettings> {
+  const resp = await fetch(apiUrl('/config/execution-path'));
+  if (!resp.ok) throw new Error(`讀取執行路徑設定失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
+export async function saveExecutionPathDefault(path: 'simple' | 'company'): Promise<ExecutionPathSettings> {
+  const resp = await fetch(apiUrl('/config/execution-path'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ default_execution_strategy: path }),
+  });
+  if (!resp.ok) throw new Error(`儲存默認路徑失敗（HTTP ${resp.status}）`);
+  return resp.json();
+}
+
 export async function updateRouteStrategy(routeStrategy: string, defaultRouteId?: string): Promise<ApiRouterState> {
   const resp = await fetch(apiUrl('/config/strategy'), {
     method: 'PUT',

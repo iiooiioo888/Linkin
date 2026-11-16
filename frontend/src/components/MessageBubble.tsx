@@ -21,6 +21,8 @@ interface MessageBubbleProps {
   /** 開啟對話底部詳細區 Context（綁定該訊息任務） */
   onOpenContext?: (taskId: string) => void;
   onTaskStatePatch?: (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => void;
+  /** 把這則簡單生成升級成公司分析，並帶上原回答。 */
+  onUpgradeToCompany?: (priorAnswer: string) => void;
   variant?: 'default' | 'workspace';
 }
 
@@ -40,6 +42,7 @@ export default function MessageBubble({
   onOpenTrace,
   onOpenContext,
   onTaskStatePatch,
+  onUpgradeToCompany,
   variant = 'default',
 }: MessageBubbleProps) {
   const [feedbackSent, setFeedbackSent] = useState<1 | 2 | undefined>(message.feedback);
@@ -97,6 +100,14 @@ export default function MessageBubble({
   };
 
   const hasActions = !isUser && !message.streaming && (message.content || message.taskState);
+  const resolved = message.taskState?.resolved_path;
+  const canUpgrade =
+    !isUser &&
+    !message.streaming &&
+    Boolean(message.content.trim()) &&
+    resolved !== 'company' &&
+    resolved !== 'opc' &&
+    (resolved === 'simple' || message.executionStrategy === 'simple');
   const workspace = variant === 'workspace';
 
   return (
@@ -179,6 +190,17 @@ export default function MessageBubble({
           )}
         </div>
         )
+      )}
+
+      {canUpgrade && onUpgradeToCompany && (
+        <button
+          type="button"
+          data-testid="upgrade-to-company"
+          onClick={() => onUpgradeToCompany(message.content)}
+          className="rounded-lg px-2.5 py-1 text-[12px] text-[var(--console-ink)] hover:bg-white/[0.06]"
+        >
+          升級為公司分析
+        </button>
       )}
 
       {hasActions && !workspace && (

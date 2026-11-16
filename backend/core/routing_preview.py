@@ -176,7 +176,7 @@ def build_routing_preview(
         query,
         strategy,
         task_complexity=complexity,
-    )
+    ).suggested
     template = _resolve_template(path, query, strategy, company_template=company_template)
     tier, model_hint = _tier_and_model_hint(complexity, path)
 
