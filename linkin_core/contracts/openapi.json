@@ -50,11 +50,30 @@
       "ChatStreamRequest": {
         "additionalProperties": false,
         "properties": {
+          "decision_source": {
+            "$ref": "#/components/schemas/DecisionSource",
+            "default": "user_default",
+            "description": "伺服器寫入。客戶端傳入會被覆蓋。auto 映射時為 fallback。"
+          },
           "query": {
             "maxLength": 8000,
             "minLength": 1,
             "title": "Query",
             "type": "string"
+          },
+          "requested_strategy": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "伺服器寫入。舊客戶端傳 auto 時保留原值。",
+            "title": "Requested Strategy"
           },
           "session_id": {
             "anyOf": [
@@ -71,7 +90,20 @@
           },
           "strategy": {
             "$ref": "#/components/schemas/CompatibleStrategy",
-            "default": "auto"
+            "default": "user_default",
+            "description": "執行策略。默認 user_default，由租戶配置注入，契約層不寫死 auto。"
+          },
+          "strategy_audit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyCompatAudit"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "伺服器寫入。只有 auto 映射會帶審計列。"
           },
           "tenant_id": {
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
@@ -100,15 +132,53 @@
         "type": "object"
       },
       "CompatibleStrategy": {
-        "description": "含現行程式的 simple / company 覆寫。",
+        "anyOf": [
+          {
+            "const": "auto",
+            "deprecated": true,
+            "description": "棄用。現行 SCHEMA_VERSION 主版本內映射為 user_default，decision_source=fallback，並記審計。不回 4xx。最早可改成拒絕的是 SCHEMA_VERSION 2.0.0。"
+          },
+          {
+            "const": "user_default"
+          },
+          {
+            "const": "suggest_only"
+          },
+          {
+            "const": "manual"
+          },
+          {
+            "const": "cost_speed"
+          },
+          {
+            "const": "simple"
+          },
+          {
+            "const": "company"
+          }
+        ],
+        "description": "執行策略。默認 user_default，由租戶配置注入，契約層不寫死 auto。auto 已棄用：SCHEMA_VERSION 1.x 仍接受，映射為 user_default。",
         "enum": [
           "auto",
+          "user_default",
+          "suggest_only",
           "manual",
           "cost_speed",
           "simple",
           "company"
         ],
         "title": "CompatibleStrategy",
+        "type": "string"
+      },
+      "DecisionSource": {
+        "description": "策略是怎麼定下來的。auto 映射只會寫 fallback。",
+        "enum": [
+          "user_explicit",
+          "user_default",
+          "admin_lock",
+          "fallback"
+        ],
+        "title": "DecisionSource",
         "type": "string"
       },
       "ErrorBody": {
@@ -511,6 +581,11 @@
       "RoutePreviewRequest": {
         "additionalProperties": false,
         "properties": {
+          "decision_source": {
+            "$ref": "#/components/schemas/DecisionSource",
+            "default": "user_default",
+            "description": "伺服器寫入。客戶端傳入會被覆蓋。auto 映射時為 fallback。"
+          },
           "manual_path": {
             "anyOf": [
               {
@@ -528,9 +603,36 @@
             "title": "Query",
             "type": "string"
           },
+          "requested_strategy": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "伺服器寫入。舊客戶端傳 auto 時保留原值。",
+            "title": "Requested Strategy"
+          },
           "strategy": {
             "$ref": "#/components/schemas/CompatibleStrategy",
-            "default": "auto"
+            "default": "user_default",
+            "description": "執行策略。默認 user_default，由租戶配置注入，契約層不寫死 auto。"
+          },
+          "strategy_audit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyCompatAudit"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "伺服器寫入。只有 auto 映射會帶審計列。"
           },
           "task_complexity": {
             "anyOf": [
@@ -594,6 +696,62 @@
         "title": "SseEventName",
         "type": "string"
       },
+      "StrategyCompatAudit": {
+        "additionalProperties": false,
+        "description": "auto 輸入映射的審計列。契約層紀錄，不是 NATS audit.event 本體。",
+        "properties": {
+          "action": {
+            "default": "execution_strategy.auto_mapped",
+            "title": "Action",
+            "type": "string"
+          },
+          "decision_source": {
+            "$ref": "#/components/schemas/DecisionSource"
+          },
+          "occurred_at": {
+            "maxLength": 40,
+            "minLength": 20,
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "requested_strategy": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Requested Strategy",
+            "type": "string"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/CompatibleStrategy"
+          },
+          "tenant_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trace Id"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "tenant_id",
+          "requested_strategy",
+          "strategy",
+          "decision_source"
+        ],
+        "title": "StrategyCompatAudit",
+        "type": "object"
+      },
       "TaskAccepted": {
         "additionalProperties": false,
         "properties": {
@@ -617,11 +775,30 @@
       "TaskCreateRequest": {
         "additionalProperties": false,
         "properties": {
+          "decision_source": {
+            "$ref": "#/components/schemas/DecisionSource",
+            "default": "user_default",
+            "description": "伺服器寫入。客戶端傳入會被覆蓋。auto 映射時為 fallback。"
+          },
           "query": {
             "maxLength": 8000,
             "minLength": 1,
             "title": "Query",
             "type": "string"
+          },
+          "requested_strategy": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "伺服器寫入。舊客戶端傳 auto 時保留原值。",
+            "title": "Requested Strategy"
           },
           "session_id": {
             "anyOf": [
@@ -638,7 +815,20 @@
           },
           "strategy": {
             "$ref": "#/components/schemas/CompatibleStrategy",
-            "default": "auto"
+            "default": "user_default",
+            "description": "執行策略。默認 user_default，由租戶配置注入，契約層不寫死 auto。"
+          },
+          "strategy_audit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StrategyCompatAudit"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "伺服器寫入。只有 auto 映射會帶審計列。"
           },
           "tenant_id": {
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
@@ -831,9 +1021,9 @@
     }
   },
   "info": {
-    "description": "內網 BFF 與內部服務的草案。現有 /chat、/tasks 繼續由單體提供，此檔不取代實作。AI Hub 的 /api/v1/chat/completions 是另一條契約。",
+    "description": "內網 BFF 與內部服務的草案。現有 /chat、/tasks 繼續由單體提供，此檔不取代實作。AI Hub 的 /api/v1/chat/completions 是另一條契約。執行策略默認 user_default；auto 已棄用，SCHEMA_VERSION 1.x 仍映射而非拒絕。",
     "title": "Linkin 服務契約",
-    "version": "2026-10-26"
+    "version": "2026-11-16"
   },
   "openapi": "3.1.0",
   "paths": {

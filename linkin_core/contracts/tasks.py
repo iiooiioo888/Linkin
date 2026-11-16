@@ -7,7 +7,7 @@ from enum import Enum
 from pydantic import Field
 
 from linkin_core.contracts.common import TENANT_ID, TRACE_ID, ContractModel
-from linkin_core.contracts.route import CompatibleStrategy, ExecutionPathName
+from linkin_core.contracts.route import ExecutionPathName, ExecutionStrategyRequest
 
 
 class TaskStatus(str, Enum):
@@ -20,12 +20,11 @@ class TaskStatus(str, Enum):
     cancelled = "cancelled"
 
 
-class TaskCreateRequest(ContractModel):
+class TaskCreateRequest(ExecutionStrategyRequest):
     query: str = Field(min_length=1, max_length=8000)
     tenant_id: str = Field(pattern=TENANT_ID)
     session_id: str | None = Field(default=None, max_length=64)
     trace_id: str | None = Field(default=None, pattern=TRACE_ID)
-    strategy: CompatibleStrategy = CompatibleStrategy.auto
 
 
 class TaskAccepted(ContractModel):

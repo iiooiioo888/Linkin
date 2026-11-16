@@ -1,6 +1,7 @@
 # 服務契約（階段 0）
 
-> 對齊日期：2026-10-26。這是內網拆分的凍結契約，還沒有把單體拆開。
+> 對齊日期：2026-11-16（`CONTRACT_VERSION`）。這是內網拆分的凍結契約，還沒有把單體拆開。
+> `SCHEMA_VERSION` 仍是 1.0.0：`auto` 輸入還在映射，不是破壞性移除。
 > 執行路徑仍由 `backend/core/execution_path.py` 的 `resolve_execution_path` 決定。
 
 ## 鎖定的預設
@@ -21,7 +22,7 @@
 | 服務 | 職責 |
 |------|------|
 | `api-gateway` | 對話、任務、路由預覽、監控聚合；鑑權、租戶、限流、請求 ID、SSE。不含業務規則 |
-| `route-service` | auto / manual / cost_speed，意圖標籤，規則鏈，路由決定 |
+| `route-service` | `user_default` / `suggest_only` / `manual` / `cost_speed` / `simple` / `company`。`auto` 已棄用，1.x 仍映射。意圖標籤，規則鏈，路由決定 |
 | `context-service` | 組上下文；平行讀記憶與 OPC 摘要，逾時降級 |
 | `reflection-service` | 評分、批評、改進、終止。simple 同步，公司路徑可異步 |
 | `company-orchestrator` | 任務分析、里程碑、席位註冊、狀態機；發出 `seat.task.created` |
@@ -51,7 +52,18 @@
 | POST | `/api/v1/opc/write-request` | 僅內部。必須帶護欄決策 |
 | POST | `/api/v1/minecraft/action` | 僅內部。`place_block`、`pose_block`、`break_block`、`fill_block`、`execute_command` 必須帶護欄決策 |
 
-草案：`linkin_core/contracts/openapi.json`。
+草案：`linkin_core/contracts/openapi.json`。快照版本是 `CONTRACT_VERSION`（OpenAPI `info.version`）。
+
+## 執行策略
+
+請求欄位名是 `strategy`（凍結契約裡的執行策略，不另起 `execution_strategy` 欄位）。
+
+| 值 | 契約層 |
+| --- | --- |
+| `user_default` | 默認。語意是租戶配置注入，契約不寫死 `auto`，也不在這一層改寫成 `simple` / `company` |
+| `suggest_only` | 接受。只標記本次要建議，不在契約層建任務 |
+| `simple` / `company` / `manual` / `cost_speed` | 明示值，`decision_source=user_explicit`。`manual` 仍要帶 `manual_path` |
+| `auto` | OpenAPI 以 `deprecated: true` 標在該取值上。`SCHEMA_VERSION` 1.x 仍解析：映射為 `user_default`，`decision_source=fallback`，並記一筆 `execution_strategy.auto_mapped`。不回 4xx。最早可改成拒絕的是 `SCHEMA_VERSION` 2.0.0 |
 
 規則鏈（`manual`、`simple`、`company` 在鏈之前結束）：
 
