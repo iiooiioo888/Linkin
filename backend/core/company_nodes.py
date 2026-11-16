@@ -119,11 +119,21 @@ def route_by_complexity(state: StateInput) -> str:
     - "run_company": 走公司運行時
     - "generate_initial_answer": 走單次生成
     """
-    from backend.core.execution_path import resolve_execution_path, route_by_complexity_target
+    from backend.core.execution_path import (
+        PathName,
+        resolve_execution_path,
+        route_by_complexity_target,
+    )
 
     query = state.get("query", "")
     raw_choice = state.get("user_choice")
-    user_choice = raw_choice if raw_choice in ("simple", "company") else None
+    user_choice: PathName | None
+    if raw_choice == "simple":
+        user_choice = "simple"
+    elif raw_choice == "company":
+        user_choice = "company"
+    else:
+        user_choice = None
     strategy = str(state.get("execution_strategy", "auto"))
     target = route_by_complexity_target(
         query,
