@@ -10,8 +10,8 @@ import { parseRoutingPreview } from '../../lib/routingPreview';
 import { apiUrl, parseBillingError } from './http';
 
 export interface ChatOptions {
-  /** 統一模式執行策略：auto（自動判斷）/ simple（單次生成）/ company（公司運行時） */
-  executionStrategy?: 'auto' | 'simple' | 'company';
+  /** 會執行的策略。建議不在這裡送，auto 已不再是對外選項。 */
+  executionStrategy?: 'simple' | 'company' | 'user_default';
   /** 公司組織模板（execution_strategy 為 company 時生效） */
   companyTemplate?: string;
   /** 多輪對話歷史：[{"role": "user"|"assistant", "content": "..."}] */
@@ -70,7 +70,7 @@ export function sendChatStream(
   extra?: {
     semantic_lock?: Record<string, unknown>;
     ui_language?: string;
-    executionStrategy?: 'auto' | 'simple' | 'company';
+    executionStrategy?: 'simple' | 'company' | 'user_default';
   },
 ): AbortController {
   const controller = new AbortController();

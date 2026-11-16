@@ -31,6 +31,7 @@ COMPANION_ENUM_NAMES: tuple[str, ...] = (
     "resource.kind",
     "hardware.kind",
     "execution_path",
+    "decision_source",
 )
 
 _ENUMS: dict[str, dict[str, str]] = {
@@ -148,6 +149,12 @@ _ENUMS: dict[str, dict[str, str]] = {
     "execution_path": {
         "simple": "簡單路徑",
         "company": "公司路徑",
+    },
+    "decision_source": {
+        "user_explicit": "本次指定",
+        "user_default": "默認路徑",
+        "admin_lock": "管理員鎖定",
+        "fallback": "兜底",
     },
 }
 

@@ -12,6 +12,7 @@ from backend.core.execution_path import (
     needs_opc_context,
     resolve_company_template,
     resolve_execution_path,
+    suggest_execution_path,
 )
 
 EstimatedCostLevel = Literal["low", "medium", "high"]
@@ -172,11 +173,15 @@ def build_routing_preview(
     """組裝與執行路徑一致的預覽 payload（供 ``POST /routing/preview`` 與 SSE）。"""
     strategy = (mode or "auto").strip().lower()
     complexity = (task_complexity or "").strip() or _classify_complexity(query, strategy)
-    path = resolve_execution_path(
-        query,
-        strategy,
-        task_complexity=complexity,
-    ).suggested
+    # mode=auto 只是預覽用的建議別名，不走已棄用的執行決策分支，也不建任務。
+    if strategy == "auto":
+        path = suggest_execution_path(query, task_complexity=complexity).suggested
+    else:
+        path = resolve_execution_path(
+            query,
+            strategy,
+            task_complexity=complexity,
+        ).suggested
     template = _resolve_template(path, query, strategy, company_template=company_template)
     tier, model_hint = _tier_and_model_hint(complexity, path)
 

@@ -156,6 +156,9 @@ class TestTaskApi:
                 assert explicit_body["strategy"] == "simple"
                 assert explicit_body["locked"] is False
                 created.append(explicit_body["task_id"])
+                stored = client.get(f"/tasks/{explicit_body['task_id']}", headers=headers)
+                assert stored.status_code == 200, stored.text
+                assert stored.json()["decision_source"] == "user_explicit"
 
                 defaulted = client.post("/tasks", headers=headers, json={"query": "今天天氣如何"})
                 assert defaulted.status_code == 200, defaulted.text
@@ -205,3 +208,67 @@ class TestTaskApi:
             tenant_user_id.reset(token)
             for task_id in created:
                 tasks_router.task_manager.tasks.pop(task_id, None)
+
+
+class TestChatDoesNotExecuteAuto:
+    def test_chat_rejects_auto_before_graph(self, no_llm, monkeypatch):
+        del no_llm
+
+        async def _boom(*_args, **_kwargs):
+            raise AssertionError("auto 不應進入圖")
+
+        monkeypatch.setattr("backend.api.routers.chat.routes.evoloop_graph.ainvoke", _boom)
+        with _client() as client:
+            resp = client.post("/chat", json={"query": "你好", "execution_strategy": "auto"})
+        assert resp.status_code == 422
+        assert "auto" in resp.text
+
+    def test_stream_rejects_auto_and_suggest_only_without_creating_task(self, no_llm, monkeypatch):
+        del no_llm
+
+        def _boom(*_args, **_kwargs):
+            raise AssertionError("拒絕的策略不應選路")
+
+        monkeypatch.setattr(
+            "backend.api.routers.chat.streaming.chat_stream_uses_company_sse",
+            _boom,
+        )
+        before = set(tasks_router.task_manager.tasks)
+        with _client() as client:
+            auto = client.post(
+                "/chat/stream",
+                json={"query": COMPLEX_Q, "execution_strategy": "auto"},
+            )
+            suggest = client.post(
+                "/chat/stream",
+                json={"query": COMPLEX_Q, "execution_strategy": "suggest_only"},
+            )
+        assert auto.status_code == 422
+        assert "auto" in auto.text
+        assert suggest.status_code == 422
+        assert "suggest_only" in suggest.text
+        assert set(tasks_router.task_manager.tasks) == before
+
+    def test_company_stream_persists_decision_source(self, no_llm, monkeypatch):
+        del no_llm
+        from backend.api.routers.chat import company_stream
+
+        monkeypatch.setattr(company_stream.task_manager, "start_budget_draft", lambda _record: None)
+        before = set(company_stream.task_manager.tasks)
+        with _client() as client, client.stream(
+            "POST",
+            "/chat/stream",
+            json={"query": "你好", "execution_strategy": "company"},
+        ) as resp:
+            assert resp.status_code == 200
+            text = "".join(resp.iter_text())
+        assert "user_explicit" in text
+        created = set(company_stream.task_manager.tasks) - before
+        assert len(created) == 1
+        record = company_stream.task_manager.tasks[created.pop()]
+        try:
+            assert record.decision_source == "user_explicit"
+            assert record.strategy == "company"
+            assert record.resolved_path == "company"
+        finally:
+            company_stream.task_manager.tasks.pop(record.task_id, None)

@@ -18,7 +18,7 @@ router = APIRouter(tags=["raho"])
 
 class RahoGrillStartBody(BaseModel):
     query: str
-    execution_strategy: str = "auto"
+    execution_strategy: str = "simple"
 
 
 class RahoGrillTurnBody(BaseModel):

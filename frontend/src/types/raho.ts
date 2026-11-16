@@ -60,7 +60,7 @@ export interface GrillUserState {
   originalQuery?: string;
   history?: Array<{ role: 'assistant' | 'user'; content: string; why?: string }>;
   sendOptions?: {
-    executionStrategy: 'auto' | 'simple' | 'company';
+    executionStrategy: 'simple' | 'company';
     companyTemplate: string;
     taskOptions?: TaskOptions;
   };

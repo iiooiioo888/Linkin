@@ -317,6 +317,23 @@ def _build() -> dict[str, dict[str, Any]]:
         ["execution_path", "company_template", "budget_locked", "query"],
         "交給既有編排時要帶的欄位。本模組不執行交接。",
     )
+    execution_path_record = _obj(
+        "ExecutionPathRecord",
+        {
+            "chosen": _enum("execution_path"),
+            "source": _enum("decision_source"),
+            "suggested": _enum("execution_path"),
+            "reason": text,
+        },
+        ["chosen", "source", "suggested", "reason"],
+        "已採用的路徑、決策來源、系統建議與理由。報告只記錄，不在這裡重選。",
+    )
+    feasibility_input = _entity(
+        "FeasibilityInput",
+        {"decision_source": _enum("decision_source")},
+        ["decision_source"],
+        "子圖三（可行性）的輸入。decision_source 說明路徑如何定案，本輸入不重新選路。",
+    )
     report = _entity(
         "TaskAnalysisReport",
         {
@@ -330,6 +347,7 @@ def _build() -> dict[str, dict[str, Any]]:
             "budget": _nullable(_ref("BudgetEstimate")),
             "conditions": _arr(_ref("Condition")),
             "handoff": _nullable(_ref("Handoff")),
+            "execution_path": _ref("ExecutionPathRecord"),
         },
         [
             "tenant_id",
@@ -343,7 +361,8 @@ def _build() -> dict[str, dict[str, Any]]:
             "conditions",
             "handoff",
         ],
-        "任務分析報告。可同時嵌接口 A、B 與預算，因而一份 JSON 能表達 A／B／C。",
+        "任務分析報告。可同時嵌接口 A、B 與預算，因而一份 JSON 能表達 A／B／C。"
+        "execution_path 為選填，舊報告不必補上。",
     )
     interface_c = _entity(
         "InterfaceC",
@@ -372,6 +391,8 @@ def _build() -> dict[str, dict[str, Any]]:
         "InterfaceB": interface_b,
         "Condition": condition,
         "Handoff": handoff,
+        "ExecutionPathRecord": execution_path_record,
+        "FeasibilityInput": feasibility_input,
         "TaskAnalysisReport": report,
         "InterfaceC": interface_c,
     }

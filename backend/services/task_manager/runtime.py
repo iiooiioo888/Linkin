@@ -114,7 +114,9 @@ class RuntimeMixin(TaskManagerBase):
             "session_id": record.task_id,
             "history": [],
             "ui_language": normalize_ui_language(opts.get("ui_language")),
-            "execution_strategy": record.strategy if record.strategy == "simple" else "auto",
+            "execution_strategy": (
+                record.strategy if record.strategy in ("simple", "company") else "simple"
+            ),
             "task_complexity": record.task_complexity,
             "resolved_execution_path": record.resolved_path,
         }

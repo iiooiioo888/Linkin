@@ -33,6 +33,7 @@ _COMPANION = (
     "resource.kind",
     "hardware.kind",
     "execution_path",
+    "decision_source",
 )
 _SHAPE: dict[str, list[str]] = {
     "MoneyBand": ["low", "high"],
@@ -143,6 +144,8 @@ _SHAPE: dict[str, list[str]] = {
         "budget_locked",
         "query",
     ],
+    "ExecutionPathRecord": ["chosen", "source", "suggested", "reason"],
+    "FeasibilityInput": ["schema_version", "decision_source"],
     "TaskAnalysisReport": [
         "schema_version",
         "tenant_id",
@@ -155,10 +158,15 @@ _SHAPE: dict[str, list[str]] = {
         "budget",
         "conditions",
         "handoff",
+        "execution_path",
     ],
     "InterfaceC": ["schema_version", "interface", "report"],
 }
 _VERSION = "v0.1"
+# 只增不刪：新欄位可以不在 required，舊必填鍵保持原樣。
+_OPTIONAL: dict[str, list[str]] = {
+    "TaskAnalysisReport": ["execution_path"],
+}
 
 
 def _band(low: float = 1, high: float = 2) -> dict:
@@ -405,8 +413,9 @@ def test_schema_shape_additional_properties_and_version() -> None:
     assert set(SCHEMAS) == set(_SHAPE)
     for name, keys in _SHAPE.items():
         schema = SCHEMAS[name]
+        optional = _OPTIONAL.get(name, [])
         assert list(schema["properties"]) == keys
-        assert schema["required"] == keys
+        assert schema["required"] == [key for key in keys if key not in optional]
         assert schema["additionalProperties"] is False
         if "schema_version" in keys:
             assert schema["properties"]["schema_version"] == {"const": "v0.1"}
@@ -545,6 +554,93 @@ def test_money_band_low_cannot_exceed_high() -> None:
         validate(document, "BudgetEstimate")
     assert caught.value.kind == "range"
     assert caught.value.path == "$.one_time"
+
+
+def _execution_path_record() -> dict:
+    return {
+        "chosen": "company",
+        "source": "user_explicit",
+        "suggested": "simple",
+        "reason": "這次由你指定路徑",
+    }
+
+
+def _feasibility_input(source: str = "user_explicit") -> dict:
+    return {"schema_version": _VERSION, "decision_source": source}
+
+
+def test_report_execution_path_records_choice_without_dropping_v01() -> None:
+    report = SCHEMAS["TaskAnalysisReport"]
+    assert SCHEMA_VERSION == "v0.1"
+    assert report["properties"]["schema_version"] == {"const": "v0.1"}
+    assert "execution_path" in report["properties"]
+    assert "execution_path" not in report["required"]
+    assert report["additionalProperties"] is False
+    record = SCHEMAS["ExecutionPathRecord"]
+    assert record["additionalProperties"] is False
+    assert record["required"] == ["chosen", "source", "suggested", "reason"]
+    assert record["properties"]["chosen"]["enum"] == ["simple", "company"]
+    assert record["properties"]["suggested"]["enum"] == ["simple", "company"]
+    assert record["properties"]["source"]["enum"] == [
+        "user_explicit",
+        "user_default",
+        "admin_lock",
+        "fallback",
+    ]
+    assert "auto" not in record["properties"]["chosen"]["enum"]
+    assert "auto" not in record["properties"]["source"]["enum"]
+    feasibility = SCHEMAS["FeasibilityInput"]
+    assert feasibility["properties"]["decision_source"]["enum"] == record["properties"]["source"]["enum"]
+    assert feasibility["additionalProperties"] is False
+
+
+@pytest.mark.parametrize(
+    "source",
+    ["user_explicit", "user_default", "admin_lock", "fallback"],
+)
+def test_feasibility_input_accepts_decision_sources(source: str) -> None:
+    document = _feasibility_input(source)
+    assert validate(document, "FeasibilityInput") is document
+
+
+def test_report_with_execution_path_validates() -> None:
+    document = _report(budget=_budget(), interface_b=_interface_b())
+    document["execution_path"] = _execution_path_record()
+    assert validate(document, "TaskAnalysisReport") is document
+
+
+def test_execution_path_rejects_unknown_field_and_auto() -> None:
+    document = _report(budget=None, interface_b=None)
+    document["execution_path"] = {**_execution_path_record(), "auto": True}
+    with pytest.raises(SchemaError) as caught:
+        validate(document, "TaskAnalysisReport")
+    assert caught.value.kind == "unknown_field"
+    assert caught.value.path == "$.execution_path.auto"
+
+    document = _report(budget=None, interface_b=None)
+    document["execution_path"] = {**_execution_path_record(), "chosen": "auto"}
+    with pytest.raises(SchemaError) as caught:
+        validate(document, "TaskAnalysisReport")
+    assert caught.value.kind == "invalid_enum"
+    assert caught.value.path == "$.execution_path.chosen"
+
+    document = _report(budget=None, interface_b=None)
+    document["execution_path"] = {**_execution_path_record(), "source": "auto"}
+    with pytest.raises(SchemaError) as caught:
+        validate(document, "TaskAnalysisReport")
+    assert caught.value.kind == "invalid_enum"
+    assert caught.value.path == "$.execution_path.source"
+
+
+def test_feasibility_input_rejects_auto_and_unknown_field() -> None:
+    with pytest.raises(SchemaError) as caught:
+        validate(_feasibility_input("auto"), "FeasibilityInput")
+    assert caught.value.kind == "invalid_enum"
+    document = _feasibility_input()
+    document["strategy"] = "auto"
+    with pytest.raises(SchemaError) as caught:
+        validate(document, "FeasibilityInput")
+    assert caught.value.kind == "unknown_field"
 
 
 def test_recommended_default_must_be_an_option() -> None:

@@ -30,12 +30,16 @@ SERVER_VERSION = "1.0"
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "name": "linkin_submit_task",
-        "description": "派一個任務給 Linkin EvoLoop 運行時（auto 自動選 simple/company/opc 路徑）。回傳 task_id 供輪詢。",
+        "description": "派一個任務。路徑用 simple、company、user_default，或省略以採用租戶默認。不再自動選路。",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "query": {"type": "string", "description": "任務描述"},
-                "strategy": {"type": "string", "enum": ["auto", "simple", "company"], "description": "執行策略，預設 auto"},
+                "strategy": {
+                    "type": "string",
+                    "enum": ["simple", "company", "user_default", "suggest_only"],
+                    "description": "執行策略。省略時用租戶默認；沒有默認則拒絕。suggest_only 只回建議。",
+                },
             },
             "required": ["query"],
         },
@@ -120,12 +124,68 @@ def _call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             query = str(args.get("query") or "").strip()
             if not query:
                 return _err("query 不可為空")
-            record = task_manager.create_task(query, str(args.get("strategy") or "auto"), "")
+            from backend.core.execution_path import (
+                ChoiceForbiddenError,
+                ChoiceRequiredError,
+                decide_task_execution,
+                normalize_external_strategy,
+                reason_text,
+            )
+            from backend.core.execution_path_config import load_execution_path_config
+
+            raw_strategy = args.get("strategy")
+            if raw_strategy is None or str(raw_strategy).strip() == "":
+                strategy = None
+            else:
+                try:
+                    strategy = normalize_external_strategy(str(raw_strategy))
+                except ValueError as exc:
+                    token = str(exc)
+                    if token == "auto":
+                        return _err(
+                            "execution_strategy 不再接受 auto。"
+                            "請改用 simple、company、user_default 或 suggest_only。"
+                        )
+                    return _err(
+                        f"不支援的 strategy：{token}。允許 simple、company、user_default、suggest_only。"
+                    )
+            try:
+                decision = decide_task_execution(
+                    query, strategy, config=load_execution_path_config()
+                )
+            except ChoiceRequiredError as exc:
+                return _err(str(exc))
+            except ChoiceForbiddenError as exc:
+                return _err(str(exc))
+            if not decision.created:
+                return _text(json.dumps(
+                    {
+                        "created": False,
+                        "task_id": None,
+                        "suggested": decision.suggested,
+                        "reason": decision.reason,
+                        "reason_text": reason_text(decision.reason),
+                        "locked": decision.locked,
+                    },
+                    ensure_ascii=False,
+                ))
+            record = task_manager.create_task(query, decision.suggested, "")
+            record.resolved_path = decision.suggested
+            record.decision_source = decision.decision_source or ""
+            record.path_locked = decision.locked
+            record.path_reason = decision.reason
+            task_manager._persist(record)
             task_manager.start_task_from_thread(record)
             return _text(json.dumps(
-                {"task_id": record.task_id, "strategy": record.strategy,
-                 "hint": "用 linkin_task_status 輪詢"},
-                ensure_ascii=False))
+                {
+                    "task_id": record.task_id,
+                    "strategy": record.strategy,
+                    "decision_source": record.decision_source,
+                    "created": True,
+                    "hint": "用 linkin_task_status 輪詢",
+                },
+                ensure_ascii=False,
+            ))
         if name == "linkin_task_status":
             rec = task_manager.get_task(str(args.get("task_id") or ""))
             if rec is None:
