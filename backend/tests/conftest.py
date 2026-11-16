@@ -127,6 +127,11 @@ def _isolate_local_video_studio(tmp_path, monkeypatch):
     monkeypatch.setenv("LVS_CLOUD_ENABLED", "false")
     monkeypatch.setenv("CLOUD_ENABLED", "false")
     monkeypatch.delenv("LVS_API_KEY", raising=False)
+    monkeypatch.delenv("LVS_ALLOW_FAKE_MEDIA", raising=False)
+    monkeypatch.delenv("LVS_VERIFY_MODEL_SHA256", raising=False)
+    monkeypatch.delenv("LVS_DRAWTEXT_FONT", raising=False)
+    monkeypatch.delenv("LVS_COMPLIANCE_FONT", raising=False)
+    monkeypatch.delenv("LVS_AGENT_MAX_CYCLES", raising=False)
     from backend.local_video_studio.db import reset_db_state
 
     reset_db_state()

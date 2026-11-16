@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -42,8 +44,27 @@ def compose_project(session: Session, project_id: str, body: ComposeRequest) -> 
             add_watermark=body.add_watermark,
             metadata=body.metadata,
             storage=store,
+            audio_relative_paths=list(body.audio_relative_paths),
+            subtitle_relative_path=body.subtitle_relative_path,
+            fontfile=body.fontfile,
         )
     except ComposeError as exc:
+        # 失敗要留下 failed job，且請求層的 rollback 不能把它清掉。
+        failed = GenerationJob(
+            project_id=project_id,
+            shot_id=body.shot_ids[0],
+            job_type="compose",
+            workflow_template="compose_ffmpeg",
+            params_json={"shot_ids": body.shot_ids, "output_name": body.output_name},
+            status="failed",
+            attempt=1,
+            max_attempts=1,
+            data_class="local_only",
+            error=str(exc),
+            finished_at=datetime.now(UTC),
+        )
+        session.add(failed)
+        session.commit()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     job = GenerationJob(

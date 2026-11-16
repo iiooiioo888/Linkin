@@ -109,11 +109,16 @@ def validate_required_models(
     required: list[str],
     *,
     models_root: Path | str | None = None,
-    check_sha256: bool = False,
+    check_sha256: bool | None = None,
 ) -> list[dict[str, Any]]:
-    """執行前校驗：缺檔 → ModelValidationError（訊息含模型名）。"""
+    """執行前校驗：缺檔 → ModelValidationError（訊息含模型名）。
+
+    ``LVS_VERIFY_MODEL_SHA256=true``（或 ``check_sha256=True``）時，未登記或
+    不符的 sha256 一律失敗。
+    """
     if not required:
         return []
+    verify = _sha256_check_enabled(check_sha256)
     root = Path(models_root) if models_root else _default_models_root()
     found: list[dict[str, Any]] = []
     for name in required:
@@ -127,11 +132,14 @@ def validate_required_models(
         path = _resolve_model_path(row.path, models_root=root)
         if not path.is_file():
             raise ModelValidationError(f"模型檔案不存在：{name}（path={path}）")
-        if check_sha256 and row.sha256:
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            if digest.lower() != row.sha256.lower():
+        if verify:
+            expected = (row.sha256 or "").strip()
+            if not expected:
+                raise ModelValidationError(f"模型 sha256 未登記，拒絕執行：{name}")
+            digest = hash_file_sha256(path)
+            if digest.lower() != expected.lower():
                 raise ModelValidationError(
-                    f"模型 sha256 不符：{name}（expected={row.sha256} actual={digest}）"
+                    f"模型 sha256 不符：{name}（expected={expected} actual={digest}）"
                 )
         found.append(
             {
@@ -142,6 +150,33 @@ def validate_required_models(
             }
         )
     return found
+
+
+SHA256_CHUNK_BYTES = 8 * 1024 * 1024
+
+
+def hash_file_sha256(path: Path) -> str:
+    """以固定區塊串流計算 sha256，避免整檔讀入記憶體。"""
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        while True:
+            chunk = fh.read(SHA256_CHUNK_BYTES)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sha256_check_enabled(explicit: bool | None) -> bool:
+    if explicit is not None:
+        return explicit
+    return _truthy(os.getenv("LVS_VERIFY_MODEL_SHA256"), default=False)
+
+
+def _truthy(raw: str | None, default: bool = False) -> bool:
+    if raw is None or not str(raw).strip():
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _default_models_root() -> Path | None:

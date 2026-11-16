@@ -10,6 +10,13 @@
 | `LVS_CLOUD_ENABLED`／`CLOUD_ENABLED` | `false` | MVP 禁止雲端／n8n |
 | `LVS_COMPLIANCE_TEXT` | `AI 生成` | 成片顯式標識文字 |
 | `LVS_AGENT_ID` | `workstation-5090` | render-agent 認領 ID |
+| `LVS_AGENT_POLL_INTERVAL_SEC` | `5` | daemon 輪詢間隔（秒） |
+| `LVS_JOB_TIMEOUT_SEC`／`JOB_TIMEOUT_SEC` | `7200` | 等待 Comfy history 的上限（秒） |
+| `LVS_QUEUE_STALL_SEC` | `300` | `/queue` 狀態不變則判定停滯 |
+| `LVS_ALLOW_FAKE_MEDIA` | `false` | 僅 dev／test 可寫假 MP4；正式環境必須失敗 |
+| `LVS_VERIFY_MODEL_SHA256` | `false` | `true` 時 sha256 未登記或不符即拒絕執行 |
+| `LVS_DRAWTEXT_FONT` | 系統 DejaVu／Liberation，否則失敗 | drawtext `fontfile`；缺檔不得略過「AI 生成」 |
+| `LVS_LEASE_TTL_SEC` | `120` | agent 租約；過期後 running job 退回 queued |
 
 ## 真實 ComfyUI（M3 驗收）
 
@@ -23,19 +30,12 @@ export LVS_USE_MOCK_COMFY=false
 export LVS_STORAGE_BASE=/mnt/ai-media   # 或本機可寫路徑
 export LVS_CLOUD_ENABLED=false
 
-# 3. 啟動 Linkin API + render-agent poller（週期呼叫 run_once）
+# 3. 啟動 Linkin API，另開終端跑 render-agent daemon
 python -m backend.main
-# 另開終端：輪詢 queued jobs
-python - <<'PY'
-from backend.local_video_studio.db import init_db, session_scope
-from backend.local_video_studio.agent.poller import run_once
-init_db()
-while True:
-    with session_scope() as s:
-        print(run_once(s) or "idle")
-    import time; time.sleep(5)
-PY
+python -m backend.local_video_studio.agent
 ```
+
+Daemon 會寫心跳（`{STORAGE_BASE}/agents/{AGENT_ID}.heartbeat.json`）、以租約認領任務，並在 `SIGTERM`／`SIGINT` 時停止領取新任務、把等待中的 job 退回佇列。不另附 systemd unit：程序由 `docker-compose.local-video-studio.yml` 的 `lvs-worker-light`（`restart: unless-stopped`）負責拉起。
 
 工作流模板與 mapping：
 
@@ -54,7 +54,8 @@ PY
 
 1. 精修資產進入審核佇列 → `POST /assets/{id}/review`（approve／reject／needs_retry）。
 2. 僅 `approved` 且有 `selected_clip_asset_id` 的鏡頭可合成。
-3. `POST /projects/{id}/compose` 會呼叫 ffmpeg（無則寫假 MP4），**成功前強制** `compliance.stamp()`；不可跳過。
+3. `POST /projects/{id}/compose` 呼叫 ffmpeg（字幕濾鏡、`amix`、音訊 `-map`、drawtext `fontfile`）。**預設不寫假 MP4**：找不到 ffmpeg、退出碼非 0、或顯式標識缺字型時丟出 `ComposeError`，任務標為 `failed`，**不寫** `ComplianceRecord`。只有測試或本機明確設 `LVS_ALLOW_FAKE_MEDIA=true` 才允許假成片。成功路徑在寫入合規紀錄前仍必須呼叫 `compliance.stamp()`。
+4. 任務若帶 `input_image_relative_path` 而檔案不存在，job `failed`，錯誤含該路徑（不再補 1×1 PNG）。
 
 ## 儲存與歸檔（M6）
 

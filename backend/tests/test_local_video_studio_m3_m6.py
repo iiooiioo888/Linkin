@@ -99,6 +99,10 @@ def test_m3_draft_job_mock_comfy(monkeypatch, tmp_path):
         },
     ).json()["id"]
 
+    ref = tmp_path / "media" / "projects" / project_id / "keyframes" / "ref.png"
+    ref.parent.mkdir(parents=True, exist_ok=True)
+    ref.write_bytes(b"\x89PNG\r\nref")
+
     mock_app = create_mock_comfy_app(output_dir=tmp_path / "comfy")
     comfy = ComfyClient("http://mock", client=_TestClientAsHttpx(mock_app))
     try:
@@ -143,6 +147,9 @@ def test_m4_refine_review_approve(monkeypatch, tmp_path):
             },
         },
     )
+    ref = tmp_path / "media" / "projects" / project_id / "keyframes" / "ref.png"
+    ref.parent.mkdir(parents=True, exist_ok=True)
+    ref.write_bytes(b"\x89PNG\r\nref")
     mock_app = create_mock_comfy_app(output_dir=tmp_path / "comfy")
     comfy = ComfyClient("http://mock", client=_TestClientAsHttpx(mock_app))
     try:
@@ -172,6 +179,11 @@ def test_m4_refine_review_approve(monkeypatch, tmp_path):
 
 
 def test_m5_compose_requires_compliance(monkeypatch, tmp_path):
+    monkeypatch.setenv("LVS_ALLOW_FAKE_MEDIA", "true")
+    monkeypatch.setattr(
+        "backend.local_video_studio.ffmpeg_compose.shutil.which",
+        lambda _name: None,
+    )
     client = _boot(monkeypatch, tmp_path, "m5-compose")
     store = LocalPathStorage(tmp_path / "media")
     project_id = client.post(
@@ -224,7 +236,12 @@ def test_m5_compose_requires_compliance(monkeypatch, tmp_path):
 
 
 def test_m5_ffmpeg_compose_unit(tmp_path, monkeypatch):
+    monkeypatch.setenv("LVS_ALLOW_FAKE_MEDIA", "true")
     monkeypatch.setenv("LVS_STORAGE_BASE", str(tmp_path))
+    monkeypatch.setattr(
+        "backend.local_video_studio.ffmpeg_compose.shutil.which",
+        lambda _name: None,
+    )
     store = LocalPathStorage(tmp_path)
     pid = "proj-ff"
     store.ensure_project_dirs(pid)
@@ -305,6 +322,9 @@ def test_m6_storage_and_resources(monkeypatch, tmp_path):
             },
         },
     )
+    ref = tmp_path / "media" / "projects" / project_id / "script" / "ref.png"
+    ref.parent.mkdir(parents=True, exist_ok=True)
+    ref.write_bytes(b"\x89PNG\r\nref")
     mock_app = create_mock_comfy_app(output_dir=tmp_path / "comfy")
     comfy = ComfyClient("http://mock", client=_TestClientAsHttpx(mock_app))
     try:
