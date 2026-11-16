@@ -73,6 +73,12 @@ export interface TaskOptions {
   precomputed_planner?: Record<string, unknown>;
   /** 前端 i18n 語系（zh-TW / en） */
   ui_language?: string;
+  /** 從簡單生成升級到公司運行時；目前只有 simple */
+  upgrade_from?: 'simple';
+  /** 升級前的原始提問 */
+  prior_query?: string;
+  /** 升級前的簡單生成回答 */
+  prior_answer?: string;
 }
 
 /** 任務即時狀態（POST /tasks + GET /tasks/{id}） */
