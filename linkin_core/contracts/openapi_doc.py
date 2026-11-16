@@ -102,6 +102,7 @@ def build_openapi() -> dict[str, Any]:
                 "內網 BFF 與內部服務的草案。"
                 "現有 /chat、/tasks 繼續由單體提供，此檔不取代實作。"
                 "AI Hub 的 /api/v1/chat/completions 是另一條契約。"
+                "執行策略默認 user_default；auto 已棄用，SCHEMA_VERSION 1.x 仍映射而非拒絕。"
             ),
         },
         "servers": [{"url": "https://linkin.internal"}],

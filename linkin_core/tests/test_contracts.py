@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 from linkin_core.boundaries import forbidden_imports
 from linkin_core.contracts.asyncapi_doc import build_asyncapi, event_names
+from linkin_core.contracts.chat import ChatStreamRequest
 from linkin_core.contracts.events import EventName
 from linkin_core.contracts.export import artifacts
 from linkin_core.contracts.opc import OpcWriteRequest
@@ -19,17 +20,27 @@ from linkin_core.contracts.openapi_doc import build_openapi
 from linkin_core.contracts.route import (
     RULE_CHAIN,
     CompatibleStrategy,
+    DecisionSource,
     ExecutionPathName,
     RoutePreviewRequest,
     RuleHit,
     normalize_execution_path,
+    reset_strategy_compat_audits,
+    strategy_compat_audits,
 )
 from linkin_core.contracts.slo import MAX_SYNC_HOPS
+from linkin_core.contracts.tasks import TaskCreateRequest
 from linkin_core.contracts.topology import (
     DEFAULT_SERVICES,
     SYNC_CHAINS,
     assert_sync_budget,
     seat_executor_targets,
+)
+from linkin_core.contracts.version import (
+    AUTO_INPUT_ACCEPTED_THROUGH_MAJOR,
+    CONTRACT_VERSION,
+    SCHEMA_VERSION,
+    auto_input_is_mapped,
 )
 
 
@@ -142,3 +153,74 @@ def test_openapi_json_is_sorted():
     payload = json.loads((ROOT / "linkin_core/contracts/openapi.json").read_text(encoding="utf-8"))
     assert payload["openapi"] == "3.1.0"
     assert payload["paths"]["/api/v1/route-preview"]["post"]["requestBody"]
+
+
+_STRATEGY_MODELS = (ChatStreamRequest, RoutePreviewRequest, TaskCreateRequest)
+
+
+def test_contract_default_strategy_is_not_auto():
+    assert SCHEMA_VERSION == "1.0.0"
+    assert CONTRACT_VERSION == "2026-11-16"
+    for model in _STRATEGY_MODELS:
+        assert model.model_fields["strategy"].default is CompatibleStrategy.user_default
+        assert model.model_fields["strategy"].default is not CompatibleStrategy.auto
+        row = model(query="看溫度", tenant_id="acme")
+        assert row.strategy is CompatibleStrategy.user_default
+        assert row.decision_source is DecisionSource.user_default
+        assert row.requested_strategy is None
+        assert row.strategy_audit is None
+
+
+def test_auto_input_maps_to_user_default_and_records_audit():
+    reset_strategy_compat_audits()
+    mapped = []
+    for model in _STRATEGY_MODELS:
+        row = model(query="看溫度", strategy="auto", tenant_id="acme", trace_id="trace-1")
+        assert row.strategy is CompatibleStrategy.user_default
+        assert row.strategy is not CompatibleStrategy.auto
+        assert row.decision_source is DecisionSource.fallback
+        assert row.requested_strategy == "auto"
+        assert row.strategy_audit is not None
+        assert row.strategy_audit.action == "execution_strategy.auto_mapped"
+        assert row.strategy_audit.decision_source is DecisionSource.fallback
+        assert row.strategy_audit.strategy is CompatibleStrategy.user_default
+        assert row.strategy_audit.tenant_id == "acme"
+        assert row.strategy_audit.trace_id == "trace-1"
+        mapped.append(row)
+    audits = strategy_compat_audits()
+    assert len(audits) == len(_STRATEGY_MODELS)
+    assert [item.decision_source for item in audits] == [DecisionSource.fallback] * len(audits)
+    assert mapped[0].strategy_audit == audits[0]
+    suggestion = ChatStreamRequest(query="只建議", strategy="suggest_only", tenant_id="acme")
+    assert suggestion.strategy is CompatibleStrategy.suggest_only
+    assert suggestion.decision_source is DecisionSource.user_explicit
+    assert suggestion.strategy_audit is None
+    assert len(strategy_compat_audits()) == len(_STRATEGY_MODELS)
+    with pytest.raises(ValidationError):
+        ChatStreamRequest(query="看溫度", strategy="not-a-strategy", tenant_id="acme")
+    reset_strategy_compat_audits()
+
+
+def test_auto_stays_mapped_for_this_major_and_rejects_after(monkeypatch):
+    major = int(SCHEMA_VERSION.split(".", 1)[0])
+    assert major <= AUTO_INPUT_ACCEPTED_THROUGH_MAJOR
+    assert auto_input_is_mapped() is True
+    assert auto_input_is_mapped("1.9.0") is True
+    assert auto_input_is_mapped("2.0.0") is False
+    monkeypatch.setattr("linkin_core.contracts.route.auto_input_is_mapped", lambda version=None: False)
+    with pytest.raises(ValidationError):
+        ChatStreamRequest(query="看溫度", strategy="auto", tenant_id="acme")
+
+
+def test_openapi_marks_auto_deprecated_and_defaults_user_default():
+    spec = build_openapi()
+    assert spec["info"]["version"] == CONTRACT_VERSION
+    schema = spec["components"]["schemas"]["CompatibleStrategy"]
+    assert "user_default" in schema["enum"]
+    assert "suggest_only" in schema["enum"]
+    auto = next(item for item in schema["anyOf"] if item.get("const") == "auto")
+    assert auto["deprecated"] is True
+    for name in ("ChatStreamRequest", "RoutePreviewRequest", "TaskCreateRequest"):
+        default = spec["components"]["schemas"][name]["properties"]["strategy"]["default"]
+        assert default != "auto"
+        assert default == "user_default"

@@ -453,7 +453,7 @@
   "info": {
     "description": "NATS JetStream。頻道名即事件名。",
     "title": "Linkin 事件契約",
-    "version": "2026-10-26"
+    "version": "2026-11-16"
   },
   "servers": {
     "nats": {
