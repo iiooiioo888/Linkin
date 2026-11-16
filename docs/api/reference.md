@@ -28,9 +28,18 @@ Base URL: `http://localhost:8000`
   "session_id": "abc123",
   "answer": "反思閉環是...",
   "score": 8.5,
-  "iteration": 1
+  "iteration": 1,
+  "execution_path": {
+    "chosen": "simple",
+    "source": "user_explicit",
+    "suggested": "simple",
+    "reason": "這次由你指定路徑",
+    "locked": false
+  }
 }
 ```
+
+`execution_path` 與 `POST /tasks` 的決策對齊：`chosen` 等於任務回應的 `strategy`，`source` 等於 `decision_source`，`locked` 等於 `locked`，`reason` 是既有 `reason_text`。`suggested` 只是系統建議，不會改寫 `chosen`。`source` 會寫進該 `session_id` 的思考軌跡，不只有回應本體。SSE（`POST /chat/stream`）這次不加這個物件。
 
 **execution_strategy（任務 API）：**
 - `simple`：本次簡單生成（`decision_source=user_explicit`）

@@ -149,7 +149,19 @@ def route_by_complexity(state: StateInput) -> str:
     )
     from backend.core.pipeline_trace import log_node
 
-    log_node(state, "route_by_complexity", execution_path=path.suggested, target=target)
+    source = (
+        path.reason
+        if path.reason in ("user_explicit", "user_default", "admin_lock", "fallback")
+        else ""
+    )
+    log_node(
+        state,
+        "route_by_complexity",
+        execution_path=path.suggested,
+        decision_source=source,
+        locked=path.locked,
+        target=target,
+    )
     if target == "run_company":
         logger.info("任務解析為公司運行時（query 前 80 字）：%s", query[:80])
     return target

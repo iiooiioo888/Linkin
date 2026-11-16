@@ -4,12 +4,20 @@ import json as json_mod
 import uuid
 from typing import Any
 
+from backend.core.execution_path import build_chat_execution_path
 from backend.core.graph import evoloop_graph
 from backend.core.locale_prompt import normalize_ui_language
 from backend.core.routing_preview import build_routing_preview
+from backend.services.trace_logger import TraceLogger
 
 from ._router import router
-from .models import ChatRequest, ChatResponse, RoutingPreviewRequest, require_chat_strategy
+from .models import (
+    ChatRequest,
+    ChatResponse,
+    ExecutionPathBody,
+    RoutingPreviewRequest,
+    require_chat_strategy,
+)
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -22,6 +30,19 @@ async def chat(req: ChatRequest):
     if isinstance(lock, dict) and lock.get("locked_brief"):
         query = str(lock["locked_brief"])
 
+    execution_path = build_chat_execution_path(query, req.execution_strategy)
+    # 與圖上 route_by_complexity 的軌跡同一份 JSONL。來源先落盤，再進圖。
+    TraceLogger(session_id).log_custom(
+        "execution_path",
+        {
+            "decision_source": execution_path["source"],
+            "chosen": execution_path["chosen"],
+            "source": execution_path["source"],
+            "suggested": execution_path["suggested"],
+            "reason": execution_path["reason"],
+            "locked": execution_path["locked"],
+        },
+    )
     initial_state = {
         "query": query,
         "session_id": session_id,
@@ -42,6 +63,7 @@ async def chat(req: ChatRequest):
         answer=result.get("current_answer", "") or result.get("final_answer", ""),
         score=result.get("score"),
         iteration=result.get("iteration", 0),
+        execution_path=ExecutionPathBody.model_validate(execution_path),
     )
 
 
