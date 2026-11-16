@@ -19,6 +19,7 @@ export interface ChatViewProps {
   onOpenTask: (messageId: string) => void;
   onOpenTrace?: (taskId: string) => void;
   onSuggest: (text: string, company: boolean) => void;
+  onUpgradeToCompany?: (query: string, priorAnswer: string) => void;
   onDecisionPending?: (hasPending: boolean) => void;
   onDecisionResolved?: (decisionId?: string) => void;
   onTaskStatePatch?: (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => void;

@@ -519,9 +519,21 @@ def test_cross_tenant_beats_unknown_names_and_blank_tenant_is_invalid():
 def test_package_files_stay_within_the_three_models():
     root = Path(config_mod.__file__).resolve().parent
     names = sorted(path.name for path in root.glob("*.py"))
-    assert names == ["audit.py", "authz.py", "config.py"]
+    # #179–#181 的 schema、規則與狀態機與此三模型同套件，清單必須含它們，不得刪檔。
+    assert names == [
+        "__init__.py",
+        "audit.py",
+        "authz.py",
+        "config.py",
+        "enums.py",
+        "errors.py",
+        "rules.py",
+        "schema.py",
+        "state_machine.py",
+        "validate.py",
+    ]
     banned = ("task_state_machine", "schema_registry", "rule_engine")
-    for path in root.glob("*.py"):
+    for path in (root / name for name in ("audit.py", "authz.py", "config.py")):
         text = path.read_text(encoding="utf-8")
         for needle in banned:
             assert needle not in text

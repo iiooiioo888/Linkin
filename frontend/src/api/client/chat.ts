@@ -88,7 +88,7 @@ export function sendChatStream(
             history: history ?? [],
             semantic_lock: extra?.semantic_lock ?? {},
             ui_language: extra?.ui_language ?? undefined,
-            execution_strategy: extra?.executionStrategy ?? 'auto',
+            execution_strategy: extra?.executionStrategy ?? 'simple',
           }),
           signal: controller.signal,
         }),
@@ -221,7 +221,7 @@ export async function sendChat(
         body: JSON.stringify({
           query,
           session_id: sessionId,
-          execution_strategy: options.executionStrategy ?? 'auto',
+          execution_strategy: options.executionStrategy ?? 'simple',
           company_template: options.companyTemplate ?? 'quick_task',
           history: options.history ?? [],
         }),

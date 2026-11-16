@@ -89,7 +89,7 @@ export default function App() {
     handleDecisionPending,
     handleDecisionResolved,
   } = useChatSessions({ setError, setRightPanelTask });
-  const { sending, lastQuery, sendQuery, handleRetry, handleSuggest } = useChatSend({
+  const { sending, lastQuery, sendQuery, handleRetry, handleSuggest, handleUpgrade } = useChatSend({
     activeSession,
     updateSession,
     setError,
@@ -174,6 +174,7 @@ export default function App() {
               onOpenTask={handleOpenTask}
               onOpenTrace={handleOpenTrace}
               onSuggest={handleSuggest}
+              onUpgradeToCompany={handleUpgrade}
               onDecisionPending={handleDecisionPending}
               onDecisionResolved={handleDecisionResolved}
               onTaskStatePatch={handleTaskStatePatch}

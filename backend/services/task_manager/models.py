@@ -15,7 +15,7 @@ class TaskRecord:
     def __init__(self, task_id: str, query: str, strategy: str, template: str):
         self.task_id = task_id
         self.query = query
-        # 統一模式：執行策略（auto / simple / company），取代原 mode
+        # 實際拿去跑的路徑（simple / company）。決策來源見 decision_source。
         self.strategy = strategy
         self.template = template
         self.status = "pending"  # pending / running / completed / failed / cancelled / interrupted
@@ -38,6 +38,10 @@ class TaskRecord:
         self.opc_state: dict[str, Any] = {}
         # 實際採用的執行路徑（simple / company / opc，供前端展示）
         self.resolved_path: str = ""
+        # user_explicit | user_default | admin_lock | fallback
+        self.decision_source: str = ""
+        self.path_locked: bool = False
+        self.path_reason: str = ""
         self.task_complexity: str = ""
         self.reflection_rounds_max: int = 0
         # 公司路徑：實際執行的公司後反思模式（off / evaluate / full）
@@ -66,6 +70,9 @@ class TaskRecord:
             "status": self.status,
             "strategy": self.strategy,
             "resolved_path": self.resolved_path,
+            "decision_source": self.decision_source,
+            "path_locked": self.path_locked,
+            "path_reason": self.path_reason,
             "query": self.query,
             "template": self.template,
             "phase": self.phase,
@@ -128,6 +135,9 @@ class TaskRecord:
         record.stats = data.get("stats")
         record.opc_state = data.get("opc_state", {})
         record.resolved_path = data.get("resolved_path", "")
+        record.decision_source = str(data.get("decision_source") or "")
+        record.path_locked = bool(data.get("path_locked"))
+        record.path_reason = str(data.get("path_reason") or "")
         record.cancel_requested = data.get("cancel_requested", False)
         record.resumable = data.get("resumable", False)
         record.options = data.get("options", {})

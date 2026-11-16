@@ -65,9 +65,10 @@ export async function resolveRoutingPreviewForSend(params: {
 
 /** 任務 API 路徑（非 SSE 簡單串流）。opc 是舊標籤，與 company 同一條公司任務。 */
 export function usesTaskWorkspace(
-  strategy: RoutingPreviewMode,
+  strategy: RoutingPreviewMode | 'user_default',
   preview: RoutingPreview | null | undefined,
 ): boolean {
+  if (strategy === 'user_default') return true;
   if (strategy === 'simple') return false;
   if (strategy === 'company') return true;
   const path = preview?.path;

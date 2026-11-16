@@ -10,7 +10,7 @@ import { apiUrl } from './http';
 /** RAHO：需求審計官開場（聊天閘門，簡單寒暄可跳過）。 */
 export async function startUserGrill(
   query: string,
-  executionStrategy: 'auto' | 'simple' | 'company' = 'auto',
+  executionStrategy: 'simple' | 'company' | 'auto' = 'simple',
 ): Promise<GrillUserState> {
   const resp = await fetch(apiUrl('/raho/grill/start'), {
     method: 'POST',

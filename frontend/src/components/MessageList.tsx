@@ -17,6 +17,7 @@ interface MessageListProps {
   /** 開啟對話底部詳細區 Context */
   onOpenContext?: (taskId: string) => void;
   onSuggest?: (text: string, companyMode: boolean) => void;
+  onUpgradeToCompany?: (query: string, priorAnswer: string) => void;
   onTaskStatePatch?: (taskId: string, patch: Partial<TaskProgress> | TaskProgress) => void;
   variant?: 'default' | 'drawer';
   /** 左右分裂時隱藏氣泡內看板，避免與右側監控重複 */
@@ -36,6 +37,7 @@ export default function MessageList({
   onOpenTrace,
   onOpenContext,
   onSuggest,
+  onUpgradeToCompany,
   onTaskStatePatch,
   variant = 'default',
   hideTaskCard = false,
@@ -106,7 +108,7 @@ export default function MessageList({
           </div>
         )}
 
-        {messages.map((msg) => (
+        {messages.map((msg, index) => (
           <MessageBubble
             key={msg.id}
             message={msg}
@@ -115,6 +117,14 @@ export default function MessageList({
             onOpenTrace={onOpenTrace}
             onOpenContext={onOpenContext}
             onTaskStatePatch={onTaskStatePatch}
+            onUpgradeToCompany={
+              onUpgradeToCompany
+                ? (priorAnswer) => {
+                    const previous = [...messages.slice(0, index)].reverse().find((item) => item.role === 'user');
+                    onUpgradeToCompany(previous?.content || '', priorAnswer);
+                  }
+                : undefined
+            }
             variant={variant === 'drawer' || hideTaskCard ? 'workspace' : 'default'}
           />
         ))}

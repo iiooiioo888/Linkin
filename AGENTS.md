@@ -2,7 +2,7 @@
 
 ## 專案概述
 
-Linkin 基於 EvoLoop：具備自我反思閉環的**統一模式** AI 系統。核心為 **LangGraph 統一管線**。每則查詢先注入記憶、OPC 上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 選路（`route_by_complexity` 是圖上的條件邊）：
+Linkin 基於 EvoLoop：具備自我反思閉環的**統一模式** AI 系統。核心為 **LangGraph 統一管線**。每則查詢先注入記憶、OPC 上下文、靈境上下文與整合召回，再由 `resolve_execution_path` 選路（`route_by_complexity` 是圖上的條件邊）。任務 API 以用戶本次選擇為準，系統建議不自動執行；租戶可設默認與關鍵詞鎖定：
 
 - **simple**：單次生成，接著多維評估與反思改進
 - **company（含工業查詢）**：任務經理分析任務，產出里程碑與成敗標準，再拆給席位執行。工業查詢用模板 `industrial_ops`，感測讀數注入目標；寫入經 `opc_service/guard.py`。成功後預設定稿，公司後反思由 `EVOL_POST_COMPANY_REFLECT` 決定

@@ -8,8 +8,9 @@ from pydantic import BaseModel
 class ChatRequest(BaseModel):
     query: str
     session_id: str | None = None
-    # 統一模式：執行策略（auto / simple / company），預設 auto 自動判斷
-    execution_strategy: str = "auto"
+    # 對外執行請走 POST /tasks。此欄預設 simple（兜底），不再默認 auto。
+    # auto 已棄用：若內部圖仍收到，只相容舊呼叫，不得當新的 API 默認。
+    execution_strategy: str = "simple"
     company_template: str = "quick_task"
     # 多輪對話歷史：[{"role": "user"|"assistant", "content": "..."}, ...]
     history: list[dict[str, str]] = []

@@ -76,7 +76,7 @@
 
 ### 選路
 
-`execution_strategy` 為 `simple` 或 `company` 時直接採用，後面的規則不再改路。`auto` 依序看：
+任務 API 的 `execution_strategy` 為 `simple`、`company`、`user_default`、`suggest_only`。用戶本次明示直接採用；租戶默認次之，回應會標明仍可切換；系統建議只做預選，不自動執行；都沒有則走 `simple`。`auto` 已棄用，不再作為 API 默認。租戶可設 `force_company_keywords`，命中時鎖定 `company`（`admin_lock`），用戶不能繞過。建議規則仍依序看：
 
 | 順序 | 條件 | 路徑 |
 |------|------|------|

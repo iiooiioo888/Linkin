@@ -13,7 +13,7 @@ Base URL: `http://localhost:8000`
 {
   "query": "什麼是反思閉環？",
   "session_id": "abc123",
-  "execution_strategy": "auto",
+  "execution_strategy": "simple",
   "company_template": "quick_task",
   "history": [
     {"role": "user", "content": "之前的问题"},
@@ -32,10 +32,15 @@ Base URL: `http://localhost:8000`
 }
 ```
 
-**execution_strategy：**
-- `auto`（預設）：系統自動判斷複雜度
-- `simple`：強制單次 LLM 生成
-- `company`：強制多代理人公司運行時
+**execution_strategy（任務 API）：**
+- `simple`：本次簡單生成（`decision_source=user_explicit`）
+- `company`：本次公司分析
+- `user_default`：採用租戶默認；沒有默認則 `fallback` 為 simple
+- `suggest_only`：只回建議，不建任務
+- 缺值：租戶有默認就採用並標 `decision_source=user_default`，否則 422
+- `auto` 已棄用，傳入會被拒絕
+
+聊天若省略策略，兜底為 `simple`，不再靜默自動選路。建議請查 `GET /tasks/path-suggestion`。
 
 ---
 
@@ -68,7 +73,9 @@ data: {"error": "錯誤訊息"}
 
 ### POST /tasks
 
-建立後台任務，返回 task_id。
+建立後台任務，返回 task_id。`execution_strategy` 必填，除非該租戶已有默認。建議路徑用 `GET /tasks/path-suggestion?query=`，該端點不建任務。
+
+回應另含 `decision_source`（`user_explicit` | `user_default` | `admin_lock` | `fallback`）、`locked`、`using_default`、`can_switch`。默認路徑時 `using_default=true`，入口仍可改。命中租戶 `force_company_keywords`（內建含 opc、plc）時 `locked=true`，強制 company。
 
 **請求：**
 ```json

@@ -111,30 +111,45 @@ def route_by_complexity(state: StateInput) -> str:
     """條件路由：依執行策略與任務複雜度決定生成路徑。
 
     執行策略（execution_strategy）：
-    - "simple": 強制單次 LLM 生成
-    - "company": 強制公司運行時
-    - "auto"（預設）: 依 cost_speed 配置或規則自動判斷複雜度
+    - "simple" / "company": 用戶明示，未被管理員鎖定時直接採用
+    - "user_choice": 同上，優先於 strategy
+    - "auto"（已棄用，僅內部相容）: 回傳系統建議，不得作為 API 默認
 
     回傳值：
     - "run_company": 走公司運行時
     - "generate_initial_answer": 走單次生成
     """
-    from backend.core.execution_path import resolve_execution_path, route_by_complexity_target
+    from backend.core.execution_path import (
+        PathName,
+        resolve_execution_path,
+        route_by_complexity_target,
+    )
 
     query = state.get("query", "")
+    raw_choice = state.get("user_choice")
+    user_choice: PathName | None
+    if raw_choice == "simple":
+        user_choice = "simple"
+    elif raw_choice == "company":
+        user_choice = "company"
+    else:
+        user_choice = None
+    strategy = str(state.get("execution_strategy", "auto"))
     target = route_by_complexity_target(
         query,
-        str(state.get("execution_strategy", "auto")),
+        strategy,
         task_complexity=state.get("task_complexity"),
+        user_choice=user_choice,
     )
     path = resolve_execution_path(
         query,
-        str(state.get("execution_strategy", "auto")),
+        strategy,
         task_complexity=state.get("task_complexity"),
+        user_choice=user_choice,
     )
     from backend.core.pipeline_trace import log_node
 
-    log_node(state, "route_by_complexity", execution_path=path, target=target)
+    log_node(state, "route_by_complexity", execution_path=path.suggested, target=target)
     if target == "run_company":
         logger.info("任務解析為公司運行時（query 前 80 字）：%s", query[:80])
     return target

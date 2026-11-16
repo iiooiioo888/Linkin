@@ -56,6 +56,7 @@ export default function ChatView({
   onOpenTask,
   onOpenTrace,
   onSuggest,
+  onUpgradeToCompany,
   onDecisionPending,
   onDecisionResolved,
   onTaskStatePatch,
@@ -276,6 +277,7 @@ export default function ChatView({
       onOpenTrace={onOpenTrace}
       onOpenContext={(tid) => openContextDetail(tid)}
       onSuggest={onSuggest}
+      onUpgradeToCompany={onUpgradeToCompany}
       sending={sending}
       onTaskStatePatch={onTaskStatePatch}
       hideTaskCard={showMonitor}

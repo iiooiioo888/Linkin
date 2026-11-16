@@ -275,6 +275,41 @@ async def monitor_hub_snapshot():
     return await asyncio.to_thread(collect_monitor_hub)
 
 
+class ExecutionPathConfigBody(BaseModel):
+    allow_user_path_choice: bool | None = None
+    default_execution_strategy: str | None = None
+    clear_default: bool = False
+    force_company_keywords: list[str] | None = None
+
+
+@router.get("/config/execution-path")
+async def get_execution_path_config():
+    """目前租戶的執行路徑設定。"""
+    from backend.core.execution_path_config import load_execution_path_config
+    from backend.core.user_settings import active_settings_user
+
+    cfg = load_execution_path_config()
+    payload = cfg.to_public_dict()
+    payload["settings_user"] = active_settings_user() or ""
+    return payload
+
+
+@router.put("/config/execution-path")
+async def put_execution_path_config(body: ExecutionPathConfigBody):
+    """更新目前租戶的執行路徑設定。關鍵詞鎖定只對該租戶生效。"""
+    from backend.core.execution_path_config import save_execution_path_config
+    from backend.core.user_settings import active_settings_user, guard_settings_write
+
+    guard_settings_write()
+    try:
+        cfg = save_execution_path_config(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    payload = cfg.to_public_dict()
+    payload["settings_user"] = active_settings_user() or ""
+    return payload
+
+
 @router.post("/config/test")
 async def test_config():
     """以当前配置實際呼叫 LLM 驗證連線。"""
