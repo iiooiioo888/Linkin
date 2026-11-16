@@ -31,7 +31,7 @@ from backend.services.trace_logger import eval_trace_kwargs as _eval_trace_kwarg
 
 from ._router import router
 from .company_stream import _company_stream
-from .models import ChatRequest
+from .models import ChatRequest, require_chat_strategy
 from .routes import _sse_path_resolved
 
 logger = logging.getLogger(__name__)
@@ -61,6 +61,7 @@ async def chat_stream(req: ChatRequest, request: Request):
 
     統一模式：複雜任務（公司運行時路徑）自動降級為同步 /chat。
     """
+    req.execution_strategy = require_chat_strategy(req.execution_strategy)
     if chat_stream_uses_company_sse(req.query, req.execution_strategy):
         # 公司運行時：SSE 串流進度（優化 #11）
         return StreamingResponse(
@@ -83,7 +84,6 @@ async def chat_stream(req: ChatRequest, request: Request):
     async def event_stream():
         billing_token = begin_chat_billing(session_id)
 
-        strategy = (req.execution_strategy or "auto").strip().lower()
         lock = req.semantic_lock or {}
         query_for_route = req.query
         if isinstance(lock, dict) and lock.get("locked_brief"):

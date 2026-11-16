@@ -40,7 +40,7 @@ Base URL: `http://localhost:8000`
 - 缺值：租戶有默認就採用並標 `decision_source=user_default`，否則 422
 - `auto` 已棄用，傳入會被拒絕
 
-聊天若省略策略，兜底為 `simple`，不再靜默自動選路。建議請查 `GET /tasks/path-suggestion`。
+聊天若省略策略，兜底為 `simple`，不再靜默自動選路。`POST /chat` 與 `POST /chat/stream` 傳 `auto` 或 `suggest_only` 回 422，不會進圖。建議請查 `GET /tasks/path-suggestion`。
 
 ---
 
@@ -111,6 +111,7 @@ data: {"error": "錯誤訊息"}
   "status": "running",
   "strategy": "company",
   "resolved_path": "company",
+  "decision_source": "user_explicit",
   "query": "開發一個完整的電商系統",
   "phase": "execute_review",
   "progress": {

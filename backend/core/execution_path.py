@@ -137,6 +137,14 @@ class ChoiceForbiddenError(Exception):
     """租戶不允許使用者自選路徑。"""
 
 
+class ExternalStrategyError(ValueError):
+    """會執行的入口收到不能拿來決策的策略。"""
+
+    def __init__(self, token: str) -> None:
+        self.token = token
+        super().__init__(token)
+
+
 @dataclass(frozen=True)
 class TaskPathDecision:
     """POST /tasks 的決定。``created`` 為假時只回建議、不建任務。"""
@@ -281,6 +289,22 @@ def resolve_execution_path(
         return suggest_execution_path(text, task_complexity=task_complexity, config=cfg)
 
     return PathSuggestion("simple", "fallback", False)
+
+
+def prepare_executing_strategy(raw: str | None, *, default: str = "simple") -> str:
+    """聊天這類會直接執行的入口。
+
+    允許 ``simple``、``company``、``user_default``。省略時用 ``default``。
+    ``auto`` 與 ``suggest_only`` 不在這裡選路：前者已棄用，後者只屬於建議端點。
+    """
+    text = default if raw is None else raw.strip().lower()
+    if not text:
+        text = default
+    if text in ("auto", "suggest_only"):
+        raise ExternalStrategyError(text)
+    if text not in ("simple", "company", "user_default"):
+        raise ExternalStrategyError(text)
+    return text
 
 
 def normalize_external_strategy(raw: str | None) -> str | None:

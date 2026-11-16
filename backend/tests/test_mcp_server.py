@@ -101,7 +101,47 @@ class TestTools:
         data = json.loads(st["result"]["content"][0]["text"])
         assert data["task_id"] == tid
         assert data["status"] in ("pending", "running", "completed", "failed", "cancelled")
+        stored = task_manager.get_task(tid)
+        assert stored is not None
+        assert stored.decision_source == "user_explicit"
+        assert payload["decision_source"] == "user_explicit"
         task_manager.tasks.pop(tid, None)
+
+    def test_submit_rejects_auto_and_missing_strategy(self, monkeypatch):
+        from backend.services.task_manager import task_manager
+
+        started: list[str] = []
+        monkeypatch.setattr(
+            task_manager, "start_task_from_thread",
+            lambda record: started.append(record.task_id),
+        )
+        before = set(task_manager.tasks)
+        auto = mcp_server.handle_message({
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "linkin_submit_task",
+                       "arguments": {"query": "MCP 測試任務", "strategy": "auto"}},
+        })
+        assert auto["result"]["isError"] is True
+        assert "auto" in auto["result"]["content"][0]["text"]
+        missing = mcp_server.handle_message({
+            "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+            "params": {"name": "linkin_submit_task",
+                       "arguments": {"query": "MCP 測試任務"}},
+        })
+        assert missing["result"]["isError"] is True
+        suggest = mcp_server.handle_message({
+            "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+            "params": {"name": "linkin_submit_task",
+                       "arguments": {"query": "請設計並實現一個完整的微服務系統架構",
+                                     "strategy": "suggest_only"}},
+        })
+        assert suggest["result"]["isError"] is False
+        body = json.loads(suggest["result"]["content"][0]["text"])
+        assert body["created"] is False
+        assert body["task_id"] is None
+        assert body["suggested"] == "company"
+        assert started == []
+        assert set(task_manager.tasks) == before
 
     def test_list_tasks(self):
         reply = mcp_server.handle_message({

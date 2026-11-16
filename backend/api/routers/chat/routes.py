@@ -9,12 +9,13 @@ from backend.core.locale_prompt import normalize_ui_language
 from backend.core.routing_preview import build_routing_preview
 
 from ._router import router
-from .models import ChatRequest, ChatResponse, RoutingPreviewRequest
+from .models import ChatRequest, ChatResponse, RoutingPreviewRequest, require_chat_strategy
 
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     """执行 EvoLoop 统一模式图（支援多輪對話歷史）。"""
+    req.execution_strategy = require_chat_strategy(req.execution_strategy)
     session_id = req.session_id or uuid.uuid4().hex[:12]
     query = req.query
     lock = req.semantic_lock or {}

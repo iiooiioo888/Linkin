@@ -96,6 +96,14 @@ export default function OverviewSection({ task, eta }: { task: TaskProgress; eta
         />
         <Field label="執行策略（strategy）" value={STRATEGY_LABEL[task.strategy] ?? task.strategy ?? '—'} />
         <Field
+          label="決策來源（decision_source）"
+          value={
+            task.decision_source
+              ? (STRATEGY_LABEL[task.decision_source] ?? task.decision_source)
+              : '—'
+          }
+        />
+        <Field
           label="實際路徑（resolved_path）"
           value={
             <span style={{ color: path.tone }}>

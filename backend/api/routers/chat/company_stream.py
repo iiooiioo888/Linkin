@@ -12,7 +12,13 @@ from backend.company.execution_gate import auto_approve_enabled
 from backend.company.orchestrator import CompanyOrchestrator
 from backend.company.roles import BUILTIN_TEMPLATES
 from backend.core import nodes
-from backend.core.execution_path import resolve_company_template
+from backend.core.execution_path import (
+    ChoiceForbiddenError,
+    ChoiceRequiredError,
+    decide_task_execution,
+    resolve_company_template,
+)
+from backend.core.execution_path_config import load_execution_path_config
 from backend.core.graph import MAX_ITERATIONS, PASS_THRESHOLD, reflection_should_continue
 from backend.core.post_company_reflect import post_company_reflect_mode
 from backend.core.routing_preview import build_routing_preview
@@ -28,15 +34,43 @@ logger = logging.getLogger(__name__)
 
 async def _company_confirmation_stream(req: ChatRequest):
     """公司 SSE 不直接執行。建立待確認任務後結束。"""
+    try:
+        decision = decide_task_execution(
+            req.query, req.execution_strategy, config=load_execution_path_config()
+        )
+    except (ChoiceRequiredError, ChoiceForbiddenError) as exc:
+        yield (
+            "event: error\ndata: "
+            + json_mod.dumps({"error": str(exc)}, ensure_ascii=False)
+            + "\n\n"
+        )
+        return
+    if not decision.created or not decision.decision_source:
+        yield (
+            "event: error\ndata: "
+            + json_mod.dumps({"error": "這次沒有可執行的路徑"}, ensure_ascii=False)
+            + "\n\n"
+        )
+        return
     record = task_manager.create_task(
-        req.query, req.execution_strategy or "company", req.company_template or "quick_task", options={}
+        req.query,
+        decision.suggested,
+        req.company_template or "quick_task",
+        options={},
     )
-    record.resolved_path = "company"
+    record.resolved_path = decision.suggested
+    record.decision_source = decision.decision_source
+    record.path_locked = decision.locked
+    record.path_reason = decision.reason
+    task_manager._persist(record)
     task_manager.start_budget_draft(record)
     payload = {
         "task_id": record.task_id,
         "status": "awaiting_confirmation",
         "awaiting_confirmation": True,
+        "strategy": record.strategy,
+        "decision_source": record.decision_source,
+        "locked": record.path_locked,
         "answer": "請先確認預算方案，確認後才會開始執行。",
     }
     yield f"event: phase\ndata: {json_mod.dumps({'phase': 'pending_user', 'task_id': record.task_id}, ensure_ascii=False)}\n\n"

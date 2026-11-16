@@ -110,8 +110,10 @@ export interface TaskProgress {
       failures?: Array<{ tag?: string; message?: string }>;
     };
   } | null;
-  /** 統一模式：執行策略（auto / simple / company） */
+  /** 實際拿去跑的路徑。舊快照可能仍寫著 auto，新任務只會是 simple 或 company。 */
   strategy: 'auto' | 'simple' | 'company';
+  /** user_explicit | user_default | admin_lock | fallback */
+  decision_source?: 'user_explicit' | 'user_default' | 'admin_lock' | 'fallback' | '';
   /** 統一模式：實際解析的執行路徑。工業執行的路徑標籤是 company */
   resolved_path: 'simple' | 'company' | 'opc' | '';
   query: string;
@@ -222,7 +224,7 @@ export interface CheckpointSummary {
   work_item_count: number;
 }
 
-/** POST /routing/preview 與 SSE path_resolved 共用契約 */
+/** POST /routing/preview 與 SSE path_resolved 共用契約。auto 只當預覽別名，不是任務策略。 */
 export type RoutingPath = 'simple' | 'company' | 'opc';
 export type RoutingPreviewMode = 'auto' | 'simple' | 'company';
 export type EstimatedCostLevel = 'low' | 'medium' | 'high';
