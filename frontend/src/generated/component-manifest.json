@@ -1,0 +1,338 @@
+{
+  "schema_version": 1,
+  "generated_from": "backend.modules.component_registry",
+  "components": [
+    {
+      "id": "media-vault",
+      "title": "Media Vault",
+      "description": "採集圖片展示與管線監控（共享媒資庫，面板互不依賴）",
+      "version": "1.0.0",
+      "kind": "integration",
+      "source": "builtin",
+      "status": "enabled",
+      "enabled": true,
+      "exposed_in_catalog": true,
+      "api_prefix": "/media-vault",
+      "gateway_prefix": "/modules/media-vault/api",
+      "capabilities": [
+        {
+          "id": "control",
+          "title": "控制",
+          "description": "MediaCrawler 採集與入庫",
+          "api_prefix": "/media-vault",
+          "routes": [
+            "/control/overview",
+            "/ingest/replay"
+          ],
+          "methods": [],
+          "write": true
+        },
+        {
+          "id": "gallery",
+          "title": "图库",
+          "description": "瀏覽與篩選採集圖片",
+          "api_prefix": "/media-vault",
+          "routes": [
+            "/images",
+            "/files/{asset_id}"
+          ],
+          "methods": [],
+          "write": false
+        },
+        {
+          "id": "monitor",
+          "title": "監控",
+          "description": "ingest 管線健康度",
+          "api_prefix": "/media-vault",
+          "routes": [
+            "/monitor/summary"
+          ],
+          "methods": [],
+          "write": false
+        }
+      ],
+      "surfaces": [
+        {
+          "mount": "page",
+          "key": "control",
+          "label": "控制",
+          "icon": "⎈",
+          "hint": "採集任務與入庫",
+          "nav_group": "panels",
+          "lazy_entry": "modules/media-vault/register",
+          "capability": "control",
+          "aliases": [
+            "展示"
+          ]
+        },
+        {
+          "mount": "page",
+          "key": "gallery",
+          "label": "图库",
+          "icon": "▦",
+          "hint": "篩選、網格與燈箱",
+          "nav_group": "panels",
+          "lazy_entry": "modules/media-vault/register",
+          "capability": "gallery",
+          "aliases": [
+            "展示"
+          ]
+        },
+        {
+          "mount": "page",
+          "key": "monitor",
+          "label": "監控",
+          "icon": "◉",
+          "hint": "成功率、合規與儲存",
+          "nav_group": "panels",
+          "lazy_entry": "modules/media-vault/register",
+          "capability": "monitor"
+        }
+      ],
+      "nav_groups": [
+        {
+          "id": "panels",
+          "label": "採集媒資",
+          "items": [
+            {
+              "key": "control",
+              "icon": "⎈",
+              "label": "控制",
+              "hint": "採集任務與入庫",
+              "capability": "control"
+            },
+            {
+              "key": "gallery",
+              "icon": "▦",
+              "label": "图库",
+              "hint": "篩選、網格與燈箱",
+              "capability": "gallery"
+            },
+            {
+              "key": "monitor",
+              "icon": "◉",
+              "label": "監控",
+              "hint": "成功率、合規與儲存",
+              "capability": "monitor"
+            }
+          ],
+          "area": "world"
+        }
+      ],
+      "page_aliases": {
+        "展示": "gallery"
+      },
+      "default_page": "control",
+      "requires": [],
+      "optional_requires": [],
+      "guards": [
+        {
+          "kind": "auth",
+          "detail": "/ingest/replay 僅受會話閘門約束，尚無模組級寫入白名單",
+          "enforced_by": "backend.middleware.auth_gate.AuthGateMiddleware"
+        }
+      ],
+      "max_mount_layer": "L2"
+    },
+    {
+      "id": "local-video-studio",
+      "title": "Local Video Studio",
+      "description": "本機優先 AI 影片生成（創意→鏡頭→草稿→審核→合成）",
+      "version": "0.2.0",
+      "kind": "integration",
+      "source": "builtin",
+      "status": "enabled",
+      "enabled": true,
+      "exposed_in_catalog": true,
+      "api_prefix": "/local-video-studio",
+      "gateway_prefix": "/modules/local-video-studio/api",
+      "capabilities": [
+        {
+          "id": "health",
+          "title": "健康檢查",
+          "description": "探針",
+          "api_prefix": "/local-video-studio",
+          "routes": [
+            "/health",
+            "/api/v1/health"
+          ],
+          "methods": [],
+          "write": false
+        },
+        {
+          "id": "projects",
+          "title": "專案",
+          "description": "專案列表與建立",
+          "api_prefix": "/local-video-studio/api/v1",
+          "routes": [
+            "/projects"
+          ],
+          "methods": [],
+          "write": true
+        },
+        {
+          "id": "detail",
+          "title": "專案詳情",
+          "description": "專案狀態與統計",
+          "api_prefix": "/local-video-studio/api/v1",
+          "routes": [
+            "/projects/{id}"
+          ],
+          "methods": [],
+          "write": false
+        },
+        {
+          "id": "shots",
+          "title": "鏡頭板",
+          "description": "鏡頭列表與鏡頭表匯入",
+          "api_prefix": "/local-video-studio/api/v1",
+          "routes": [
+            "/projects/{id}/shots",
+            "/projects/{id}/scripts",
+            "/shots/{id}"
+          ],
+          "methods": [],
+          "write": true
+        },
+        {
+          "id": "jobs",
+          "title": "任務",
+          "description": "GenerationJob claim／complete（mock ComfyUI）",
+          "api_prefix": "/local-video-studio/api/v1",
+          "routes": [
+            "/jobs",
+            "/jobs/{id}/claim",
+            "/jobs/{id}/complete"
+          ],
+          "methods": [],
+          "write": true
+        }
+      ],
+      "surfaces": [
+        {
+          "mount": "page",
+          "key": "projects",
+          "label": "專案",
+          "icon": "▶",
+          "hint": "",
+          "nav_group": "studio",
+          "lazy_entry": "modules/local-video-studio/register"
+        },
+        {
+          "mount": "page",
+          "key": "detail",
+          "label": "專案詳情",
+          "icon": "▶",
+          "hint": "",
+          "nav_group": "studio",
+          "lazy_entry": "modules/local-video-studio/register"
+        },
+        {
+          "mount": "page",
+          "key": "shots",
+          "label": "鏡頭板",
+          "icon": "▶",
+          "hint": "",
+          "nav_group": "studio",
+          "lazy_entry": "modules/local-video-studio/register"
+        },
+        {
+          "mount": "page",
+          "key": "jobs",
+          "label": "任務",
+          "icon": "▶",
+          "hint": "",
+          "nav_group": "studio",
+          "lazy_entry": "modules/local-video-studio/register"
+        },
+        {
+          "mount": "page",
+          "key": "review",
+          "label": "審核",
+          "icon": "▶",
+          "hint": "",
+          "nav_group": "studio",
+          "lazy_entry": "modules/local-video-studio/register"
+        },
+        {
+          "mount": "page",
+          "key": "compose",
+          "label": "合成",
+          "icon": "▶",
+          "hint": "",
+          "nav_group": "studio",
+          "lazy_entry": "modules/local-video-studio/register"
+        },
+        {
+          "mount": "page",
+          "key": "resources",
+          "label": "資源",
+          "icon": "▶",
+          "hint": "",
+          "nav_group": "studio",
+          "lazy_entry": "modules/local-video-studio/register"
+        },
+        {
+          "mount": "page",
+          "key": "home",
+          "label": "首頁",
+          "icon": "▶",
+          "hint": "",
+          "nav_group": "studio",
+          "lazy_entry": "modules/local-video-studio/register"
+        }
+      ],
+      "nav_groups": [
+        {
+          "id": "studio",
+          "label": "影片工作室",
+          "items": [
+            {
+              "key": "projects",
+              "icon": "▶",
+              "label": "專案",
+              "hint": "列表／建立",
+              "capability": "projects"
+            },
+            {
+              "key": "detail",
+              "icon": "☰",
+              "label": "詳情",
+              "hint": "專案狀態",
+              "capability": "detail"
+            },
+            {
+              "key": "shots",
+              "icon": "▦",
+              "label": "鏡頭板",
+              "hint": "鏡頭表",
+              "capability": "shots"
+            },
+            {
+              "key": "jobs",
+              "icon": "◎",
+              "label": "任務",
+              "hint": "Render jobs",
+              "capability": "jobs"
+            }
+          ],
+          "area": "world"
+        }
+      ],
+      "page_aliases": {
+        "home": "projects"
+      },
+      "default_page": "projects",
+      "requires": [],
+      "optional_requires": [],
+      "guards": [
+        {
+          "kind": "api_key",
+          "detail": "寫入路由以 X-API-Key 依賴守門",
+          "enforced_by": "backend.local_video_studio.api._require_api_key"
+        }
+      ],
+      "max_mount_layer": "L2"
+    }
+  ]
+}
