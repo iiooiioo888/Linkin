@@ -20,13 +20,21 @@ export default function OnboardingGuide(_props: OnboardingGuideProps) {
     setVisible(false);
   };
 
+  const body = t('onboarding.body');
+  const splitAt = body.indexOf('。');
+  const lead = splitAt >= 0 && splitAt < body.length - 1 ? body.slice(0, splitAt + 1) : body;
+  const mode = splitAt >= 0 && splitAt < body.length - 1 ? body.slice(splitAt + 1) : '';
+
   return (
     <div
       className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--console-line)] px-4 py-2 sm:px-6"
       data-testid="onboarding-guide"
       role="status"
     >
-      <p className="min-w-0 text-[12px] leading-normal text-[var(--console-sub)]">{t('onboarding.body')}</p>
+      <p className="min-w-0 text-[12px] leading-normal text-[var(--console-sub)]">
+        {lead}
+        {mode ? <span className="whitespace-nowrap">{mode}</span> : null}
+      </p>
       <button
         type="button"
         onClick={close}
