@@ -58,7 +58,7 @@ export default function Shell() {
 
   return (
     <div className="surface-shell">
-      <header className="surface-shell__bar">
+      <header className="surface-shell__bar" data-zone="top">
         <span className="brand-mark text-[15px] text-[var(--console-ink)]">
           <span className="brand-mark__name">靈境</span>
           <span className="brand-mark__dot">·</span>
@@ -73,7 +73,7 @@ export default function Shell() {
           {t('gate.signOut')}
         </button>
       </header>
-      <nav className="surface-shell__nav" aria-label="主要功能" data-testid="surface-nav">
+      <nav className="surface-shell__nav" aria-label="主要功能" data-testid="surface-nav" data-zone="left">
         {surfaces.map((item) => (
           <button
             key={item.id}

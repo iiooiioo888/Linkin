@@ -7220,3 +7220,110 @@ textarea:focus-visible {
     transition: none;
   }
 }
+
+/* 對話五區：中欄訊息、右欄上下文常駐、下欄輸入。 */
+.chat-frame {
+  min-height: 0;
+}
+
+.chat-frame__row {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.chat-drawer {
+  display: flex;
+  width: min(440px, 42vw);
+  min-width: 280px;
+  min-height: 0;
+  flex-shrink: 0;
+  flex-direction: column;
+  border-left: 1px solid var(--console-line);
+  background: var(--console-sidebar);
+}
+
+.chat-drawer.is-collapsed {
+  width: 40px;
+  min-width: 40px;
+}
+
+.chat-drawer__edge {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--console-ink);
+  cursor: pointer;
+  writing-mode: vertical-rl;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 16px 0;
+}
+
+.chat-drawer__edge:hover {
+  color: var(--console-accent);
+}
+
+.chat-drawer .ws-bottom,
+.chat-drawer .ws-bottom.is-context,
+.chat-drawer .ws-bottom.is-off {
+  height: auto;
+  min-height: 0;
+  flex: 1;
+  border-top: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.chat-drawer .ws-bottom-body {
+  overflow: auto;
+}
+
+.chat-frame__dock {
+  flex-shrink: 0;
+  border-top: 1px solid var(--console-line);
+  background: var(--console-bg);
+}
+
+.chat-frame__dock .apple-input-bar {
+  border-top: 0;
+}
+
+@media (min-width: 768px) {
+  .chat-frame .ws-side {
+    width: min(320px, 34vw);
+    min-width: 240px;
+    max-height: none;
+    border-top: 0;
+    border-left: 1px solid var(--ws-border);
+  }
+}
+
+@media (max-width: 767px) {
+  .chat-frame__row {
+    position: relative;
+  }
+
+  .chat-drawer.is-collapsed {
+    width: 36px;
+    min-width: 36px;
+  }
+
+  .chat-drawer:not(.is-collapsed) {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 6;
+    width: min(100%, 420px);
+    min-width: 0;
+    box-shadow: -12px 0 28px rgba(0, 0, 0, 0.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-drawer {
+    transition: none;
+  }
+}
