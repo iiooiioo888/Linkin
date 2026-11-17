@@ -15,7 +15,7 @@ interface ChatMonitorSideProps {
   pending: RahoPendingDecision[];
   running: boolean;
   now: number;
-  onOpenTask: (messageId: string) => void;
+  onOpenTask?: (messageId: string) => void;
   onOpenTrace?: (taskId: string) => void;
   openContextDetail: (preferTaskId?: string | null) => void;
   handlePause: () => Promise<void>;
@@ -54,7 +54,7 @@ export function ChatMonitorSide({
         pending={pending}
         running={running}
         now={now}
-        onOpenTask={() => onOpenTask(live.id)}
+        onOpenTask={onOpenTask ? () => onOpenTask(live.id) : undefined}
         onOpenTrace={onOpenTrace}
         onOpenContext={() => openContextDetail(task.task_id)}
         onPause={() => void handlePause()}

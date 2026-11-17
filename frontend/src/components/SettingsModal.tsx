@@ -1,25 +1,13 @@
-/** 設定彈窗：快速加入 API，並接到控制台角色／用量。 */
-import { navPathForTab } from '../lib/monitorTabs';
-import { requestRoleSettingsDesk } from '../lib/agentUi';
+/** 設定彈窗：只留對話需要的 API 設定，不連到角色、計費或控制台。 */
 import ApiRoutesEditor from './ApiRoutesEditor';
 
 interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
-  onGoConsole?: () => void;
-  onGoAgents?: () => void;
-  onGoUsage?: () => void;
 }
 
-export default function SettingsModal({
-  open,
-  onClose,
-  onSaved,
-  onGoConsole,
-  onGoAgents,
-  onGoUsage,
-}: SettingsModalProps) {
+export default function SettingsModal({ open, onClose, onSaved }: SettingsModalProps) {
   if (!open) return null;
 
   return (
@@ -30,10 +18,8 @@ export default function SettingsModal({
       >
         <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-5 py-3">
           <div>
-            <p className="text-sm font-semibold text-[var(--console-ink)]">API 與角色</p>
-            <p className="mt-0.5 text-[11px] text-[var(--console-sub)]">
-              先加入供應商，再到每個角色指定模型與 Token
-            </p>
+            <p className="text-sm font-semibold text-[var(--console-ink)]">API 設定</p>
+            <p className="mt-0.5 text-[11px] text-[var(--console-sub)]">加入供應商金鑰，對話才能送出</p>
           </div>
           <button
             type="button"
@@ -45,63 +31,8 @@ export default function SettingsModal({
           </button>
         </div>
 
-        <div className="grid shrink-0 grid-cols-3 gap-px border-b border-white/[0.06] bg-white/[0.06]">
-          <div className="bg-[var(--console-card)] px-3 py-2">
-            <p className="text-[10px] font-bold text-[var(--console-accent)]">1 配置</p>
-            <p className="text-[11px] text-[var(--console-sub)]">千問／DeepSeek／Kimi／OpenRouter</p>
-          </div>
-          <button
-            type="button"
-            className="bg-[var(--console-card)] px-3 py-2 text-left hover:bg-white/[0.03]"
-            onClick={() => {
-              requestRoleSettingsDesk();
-              onGoAgents?.();
-            }}
-          >
-            <p className="text-[10px] font-bold text-[var(--console-sub)]">2 角色</p>
-            <p className="text-[11px] text-[var(--console-sub)]">模型與 Token</p>
-          </button>
-          <button
-            type="button"
-            className="bg-[var(--console-card)] px-3 py-2 text-left hover:bg-white/[0.03]"
-            onClick={() => onGoUsage?.()}
-          >
-            <p className="text-[10px] font-bold text-[var(--console-sub)]">3 計費</p>
-            <p className="text-[11px] text-[var(--console-sub)]">AI 用量與基礎設施</p>
-          </button>
-        </div>
-
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <ApiRoutesEditor compact onChanged={onSaved} />
-        </div>
-
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] px-5 py-3">
-          <p className="text-[11px] text-[var(--console-sub)]">
-            完整管理在「{navPathForTab('llm')}」
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {onGoAgents && (
-              <button
-                type="button"
-                onClick={() => {
-                  requestRoleSettingsDesk();
-                  onGoAgents();
-                }}
-                className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-[var(--console-sub)] hover:bg-white/[0.06]"
-              >
-                {navPathForTab('agents')}
-              </button>
-            )}
-            {onGoConsole && (
-              <button
-                type="button"
-                onClick={onGoConsole}
-                className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-[var(--console-accent)] hover:bg-[color-mix(in_srgb,var(--console-accent)_10%,transparent)]"
-              >
-                {navPathForTab('llm')}
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>

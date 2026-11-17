@@ -113,7 +113,7 @@ export default function MessageList({
             key={msg.id}
             message={msg}
             sessionId={sessionId}
-            onOpenTask={msg.taskState ? () => onOpenTask?.(msg.id) : undefined}
+            onOpenTask={msg.taskState && onOpenTask ? () => onOpenTask(msg.id) : undefined}
             onOpenTrace={onOpenTrace}
             onOpenContext={onOpenContext}
             onTaskStatePatch={onTaskStatePatch}

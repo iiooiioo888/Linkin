@@ -1,32 +1,17 @@
 import { expect, test } from '@playwright/test';
 import { passGate } from './gate';
 
-test.describe('Media Vault Hub', () => {
-  test.beforeEach(async ({ page }) => {
+test.describe('媒體庫不再是入口', () => {
+  test('主導覽沒有媒體庫，舊網址回到對話', async ({ page }) => {
     await page.goto('/');
     await passGate(page);
-  });
+    const nav = page.getByTestId('surface-nav');
+    await expect(nav.getByRole('button')).toHaveCount(4);
+    await expect(nav.getByText('媒體庫')).toHaveCount(0);
+    await expect(page.getByTestId('media-vault-hub')).toHaveCount(0);
 
-  test('实验室 → 媒体库 Hub → 切换页签', async ({ page }) => {
-    await page.goto('/#/monitor/lab');
-    const labNav = page.getByRole('navigation', { name: '實驗室' });
-    await labNav.getByRole('link', { name: /采集 · 媒体库/ }).click();
-
-    await expect(page.getByTestId('media-vault-hub')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId('media-vault-tab-control')).toBeVisible();
-    await expect(page.getByTestId('media-vault-control')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('mediacrawler-panel')).toBeVisible();
-
-    await page.getByTestId('media-vault-tab-monitor').click();
-    await expect(page.getByTestId('media-vault-monitor')).toBeVisible({ timeout: 10_000 });
-
-    await page.getByTestId('media-vault-tab-gallery').click();
-    await expect(page.getByTestId('media-vault-gallery')).toBeVisible({ timeout: 10_000 });
-
-    await expect(page.getByTestId('media-vault-related-repos')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Linkin/ })).toHaveAttribute(
-      'href',
-      'https://github.com/iiooiioo888/Linkin',
-    );
+    await page.goto('/#/modules/media-vault');
+    await expect(page).toHaveURL(/#\/chat$/);
+    await expect(page.getByTestId('media-vault-hub')).toHaveCount(0);
   });
 });
