@@ -1,193 +1,47 @@
 import { expect, test } from '@playwright/test';
 import { passGate } from './gate';
 
-test.describe('EvoLoop 核心 UI', () => {
+const SURFACES = ['對話', '上下文壓縮', '提示詞壓縮', '歷史對話記錄'] as const;
+
+test.describe('四入口殼', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await passGate(page);
   });
-  test('首頁載入並可切換控制台即時動態', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('body')).toBeVisible();
-    await expect(page.getByRole('heading', { name: '開始對話' })).toBeVisible();
-    await expect(page.getByPlaceholder('輸入問題…')).toBeVisible();
-    await expect(page.getByText('靈境 · 任務監控')).toHaveCount(0);
 
-    await page.getByTitle('控制台').or(page.getByTitle('Console')).click();
-    await expect(page.getByText('即時').or(page.getByText('Live')).first()).toBeVisible();
-
-    await page.getByRole('button', { name: /即時|Live/ }).first().click();
-    await expect(page.getByText(/LIVE|IDLE|待命|即時/).first()).toBeVisible({ timeout: 15_000 });
+  test('畫面上只剩四個入口，對話可以輸入', async ({ page }) => {
+    const nav = page.getByTestId('surface-nav');
+    await expect(nav).toBeVisible();
+    for (const label of SURFACES) {
+      await expect(nav.getByRole('button', { name: label, exact: true })).toBeVisible();
+    }
+    await expect(nav.getByRole('button')).toHaveCount(4);
+    await expect(page.getByPlaceholder(/輸入問題|輸入訊息/)).toBeVisible();
+    await expect(nav.getByRole('button', { name: '對話' })).toHaveAttribute('aria-current', 'page');
   });
 
-  test('實驗室面板可開啟提示詞優化', async ({ page }) => {
-    await page.goto('/#/monitor/lab');
-    await expect(page.getByText(/實驗室 · 提示詞|Lab · Prompt/)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/優化前|Before/)).toBeVisible({ timeout: 15_000 });
-    const labNav = page.getByRole('navigation', { name: '實驗室' });
-    await expect(labNav.getByText('核心的開發組件')).toBeVisible();
-    await expect(labNav.getByText('價格分析探針組件')).toBeVisible();
-    await expect(labNav.getByText('整合', { exact: true })).toBeVisible();
-    await expect(labNav.getByText('召回', { exact: true })).toBeVisible();
-    await expect(labNav.getByText('採集', { exact: true })).toBeVisible();
-    await expect(labNav.getByRole('link', { name: /Agent Reach/ })).toHaveAttribute(
-      'href',
-      '#/monitor/skills/agent-reach',
+  test('尚未掛載的入口顯示尚未接上', async ({ page }) => {
+    const nav = page.getByTestId('surface-nav');
+    for (const label of ['上下文壓縮', '提示詞壓縮', '歷史對話記錄'] as const) {
+      await nav.getByRole('button', { name: label, exact: true }).click();
+      await expect(page.getByTestId('surface-unmounted')).toHaveText('尚未接上');
+    }
+  });
+
+  test('舊的公司與模組網址回到對話', async ({ page }) => {
+    await page.goto('/#/company');
+    await passGate(page);
+    await expect(page).toHaveURL(/#\/chat$/);
+    await expect(page.getByTestId('surface-nav').getByRole('button', { name: '對話' })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
-    await expect(labNav.getByText('工業接線', { exact: true })).toBeVisible();
-    await expect(labNav.getByText('Agent 工作流', { exact: true })).toBeVisible();
-    await expect(labNav.getByText('設計', { exact: true })).toBeVisible();
-    await expect(labNav.getByText('技能', { exact: true })).toBeVisible();
-    await expect(labNav.getByText('實驗', { exact: true })).toHaveCount(0);
-    const mcp = labNav.getByRole('button', { name: /MCP/ });
-    await mcp.scrollIntoViewIfNeeded();
-    await mcp.click();
-    await expect(page.getByRole('heading', { name: '工業接線' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '召回' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '採集' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '容器' })).toBeVisible();
-    await labNav.getByRole('button', { name: /策略庫/ }).click();
-    await expect(page).toHaveURL(/#\/monitor\/lab\/quant/);
-    await page.goto('/#/monitor/lab');
-    await page.reload();
-    await expect(page.url()).toMatch(/#\/monitor\/lab/);
+    await expect(page.getByPlaceholder(/輸入問題|輸入訊息/)).toBeVisible();
+
+    await page.goto('/#/world/media-vault');
+    await expect(page).toHaveURL(/#\/chat$/);
+    await expect(page.getByTestId('media-vault-hub')).toHaveCount(0);
   });
-
-  test('即時看板整合工具可跳轉至實驗室 firecrawl', async ({ page }) => {
-    await page.goto('/#/monitor');
-    await page.getByTestId('monitor-live-details-toggle').click();
-    await page.getByRole('button', { name: '爬蟲' }).first().click();
-    await expect(page.getByText(/實驗室 · 爬蟲|Lab ·/)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/單頁抓取|Scrape/)).toBeVisible({ timeout: 10_000 });
-    await expect(page.url()).toMatch(/#\/monitor\/lab\/firecrawl/);
-  });
-
-  test('Hash 路由：#/monitor/lab/firecrawl 可書籤與刷新還原', async ({ page }) => {
-    await page.goto('/#/monitor/lab/firecrawl');
-    await expect(page.getByText(/實驗室 · 爬蟲|Lab ·/)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/單頁抓取|Scrape/)).toBeVisible({ timeout: 10_000 });
-
-    await page.reload();
-    await expect(page.url()).toMatch(/#\/monitor\/lab\/firecrawl/);
-  });
-
-  test('Hash 路由：#/monitor/lab/maps 顯示策略可視化', async ({ page }) => {
-    await page.goto('/#/monitor/lab/maps');
-    await expect(page.getByText(/實驗室 · 策略圖|Lab ·/)).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('.sq-tree-title', { hasText: '策略圖' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('【移動平均線】')).toBeVisible();
-    await expect(page.getByText('角色引用')).toBeVisible();
-    await expect(page.getByText('Archify', { exact: false }).first()).toBeVisible();
-    await expect(page.locator('iframe.archify-frame, [role="img"]').first()).toBeVisible({ timeout: 30_000 });
-
-    await page.reload();
-    await expect(page.url()).toMatch(/#\/monitor\/lab\/maps/);
-  });
-
-  test('Hash 路由：#/monitor/lab/quant 顯示回測策略庫', async ({ page }) => {
-    await page.goto('/#/monitor/lab/quant');
-    await expect(page.getByText(/實驗室 · 策略庫|Lab ·/)).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('.sq-tree-title', { hasText: '策略庫' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('【移動平均線】')).toBeVisible();
-    await expect(page.getByText('角色引用')).toBeVisible();
-    await expect(page.getByText('權益曲線')).toBeVisible();
-    await expect(page.locator('iframe.archify-frame, [role="img"]').first()).toBeVisible({ timeout: 30_000 });
-
-    await page.reload();
-    await expect(page.url()).toMatch(/#\/monitor\/lab\/quant/);
-  });
-
-  test('量化角色工作台可開啟回測策略庫', async ({ page }) => {
-    await page.goto('/#/monitor/agents');
-    await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
-    await page.getByPlaceholder(/搜尋角色|Search roles/).fill('量化');
-    await page.locator('.ar-ri', { hasText: '量化分析師' }).click();
-    await page.locator('.rd-header .rd-acts').getByRole('button', { name: '策略庫' }).click();
-    await expect(page.getByRole('heading', { name: '回測策略庫' })).toBeVisible();
-    await expect(page.locator('.sq-tree-title', { hasText: '策略庫' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('【移動平均線】')).toBeVisible();
-    await expect(page.getByText('角色引用')).toBeVisible();
-  });
-
-  test('角色分頁可開啟名冊', async ({ page }) => {
-    await page.goto('/');
-    await page.getByTitle('控制台').or(page.getByTitle('Console')).click();
-    await page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /角色|Agents/ }).click();
-    await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('.ar-ri', { hasText: '建築總監' })).toHaveCount(0);
-    await expect(page.locator('.ar-ri', { hasText: '建築執行者' })).toHaveCount(0);
-    await expect(page.locator('.rd-header .rd-acts').getByRole('button', { name: '新增' })).toHaveCount(0);
-    await expect(page.getByText('組織回報鏈')).toBeVisible();
-    await expect(page.getByText('質詢鏈')).toHaveCount(0);
-    await expect(page.getByText('指揮鏈')).toHaveCount(0);
-    await expect(page.locator('.rd-tree .rd-tree-lvl').first()).toHaveText(/L\d/);
-    await expect(page.locator('.rd-onode.cur')).toBeVisible();
-    await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
-    await expect(page.locator('.rd-col-h', { hasText: '執行中' })).toBeVisible();
-    await expect(page.locator('.rd-col-h', { hasText: '已完成' })).toBeVisible();
-  });
-
-  test('舊質詢樹路徑會開融合後的角色工作台', async ({ page }) => {
-    await page.goto('/#/monitor/grill');
-    await expect(page.getByPlaceholder(/搜尋角色|Search roles/)).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('.rd-header .rd-acts').getByRole('button', { name: '質詢' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /工作台/ })).toBeVisible();
-    await expect(page.getByText('組織回報鏈')).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: '控制台' }).getByRole('button', { name: /質詢樹/ })).toHaveCount(0);
-  });
-
-  test('Hash 路由：#/monitor/tasks 可書籤與刷新還原', async ({ page }) => {
-    await page.goto('/#/monitor/tasks');
-    await expect(page.getByRole('button', { name: '新項' })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByPlaceholder(/搜尋任務|Search tasks/i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
-    await expect(page.locator('.rd-col-h', { hasText: '執行中' })).toBeVisible();
-    await expect(page.locator('.rd-col-h', { hasText: '已完成' })).toBeVisible();
-
-    await page.reload();
-    await expect(page.getByPlaceholder(/搜尋任務|Search tasks/i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.url()).toMatch(/#\/monitor\/tasks/);
-  });
-
-  test('Hash 路由：#/traces 可書籤與刷新還原', async ({ page }) => {
-    await page.goto('/#/traces');
-    await expect(page.getByText(/執行軌跡|軌跡|Traces/i).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByPlaceholder(/搜尋任務 ID|Search task ID/i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('.rd-col-h', { hasText: '隊列' })).toBeVisible();
-    await expect(page.locator('.rd-col-h', { hasText: '執行中' })).toBeVisible();
-    await expect(page.locator('.rd-col-h', { hasText: '已完成' })).toBeVisible();
-
-    await page.reload();
-    await expect(page.url()).toMatch(/#\/traces/);
-  });
-
-  test('舊管線網址改開角色工作台', async ({ page }) => {
-    await page.goto('/#/monitor/pipeline');
-    await expect(page.getByRole('heading', { name: '角色監控' })).toBeVisible({ timeout: 10_000 });
-    await expect(page.url()).toMatch(/#\/monitor\/agents/);
-  });
-
-
-  test('Hash 路由：#/monitor/llm 可開啟 API 路由', async ({ page }) => {
-    await page.goto('/#/monitor/llm');
-    await expect(page.getByRole('button', { name: '系統' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(/全域分發策略|已配置的 API/).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.url()).toMatch(/#\/monitor\/llm/);
-
-    await page.reload();
-    await expect(page.url()).toMatch(/#\/monitor\/llm/);
-  });
-
-  test('即時看板工作流可跳轉 API 路由', async ({ page }) => {
-    await page.goto('/#/monitor');
-    await page.getByRole('button', { name: '配置 API' }).click();
-    await expect(page.getByText(/全域分發策略|已配置的 API/).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.url()).toMatch(/#\/monitor\/llm/);
-  });
-
-
-
 
   test('對話詳細區：/context 開啟底部 Context 面板', async ({ page }) => {
     await page.goto('/#/chat');
@@ -205,12 +59,10 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.getByTestId('chat-context-embed').getByText(/^Context$/)).toBeVisible();
     await expect(page.getByTestId('context-locked-task')).toBeVisible();
     await expect(page.getByTestId('context-locked-task')).toContainText(/本對話/);
-    // 對話頁禁止任務選擇器（不可切換其他對話）
     await expect(page.getByTestId('context-task-select')).toHaveCount(0);
     await expect(
       page.getByText(/本對話專屬|無任務選擇器|不可切換其他會話|僅顯示當前對話|本對話詳細區/),
     ).toBeVisible();
-    // 不得跳到控制台鏡像
     await expect(page.url()).not.toMatch(/#\/monitor\/context/);
   });
 
@@ -224,42 +76,7 @@ test.describe('EvoLoop 核心 UI', () => {
     await expect(page.getByTestId('context-peek-locked')).toBeVisible();
     await expect(page.getByTestId('context-peek-locked')).toContainText(/本對話/);
     await expect(page.getByRole('button', { name: /對話詳細區/ })).toBeVisible();
-    // Peek 不得出現跨對話任務選擇器
     await expect(page.getByTestId('context-task-select')).toHaveCount(0);
     await expect(page.url()).not.toMatch(/#\/monitor\/context/);
-  });
-
-  test('技能面板：可視化插件可列出 dsh-context', async ({ page }) => {
-    await page.goto('/#/monitor/skills');
-    await expect(page.getByTestId('skills-tab-viz')).toBeVisible({ timeout: 10_000 });
-    await page.getByTestId('skills-tab-viz').click();
-    await expect(page.getByTestId('viz-plugin-dsh-context')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/Context 可視化|dsh-context/)).toBeVisible();
-  });
-
-  test('監控任務：看板含失敗欄且 KPI 已完成與欄位計數一致', async ({ page }) => {
-    await page.goto('/#/monitor/tasks');
-    await expect(page.locator('[data-task-column="failed"] .rd-col-h', { hasText: '失敗' })).toBeVisible({
-      timeout: 15_000,
-    });
-    const doneColText = await page.locator('[data-task-column="done"] .rd-col-h span:last-child').textContent();
-    const doneStatText = await page.getByTestId('task-stat-done').locator('.rd-stat-v').textContent();
-    expect((doneColText ?? '').trim()).toBe((doneStatText ?? '').trim());
-  });
-
-  test('系統總覽：任務成功率 KPI 不得出現雙重 %%', async ({ page }) => {
-    await page.goto('/#/monitor/metrics');
-    await expect(page.getByText('系統總覽').first()).toBeVisible({ timeout: 15_000 });
-    const value = page.locator('.mon-kpi-spark', { hasText: '任務成功率' }).locator('.mon-kpi-spark__value');
-    await expect(value).toBeVisible({ timeout: 15_000 });
-    await expect(value).not.toContainText('%%');
-  });
-
-  test('MediaCrawler：乾跑預設時主按鈕為乾跑啟動', async ({ page }) => {
-    await page.goto('/#/monitor/skills');
-    await expect(page.getByTestId('mediacrawler-panel')).toBeVisible({ timeout: 15_000 });
-    const start = page.getByTestId('mediacrawler-start');
-    await expect(start).toHaveAttribute('data-dry-run', 'true');
-    await expect(start).toHaveText('乾跑啟動');
   });
 });

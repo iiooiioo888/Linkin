@@ -16,7 +16,7 @@ export interface ChatViewProps {
   onSend: (text: string, options: SendOptions) => void;
   onRetry: () => void;
   onDismissError: () => void;
-  onOpenTask: (messageId: string) => void;
+  onOpenTask?: (messageId: string) => void;
   onOpenTrace?: (taskId: string) => void;
   onSuggest: (text: string, company: boolean) => void;
   onUpgradeToCompany?: (query: string, priorAnswer: string) => void;

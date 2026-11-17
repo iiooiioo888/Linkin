@@ -332,13 +332,6 @@ export default function InputBar({
             >
               預覽上下文
             </button>
-            <a
-              href="#/monitor/integrations"
-              className="mt-1 block w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[var(--console-sub)] hover:bg-white/[0.04] hover:text-[var(--console-accent)]"
-              onClick={() => setShowMenu(false)}
-            >
-              外部工具
-            </a>
           </div>
         )}
 
