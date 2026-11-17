@@ -7355,6 +7355,11 @@ textarea:focus-visible {
   min-width: 0;
 }
 
+/* embed 規則把 padding 清成 0，捲到底時最後一張卡片的底邊會貼著裁切線。 */
+.chat-drawer .ctx-panel.is-embed {
+  padding-bottom: 16px;
+}
+
 /* 抽屜寬度不是視窗寬度。lg 斷點會把 Token／趨勢並排，在 440px 內把環形標籤裁成直排。
    Tailwind 把 lg:grid-cols-2 放在 utilities layer，這裡必須壓過它。 */
 .chat-drawer .ctx-panel.is-embed .grid:not(.grid-cols-2) {
