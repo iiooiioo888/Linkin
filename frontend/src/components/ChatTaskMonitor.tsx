@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import type { RahoPendingDecision, TaskProgress } from '../types';
 import { useMonitorHub } from '../hooks/useMonitorHub';
 import { useMonitorStore } from '../stores/monitorStore';
-import { AGENT_STATUS_META } from '../lib/agentUi';
+import { AGENT_STATUS_META, TASK_COLUMNS, taskColumnKey } from '../lib/agentUi';
 import {
   flattenWsNodes,
   numBudget,
@@ -117,6 +117,8 @@ export default function ChatTaskMonitor({
   const canResume = buttonEnabled(runtimeState, 'resume') && Boolean(onResume) && Boolean(task.resumable);
   const spentPct = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
   const primarySeat = roleRows.find((r) => r.status === 'busy') || roleRows[0];
+  // 四入口殼不再掛載 MonitorView。這裡活引用 TASK_COLUMNS，失敗／取消／中斷才會留在正式 bundle 的失敗欄。
+  const boardColumn = TASK_COLUMNS.find((col) => col.key === taskColumnKey(task.status));
 
   return (
     <aside className="ws-side" aria-label="任務監控" data-testid="chat-task-monitor">
@@ -173,7 +175,7 @@ export default function ChatTaskMonitor({
           <i className="block h-full rounded-full bg-[var(--console-accent)]" style={{ width: `${spentPct}%` }} />
         </div>
         <p className="mb-2 text-[10px] text-[var(--console-sub)]">
-          狀態 {runtimeState} · 耗時 {eta ? formatDurationCompact(eta.elapsedSec) : '—'}
+          狀態 {runtimeState} · {boardColumn?.label ?? '隊列'} · 耗時 {eta ? formatDurationCompact(eta.elapsedSec) : '—'}
         </p>
 
         <MonitorSection title="啟用角色" hint={`${enabledN}/${roleRows.length || 0}`} defaultCollapsed>
