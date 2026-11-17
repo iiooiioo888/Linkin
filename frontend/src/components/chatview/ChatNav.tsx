@@ -11,6 +11,7 @@ interface ChatNavProps {
   setMonitorSheetOpen: Dispatch<SetStateAction<boolean>>;
   openContextDetail: () => void;
   onOpenSettings?: () => void;
+  onNewSession?: () => void;
 }
 
 export function ChatNav({
@@ -21,19 +22,19 @@ export function ChatNav({
   setMonitorSheetOpen,
   openContextDetail,
   onOpenSettings,
+  onNewSession,
 }: ChatNavProps) {
   return (
     <nav className="ws-nav">
       <div className="ws-crumb">
-        {title ? (
-          <>
-            對話 / <strong>{title}</strong>
-          </>
-        ) : (
-          <strong>對話</strong>
-        )}
+        {title ? <strong>{title}</strong> : null}
       </div>
       <div className="ws-nav-acts">
+        {onNewSession && (
+          <button type="button" className="ws-btn" onClick={onNewSession}>
+            新對話
+          </button>
+        )}
         {showMonitor && isMobile && (
           <button
             type="button"

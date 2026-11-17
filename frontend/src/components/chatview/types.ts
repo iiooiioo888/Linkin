@@ -13,6 +13,7 @@ export interface ChatViewProps {
   lastQuery: string | null;
   llmConfigured?: boolean | null;
   onOpenSettings?: () => void;
+  onNewSession?: () => void;
   onSend: (text: string, options: SendOptions) => void;
   onRetry: () => void;
   onDismissError: () => void;
