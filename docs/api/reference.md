@@ -255,6 +255,28 @@ L3 回應 L2 `[GRILL]`（資料缺失／工具不足／邏輯矛盾／單純確�
 
 ---
 
+## 規則壓縮
+
+不經模型。每條路由只轉呼叫一個既有函式。
+
+### POST /context/compress
+
+`backend.memory.context_compressor.compress`。正文 `text`，上限 `limit`（預設 720）。
+
+### POST /context/decisions
+
+`backend.memory.context_compressor.extract_decisions`。正文 `text`，句數 `limit`（預設 5）。
+
+### POST /context/trace-summary
+
+`backend.memory.context_compressor.summarize_trace`。欄位 `title`、`body`、`failure_reason`、`limit`。
+
+### POST /prompts/truncate
+
+`backend.prompts.templates.truncate`。提示詞 `text`，上限 `max_chars`（省略則用後端預設）。這不是提示詞優化。
+
+---
+
 ## Docker 管理
 
 ### GET /docker/status

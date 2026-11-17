@@ -20,12 +20,22 @@ test.describe('四入口殼', () => {
     await expect(nav.getByRole('button', { name: '對話' })).toHaveAttribute('aria-current', 'page');
   });
 
-  test('尚未掛載的入口顯示尚未接上', async ({ page }) => {
+  test('三個入口都有畫面', async ({ page }) => {
     const nav = page.getByTestId('surface-nav');
-    for (const label of ['上下文壓縮', '提示詞壓縮', '歷史對話記錄'] as const) {
-      await nav.getByRole('button', { name: label, exact: true }).click();
-      await expect(page.getByTestId('surface-unmounted')).toHaveText('尚未接上');
-    }
+
+    await nav.getByRole('button', { name: '上下文壓縮', exact: true }).click();
+    await expect(page.getByTestId('context-compression')).toBeVisible();
+    await expect(page.getByRole('button', { name: '帶入本機對話' })).toBeVisible();
+    await expect(page.getByTestId('surface-unmounted')).toHaveCount(0);
+
+    await nav.getByRole('button', { name: '提示詞壓縮', exact: true }).click();
+    await expect(page.getByTestId('prompt-compression')).toBeVisible();
+    await expect(page.getByRole('button', { name: '壓縮', exact: true })).toBeVisible();
+
+    await nav.getByRole('button', { name: '歷史對話記錄', exact: true }).click();
+    await expect(page.locator('[data-surface="history"]')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '歷史對話記錄' })).toBeVisible();
+    await expect(page.getByTestId('surface-unmounted')).toHaveCount(0);
   });
 
   test('舊的公司與模組網址回到對話', async ({ page }) => {

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "baseline_commit": "c32977b",
-  "count": 320,
+  "count": 324,
   "routes": [
     {
       "path": "/api/v1/chat/completions",
@@ -1749,6 +1749,34 @@
         "POST"
       ],
       "name": "cleanup_memories"
+    },
+    {
+      "path": "/context/compress",
+      "methods": [
+        "POST"
+      ],
+      "name": "compress_context"
+    },
+    {
+      "path": "/context/decisions",
+      "methods": [
+        "POST"
+      ],
+      "name": "extract_context_decisions"
+    },
+    {
+      "path": "/context/trace-summary",
+      "methods": [
+        "POST"
+      ],
+      "name": "summarize_context_trace"
+    },
+    {
+      "path": "/prompts/truncate",
+      "methods": [
+        "POST"
+      ],
+      "name": "truncate_prompt"
     },
     {
       "path": "/dashboard",

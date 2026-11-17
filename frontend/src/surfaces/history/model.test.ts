@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildAppRouteHash, getDefaultRoute } from '../../lib/appRoute';
 import { loadActiveSessionId, loadSessions, saveActiveSessionId } from '../../lib/storage';
+import { hashForSurface } from '../../routes/catalog';
 import type { ChatSession } from '../../types';
 import {
   browserSessionStore,
@@ -51,9 +51,9 @@ describe('history session model', () => {
     expect(browserSessionStore.saveActiveId).toBe(saveActiveSessionId);
   });
 
-  it('points continue at the existing chat route', () => {
-    expect(CONVERSATION_HASH).toBe('#/work/chat');
-    expect(CONVERSATION_HASH).toBe(buildAppRouteHash({ ...getDefaultRoute(), view: 'chat' }));
+  it('points continue at the shell chat entry', () => {
+    expect(CONVERSATION_HASH).toBe('#/chat');
+    expect(CONVERSATION_HASH).toBe(hashForSurface('chat'));
   });
 
   it('lists newest first with title, preview, count, and active mark', () => {
@@ -133,7 +133,7 @@ describe('history session model', () => {
     expect(store.writes()).toBe(0);
     expect(store.activeId()).toBe('b');
 
-    expect(resumeHistory(store, 'a')).toEqual({ id: 'a', hash: '#/work/chat' });
+    expect(resumeHistory(store, 'a')).toEqual({ id: 'a', hash: '#/chat' });
     expect(store.writes()).toBe(1);
     expect(store.activeId()).toBe('a');
     expect(store.load()).toBe(sessions);

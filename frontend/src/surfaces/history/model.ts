@@ -2,6 +2,7 @@
  * 歷史對話只讀既有會話庫（localStorage 的 loadSessions／saveActiveSessionId）。
  * 不另建儲存，也不另行送出聊天。
  */
+import { hashForSurface } from '../../routes/catalog';
 import type { ChatMessage, ChatSession } from '../../types';
 import {
   loadActiveSessionId,
@@ -9,8 +10,8 @@ import {
   saveActiveSessionId,
 } from '../../lib/storage';
 
-/** 與 `buildAppRouteHash({ view: 'chat' })` 相同的既有對話路由。 */
-export const CONVERSATION_HASH = '#/work/chat';
+/** 殼層的對話入口。繼續與空狀態都回到這一頁。 */
+export const CONVERSATION_HASH = hashForSurface('chat');
 
 const PREVIEW_LIMIT = 80;
 
