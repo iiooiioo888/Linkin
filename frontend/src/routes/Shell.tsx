@@ -14,6 +14,12 @@ import { loadSurfaces } from './loadMounts';
 
 const PRIMARY: SurfaceId[] = ['chat', 'history'];
 const ADVANCED: SurfaceId[] = ['context-compression', 'prompt-compression'];
+const SHORT: Record<SurfaceId, string> = {
+  chat: '對話',
+  history: '歷史',
+  'context-compression': '上文',
+  'prompt-compression': '提示',
+};
 
 function UnmountedSurface({ title }: { title: string }) {
   return (
@@ -86,12 +92,14 @@ export default function Shell() {
 
   return (
     <div className="surface-shell">
-      <nav className="surface-shell__nav" aria-label="主要功能" data-testid="surface-nav" data-zone="left">
-        <span className="brand-mark surface-shell__brand text-[14px] text-[var(--console-ink)]">
+      <header className="surface-shell__bar" data-zone="top">
+        <span className="brand-mark surface-shell__brand">
           <span className="brand-mark__name">靈境</span>
           <span className="brand-mark__dot">·</span>
-          <span className="font-medium tracking-tight">Linkin</span>
+          <span>Linkin</span>
         </span>
+      </header>
+      <nav className="surface-shell__nav" aria-label="主要功能" data-testid="surface-nav" data-zone="left">
         <div className="surface-shell__primary">
           {PRIMARY.map((id) => {
             const item = byId(id);
@@ -102,11 +110,13 @@ export default function Shell() {
                 type="button"
                 data-surface={id}
                 aria-current={id === active ? 'page' : undefined}
+                aria-label={item.label}
+                title={item.label}
                 onClick={() => show(id, 'push')}
                 className="surface-shell__link"
               >
                 <NavIcon id={id} />
-                <span>{item.label}</span>
+                <span>{SHORT[id]}</span>
               </button>
             );
           })}
@@ -132,11 +142,13 @@ export default function Shell() {
                   type="button"
                   data-surface={id}
                   aria-current={id === active ? 'page' : undefined}
+                  aria-label={item.label}
+                  title={item.label}
                   onClick={() => show(id, 'push')}
                   className="surface-shell__link surface-shell__link--sub"
                 >
                   <NavIcon id={id} />
-                  <span>{item.label}</span>
+                  <span>{SHORT[id]}</span>
                 </button>
               );
             })}

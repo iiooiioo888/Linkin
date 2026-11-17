@@ -7137,15 +7137,27 @@ textarea:focus-visible {
 /* 四入口殼：窄左欄。金絲只標示正在使用的那一項。 */
 .surface-shell {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100dvh;
   min-width: 0;
   background: var(--console-bg);
   color: var(--console-ink);
 }
 
+.surface-shell__bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 48px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--console-line);
+  background: var(--console-sidebar);
+}
+
 .surface-shell__nav {
+  grid-row: 2;
   display: flex;
   min-width: 0;
   min-height: 0;
@@ -7157,13 +7169,12 @@ textarea:focus-visible {
 }
 
 .surface-shell__brand {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0;
-  padding: 4px 8px 14px;
-  line-height: 1.2;
-  text-align: center;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  white-space: nowrap;
+  font-size: 15px;
+  line-height: 1;
 }
 
 .surface-shell__primary {
@@ -7222,6 +7233,7 @@ textarea:focus-visible {
 
 .surface-shell__link span {
   max-width: 100%;
+  white-space: nowrap;
 }
 
 .surface-shell__link:hover {
@@ -7248,6 +7260,7 @@ textarea:focus-visible {
 }
 
 .surface-shell__stage {
+  grid-row: 2;
   display: flex;
   min-height: 0;
   min-width: 0;
@@ -7287,12 +7300,16 @@ textarea:focus-visible {
 
 @media (max-width: 767px) {
   .surface-shell {
-    grid-template-columns: 76px minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .surface-shell__bar {
+    padding: 0 14px;
   }
 
   .surface-shell__link {
     font-size: 10px;
-    padding: 8px 4px;
+    padding: 8px 2px;
   }
 }
 
