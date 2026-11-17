@@ -16,6 +16,7 @@
 | **M5** | 完成 | ffmpeg_compose + 強制 compliance.stamp + ComposePanel |
 | **M6** | 完成 | StorageAdapter、資源彙總 API／UI、archive 腳本 |
 | **M7** | stub | Vidu／CloudGPU；無 n8n |
+| **M8** | 硬化 | 假成片預設關閉、缺圖即失敗、job 逾時／佇列停滯、sha256 串流校驗、ffmpeg 字型、agent daemon |
 
 ## Health
 
@@ -58,7 +59,9 @@ curl -s http://127.0.0.1:8000/local-video-studio/health
 pytest backend/tests/test_local_video_studio.py \
        backend/tests/test_local_video_studio_m2.py \
        backend/tests/test_local_video_studio_m3_m6.py \
-       backend/tests/test_local_video_studio_p0_gaps.py -q
+       backend/tests/test_local_video_studio_p0_gaps.py \
+       backend/tests/test_lvs_phase_a.py \
+       backend/tests/test_lvs_boundary.py -q
 ```
 
 ## 約束
@@ -66,3 +69,4 @@ pytest backend/tests/test_local_video_studio.py \
 - `CLOUD_ENABLED=false`；相對路徑僅允許 `STORAGE_BASE` 下
 - Compose 成功前必須 `compliance.stamp()`，不可繞過
 - CI 使用 mock Comfy；真實驗收見 OPERATIONS.md
+- 正式環境 `LVS_ALLOW_FAKE_MEDIA` 維持關閉。Worker：`python -m backend.local_video_studio.agent`

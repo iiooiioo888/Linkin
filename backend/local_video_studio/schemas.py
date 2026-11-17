@@ -237,6 +237,9 @@ class ComposeRequest(BaseModel):
     output_name: str = "final_v1.mp4"
     add_watermark: bool = True
     metadata: dict[str, Any] = Field(default_factory=dict)
+    audio_relative_paths: list[str] = Field(default_factory=list)
+    subtitle_relative_path: str | None = None
+    fontfile: str | None = None
 
 
 class ComposeOut(BaseModel):

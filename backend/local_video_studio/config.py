@@ -12,6 +12,22 @@ def _truthy(raw: str | None, default: bool = False) -> bool:
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_float(*keys: str, default: float) -> float:
+    for key in keys:
+        raw = os.getenv(key)
+        if raw is None or not str(raw).strip():
+            continue
+        try:
+            return float(str(raw).strip())
+        except ValueError:
+            continue
+    return default
+
+
+def _env_int(*keys: str, default: int) -> int:
+    return int(_env_float(*keys, default=float(default)))
+
+
 @dataclass(frozen=True)
 class LocalVideoStudioConfig:
     """Studio 執行設定。雲端預設關閉（``CLOUD_ENABLED=false``）。"""
@@ -28,6 +44,15 @@ class LocalVideoStudioConfig:
     use_mock_comfy: bool = True
     compliance_text: str = "AI 生成"
     compliance_position: str = "bottom-right"
+    job_timeout_sec: int = 7200
+    queue_stall_sec: float = 300.0
+    comfy_poll_interval_sec: float = 1.0
+    agent_poll_interval_sec: float = 5.0
+    allow_fake_media: bool = False
+    verify_model_sha256: bool = False
+    lease_ttl_sec: float = 120.0
+    heartbeat_log_sec: float = 30.0
+    drawtext_font: str = ""
 
 
 def load_config() -> LocalVideoStudioConfig:
@@ -70,5 +95,18 @@ def load_config() -> LocalVideoStudioConfig:
             os.getenv("LVS_COMPLIANCE_POSITION")
             or os.getenv("COMPLIANCE_POSITION")
             or "bottom-right"
+        ).strip(),
+        job_timeout_sec=_env_int("LVS_JOB_TIMEOUT_SEC", "JOB_TIMEOUT_SEC", default=7200),
+        queue_stall_sec=_env_float("LVS_QUEUE_STALL_SEC", default=300.0),
+        comfy_poll_interval_sec=_env_float("LVS_COMFY_POLL_INTERVAL_SEC", default=1.0),
+        agent_poll_interval_sec=_env_float(
+            "LVS_AGENT_POLL_INTERVAL_SEC", "AGENT_POLL_INTERVAL_SEC", default=5.0
+        ),
+        allow_fake_media=_truthy(os.getenv("LVS_ALLOW_FAKE_MEDIA"), default=False),
+        verify_model_sha256=_truthy(os.getenv("LVS_VERIFY_MODEL_SHA256"), default=False),
+        lease_ttl_sec=_env_float("LVS_LEASE_TTL_SEC", default=120.0),
+        heartbeat_log_sec=_env_float("LVS_HEARTBEAT_LOG_SEC", default=30.0),
+        drawtext_font=(
+            os.getenv("LVS_DRAWTEXT_FONT") or os.getenv("LVS_COMPLIANCE_FONT") or ""
         ).strip(),
     )

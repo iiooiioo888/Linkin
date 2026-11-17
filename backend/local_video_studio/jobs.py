@@ -158,6 +158,20 @@ def claim_job(session: Session, job_id: str, agent_id: str) -> JobOut:
     return job_to_out(session, job)
 
 
+def requeue_running_job(session: Session, job: GenerationJob) -> None:
+    """釋放執行中租約：退回 queued，不把這次中斷計入 attempt。"""
+    if job.status != "running":
+        return
+    job.status = "queued"
+    job.assigned_agent = None
+    if int(job.attempt or 0) > 0:
+        job.attempt = int(job.attempt) - 1
+    job.started_at = None
+    job.finished_at = None
+    job.error = None
+    session.flush()
+
+
 def complete_job(session: Session, job_id: str, body: JobComplete) -> JobOut:
     job = session.get(GenerationJob, job_id)
     if job is None:

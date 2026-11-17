@@ -103,7 +103,7 @@ services:
     networks: [lvs_net]
     restart: unless-stopped
 
-  # M0 stub：與 api 同映像，之後改 compose_worker 命令
+  # 輕量 worker：合成／輪詢 agent。雲端保持關閉，不寫假成片。
   lvs-worker-light:
     build:
       context: .
@@ -118,17 +118,17 @@ services:
       - LVS_DATABASE_URL=${LVS_DATABASE_URL:-postgresql+psycopg://studio:studio@lvs-postgres:5432/studio}
       - LVS_REDIS_URL=${LVS_REDIS_URL:-redis://lvs-redis:6379/0}
       - LVS_STORAGE_BASE=${LVS_STORAGE_BASE:-/mnt/ai-media}
+      - LVS_AGENT_ID=${LVS_AGENT_ID:-workstation-5090}
+      - LVS_AGENT_POLL_INTERVAL_SEC=${LVS_AGENT_POLL_INTERVAL_SEC:-5}
+      - LVS_JOB_TIMEOUT_SEC=${LVS_JOB_TIMEOUT_SEC:-7200}
+      - LVS_ALLOW_FAKE_MEDIA=${LVS_ALLOW_FAKE_MEDIA:-false}
+      - LVS_VERIFY_MODEL_SHA256=${LVS_VERIFY_MODEL_SHA256:-false}
       - LINKIN_AUTH_DISABLED=${LVS_AUTH_DISABLED:-1}
       - EVOL_LLM_OPS_ENABLED=false
       - REDIS_URL=${LVS_REDIS_URL:-redis://lvs-redis:6379/0}
       - REDIS_PASSWORD=${LVS_REDIS_PASSWORD:-}
       - OPC_INTERNAL_TOKEN=${OPC_INTERNAL_TOKEN:-lvs-dev-token}
-    command:
-      [
-        "python",
-        "-c",
-        "import time; print('lvs-worker-light M0 stub idle'); time.sleep(3600)",
-      ]
+    command: ["python", "-m", "backend.local_video_studio.agent"]
     volumes:
       - ${LVS_STORAGE_HOST:-./data/lvs-media}:/mnt/ai-media
     depends_on:

@@ -102,6 +102,10 @@ def test_m2_keyframe_job_agent_mock_comfy_asset(monkeypatch, tmp_path):
     assert job_body["status"] == "queued"
     job_id = job_body["id"]
 
+    ref = tmp_path / "media" / "projects" / project_id / "script" / "ref.png"
+    ref.parent.mkdir(parents=True, exist_ok=True)
+    ref.write_bytes(b"\x89PNG\r\nref")
+
     mock_app = create_mock_comfy_app(output_dir=tmp_path / "comfy-out")
     comfy = ComfyClient("http://mock-comfy", client=_TestClientAsHttpx(mock_app))
     try:
