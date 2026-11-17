@@ -50,6 +50,7 @@ export default function ChatView({
   lastQuery,
   llmConfigured,
   onOpenSettings,
+  onNewSession,
   onSend,
   onRetry,
   onDismissError,
@@ -312,6 +313,7 @@ export default function ChatView({
           setMonitorSheetOpen={setMonitorSheetOpen}
           openContextDetail={openContextDetail}
           onOpenSettings={onOpenSettings}
+          onNewSession={onNewSession}
         />
         {banners}
         {showPipelineStrip && task && (

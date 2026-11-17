@@ -44,15 +44,6 @@ export default function ChatPage() {
 
   return (
     <>
-      <div className="flex shrink-0 items-center justify-end border-b border-[var(--console-line)] px-4 py-2">
-        <button
-          type="button"
-          onClick={handleNewSession}
-          className="rounded-[10px] px-3 py-1.5 text-[12px] font-medium text-[var(--console-ink)] hover:bg-[color-mix(in_srgb,var(--console-ink)_6%,transparent)]"
-        >
-          新對話
-        </button>
-      </div>
       <OnboardingGuide />
       <ChatView
         messages={activeSession?.messages ?? []}
@@ -63,6 +54,7 @@ export default function ChatPage() {
         lastQuery={lastQuery}
         llmConfigured={llmConfigured}
         onOpenSettings={() => setSettingsOpen(true)}
+        onNewSession={handleNewSession}
         onSend={(text, options) => {
           void sendQuery(text, options);
         }}

@@ -7076,3 +7076,147 @@ textarea:focus-visible {
 .ctx-brief-jump:hover {
   background: rgba(255, 255, 255, 0.04);
 }
+
+/* 四入口殼：漆面左欄，金絲只標示正在使用的那一項。 */
+.surface-shell {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  height: 100dvh;
+  background: var(--console-bg);
+  color: var(--console-ink);
+}
+
+.surface-shell__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--console-line);
+  background: var(--console-sidebar);
+}
+
+.surface-shell__signout {
+  border: 0;
+  background: transparent;
+  color: var(--console-sub);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  padding: 6px 2px;
+}
+
+.surface-shell__signout:hover {
+  color: var(--console-ink);
+}
+
+.surface-shell__nav {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--console-line);
+  background: var(--console-sidebar);
+}
+
+.surface-shell__link {
+  position: relative;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--console-sub);
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+  padding: 12px 16px 14px;
+  cursor: pointer;
+}
+
+.surface-shell__link[aria-current='page'] {
+  color: var(--console-ink);
+}
+
+.surface-shell__link[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  height: 2px;
+  background: var(--console-accent);
+}
+
+.surface-shell__stage {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.surface-stage {
+  padding: 48px 28px 32px;
+  max-width: 38rem;
+}
+
+.surface-stage__title {
+  margin: 0 0 12px;
+  font-family: 'Noto Serif TC', 'Songti TC', serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--console-ink);
+}
+
+.surface-stage__note {
+  margin: 0;
+  max-width: 36ch;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--console-sub);
+}
+
+@media (min-width: 768px) {
+  .surface-shell {
+    grid-template-columns: 208px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .surface-shell__bar {
+    grid-column: 1 / -1;
+  }
+
+  .surface-shell__nav {
+    grid-column: 1;
+    flex-direction: column;
+    align-items: stretch;
+    overflow: auto;
+    border-bottom: 0;
+    border-right: 1px solid var(--console-line);
+    padding: 12px 0;
+  }
+
+  .surface-shell__link {
+    padding: 11px 20px;
+  }
+
+  .surface-shell__link[aria-current='page']::before {
+    left: 0;
+    right: auto;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    height: auto;
+  }
+
+  .surface-shell__stage {
+    grid-column: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-shell__link,
+  .surface-shell__signout {
+    transition: none;
+  }
+}

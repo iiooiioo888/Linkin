@@ -1,5 +1,6 @@
 /**
  * 四入口殼。頁面來自 routes/mounts；缺檔時顯示「尚未接上」，不另開產品面。
+ * 桌面：漆面左欄列出四項，金絲標示正在使用的那一項。窄螢幕改為頂列，名稱不截斷。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,14 +12,14 @@ import {
 } from './catalog';
 import { loadSurfaces } from './loadMounts';
 
-function UnmountedSurface() {
+function UnmountedSurface({ title }: { title: string }) {
   return (
-    <div
-      className="flex flex-1 items-center justify-center px-6"
-      data-testid="surface-unmounted"
-    >
-      <p className="text-[15px] font-medium text-[var(--console-ink)]">尚未接上</p>
-    </div>
+    <section className="surface-stage">
+      <h1 className="surface-stage__title">{title}</h1>
+      <p className="surface-stage__note" data-testid="surface-unmounted">
+        尚未接上
+      </p>
+    </section>
   );
 }
 
@@ -56,49 +57,38 @@ export default function Shell() {
   const Page = entry?.ready ? entry.Page : null;
 
   return (
-    <div className="app-shell flex h-dvh flex-col apple-canvas text-[var(--console-ink)]">
-      <header className="app-topbar flex shrink-0 items-center gap-3 border-b apple-chrome px-4">
-        <span className="brand-mark shrink-0 text-[14px] text-[var(--console-ink)] sm:text-[15px]">
+    <div className="surface-shell">
+      <header className="surface-shell__bar">
+        <span className="brand-mark text-[15px] text-[var(--console-ink)]">
           <span className="brand-mark__name">靈境</span>
           <span className="brand-mark__dot">·</span>
-          <span className="hidden min-[400px]:inline font-medium tracking-tight">Linkin</span>
+          <span className="font-medium tracking-tight">Linkin</span>
         </span>
-        <nav
-          className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
-          aria-label="主要功能"
-          data-testid="surface-nav"
-        >
-          {surfaces.map((item) => {
-            const current = item.id === active;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                data-surface={item.id}
-                aria-current={current ? 'page' : undefined}
-                onClick={() => show(item.id, 'push')}
-                className={
-                  current
-                    ? 'shrink-0 rounded-[10px] bg-[var(--console-accent)] px-3 py-1.5 text-[13px] font-medium text-[var(--console-accent-ink)]'
-                    : 'shrink-0 rounded-[10px] px-3 py-1.5 text-[13px] text-[var(--console-ink)] hover:bg-[color-mix(in_srgb,var(--console-ink)_6%,transparent)]'
-                }
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
         <button
           type="button"
           onClick={() => void logoutGate()}
-          className="apple-icon-btn shrink-0 text-[10px] font-semibold"
+          className="surface-shell__signout"
           aria-label={t('gate.signOut')}
         >
           {t('gate.signOut')}
         </button>
       </header>
-      <main className="flex min-h-0 flex-1 flex-col">
-        {Page ? <Page /> : <UnmountedSurface />}
+      <nav className="surface-shell__nav" aria-label="主要功能" data-testid="surface-nav">
+        {surfaces.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            data-surface={item.id}
+            aria-current={item.id === active ? 'page' : undefined}
+            onClick={() => show(item.id, 'push')}
+            className="surface-shell__link"
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+      <main className="surface-shell__stage">
+        {Page ? <Page /> : <UnmountedSurface title={entry?.label ?? ''} />}
       </main>
     </div>
   );
