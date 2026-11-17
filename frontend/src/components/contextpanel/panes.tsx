@@ -151,6 +151,13 @@ export function BrowserPane({
 
   return (
     <div className="space-y-2">
+      <input
+        className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[11px] text-[var(--console-ink)] outline-none focus:border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)]"
+        placeholder="篩選標籤／來源／內容…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label="篩選瀏覽器"
+      />
       <div className="flex flex-wrap items-center gap-1.5">
         <button
           type="button"
@@ -193,12 +200,6 @@ export function BrowserPane({
           依名稱
         </button>
       </div>
-      <input
-        className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-2 py-1.5 text-[11px] text-[var(--console-ink)] outline-none focus:border-[color-mix(in_srgb,var(--console-accent)_50%,transparent)]"
-        placeholder="篩選標籤／來源／內容…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
       {KEYS.filter((k) => catFilter === 'all' || catFilter === k).map((k) => {
         const items = sortItems(browser.categories?.[k] || []);
         if (!items.length) return null;

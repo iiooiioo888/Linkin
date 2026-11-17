@@ -3,6 +3,8 @@
  */
 import type { Dispatch, SetStateAction } from 'react';
 
+export type DeskChip = 'files' | 'terminal' | 'problems';
+
 interface ChatNavProps {
   title: string;
   showMonitor: boolean;
@@ -12,6 +14,9 @@ interface ChatNavProps {
   openContextDetail: () => void;
   onOpenSettings?: () => void;
   onNewSession?: () => void;
+  counts: { files: number; terminal: number; problems: number };
+  desk: DeskChip | null;
+  onDesk: (chip: DeskChip) => void;
 }
 
 export function ChatNav({
@@ -23,11 +28,33 @@ export function ChatNav({
   openContextDetail,
   onOpenSettings,
   onNewSession,
+  counts,
+  desk,
+  onDesk,
 }: ChatNavProps) {
+  const chips: { id: DeskChip; label: string; count: number }[] = [
+    { id: 'files', label: '產出', count: counts.files },
+    { id: 'terminal', label: '終端機', count: counts.terminal },
+    { id: 'problems', label: '問題', count: counts.problems },
+  ];
   return (
-    <nav className="ws-nav">
+    <nav className="ws-nav" data-zone="top">
       <div className="ws-crumb">
         {title ? <strong>{title}</strong> : null}
+      </div>
+      <div className="ws-nav-chips" role="group" aria-label="工作狀態">
+        {chips.map((chip) => (
+          <button
+            key={chip.id}
+            type="button"
+            className={`ws-chip${desk === chip.id ? ' is-on' : ''}${chip.id === 'problems' && chip.count ? ' is-err' : ''}`}
+            aria-pressed={desk === chip.id}
+            onClick={() => onDesk(chip.id)}
+          >
+            {chip.label}
+            <span>{chip.count}</span>
+          </button>
+        ))}
       </div>
       <div className="ws-nav-acts">
         {onNewSession && (

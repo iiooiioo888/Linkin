@@ -1237,6 +1237,26 @@ textarea:focus-visible {
   cursor: not-allowed;
 }
 
+.apple-composer__more {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--console-sub);
+  cursor: pointer;
+}
+
+.apple-composer__more:hover,
+.apple-composer__more.is-on {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--console-ink);
+}
+
 .apple-send-btn__spinner {
   display: inline-block;
   width: 14px;
@@ -5107,16 +5127,52 @@ textarea:focus-visible {
 
 .ws-nav {
   display: flex;
-  height: 48px;
+  min-height: 48px;
   flex-shrink: 0;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 20px;
+  gap: 8px 12px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--ws-border);
   background: var(--ws-bg);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+}
+
+.ws-nav-chips {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ws-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--console-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--console-sub);
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 4px 8px 4px 10px;
+  cursor: pointer;
+}
+
+.ws-chip span {
+  min-width: 1.1em;
+  font-variant-numeric: tabular-nums;
+  color: var(--console-faint);
+}
+
+.ws-chip.is-on {
+  color: var(--console-ink);
+  border-color: color-mix(in srgb, var(--console-accent) 55%, var(--console-line));
+  box-shadow: inset 0 -2px 0 var(--console-accent);
+}
+
+.ws-chip.is-err span {
+  color: var(--console-danger);
 }
 
 .ws-crumb {
@@ -5559,14 +5615,15 @@ textarea:focus-visible {
 
 .chat-suggest {
   border: 1px solid var(--console-line);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--console-card) 88%, transparent);
-  padding: 8px 14px;
-  color: var(--console-sub);
+  border-radius: 10px;
+  background: var(--console-card);
+  padding: 14px 16px;
+  color: var(--console-ink);
   cursor: pointer;
   font-family: inherit;
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
 }
 
 .chat-suggest:hover {
@@ -7077,65 +7134,98 @@ textarea:focus-visible {
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* 四入口殼：漆面左欄，金絲只標示正在使用的那一項。 */
+/* 四入口殼：窄左欄。金絲只標示正在使用的那一項。 */
 .surface-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   height: 100dvh;
   min-width: 0;
   background: var(--console-bg);
   color: var(--console-ink);
 }
 
-.surface-shell__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-width: 0;
-  padding: 14px 20px 12px;
-  border-bottom: 1px solid var(--console-line);
-  background: var(--console-sidebar);
-}
-
-.surface-shell__signout {
-  border: 0;
-  background: transparent;
-  color: var(--console-sub);
-  font-size: 13px;
-  line-height: 1.4;
-  cursor: pointer;
-  padding: 6px 2px;
-}
-
-.surface-shell__signout:hover {
-  color: var(--console-ink);
-}
-
 .surface-shell__nav {
   display: flex;
-  gap: 0;
   min-width: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  border-bottom: 1px solid var(--console-line);
+  min-height: 0;
+  flex-direction: column;
+  overflow: auto;
+  border-right: 1px solid var(--console-line);
   background: var(--console-sidebar);
+  padding: 12px 0 8px;
+}
+
+.surface-shell__brand {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0;
+  padding: 4px 8px 14px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.surface-shell__primary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.surface-shell__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.surface-shell__advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.surface-shell__advanced[hidden] {
+  display: none;
+}
+
+.surface-shell__ico {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .surface-shell__link {
   position: relative;
-  flex: 0 0 auto;
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border: 0;
   background: transparent;
   color: var(--console-sub);
-  font-size: 14px;
-  line-height: 1.4;
-  text-align: left;
-  white-space: nowrap;
-  padding: 12px 16px 14px;
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: center;
+  padding: 8px 6px;
   cursor: pointer;
+}
+
+.surface-shell__link span {
+  max-width: 100%;
+}
+
+.surface-shell__link:hover {
+  color: var(--console-ink);
 }
 
 .surface-shell__link[aria-current='page'] {
@@ -7145,11 +7235,16 @@ textarea:focus-visible {
 .surface-shell__link[aria-current='page']::before {
   content: '';
   position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 0;
-  height: 2px;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
   background: var(--console-accent);
+}
+
+.surface-shell__link--sub {
+  min-height: 40px;
+  font-size: 10px;
 }
 
 .surface-shell__stage {
@@ -7190,41 +7285,14 @@ textarea:focus-visible {
   color: var(--console-sub);
 }
 
-@media (min-width: 768px) {
+@media (max-width: 767px) {
   .surface-shell {
-    grid-template-columns: 208px minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
-  .surface-shell__bar {
-    grid-column: 1 / -1;
-  }
-
-  .surface-shell__nav {
-    grid-column: 1;
-    flex-direction: column;
-    align-items: stretch;
-    overflow: auto;
-    border-bottom: 0;
-    border-right: 1px solid var(--console-line);
-    padding: 12px 0;
+    grid-template-columns: 76px minmax(0, 1fr);
   }
 
   .surface-shell__link {
-    padding: 11px 20px;
-  }
-
-  .surface-shell__link[aria-current='page']::before {
-    left: 0;
-    right: auto;
-    top: 10px;
-    bottom: 10px;
-    width: 2px;
-    height: auto;
-  }
-
-  .surface-shell__stage {
-    grid-column: 2;
+    font-size: 10px;
+    padding: 8px 4px;
   }
 }
 
@@ -7251,11 +7319,11 @@ textarea:focus-visible {
 .chat-drawer {
   display: flex;
   flex: 0 0 auto;
+  flex-direction: row;
   width: min(440px, 46cqw);
   max-width: min(440px, 46cqw);
   min-width: 0;
   min-height: 0;
-  flex-direction: column;
   overflow: hidden;
   container: chat-drawer / inline-size;
   border-left: 1px solid var(--console-line);
@@ -7267,6 +7335,41 @@ textarea:focus-visible {
   width: 40px;
   max-width: 40px;
   min-width: 40px;
+}
+
+.chat-drawer__toggle {
+  display: flex;
+  width: 40px;
+  flex: 0 0 40px;
+  align-items: flex-start;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--console-sub);
+  cursor: pointer;
+  padding: 14px 0;
+}
+
+.chat-drawer__toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+}
+
+.chat-drawer__toggle:hover,
+.chat-drawer__toggle[aria-expanded='true'] {
+  color: var(--console-accent);
+}
+
+.chat-drawer__body {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
 }
 
 .chat-drawer__edge {
@@ -7386,6 +7489,75 @@ textarea:focus-visible {
   border-top: 0;
 }
 
+.chat-frame__dock .apple-send-btn {
+  width: 44px;
+  height: 44px;
+}
+
+.chat-frame__dock .apple-send-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ws-bottom.is-bare {
+  height: auto;
+  max-height: 240px;
+  flex-shrink: 0;
+  border-top: 0;
+  border-bottom: 1px solid var(--console-line);
+  box-shadow: none;
+}
+
+.ws-bottom.is-bare .ws-bottom-body {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.ctx-drawer-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 2px 0 8px;
+  color: var(--console-sub);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ctx-drawer-tabs {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--console-line);
+  padding-bottom: 6px;
+}
+
+.ctx-drawer-tab {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--console-sub);
+  font-size: 12px;
+  line-height: 1.3;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.ctx-drawer-tab.is-on {
+  color: var(--console-ink);
+  box-shadow: inset 0 -2px 0 var(--console-accent);
+}
+
+.ctx-drawer-pane {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 12px 0 16px;
+}
+
 @media (min-width: 768px) {
   .chat-frame .ws-side {
     width: min(320px, 34vw);
@@ -7401,11 +7573,12 @@ textarea:focus-visible {
     position: relative;
   }
 
-  .chat-drawer.is-collapsed {
-    flex: 0 0 36px;
-    width: 36px;
-    max-width: 36px;
-    min-width: 36px;
+  .chat-drawer.is-collapsed,
+  .chat-drawer.is-collapsed .chat-drawer__toggle {
+    flex-basis: 40px;
+    width: 40px;
+    max-width: 40px;
+    min-width: 40px;
   }
 
   .chat-drawer:not(.is-collapsed) {

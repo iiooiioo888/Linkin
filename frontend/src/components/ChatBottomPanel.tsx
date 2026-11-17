@@ -27,6 +27,8 @@ interface ChatBottomPanelProps {
   taskId?: string | null;
   /** 會話鍵：切換對話時強制 remount Context，避免殘留上一會話資料 */
   sessionKey?: string;
+  /** 中欄狀態條：只顯示目前這一頁，不畫分頁列 */
+  bare?: boolean;
 }
 
 export function WsCodePreview({ file }: { file: WsFile | null }) {
@@ -95,6 +97,7 @@ export default function ChatBottomPanel({
   onProblem,
   taskId,
   sessionKey,
+  bare = false,
 }: ChatBottomPanelProps) {
   const active = files.find((f) => f.id === fileId) ?? files[0] ?? null;
   const tree = wsTreeRows(files);
@@ -102,10 +105,10 @@ export default function ChatBottomPanel({
 
   return (
     <div
-      className={`ws-bottom${collapsed ? ' is-off' : ''}${tall ? ' is-context' : ''}`}
+      className={`ws-bottom${bare ? ' is-bare' : ''}${collapsed ? ' is-off' : ''}${tall ? ' is-context' : ''}`}
       data-testid="chat-bottom-panel"
     >
-      <div className="ws-bottom-h" aria-label="對話詳細區">
+      {bare ? null : <div className="ws-bottom-h" aria-label="對話詳細區">
         <div className="ws-tabs" role="tablist">
           <button
             type="button"
@@ -164,7 +167,7 @@ export default function ChatBottomPanel({
         >
           <Ico d="M6 18L18 6M6 6l12 12" />
         </button>
-      </div>
+      </div>}
       <div className="ws-bottom-body">
         {tab === 'files' && (
           <>

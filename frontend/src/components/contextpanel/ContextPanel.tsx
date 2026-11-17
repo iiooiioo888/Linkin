@@ -18,6 +18,8 @@ import { fetchPlugins, togglePlugin, type PluginCatalogEntry } from '../../api/p
 import {
   aggregateTrendByTurn,
   jumpToContext,
+  fmtPressure,
+  fmtTokens,
   loadTrendGranularity,
   loadTrendMode,
   parseContextTaskId,
@@ -65,6 +67,7 @@ export default function ContextPanel({
   const [traceOptions, setTraceOptions] = useState<Array<{ task_id: string; event_count: number }>>([]);
   const [dshPlugin, setDshPlugin] = useState<PluginCatalogEntry | null>(null);
   const [pluginBusy, setPluginBusy] = useState(false);
+  const [drawerPane, setDrawerPane] = useState<'trend' | 'browser' | 'files'>('trend');
 
   useEffect(() => {
     void fetchPlugins()
@@ -186,12 +189,92 @@ export default function ContextPanel({
       .finally(() => setPluginBusy(false));
   };
 
+  const drawerTabs = [
+    { id: 'trend' as const, label: '趨勢' },
+    { id: 'browser' as const, label: '瀏覽器與事件' },
+    { id: 'files' as const, label: '檔案與網絡' },
+  ];
+
+  if (embed) {
+    return (
+      <div
+        className="ctx-panel is-embed flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent px-3 pt-2"
+        data-testid="context-panel-embed"
+      >
+        <div className="ctx-drawer-status" data-testid="context-locked-task">
+          <span>{taskId ? `本對話 · ${taskId.slice(0, 12)}…` : '本對話 · 尚無任務'}</span>
+          <span>
+            壓力 {fmtPressure(stats.context_pressure)} · 窗 {fmtTokens(stats.est_window_tokens)} / {fmtTokens(windowSize)}
+          </span>
+        </div>
+        {error ? (
+          <div className="mb-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
+        ) : null}
+        <div className="ctx-drawer-tabs" role="tablist" aria-label="上下文">
+          {drawerTabs.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={drawerPane === item.id}
+              className={`ctx-drawer-tab${drawerPane === item.id ? ' is-on' : ''}`}
+              onClick={() => setDrawerPane(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="ctx-drawer-pane">
+          {drawerPane === 'trend' ? (
+            <TrendCard
+              trend={displayTrend}
+              step={step}
+              onSelectStep={(s) => setStep(s)}
+              mode={trendMode}
+              onSelectMode={selectMode}
+              granularity={trendGran}
+              onSelectGranularity={selectGranularity}
+              brief={brief}
+              selectedTrend={selectedTrend}
+            />
+          ) : null}
+          {drawerPane === 'browser' ? (
+            <div className="flex flex-col gap-4">
+              <section className={cardCls}>
+                <h3 className="mb-2 text-[13px] font-semibold text-[var(--console-ink)]">Context Browser</h3>
+                <BrowserPane
+                  browser={data?.browser || { step: null, categories: {} }}
+                  isLive={step == null || step === (data?.steps?.length ? data.steps.length - 1 : null)}
+                  onJumpLive={() => {
+                    const last = data?.steps?.length ? data.steps.length - 1 : null;
+                    setStep(last);
+                  }}
+                />
+              </section>
+              <EventsCard events={events} kindFilter={kindFilter} onSelectKind={setKindFilter} embed />
+            </div>
+          ) : null}
+          {drawerPane === 'files' ? (
+            <div className="flex flex-col gap-4 pb-4">
+              <section className={cardCls}>
+                <h3 className="mb-2 text-[13px] font-semibold text-[var(--console-ink)]">File Activity · 檔案活動</h3>
+                <FileActivityPane rows={data?.file_activity || []} />
+              </section>
+              <section className={cardCls}>
+                <h3 className="mb-2 text-[13px] font-semibold text-[var(--console-ink)]">Agent Network · 席位網</h3>
+                <AgentNetworkPane nodes={data?.agent_network || []} />
+              </section>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`ctx-panel${embed ? ' is-embed' : ''} flex min-h-0 flex-1 flex-col overflow-y-auto ${
-        embed ? 'px-3 py-2' : 'px-5 py-4'
-      } apple-canvas`}
-      data-testid={embed ? 'context-panel-embed' : 'context-panel'}
+      className="ctx-panel flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4 apple-canvas"
+      data-testid="context-panel"
     >
       <ContextHeader
         embed={embed}

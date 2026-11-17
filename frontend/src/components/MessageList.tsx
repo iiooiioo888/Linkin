@@ -93,7 +93,7 @@ export default function MessageList({
                 {t('chat.emptySubtitle')}
               </p>
             </div>
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s.text}
