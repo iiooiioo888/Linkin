@@ -82,3 +82,33 @@ jobs:
       - name: Run OPC service tests
         if: steps.scope.outputs.target == 'opc'
         run: pytest backend/tests/test_opc_service.py -v
+
+  # 元件化重構的前端驗收（計畫 §4.6）。
+  # 刻意獨立成新 job：不動上面既有 `test` job 的任何一行。
+  # 只跑純單元測試與 build，不需網路服務或 GPU。
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Unit tests (vitest)
+        working-directory: ./frontend
+        run: npm run test:unit
+
+      - name: Type check and build
+        working-directory: ./frontend
+        # 跳過 prebuild（export_monitor_fallback）：生成物已在倉庫內，
+        # 且此 job 不應因後端 Python 環境缺失而失敗。
+        run: npx tsc -b && npx vite build
