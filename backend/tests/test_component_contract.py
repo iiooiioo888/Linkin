@@ -272,32 +272,41 @@ def test_api_reference_paths_exist():
 
 
 def test_main_reexports_exist():
-    """``backend.main`` 必須保留測試 patch 用的名字（見計畫 §4.4）。"""
-    import backend.main as main_module
+    """``backend.main`` 必須保留測試實際 patch 的名字。
 
-    for name in ("call_llm", "call_llm_stream", "nodes", "task_manager", "update_company_budget_state"):
-        assert hasattr(main_module, name), f"backend.main 缺少 re-export：{name}"
-
-
-def test_task_manager_patch_is_live(monkeypatch):
-    """patch ``backend.main.task_manager`` 必須真的換掉端點看到的物件。
-
-    這是「假綠」防線：若 handler 改成從新模組取 ``task_manager``，
-    這裡把模組級名字換成哨兵後，handler 的 global 查找就會拿到哨兵。
-    做法不經 TestClient（避免觸發 lifespan 的 ``task_manager._loop``），
-    直接檢查 handler 的 ``__globals__`` 是否就是 ``backend.main`` 的命名空間。
+    上游重構（#179–#193）後 ``main.py`` 只 re-export ``nodes``：
+    其他名字（``call_llm_stream``、``task_manager`` 等）已從 ``main`` 移除，
+    測試也改為直接 patch 各領域模組。這裡斷言的是**當前真實契約**，
+    不是舊架構的殘影——若有人誤刪 ``nodes`` re-export，
+    ``test_unified_pipeline_p0.py`` 的 5 個 patch 會靜默失效。
     """
     import backend.main as main_module
 
-    sentinel = object()
-    monkeypatch.setattr(main_module, "task_manager", sentinel)
+    assert hasattr(main_module, "nodes"), "backend.main 缺少 re-export：nodes"
+    # nodes 是模組物件，patch 其屬性不受搬遷影響，但 patch 目標的父物件必須存在
+    for attr in ("evaluate_answer", "reflect", "improve_answer", "enforce_output_length", "save_memory"):
+        assert hasattr(main_module.nodes, attr), f"backend.main.nodes 缺少 {attr}"
+
+
+def test_task_manager_patch_target_is_the_router_module():
+    """任務端點的 ``task_manager`` 現在由 ``backend.api.routers.tasks`` 提供。
+
+    上游把 ``/tasks/*`` 搬進領域 router 後，patch ``backend.main.task_manager``
+    **不再有效**——handler 從自己的模組命名空間取名字。這條測試鎖住
+    「patch 目標必須跟著實作搬家」，否則測試會靜默失去覆蓋（假綠）。
+    """
+    from backend.api.routers import tasks as tasks_routes
 
     handler = next(
         route.endpoint
-        for route in main_module.app.routes
-        if getattr(route, "path", None) == "/tasks/{task_id}" and hasattr(route, "endpoint")
+        for route in tasks_routes.router.routes
+        if getattr(route, "path", None) == "/tasks/{task_id}"
     )
-    assert handler.__globals__.get("task_manager") is sentinel, (
-        "「/tasks/{task_id}」的 handler 已不從 backend.main 取 task_manager——"
-        "搬遷時必須同步更新 backend/tests/test_multitenant_roles.py 的 patch 路徑"
+    assert handler.__module__ == "backend.api.routers.tasks", (
+        f"/tasks/{{task_id}} 的 handler 已不在 backend.api.routers.tasks"
+        f"（實際：{handler.__module__}）"
+    )
+    assert "task_manager" in handler.__globals__, (
+        "backend.api.routers.tasks 的 handler 不再直接取 task_manager——"
+        "patch 路徑需再次確認"
     )

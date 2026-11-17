@@ -25,7 +25,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 OUT_PATH = ROOT / "docs" / "contracts" / "openapi-snapshot.json"
-BASELINE_COMMIT = "eb14f83"
+#: 基準 master `c32977b`（#178）；B0 分支 rebase 後重生。
+BASELINE_COMMIT = "c32977b"
 
 
 #: 已存在的不穩定欄位：``backend/modules/api.py`` 的 ``world_module_api``

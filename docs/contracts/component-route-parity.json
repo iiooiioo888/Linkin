@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "baseline_commit": "eb14f83",
-  "count": 317,
+  "baseline_commit": "c32977b",
+  "count": 320,
   "routes": [
     {
       "path": "/api/v1/chat/completions",
@@ -130,6 +130,62 @@
       "name": "put_constitution"
     },
     {
+      "path": "/linkin/events",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_events"
+    },
+    {
+      "path": "/linkin/grill/start",
+      "methods": [
+        "POST"
+      ],
+      "name": "grill_start"
+    },
+    {
+      "path": "/linkin/grill/turn",
+      "methods": [
+        "POST"
+      ],
+      "name": "grill_turn"
+    },
+    {
+      "path": "/linkin/grill/summary",
+      "methods": [
+        "POST"
+      ],
+      "name": "grill_summary"
+    },
+    {
+      "path": "/linkin/grill/status",
+      "methods": [
+        "GET"
+      ],
+      "name": "grill_status"
+    },
+    {
+      "path": "/linkin/items",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_items"
+    },
+    {
+      "path": "/linkin/items/{item_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "remove_item"
+    },
+    {
+      "path": "/linkin/items",
+      "methods": [
+        "POST"
+      ],
+      "name": "create_item"
+    },
+    {
       "path": "/linkin/npcs",
       "methods": [
         "GET"
@@ -179,6 +235,13 @@
       "name": "npc_dialogue"
     },
     {
+      "path": "/linkin/overview",
+      "methods": [
+        "GET"
+      ],
+      "name": "overview"
+    },
+    {
       "path": "/linkin/quests/generate",
       "methods": [
         "POST"
@@ -198,41 +261,6 @@
         "DELETE"
       ],
       "name": "remove_quest"
-    },
-    {
-      "path": "/linkin/items",
-      "methods": [
-        "GET"
-      ],
-      "name": "list_items"
-    },
-    {
-      "path": "/linkin/items/{item_id}",
-      "methods": [
-        "DELETE"
-      ],
-      "name": "remove_item"
-    },
-    {
-      "path": "/linkin/items",
-      "methods": [
-        "POST"
-      ],
-      "name": "create_item"
-    },
-    {
-      "path": "/linkin/events",
-      "methods": [
-        "GET"
-      ],
-      "name": "list_events"
-    },
-    {
-      "path": "/linkin/overview",
-      "methods": [
-        "GET"
-      ],
-      "name": "overview"
     },
     {
       "path": "/linkin/server/health",
@@ -289,34 +317,6 @@
         "GET"
       ],
       "name": "server_audit"
-    },
-    {
-      "path": "/linkin/grill/start",
-      "methods": [
-        "POST"
-      ],
-      "name": "grill_start"
-    },
-    {
-      "path": "/linkin/grill/turn",
-      "methods": [
-        "POST"
-      ],
-      "name": "grill_turn"
-    },
-    {
-      "path": "/linkin/grill/summary",
-      "methods": [
-        "POST"
-      ],
-      "name": "grill_summary"
-    },
-    {
-      "path": "/linkin/grill/status",
-      "methods": [
-        "GET"
-      ],
-      "name": "grill_status"
     },
     {
       "path": "/linkin/containers/config",
@@ -1548,6 +1548,20 @@
       "name": "monitor_hub_snapshot"
     },
     {
+      "path": "/config/execution-path",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_execution_path_config"
+    },
+    {
+      "path": "/config/execution-path",
+      "methods": [
+        "PUT"
+      ],
+      "name": "put_execution_path_config"
+    },
+    {
       "path": "/config/test",
       "methods": [
         "POST"
@@ -1574,6 +1588,13 @@
         "POST"
       ],
       "name": "chat_stream"
+    },
+    {
+      "path": "/tasks/path-suggestion",
+      "methods": [
+        "GET"
+      ],
+      "name": "path_suggestion"
     },
     {
       "path": "/tasks",
@@ -1695,18 +1716,18 @@
       "name": "get_checkpoints"
     },
     {
-      "path": "/tasks/{task_id}/ws",
+      "path": "",
       "methods": [
         "WS"
       ],
-      "name": "task_websocket"
+      "name": ""
     },
     {
-      "path": "/monitor/ws",
+      "path": "",
       "methods": [
         "WS"
       ],
-      "name": "monitor_hub_websocket"
+      "name": ""
     },
     {
       "path": "/memories",
@@ -1940,6 +1961,34 @@
       "name": "cloud_alerts_delete"
     },
     {
+      "path": "/admin/db/pool/stats",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_db_pool_stats"
+    },
+    {
+      "path": "/admin/db/pool/refresh",
+      "methods": [
+        "POST"
+      ],
+      "name": "refresh_db_pool"
+    },
+    {
+      "path": "/admin/db/pool/connection/{connection_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "name": "close_db_connection"
+    },
+    {
+      "path": "/admin/db/health",
+      "methods": [
+        "POST"
+      ],
+      "name": "run_db_health_check"
+    },
+    {
       "path": "/lab/firecrawl/scrape",
       "methods": [
         "POST"
@@ -2052,34 +2101,6 @@
       "name": "lab_quant_capital_flow"
     },
     {
-      "path": "/admin/db/pool/stats",
-      "methods": [
-        "GET"
-      ],
-      "name": "get_db_pool_stats"
-    },
-    {
-      "path": "/admin/db/pool/refresh",
-      "methods": [
-        "POST"
-      ],
-      "name": "refresh_db_pool"
-    },
-    {
-      "path": "/admin/db/pool/connection/{connection_id}",
-      "methods": [
-        "DELETE"
-      ],
-      "name": "close_db_connection"
-    },
-    {
-      "path": "/admin/db/health",
-      "methods": [
-        "POST"
-      ],
-      "name": "run_db_health_check"
-    },
-    {
       "path": "/skills",
       "methods": [
         "GET"
@@ -2120,34 +2141,6 @@
         "GET"
       ],
       "name": "list_cli_hub_catalog"
-    },
-    {
-      "path": "/horizon/latest",
-      "methods": [
-        "GET"
-      ],
-      "name": "horizon_latest"
-    },
-    {
-      "path": "/horizon/scan",
-      "methods": [
-        "POST"
-      ],
-      "name": "horizon_scan"
-    },
-    {
-      "path": "/horizon/proposals/{proposal_id}/decide",
-      "methods": [
-        "POST"
-      ],
-      "name": "horizon_decide"
-    },
-    {
-      "path": "/horizon/proposals/{proposal_id}/rollback",
-      "methods": [
-        "POST"
-      ],
-      "name": "horizon_rollback"
     },
     {
       "path": "/skills/preview",
@@ -2225,6 +2218,34 @@
         "POST"
       ],
       "name": "mcp_server_endpoint"
+    },
+    {
+      "path": "/horizon/latest",
+      "methods": [
+        "GET"
+      ],
+      "name": "horizon_latest"
+    },
+    {
+      "path": "/horizon/scan",
+      "methods": [
+        "POST"
+      ],
+      "name": "horizon_scan"
+    },
+    {
+      "path": "/horizon/proposals/{proposal_id}/decide",
+      "methods": [
+        "POST"
+      ],
+      "name": "horizon_decide"
+    },
+    {
+      "path": "/horizon/proposals/{proposal_id}/rollback",
+      "methods": [
+        "POST"
+      ],
+      "name": "horizon_rollback"
     }
   ]
 }

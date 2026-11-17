@@ -535,7 +535,7 @@
             "type": "string"
           },
           "execution_strategy": {
-            "default": "auto",
+            "default": "simple",
             "title": "Execution Strategy",
             "type": "string"
           },
@@ -606,6 +606,9 @@
             "title": "Answer",
             "type": "string"
           },
+          "execution_path": {
+            "$ref": "#/components/schemas/ExecutionPathBody"
+          },
           "grill": {
             "anyOf": [
               {
@@ -646,7 +649,8 @@
         },
         "required": [
           "session_id",
-          "answer"
+          "answer",
+          "execution_path"
         ],
         "title": "ChatResponse",
         "type": "object"
@@ -796,6 +800,24 @@
             "title": "Add Watermark",
             "type": "boolean"
           },
+          "audio_relative_paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Audio Relative Paths",
+            "type": "array"
+          },
+          "fontfile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fontfile"
+          },
           "metadata": {
             "additionalProperties": true,
             "title": "Metadata",
@@ -813,6 +835,17 @@
             "minItems": 1,
             "title": "Shot Ids",
             "type": "array"
+          },
+          "subtitle_relative_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle Relative Path"
           }
         },
         "required": [
@@ -1385,6 +1418,101 @@
           "action"
         ],
         "title": "EvaluateRequest",
+        "type": "object"
+      },
+      "ExecutionPathBody": {
+        "description": "與 POST /tasks 決策欄位同構的執行路徑。SSE 事件本體不使用這個模型。",
+        "properties": {
+          "chosen": {
+            "enum": [
+              "simple",
+              "company"
+            ],
+            "title": "Chosen",
+            "type": "string"
+          },
+          "locked": {
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "user_explicit",
+              "user_default",
+              "admin_lock",
+              "fallback"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "suggested": {
+            "enum": [
+              "simple",
+              "company"
+            ],
+            "title": "Suggested",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chosen",
+          "source",
+          "suggested",
+          "reason",
+          "locked"
+        ],
+        "title": "ExecutionPathBody",
+        "type": "object"
+      },
+      "ExecutionPathConfigBody": {
+        "properties": {
+          "allow_user_path_choice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allow User Path Choice"
+          },
+          "clear_default": {
+            "default": false,
+            "title": "Clear Default",
+            "type": "boolean"
+          },
+          "default_execution_strategy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Execution Strategy"
+          },
+          "force_company_keywords": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Force Company Keywords"
+          }
+        },
+        "title": "ExecutionPathConfigBody",
         "type": "object"
       },
       "FeedbackRequest": {
@@ -2889,7 +3017,7 @@
       "RahoGrillStartBody": {
         "properties": {
           "execution_strategy": {
-            "default": "auto",
+            "default": "simple",
             "title": "Execution Strategy",
             "type": "string"
           },
@@ -4239,9 +4367,15 @@
             "type": "string"
           },
           "execution_strategy": {
-            "default": "auto",
-            "title": "Execution Strategy",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Strategy"
           },
           "options": {
             "additionalProperties": true,
@@ -4485,8 +4619,8 @@
   "normalized_paths": [
     "/modules/{module_id}/api/{path}"
   ],
-  "operation_count": 318,
-  "path_count": 287,
+  "operation_count": 321,
+  "path_count": 289,
   "paths": {
     "/admin/billing/appeals": {
       "get": {
@@ -5504,7 +5638,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Run Db Health Check"
+        "summary": "Run Db Health Check",
+        "tags": [
+          "db-admin"
+        ]
       }
     },
     "/admin/db/pool/connection/{connection_id}": {
@@ -5542,7 +5679,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Close Db Connection"
+        "summary": "Close Db Connection",
+        "tags": [
+          "db-admin"
+        ]
       }
     },
     "/admin/db/pool/refresh": {
@@ -5579,7 +5719,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Refresh Db Pool"
+        "summary": "Refresh Db Pool",
+        "tags": [
+          "db-admin"
+        ]
       }
     },
     "/admin/db/pool/stats": {
@@ -5596,7 +5739,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get Db Pool Stats"
+        "summary": "Get Db Pool Stats",
+        "tags": [
+          "db-admin"
+        ]
       }
     },
     "/admin/tasks/purge-cancelled": {
@@ -5613,7 +5759,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Admin Purge Cancelled Tasks"
+        "summary": "Admin Purge Cancelled Tasks",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/api/internal/modelgw/path-counts": {
@@ -6047,7 +6196,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Auditor Gateway Start"
+        "summary": "Auditor Gateway Start",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/auditor/status": {
@@ -6067,7 +6219,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Auditor Gateway Status"
+        "summary": "Auditor Gateway Status",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/auditor/stream": {
@@ -6104,7 +6259,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Auditor Gateway Stream"
+        "summary": "Auditor Gateway Stream",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/auditor/turn": {
@@ -6145,7 +6303,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Auditor Gateway Turn"
+        "summary": "Auditor Gateway Turn",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/auth/login": {
@@ -6181,7 +6342,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Auth Login"
+        "summary": "Auth Login",
+        "tags": [
+          "health-auth"
+        ]
       }
     },
     "/auth/logout": {
@@ -6197,7 +6361,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Auth Logout"
+        "summary": "Auth Logout",
+        "tags": [
+          "health-auth"
+        ]
       }
     },
     "/auth/me": {
@@ -6213,7 +6380,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Auth Me"
+        "summary": "Auth Me",
+        "tags": [
+          "health-auth"
+        ]
       }
     },
     "/billing": {
@@ -7250,7 +7420,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Chat"
+        "summary": "Chat",
+        "tags": [
+          "chat"
+        ]
       }
     },
     "/chat/stream": {
@@ -7287,7 +7460,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Chat Stream"
+        "summary": "Chat Stream",
+        "tags": [
+          "chat"
+        ]
       }
     },
     "/checkpoints": {
@@ -7304,7 +7480,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get Checkpoints"
+        "summary": "Get Checkpoints",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/cloud/alerts": {
@@ -7321,7 +7500,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Cloud Alerts List"
+        "summary": "Cloud Alerts List",
+        "tags": [
+          "docker-cloud"
+        ]
       },
       "post": {
         "description": "創建告警規則。",
@@ -7356,7 +7538,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Cloud Alerts Create"
+        "summary": "Cloud Alerts Create",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/cloud/alerts/{rule_id}": {
@@ -7394,7 +7579,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Cloud Alerts Delete"
+        "summary": "Cloud Alerts Delete",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/cloud/alerts/{rule_id}/toggle": {
@@ -7432,7 +7620,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Cloud Alerts Toggle"
+        "summary": "Cloud Alerts Toggle",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/cloud/aliyun": {
@@ -7449,7 +7640,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Cloud Aliyun Status"
+        "summary": "Cloud Aliyun Status",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/cloud/billing": {
@@ -7466,7 +7660,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Cloud Billing"
+        "summary": "Cloud Billing",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/cloud/events": {
@@ -7505,7 +7702,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Cloud Events"
+        "summary": "Cloud Events",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/cloud/monitoring": {
@@ -7544,7 +7744,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Cloud Monitoring"
+        "summary": "Cloud Monitoring",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/cloud/monitoring/latest": {
@@ -7561,7 +7764,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Cloud Monitoring Latest"
+        "summary": "Cloud Monitoring Latest",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/config": {
@@ -7578,7 +7784,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get Config"
+        "summary": "Get Config",
+        "tags": [
+          "config"
+        ]
       },
       "post": {
         "description": "動態更新目前帳號的 LLM 配置（即時生效並持久化），隨後刷新可用模型池。",
@@ -7613,7 +7822,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update Config"
+        "summary": "Update Config",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config/cost-speed/post-company-reflect": {
@@ -7696,7 +7908,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Reload Cost Speed Config"
+        "summary": "Reload Cost Speed Config",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config/cost-speed/routing-feedback": {
@@ -7720,6 +7935,64 @@
         "summary": "Get Routing Feedback Config",
         "tags": [
           "cost-speed-config"
+        ]
+      }
+    },
+    "/config/execution-path": {
+      "get": {
+        "description": "目前租戶的執行路徑設定。",
+        "operationId": "get_execution_path_config_config_execution_path_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Execution Path Config",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "description": "更新目前租戶的執行路徑設定。關鍵詞鎖定只對該租戶生效。",
+        "operationId": "put_execution_path_config_config_execution_path_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionPathConfigBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Execution Path Config",
+        "tags": [
+          "config"
         ]
       }
     },
@@ -7801,7 +8074,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Refresh Config Models"
+        "summary": "Refresh Config Models",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config/ops": {
@@ -7838,7 +8114,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update Llm Ops"
+        "summary": "Update Llm Ops",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config/routes": {
@@ -7855,7 +8134,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Get Config Routes"
+        "summary": "Get Config Routes",
+        "tags": [
+          "config"
+        ]
       },
       "post": {
         "description": "新增或更新目前帳號的一條 API 路由。",
@@ -7890,7 +8172,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Upsert Config Route"
+        "summary": "Upsert Config Route",
+        "tags": [
+          "config"
+        ]
       },
       "put": {
         "description": "整批覆寫目前帳號的 API 路由。",
@@ -7925,7 +8210,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Replace Config Routes"
+        "summary": "Replace Config Routes",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config/routes/{route_id}": {
@@ -7962,7 +8250,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete Config Route"
+        "summary": "Delete Config Route",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config/routes/{route_id}/refresh": {
@@ -7999,7 +8290,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Refresh Config Route"
+        "summary": "Refresh Config Route",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config/routes/{route_id}/test": {
@@ -8037,7 +8331,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Test Config Route"
+        "summary": "Test Config Route",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config/strategy": {
@@ -8073,7 +8370,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update Route Strategy"
+        "summary": "Update Route Strategy",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/config/test": {
@@ -8090,7 +8390,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Test Config"
+        "summary": "Test Config",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/context": {
@@ -8151,7 +8454,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Context Insight"
+        "summary": "Get Context Insight",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/dashboard": {
@@ -8168,7 +8474,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Dashboard"
+        "summary": "Dashboard",
+        "tags": [
+          "monitor"
+        ]
       }
     },
     "/docker/budget": {
@@ -8185,7 +8494,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Docker Budget"
+        "summary": "Docker Budget",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/docker/containers": {
@@ -8202,7 +8514,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Docker Containers"
+        "summary": "Docker Containers",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/docker/health": {
@@ -8219,7 +8534,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Docker Health"
+        "summary": "Docker Health",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/docker/logs/{service}": {
@@ -8267,7 +8585,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Docker Logs"
+        "summary": "Docker Logs",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/docker/restart/{service}": {
@@ -8305,7 +8626,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Docker Restart"
+        "summary": "Docker Restart",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/docker/start/{service}": {
@@ -8343,7 +8667,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Docker Start"
+        "summary": "Docker Start",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/docker/stats": {
@@ -8360,7 +8687,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Docker Stats"
+        "summary": "Docker Stats",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/docker/status": {
@@ -8377,7 +8707,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Docker Status"
+        "summary": "Docker Status",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/docker/stop/{service}": {
@@ -8415,7 +8748,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Docker Stop"
+        "summary": "Docker Stop",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/feedback": {
@@ -8452,7 +8788,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Submit Feedback"
+        "summary": "Submit Feedback",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/feedback/stats": {
@@ -8469,7 +8808,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Feedback Stats"
+        "summary": "Feedback Stats",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/health": {
@@ -8485,7 +8827,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Health"
+        "summary": "Health",
+        "tags": [
+          "health-auth"
+        ]
       }
     },
     "/healthz": {
@@ -8521,7 +8866,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Horizon Latest"
+        "summary": "Horizon Latest",
+        "tags": [
+          "horizon"
+        ]
       }
     },
     "/horizon/proposals/{proposal_id}/decide": {
@@ -8569,7 +8917,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Horizon Decide"
+        "summary": "Horizon Decide",
+        "tags": [
+          "horizon"
+        ]
       }
     },
     "/horizon/proposals/{proposal_id}/rollback": {
@@ -8607,7 +8958,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Horizon Rollback"
+        "summary": "Horizon Rollback",
+        "tags": [
+          "horizon"
+        ]
       }
     },
     "/horizon/scan": {
@@ -8624,7 +8978,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Horizon Scan"
+        "summary": "Horizon Scan",
+        "tags": [
+          "horizon"
+        ]
       }
     },
     "/integrations": {
@@ -9204,7 +9561,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Archify Artifact"
+        "summary": "Lab Archify Artifact",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/archify/evoloop": {
@@ -9221,7 +9581,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Lab Archify Evoloop"
+        "summary": "Lab Archify Evoloop",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/archify/generate": {
@@ -9258,7 +9621,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Archify Generate"
+        "summary": "Lab Archify Generate",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/archify/html": {
@@ -9317,7 +9683,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Archify Html"
+        "summary": "Lab Archify Html",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/archify/render": {
@@ -9354,7 +9723,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Archify Render"
+        "summary": "Lab Archify Render",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/archify/strategies": {
@@ -9371,7 +9743,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Lab Archify Strategies"
+        "summary": "Lab Archify Strategies",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/archify/strategies/{strategy_id}": {
@@ -9409,7 +9784,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Archify Strategy"
+        "summary": "Lab Archify Strategy",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/archify/system-flows": {
@@ -9426,7 +9804,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Lab Archify System Flows"
+        "summary": "Lab Archify System Flows",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/archify/system-flows/{flow_id}": {
@@ -9464,7 +9845,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Archify System Flow"
+        "summary": "Lab Archify System Flow",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/firecrawl/scrape": {
@@ -9501,7 +9885,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Firecrawl Scrape"
+        "summary": "Lab Firecrawl Scrape",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/firecrawl/search": {
@@ -9538,7 +9925,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Firecrawl Search"
+        "summary": "Lab Firecrawl Search",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/ponytail/review": {
@@ -9575,7 +9965,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Ponytail Review"
+        "summary": "Lab Ponytail Review",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/prompt/optimize": {
@@ -9612,7 +10005,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Prompt Optimize"
+        "summary": "Lab Prompt Optimize",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/quant/capital-flow": {
@@ -9728,7 +10124,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Quant Capital Flow"
+        "summary": "Lab Quant Capital Flow",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/quant/preview": {
@@ -9776,7 +10175,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Quant Preview"
+        "summary": "Lab Quant Preview",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/lab/quant/strategies": {
@@ -9835,7 +10237,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Lab Quant Strategies"
+        "summary": "Lab Quant Strategies",
+        "tags": [
+          "lab"
+        ]
       }
     },
     "/linkin/constitution": {
@@ -13298,7 +13703,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Mcp Server Endpoint"
+        "summary": "Mcp Server Endpoint",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/mcp/mount": {
@@ -13315,7 +13723,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Mount Mcp Tools"
+        "summary": "Mount Mcp Tools",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/mcp/servers": {
@@ -13332,7 +13743,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "List Mcp Servers"
+        "summary": "List Mcp Servers",
+        "tags": [
+          "skills-mcp"
+        ]
       },
       "post": {
         "description": "新增／更新 MCP server（upsert）。",
@@ -13367,7 +13781,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Save Mcp Server"
+        "summary": "Save Mcp Server",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/mcp/servers/{server_id}": {
@@ -13405,7 +13822,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete Mcp Server"
+        "summary": "Delete Mcp Server",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/mcp/servers/{server_id}/call": {
@@ -13453,7 +13873,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Call Mcp Tool"
+        "summary": "Call Mcp Tool",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/mcp/servers/{server_id}/probe": {
@@ -13491,7 +13914,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Probe Mcp Server"
+        "summary": "Probe Mcp Server",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/mcp/servers/{server_id}/toggle": {
@@ -13529,7 +13955,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Toggle Mcp Server"
+        "summary": "Toggle Mcp Server",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/mcp/tools": {
@@ -13546,7 +13975,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "List Mcp Tools"
+        "summary": "List Mcp Tools",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/media-vault/control/overview": {
@@ -14302,7 +14734,7 @@
     },
     "/memories": {
       "get": {
-        "description": "列出記憶庫中的記憶（分頁，按建立時間降序）。",
+        "description": "列出目前帳號記憶庫中的記憶（分頁，按建立時間降序）。",
         "operationId": "list_memories_memories_get",
         "parameters": [
           {
@@ -14346,7 +14778,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Memories"
+        "summary": "List Memories",
+        "tags": [
+          "memories"
+        ]
       }
     },
     "/memories/cleanup": {
@@ -14401,7 +14836,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Cleanup Memories"
+        "summary": "Cleanup Memories",
+        "tags": [
+          "memories"
+        ]
       }
     },
     "/memories/{memory_id}": {
@@ -14439,7 +14877,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete Memory"
+        "summary": "Delete Memory",
+        "tags": [
+          "memories"
+        ]
       }
     },
     "/metrics": {
@@ -15069,7 +15510,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Monitor Agents"
+        "summary": "Monitor Agents",
+        "tags": [
+          "monitor"
+        ]
       },
       "post": {
         "description": "新增自定義角色（出現在監控中心，可編輯完整角色設定）。",
@@ -15104,7 +15548,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Monitor Agents Create"
+        "summary": "Monitor Agents Create",
+        "tags": [
+          "monitor"
+        ]
       }
     },
     "/monitor/agents/prefs": {
@@ -15141,7 +15588,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Monitor Agents Prefs"
+        "summary": "Monitor Agents Prefs",
+        "tags": [
+          "monitor"
+        ]
       }
     },
     "/monitor/agents/{role_id}": {
@@ -15179,7 +15629,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Monitor Agents Delete"
+        "summary": "Monitor Agents Delete",
+        "tags": [
+          "monitor"
+        ]
       }
     },
     "/monitor/agents/{role_id}/reset": {
@@ -15217,7 +15670,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Monitor Agent Reset"
+        "summary": "Monitor Agent Reset",
+        "tags": [
+          "monitor"
+        ]
       }
     },
     "/monitor/agents/{role_id}/settings": {
@@ -15265,7 +15721,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Monitor Agent Settings"
+        "summary": "Monitor Agent Settings",
+        "tags": [
+          "monitor"
+        ]
       }
     },
     "/monitor/hub": {
@@ -15282,7 +15741,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Monitor Hub"
+        "summary": "Monitor Hub",
+        "tags": [
+          "monitor"
+        ]
       }
     },
     "/monitor/hub-snapshot": {
@@ -15299,7 +15761,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Monitor Hub Snapshot"
+        "summary": "Monitor Hub Snapshot",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/monitor/llm-ops": {
@@ -15316,7 +15781,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Monitor Llm Ops"
+        "summary": "Monitor Llm Ops",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/monitor/opc": {
@@ -15333,7 +15801,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Monitor Opc"
+        "summary": "Monitor Opc",
+        "tags": [
+          "monitor"
+        ]
       }
     },
     "/monitor/optimization": {
@@ -15350,7 +15821,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Monitor Optimization"
+        "summary": "Monitor Optimization",
+        "tags": [
+          "config"
+        ]
       }
     },
     "/monitor/raho/feed": {
@@ -15465,7 +15939,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Raho Seat Feed"
+        "summary": "Raho Seat Feed",
+        "tags": [
+          "monitor"
+        ]
       }
     },
     "/monitor/raho/seat/{io_id}": {
@@ -15503,7 +15980,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Raho Seat Detail"
+        "summary": "Raho Seat Detail",
+        "tags": [
+          "monitor"
+        ]
       }
     },
     "/plugins": {
@@ -15734,7 +16214,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Raho Commander Grill"
+        "summary": "Raho Commander Grill",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/raho/commander/grill/stream": {
@@ -15771,7 +16254,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Raho Commander Grill Stream"
+        "summary": "Raho Commander Grill Stream",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/raho/commander/plan": {
@@ -15812,7 +16298,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Raho Commander Plan"
+        "summary": "Raho Commander Plan",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/raho/decide": {
@@ -15853,7 +16342,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Raho Decide"
+        "summary": "Raho Decide",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/raho/grill/start": {
@@ -15894,7 +16386,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Raho Grill Start"
+        "summary": "Raho Grill Start",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/raho/grill/status": {
@@ -15914,7 +16409,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Raho Grill Status"
+        "summary": "Raho Grill Status",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/raho/grill/turn": {
@@ -15955,7 +16453,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Raho Grill Turn"
+        "summary": "Raho Grill Turn",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/raho/l0": {
@@ -16008,7 +16509,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Raho L0"
+        "summary": "Raho L0",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/raho/scorecard": {
@@ -16028,7 +16532,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Raho Scorecard"
+        "summary": "Raho Scorecard",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/raho/tree": {
@@ -16077,7 +16584,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Raho Tree"
+        "summary": "Raho Tree",
+        "tags": [
+          "raho"
+        ]
       }
     },
     "/routing/preview": {
@@ -16118,7 +16628,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Routing Preview"
+        "summary": "Routing Preview",
+        "tags": [
+          "chat"
+        ]
       }
     },
     "/runtime/perf-budgets": {
@@ -16270,7 +16783,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "List Skills"
+        "summary": "List Skills",
+        "tags": [
+          "skills-mcp"
+        ]
       },
       "post": {
         "description": "新增／更新技能（upsert）。",
@@ -16305,7 +16821,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Save Skill"
+        "summary": "Save Skill",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/skills/cli-hub": {
@@ -16374,7 +16893,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Cli Hub Catalog"
+        "summary": "List Cli Hub Catalog",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/skills/cli-runtimes": {
@@ -16391,7 +16913,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "List Skill Cli Runtimes"
+        "summary": "List Skill Cli Runtimes",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/skills/preview": {
@@ -16436,7 +16961,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Preview Skill Prompt"
+        "summary": "Preview Skill Prompt",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/skills/sync-agent-packs": {
@@ -16453,7 +16981,10 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Sync Agent Skill Packs"
+        "summary": "Sync Agent Skill Packs",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/skills/{skill_id}": {
@@ -16491,7 +17022,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Delete Skill"
+        "summary": "Delete Skill",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/skills/{skill_id}/toggle": {
@@ -16529,7 +17063,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Toggle Skill"
+        "summary": "Toggle Skill",
+        "tags": [
+          "skills-mcp"
+        ]
       }
     },
     "/system/resources": {
@@ -16546,12 +17083,15 @@
             "description": "Successful Response"
           }
         },
-        "summary": "System Resources"
+        "summary": "System Resources",
+        "tags": [
+          "docker-cloud"
+        ]
       }
     },
     "/tasks": {
       "post": {
-        "description": "建立後台任務（統一模式），回傳 task_id 供輪詢。\n\n統一模式下不再區分模式，execution_strategy 僅為可選的強制指定：\n- \"auto\"（預設）: 系統自動判斷執行路徑\n- \"simple\": 強制單次 LLM 生成\n- \"company\": 強制公司運行時",
+        "description": "建立後台任務。execution_strategy 必填，除非租戶已有默認。\n\n- simple / company：本次明示，reason=user_explicit\n- user_default：採用租戶默認；沒有默認則 fallback simple\n- suggest_only：只回建議，不建任務\n- 缺值：有默認就採用並標 decision_source=user_default，否則 422\n- auto：拒絕\n管理員關鍵詞鎖定則改走 company，decision_source=admin_lock。",
         "operationId": "create_task_tasks_post",
         "requestBody": {
           "content": {
@@ -16583,7 +17123,51 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Task"
+        "summary": "Create Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/tasks/path-suggestion": {
+      "get": {
+        "description": "回建議路徑與理由。不建立任務，也不執行。",
+        "operationId": "path_suggestion_tasks_path_suggestion_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "schema": {
+              "title": "Query",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Path Suggestion",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}": {
@@ -16631,7 +17215,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Task"
+        "summary": "Get Task",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/budget/decision": {
@@ -16679,7 +17266,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Budget Decision"
+        "summary": "Budget Decision",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/budget/lines": {
@@ -16727,7 +17317,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Budget Lines"
+        "summary": "Budget Lines",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/cancel": {
@@ -16765,7 +17358,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Cancel Task"
+        "summary": "Cancel Task",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/checkpoint": {
@@ -16803,7 +17399,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Task Checkpoint"
+        "summary": "Get Task Checkpoint",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/confirmation-draft": {
@@ -16851,7 +17450,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Confirmation Draft"
+        "summary": "Confirmation Draft",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/context": {
@@ -16905,7 +17507,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Task Context Insight"
+        "summary": "Get Task Context Insight",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/field-writes": {
@@ -16953,7 +17558,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Field Writes"
+        "summary": "Field Writes",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/narrative/commit": {
@@ -17001,7 +17609,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Narrative Commit"
+        "summary": "Narrative Commit",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/resume": {
@@ -17039,7 +17650,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Resume Task"
+        "summary": "Resume Task",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/seat-overrides": {
@@ -17087,7 +17701,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Seat Overrides"
+        "summary": "Seat Overrides",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/tasks/{task_id}/trace": {
@@ -17203,7 +17820,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Task Trace"
+        "summary": "Get Task Trace",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/traces": {
@@ -17242,7 +17862,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Traces"
+        "summary": "Get Traces",
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/v1/agent/tasks": {
