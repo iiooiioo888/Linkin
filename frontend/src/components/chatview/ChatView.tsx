@@ -133,8 +133,10 @@ export default function ChatView({
 
   /** 對話詳細區預設 Context（dsh-context）；其餘分頁可切 */
   const [bottomTab, setBottomTab] = useState<BottomTab>('context');
-  /** 無進行中任務時預設收合詳細區本體，保留分頁列；/context 會展開 */
-  const [bottomOff, setBottomOff] = useState(() => !live);
+  /** 桌面右欄預設展開；窄螢幕先收成右側邊，滑出後才蓋住對話。 */
+  const [bottomOff, setBottomOff] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
   const [fileId, setFileId] = useState<string | null>(null);
   const [actError, setActError] = useState<string | null>(null);
 
@@ -172,7 +174,6 @@ export default function ChatView({
     setBottomTab('context');
     setFileId(null);
     setContextFocusId(null);
-    setBottomOff(!live);
   }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps -- 僅在切換會話時重置
 
   // focus 若已不在本會話 messages 內，自動清掉（防殘留）
@@ -302,78 +303,100 @@ export default function ChatView({
 
   return (
     <div
-      className={`ws flex min-h-0 flex-1 flex-col${!showMonitor ? ' is-chat-only' : ' has-monitor'}${monitorSheetOpen ? ' is-monitor-open' : ''}`}
+      className={`ws chat-frame flex min-h-0 flex-1 flex-col${!showMonitor ? ' is-chat-only' : ' has-monitor'}${monitorSheetOpen ? ' is-monitor-open' : ''}`}
     >
-      <div className="ws-main">
-        <ChatNav
-          title={title}
-          showMonitor={showMonitor}
+      <div className="chat-frame__row">
+        <div className="ws-main" data-zone="center">
+          <ChatNav
+            title={title}
+            showMonitor={showMonitor}
+            isMobile={isMobile}
+            monitorSheetOpen={monitorSheetOpen}
+            setMonitorSheetOpen={setMonitorSheetOpen}
+            openContextDetail={openContextDetail}
+            onOpenSettings={onOpenSettings}
+            onNewSession={onNewSession}
+          />
+          {banners}
+          {showPipelineStrip && task && (
+            <PipelineStrip
+              task={task}
+              pinned={monitorPinned}
+              onPinMonitor={() => setMonitorPinned((v) => !v)}
+            />
+          )}
+          {task && (
+            <div className="shrink-0 px-4 pt-2 sm:px-6">
+              <RahoDecisionBar
+                pending={pending}
+                runId={task.raho?.run_id}
+                poll
+                variant="chat"
+                onPendingChange={onDecisionPending}
+                onResolved={onDecisionResolved}
+              />
+            </div>
+          )}
+          {chat}
+        </div>
+        <ChatMonitorSide
           isMobile={isMobile}
           monitorSheetOpen={monitorSheetOpen}
           setMonitorSheetOpen={setMonitorSheetOpen}
+          showMonitor={showMonitor}
+          live={live}
+          task={task}
+          pending={pending}
+          running={running}
+          now={now}
+          onOpenTask={onOpenTask}
+          onOpenTrace={onOpenTrace}
           openContextDetail={openContextDetail}
-          onOpenSettings={onOpenSettings}
-          onNewSession={onNewSession}
+          handlePause={handlePause}
+          handleResume={handleResume}
         />
-        {banners}
-        {showPipelineStrip && task && (
-          <PipelineStrip
-            task={task}
-            pinned={monitorPinned}
-            onPinMonitor={() => setMonitorPinned((v) => !v)}
-          />
-        )}
-        {task && (
-          <div className="shrink-0 px-4 pt-2 sm:px-6">
-            <RahoDecisionBar
-              pending={pending}
-              runId={task.raho?.run_id}
-              poll
-              variant="chat"
-              onPendingChange={onDecisionPending}
-              onResolved={onDecisionResolved}
+        <aside
+          className={`chat-drawer${bottomOff ? ' is-collapsed' : ''}`}
+          data-zone="right"
+          data-testid="context-drawer"
+          aria-label="上下文"
+        >
+          {bottomOff ? (
+            <button
+              type="button"
+              className="chat-drawer__edge"
+              onClick={() => setBottomOff(false)}
+              aria-expanded={false}
+            >
+              上下文
+            </button>
+          ) : (
+            <ChatBottomPanel
+              collapsed={false}
+              onToggle={() => setBottomOff(true)}
+              tab={bottomTab}
+              onTab={(t) => {
+                setBottomTab(t);
+                setBottomOff(false);
+              }}
+              files={files}
+              fileId={fileId}
+              onFile={setFileId}
+              terminal={terminal}
+              problems={problems}
+              taskId={contextTaskId}
+              sessionKey={sessionId}
+              onProblem={() => {
+                setBottomTab('problems');
+                setBottomOff(false);
+              }}
             />
-          </div>
-        )}
-        {chat}
-        <ChatBottomPanel
-          collapsed={bottomOff}
-          onToggle={() => setBottomOff((v) => !v)}
-          tab={bottomTab}
-          onTab={(t) => {
-            setBottomTab(t);
-            setBottomOff(false);
-          }}
-          files={files}
-          fileId={fileId}
-          onFile={setFileId}
-          terminal={terminal}
-          problems={problems}
-          taskId={contextTaskId}
-          sessionKey={sessionId}
-          onProblem={() => {
-            setBottomTab('problems');
-            setBottomOff(false);
-          }}
-        />
+          )}
+        </aside>
+      </div>
+      <div className="chat-frame__dock" data-zone="bottom" data-testid="chat-composer">
         {composer}
       </div>
-      <ChatMonitorSide
-        isMobile={isMobile}
-        monitorSheetOpen={monitorSheetOpen}
-        setMonitorSheetOpen={setMonitorSheetOpen}
-        showMonitor={showMonitor}
-        live={live}
-        task={task}
-        pending={pending}
-        running={running}
-        now={now}
-        onOpenTask={onOpenTask}
-        onOpenTrace={onOpenTrace}
-        openContextDetail={openContextDetail}
-        handlePause={handlePause}
-        handleResume={handleResume}
-      />
     </div>
   );
 }
