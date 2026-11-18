@@ -318,6 +318,9 @@ from backend.api.routers import (
     chat as chat_routes,
 )
 from backend.api.routers import (
+    compression as compression_routes,
+)
+from backend.api.routers import (
     config as config_routes,
 )
 from backend.api.routers import (
@@ -357,6 +360,7 @@ app.include_router(config_routes.router)
 app.include_router(chat_routes.router)
 app.include_router(tasks_routes.router)
 app.include_router(memories_routes.router)
+app.include_router(compression_routes.router)
 app.include_router(monitor_routes.router)
 app.include_router(docker_cloud_routes.router)
 app.include_router(db_admin_routes.router)
