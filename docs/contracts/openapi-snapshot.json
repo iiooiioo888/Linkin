@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "eb14f83",
+  "baseline_commit": "c32977b",
   "components": {
     "schemas": {
       "AlertRuleCreate": {
@@ -854,6 +854,24 @@
         "title": "ComposeRequest",
         "type": "object"
       },
+      "CompressContextRequest": {
+        "properties": {
+          "limit": {
+            "default": 720,
+            "maximum": 20000.0,
+            "minimum": 17.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "title": "CompressContextRequest",
+        "type": "object"
+      },
       "ConfirmationDraftRequest": {
         "properties": {
           "field_writes": {
@@ -1513,6 +1531,24 @@
           }
         },
         "title": "ExecutionPathConfigBody",
+        "type": "object"
+      },
+      "ExtractDecisionsRequest": {
+        "properties": {
+          "limit": {
+            "default": 5,
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "title": "ExtractDecisionsRequest",
         "type": "object"
       },
       "FeedbackRequest": {
@@ -4359,6 +4395,34 @@
         "title": "SkillBody",
         "type": "object"
       },
+      "SummarizeTraceRequest": {
+        "properties": {
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "failure_reason": {
+            "default": "",
+            "title": "Failure Reason",
+            "type": "string"
+          },
+          "limit": {
+            "default": 280,
+            "maximum": 20000.0,
+            "minimum": 17.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "title": "SummarizeTraceRequest",
+        "type": "object"
+      },
       "TaskRequest": {
         "properties": {
           "company_template": {
@@ -4430,6 +4494,30 @@
           "credits"
         ],
         "title": "TopupRequest",
+        "type": "object"
+      },
+      "TruncatePromptRequest": {
+        "properties": {
+          "max_chars": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Chars"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "title": "TruncatePromptRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -4619,8 +4707,8 @@
   "normalized_paths": [
     "/modules/{module_id}/api/{path}"
   ],
-  "operation_count": 321,
-  "path_count": 289,
+  "operation_count": 325,
+  "path_count": 293,
   "paths": {
     "/admin/billing/appeals": {
       "get": {
@@ -8457,6 +8545,126 @@
         "summary": "Get Context Insight",
         "tags": [
           "tasks"
+        ]
+      }
+    },
+    "/context/compress": {
+      "post": {
+        "description": "規則截斷上下文。對應 ``context_compressor.compress``。",
+        "operationId": "compress_context_context_compress_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompressContextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compress Context",
+        "tags": [
+          "compression"
+        ]
+      }
+    },
+    "/context/decisions": {
+      "post": {
+        "description": "抽出帶決策語意的句子。對應 ``context_compressor.extract_decisions``。",
+        "operationId": "extract_context_decisions_context_decisions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractDecisionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Extract Context Decisions",
+        "tags": [
+          "compression"
+        ]
+      }
+    },
+    "/context/trace-summary": {
+      "post": {
+        "description": "一筆記憶軌跡的壓縮摘要。對應 ``context_compressor.summarize_trace``。",
+        "operationId": "summarize_context_trace_context_trace_summary_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummarizeTraceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Summarize Context Trace",
+        "tags": [
+          "compression"
         ]
       }
     },
@@ -16173,6 +16381,46 @@
         "summary": "Toggle Plugin",
         "tags": [
           "plugins"
+        ]
+      }
+    },
+    "/prompts/truncate": {
+      "post": {
+        "description": "提示詞頭尾截斷。對應 ``prompts.templates.truncate``，不改寫用詞。",
+        "operationId": "truncate_prompt_prompts_truncate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TruncatePromptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Truncate Prompt",
+        "tags": [
+          "compression"
         ]
       }
     },

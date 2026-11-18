@@ -5,7 +5,7 @@
  * 匯入路徑經由本 index.ts 解析，呼叫端不需要修改。
  *
  * 領域模組：chat / config / raho / tasks / monitor / docker / billing /
- * media / cloud / hub / db / lab / skills / mcp。
+ * media / cloud / hub / db / lab / skills / mcp / compression。
  * 共用基礎設施集中於 ./http.ts（私有，不對外轉出，避免改變公開 API）。
  */
 
@@ -23,3 +23,4 @@ export * from './db';
 export * from './lab';
 export * from './skills';
 export * from './mcp';
+export * from './compression';

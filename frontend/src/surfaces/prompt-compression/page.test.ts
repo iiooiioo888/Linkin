@@ -1,9 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
 import { id, label, Page } from '../../routes/mounts/prompt-compression.ts';
-import { PROMPT_COMPRESSION_GAP } from './gap.ts';
 
 describe('提示詞壓縮掛載', () => {
   it('匯出殼層要讀的 id、label、Page', () => {
@@ -12,24 +11,25 @@ describe('提示詞壓縮掛載', () => {
     expect(typeof Page).toBe('function');
   });
 
-  it('頁面標出缺口，並列出不能挪用的端點與內部函式', () => {
+  it('畫面可以送出提示詞並顯示結果位置', () => {
     const html = renderToStaticMarkup(createElement(Page));
     expect(html).toContain('提示詞壓縮');
-    expect(html).toContain(PROMPT_COMPRESSION_GAP.status);
-    expect(html).toContain(PROMPT_COMPRESSION_GAP.missing);
-    expect(html).toContain(PROMPT_COMPRESSION_GAP.notThis.path);
-    for (const name of PROMPT_COMPRESSION_GAP.internalOnly) {
-      expect(html).toContain(name);
-    }
+    expect(html).toContain('不經模型');
+    expect(html).toContain('>壓縮<');
+    expect(html).toContain('data-testid="prompt-compression"');
+    expect(html).not.toContain('尚未接上');
+    expect(html).not.toContain('缺口');
   });
 
-  it('不呼叫壓縮或優化管線', () => {
+  it('只打截斷路由，不呼叫優化', () => {
     const page = readFileSync(new URL('./Page.tsx', import.meta.url), 'utf8');
-    const gap = readFileSync(new URL('./gap.ts', import.meta.url), 'utf8');
     const mount = readFileSync(new URL('../../routes/mounts/prompt-compression.ts', import.meta.url), 'utf8');
-    const sources = `${page}\n${gap}\n${mount}`;
+    const client = readFileSync(new URL('../../api/client/compression.ts', import.meta.url), 'utf8');
+    const sources = `${page}\n${mount}`;
     expect(sources).not.toMatch(/fetch\s*\(/);
     expect(sources).not.toMatch(/labOptimizePrompt|call_llm|optimize_prompt/);
     expect(page).not.toContain('/lab/prompt/optimize');
+    expect(client).toContain("postJson('/prompts/truncate'");
+    expect(client).not.toContain('/lab/prompt/optimize');
   });
 });
