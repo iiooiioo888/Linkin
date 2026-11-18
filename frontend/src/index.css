@@ -7080,8 +7080,10 @@ textarea:focus-visible {
 /* 四入口殼：漆面左欄，金絲只標示正在使用的那一項。 */
 .surface-shell {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto minmax(0, 1fr);
   height: 100dvh;
+  min-width: 0;
   background: var(--console-bg);
   color: var(--console-ink);
 }
@@ -7091,6 +7093,7 @@ textarea:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  min-width: 0;
   padding: 14px 20px 12px;
   border-bottom: 1px solid var(--console-line);
   background: var(--console-sidebar);
@@ -7113,7 +7116,10 @@ textarea:focus-visible {
 .surface-shell__nav {
   display: flex;
   gap: 0;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   border-bottom: 1px solid var(--console-line);
   background: var(--console-sidebar);
 }
@@ -7127,6 +7133,7 @@ textarea:focus-visible {
   font-size: 14px;
   line-height: 1.4;
   text-align: left;
+  white-space: nowrap;
   padding: 12px 16px 14px;
   cursor: pointer;
 }
@@ -7150,7 +7157,14 @@ textarea:focus-visible {
   min-height: 0;
   min-width: 0;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
+}
+
+/* 非對話頁沒有自己的捲動殼；長識別名在窄寬要換行，不要把整頁撐出視窗。 */
+.surface-shell__stage > :not(.ws):not(.fixed) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .surface-stage {
@@ -7231,21 +7245,27 @@ textarea:focus-visible {
   min-height: 0;
   min-width: 0;
   flex: 1;
+  container-type: inline-size;
 }
 
 .chat-drawer {
   display: flex;
-  width: min(440px, 42vw);
-  min-width: 280px;
+  flex: 0 0 auto;
+  width: min(440px, 46cqw);
+  max-width: min(440px, 46cqw);
+  min-width: 0;
   min-height: 0;
-  flex-shrink: 0;
   flex-direction: column;
+  overflow: hidden;
+  container: chat-drawer / inline-size;
   border-left: 1px solid var(--console-line);
   background: var(--console-sidebar);
 }
 
 .chat-drawer.is-collapsed {
+  flex: 0 0 40px;
   width: 40px;
+  max-width: 40px;
   min-width: 40px;
 }
 
@@ -7268,16 +7288,92 @@ textarea:focus-visible {
 .chat-drawer .ws-bottom,
 .chat-drawer .ws-bottom.is-context,
 .chat-drawer .ws-bottom.is-off {
+  width: 100%;
   height: auto;
+  min-width: 0;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
   border-top: 0;
   box-shadow: none;
   background: transparent;
 }
 
+.chat-drawer .ws-bottom-h {
+  min-width: 0;
+  height: auto;
+  min-height: 38px;
+  overflow: hidden;
+  padding-right: 4px;
+  padding-left: 8px;
+}
+
+.chat-drawer .ws-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.chat-drawer .ws-tab {
+  padding-left: 8px;
+  padding-right: 8px;
+  gap: 4px;
+}
+
+.chat-drawer .ws-bottom-close {
+  flex-shrink: 0;
+}
+
 .chat-drawer .ws-bottom-body {
+  min-width: 0;
   overflow: auto;
+}
+
+.chat-drawer .ws-tree {
+  width: min(168px, 42%);
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.chat-drawer .ws-tree-i {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chat-drawer .ws-code,
+.chat-drawer .ws-preview,
+.chat-drawer .ws-context-embed {
+  min-width: 0;
+}
+
+.chat-drawer .ctx-ring,
+.chat-drawer .ctx-ring-meta {
+  min-width: 0;
+}
+
+/* embed 規則把 padding 清成 0，捲到底時最後一張卡片的底邊會貼著裁切線。 */
+.chat-drawer .ctx-panel.is-embed {
+  padding-bottom: 16px;
+}
+
+/* 抽屜寬度不是視窗寬度。lg 斷點會把 Token／趨勢並排，在 440px 內把環形標籤裁成直排。
+   Tailwind 把 lg:grid-cols-2 放在 utilities layer，這裡必須壓過它。 */
+.chat-drawer .ctx-panel.is-embed .grid:not(.grid-cols-2) {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.chat-drawer .ctx-panel.is-embed .lg\:col-span-2 {
+  grid-column: auto !important;
+}
+
+@container chat-drawer (max-width: 360px) {
+  .chat-drawer .ctx-panel.is-embed .grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .chat-frame__dock {
@@ -7306,7 +7402,9 @@ textarea:focus-visible {
   }
 
   .chat-drawer.is-collapsed {
+    flex: 0 0 36px;
     width: 36px;
+    max-width: 36px;
     min-width: 36px;
   }
 
@@ -7316,7 +7414,9 @@ textarea:focus-visible {
     right: 0;
     bottom: 0;
     z-index: 6;
+    flex: none;
     width: min(100%, 420px);
+    max-width: none;
     min-width: 0;
     box-shadow: -12px 0 28px rgba(0, 0, 0, 0.45);
   }
