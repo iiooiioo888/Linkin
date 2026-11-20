@@ -5,22 +5,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getGateUser, logoutGate } from '../lib/auth';
+import { PATH_LABEL } from '../lib/executionPath';
 import {
   hashForSurface,
   surfaceFromHash,
   type SurfaceId,
 } from './catalog';
+import { ConsoleDeck, ConsoleRailPanels, useConsoleFacts } from './ConsoleChrome';
 import { loadSurfaces } from './loadMounts';
 
-const GROUPS: { label: string; ids: SurfaceId[] }[] = [
-  { label: '運行', ids: ['chat', 'history'] },
-  { label: '壓縮', ids: ['context-compression', 'prompt-compression'] },
+const GROUPS: { label: string; en: string; ids: SurfaceId[] }[] = [
+  { label: '運行', en: 'RUNTIME', ids: ['chat', 'history'] },
+  { label: '壓縮', en: 'COMPRESS', ids: ['context-compression', 'prompt-compression'] },
 ];
-
-const RAIL_NOTE: Partial<Record<SurfaceId, string>> = {
-  'context-compression': '規則截斷與關鍵句抽取，不經模型。空白上限會用各函式的預設值。',
-  'prompt-compression': '保留頭尾並截掉中間。不經模型，也不改寫用詞。空白上限用後端預設。',
-};
 
 function UnmountedSurface({ title }: { title: string }) {
   return (
@@ -45,6 +42,7 @@ function useClock() {
 export default function Shell() {
   const { t } = useTranslation();
   const surfaces = useMemo(() => loadSurfaces(), []);
+  const facts = useConsoleFacts();
   const clock = useClock();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState<SurfaceId>(() =>
@@ -96,7 +94,7 @@ export default function Shell() {
     ));
 
   return (
-    <div className={`surface-shell${active === 'history' ? ' is-history' : ''}`}>
+    <div className="surface-shell">
       <header className="topbar" data-zone="top">
         <div className="brand">
           <svg className="brand-glyph" viewBox="0 0 30 30" aria-hidden>
@@ -107,9 +105,11 @@ export default function Shell() {
             靈境·<em>Linkin</em>
           </span>
         </div>
-        <span className="brand-sub">統一管線</span>
+        <span className="brand-sub">Runtime · 統一管線 · 反思閉環</span>
         <div className="chip-row">
           <span className="chip amber">{entry?.label}</span>
+          <span className="chip">{facts.path ? PATH_LABEL[facts.path.path] : '路徑未選'}</span>
+          <span className="chip">{facts.sessions ? `${facts.sessions} 會話` : '尚無會話'}</span>
         </div>
         <label className="searchbox">
           <input
@@ -120,6 +120,10 @@ export default function Shell() {
           />
         </label>
         <div className="top-right">
+          <span className={`live${facts.llm === 'yes' ? ' is-on' : ''}`}>
+            <span className="dot" aria-hidden />
+            {facts.llm === 'yes' ? '模型已設定' : facts.llm === 'no' ? '模型未設定' : '待命'}
+          </span>
           <time className="clock" dateTime={new Date().toISOString()}>
             {clock}
           </time>
@@ -132,7 +136,10 @@ export default function Shell() {
       <nav className="rail" aria-label="主要功能" data-testid="surface-nav" data-zone="left">
         {GROUPS.map((group) => (
           <div key={group.label} className="rail-group">
-            <div className="rail-label">{group.label}</div>
+            <div className="rail-label">
+              <span>{group.label}</span>
+              <span>{group.en}</span>
+            </div>
             {surfaces
               .filter((item) => group.ids.includes(item.id))
               .map((item) => (
@@ -152,22 +159,13 @@ export default function Shell() {
         ))}
       </nav>
       <main className="stage">
+        {entry ? <ConsoleDeck surface={entry.id} label={entry.label} /> : null}
         {Page ? <Page /> : <UnmountedSurface title={entry?.label ?? ''} />}
       </main>
-      {active === 'history' ? null : (
-        <aside className="rail-right" data-zone="right">
-          {active === 'chat' ? (
-            <div id="console-rail" className="console-rail" />
-          ) : (
-            <section className="panel">
-              <div className="panel-head">
-                <h2 className="panel-title">{entry?.label}</h2>
-              </div>
-              <div className="panel-body">{entry ? RAIL_NOTE[entry.id] : ''}</div>
-            </section>
-          )}
-        </aside>
-      )}
+      <aside className="rail-right" data-zone="right">
+        {active === 'chat' ? <div id="console-rail" className="console-rail" /> : null}
+        <ConsoleRailPanels />
+      </aside>
       <nav className="tabs" aria-label="主要功能">
         {links('tabs')}
       </nav>
