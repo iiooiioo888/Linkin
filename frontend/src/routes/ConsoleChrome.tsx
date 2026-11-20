@@ -132,12 +132,20 @@ export function ConsoleDeck({ surface, label }: { surface: SurfaceId; label: str
           </p>
         </div>
       </section>
-      <section className="panel">
+      <section className="panel" id="c-task">
         <div className="panel-head">
           <h2 className="panel-title">
             任務與席位
             <span className="en">TASKS</span>
           </h2>
+        </div>
+        <div className="panel-body">
+          <p className="kicker">席位圖 · 80 · 範例佈局</p>
+          <div className="seat-map" aria-label="80 席版面範例">
+            {Array.from({ length: 80 }, (_, index) => (
+              <span key={index} title={`席位 ${index + 1} 範例`} />
+            ))}
+          </div>
         </div>
         <table className="table">
           <thead>
@@ -145,24 +153,29 @@ export function ConsoleDeck({ surface, label }: { surface: SurfaceId; label: str
               <th>任務</th>
               <th>狀態</th>
               <th>席位</th>
+              <th>容器時數</th>
             </tr>
           </thead>
           <tbody>
+            <tr>
+              <td className="strong">T-2841 <span className="pill or">範例</span></td>
+              <td className="mono">範例</td>
+              <td className="mono">—</td>
+              <td className="mono">範例</td>
+            </tr>
+            {facts.taskRows.map((row) => (
+              <tr key={row.id}>
+                <td className="strong">{row.title}</td>
+                <td className="mono">{row.status}</td>
+                <td className="mono">—</td>
+                <td className="mono">—</td>
+              </tr>
+            ))}
             {facts.taskRows.length === 0 ? (
               <tr>
-                <td className="strong" colSpan={3}>
-                  尚無任務，也尚無席位活動。
-                </td>
+                <td colSpan={4}>沒有本機會話裡的任務。上列只是版面範例。</td>
               </tr>
-            ) : (
-              facts.taskRows.map((row) => (
-                <tr key={row.id}>
-                  <td className="strong">{row.title}</td>
-                  <td className="mono">{row.status}</td>
-                  <td className="mono">—</td>
-                </tr>
-              ))
-            )}
+            ) : null}
           </tbody>
         </table>
       </section>

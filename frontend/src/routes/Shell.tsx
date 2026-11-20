@@ -12,6 +12,7 @@ import {
   type SurfaceId,
 } from './catalog';
 import { ConsoleDeck, ConsoleRailPanels, useConsoleFacts } from './ConsoleChrome';
+import { InfraRailNotes, InfraSections } from './InfraPanels';
 import { loadSurfaces } from './loadMounts';
 
 const GROUPS: { label: string; en: string; ids: SurfaceId[] }[] = [
@@ -45,6 +46,7 @@ export default function Shell() {
   const facts = useConsoleFacts();
   const clock = useClock();
   const [query, setQuery] = useState('');
+  const [more, setMore] = useState(false);
   const [active, setActive] = useState<SurfaceId>(() =>
     typeof window === 'undefined' ? 'chat' : surfaceFromHash(window.location.hash),
   );
@@ -78,21 +80,6 @@ export default function Shell() {
   const needle = query.trim();
   const visible = (label: string) => !needle || label.includes(needle);
 
-  const links = (className: string) =>
-    surfaces.map((item) => (
-      <button
-        key={`${className}-${item.id}`}
-        type="button"
-        data-surface={item.id}
-        hidden={className === 'rail' ? !visible(item.label) : undefined}
-        aria-current={item.id === active ? 'page' : undefined}
-        onClick={() => show(item.id, 'push')}
-        className="nav-item"
-      >
-        <span className="nm">{item.label}</span>
-      </button>
-    ));
-
   return (
     <div className="surface-shell">
       <header className="topbar" data-zone="top">
@@ -108,6 +95,8 @@ export default function Shell() {
         <span className="brand-sub">Runtime · 統一管線 · 反思閉環</span>
         <div className="chip-row">
           <span className="chip amber">{entry?.label}</span>
+          <span className="chip or">Docker Compose</span>
+          <span className="chip vi">阿里雲 · 唯讀</span>
           <span className="chip">{facts.path ? PATH_LABEL[facts.path.path] : '路徑未選'}</span>
           <span className="chip">{facts.sessions ? `${facts.sessions} 會話` : '尚無會話'}</span>
         </div>
@@ -161,13 +150,38 @@ export default function Shell() {
       <main className="stage">
         {entry ? <ConsoleDeck surface={entry.id} label={entry.label} /> : null}
         {Page ? <Page /> : <UnmountedSurface title={entry?.label ?? ''} />}
+        <InfraSections />
       </main>
       <aside className="rail-right" data-zone="right">
         {active === 'chat' ? <div id="console-rail" className="console-rail" /> : null}
+        <InfraRailNotes />
         <ConsoleRailPanels />
       </aside>
-      <nav className="tabs" aria-label="主要功能">
-        {links('tabs')}
+      <nav className="tabs" aria-label="窄螢幕">
+        <button type="button" className="nav-item" aria-current={active === 'chat' ? 'page' : undefined} onClick={() => show('chat', 'push')}>
+          <span className="nm">對話</span>
+        </button>
+        <button type="button" className="nav-item" onClick={() => { show('chat', 'push'); window.setTimeout(() => document.getElementById('c-task')?.scrollIntoView({ block: 'start' }), 40); }}>
+          <span className="nm">任務</span>
+        </button>
+        <button type="button" className="nav-item" onClick={() => document.getElementById('c-docker')?.scrollIntoView({ block: 'start' })}>
+          <span className="nm">Docker</span>
+        </button>
+        <button type="button" className="nav-item" onClick={() => document.getElementById('c-aliyun')?.scrollIntoView({ block: 'start' })}>
+          <span className="nm">雲資源</span>
+        </button>
+        <button type="button" className="nav-item" aria-expanded={more} onClick={() => setMore((open) => !open)}>
+          <span className="nm">更多</span>
+        </button>
+        {more ? (
+          <div className="tabs-more">
+            {surfaces.filter((item) => item.id !== 'chat').map((item) => (
+              <button key={item.id} type="button" className="nav-item" onClick={() => { setMore(false); show(item.id, 'push'); }}>
+                <span className="nm">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </nav>
     </div>
   );
