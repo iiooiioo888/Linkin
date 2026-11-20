@@ -111,7 +111,7 @@ export default function MessageBubble({
   const workspace = variant === 'workspace';
 
   return (
-    <div className={`group flex flex-col gap-2 ${workspace ? '' : isUser ? 'items-end' : 'items-start'}`}>
+    <div className="group flex flex-col items-start gap-2">
       {!isUser && message.meta?.routingPreview && (
         <RoutingPreviewChips preview={message.meta.routingPreview} compact className="max-w-[min(100%,720px)]" />
       )}

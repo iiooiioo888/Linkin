@@ -1,4 +1,4 @@
-/* 登入頁 OPC v3 — gold/dark card + 分層金字塔標誌 */
+/* 登入頁沿用澄潭色票。 */
 
 .login-page {
   --login-bg: var(--console-bg);
@@ -10,7 +10,7 @@
   --login-faint: var(--console-faint);
   --login-dim: var(--console-bg);
   --login-accent: var(--console-accent);
-  --login-accent-hi: #f3ddb0;
+  --login-accent-hi: #f4f8f7;
   --login-accent-dk: var(--console-accent-soft);
   --login-cyan: var(--console-cyan);
   --login-green: var(--console-green);

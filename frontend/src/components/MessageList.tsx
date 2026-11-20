@@ -82,18 +82,12 @@ export default function MessageList({
       ref={scrollerRef}
       className={`ws-message-scroller min-h-0 flex-1 overflow-y-auto ${variant === 'drawer' ? 'px-4 py-4' : 'px-4 py-5 sm:px-6'}`}
     >
-      <div className={`flex flex-col gap-4 ${variant === 'drawer' ? '' : 'mx-auto w-full max-w-3xl'}`}>
+      <div className={`flex flex-col gap-6 ${variant === 'drawer' ? '' : 'w-full max-w-[68ch]'}`}>
         {messages.length === 0 && (
-          <div className={`flex flex-col items-center gap-8 text-center ${variant === 'drawer' ? 'py-10' : 'py-20 sm:py-28'}`}>
-            <div>
-              <h2 className="chat-empty-title">
-                {t('chat.emptyTitle')}
-              </h2>
-              <p className="mt-2 max-w-md text-[13px] leading-relaxed text-[var(--console-faint)]">
-                {t('chat.emptySubtitle')}
-              </p>
-            </div>
-            <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="chat-empty">
+            <h2 className="chat-empty-title">{t('chat.emptyTitle')}</h2>
+            <p className="chat-empty-lead">{t('chat.emptySubtitle')}</p>
+            <div className="chat-empty-suggestions">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s.text}

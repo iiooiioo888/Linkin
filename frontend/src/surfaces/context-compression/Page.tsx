@@ -17,15 +17,9 @@ import {
 } from '../../api/client/compression';
 import { activeConversationText } from './sessionText';
 
-const focusRing =
-  'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--console-accent)]!';
-
-const field =
-  'mt-1 w-full rounded-[10px] border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-2 text-[13px] leading-normal text-[var(--console-ink)]';
-
-const primaryButton = `inline-flex min-h-11 items-center rounded-[10px] bg-[var(--console-accent)] px-3.5 text-[12px] font-medium text-[var(--console-accent-ink)] disabled:opacity-50 ${focusRing}`;
-
-const secondaryButton = `inline-flex min-h-11 items-center rounded-[10px] border border-[var(--console-line)] px-3.5 text-[12px] font-medium text-[var(--console-ink)] disabled:opacity-50 ${focusRing}`;
+const field = 'reflect-field';
+const primaryButton = 'reflect-action';
+const secondaryButton = 'reflect-action reflect-action--quiet';
 
 type Pending = 'compress' | 'decisions' | 'summary' | null;
 
@@ -152,49 +146,49 @@ export function ContextCompressionPage() {
 
   return (
     <section
-      className="h-full overflow-y-auto bg-[var(--console-bg)] text-[var(--console-ink)] [scrollbar-color:var(--console-line-strong)_transparent]"
+      className="reflect-page h-full overflow-y-auto [scrollbar-color:var(--console-line-strong)_transparent]"
       aria-labelledby="context-compression-heading"
       data-testid="context-compression"
     >
-      <div className="mx-auto flex w-full max-w-[72ch] flex-col px-[var(--u3)] py-[var(--u4)] sm:px-[var(--u4)]">
-        <h1 id="context-compression-heading" className="text-[22px] font-semibold leading-[1.25] tracking-[-0.02em]">
-          上下文壓縮
-        </h1>
-        <p className="mt-2 text-[13px] leading-normal text-[var(--console-sub)]">
-          規則截斷與關鍵句抽取，不經模型。空白上限會用各函式的預設值。
-        </p>
-        <div ref={feedbackRef}>
-          {notice ? (
-            <p className="mt-[var(--u3)] text-[13px] leading-normal text-[var(--console-sub)]" role="status">
-              {notice}
-            </p>
-          ) : null}
-          {error ? (
-            <p className="mt-[var(--u3)] text-[13px] leading-normal text-[var(--console-amber)]" role="alert">
-              {error}
-            </p>
-          ) : null}
-        </div>
+      <div className="reflect-spread">
+        <div className="reflect-source">
+          <h1 id="context-compression-heading" className="reflect-title">
+            上下文壓縮
+          </h1>
+          <p className="reflect-lead">
+            規則截斷與關鍵句抽取，不經模型。空白上限會用各函式的預設值。
+          </p>
+          <div ref={feedbackRef}>
+            {notice ? (
+              <p className="reflect-note" role="status">
+                {notice}
+              </p>
+            ) : null}
+            {error ? (
+              <p className="reflect-alert" role="alert">
+                {error}
+              </p>
+            ) : null}
+          </div>
 
-        <label className="mt-[var(--u4)] text-[12px] text-[var(--console-sub)]" htmlFor="context-compress-text">
-          上下文
-          <textarea
-            id="context-compress-text"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            rows={8}
-            className={`${field} min-h-32 resize-y`}
-            data-testid="context-compress-text"
-          />
-        </label>
-        <div className="mt-[var(--u3)] flex flex-wrap gap-2">
-          <button type="button" className={secondaryButton} onClick={fillFromSession} disabled={busy}>
-            帶入本機對話
-          </button>
-        </div>
+          <label className="reflect-label" htmlFor="context-compress-text">
+            上下文
+            <textarea
+              id="context-compress-text"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              rows={8}
+              className={`${field} min-h-32 resize-y`}
+              data-testid="context-compress-text"
+            />
+          </label>
+          <div className="reflect-actions">
+            <button type="button" className={secondaryButton} onClick={fillFromSession} disabled={busy}>
+              帶入本機對話
+            </button>
+          </div>
 
-        <div className="mt-[var(--u4)] flex flex-col gap-[var(--u3)]">
-          <label className="text-[12px] text-[var(--console-sub)]" htmlFor="context-compress-limit">
+          <label className="reflect-label" htmlFor="context-compress-limit">
             壓縮上限（字）
             <input
               id="context-compress-limit"
@@ -204,14 +198,70 @@ export function ContextCompressionPage() {
               className={field}
             />
           </label>
-          <button
-            type="button"
-            className={`self-start ${primaryButton}`}
-            onClick={() => void runCompress()}
-            disabled={busy}
-          >
-            {pending === 'compress' ? '壓縮中' : '壓縮'}
-          </button>
+          <div className="reflect-actions">
+            <button type="button" className={primaryButton} onClick={() => void runCompress()} disabled={busy}>
+              {pending === 'compress' ? '壓縮中' : '壓縮'}
+            </button>
+          </div>
+
+          <div className="reflect-block">
+            <h2>決策</h2>
+            <label className="reflect-label" htmlFor="context-decision-limit">
+              最多幾句
+              <input
+                id="context-decision-limit"
+                inputMode="numeric"
+                value={decisionLimit}
+                onChange={(event) => setDecisionLimit(event.target.value)}
+                className={field}
+              />
+            </label>
+            <div className="reflect-actions">
+              <button type="button" className={primaryButton} onClick={() => void runDecisions()} disabled={busy}>
+                {pending === 'decisions' ? '抽出中' : '抽出決策'}
+              </button>
+            </div>
+          </div>
+
+          <div className="reflect-block">
+            <h2>軌跡摘要</h2>
+            <p className="reflect-note">正文沿用上方的上下文。</p>
+            <label className="reflect-label" htmlFor="context-summary-title">
+              標題
+              <input
+                id="context-summary-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                className={field}
+              />
+            </label>
+            <label className="reflect-label" htmlFor="context-summary-failure">
+              失敗原因
+              <input
+                id="context-summary-failure"
+                value={failureReason}
+                onChange={(event) => setFailureReason(event.target.value)}
+                className={field}
+              />
+            </label>
+            <label className="reflect-label" htmlFor="context-summary-limit">
+              摘要上限（字）
+              <input
+                id="context-summary-limit"
+                inputMode="numeric"
+                value={summaryLimit}
+                onChange={(event) => setSummaryLimit(event.target.value)}
+                className={field}
+              />
+            </label>
+            <div className="reflect-actions">
+              <button type="button" className={primaryButton} onClick={() => void runSummary()} disabled={busy}>
+                {pending === 'summary' ? '摘要中' : '做成摘要'}
+              </button>
+            </div>
+          </div>
+        </div>
+        <aside className="reflect-echo" aria-label="結果">
           {compressed ? (
             <Result
               title="壓縮結果"
@@ -221,37 +271,16 @@ export function ContextCompressionPage() {
               testId="context-compress-result"
             />
           ) : null}
-        </div>
-
-        <div className="mt-[var(--u6)] flex flex-col gap-[var(--u3)] border-t border-[var(--console-line)] pt-[var(--u4)]">
-          <h2 className="text-[15px] font-semibold leading-snug">決策</h2>
-          <label className="text-[12px] text-[var(--console-sub)]" htmlFor="context-decision-limit">
-            最多幾句
-            <input
-              id="context-decision-limit"
-              inputMode="numeric"
-              value={decisionLimit}
-              onChange={(event) => setDecisionLimit(event.target.value)}
-              className={field}
-            />
-          </label>
-          <button
-            type="button"
-            className={`self-start ${primaryButton}`}
-            onClick={() => void runDecisions()}
-            disabled={busy}
-          >
-            {pending === 'decisions' ? '抽出中' : '抽出決策'}
-          </button>
           {decisions ? (
             <div data-testid="context-decisions-result">
-              <p className="text-[12px] text-[var(--console-sub)]">{decisionHelper}</p>
+              <h3>決策</h3>
+              <p className="reflect-note">{decisionHelper}</p>
               {decisions.length === 0 ? (
-                <p className="mt-2 text-[13px] leading-normal text-[var(--console-sub)]">沒有抽出決策句。</p>
+                <p className="reflect-note">沒有抽出決策句。</p>
               ) : (
-                <ul className="mt-2 flex flex-col gap-2">
+                <ul>
                   {decisions.map((item, index) => (
-                    <li key={`${index}-${item}`} className="whitespace-pre-wrap break-words text-[13px] leading-normal">
+                    <li key={`${index}-${item}`} className="whitespace-pre-wrap break-words">
                       {item}
                     </li>
                   ))}
@@ -259,47 +288,6 @@ export function ContextCompressionPage() {
               )}
             </div>
           ) : null}
-        </div>
-
-        <div className="mt-[var(--u6)] flex flex-col gap-[var(--u3)] border-t border-[var(--console-line)] pt-[var(--u4)]">
-          <h2 className="text-[15px] font-semibold leading-snug">軌跡摘要</h2>
-          <p className="text-[12px] leading-normal text-[var(--console-sub)]">正文沿用上方的上下文。</p>
-          <label className="text-[12px] text-[var(--console-sub)]" htmlFor="context-summary-title">
-            標題
-            <input
-              id="context-summary-title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className={field}
-            />
-          </label>
-          <label className="text-[12px] text-[var(--console-sub)]" htmlFor="context-summary-failure">
-            失敗原因
-            <input
-              id="context-summary-failure"
-              value={failureReason}
-              onChange={(event) => setFailureReason(event.target.value)}
-              className={field}
-            />
-          </label>
-          <label className="text-[12px] text-[var(--console-sub)]" htmlFor="context-summary-limit">
-            摘要上限（字）
-            <input
-              id="context-summary-limit"
-              inputMode="numeric"
-              value={summaryLimit}
-              onChange={(event) => setSummaryLimit(event.target.value)}
-              className={field}
-            />
-          </label>
-          <button
-            type="button"
-            className={`self-start ${primaryButton}`}
-            onClick={() => void runSummary()}
-            disabled={busy}
-          >
-            {pending === 'summary' ? '摘要中' : '做成摘要'}
-          </button>
           {summary ? (
             <Result
               title="摘要"
@@ -308,7 +296,7 @@ export function ContextCompressionPage() {
               testId="context-summary-result"
             />
           ) : null}
-        </div>
+        </aside>
       </div>
     </section>
   );
@@ -329,10 +317,10 @@ function Result({
 }) {
   return (
     <div data-testid={testId}>
-      <h3 className="text-[13px] font-semibold">{title}</h3>
-      {meta ? <p className="mt-1 text-[12px] text-[var(--console-sub)]">{meta}</p> : null}
-      <p className="mt-1 text-[12px] text-[var(--console-sub)]">{helper}</p>
-      <p className="mt-2 whitespace-pre-wrap break-words text-[13px] leading-normal">{body}</p>
+      <h3>{title}</h3>
+      {meta ? <p className="reflect-note">{meta}</p> : null}
+      <p className="reflect-note">{helper}</p>
+      <p className="whitespace-pre-wrap break-words">{body}</p>
     </div>
   );
 }

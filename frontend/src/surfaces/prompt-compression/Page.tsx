@@ -10,13 +10,8 @@ import {
   type TruncatePromptResult,
 } from '../../api/client/compression.ts';
 
-const focusRing =
-  'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--console-accent)]!';
-
-const field =
-  'mt-1 w-full rounded-[10px] border border-[var(--console-line)] bg-[var(--console-card)] px-3 py-2 text-[13px] leading-normal text-[var(--console-ink)]';
-
-const primaryButton = `self-start inline-flex min-h-11 items-center rounded-[10px] bg-[var(--console-accent)] px-3.5 text-[12px] font-medium text-[var(--console-accent-ink)] disabled:opacity-50 ${focusRing}`;
+const field = 'reflect-field';
+const primaryButton = 'reflect-action';
 
 export function Page() {
   const [text, setText] = useState('');
@@ -52,58 +47,61 @@ export function Page() {
 
   return (
     <section
-      className="h-full overflow-y-auto bg-[var(--console-bg)] text-[var(--console-ink)] [scrollbar-color:var(--console-line-strong)_transparent]"
+      className="reflect-page h-full overflow-y-auto [scrollbar-color:var(--console-line-strong)_transparent]"
       aria-labelledby="prompt-compression-heading"
       data-testid="prompt-compression"
     >
-      <div className="mx-auto flex w-full max-w-[72ch] flex-col px-[var(--u3)] py-[var(--u4)] sm:px-[var(--u4)]">
-        <h1 id="prompt-compression-heading" className="text-[22px] font-semibold leading-[1.25] tracking-[-0.02em]">
-          提示詞壓縮
-        </h1>
-        <p className="mt-2 text-[13px] leading-normal text-[var(--console-sub)]">
-          保留頭尾並截掉中間。不經模型，也不改寫用詞。空白上限用後端預設。
-        </p>
-        <label className="mt-[var(--u4)] text-[12px] text-[var(--console-sub)]" htmlFor="prompt-truncate-text">
-          提示詞
-          <textarea
-            id="prompt-truncate-text"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            rows={8}
-            className={`${field} min-h-32 resize-y`}
-            data-testid="prompt-truncate-text"
-          />
-        </label>
-        <label className="mt-[var(--u3)] text-[12px] text-[var(--console-sub)]" htmlFor="prompt-truncate-limit">
-          上限（字）
-          <input
-            id="prompt-truncate-limit"
-            inputMode="numeric"
-            value={limit}
-            onChange={(event) => setLimit(event.target.value)}
-            placeholder="預設"
-            className={field}
-          />
-        </label>
-        <button type="button" className={`mt-[var(--u3)] ${primaryButton}`} onClick={() => void run()} disabled={pending}>
-          {pending ? '壓縮中' : '壓縮'}
-        </button>
-        {result ? (
-          <div className="mt-[var(--u4)]" data-testid="prompt-truncate-result">
-            <p className="text-[12px] text-[var(--console-sub)]">
-              原文 {result.original_chars} 字，結果 {result.result_chars} 字。
-            </p>
-            <p className="mt-1 text-[12px] text-[var(--console-sub)]">{result.helper}</p>
-            <p className="mt-2 whitespace-pre-wrap break-words text-[13px] leading-normal">
-              {result.text || '（空）'}
-            </p>
+      <div className="reflect-spread">
+        <div className="reflect-source">
+          <h1 id="prompt-compression-heading" className="reflect-title">
+            提示詞壓縮
+          </h1>
+          <p className="reflect-lead">保留頭尾並截掉中間。不經模型，也不改寫用詞。空白上限用後端預設。</p>
+          <label className="reflect-label" htmlFor="prompt-truncate-text">
+            提示詞
+            <textarea
+              id="prompt-truncate-text"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              rows={8}
+              className={`${field} min-h-32 resize-y`}
+              data-testid="prompt-truncate-text"
+            />
+          </label>
+          <label className="reflect-label" htmlFor="prompt-truncate-limit">
+            上限（字）
+            <input
+              id="prompt-truncate-limit"
+              inputMode="numeric"
+              value={limit}
+              onChange={(event) => setLimit(event.target.value)}
+              placeholder="預設"
+              className={field}
+            />
+          </label>
+          <div className="reflect-actions">
+            <button type="button" className={primaryButton} onClick={() => void run()} disabled={pending}>
+              {pending ? '壓縮中' : '壓縮'}
+            </button>
           </div>
-        ) : null}
-        {error ? (
-          <p className="mt-[var(--u3)] text-[13px] leading-normal text-[var(--console-amber)]" role="alert">
-            {error}
-          </p>
-        ) : null}
+          {error ? (
+            <p className="reflect-alert" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        <aside className="reflect-echo" aria-label="結果">
+          {result ? (
+            <div data-testid="prompt-truncate-result">
+              <h3>壓縮結果</h3>
+              <p className="reflect-note">
+                原文 {result.original_chars} 字，結果 {result.result_chars} 字。
+              </p>
+              <p className="reflect-note">{result.helper}</p>
+              <p className="whitespace-pre-wrap break-words">{result.text || '（空）'}</p>
+            </div>
+          ) : null}
+        </aside>
       </div>
     </section>
   );

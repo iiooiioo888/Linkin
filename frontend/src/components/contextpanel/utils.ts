@@ -31,5 +31,5 @@ export const KIND_FILTERS: ContextEventKind[] = ['inject', 'compact', 'prune', '
 export const FILE_FILTERS: Array<FilePurpose | 'all'> = ['all', 'read', 'written', 'searched', 'images'];
 
 export const btnCls =
-  'rounded-xl border border-white/[0.08] bg-[var(--console-card)] px-2.5 py-1 text-[11px] text-[var(--console-faint)] hover:text-[var(--console-ink)] disabled:opacity-40';
-export const cardCls = 'rounded-xl border border-white/[0.08] bg-[var(--console-card)] p-3';
+  'border-0 bg-transparent px-0 py-1 text-[14px] text-[var(--console-sub)] hover:text-[var(--console-ink)] disabled:opacity-40';
+export const cardCls = 'py-3';

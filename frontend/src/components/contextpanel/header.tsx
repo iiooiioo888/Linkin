@@ -134,7 +134,7 @@ export function ContextHeader({
           </div>
         </div>
         {showPrefs ? (
-          <div className="mt-3 rounded-xl border border-white/[0.08] bg-black/25 p-3">
+          <div className="mt-3 bg-[color-mix(in_srgb,var(--console-ink)_6%,transparent)] p-3">
             <p className="mb-2 text-[11px] font-medium text-[var(--console-ink)]">Context 偏好（本機）</p>
             <div className="flex flex-wrap gap-3 text-[11px] text-[var(--console-sub)]">
               <label className="flex items-center gap-2">
