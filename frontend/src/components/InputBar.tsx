@@ -399,11 +399,13 @@ export default function InputBar({
               type="button"
               onClick={() => setShowMenu((v) => !v)}
               disabled={disabled}
-              className={`shrink-0 rounded-lg px-2 py-1 text-[11px] text-[var(--console-faint)] hover:bg-white/[0.04] hover:text-[var(--console-ink)] ${
-                showMenu ? 'bg-white/[0.06] text-[var(--console-ink)]' : ''
-              }`}
+              className={`apple-composer__more${showMenu ? ' is-on' : ''}`}
+              aria-label={selectedPath === 'company' ? '模板' : '選項'}
+              aria-expanded={showMenu}
             >
-              {selectedPath === 'company' ? '模板' : '選項'}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+              </svg>
             </button>
 
             <button

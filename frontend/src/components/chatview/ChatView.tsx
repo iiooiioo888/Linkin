@@ -12,7 +12,7 @@ import InputBar from '../InputBar';
 import MessageList from '../MessageList';
 import RahoDecisionBar from '../RahoDecisionBar';
 import ChatBottomPanel from '../ChatBottomPanel';
-import type { BottomTab } from '../ChatBottomPanel';
+import ContextPanel from '../ContextPanel';
 import {
   activeTaskMessage,
   flattenWsNodes,
@@ -131,12 +131,9 @@ export default function ChatView({
 
   useBodyScrollLock(isMobile && monitorSheetOpen);
 
-  /** 對話詳細區預設 Context（dsh-context）；其餘分頁可切 */
-  const [bottomTab, setBottomTab] = useState<BottomTab>('context');
-  /** 桌面右欄預設展開；窄螢幕先收成右側邊，滑出後才蓋住對話。 */
-  const [bottomOff, setBottomOff] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
-  );
+  /** 右欄預設收合，只留一顆圖示。 */
+  const [bottomOff, setBottomOff] = useState(true);
+  const [desk, setDesk] = useState<'files' | 'terminal' | 'problems' | null>(null);
   const [fileId, setFileId] = useState<string | null>(null);
   const [actError, setActError] = useState<string | null>(null);
 
@@ -162,7 +159,6 @@ export default function ChatView({
       // /context、導航列：回到本會話預設（live → 最近），不保留舊 focus
       setContextFocusId(null);
     }
-    setBottomTab('context');
     setBottomOff(false);
   };
 
@@ -171,7 +167,6 @@ export default function ChatView({
 
   // 切換對話會話時回到 Context 分頁，清空跨會話 focus
   useEffect(() => {
-    setBottomTab('context');
     setFileId(null);
     setContextFocusId(null);
   }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps -- 僅在切換會話時重置
@@ -184,16 +179,7 @@ export default function ChatView({
     }
   }, [messages, contextFocusId]);
 
-  // 本會話出現可綁定軌跡時自動展開詳細區（直接顯示對應對話 Context）
-  const sawContextRef = useRef(false);
-  useEffect(() => {
-    if (contextTaskId && !sawContextRef.current) {
-      sawContextRef.current = true;
-      setBottomTab('context');
-      setBottomOff(false);
-    }
-    if (!contextTaskId) sawContextRef.current = false;
-  }, [contextTaskId]);
+  // 有軌跡時不自動打開右欄。右欄維持收合，直到使用者按下圖示或「上下文」。
 
   useEffect(() => {
     const pending = consumePendingChatContext();
@@ -316,7 +302,29 @@ export default function ChatView({
             openContextDetail={openContextDetail}
             onOpenSettings={onOpenSettings}
             onNewSession={onNewSession}
+            counts={{ files: files.length, terminal: terminal.length, problems: problems.length }}
+            desk={desk}
+            onDesk={(chip) => setDesk((current) => (current === chip ? null : chip))}
           />
+          {desk ? (
+            <ChatBottomPanel
+              bare
+              collapsed={false}
+              onToggle={() => setDesk(null)}
+              tab={desk}
+              onTab={(next) => {
+                if (next === 'context') return;
+                setDesk(next);
+              }}
+              files={files}
+              fileId={fileId}
+              onFile={setFileId}
+              terminal={terminal}
+              problems={problems}
+              taskId={contextTaskId}
+              sessionKey={sessionId}
+            />
+          ) : null}
           {banners}
           {showPipelineStrip && task && (
             <PipelineStrip
@@ -361,36 +369,25 @@ export default function ChatView({
           data-testid="context-drawer"
           aria-label="上下文"
         >
-          {bottomOff ? (
-            <button
-              type="button"
-              className="chat-drawer__edge"
-              onClick={() => setBottomOff(false)}
-              aria-expanded={false}
-            >
-              上下文
-            </button>
-          ) : (
-            <ChatBottomPanel
-              collapsed={false}
-              onToggle={() => setBottomOff(true)}
-              tab={bottomTab}
-              onTab={(t) => {
-                setBottomTab(t);
-                setBottomOff(false);
-              }}
-              files={files}
-              fileId={fileId}
-              onFile={setFileId}
-              terminal={terminal}
-              problems={problems}
-              taskId={contextTaskId}
-              sessionKey={sessionId}
-              onProblem={() => {
-                setBottomTab('problems');
-                setBottomOff(false);
-              }}
-            />
+          <button
+            type="button"
+            className="chat-drawer__toggle"
+            onClick={() => setBottomOff((off) => !off)}
+            aria-expanded={!bottomOff}
+            aria-label={bottomOff ? '開啟上下文' : '收合上下文'}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <path d="M5 6h14M5 12h14M5 18h10" />
+            </svg>
+          </button>
+          {bottomOff ? null : (
+            <div className="chat-drawer__body" data-testid="chat-context-embed">
+              <ContextPanel
+                key={`chat-ctx-${sessionId || 's'}-${contextTaskId || 'none'}`}
+                taskId={contextTaskId}
+                embed
+              />
+            </div>
           )}
         </aside>
       </div>
