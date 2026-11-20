@@ -17,11 +17,9 @@ const GROUPS: { label: string; ids: SurfaceId[] }[] = [
   { label: '壓縮', ids: ['context-compression', 'prompt-compression'] },
 ];
 
-const RAIL_NOTE: Record<SurfaceId, string> = {
-  chat: '',
+const RAIL_NOTE: Partial<Record<SurfaceId, string>> = {
   'context-compression': '規則截斷與關鍵句抽取，不經模型。空白上限會用各函式的預設值。',
   'prompt-compression': '保留頭尾並截掉中間。不經模型，也不改寫用詞。空白上限用後端預設。',
-  history: '選擇一筆，在對話裡繼續。',
 };
 
 function UnmountedSurface({ title }: { title: string }) {
@@ -98,7 +96,7 @@ export default function Shell() {
     ));
 
   return (
-    <div className="surface-shell">
+    <div className={`surface-shell${active === 'history' ? ' is-history' : ''}`}>
       <header className="topbar" data-zone="top">
         <div className="brand">
           <svg className="brand-glyph" viewBox="0 0 30 30" aria-hidden>
@@ -156,18 +154,20 @@ export default function Shell() {
       <main className="stage">
         {Page ? <Page /> : <UnmountedSurface title={entry?.label ?? ''} />}
       </main>
-      <aside className="rail-right" data-zone="right">
-        {active === 'chat' ? (
-          <div id="console-rail" className="console-rail" />
-        ) : (
-          <section className="panel">
-            <div className="panel-head">
-              <h2 className="panel-title">{entry?.label}</h2>
-            </div>
-            <div className="panel-body">{entry ? RAIL_NOTE[entry.id] : ''}</div>
-          </section>
-        )}
-      </aside>
+      {active === 'history' ? null : (
+        <aside className="rail-right" data-zone="right">
+          {active === 'chat' ? (
+            <div id="console-rail" className="console-rail" />
+          ) : (
+            <section className="panel">
+              <div className="panel-head">
+                <h2 className="panel-title">{entry?.label}</h2>
+              </div>
+              <div className="panel-body">{entry ? RAIL_NOTE[entry.id] : ''}</div>
+            </section>
+          )}
+        </aside>
+      )}
       <nav className="tabs" aria-label="主要功能">
         {links('tabs')}
       </nav>

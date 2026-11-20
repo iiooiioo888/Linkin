@@ -7164,6 +7164,10 @@ textarea:focus-visible {
   gap: 1px;
 }
 
+.surface-shell.is-history {
+  grid-template-columns: 238px minmax(0, 1fr);
+}
+
 .topbar {
   grid-column: 1 / -1;
   height: 54px;
