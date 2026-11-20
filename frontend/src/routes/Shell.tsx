@@ -1,25 +1,23 @@
 /**
- * 四入口殼。高頻入口在左欄：對話、歷史。壓縮兩項收在底部「進階」。
- * 登出在欄底。金絲只標示正在使用的那一項。
+ * 控制台殼。頂列、左欄兩組入口、主欄、右欄。
+ * 導覽只放四個入口；登出在頂列。窄螢幕改為底部四鍵。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { logoutGate } from '../lib/auth';
+import { getGateUser, logoutGate } from '../lib/auth';
+import { PATH_LABEL } from '../lib/executionPath';
 import {
   hashForSurface,
   surfaceFromHash,
   type SurfaceId,
 } from './catalog';
+import { ConsoleDeck, ConsoleRailPanels, useConsoleFacts } from './ConsoleChrome';
 import { loadSurfaces } from './loadMounts';
 
-const PRIMARY: SurfaceId[] = ['chat', 'history'];
-const ADVANCED: SurfaceId[] = ['context-compression', 'prompt-compression'];
-const SHORT: Record<SurfaceId, string> = {
-  chat: '對話',
-  history: '歷史',
-  'context-compression': '上文',
-  'prompt-compression': '提示',
-};
+const GROUPS: { label: string; en: string; ids: SurfaceId[] }[] = [
+  { label: '運行', en: 'RUNTIME', ids: ['chat', 'history'] },
+  { label: '壓縮', en: 'COMPRESS', ids: ['context-compression', 'prompt-compression'] },
+];
 
 function UnmountedSurface({ title }: { title: string }) {
   return (
@@ -32,35 +30,25 @@ function UnmountedSurface({ title }: { title: string }) {
   );
 }
 
-function NavIcon({ id }: { id: SurfaceId | 'more' | 'out' }) {
-  const d =
-    id === 'chat'
-      ? 'M5 6.5h14v8.5H8.5L5 18.5V6.5z'
-      : id === 'history'
-        ? 'M12 7v5l3 2M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z'
-        : id === 'context-compression'
-          ? 'M5 8h14M5 12h10M5 16h12'
-          : id === 'prompt-compression'
-            ? 'M7 7h10v10H7zM4 4h4M16 4h4M4 16v4M16 20h4'
-            : id === 'more'
-              ? 'M6 8h12M6 12h12M6 16h8'
-              : 'M10 7V5H5v14h5v-2M10 12h9M16 9l3 3-3 3';
-  return (
-    <svg className="surface-shell__ico" viewBox="0 0 24 24" aria-hidden>
-      <path d={d} />
-    </svg>
-  );
+function useClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  return now.toLocaleTimeString('zh-TW', { hour12: false });
 }
 
 export default function Shell() {
   const { t } = useTranslation();
   const surfaces = useMemo(() => loadSurfaces(), []);
+  const facts = useConsoleFacts();
+  const clock = useClock();
+  const [query, setQuery] = useState('');
   const [active, setActive] = useState<SurfaceId>(() =>
     typeof window === 'undefined' ? 'chat' : surfaceFromHash(window.location.hash),
   );
-  const [advancedOpen, setAdvancedOpen] = useState(() =>
-    ADVANCED.includes(typeof window === 'undefined' ? 'chat' : surfaceFromHash(window.location.hash)),
-  );
+  const user = typeof window === 'undefined' ? null : getGateUser();
 
   const show = useCallback((id: SurfaceId, mode: 'push' | 'replace') => {
     const next = hashForSurface(id);
@@ -75,7 +63,6 @@ export default function Shell() {
     const sync = () => {
       const id = surfaceFromHash(window.location.hash);
       setActive(id);
-      if (ADVANCED.includes(id)) setAdvancedOpen(true);
       const next = hashForSurface(id);
       if (window.location.hash !== next) {
         window.history.replaceState(null, '', next);
@@ -88,85 +75,100 @@ export default function Shell() {
 
   const entry = surfaces.find((item) => item.id === active) ?? surfaces[0];
   const Page = entry?.ready ? entry.Page : null;
-  const byId = (id: SurfaceId) => surfaces.find((item) => item.id === id);
+  const needle = query.trim();
+  const visible = (label: string) => !needle || label.includes(needle);
+
+  const links = (className: string) =>
+    surfaces.map((item) => (
+      <button
+        key={`${className}-${item.id}`}
+        type="button"
+        data-surface={item.id}
+        hidden={className === 'rail' ? !visible(item.label) : undefined}
+        aria-current={item.id === active ? 'page' : undefined}
+        onClick={() => show(item.id, 'push')}
+        className="nav-item"
+      >
+        <span className="nm">{item.label}</span>
+      </button>
+    ));
 
   return (
     <div className="surface-shell">
-      <header className="surface-shell__bar" data-zone="top">
-        <span className="brand-mark surface-shell__brand">
-          <span className="brand-mark__name">靈境</span>
-          <span className="brand-mark__dot">·</span>
-          <span>Linkin</span>
-        </span>
+      <header className="topbar" data-zone="top">
+        <div className="brand">
+          <svg className="brand-glyph" viewBox="0 0 30 30" aria-hidden>
+            <rect x="1.5" y="1.5" width="27" height="27" rx="4" fill="none" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M8 21 L15 8 L22 21" fill="none" stroke="currentColor" strokeWidth="1.4" />
+          </svg>
+          <span className="brand-name">
+            靈境·<em>Linkin</em>
+          </span>
+        </div>
+        <span className="brand-sub">Runtime · 統一管線 · 反思閉環</span>
+        <div className="chip-row">
+          <span className="chip amber">{entry?.label}</span>
+          <span className="chip">{facts.path ? PATH_LABEL[facts.path.path] : '路徑未選'}</span>
+          <span className="chip">{facts.sessions ? `${facts.sessions} 會話` : '尚無會話'}</span>
+        </div>
+        <label className="searchbox">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="尋找入口"
+            aria-label="尋找入口"
+          />
+        </label>
+        <div className="top-right">
+          <span className={`live${facts.llm === 'yes' ? ' is-on' : ''}`}>
+            <span className="dot" aria-hidden />
+            {facts.llm === 'yes' ? '模型已設定' : facts.llm === 'no' ? '模型未設定' : '待命'}
+          </span>
+          <time className="clock" dateTime={new Date().toISOString()}>
+            {clock}
+          </time>
+          <button type="button" className="topbar-signout" onClick={() => void logoutGate()} aria-label={t('gate.signOut')}>
+            {user ? <span className="topbar-user">{user}</span> : null}
+            {t('gate.signOut')}
+          </button>
+        </div>
       </header>
-      <nav className="surface-shell__nav" aria-label="主要功能" data-testid="surface-nav" data-zone="left">
-        <div className="surface-shell__primary">
-          {PRIMARY.map((id) => {
-            const item = byId(id);
-            if (!item) return null;
-            return (
-              <button
-                key={id}
-                type="button"
-                data-surface={id}
-                aria-current={id === active ? 'page' : undefined}
-                aria-label={item.label}
-                title={item.label}
-                onClick={() => show(id, 'push')}
-                className="surface-shell__link"
-              >
-                <NavIcon id={id} />
-                <span>{SHORT[id]}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="surface-shell__foot">
-          <button
-            type="button"
-            className="surface-shell__link surface-shell__more"
-            aria-expanded={advancedOpen}
-            aria-controls="surface-advanced"
-            onClick={() => setAdvancedOpen((open) => !open)}
-          >
-            <NavIcon id="more" />
-            <span>進階</span>
-          </button>
-          <div id="surface-advanced" className="surface-shell__advanced" hidden={!advancedOpen}>
-            {ADVANCED.map((id) => {
-              const item = byId(id);
-              if (!item) return null;
-              return (
+      <nav className="rail" aria-label="主要功能" data-testid="surface-nav" data-zone="left">
+        {GROUPS.map((group) => (
+          <div key={group.label} className="rail-group">
+            <div className="rail-label">
+              <span>{group.label}</span>
+              <span>{group.en}</span>
+            </div>
+            {surfaces
+              .filter((item) => group.ids.includes(item.id))
+              .map((item) => (
                 <button
-                  key={id}
+                  key={item.id}
                   type="button"
-                  data-surface={id}
-                  aria-current={id === active ? 'page' : undefined}
-                  aria-label={item.label}
-                  title={item.label}
-                  onClick={() => show(id, 'push')}
-                  className="surface-shell__link surface-shell__link--sub"
+                  data-surface={item.id}
+                  hidden={!visible(item.label)}
+                  aria-current={item.id === active ? 'page' : undefined}
+                  onClick={() => show(item.id, 'push')}
+                  className="nav-item"
                 >
-                  <NavIcon id={id} />
-                  <span>{SHORT[id]}</span>
+                  <span className="nm">{item.label}</span>
                 </button>
-              );
-            })}
+              ))}
           </div>
-          <button
-            type="button"
-            onClick={() => void logoutGate()}
-            className="surface-shell__link surface-shell__signout"
-            aria-label={t('gate.signOut')}
-          >
-            <NavIcon id="out" />
-            <span>{t('gate.signOut')}</span>
-          </button>
-        </div>
+        ))}
       </nav>
-      <main className="surface-shell__stage">
+      <main className="stage">
+        {entry ? <ConsoleDeck surface={entry.id} label={entry.label} /> : null}
         {Page ? <Page /> : <UnmountedSurface title={entry?.label ?? ''} />}
       </main>
+      <aside className="rail-right" data-zone="right">
+        {active === 'chat' ? <div id="console-rail" className="console-rail" /> : null}
+        <ConsoleRailPanels />
+      </aside>
+      <nav className="tabs" aria-label="主要功能">
+        {links('tabs')}
+      </nav>
     </div>
   );
 }
