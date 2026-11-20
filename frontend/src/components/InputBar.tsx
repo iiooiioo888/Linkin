@@ -233,7 +233,7 @@ export default function InputBar({
 
   return (
     <div className={`apple-input-bar shrink-0 ${compact ? '!px-0 !py-0 !border-0' : ''}`}>
-      <div className={`relative mx-auto w-full ${compact ? '' : 'max-w-3xl'}`}>
+      <div className="relative w-full">
         {showAdvanced && (
           <div className="mb-2 rounded-xl border border-white/[0.06] bg-[var(--console-card)] p-3">
             <p className="mb-2 text-[10px] font-medium text-[var(--console-sub)]">進階</p>
@@ -363,11 +363,7 @@ export default function InputBar({
                 aria-pressed={active}
                 disabled={disabled || blocked}
                 onClick={() => selectPath(item.key, 'session')}
-                className={`rounded-lg px-2.5 py-1 text-[12px] ${
-                  active
-                    ? 'bg-[color-mix(in_srgb,var(--console-accent)_15%,transparent)] text-[var(--console-blue)]'
-                    : 'text-[var(--console-sub)] hover:bg-white/[0.04]'
-                } disabled:opacity-40`}
+                className={`path-choice${active ? ' is-on' : ''}`}
               >
                 {item.label}
               </button>
@@ -403,9 +399,7 @@ export default function InputBar({
               aria-label={selectedPath === 'company' ? '模板' : '選項'}
               aria-expanded={showMenu}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-              </svg>
+              {selectedPath === 'company' ? '模板' : '選項'}
             </button>
 
             <button
@@ -414,13 +408,7 @@ export default function InputBar({
               className="apple-send-btn ml-auto"
               aria-label={t('chat.send')}
             >
-              {disabled ? (
-                <span className="apple-send-btn__spinner" />
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-                  <path d="M2.5 8L13.5 3L9 8L13.5 13L2.5 8Z" fill="currentColor" />
-                </svg>
-              )}
+              {disabled ? <span className="apple-send-btn__spinner" /> : t('chat.send')}
             </button>
           </div>
         </form>

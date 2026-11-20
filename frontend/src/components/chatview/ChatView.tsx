@@ -346,6 +346,9 @@ export default function ChatView({
             </div>
           )}
           {chat}
+          <div className="chat-frame__dock" data-zone="bottom" data-testid="chat-composer">
+            {composer}
+          </div>
         </div>
         <ChatMonitorSide
           isMobile={isMobile}
@@ -376,9 +379,7 @@ export default function ChatView({
             aria-expanded={!bottomOff}
             aria-label={bottomOff ? '開啟上下文' : '收合上下文'}
           >
-            <svg viewBox="0 0 24 24" aria-hidden>
-              <path d="M5 6h14M5 12h14M5 18h10" />
-            </svg>
+            <span className="chat-drawer__spine">上下文</span>
           </button>
           {bottomOff ? null : (
             <div className="chat-drawer__body" data-testid="chat-context-embed">
@@ -390,9 +391,6 @@ export default function ChatView({
             </div>
           )}
         </aside>
-      </div>
-      <div className="chat-frame__dock" data-zone="bottom" data-testid="chat-composer">
-        {composer}
       </div>
     </div>
   );

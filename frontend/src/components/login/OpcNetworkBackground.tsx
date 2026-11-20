@@ -26,13 +26,13 @@ interface Packet {
 }
 
 const COLORS = {
-  bg: '#0a0908',
-  gold: '#e8c98a',
-  blue: '#7a92b8',
-  cyan: '#7aa8b8',
-  red: '#b88080',
-  line: '#322c26',
-  faint: '#463f36',
+  bg: '#d5e3e4',
+  gold: '#1a3338',
+  blue: '#3d5c78',
+  cyan: '#5e7c76',
+  red: '#8e4545',
+  line: '#b7c9c8',
+  faint: '#8fa8a6',
 };
 
 function tierColor(tier: Tier): string {
