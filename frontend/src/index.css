@@ -7329,45 +7329,53 @@ textarea:focus-visible {
 .chat-drawer {
   display: flex;
   flex: 0 0 auto;
-  flex-direction: row;
+  flex-direction: column;
+  align-self: stretch;
   width: min(440px, 46cqw);
   max-width: min(440px, 46cqw);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  container: chat-drawer / inline-size;
   border-left: 0;
   background: var(--console-sidebar);
-  box-shadow: inset 18px 0 28px color-mix(in srgb, var(--console-ink) 8%, transparent);
 }
 
 .chat-drawer.is-collapsed {
-  flex: 0 0 44px;
-  width: 44px;
-  max-width: 44px;
-  min-width: 44px;
+  align-self: flex-start;
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: none;
+  min-width: max-content;
   box-shadow: none;
   background: color-mix(in srgb, var(--console-sidebar) 55%, var(--console-bg));
 }
 
 .chat-drawer__toggle {
   display: flex;
-  width: 44px;
-  flex: 0 0 44px;
-  align-items: flex-start;
-  justify-content: center;
+  width: max-content;
+  max-width: none;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-start;
   border: 0;
   background: transparent;
   color: var(--console-ink);
   cursor: pointer;
-  padding: 18px 0;
+  padding: 12px 16px;
+  white-space: nowrap;
+}
+
+.chat-drawer:not(.is-collapsed) .chat-drawer__toggle {
+  width: 100%;
+  max-width: none;
 }
 
 .chat-drawer__spine {
   font-family: 'Iansui', 'Songti TC', 'PMingLiU', serif;
   font-size: 15px;
   line-height: 1.4;
-  writing-mode: vertical-rl;
+  writing-mode: horizontal-tb;
+  white-space: nowrap;
 }
 
 .chat-drawer__toggle:hover {
@@ -7380,18 +7388,20 @@ textarea:focus-visible {
   min-height: 0;
   flex: 1;
   flex-direction: column;
+  container: chat-drawer / inline-size;
 }
 
 .chat-drawer__edge {
-  flex: 1;
+  flex: 0 0 auto;
   border: 0;
   background: transparent;
   color: var(--console-ink);
   cursor: pointer;
-  writing-mode: vertical-rl;
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  padding: 16px 0;
+  writing-mode: horizontal-tb;
+  font-size: 15px;
+  letter-spacing: 0;
+  padding: 12px 16px;
+  white-space: nowrap;
 }
 
 .chat-drawer__edge:hover {
@@ -7523,10 +7533,14 @@ textarea:focus-visible {
   align-items: baseline;
   justify-content: space-between;
   gap: 6px 12px;
-  padding: 2px 0 8px;
+  padding: 2px 12px 8px 0;
   color: var(--console-sub);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.ctx-drawer-status > span {
+  min-width: 0;
 }
 
 .ctx-drawer-tabs {
@@ -7579,10 +7593,10 @@ textarea:focus-visible {
 
   .chat-drawer.is-collapsed,
   .chat-drawer.is-collapsed .chat-drawer__toggle {
-    flex-basis: 40px;
-    width: 40px;
-    max-width: 40px;
-    min-width: 40px;
+    flex-basis: auto;
+    width: max-content;
+    max-width: none;
+    min-width: max-content;
   }
 
   .chat-drawer:not(.is-collapsed) {
