@@ -7360,6 +7360,11 @@ textarea:focus-visible {
   font-size: 11px;
 }
 
+.topo-line.is-cloud {
+  stroke: #a493ff;
+  stroke-dasharray: 3 3;
+}
+
 .topo-label.is-data {
   fill: #43d4e4;
 }

@@ -106,21 +106,22 @@ export function InfraSections() {
           </tbody>
         </table>
         <div className="panel-body infra-split">
-          <svg className="topo" viewBox="0 0 360 150" role="img" aria-label="Compose 拓撲範例">
-            <rect className="topo-node is-docker" x="16" y="58" width="88" height="32" rx="4" />
-            <text className="topo-label" x="60" y="78" textAnchor="middle">frontend</text>
-            <rect className="topo-node is-docker" x="136" y="58" width="88" height="32" rx="4" />
-            <text className="topo-label" x="180" y="78" textAnchor="middle">backend</text>
-            <path className="topo-line" d="M104 74 H136" />
-            <rect className="topo-node" x="250" y="16" width="90" height="26" rx="4" />
-            <text className="topo-label" x="295" y="33" textAnchor="middle">redis</text>
-            <rect className="topo-node" x="250" y="58" width="90" height="26" rx="4" />
-            <text className="topo-label" x="295" y="75" textAnchor="middle">chroma</text>
-            <rect className="topo-node is-data" x="250" y="100" width="90" height="26" rx="4" />
-            <text className="topo-label is-data" x="295" y="117" textAnchor="middle">opc</text>
-            <path className="topo-line" d="M224 74 H250 M270 74 V42 M270 74 V113" />
-            <rect className="topo-cloud" x="16" y="112" width="150" height="28" rx="4" />
-            <text className="topo-label is-cloud" x="91" y="130" textAnchor="middle">阿里雲 · 唯讀</text>
+          <svg className="topo" viewBox="0 0 360 196" role="img" aria-label="Compose 拓撲範例">
+            <rect className="topo-node is-docker" x="16" y="40" width="88" height="32" rx="4" />
+            <text className="topo-label" x="60" y="60" textAnchor="middle">frontend</text>
+            <rect className="topo-node is-docker" x="136" y="40" width="88" height="32" rx="4" />
+            <text className="topo-label" x="180" y="60" textAnchor="middle">backend</text>
+            <path className="topo-line" d="M104 56 H136" />
+            <rect className="topo-node" x="250" y="8" width="90" height="26" rx="4" />
+            <text className="topo-label" x="295" y="25" textAnchor="middle">redis</text>
+            <rect className="topo-node" x="250" y="43" width="90" height="26" rx="4" />
+            <text className="topo-label" x="295" y="60" textAnchor="middle">chroma</text>
+            <rect className="topo-node is-data" x="250" y="78" width="90" height="26" rx="4" />
+            <text className="topo-label is-data" x="295" y="95" textAnchor="middle">opc</text>
+            <path className="topo-line" d="M224 56 H250 M270 56 V21 M270 56 V78" />
+            <path className="topo-line is-cloud" d="M180 72 V158" />
+            <rect className="topo-cloud" x="16" y="158" width="328" height="28" rx="4" />
+            <text className="topo-label is-cloud" x="180" y="176" textAnchor="middle">阿里雲 · 唯讀</text>
           </svg>
           <div>
             <p className="kicker">常用指令 · 範例</p>
