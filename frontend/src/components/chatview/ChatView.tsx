@@ -3,7 +3,8 @@
  * 底部詳細區（文件／終端／問題／Context）一律常駐；僅有進行中／互動中任務時才左右分裂右側監控。
  * Context（dsh-context 風格）主表面固定在底部詳細區，不跳監看台。
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { TaskProgress } from '../../types';
 import { fetchTask, resumeTask } from '../../api/client';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
@@ -131,8 +132,14 @@ export default function ChatView({
 
   useBodyScrollLock(isMobile && monitorSheetOpen);
 
-  /** 右欄預設收合，只留一顆圖示。 */
-  const [bottomOff, setBottomOff] = useState(true);
+  /** 桌面右欄展開；窄螢幕先收合，避免蓋住主欄。 */
+  const [bottomOff, setBottomOff] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1279px)').matches,
+  );
+  const [railHost, setRailHost] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setRailHost(document.getElementById('console-rail'));
+  }, []);
   const [desk, setDesk] = useState<'files' | 'terminal' | 'problems' | null>(null);
   const [fileId, setFileId] = useState<string | null>(null);
   const [actError, setActError] = useState<string | null>(null);
@@ -363,33 +370,39 @@ export default function ChatView({
           handlePause={handlePause}
           handleResume={handleResume}
         />
-        <aside
-          className={`chat-drawer${bottomOff ? ' is-collapsed' : ''}`}
-          data-zone="right"
-          data-testid="context-drawer"
-          aria-label="上下文"
-        >
-          <button
-            type="button"
-            className="chat-drawer__toggle"
-            onClick={() => setBottomOff((off) => !off)}
-            aria-expanded={!bottomOff}
-            aria-label={bottomOff ? '開啟上下文' : '收合上下文'}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden>
-              <path d="M5 6h14M5 12h14M5 18h10" />
-            </svg>
-          </button>
-          {bottomOff ? null : (
-            <div className="chat-drawer__body" data-testid="chat-context-embed">
-              <ContextPanel
-                key={`chat-ctx-${sessionId || 's'}-${contextTaskId || 'none'}`}
-                taskId={contextTaskId}
-                embed
-              />
-            </div>
-          )}
-        </aside>
+        {railHost
+          ? createPortal(
+              <aside
+                className={`chat-drawer${bottomOff ? ' is-collapsed' : ''}`}
+                data-zone="right"
+                data-testid="context-drawer"
+                aria-label="上下文"
+              >
+                <button
+                  type="button"
+                  className="chat-drawer__toggle"
+                  onClick={() => setBottomOff((off) => !off)}
+                  aria-expanded={!bottomOff}
+                  aria-label={bottomOff ? '開啟上下文' : '收合上下文'}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden>
+                    <path d="M5 6h14M5 12h14M5 18h10" />
+                  </svg>
+                  <span className="chat-drawer__label">上下文</span>
+                </button>
+                {bottomOff ? null : (
+                  <div className="chat-drawer__body" data-testid="chat-context-embed">
+                    <ContextPanel
+                      key={`chat-ctx-${sessionId || 's'}-${contextTaskId || 'none'}`}
+                      taskId={contextTaskId}
+                      embed
+                    />
+                  </div>
+                )}
+              </aside>,
+              railHost,
+            )
+          : null}
       </div>
       <div className="chat-frame__dock" data-zone="bottom" data-testid="chat-composer">
         {composer}
